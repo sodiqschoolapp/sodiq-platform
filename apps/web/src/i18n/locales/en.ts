@@ -4974,11 +4974,15 @@ export const en = {
       band: '{{from}}–{{to}}',
       weights: 'Weights',
       attendanceOnly: 'Attendance only: no weights, no result and no grade.',
-      daily: 'Lesson score: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
-      quarterly: 'Quarter result: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
-      quarterlyRating: 'Quarter result: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}}',
+      daily:
+        'Lesson score: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
+      quarterly:
+        'Quarter result: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
+      quarterlyRating:
+        'Quarter result: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}}',
       changedOn: '(changed on {{date}})',
-      markers: '{{provisional}}: provisional, a weighted part has no data yet; {{leftOut}}: a part left out.',
+      markers:
+        '{{provisional}}: provisional, a weighted part has no data yet; {{leftOut}}: a part left out.',
     },
     marks: {
       absent: 'Absent from school',

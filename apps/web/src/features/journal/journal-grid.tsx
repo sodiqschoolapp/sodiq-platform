@@ -64,7 +64,7 @@ const THEME = themeQuartz.withParams({
   foregroundColor: 'var(--foreground)',
   headerBackgroundColor: 'var(--muted)',
   borderColor: 'var(--border)',
-  accentColor: 'var(--primary)',
+  accentColor: 'var(--ring)',
   fontFamily: 'inherit',
   fontSize: 14,
   rowHeight: 36,

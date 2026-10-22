@@ -89,6 +89,7 @@ export type AccountKey =
   | 'timetableFiles'
   | 'versionFiles'
   | 'whoTeacher'
+  | 'journalTeacher'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
 

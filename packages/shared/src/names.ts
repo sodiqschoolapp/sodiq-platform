@@ -148,7 +148,7 @@ function orderRanks(text: string): number[] {
     .replace(/g['`ʻʼ’‘]/g, G_OKINA)
     .replace(APOSTROPHES, '');
   const ranks: number[] = [];
-  for (let at = 0; at < latin.length; ) {
+  for (let at = 0; at < latin.length;) {
     const single = AFTER_Z.indexOf(latin.charAt(at) as (typeof AFTER_Z)[number]);
     const pair = AFTER_Z.indexOf(latin.slice(at, at + 2) as (typeof AFTER_Z)[number]);
     const special = single >= 0 ? single : pair;

@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { GridAnswer, PublishCheck } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import {
@@ -58,6 +59,7 @@ const MEASURES = [
   'open the board of the published version',
   'the published week of a class',
   'the published week of a teacher',
+  'open a journal for a quarter',
 ] as const;
 const STEPS = ['templates', 'load', 'teachers', 'rooms', 'rules'] as const;
 
@@ -288,6 +290,46 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
           });
         }
 
+        // Task 6.2 (From 5.12c, decision 1 of #203; decision 18): the journal
+        // of each branch's first class with the most lessons in quarter 1,
+        // filled with a full quarter of marks and a classwork per lesson,
+        // opened for the quarter with the clock after its last day.
+        for (const branch of school.branches) {
+          const journal = await fullQuarterJournal(t, branch);
+          const at = new Date(`${journal.after}T12:00:00+05:00`);
+          t.clock.set(at.toISOString());
+          await t.database.migrator
+            .updateTable('sessions')
+            .set({ created_at: at, last_used_at: at })
+            .execute();
+          try {
+            const vice = asVice(t, branch);
+            const opened = await timed(size.repeats, async () => {
+              const response = await vice.get(
+                `/api/journal/journals/${journal.id}?quarterId=${journal.quarterId}`,
+              );
+              expect(response.status, JSON.stringify(response.body)).toBe(200);
+              return response;
+            });
+            timings.push({
+              what: `${branch.name}: open a journal for a quarter (${String(journal.lessons)} lessons, ${String(journal.cells)} cells)`,
+              target: 'under 1 s',
+              runs: opened.runs,
+            });
+            // `12`, Speed targets: "Open a journal for a quarter: under 1 second".
+            expect(
+              median(opened.runs),
+              `${branch.name}: open a journal for a quarter`,
+            ).toBeLessThan(1000);
+          } finally {
+            t.clock.set(RUN_CLOCK);
+            await t.database.migrator
+              .updateTable('sessions')
+              .set({ created_at: new Date(RUN_CLOCK), last_used_at: new Date(RUN_CLOCK) })
+              .execute();
+          }
+        }
+
         // A teacher shared between branches teaches in both on one day, the
         // travel time kept between the two branches' lessons (`06`, Travel time).
         gaps = await sharedDays(t, school);
@@ -317,6 +359,112 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
     LIMIT,
   );
 });
+
+/**
+ * Task 6.2: the journal of the branch's first class with the most dated
+ * lessons in quarter 1, given a classwork with a total on each of them and a
+ * mark and a number for every expected student, written as the migrator in
+ * one statement per lesson (the history line of each by the trigger); the
+ * day after the quarter, from which every lesson of it is held.
+ */
+async function fullQuarterJournal(
+  t: DayTemplatesKit,
+  branch: BranchOfRun,
+): Promise<{
+  id: string;
+  quarterId: string;
+  after: string;
+  lessons: number;
+  cells: number;
+}> {
+  const migrator = t.database.migrator;
+  const classId = branch.classes[0]?.id ?? '';
+  const quarter = await migrator
+    .selectFrom('quarters')
+    .innerJoin('classes', 'classes.academic_year_id', 'quarters.academic_year_id')
+    .select([
+      'quarters.id',
+      sql<string>`quarters.start_date::text`.as('start'),
+      sql<string>`quarters.end_date::text`.as('end'),
+      sql<string>`(quarters.end_date + 1)::text`.as('after'),
+    ])
+    .where('classes.id', '=', classId)
+    .where('quarters.number', '=', 1)
+    .executeTakeFirstOrThrow();
+  const busiest = await migrator
+    .selectFrom('lessons')
+    .innerJoin('journals', (join) =>
+      join
+        .onRef('journals.class_id', '=', 'lessons.class_id')
+        .onRef('journals.subject_id', '=', 'lessons.subject_id'),
+    )
+    .select([
+      'journals.id',
+      'lessons.subject_id',
+      (select) => select.fn.countAll<string>().as('count'),
+    ])
+    .where('lessons.class_id', '=', classId)
+    .where('lessons.lesson_date', '>=', quarter.start)
+    .where('lessons.lesson_date', '<=', quarter.end)
+    .groupBy(['journals.id', 'lessons.subject_id'])
+    .orderBy('count', 'desc')
+    .limit(1)
+    .executeTakeFirstOrThrow();
+  const lessons = await migrator
+    .selectFrom('lessons')
+    .select(['id', 'starts_at'])
+    .where('class_id', '=', classId)
+    .where('subject_id', '=', busiest.subject_id)
+    .where('lesson_date', '>=', quarter.start)
+    .where('lesson_date', '<=', quarter.end)
+    .where('cancel_cause', 'is', null)
+    .execute();
+  const writer = await migrator
+    .selectFrom('accounts')
+    .select('id')
+    .limit(1)
+    .executeTakeFirstOrThrow();
+  let cells = 0;
+  for (const [index, lesson] of lessons.entries()) {
+    await migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${lesson.starts_at.toISOString()}, true)`.execute(
+        transaction,
+      );
+      const work = await transaction
+        .insertInto('journal_works')
+        .values({ branch_id: branch.id, lesson_id: lesson.id, kind: 'classwork', total: 30 })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const written = await sql<{ n: number }>`
+        with expected as (
+          select s.student_id, row_number() over (order by s.student_id) as n
+          from lesson_expected_students(${lesson.id}::uuid) as s(student_id)
+        ), inserted as (
+          insert into journal_cells
+            (branch_id, lesson_id, student_id, work_id, mark, score, version, changed_by, changed_how, changed_at)
+          select ${branch.id}::uuid, ${lesson.id}::uuid, e.student_id, null,
+                 case when (e.n + ${index}) % 11 = 0 then 0 when (e.n + ${index}) % 7 = 0 then 2 else 1 end,
+                 null, 1, ${writer.id}::uuid, 'entry', ${lesson.starts_at}::timestamptz
+          from expected e
+          union all
+          select ${branch.id}::uuid, ${lesson.id}::uuid, e.student_id, ${work.id}::uuid, null,
+                 (e.n * 7 + ${index}) % 31, 1, ${writer.id}::uuid, 'entry', ${lesson.starts_at}::timestamptz
+          from expected e
+          returning 1
+        )
+        select count(*)::int as n from inserted
+      `.execute(transaction);
+      cells += written.rows[0]?.n ?? 0;
+    });
+  }
+  return {
+    id: busiest.id,
+    quarterId: quarter.id,
+    after: quarter.after,
+    lessons: lessons.length,
+    cells,
+  };
+}
 
 async function lessonCount(t: DayTemplatesKit, branch: BranchOfRun): Promise<number> {
   const row = await t.database.migrator
@@ -476,7 +624,6 @@ function report(input: {
     '',
     '## Left out',
     '',
-    '- A journal page: the journal does not exist yet (task 6.2 times it on this data; decision 1).',
     "- The generate step and the solver's time (task 5.11).",
     '- 1,000 simultaneous users (task 10.1, Speed tests; decision 3).',
     "- Double lessons: the owner's lines name groups, splits and shared teachers; no row of the data allows doubles, so every block is single.",

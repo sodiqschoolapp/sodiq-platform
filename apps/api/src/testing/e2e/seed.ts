@@ -6,7 +6,9 @@ import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
 import { FirstAccountModule } from '../../modules/auth/first-account.command.js';
 import { relativeNameKey, studentNameKey } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { insertBranch } from '../branch-filter-sql.js';
+import { LessonsKit } from '../lessons-kit.js';
 import { linkRelative } from '../relatives-kit.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
@@ -4992,6 +4994,265 @@ try {
   seeded.whoTeacher = { login: whoTeacher.login, password: whoTeacher.firstPassword };
   seeded.whoHeadTutor = { login: whoHeadTutor.login, password: whoHeadTutor.firstPassword };
   seeded.whoHeadTeacher = { login: whoHeadTeacher.login, password: whoHeadTeacher.firstPassword };
+
+  // The journal grid (task 6.2): a teacher's class journal with a quarter of
+  // lessons, every day from two weeks ago to a week ahead at 08:00, the first
+  // quarter around today, three students, and marks and a classwork on every
+  // lesson before today, written as the migrator as `CellsKit` writes them.
+  // The browser test opens it from the home page at today's lesson and reads
+  // the grid. All names are invented.
+  const journalBranch = await insertBranch(migrator, 'Journal browser test branch');
+  const journalTeacher = await create('Sanjar', 'Qodirov');
+  await transactions.run([journalBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: journalTeacher.id,
+      role: 'teacher',
+      branchId: journalBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const todayDate = isoDate(tashkentToday);
+    const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+    const lessonsKit = await LessonsKit.create(migrator);
+    const geography = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Geography',
+      journalType: 'graded',
+    });
+    const { yearId, classId, staffId, studentIds, quarterIds } = await migrator
+      .transaction()
+      .execute(async (transaction) => {
+        const academic = await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow();
+        const steam = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow();
+        const person = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-269399',
+            account_id: journalTeacher.id,
+            first_name: 'Sanjar',
+            last_name: 'Qodirov',
+            sex: 'male',
+            birth_date: '1987-03-04',
+            phone: '+998935557399',
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: person.id, branch_id: journalBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: person.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: person.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: person.id, subject_id: geography, grades: [7] })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({
+            branch_id: journalBranch,
+            start_date: startDate,
+            end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const quarterDates: [string, string][] = [
+          [startDate, plus(20)],
+          [plus(30), plus(90)],
+          [plus(100), plus(170)],
+          [plus(180), isoDate(new Date(yearStart.getTime() + 364 * dayMs))],
+        ];
+        const quarters = await transaction
+          .insertInto('quarters')
+          .values(
+            quarterDates.map(([start, end], index) => ({
+              branch_id: journalBranch,
+              academic_year_id: year.id,
+              number: index + 1,
+              start_date: start,
+              end_date: end,
+            })),
+          )
+          .returning('id')
+          .execute();
+        const weights = { attendance: 20, classwork: 40, homework: 40 };
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({ branch_id: journalBranch, subject_id: geography, ...weights })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: journalBranch,
+              subject_id: geography,
+              quarter_id: quarter.id,
+              ...weights,
+            })),
+          )
+          .execute();
+        const oxford = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: journalBranch,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Oxford',
+            language: 'uz',
+            max_size: 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const students: string[] = [];
+        for (const [uid, first, last, phone] of [
+          ['9999841', 'Nodira', 'Zokirova', '+998935553341'],
+          ['9999842', 'Bekzod', 'Oʻktamov', '+998935553342'],
+          ['9999843', 'Lola', 'Abdullayeva', '+998935553343'],
+        ] as const) {
+          students.push(
+            await studentInClass(transaction, {
+              branch: journalBranch,
+              classId: oxford.id,
+              uid,
+              first,
+              last,
+              createdBy: journalTeacher.id,
+              phone,
+            }),
+          );
+        }
+        return {
+          yearId: year.id,
+          classId: oxford.id,
+          staffId: person.id,
+          studentIds: students,
+          quarterIds: quarters.map((one) => one.id),
+        };
+      });
+    const source = await lessonsKit.source(
+      journalBranch,
+      yearId,
+      [{ classId, groupId: null, subjectId: geography, rowTeacherId: staffId }],
+      startDate,
+    );
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: journalBranch,
+        academic_year_id: yearId,
+        class_id: classId,
+        group_id: null,
+        subject_id: geography,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    for (let offset = -14; offset <= 7; offset += 1) {
+      const date = plus(offset);
+      const lessonId = await migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: journalBranch,
+            academic_year_id: yearId,
+            quarter_id: quarterIds[0] ?? '',
+            lesson_date: date,
+            starts_at: new Date(`${date}T08:00:00+05:00`),
+            ends_at: new Date(`${date}T08:45:00+05:00`),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        return (
+          await transaction
+            .insertInto('lessons')
+            .values({
+              branch_id: journalBranch,
+              block_id: block.id,
+              lesson_date: block.lesson_date,
+              starts_at: block.starts_at,
+              ends_at: block.ends_at,
+              class_id: classId,
+              subject_id: geography,
+              teacher_id: staffId,
+              load_row_id: source.lessons[0]?.loadRowId ?? '',
+              pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+      if (date >= todayDate) continue;
+      await migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${`${date}T09:00:00+05:00`}, true)`.execute(
+          transaction,
+        );
+        const work = await transaction
+          .insertInto('journal_works')
+          .values({ branch_id: journalBranch, lesson_id: lessonId, kind: 'classwork', total: 10 })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [index, studentId] of studentIds.entries()) {
+          await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: journalBranch,
+              lesson_id: lessonId,
+              student_id: studentId,
+              mark: index === 2 && offset % 3 === 0 ? 0 : index === 1 && offset % 4 === 0 ? 2 : 1,
+              version: 1,
+              changed_by: journalTeacher.id,
+              changed_how: 'entry',
+              changed_at: new Date(`${date}T09:00:00+05:00`),
+            })
+            .execute();
+          if (index < 2) {
+            await transaction
+              .insertInto('journal_cells')
+              .values({
+                branch_id: journalBranch,
+                lesson_id: lessonId,
+                student_id: studentId,
+                work_id: work.id,
+                score: 5 + ((offset + index) % 6),
+                version: 1,
+                changed_by: journalTeacher.id,
+                changed_how: 'entry',
+                changed_at: new Date(`${date}T09:00:00+05:00`),
+              })
+              .execute();
+          }
+        }
+      });
+    }
+  }
+  seeded.journalTeacher = { login: journalTeacher.login, password: journalTeacher.firstPassword };
 
   for (const branch of classBranches) {
     const years = await migrator

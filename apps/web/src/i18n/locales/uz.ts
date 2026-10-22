@@ -651,8 +651,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Hozir server PDF tayyorlay olmaydi. Bir necha daqiqadan keyin qayta urinib koʻring yoki Excel faylini yuklab oling.',
     timetable_view_scope:
       'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
-    journal_scope:
-      'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
+    journal_scope: 'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
     journal_no_quarter:
       'Bu oʻquv yili choraklarining sanalari hali belgilanmagan, shuning uchun jurnalni koʻrsatib boʻlmaydi. Oʻquv ishlari boʻyicha direktor oʻrinbosari ularni Maktab sozlamalarida belgilaydi.',
     place_referenced:
@@ -5023,10 +5022,13 @@ export const uz: Texts<'one' | 'other'> = {
       weights: 'Ulushlar',
       attendanceOnly: 'Faqat davomat: ulush, natija va baho yoʻq.',
       daily: 'Dars bahosi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
-      quarterly: 'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
-      quarterlyRating: 'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
+      quarterly:
+        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
+      quarterlyRating:
+        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
       changedOn: '({{date}} kuni oʻzgartirilgan)',
-      markers: '{{provisional}}: taxminiy, ulushli qismda hali maʼlumot yoʻq; {{leftOut}}: qism hisobga olinmagan.',
+      markers:
+        '{{provisional}}: taxminiy, ulushli qismda hali maʼlumot yoʻq; {{leftOut}}: qism hisobga olinmagan.',
     },
     marks: {
       absent: 'Maktabga kelmagan',

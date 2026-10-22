@@ -60,10 +60,12 @@ describe('the search of pages', () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(box());
     });
-    // The teacher's "Timetable" opens the timetable views (task 5.9a, decision 2).
+    // The teacher's "Timetable" opens the timetable views (task 5.9a, decision 2);
+    // "Journal" the Journals page (task 6.2).
     expect(optionNames()).toEqual([
       en.home.title,
       en.menu.timetable,
+      en.menu.journal,
       en.account.title,
       en.password.titleOwn,
       en.sample.title,
@@ -210,6 +212,7 @@ describe('the search of pages', () => {
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
     expect(
       screen.getByRole('option', { name: en.sample.title }).getAttribute('aria-selected'),
     ).toBe('true');
@@ -218,9 +221,11 @@ describe('the search of pages', () => {
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
     fireEvent.keyDown(box(), { key: 'ArrowUp' });
+    fireEvent.keyDown(box(), { key: 'ArrowUp' });
     expect(screen.getByRole('option', { name: en.home.title }).getAttribute('aria-selected')).toBe(
       'true',
     );
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
@@ -249,7 +254,7 @@ describe('the search of pages', () => {
     pressShortcut();
     await dialog();
     expect(box().value).toBe('');
-    expect(optionNames()).toHaveLength(5);
+    expect(optionNames()).toHaveLength(6);
   });
 
   // The side panel of a list closes on Escape unless a dialog took the key (0.8b-1).

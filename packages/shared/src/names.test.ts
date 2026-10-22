@@ -8,17 +8,35 @@ describe('listName (finding 27)', () => {
 });
 
 describe('compareStudentNames (edge/journal, task 6.2 decision 15)', () => {
-  const student = (lastName: string, firstName = 'Ali', paternalName: string | null = null, uid = 'S-1') => ({
+  const student = (
+    lastName: string,
+    firstName = 'Ali',
+    paternalName: string | null = null,
+    uid = 'S-1',
+  ) => ({
     lastName,
     firstName,
     paternalName,
     uid,
   });
   const sorted = (names: string[]): string[] =>
-    names.map((name) => student(name)).sort(compareStudentNames).map((one) => one.lastName);
+    names
+      .map((name) => student(name))
+      .sort(compareStudentNames)
+      .map((one) => one.lastName);
 
   it('puts oʻ, gʻ, sh, ch and ng after z, in that order', () => {
-    expect(sorted(['Ngoyev', 'Chorshanbiyev', 'Shodiyev', 'Gʻulomov', 'Oʻktamov', 'Zokirov', 'Abdullayev'])).toEqual([
+    expect(
+      sorted([
+        'Ngoyev',
+        'Chorshanbiyev',
+        'Shodiyev',
+        'Gʻulomov',
+        'Oʻktamov',
+        'Zokirov',
+        'Abdullayev',
+      ]),
+    ).toEqual([
       'Abdullayev',
       'Zokirov',
       'Oʻktamov',
