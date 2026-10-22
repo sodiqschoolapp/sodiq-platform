@@ -2715,6 +2715,15 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     startsOn: '{{number}}-я четверть начинается {{date}}',
   },
   home: {
+    // The lessons of a person who teaches, from every branch (task 5.9b).
+    lessons: {
+      today: 'Сегодня',
+      week: 'Эта неделя',
+      noToday: 'Сегодня уроков нет.',
+      noWeek: 'На этой неделе уроков нет.',
+      branch: 'Филиал',
+      dayOffIn: '{{date}}, {{branch}}: выходной, {{name}}',
+    },
     title: 'Главная',
     noClass: { title: 'Ученики без класса', link: 'Открыть список' },
     noValidPhone: { title: 'Родители без действующего телефона', link: 'Открыть список' },

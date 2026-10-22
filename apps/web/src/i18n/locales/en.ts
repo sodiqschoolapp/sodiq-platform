@@ -2580,6 +2580,15 @@ export const en = {
     startsOn: 'Quarter {{number}} starts on {{date}}',
   },
   home: {
+    // The lessons of a person who teaches, from every branch (task 5.9b).
+    lessons: {
+      today: 'Today',
+      week: 'This week',
+      noToday: 'No lessons today.',
+      noWeek: 'No lessons this week.',
+      branch: 'Branch',
+      dayOffIn: '{{date}}, {{branch}}: day off, {{name}}',
+    },
     title: 'Home',
     noClass: { title: 'Students with no class', link: 'Open the list' },
     noValidPhone: { title: 'Parents with no valid phone', link: 'Open the list' },

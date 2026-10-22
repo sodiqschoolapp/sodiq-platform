@@ -94,8 +94,9 @@ describe('the app layout', () => {
     fireEvent.click(screen.getByRole('button', { name: en.layout.account }));
     expect(await screen.findByRole('menuitemradio', { name: 'English' })).toBeDefined();
     expect(screen.getByRole('menuitemradio', { name: en.theme.dark })).toBeDefined();
-    // docs/spec/12-ux-standards.md, Look and feel: an empty page says what it is for.
-    expect(screen.getByText(en.home.teaching)).toBeDefined();
+    // docs/spec/12-ux-standards.md, Look and feel: an empty part says what it is for;
+    // the Teacher's home lists the own lessons since task 5.9b, here none.
+    expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
   });
 });
 

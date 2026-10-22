@@ -59,6 +59,20 @@ const VIEWS_ONLY: ReadonlySet<Role> = new Set([
   'teacher',
 ]);
 
+/** The teaching home of task 5.9b with nothing in the week. */
+const NO_LESSONS = {
+  today: '2026-10-19',
+  week: { from: '2026-10-19', to: '2026-10-25' },
+  branches: [],
+  days: [],
+  lessons: [],
+  exams: [],
+  busy: [],
+};
+
+/** The home kinds that show the person's own lessons since task 5.9b, not the empty page. */
+const TEACHING_HOME: ReadonlySet<string> = new Set(['teaching', 'tutor']);
+
 const heading = (name: string) => screen.findByRole('heading', { name });
 const side = () => within(screen.getByRole('navigation', { name: en.layout.menu }));
 
@@ -86,6 +100,7 @@ describe('the menu and the home page of each role', () => {
         }),
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
+      'GET /api/timetable/home': () => json(NO_LESSONS),
     });
 
     renderApp('/');
@@ -111,11 +126,17 @@ describe('the menu and the home page of each role', () => {
     // The own account page (task 0.8d) is reached from the person at the foot of the menu
     // (pull request #61, decision 7).
     expect(screen.getByRole('button', { name: en.layout.account })).toBeDefined();
-    // Home is the empty page of the design system until its tasks fill it,
-    // with one short line of its own per kind (pull request #80, decision 3).
-    const line = await screen.findByText(en.home[HOME_KIND[role]]);
-    expect(line.tagName).toBe('P');
-    expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+    if (TEACHING_HOME.has(HOME_KIND[role])) {
+      // Task 5.9b: the own lessons of every branch, here none.
+      expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
+      expect(screen.queryByRole('heading', { name: en.home.emptyTitle })).toBeNull();
+    } else {
+      // Home is the empty page of the design system until its tasks fill it,
+      // with one short line of its own per kind (pull request #80, decision 3).
+      const line = await screen.findByText(en.home[HOME_KIND[role]]);
+      expect(line.tagName).toBe('P');
+      expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+    }
     expect(screen.queryByRole('button', { name: ROLE_BUTTON })).toBeNull();
   });
 });
@@ -129,13 +150,15 @@ describe('the role switcher', () => {
             assignments: [held('tutor'), held('teacher')],
           }),
         ),
+      'GET /api/timetable/home': () => json(NO_LESSONS),
     });
 
   it('starts with the first role of the table and changes menu and home without a call', async () => {
     const calls = twoRoles();
     renderApp('/');
     await heading(en.home.title);
-    expect(screen.getByText(en.home.tutor)).toBeDefined();
+    // Both roles show the own lessons (task 5.9b): one query, asked once.
+    expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
     // Task 3.1c (decision 4 of pull request #90): the Tutor's own classes.
     expect(side().queryByText(en.menu.classes)).not.toBeNull();
     const before = calls.length;
@@ -155,7 +178,7 @@ describe('the role switcher', () => {
     ]);
     fireEvent.click(screen.getByRole('menuitemradio', { name: en.roles.teacher }));
 
-    expect(await screen.findByText(en.home.teaching)).toBeDefined();
+    expect(await screen.findByRole('button', { name: roleButton('teacher') })).toBeDefined();
     expect(side().queryByText(en.menu.plans)).not.toBeNull();
     expect(side().queryByText(en.menu.people)).toBeNull();
     expect(side().queryByText(en.menu.classes)).toBeNull();
@@ -179,7 +202,7 @@ describe('the role switcher', () => {
 
     renderApp('/');
 
-    expect(await screen.findByText(en.home.tutor)).toBeDefined();
+    expect(await screen.findByRole('button', { name: roleButton('tutor') })).toBeDefined();
   });
 
   it('keeps the choice of the tab across a change of page', async () => {
@@ -188,7 +211,7 @@ describe('the role switcher', () => {
 
     renderApp('/');
 
-    expect(await screen.findByText(en.home.teaching)).toBeDefined();
+    expect(await screen.findByRole('button', { name: roleButton('teacher') })).toBeDefined();
   });
 });
 

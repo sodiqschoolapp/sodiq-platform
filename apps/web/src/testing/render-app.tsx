@@ -70,11 +70,22 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
  * Calls the shell makes on every page for some roles, answered unless a test
  * gives its own: the count of Super Admins of the banner (task 2.3a), two, so
  * that no banner shows; the branches without an Academic Vice Principal
- * (task 2.3b-2), none.
+ * (task 2.3b-2), none; the own lessons of the home page of a role that
+ * teaches (task 5.9b), none, since the default session is a Teacher's.
  */
 const SHELL_ANSWERS: Record<string, Handler> = {
   'GET /api/access/super-admins': () => json({ active: 2 }),
   'GET /api/access/branches-without-vice-principal': () => json({ branches: [] }),
+  'GET /api/timetable/home': () =>
+    json({
+      today: '2026-10-19',
+      week: { from: '2026-10-19', to: '2026-10-25' },
+      branches: [],
+      days: [],
+      lessons: [],
+      exams: [],
+      busy: [],
+    }),
 };
 
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {

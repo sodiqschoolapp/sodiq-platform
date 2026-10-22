@@ -929,7 +929,7 @@ How to read the task lines:
   - From 5.5c-3a (pull request #158, decision 2): the "changed" mark shown on the class, teacher, room and branch views and on the teacher home page (`06`, How surprises are prevented: "Changed lessons carry a 'changed' mark on every timetable view for a week"): a lesson is marked while `isMarkedChanged` (`packages/shared/src/timetable.ts`) is true for its `lesson_changes.changed_at` (0084) and the clock of the request.
   - From 5.6c-1 (pull request #181, decision 15): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams, and what they count for": "Every timetable view and print shows exams for its class, teacher or room ... Invigilations are listed in the load report apart from lessons and count for no journal, no plan and no discipline figure." The exams are read by `GET timetable/exams` (`examsOf`, `exams.service.ts`); 5.6c-2 shows them on the class day page only. The print half goes to 5.9c; the load report half to 9.3b (pull request #197, decision 3, Look first).
 
-- [ ] **5.9b Teacher home page** (5.9 split in three, pull request #197, decision 1)
+- [x] **5.9b Teacher home page** (5.9 split in three, pull request #197, decision 1)
   - Read: `06` (Views and outputs, Teachers who work in several branches: Home page), `08` (Home pages by role).
   - Build: the home page of every role that teaches (Teacher, Head Teacher, Senior Head Teacher, Tutor): today's lessons from all branches together in time order, each labelled with its branch (period, time, class or group, subject, room, the journal button once 6.2 exists), and the week as a table; the changed mark; exams the person invigilates. Needs one cross-branch read of the person's own lessons, which carries class, subject and room names of another branch (a `SECURITY DEFINER` function in a migration of its own).
   - Done when: a teacher of two branches sees both branches' lessons of today in time order, each with its branch, with no branch switch.
@@ -968,6 +968,7 @@ How to read the task lines:
   - Read: `07` (Opening a journal, Layout, Who can do what), `12`.
   - Build: the AG Grid Community grid with pinned student columns, lesson columns grouped by date, scroll to the nearest date, summary columns from `packages/calc`, the bottom row, student search, and lesson mode for today's lesson.
   - Done when: the grid meets the speed targets in `12` with a full quarter of data.
+  - From 5.9b (pull request #198, decision 7): `06`, Views and outputs: "Teacher home page: today's lessons as a list (period, time, class or group, subject, room, button to open the journal)". The home page's list is `TeachingHome` (`apps/web/src/features/timetable/teaching-home.tsx`), from `GET /api/timetable/home`; each lesson of today gets the button that opens its journal (of its own branch).
   - From 4.3 (pull request #104, row table): `edge/calculation`, "The month switch in the journal": "It shows the averages over that month's lessons. The month result uses the quarter's weights without the rating exam and is labelled so", from `packages/calc`.
 
 - [ ] **6.3 Attendance**
@@ -1143,6 +1144,7 @@ How to read the task lines:
   - Read: `08` (Home pages by role).
   - Build: the first screen of each role, filling the shells from 0.8c.
   - Done when: each role's first screen matches the table in the spec.
+  - From 5.9b (pull request #198, decisions 4 and 7): `08`, Home pages by role, Tutor: "Own class: today's timetable, who is absent now, attendance percent for the day and week, early-warning list for the class." Since 5.9b the Tutor's home shows the Tutor's own lessons (`TeachingHome`); the timetable of the own class today and the other parts of the row come here. The Teacher, Head Teacher and Senior Head Teacher row ("Today's lessons with their status (\"3 of 5 complete\"), reminders, quick entry to each journal, early-warning list for own journals ... the requests waiting for them") is filled on the same list.
 
 > **Owner gate.** The start routine stops here until the owner, after the go-live review of every Look first decision and the decided-ahead round for Phase 10, deletes this line.
 

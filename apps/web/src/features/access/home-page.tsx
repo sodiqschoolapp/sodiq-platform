@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { relativeNoValidPhoneQuery, studentNoClassQuery } from '@/features/people/people-api';
+import { TeachingHome } from '@/features/timetable/teaching-home';
 import { attentionQuery } from '@/features/timetable/timetable-api';
 import { AttentionTiles } from './attention-tiles';
 import { NoClassTile } from './no-class-tile';
@@ -25,6 +26,9 @@ export function HomePage() {
       <PageHeader title={t('home.title')} />
       {kind === 'academic_vice_principal' ? (
         <ViceHome />
+      ) : kind === 'teaching' || kind === 'tutor' ? (
+        // Task 5.9b: the own lessons of every branch; the rest of `08` comes with the journal and 9.4b.
+        <TeachingHome />
       ) : (
         <EmptyState
           title={t('home.emptyTitle')}

@@ -2611,6 +2611,15 @@ export const uz: Texts<'one' | 'other'> = {
     startsOn: '{{number}}-chorak boshlanishi: {{date}}',
   },
   home: {
+    // The lessons of a person who teaches, from every branch (task 5.9b).
+    lessons: {
+      today: 'Bugun',
+      week: 'Shu hafta',
+      noToday: 'Bugun dars yoʻq.',
+      noWeek: 'Bu hafta dars yoʻq.',
+      branch: 'Filial',
+      dayOffIn: '{{date}}, {{branch}}: dam olish kuni, {{name}}',
+    },
     title: 'Bosh sahifa',
     noClass: { title: 'Sinfsiz oʻquvchilar', link: 'Roʻyxatni ochish' },
     noValidPhone: { title: 'Amaldagi telefoni yoʻq ota-onalar', link: 'Roʻyxatni ochish' },

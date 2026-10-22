@@ -328,7 +328,10 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
   await page.goto('/');
   await page.getByRole('button', { name: new RegExp(`^${en.switcher.rolePrefix}`) }).click();
   await page.getByRole('menuitemradio', { name: en.roles.teacher }).click();
-  await expect(page.getByText(en.home.teaching)).toBeVisible();
+  // Since task 5.9b the Teacher's home lists the own lessons under "Today".
+  await expect(
+    page.getByRole('heading', { name: new RegExp(`^${en.home.lessons.today}, `) }),
+  ).toBeVisible();
   await checkPage(page, 'home-teacher');
   await open(page, '/account', en.account.title);
   await checkPage(page, 'account-teacher');
