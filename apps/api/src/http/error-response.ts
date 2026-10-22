@@ -367,6 +367,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   correction_blocked: 'The correction meets a blocked rule on the lesson’s date.',
   correction_needs_confirm: 'The correction meets warnings that need a tick.',
   teacher_left_branch: 'The lesson’s teacher no longer works in the branch.',
+  cancel_holds_data: 'The lesson holds data; the cancel is sent again with the tick.',
   move_target_started: 'The new place of the move has started.',
   move_other_quarter: 'A one-day move stays inside the lesson’s quarter.',
   move_other_version: 'Another published version is in force on that date.',
@@ -379,6 +380,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   bulk_choice_missing: 'A block shared with classes not chosen has no choice.',
   bulk_choice_unknown: 'A choice names a block that is not shared in this bulk cancel.',
   bulk_scope_changed: 'The lessons to cancel changed since the check.',
+  bulk_data_choice_missing: 'A lesson with data has no choice of keep as held or cancel.',
+  bulk_data_choice_unknown:
+    'A data choice names a lesson the bulk cancel does not cancel with data.',
+  bulk_data_choice_split: 'The two halves of a double lesson have different data choices.',
+  bulk_data_choice_conflict: 'A lesson with data is kept in a shared block chosen to be cancelled.',
   withdraw_blocked:
     'The version that would run again meets a blocked conflict; the details list each.',
   load_unit_year: 'The class or group is of another academic year.',

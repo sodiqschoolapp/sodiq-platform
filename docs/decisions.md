@@ -289,6 +289,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: cancels and the forced delete over lessons with data (task 6.1b-2)
+
+Plan approved on pull request #208 with corrections 1 to 4; decisions 1 to 11 confirmed there (decision 9 changed by correction 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (triggers widened by a requirement). 0111: `journal_cells_delete` and `journal_works_delete` let through the delete of a cell or work that a store row of the same transaction holds unchanged; a restore insert is let in only when it equals a cell or work of the store row restored in the same transaction, its version (the stored one plus the lines written since), restorer, `restored` and moment written by the trigger, the cancelled and expected checks skipped; totals and "not held" are inserted by the application only there | Decision 1, correction 3; `06`, Protection: "kept for 30 days and can be restored" |
+| **Look first** (a reading of a journal rule). The cancel of a lesson with data (the correction's cancel, the one-day cancel, both halves of a double) is refused `cancel_holds_data` with what each lesson holds until sent again with the tick; a cancel never touches the cells, so a restore brings them back | Decision 2; edge/timetable, After publishing |
+| **Look first** (a reading of "keep as held" or "cancel"). The bulk cancel asks per lesson with data it cancels; "keep" holds it and the other half of its double; a split double `bulk_data_choice_split`; a "keep" in a shared block chosen "cancel" `bulk_data_choice_conflict`; in a block not shared one part is kept alone | Decision 4; edge/time-dates-calendar; edge/timetable, Structure |
+| **Look first** (a new refusal on people routes, a `SECURITY DEFINER` reader). A student with a mark in a store row that can still be restored is not deleted or merged away (`student_in_forced_store`, yes or no; `student_has_data`, `student_merge_has_cells`); a restore whose student is gone is refused `forced_delete_parent_changed` (path `students`) by the cell's key, never a read through the branch filter | Decision 7, correction 1 |
+| **Look first** (merged tests changed by a requirement). `lesson-protection-forced.database.test.ts` runs on real cells; the stand-in function and table are gone | Decision 8; the From line of 5.8b |
+| **Look first** (a pinned list widened). `journal_cells_changed_how_check` gains `restored`; the forced delete writes a history line `forced_delete` (history only) per cell with a value, the restore one `restored` | Decision 9, correction 2; `.claude/rules/journal.md` |
+| Who may cancel stays the `timetable` `edit` right: the Academic Vice Principal and the Super Admin | Decision 3 |
+| The data choices of a bulk cancel are kept in its audit entry only | Decision 5: a stored bulk cancel is applied again only on dates after today, where no lesson holds data |
+| A restored cell keeps its value whatever has changed since in who is expected | Decision 6 |
+| The closed quarter's refusal of these cancels and the forced delete is 9.2b's (its From lines) | Decision 10, correction 4 |
+| No new notice | Decision 11 |
+| **Build decision.** `storedDayCheck` places the parts of a held block cancelled with a reason alongside it, as it did for "day off": a one-day change of a part kept held beside cancelled parts met `split_apart` | edge/timetable, Structure: "one part can be cancelled or substituted alone"; `.claude/rules/timetable.md`, the rule of 5.6b-3 |
+
 ## 22 October 2026: the writers of dated lessons keep lessons with data (task 6.1b-1)
 
 Plan approved on pull request #206 with corrections 1 to 4; decisions 1 to 9 confirmed there (decision 2 changed by correction 1). Flagged on issue #42.

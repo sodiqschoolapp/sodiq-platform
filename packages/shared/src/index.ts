@@ -1458,6 +1458,8 @@ export {
   bulkCancelCheckAnswerSchema,
   bulkCancelCheckBodySchema,
   bulkCancelSharedSchema,
+  bulkCancelDataLessonSchema,
+  type BulkCancelDataLesson,
   type BulkCancelAnswer,
   type BulkCancelBody,
   type BulkCancelCheckAnswer,
@@ -1465,6 +1467,7 @@ export {
   type BulkCancelChoice,
   type BulkCancelShared,
 } from './bulk-cancels.js';
+export { heldDataSchema, type HeldData } from './held-data.js';
 export {
   ABSENCE_PERMANENT_DAYS,
   ABSENCE_REASON_MAX,

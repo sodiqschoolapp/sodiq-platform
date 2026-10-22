@@ -15,7 +15,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
-import { CellsKit } from '../../testing/cells-kit.js';
+import { CellsKit, markInStore } from '../../testing/cells-kit.js';
 import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -839,6 +839,31 @@ describe('leaving, return and delete of a student', () => {
       const before = await snapshot();
       refusedWith(await remove(fresh), 409, 'student_has_data');
       expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses a student whose only mark is kept by a forced delete of another branch that can still be restored, and deletes once its 30 days are over (task 6.1b-2, decision 7)', async () => {
+      const student = await create();
+      const by = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .executeTakeFirstOrThrow();
+      const store = await markInStore(t.database.migrator, {
+        branchId: t.south,
+        studentId: student.id,
+        by: by.id,
+        at: t.clock.now().toISOString(),
+      });
+      const fresh = await detail(student.id);
+      const before = await snapshot();
+      refusedWith(await remove(fresh), 409, 'student_has_data');
+      expect(await snapshot()).toEqual(before);
+      // Its 30 days over: the mark can no longer come back, and nothing holds the student.
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({ restore_until: t.clock.now() })
+        .where('id', '=', store)
+        .execute();
+      expect((await remove(await detail(student.id))).status).toBe(204);
     });
 
     it('deletes a student whose cells are all empty, the history kept (decision 13)', async () => {

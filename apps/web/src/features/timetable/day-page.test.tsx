@@ -1,4 +1,11 @@
-import type { DayAnswer, DayExam, DayLesson, Room, SchoolClass } from '@sodiq/shared';
+import {
+  timeText,
+  type DayAnswer,
+  type DayExam,
+  type DayLesson,
+  type Room,
+  type SchoolClass,
+} from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -118,6 +125,24 @@ async function openPage(
     },
   };
 }
+
+/** A `cancel_holds_data` refusal of one lesson (task 6.1b-2). */
+const heldRefusal = (lessonId: string) => ({
+  error: {
+    code: 'cancel_holds_data',
+    message: 'ENGLISH TEXT FOR THE DEVELOPER',
+    requestId: 'test-request',
+    details: [
+      {
+        path: `lessons.${lessonId}`,
+        code: 'cancel_holds_data',
+        message: 'x',
+        recordId: lessonId,
+        heldData: { attendance: 2, scores: 5, totals: 0, notHeld: 0 },
+      },
+    ],
+  },
+});
 
 describe('the day page', () => {
   it('lists the class’s lessons of the date with their state', async () => {
@@ -286,6 +311,47 @@ describe('the day page', () => {
     await waitFor(() => {
       expect(rowsDrawn()[0]?.[5]).toBe(`Cancelled: Excursion · ${en.timetable.day.changed}`);
     });
+  });
+
+  // Task 6.1b-2 (decision 2): edge/timetable, After publishing, "A lesson that
+  // already has attendance must be cancelled … with a reason and a list of
+  // what is affected."
+  it('lists what a lesson with data holds on a refused cancel, and cancels it again with the tick', async () => {
+    let sent = 0;
+    const page = await openPage({
+      extra: {
+        [`POST /api/timetable/lessons/${uid(301)}/cancel`]: () => {
+          sent += 1;
+          return sent === 1
+            ? json(heldRefusal(uid(301)), 409)
+            : json({
+                lesson: lesson(1, { cancelCause: 'reason', cancelReason: 'Excursion' }),
+                warnings: [],
+              });
+        },
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.cancel }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'Excursion' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.cancelSend }));
+    expect(await within(dialog).findByText(en.timetable.held.title)).not.toBeNull();
+    expect(within(dialog).getByText('attendance marks: 2, numbers: 5')).not.toBeNull();
+    // Each lesson listed is named by its time and class (spec review of the code, should-fix 3).
+    const named = dialog.querySelector(`[data-held-lesson="${uid(301)}"]`)?.textContent ?? '';
+    expect(
+      named.startsWith(
+        `${timeText(lesson(1).start)}–${timeText(lesson(1).end)} ${lesson(1).unit.name}: `,
+      ),
+    ).toBe(true);
+    fireEvent.click(within(dialog).getByLabelText(en.timetable.held.confirm));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.cancelSend }));
+    expect(await screen.findByText(en.timetable.day.cancelled)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/cancel')).map((call) => call.body),
+    ).toEqual([{ reason: 'Excursion' }, { reason: 'Excursion', confirm: true }]);
   });
 
   it('shows a refused restore with its reasons and the free rooms', async () => {
@@ -542,6 +608,7 @@ describe('the day page', () => {
       ],
       alreadyCancelled: [],
       held: [],
+      withData: [],
     };
 
     it('checks the classes and slots, needs a choice for the shared block and sends what the check listed', async () => {
@@ -550,7 +617,7 @@ describe('the day page', () => {
           'GET /api/classes': () => json({ classes: [OXFORD, PRINCETON] }),
           'POST /api/timetable/bulk-cancels/check': () => json(checkAnswer),
           'POST /api/timetable/bulk-cancels': () =>
-            json({ id: uid(900), cancelled: [uid(301)], kept: [uid(800)] }),
+            json({ id: uid(900), cancelled: [uid(301)], kept: [uid(800)], keptWithData: [] }),
         },
       });
       fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
@@ -604,9 +671,91 @@ describe('the day page', () => {
             blocks: [{ blockId: uid(800), choice: 'keep' }],
             // The lesson to cancel and, with “keep”, the part of the chosen class alone.
             lessonIds: [uid(301), uid(312)],
+            dataChoices: [],
           },
         ],
       ]);
+    });
+
+    // Task 6.1b-2 (decision 4): edge/time-dates-calendar, "For a lesson that
+    // already has data, the Academic Vice Principal chooses 'keep as held' or
+    // 'cancel'".
+    it('asks “Keep as held” or “Cancel” for each lesson with data, one choice for a double, and a shared block’s “cancel” for its parts', async () => {
+      const held = { attendance: 3, scores: 0, totals: 1, notHeld: 0 };
+      const page = await openPage({
+        extra: {
+          'GET /api/classes': () => json({ classes: [OXFORD, PRINCETON] }),
+          'POST /api/timetable/bulk-cancels/check': () =>
+            json({
+              ...checkAnswer,
+              cancel: [
+                { lesson: lesson(1), broughtIn: false },
+                { lesson: lesson(2), broughtIn: false },
+              ],
+              withData: [
+                {
+                  lessonId: uid(301),
+                  heldData: held,
+                  pairLessonIds: [uid(302)],
+                  sharedBlockId: null,
+                },
+                { lessonId: uid(312), heldData: held, pairLessonIds: [], sharedBlockId: uid(800) },
+              ],
+            }),
+          'POST /api/timetable/bulk-cancels': () =>
+            json({ id: uid(900), cancelled: [uid(312)], kept: [uid(800)], keptWithData: [] }),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.timetable.bulk.open }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', {
+          name: en.timetable.bulk.slot.replace('{{number}}', '1'),
+        }),
+      );
+      fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.bulk.check }));
+      expect(await within(dialog).findByText(en.timetable.bulk.withData)).not.toBeNull();
+      expect(
+        within(dialog).getAllByText('attendance marks: 3, works with a total: 1'),
+      ).toHaveLength(1);
+      const send = within(dialog).getByRole('button', { name: en.timetable.bulk.send });
+      fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+        target: { value: 'The school closes at 11:00' },
+      });
+      // A shared block chosen "cancel" cancels its part with data too.
+      const block = within(dialog).getByRole('group', {
+        name: 'Shared by 7 Oxford with 7 Princeton',
+      });
+      fireEvent.click(within(block).getByRole('radio', { name: en.timetable.bulk.choice_cancel }));
+      const part = dialog.querySelector('[data-data-lesson="' + uid(312) + '"]');
+      if (!(part instanceof HTMLElement)) throw new Error('The part is not asked about.');
+      const forced = within(part).getByRole<HTMLInputElement>('radio', {
+        name: en.timetable.bulk.data_cancel,
+      });
+      expect(forced.checked && forced.disabled).toBe(true);
+      // "keep": the part of the chosen class alone takes its own choice.
+      fireEvent.click(within(block).getByRole('radio', { name: en.timetable.bulk.choice_keep }));
+      expect(send.hasAttribute('disabled')).toBe(true);
+      const first = dialog.querySelector('[data-data-lesson="' + uid(301) + '"]');
+      if (!(first instanceof HTMLElement)) throw new Error('The lesson is not asked about.');
+      fireEvent.click(within(first).getByRole('radio', { name: en.timetable.bulk.data_keep }));
+      expect(send.hasAttribute('disabled')).toBe(true);
+      const own = dialog.querySelector('[data-data-lesson="' + uid(312) + '"]');
+      if (!(own instanceof HTMLElement)) throw new Error('The part is not asked about.');
+      fireEvent.click(within(own).getByRole('radio', { name: en.timetable.bulk.data_cancel }));
+      expect(send.hasAttribute('disabled')).toBe(false);
+      fireEvent.click(send);
+      expect(await screen.findByText('1 lesson was cancelled.')).not.toBeNull();
+      const saved = page.calls.find((call) => call.route === 'POST /api/timetable/bulk-cancels');
+      expect(saved?.body).toMatchObject({
+        blocks: [{ blockId: uid(800), choice: 'keep' }],
+        // The kept lesson and the other half of its double are not cancelled.
+        lessonIds: [uid(312)],
+        dataChoices: [
+          { lessonId: uid(301), choice: 'keep' },
+          { lessonId: uid(312), choice: 'cancel' },
+        ],
+      });
     });
 
     it('asks for a new check when a class changes, and ticks every class with “Every class of the branch”', async () => {
@@ -789,6 +938,40 @@ describe('the correction of a past lesson', () => {
     expect(
       page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
     ).toEqual([{ kind: 'teacher', teacherId: PERSON.id, reason: 'The register names him' }]);
+  });
+
+  it('lists what a past lesson with data holds on a refused cancel, and cancels it again with the tick (task 6.1b-2)', async () => {
+    let sent = 0;
+    const page = await openPage({
+      lessons: [past(1)],
+      extra: {
+        [`POST /api/timetable/lessons/${uid(301)}/correction`]: () => {
+          sent += 1;
+          return sent === 1
+            ? json(heldRefusal(uid(301)), 409)
+            : json({
+                lesson: past(1, { cancelCause: 'reason', cancelReason: 'Nobody came' }),
+                warnings: [],
+              });
+        },
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.timetable.day.correct }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.timetable.day.reason), {
+      target: { value: 'Nobody came' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await within(dialog).findByText('attendance marks: 2, numbers: 5')).not.toBeNull();
+    fireEvent.click(within(dialog).getByLabelText(en.timetable.held.confirm));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.correctSend }));
+    expect(await screen.findByText(en.timetable.day.corrected)).not.toBeNull();
+    expect(
+      page.calls.filter((call) => call.route.endsWith('/correction')).map((call) => call.body),
+    ).toEqual([
+      { kind: 'cancel', reason: 'Nobody came' },
+      { kind: 'cancel', reason: 'Nobody came', confirm: true },
+    ]);
   });
 
   it('sends nothing without a reason', async () => {

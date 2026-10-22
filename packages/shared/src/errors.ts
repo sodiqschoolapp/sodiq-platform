@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { quarterItemSchema } from './academic-year.js';
+import { heldDataSchema } from './held-data.js';
 
 /**
  * What an error answer can say. The web app translates the code; a new kind of
@@ -645,6 +646,8 @@ export const ERROR_CODES = [
   'correction_blocked',
   /** A correction meets warnings that need a tick; `details` lists each, and the correction is sent again with `confirm` (task 5.6a-4, decisions 2 and 13). */
   'correction_needs_confirm',
+  /** The lesson, or the other half of its double, holds data: `details` lists what each holds, and the cancel is sent again with `confirm` (task 6.1b-2, decision 2; edge/timetable, After publishing). */
+  'cancel_holds_data',
   /** The lesson's teacher no longer works in the branch, so a restore or a room correction cannot check them; the person who taught it is recorded first (task 5.6a-4). */
   'teacher_left_branch',
   /** The new place of a one-day move has started: a move targets a lesson slot that has not started (task 5.6a-2, decision 5). */
@@ -671,6 +674,14 @@ export const ERROR_CODES = [
   'bulk_choice_unknown',
   /** The lessons a bulk cancel would cancel changed since its check; `details` lists the differences (task 5.6a-3, decision 12). */
   'bulk_scope_changed',
+  /** A lesson of a bulk cancel that holds data has no choice of "keep as held" or "cancel"; `details` lists each (task 6.1b-2, decision 4; edge/time-dates-calendar). */
+  'bulk_data_choice_missing',
+  /** A data choice names a lesson the bulk cancel does not cancel with data; `details` lists each (task 6.1b-2). */
+  'bulk_data_choice_unknown',
+  /** The two halves of a double lesson are given different data choices; `details` lists them (task 6.1b-2, decision 4). */
+  'bulk_data_choice_split',
+  /** A lesson with data is kept as held in a shared block chosen "cancel", which cancels the whole block; `details` lists each (task 6.1b-2, decision 4). */
+  'bulk_data_choice_conflict',
   /** The class or group of a load row is of another academic year than the version (task 3.4a). */
   'load_unit_year',
   /** The class or group of a load row is archived (task 3.4a). */
@@ -962,6 +973,11 @@ export const errorDetailSchema = z.object({
       changedAt: z.iso.datetime(),
     })
     .optional(),
+  /**
+   * What a lesson holds, on a `cancel_holds_data` (task 6.1b-2, decision 2):
+   * `recordId` is the lesson.
+   */
+  heldData: heldDataSchema.optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),
 });

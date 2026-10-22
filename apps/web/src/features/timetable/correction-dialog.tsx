@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { roomsQuery } from '@/features/setup/setup-api';
 import { BlockedRules } from './blocked-rules';
+import { HeldDataTick } from './held-data';
 import { ruleText } from './rule-text';
 import { correctLesson, correctionTeachersQuery } from './timetable-api';
 
@@ -87,7 +88,7 @@ export function CorrectionDialog({
           ...confirm,
         };
       }
-      return { kind: typed.kind, reason: typed.reason };
+      return { kind: typed.kind, reason: typed.reason, ...confirm };
     },
     save: async (body) => {
       const answer = await correctLesson(lesson.id, body, key.current);
@@ -127,7 +128,9 @@ export function CorrectionDialog({
   const code = failure instanceof ApiFailure ? failure.code : null;
   const details =
     failure instanceof ApiFailure &&
-    (code === 'correction_blocked' || code === 'correction_needs_confirm')
+    (code === 'correction_blocked' ||
+      code === 'correction_needs_confirm' ||
+      code === 'cancel_holds_data')
       ? (failure.details ?? [])
       : [];
 
@@ -246,6 +249,9 @@ export function CorrectionDialog({
               </ul>
               <CheckboxField label={t('timetable.day.confirm')} {...form.bind('confirm')} />
             </div>
+          )}
+          {code === 'cancel_holds_data' && details.length > 0 && (
+            <HeldDataTick details={details} lessons={[lesson]} confirm={form.bind('confirm')} />
           )}
           <DialogFooter>
             <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.back')}</DialogClose>

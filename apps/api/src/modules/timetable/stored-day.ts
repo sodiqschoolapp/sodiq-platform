@@ -588,12 +588,16 @@ export async function storedDayCheck(
       : {}),
   });
   // Task 5.6b-3 (code review round 1): the parts cancelled "day off" of the
-  // blocks held on the date go with them, as in `datedCheck`.
+  // blocks held on the date go with them, as in `datedCheck`. Task 6.1b-2
+  // (spec review of the plan, should-fix 8): so do the parts cancelled with a
+  // reason, by a one-day cancel of one part or a bulk cancel that keeps
+  // another part held (edge/timetable, Structure: "one part can be cancelled
+  // or substituted alone"), as the one-day move sends them.
   const sent = new Set((input.alongside ?? []).map((one) => one.id));
   const heldBlocks = new Set([...held, ...input.lessons].map((one) => one.blockId));
   const offParts = stored.filter(
     (one) =>
-      one.cancelCause === 'day_off' &&
+      (one.cancelCause === 'day_off' || one.cancelCause === 'reason') &&
       !ids.has(one.id) &&
       !sent.has(one.id) &&
       heldBlocks.has(one.blockId),

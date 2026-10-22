@@ -6,6 +6,7 @@ import {
   type BulkCancelBody,
   type BulkCancelCheckAnswer,
   type BulkCancelChoice,
+  type BulkCancelDataLesson,
   type DayLesson,
 } from '@sodiq/shared';
 import { useMutation } from '@tanstack/react-query';
@@ -24,9 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { HeldDataText } from './held-data';
 import { checkBulkCancel, saveBulkCancel } from './timetable-api';
 
 type Language = 'uz' | 'ru' | 'en';
+
+/** A lesson with data the save cancels, with the choice its shared block forces, if any (task 6.1b-2). */
+type Asked = BulkCancelDataLesson & { forced: BulkCancelChoice | null };
 
 /**
  * The bulk cancel of a date (task 5.6a-3, pull request #162; `06`, Changes
@@ -36,7 +41,9 @@ type Language = 'uz' | 'ru' | 'en';
  * lesson numbers and the reason; "Check" lists what would be cancelled and
  * each block shared with classes not chosen, which needs a choice (decision
  * 7) before "Cancel lessons" sends once with what the check listed (decision
- * 12). A change of the classes or numbers asks for a new check.
+ * 12). A change of the classes or numbers asks for a new check. Task 6.1b-2
+ * (decision 4): each lesson with data it cancels takes "Keep as held" or
+ * "Cancel", one choice for both halves of a double.
  */
 export function BulkCancelDialog({
   date,
@@ -62,13 +69,35 @@ export function BulkCancelDialog({
   const [chosen, setChosen] = useState<readonly string[]>([startClassId]);
   const [numbers, setNumbers] = useState<readonly number[]>([]);
   const [choices, setChoices] = useState<Readonly<Record<string, BulkCancelChoice>>>({});
+  const [dataChoices, setDataChoices] = useState<Readonly<Record<string, BulkCancelChoice>>>({});
   const check = useMutation({
     mutationFn: () => checkBulkCancel({ date, classIds: [...chosen], lessonNumbers: [...numbers] }),
     onSuccess: () => {
       setChoices({});
+      setDataChoices({});
     },
   });
   const result: BulkCancelCheckAnswer | null = check.data ?? null;
+  // Task 6.1b-2 (decision 4): the lessons with data the save cancels under the
+  // block choices, each with its choice: a shared block chosen "cancel" is
+  // cancelled whole, so its lessons take "cancel"; in a block chosen "keep"
+  // only its parts of the chosen classes alone are asked about.
+  const asked = (result?.withData ?? []).flatMap((one): Asked[] => {
+    if (one.sharedBlockId === null) return [{ ...one, forced: null }];
+    const block = choices[one.sharedBlockId];
+    if (block === 'cancel') return [{ ...one, forced: 'cancel' }];
+    const shared = result?.shared.find((each) => each.blockId === one.sharedBlockId);
+    return block === 'keep' && shared?.chosenOnly.includes(one.lessonId) === true
+      ? [{ ...one, forced: null }]
+      : [];
+  });
+  const choiceOf = (lessonId: string, forced: BulkCancelChoice | null) =>
+    forced ?? dataChoices[lessonId];
+  const keptIds = new Set(
+    asked.flatMap((one) =>
+      choiceOf(one.lessonId, one.forced) === 'keep' ? [one.lessonId, ...one.pairLessonIds] : [],
+    ),
+  );
   const form = useRecordForm<'reason', BulkCancelBody>({
     schema: bulkCancelBodySchema,
     initial: { reason: '' },
@@ -91,7 +120,11 @@ export function BulkCancelDialog({
               ? one.chosenOnly
               : [],
         ),
-      ],
+      ].filter((id) => !keptIds.has(id)),
+      dataChoices: asked.flatMap((one) => {
+        const choice = choiceOf(one.lessonId, one.forced);
+        return choice === undefined ? [] : [{ lessonId: one.lessonId, choice }];
+      }),
     }),
     save: async (body) => {
       done.current = await saveBulkCancel(body, key.current);
@@ -105,11 +138,35 @@ export function BulkCancelDialog({
   const rescope = () => {
     check.reset();
     setChoices({});
+    setDataChoices({});
   };
   const offered = Array.from({ length: longestDay }, (_, at) => at + 1);
   const everyClass = classes.length > 0 && chosen.length === classes.length;
   const unchosen = (result?.shared ?? []).filter((one) => choices[one.blockId] === undefined);
-  const ready = result !== null && unchosen.length === 0 && form.status !== 'saving';
+  const unchosenData = asked.filter((one) => choiceOf(one.lessonId, one.forced) === undefined);
+  const ready =
+    result !== null &&
+    unchosen.length === 0 &&
+    unchosenData.length === 0 &&
+    form.status !== 'saving';
+  const lessonById = new Map(
+    [
+      ...(result?.cancel ?? []).map((one) => one.lesson),
+      ...(result?.shared ?? []).flatMap((one) => one.lessons),
+    ].map((lesson) => [lesson.id, lesson]),
+  );
+  /** A choice for a lesson with data, given to the other half of its double too. */
+  const chooseData = (
+    lessonId: string,
+    pairLessonIds: readonly string[],
+    choice: BulkCancelChoice,
+  ) => {
+    setDataChoices((all) => ({
+      ...all,
+      [lessonId]: choice,
+      ...Object.fromEntries(pairLessonIds.map((id) => [id, choice])),
+    }));
+  };
 
   const lessonText = (lesson: DayLesson) =>
     t('timetable.bulk.lesson', {
@@ -276,6 +333,51 @@ export function BulkCancelDialog({
                   ))}
                 </fieldset>
               ))}
+              {asked.length > 0 && (
+                <section className="grid gap-2" data-bulk-data="true">
+                  <h4 className={SUBSECTION_TITLE}>{t('timetable.bulk.withData')}</h4>
+                  {asked.map((one) => {
+                    const lesson = lessonById.get(one.lessonId);
+                    return (
+                      <fieldset
+                        key={one.lessonId}
+                        className="grid gap-1 rounded-md border p-3"
+                        data-data-lesson={one.lessonId}
+                      >
+                        <legend className="px-1 text-sm">
+                          {lesson === undefined ? null : lessonText(lesson)} ·{' '}
+                          <HeldDataText held={one.heldData} />
+                        </legend>
+                        {(one.pairLessonIds.length > 0 || one.forced !== null) && (
+                          <p className="text-sm">
+                            {t(
+                              one.forced === null
+                                ? 'timetable.bulk.dataDouble'
+                                : 'timetable.bulk.dataBlockCancelled',
+                            )}
+                          </p>
+                        )}
+                        {(['keep', 'cancel'] as const).map((choice) => (
+                          <label key={choice} className={CHECKBOX_TARGET}>
+                            <input
+                              type="radio"
+                              name={`data-${one.lessonId}`}
+                              className={CHECKBOX}
+                              value={choice}
+                              disabled={one.forced !== null}
+                              checked={choiceOf(one.lessonId, one.forced) === choice}
+                              onChange={() => {
+                                chooseData(one.lessonId, one.pairLessonIds, choice);
+                              }}
+                            />
+                            <span className="text-sm">{t(`timetable.bulk.data_${choice}`)}</span>
+                          </label>
+                        ))}
+                      </fieldset>
+                    );
+                  })}
+                </section>
+              )}
               {result.alreadyCancelled.length > 0 && (
                 <section className="grid gap-1" data-bulk-already="true">
                   <h4 className={SUBSECTION_TITLE}>{t('timetable.bulk.alreadyCancelled')}</h4>
@@ -296,7 +398,7 @@ export function BulkCancelDialog({
                   </ul>
                 </section>
               )}
-              {unchosen.length > 0 && (
+              {(unchosen.length > 0 || unchosenData.length > 0) && (
                 <p className="text-sm" data-bulk-unchosen="true">
                   {t('timetable.bulk.chooseEach')}
                 </p>

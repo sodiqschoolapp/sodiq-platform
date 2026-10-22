@@ -201,3 +201,121 @@ export async function workWithTotal(
     .executeTakeFirstOrThrow();
   return row.id;
 }
+
+/**
+ * Task 6.1b-2: a store row of a forced delete, written as the migrator, that
+ * keeps a mark of the student (`forced_deletes.rows.cells`), as the forced
+ * delete of a lesson keeps it; restorable for 30 days from `at`. Answers its id.
+ */
+export async function markInStore(
+  migrator: Database,
+  input: {
+    readonly branchId: string;
+    readonly studentId: string;
+    readonly by: string;
+    readonly at: string;
+  },
+): Promise<string> {
+  return migrator.transaction().execute(async (transaction) => {
+    await sql`select set_config('app.now', ${input.at}, true)`.execute(transaction);
+    const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+    const cellId = found.rows[0]?.id ?? '';
+    const row = await transaction
+      .insertInto('forced_deletes')
+      .values({
+        branch_id: input.branchId,
+        record_type: 'lesson',
+        record_id: cellId,
+        rows: JSON.stringify({
+          block: null,
+          cells: [
+            {
+              id: cellId,
+              student_id: input.studentId,
+              work_id: null,
+              mark: 1,
+              score: null,
+              version: 1,
+              changed_by: input.by,
+              changed_how: 'entry',
+              changed_at: input.at,
+            },
+          ],
+          works: [],
+        }),
+        reason: 'Entered for the wrong class',
+        deleted_by: input.by,
+        deleted_at: new Date(input.at),
+        restore_until: new Date(input.at),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return row.id;
+  });
+}
+
+/**
+ * Task 6.1b-2 (spec review of the code, must-fix 2): two real changes of one
+ * lesson in a fixed order, both waiting on its row. A third transaction holds
+ * the lesson `for update`, which both conflict with: `first` starts and waits
+ * on it (a cancel or a forced delete locks the lesson `for update`), then
+ * `second` starts and queues behind it (a save of cells takes the lesson `for
+ * share`), so the row goes to `first` when the hold is released. Each answers
+ * its value or the error it threw.
+ */
+export async function inOrderOnLesson<A, B>(input: {
+  readonly app: INestApplication;
+  readonly migrator: Database;
+  readonly branchId: string;
+  readonly lessonId: string;
+  readonly first: () => Promise<A>;
+  readonly second: () => Promise<B>;
+}): Promise<[unknown, unknown]> {
+  const waiting = async () => {
+    const found = await sql<{ n: number }>`
+      select count(distinct l.pid)::int as n
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(input.migrator);
+    return found.rows[0]?.n ?? 0;
+  };
+  const until = async (count: number) => {
+    for (let tries = 0; tries < 800; tries += 1) {
+      if ((await waiting()) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`Fewer than ${String(count)} waited on the lesson.`);
+  };
+  let release: () => void = () => undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let ready: () => void = () => undefined;
+  const isReady = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  const held = input.app
+    .get(Transactions)
+    .run([input.branchId], async (transaction) => {
+      await transaction
+        .selectFrom('lessons')
+        .select('id')
+        .where('id', '=', input.lessonId)
+        .forUpdate()
+        .execute();
+      ready();
+      await released;
+    })
+    .catch((error: unknown) => error);
+  await isReady;
+  const one = input.first().catch((error: unknown) => error);
+  await until(1);
+  const two = input.second().catch((error: unknown) => error);
+  await until(2);
+  release();
+  const heldError = await held;
+  if (heldError !== undefined) {
+    throw heldError instanceof Error ? heldError : new Error('The hold on the lesson failed.');
+  }
+  return Promise.all([one, two]);
+}

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.1b-2 Cancels and the forced delete over lessons with data
+
+- 0111: the forced delete keeps a lesson's cells and works in its store row and deletes them; the restore puts back exactly those rows (version plus the lines written, `restored`, the restorer), each held by the database to the store row; a cell history line for each; a student whose kept mark can still be restored is not deleted or merged away.
+- A cancel of a lesson with data (the correction's cancel, the one-day cancel) is refused `cancel_holds_data` with what it holds until it is sent again with the tick; the cells stay and a restore brings them back. The bulk cancel lists the lessons with data (`withData`) and takes "keep as held" or "cancel" for each (`dataChoices`), one choice for a double, "cancel" for a shared block cancelled whole.
+- Build: `storedDayCheck` places the parts of a held block cancelled with a reason alongside it, as it did for "day off".
+- Left out: the grid's strike-through (6.2), the closed quarter (9.2b), the exemption of a kept block (8.5), comments as data (8.2); their From lines are in the plan.
+
+The next sessions must know:
+
+- A lesson's data is counted by `dataHeldBy` (`lesson-data.ts`), which picks the lessons with `lesson_holds_data` first; add a new kind of data there and in `heldDataSchema`.
+- A test writes a store row holding a student's mark with `markInStore` (`apps/api/src/testing/cells-kit.ts`).
+- A member of a class with groups needs the group rows in the same transaction (`class_memberships_need_groups`); a group lesson holds data most simply through `workWithTotal`.
+
 ## 22 October 2026: task 6.1b-1 The writers of dated lessons keep lessons with data
 
 - 0110: cause `kept_data`. `writeDatedLessons` and `removeDatedLessons` keep a lesson with data that no wanted lesson pairs, in its block (pinned, under its own version), cancelled `kept_data`; a lesson with data that would have to change block refuses the write, `lessons_hold_data` (`datedKeeps`, `pinnedPairing`).

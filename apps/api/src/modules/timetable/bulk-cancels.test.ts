@@ -18,8 +18,12 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { inOrderOnLesson, workWithTotal } from '../../testing/cells-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from '../journal/cells.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -95,6 +99,7 @@ describe('the bulk cancel', () => {
       reason?: string;
       blocks?: { blockId: string; choice: 'keep' | 'cancel' }[];
       lessonIds?: string[];
+      dataChoices?: { lessonId: string; choice: 'keep' | 'cancel' }[];
     },
     cookie = t.admin,
     key: string = randomUUID(),
@@ -1013,11 +1018,15 @@ describe('the bulk cancel', () => {
           .executeTakeFirstOrThrow();
         copied.push(lesson.id);
       }
+      // Task 6.1b-2 (plan test 21): the half held outside the slots holds data
+      // and is not listed with the lessons with data.
+      await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: copied[0] ?? '' });
       const { check: answer, saved } = await checkAndSave(s.branch, {
         date: YESTERDAY,
         classIds: [s.oxford],
         lessonNumbers: [3],
       });
+      expect(answer.withData).toEqual([]);
       expect(answer.cancel.map((one) => one.lesson.id)).toEqual([copied[1]]);
       // Listed as started: no single cancel is offered for it.
       expect(answer.cancel[0]?.lesson.canCancel).toBe(false);
@@ -1101,6 +1110,412 @@ describe('the bulk cancel', () => {
       );
       expect(restored.status, JSON.stringify(restored.body)).toBe(200);
       for (const one of physics) expect((await rowOf(one.id))?.cancel_cause).toBeNull();
+    });
+  });
+
+  // Task 6.1b-2 (decision 4; the From line of 5.6a-3): edge/time-dates-calendar,
+  // "The school closes at 11:00 today …": "For a lesson that already has data,
+  // the Academic Vice Principal chooses 'keep as held' or 'cancel'." The
+  // database takes data on a lesson to come, so the fixtures mark next week's
+  // lessons; a group lesson holds data through a work with a total.
+  describe('lessons that hold data (task 6.1b-2)', () => {
+    type Choices = Readonly<Record<string, 'keep' | 'cancel'>>;
+
+    /** The requests of this test database waiting on a lock. */
+    async function waiting(): Promise<number> {
+      const found = await sql<{ n: number }>`
+        select count(distinct l.pid)::int as n
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and not l.granted
+      `.execute(t.database.migrator);
+      return found.rows[0]?.n ?? 0;
+    }
+
+    /** A member of 7 Oxford from 1 September, in 7-E-3 for English as a member of 7 Oxford must be. */
+    const oxfordStudent = async (s: Scene) => {
+      const members = new MembersKit(t.database.migrator, await load.classes.account());
+      const studentId = await members.student(s.branch, { startsOn: '2026-09-01' });
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await members.member(
+          { branch: s.branch, classId: s.oxford, studentId, from: '2026-09-01' },
+          transaction,
+        );
+        await members.groupMember(
+          {
+            branch: s.branch,
+            groupId: s.groups[2] ?? '',
+            subjectId: s.english,
+            studentId,
+            from: '2026-09-01',
+          },
+          transaction,
+        );
+      });
+      return studentId;
+    };
+
+    /** A mark of a new member of 7 Oxford on a lesson of 7 Oxford, saved through `saveCells`. */
+    const markOn = async (s: Scene, lessonId: string) => {
+      const studentId = await oxfordStudent(s);
+      const account = await load.classes.account();
+      await t.app
+        .get(Transactions)
+        .run([s.branch], (transaction) =>
+          saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+            { lessonId, studentId, workId: null, value: 1, version: null },
+          ]),
+        );
+      return studentId;
+    };
+
+    const totalOn = (s: Scene, lessonId: string) =>
+      workWithTotal(t.database.migrator, { branchId: s.branch, lessonId });
+
+    const cellsOf = (lessonIds: readonly string[]) =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .selectAll()
+        .where('lesson_id', 'in', [...lessonIds])
+        .orderBy('id')
+        .execute();
+
+    /** The save of a check with a block choice and the data choices, `lessonIds` as the dialog sends them. */
+    const saveWith = (
+      s: Scene,
+      body: { date: string; classIds: string[]; lessonNumbers: number[] },
+      answer: BulkCancelCheckAnswer,
+      blockChoice: 'keep' | 'cancel',
+      choices: Choices,
+      key: string = randomUUID(),
+    ) => {
+      const kept = new Set<string>();
+      for (const one of answer.withData) {
+        if (choices[one.lessonId] !== 'keep') continue;
+        kept.add(one.lessonId);
+        for (const id of one.pairLessonIds) kept.add(id);
+      }
+      const lessonIds = [
+        ...answer.cancel.map((one) => one.lesson.id),
+        ...answer.shared.flatMap((one) =>
+          blockChoice === 'cancel' ? one.lessons.map((lesson) => lesson.id) : one.chosenOnly,
+        ),
+      ].filter((id) => !kept.has(id));
+      return save(
+        s.branch,
+        {
+          ...body,
+          blocks: answer.shared.map((one) => ({ blockId: one.blockId, choice: blockChoice })),
+          lessonIds,
+          dataChoices: Object.entries(choices).map(([lessonId, choice]) => ({ lessonId, choice })),
+        },
+        t.admin,
+        key,
+      );
+    };
+
+    /** Everything a bulk cancel writes, the cells and works included. */
+    const all = async () => [
+      await everything(),
+      await t.database.migrator.selectFrom('journal_cells').selectAll().orderBy('id').execute(),
+      await t.database.migrator.selectFrom('journal_works').selectAll().orderBy('id').execute(),
+    ];
+
+    it('lists each lesson with data the save could cancel, with what it holds, its shared block and the other half of its double', async () => {
+      const s = await scene();
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      const [shared, , alone] = await Promise.all(
+        s.groups.map((group) => oneLesson(s, NEXT_MONDAY, { groupId: group }, s.english)),
+      );
+      if (shared === undefined || alone === undefined) throw new Error('No English lesson.');
+      await markOn(s, maths.id);
+      await markOn(s, maths.id);
+      await totalOn(s, shared.id);
+      await totalOn(s, alone.id);
+      const answer = await checked(s.branch, {
+        date: NEXT_MONDAY,
+        classIds: [s.oxford],
+        lessonNumbers: [1, 2, 3],
+      });
+      const blockId = answer.shared[0]?.blockId ?? null;
+      expect([...answer.withData].sort((a, b) => a.lessonId.localeCompare(b.lessonId))).toEqual(
+        [
+          {
+            lessonId: maths.id,
+            heldData: { attendance: 2, scores: 0, totals: 0, notHeld: 0 },
+            pairLessonIds: [],
+            sharedBlockId: null,
+          },
+          {
+            lessonId: shared.id,
+            heldData: { attendance: 0, scores: 0, totals: 1, notHeld: 0 },
+            pairLessonIds: [],
+            sharedBlockId: blockId,
+          },
+          {
+            lessonId: alone.id,
+            heldData: { attendance: 0, scores: 0, totals: 1, notHeld: 0 },
+            pairLessonIds: [],
+            sharedBlockId: blockId,
+          },
+        ].sort((a, b) => a.lessonId.localeCompare(b.lessonId)),
+      );
+      // The other half of a double takes its choice.
+      const halves = await pairUp(s, NEXT_TUESDAY);
+      await markOn(s, halves[0]?.id ?? '');
+      const tuesday = await checked(s.branch, {
+        date: NEXT_TUESDAY,
+        classIds: [s.oxford],
+        lessonNumbers: [1, 2, 3],
+      });
+      expect(tuesday.withData).toEqual([
+        expect.objectContaining({
+          lessonId: halves[0]?.id,
+          pairLessonIds: [halves[1]?.id],
+          sharedBlockId: null,
+        }),
+      ]);
+      // A lesson with data already cancelled keeps its cause and is not listed.
+      const later = await oneLesson(s, '2026-10-26', { classId: s.oxford }, s.maths);
+      await totalOn(s, later.id);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Rain' })
+        .where('id', '=', later.id)
+        .execute();
+      const already = await checked(s.branch, {
+        date: '2026-10-26',
+        classIds: [s.oxford],
+        // Slot 2 brings a lesson to cancel; a scope with none is refused.
+        lessonNumbers: [1, 2],
+      });
+      expect(already.alreadyCancelled.map((one) => one.id)).toEqual([later.id]);
+      expect(already.withData).toEqual([]);
+    });
+
+    it('refuses a missing, an unknown, a conflicting and a split choice, each with its ids, and nothing changes', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1, 2, 3] };
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      const princeton = await oneLesson(s, NEXT_MONDAY, { classId: s.princeton }, s.maths);
+      const alone = await oneLesson(s, NEXT_MONDAY, { groupId: s.groups[2] ?? '' }, s.english);
+      await markOn(s, maths.id);
+      await totalOn(s, alone.id);
+      const answer = await checked(s.branch, body);
+      const before = await all();
+      const missing = await saveWith(s, body, answer, 'keep', { [alone.id]: 'cancel' });
+      refusedWith(missing, 409, 'bulk_data_choice_missing');
+      expect(listed(missing)).toEqual([maths.id]);
+      const unknown = await saveWith(s, body, answer, 'keep', {
+        [maths.id]: 'cancel',
+        [alone.id]: 'cancel',
+        [princeton.id]: 'keep',
+      });
+      refusedWith(unknown, 409, 'bulk_data_choice_unknown');
+      expect(listed(unknown)).toEqual([princeton.id]);
+      // A shared block chosen "cancel" is cancelled whole.
+      const conflict = await saveWith(s, body, answer, 'cancel', {
+        [maths.id]: 'cancel',
+        [alone.id]: 'keep',
+      });
+      refusedWith(conflict, 409, 'bulk_data_choice_conflict');
+      expect(listed(conflict)).toEqual([alone.id]);
+      expect(await all()).toEqual(before);
+      // Both halves of a double with data, chosen differently.
+      const halves = await pairUp(s, NEXT_TUESDAY);
+      for (const half of halves) await markOn(s, half.id);
+      const tuesday = { date: NEXT_TUESDAY, classIds: [s.oxford], lessonNumbers: [1, 2, 3] };
+      const twice = await checked(s.branch, tuesday);
+      const beforeSplit = await all();
+      const split = await saveWith(s, tuesday, twice, 'keep', {
+        [halves[0]?.id ?? '']: 'keep',
+        [halves[1]?.id ?? '']: 'cancel',
+      });
+      refusedWith(split, 409, 'bulk_data_choice_split');
+      expect(listed(split).sort()).toEqual(halves.map((one) => one.id).sort());
+      expect(await all()).toEqual(beforeSplit);
+    });
+
+    it('keeps as held a lesson with "keep", with the other half of its double, and cancels one with "cancel"; both keep their cells', async () => {
+      const s = await scene();
+      const body = { date: NEXT_TUESDAY, classIds: [s.oxford], lessonNumbers: [1, 2, 3] };
+      const halves = await pairUp(s, NEXT_TUESDAY);
+      const [first, second] = halves;
+      if (first === undefined || second === undefined) throw new Error('No double.');
+      await markOn(s, first.id);
+      const cells = await cellsOf([first.id]);
+      const answer = await checked(s.branch, body);
+      const response = await saveWith(s, body, answer, 'keep', { [first.id]: 'keep' });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const saved = bulkCancelAnswerSchema.parse(response.body);
+      expect(saved.keptWithData.sort()).toEqual([first.id, second.id].sort());
+      expect((await rowOf(first.id))?.cancel_cause).toBeNull();
+      expect((await rowOf(second.id))?.cancel_cause).toBeNull();
+      expect(await cellsOf([first.id])).toEqual(cells);
+      const [entry] = await t.entries('lesson.bulk_cancel', saved.id);
+      expect(entry?.new_value).toMatchObject({
+        dataChoices: [{ lessonId: first.id, choice: 'keep' }],
+      });
+      // "cancel" on another date: cancelled with the reason, the cells kept.
+      const s2 = await scene();
+      const maths = await oneLesson(s2, NEXT_MONDAY, { classId: s2.oxford }, s2.maths);
+      await markOn(s2, maths.id);
+      const kept = await cellsOf([maths.id]);
+      const monday = { date: NEXT_MONDAY, classIds: [s2.oxford], lessonNumbers: [1] };
+      const cancelled = await saveWith(s2, monday, await checked(s2.branch, monday), 'keep', {
+        [maths.id]: 'cancel',
+      });
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const cancelledAnswer = bulkCancelAnswerSchema.parse(cancelled.body);
+      expect(cancelledAnswer).toMatchObject({ cancelled: [maths.id], keptWithData: [] });
+      const [cancelEntry] = await t.entries('lesson.bulk_cancel', cancelledAnswer.id);
+      expect(cancelEntry?.new_value).toMatchObject({
+        dataChoices: [{ lessonId: maths.id, choice: 'cancel' }],
+        lessonIds: [maths.id],
+      });
+      expect(await rowOf(maths.id)).toMatchObject({
+        cancel_cause: 'reason',
+        cancel_reason: 'Excursion to the museum',
+      });
+      expect(await cellsOf([maths.id])).toEqual(kept);
+    });
+
+    it('asks about a part of the chosen classes alone in a shared block chosen "keep", which follows its choice', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [2] };
+      const alone = await oneLesson(s, NEXT_MONDAY, { groupId: s.groups[2] ?? '' }, s.english);
+      await totalOn(s, alone.id);
+      const answer = await checked(s.branch, body);
+      const response = await saveWith(s, body, answer, 'keep', { [alone.id]: 'keep' });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect((await rowOf(alone.id))?.cancel_cause).toBeNull();
+      expect(bulkCancelAnswerSchema.parse(response.body).cancelled).toEqual([]);
+    });
+
+    it('keeps one part with data of a block not shared and cancels the others; a room change of the kept part then passes its check', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford, s.princeton], lessonNumbers: [2] };
+      const parts = await Promise.all(
+        s.groups.map((group) => oneLesson(s, NEXT_MONDAY, { groupId: group }, s.english)),
+      );
+      const [, , alone] = parts;
+      if (alone === undefined) throw new Error('No English lesson.');
+      await totalOn(s, alone.id);
+      const answer = await checked(s.branch, body);
+      expect(answer.shared).toEqual([]);
+      const response = await saveWith(s, body, answer, 'keep', { [alone.id]: 'keep' });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      for (const part of parts) {
+        expect((await rowOf(part.id))?.cancel_cause).toBe(part.id === alone.id ? null : 'reason');
+      }
+      const room = await load.classes.room(s.branch);
+      const moved = await keyed(
+        `/api/timetable/lessons/${alone.id}/room`,
+        s.branch,
+        { roomId: room, reason: 'The room is painted' },
+        t.admin,
+        randomUUID(),
+      );
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+      expect((await rowOf(alone.id))?.room_id).toBe(room);
+    });
+
+    it('takes the data choices into the request key: a repeat with other choices is not the stored answer', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1] };
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      await markOn(s, maths.id);
+      const answer = await checked(s.branch, body);
+      const key = randomUUID();
+      const first = await saveWith(s, body, answer, 'keep', { [maths.id]: 'keep' }, key);
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      refusedWith(
+        await saveWith(s, body, answer, 'keep', { [maths.id]: 'cancel' }, key),
+        409,
+        'request_key_reused',
+      );
+    });
+
+    it('a save of the first mark held open and the bulk save: the mark first refuses the bulk save for a choice; the bulk save first refuses the mark', async () => {
+      const s = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1] };
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      // A member with a mark on another lesson, so the held save is the first on this one.
+      const tuesday = await oneLesson(s, NEXT_TUESDAY, { classId: s.oxford }, s.physics);
+      const student = await markOn(s, tuesday.id);
+      const answer = await checked(s.branch, body);
+      expect(answer.withData).toEqual([]);
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const account = await load.classes.account();
+      const held = t.app
+        .get(Transactions)
+        .run([s.branch], async (transaction) => {
+          await saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+            { lessonId: maths.id, studentId: student, workId: null, value: 1, version: null },
+          ]);
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const saving = saveWith(s, body, answer, 'keep', {}).then((one) => one);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      release();
+      expect(await held).toBeUndefined();
+      const refused = await saving;
+      refusedWith(refused, 409, 'bulk_data_choice_missing');
+      expect(listed(refused)).toEqual([maths.id]);
+      // The bulk save first: the mark, which waits behind it on the lesson, is
+      // then refused.
+      const s2 = await scene();
+      const body2 = { date: NEXT_MONDAY, classIds: [s2.oxford], lessonNumbers: [1] };
+      const maths2 = await oneLesson(s2, NEXT_MONDAY, { classId: s2.oxford }, s2.maths);
+      const tuesday2 = await oneLesson(s2, NEXT_TUESDAY, { classId: s2.oxford }, s2.physics);
+      const student2 = await markOn(s2, tuesday2.id);
+      const answer2 = await checked(s2.branch, body2);
+      const [done, late] = await inOrderOnLesson({
+        app: t.app,
+        migrator: t.database.migrator,
+        branchId: s2.branch,
+        lessonId: maths2.id,
+        first: () => saveWith(s2, body2, answer2, 'keep', {}),
+        second: () =>
+          t.app
+            .get(Transactions)
+            .run([s2.branch], (transaction) =>
+              saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+                { lessonId: maths2.id, studentId: student2, workId: null, value: 1, version: null },
+              ]),
+            ),
+      });
+      expect((done as Response).status, JSON.stringify((done as Response).body)).toBe(200);
+      expect(late).toMatchObject({ code: 'lesson_cancelled_cell' });
+    });
+
+    it('answers 404 for a data choice of another branch’s lesson and an unknown one, with nothing written in either branch', async () => {
+      const s = await scene();
+      const other = await scene();
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1] };
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      const foreign = await oneLesson(other, NEXT_MONDAY, { classId: other.oxford }, other.maths);
+      await markOn(s, maths.id);
+      await markOn(other, foreign.id);
+      const answer = await checked(s.branch, body);
+      const before = await all();
+      for (const id of [foreign.id, UNKNOWN]) {
+        refusedWith(
+          await saveWith(s, body, answer, 'keep', { [maths.id]: 'cancel', [id]: 'keep' }),
+          404,
+          'not_found',
+        );
+      }
+      expect(await all()).toEqual(before);
     });
   });
 
@@ -1285,6 +1700,20 @@ describe('the bulk cancel', () => {
           await save(
             s.branch,
             { ...full, blocks: [...blocks], lessonIds: [...lessonIds] },
+            t.vicePrincipal,
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      // Task 6.1b-2 (permission review should-fix 1): a lesson of the data
+      // choices of another branch and an unknown one, on a repeat too.
+      for (const lessonId of [foreignLesson.id, UNKNOWN]) {
+        refusedWith(
+          await save(
+            s.branch,
+            { ...full, dataChoices: [{ lessonId, choice: 'keep' }] },
             t.vicePrincipal,
             key,
           ),

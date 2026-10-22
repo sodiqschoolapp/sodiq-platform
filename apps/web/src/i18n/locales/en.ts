@@ -521,6 +521,15 @@ export const en = {
     bulk_choice_missing:
       'A lesson shared with classes not chosen still needs a choice. Check again and choose for each.',
     bulk_choice_unknown: 'The shared lessons changed since the check. Check again.',
+    cancel_holds_data:
+      'The lesson holds data. Check what it holds, tick that the entries are kept, and cancel again.',
+    bulk_data_choice_missing:
+      'A lesson that holds data has no choice. Choose “Keep as held” or “Cancel” for each.',
+    bulk_data_choice_unknown:
+      'A choice names a lesson this bulk cancel no longer cancels with data. Check again.',
+    bulk_data_choice_split: 'The two halves of a double lesson take one choice.',
+    bulk_data_choice_conflict:
+      'A shared lesson chosen to be cancelled is cancelled whole: keep the shared lesson to keep a part of it.',
     bulk_scope_changed:
       'The lessons to cancel changed since the check. Check again before you cancel.',
     withdraw_started:
@@ -3999,6 +4008,15 @@ export const en = {
       taken: 'Already substituted, left as they are: {{dates}}',
       close: 'Close',
     },
+    held: {
+      title: 'Lessons that hold data:',
+      attendance: 'attendance marks: {{count}}',
+      scores: 'numbers: {{count}}',
+      totals: 'works with a total: {{count}}',
+      notHeld: 'works marked not held: {{count}}',
+      confirm:
+        'Cancel all the same; the entries are kept, struck through and left out of every figure',
+    },
     bulk: {
       open: 'Bulk cancel',
       title: 'Bulk cancel on {{date}}',
@@ -4015,6 +4033,11 @@ export const en = {
       choice_keep: 'Keep it for the other classes; the chosen classes’ students are exempt',
       alreadyCancelled: 'Already cancelled, left as they are',
       held: 'Already started, held as they are',
+      withData: 'Lessons that hold data',
+      dataDouble: 'The other half of its double lesson takes the same choice.',
+      dataBlockCancelled: 'Its shared lesson is cancelled whole, so it is cancelled too.',
+      data_keep: 'Keep as held',
+      data_cancel: 'Cancel; the entries are kept, struck through and left out of every figure',
       chooseEach: 'Choose for each shared lesson.',
       reasonNeeded: 'Write the reason for the bulk cancel.',
       send: 'Cancel lessons',

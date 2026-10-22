@@ -186,6 +186,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'student_in_forced_store(uuid)':
+    'Whether a store row of a forced delete that can still be restored keeps a mark of the student, a yes or no asked by the trigger that refuses the delete of that student, whatever branch holds the row, as the cell key refused it before the delete (06, Protection: "The attendance and marks are kept for 30 days and can be restored"; task 6.1b-2, decision 7 of pull request #208, Look first).',
   'lesson_history_unaudited(xid8)':
     'Whether a line of the lesson history that one transaction wrote has no audit entry of that transaction in its branch, a yes or no asked by Transactions.run before the commit (task 5.8b, correction 2 of pull request #195): the branch filter in force at that moment must not decide it.',
   'audit_names(uuid[])':

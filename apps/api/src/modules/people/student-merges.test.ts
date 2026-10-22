@@ -11,7 +11,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
-import { CellsKit } from '../../testing/cells-kit.js';
+import { CellsKit, markInStore } from '../../testing/cells-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
@@ -458,6 +458,35 @@ describe('the merge of two student records', () => {
       expect(await t.database.migrator.selectFrom('audit_log').select('id').execute()).toHaveLength(
         before.length,
       );
+    });
+  });
+
+  describe('marks kept by a forced delete (task 6.1b-2, decision 7)', () => {
+    it('refuses the merge of a record whose mark a forced delete keeps for its restore, and changes nothing', async () => {
+      const east = await insertBranch(t.database.migrator, 'East kept');
+      const eastYear = await classes.year(east);
+      const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const store = await markInStore(t.database.migrator, {
+        branchId: east,
+        studentId: twice.id,
+        by: await classes.account(),
+        at: t.clock.now().toISOString(),
+      });
+      const before = await rowsOf();
+      const response = await merge(first.id, twice.uid, east);
+      expect(response.status, JSON.stringify(response.body)).toBe(409);
+      expect(errorCode(response)).toBe('student_merge_has_cells');
+      expect((await fresh(twice.id, east)).id).toBe(twice.id);
+      expect(await rowsOf()).toEqual(before);
+      // Its 30 days over: the mark can no longer come back, and the merge goes through.
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({ restore_until: t.clock.now() })
+        .where('id', '=', store)
+        .execute();
+      merged(await merge(first.id, twice.uid, east));
     });
   });
 

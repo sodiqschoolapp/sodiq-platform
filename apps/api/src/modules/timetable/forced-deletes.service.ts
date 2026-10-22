@@ -105,6 +105,36 @@ export interface LessonRows {
   /** The bulk cancels whose choice named the block (`bulk_cancel_blocks`, keyed by bulk cancel and block). */
   readonly bulkCancelBlocks: readonly string[];
   readonly substitution: { readonly substitutionId: string; readonly relaxed: boolean } | null;
+  /**
+   * Task 6.1b-2: every journal cell of the lesson, empty ones too, as stored;
+   * `changed_at` as PostgreSQL wrote it, to the microsecond, since 0111 holds
+   * the delete and the restore to these exact rows. Absent from a store row of
+   * 5.8b, read as none.
+   */
+  readonly cells?: readonly StoredCell[];
+  /** Task 6.1b-2: every work of the lesson, as stored. */
+  readonly works?: readonly StoredWork[];
+}
+
+/** A journal cell kept in the store (task 6.1b-2). */
+export interface StoredCell {
+  readonly id: string;
+  readonly student_id: string;
+  readonly work_id: string | null;
+  readonly mark: number | null;
+  readonly score: number | null;
+  readonly version: number;
+  readonly changed_by: string;
+  readonly changed_how: string;
+  readonly changed_at: string;
+}
+
+/** A work kept in the store (task 6.1b-2). */
+export interface StoredWork {
+  readonly id: string;
+  readonly kind: string;
+  readonly total: number | null;
+  readonly not_held: boolean;
 }
 
 /** The constraints a restore meets after its check: the refusal its check would give. */
@@ -336,6 +366,32 @@ export class LessonForcedDeletes implements OnModuleInit {
             .execute()
         : Promise.resolve([]),
     ]);
+    // Task 6.1b-2: the lesson's cells and works, read after the lesson's lock
+    // (`snapshotWeek`), which a save of cells waits for or has committed before.
+    const [cells, works] = await Promise.all([
+      transaction
+        .selectFrom('journal_cells')
+        .select([
+          'id',
+          'student_id',
+          'work_id',
+          'mark',
+          'score',
+          'version',
+          'changed_by',
+          'changed_how',
+          sql<string>`changed_at::text`.as('changed_at'),
+        ])
+        .where('lesson_id', '=', id)
+        .orderBy('id')
+        .execute(),
+      transaction
+        .selectFrom('journal_works')
+        .select(['id', 'kind', 'total', 'not_held'])
+        .where('lesson_id', '=', id)
+        .orderBy('id')
+        .execute(),
+    ]);
     const moment = await transactionMoment(transaction);
     // A substitution in force of the lesson ends with its own cause (decision 9).
     const live = await transaction
@@ -373,6 +429,8 @@ export class LessonForcedDeletes implements OnModuleInit {
       bulkCancelBlocks: bulkBlocks.map((one) => one.bulk_cancel_id),
       substitution:
         live === undefined ? null : { substitutionId: live.substitution_id, relaxed: live.relaxed },
+      cells,
+      works,
     };
     const stored = await transaction
       .insertInto('forced_deletes')
@@ -389,7 +447,10 @@ export class LessonForcedDeletes implements OnModuleInit {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
-    // The rows whose key to the lesson or block has no action go first.
+    // The rows whose key to the lesson or block has no action go first; the
+    // cells and works only as the store row holds them (0111).
+    await transaction.deleteFrom('journal_cells').where('lesson_id', '=', id).execute();
+    await transaction.deleteFrom('journal_works').where('lesson_id', '=', id).execute();
     await transaction.deleteFrom('lesson_absence_taught').where('lesson_id', '=', id).execute();
     if (blockGoes) {
       await transaction
@@ -718,6 +779,7 @@ export class LessonForcedDeletes implements OnModuleInit {
         .where('ends_at', '=', new Date(rows.block.ends_at))
         .execute();
     }
+    await restoreCells(transaction, branchId, lesson.id, rows);
     if (rows.substitution !== null) {
       const places = await lessonPlacesOf(transaction, [lesson.id]);
       await transaction
@@ -776,6 +838,48 @@ export class LessonForcedDeletes implements OnModuleInit {
       newValue: { ...(rows as unknown as Record<string, JsonValue>), notices: { ...notices } },
       requestId,
     });
+  }
+}
+
+/**
+ * Puts back the works, then the cells, of a lesson restored (task 6.1b-2):
+ * the same ids and values; the database writes each cell's version, the
+ * restorer and the history line, and lets in only rows of the store row
+ * (0111). A student gone since is refused by the cell's key, which reads past
+ * the branch filter (review correction 1): `forced_delete_parent_changed`.
+ */
+async function restoreCells(
+  transaction: Transaction,
+  branchId: string,
+  lessonId: string,
+  rows: LessonRows,
+): Promise<void> {
+  const works = rows.works ?? [];
+  const cells = rows.cells ?? [];
+  if (works.length > 0) {
+    await transaction
+      .insertInto('journal_works')
+      .values(works.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
+      .execute();
+  }
+  if (cells.length === 0) return;
+  try {
+    await transaction
+      .insertInto('journal_cells')
+      .values(cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
+      .execute();
+  } catch (error) {
+    const failure = error as { code?: unknown; constraint?: unknown };
+    if (failure.code === '23503' && failure.constraint === 'journal_cells_student_fkey') {
+      throw new ApiException('forced_delete_parent_changed', 409, undefined, [
+        {
+          path: 'students',
+          code: 'not_found',
+          message: 'A student of the lesson’s entries is gone since.',
+        },
+      ]);
+    }
+    throw error;
   }
 }
 
