@@ -9,42 +9,52 @@ import { at, type LessonSource, type LessonUnit } from '../../testing/lessons-ki
 
 // The quality plan's timetable layers (docs/spec/14-quality-plan.md,
 // Timetable; task 5.12a, pull request #201, plan D) and the tests that prove
-// each:
+// each, by file and test or describe name:
 //
 // - Database rules: the exclusion constraints and triggers of 0058 and 0060,
 //   `lessons.database.test.ts`, `pattern.database.test.ts`,
 //   `claims-recheck.database.test.ts`, and the generated tests of this file.
 // - One rule engine: `packages/timetable-rules` (`check.test.ts`), called by
 //   the grid and the API (`pattern.test.ts`, `publish.test.ts`).
-// - Generated tests: this file (random dated lessons and pattern entries and
-//   random edits, against the database) and the engine's
-//   (`check.test.ts`, "overlappingPairs"; `pattern-place.test.ts`, random
-//   edits). "Lessons with data were not lost" waits for cells: the From line
-//   of 5.12a on task 6.1 (decision 4).
+// - Generated tests: this file (random dated lessons, pattern entries and
+//   edits, against the database) and the engine's: `check.test.ts` ("finds
+//   exactly the overlapping pairs of each resource"), `pattern-place.test.ts`
+//   ("random edits of a pattern": "never leave a teacher, room, class or
+//   student in two places"). "Lessons with data were not lost" waits for
+//   cells: the From line of 5.12a on task 6.1 (decision 4).
 // - Scenario tests, the named cases:
 //   - parallel groups: `lessons.database.test.ts` ("passes the two halves of
 //     a split in one block", "refuses two groups that share a class in two
-//     blocks at once"), `pattern.test.ts` ("places and moves a split"),
-//     `publish.test.ts` (the block of three groups republished);
-//   - shortened days: `publish.test.ts` ("the lessons kept on a shortened
-//     day"), `calendar-lessons.test.ts` ("the shortened day's choice");
+//     blocks at once"), `pattern.test.ts` ("places and moves the groups of a
+//     split as one block, with no room of their own"), `publish.test.ts`
+//     ("keeps a block of three groups on a republish, then splits it ...");
+//   - shortened days: `publish.test.ts` (describe "the lessons kept on a
+//     shortened day"), `calendar-lessons.test.ts` (describe "the shortened
+//     day's choice");
 //   - a holiday inside a week: `publish.test.ts` ("writes no lesson on a
-//     holiday inside a week"), `calendar-lessons.test.ts` ("a day off added
-//     after the publish");
-//   - a version starting mid-week: `publish.test.ts` (a Wednesday start, and
-//     a second version from a Wednesday);
-//   - substitution: `substitutions.test.ts`, `journal-substitutions.test.ts`,
-//     `substitutions-kept.test.ts`;
-//   - cancel and restore: `day-changes.test.ts` ("one-day changes, cancel and
-//     restore");
-//   - a student in a class lesson and a group lesson: `check.test.ts`,
-//     `lessons.database.test.ts` ("refuses a class lesson and a group lesson
-//     of that class in two blocks at once"), `claims-recheck.database.test.ts`,
-//     the membership routes (`group-members.test.ts`, `class-members.test.ts`
-//     and the moves, `membership_lesson_clash`), and this file.
-// - Publish preview: `publish.test.ts` ("the impact preview and the
-//   transition week") and `publish-preview-match.test.ts` (every lesson the
-//   publish writes or leaves alone, against the preview's lines).
+//     holiday inside a week, and the whole week on either side"),
+//     `calendar-lessons.test.ts` (describe "a day off");
+//   - a version starting mid-week: `publish.test.ts` ("starts a version on a
+//     Wednesday: no lesson on the Monday and Tuesday before it", "publishes a
+//     second version from a Wednesday over stored lessons: Monday and Tuesday
+//     of its week stay the earlier version");
+//   - substitution: `substitutions.test.ts` (describe "the substitution of a
+//     lesson"), `journal-substitutions.test.ts` (describe "the substitution
+//     from an absence or a vacancy"), `substitutions-kept.test.ts` (describe
+//     "the sorting of stored substitutions");
+//   - cancel and restore: `day-changes.test.ts` (describe "one-day changes:
+//     cancel and restore");
+//   - a student in a class lesson and a group lesson: `check.test.ts`
+//     ("refuses a student in two lessons at once: a class lesson against a
+//     group lesson, two groups"), `lessons.database.test.ts` ("refuses a
+//     class lesson and a group lesson of that class in two blocks at once"),
+//     `claims-recheck.database.test.ts` (describe "a membership that puts a
+//     student in two lessons of a block"), the membership routes
+//     (`classes/membership-lesson-clash.test.ts`), and this file.
+// - Publish preview: `publish.test.ts` (describe "the impact preview and the
+//   transition week", and describe "the preview against the publish (14,
+//   Publish preview)": every lesson the publish writes or leaves alone,
+//   against the preview's lines).
 // - Generator: task 5.11.
 //
 // The generated test of the dated lessons: random sequences of blocks added,
@@ -81,6 +91,9 @@ type Rule = (typeof MODELLED)[keyof typeof MODELLED];
 
 /** Two school days of quarter 1, after `NOW`. */
 const DATES = ['2026-10-19', '2026-10-20'] as const;
+const LATER_DAY = DATES[1];
+/** The first day of the fixture's memberships. */
+const FIRST_DAY = '2026-09-01';
 
 /** Lesson times of two templates (minutes after midnight): 45 minutes for grades 5–11, 40 for 1–4. */
 const TIMES = [
@@ -235,8 +248,8 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     teachers: new Map<string, (string | null)[]>(),
     rooms: new Map<string, (string | null)[]>(),
     shared: new Set<string>(),
-    /** The students of each class and group. */
-    members: new Map<string, string[]>(),
+    /** The students of each class and group, each from a date. */
+    members: new Map<string, { student: string; from: string }[]>(),
     /** The classes of each group. */
     groupClasses: new Map<string, string[]>(),
   };
@@ -252,22 +265,32 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     const southern = await h.schoolClass(south);
     const pupilsA = await kit.pupils(north, seventhA, 4);
     const pupilsB = await kit.pupils(north, seventhB, 2);
-    fixture.members.set(seventhA, pupilsA);
-    fixture.members.set(seventhB, pupilsB);
-    fixture.members.set(seventhC, await kit.pupils(north, seventhC, 2));
-    fixture.members.set(southern, await kit.pupils(south, southern, 2));
+    const always = (students: string[]) =>
+      students.map((student) => ({ student, from: FIRST_DAY }));
+    fixture.members.set(seventhA, always(pupilsA));
+    fixture.members.set(seventhB, always(pupilsB));
+    fixture.members.set(seventhC, always(await kit.pupils(north, seventhC, 2)));
+    fixture.members.set(southern, always(await kit.pupils(south, southern, 2)));
     const [a1 = '', a2 = '', a3 = '', a4 = ''] = pupilsA;
     const [b1 = ''] = pupilsB;
 
     const subject = () => kit.load.classes.subject({ grades: [7] });
-    const group = async (classes: string[], subjectId: string, members: string[]) => {
+    const group = async (
+      classes: string[],
+      subjectId: string,
+      members: string[],
+      later: { student: string; from: string }[] = [],
+    ) => {
       const id = await h.group(north, classes, subjectId);
       for (const student of members) await kit.inGroup(north, id, subjectId, student);
-      fixture.members.set(id, members);
+      for (const one of later) await kit.inGroup(north, id, subjectId, one.student, one.from);
+      fixture.members.set(id, [...always(members), ...later]);
       fixture.groupClasses.set(id, classes);
       return id;
     };
-    // A split of 7A in English; a mixed pair of 7A (sport and technology);
+    // A split of 7A in English; a mixed pair of 7A (sport and technology),
+    // whose technology group a sportsman joins on the second date, so the
+    // pair holds a student twice from that date only (Membership by date);
     // a chess and an art group that share a pupil; a music group of 7A and 7B.
     const english = await subject();
     const englishOne = await group([seventhA], english, [a1, a2]);
@@ -275,7 +298,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     const sport = await subject();
     const technology = await subject();
     const boys = await group([seventhA], sport, [a1, a3]);
-    const girls = await group([seventhA], technology, [a2, a4]);
+    const girls = await group([seventhA], technology, [a2, a4], [{ student: a1, from: LATER_DAY }]);
     const chess = await subject();
     const art = await subject();
     const chessClub = await group([seventhA], chess, [a1]);
@@ -354,8 +377,10 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
   const kindOf = (block: ModelBlock): Kind => pick(fixture.kinds, block.kind);
 
   /** The students of a held lesson: its class's or its group's. */
-  const studentsOf = (unit: Kind['units'][number]) =>
-    fixture.members.get(unit.classId ?? unit.groupId ?? '') ?? [];
+  const studentsOf = (unit: Kind['units'][number], date: string) =>
+    (fixture.members.get(unit.classId ?? unit.groupId ?? '') ?? [])
+      .filter((one) => one.from <= date)
+      .map((one) => one.student);
 
   /** The classes a lesson occupies: its class, or its group's classes. */
   const classesOf = (unit: Kind['units'][number]) =>
@@ -412,7 +437,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
         );
         for (const one of classesOf(unit)) classes.add(one);
         // Student twice: inside one block only.
-        for (const student of students ? studentsOf(unit) : []) {
+        for (const student of students ? studentsOf(unit, block.date) : []) {
           if (seen.has(student)) rules.add('student');
           seen.add(student);
         }

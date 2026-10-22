@@ -36,7 +36,10 @@ const ok = (response: Response) => {
 // The routes that cannot reach the refusal, and why: a withdraw of a class or
 // group row, a class archive, a return cancel and a leaving only end rows
 // (`class_memberships_only_shrink`, `group_memberships_only_shrink`); a student
-// edit and a class or group restore write no membership row; a branch move's
+// edit, a class edit (it moves its groups' language, never a row; it spreads
+// the class map all the same), a group create, edit or restore, a class
+// restore and the Tutor routes write no membership row; there is no route
+// that edits the dates of a group row; a branch move's
 // release, cancel and decline write none (the accept does, tested below); a
 // merge moves the merged record's rows onto the kept one, and both records
 // cannot hold a class row on one date (`student_merge_overlap` first), while a

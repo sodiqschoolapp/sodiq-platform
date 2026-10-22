@@ -946,7 +946,7 @@ How to read the task lines:
   - From 5.6c-1 (pull request #181, decision 15; the print half, pull request #197): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams": "Every timetable view and print shows exams for its class, teacher or room". The printed views of 5.9c-1 show them; a weekly pattern holds no exam, which is dated.
   - From 5.9c-1 (pull request #199, decision 4): the test environment has no Chromium; until the owner gives it one (a larger plan or another runtime, issue #42), its PDFs answer "not available" and Excel works.
 
-- [ ] **5.12a Named cases and generated tests** (5.12 split in three, pull request #201, decision 1, Look first)
+- [x] **5.12a Named cases and generated tests** (5.12 split in three, pull request #201, decision 1, Look first)
   - Read: `14` (Timetable), `edge/developer-rules`, `edge/timetable` (Structure).
   - Build: the generated test of `14` against the database (random dated lessons, pattern entries and edits; the constraints refuse exactly the clashes of a model); the publish preview checked against what the publish writes and leaves alone; the membership routes answering a student put into two lessons of one block with a code of their own; one index of the named cases of `14` and the tests that prove each.
   - Done when: the generated tests and the preview check pass in CI, and each named case of `14`, Timetable, points to a passing test.

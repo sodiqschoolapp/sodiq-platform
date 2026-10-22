@@ -6402,9 +6402,8 @@ describe('publish', () => {
         }),
       );
       const after = await lessonsOf(branch);
-      // Nothing before the start changes.
-      const earlier = (rows: readonly Stored[]) =>
-        rows.filter((row) => row.date < startsOn).map((row) => ({ ...row, version_id: null }));
+      // Nothing before the start changes, its version included.
+      const earlier = (rows: readonly Stored[]) => rows.filter((row) => row.date < startsOn);
       expect(earlier(after)).toEqual(earlier(before));
       // Lessons created cancelled are not in the preview (5.5a-2b-1, decision 4).
       const held = (rows: readonly Stored[]) =>

@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.12a Named cases and generated tests
+
+- 5.12 is split in three (5.12a, 5.12b, 5.12c, Look first). Generated tests throw random dated lessons, pattern entries and edits at the database and prove that its constraints refuse exactly the clashes of a written model (teacher, room, class in one block, student twice), by clock time, across two branches (`claims-generated.database.test.ts`, with the index of every timetable layer and named case of `14` at its top).
+- Every lesson a publish writes, removes or changes is matched to one line of its preview, and the rest are left alone (`publish.test.ts`, "the preview against the publish").
+- A class or group membership that puts a student into two lessons of one block answers 409 `membership_lesson_clash` from every membership route (was a 500).
+- Left out: the room forced-delete races and the browser walk (5.12b); the real-size run (5.12c); "lessons with data not lost" (6.1).
+
+The next sessions must know:
+
+- `claimsHarness` exports `quarterOf`; the generated test's model is in `broken`, and a new constraint on lessons or pattern entries that refuses a case the model allows fails it: add the rule to the model in the same task.
+- The next task is 5.12b.
+
 ## 22 October 2026: task 5.9c-2 Print of a timetable version
 
 - Version history: the side panel of a version prints its weekly pattern for the school, a class, a teacher (or vacancy) or a room as Print, PDF and Excel (`POST /api/timetable/versions/:id/export`, `timetable` `export` for the Super Admin, the Principal and the Academic Vice Principal). Each file stamps the version, "valid from" ("planned from" for a draft), the print time and "one-day changes not included"; a draft is marked DRAFT (grey, every page), an archived version "Archived". One `timetable_version.export` entry per file.

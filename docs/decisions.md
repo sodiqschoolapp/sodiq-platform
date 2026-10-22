@@ -285,6 +285,19 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: named cases and generated tests (task 5.12a)
+
+Plan approved on pull request #201 with corrections 1 to 5; decisions 1 to 7 confirmed there (5 with a bound, 7 with correction 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 5.12 is 5.12a (generated tests, the preview against the publish, the membership refusal, the index of the named cases), 5.12b (a room's forced delete against the writers that name a room, both orders; the browser walk that builds and publishes a draft) and 5.12c (the real-size run); the From lines moved with their part | Decision 1; three kinds of work, one session each |
+| No second copy of the named cases of `14`: each already has a test with an expected result; the index at the top of `claims-generated.database.test.ts` names them | Decision 2 |
+| The generated tests check the database against a written model both ways (no refusal too many, no clash let through), on dated lessons (200 runs of 15 to 25 operations) and pattern entries (100 runs); the shared room's capacity is kept out of reach by the fixture; any refusal outside the model fails the run; each modelled constraint must refuse at least once | Decisions 3, 5 and 6, correction 1 |
+| "Lessons with data were not lost" waits for 6.1 (From line there) | Decision 4 |
+| A membership write that puts a student into two lessons of one block answers 409 `membership_lesson_clash` from every route that writes a membership (the class and group maps and the merge map) | Decision 7, corrections 2 and 3 |
+| **Build decision.** The preview check sits in `publish.test.ts` ("the preview against the publish"), beside the helpers of the publish tests, not in a file of its own | The plan named `publish-preview-match.test.ts`; a second file would copy the scene and publish helpers |
+
 ## 22 October 2026: print of a timetable version (task 5.9c-2)
 
 Plan approved on pull request #200 with corrections 1 to 4; decisions 1 to 11 confirmed there (3 changed by correction 1). Flagged on issue #42.
