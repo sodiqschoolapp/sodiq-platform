@@ -695,8 +695,13 @@ describe('dated lessons and their time claims in the database', () => {
     });
 
     it('still orders a new block of an open transaction and a membership change, in both orders', async () => {
-      // The two sides meet only on the lock of the group (0060): the
-      // membership row and the lessons share no row and no index.
+      // The outcome, not the lock that gives it: the membership insert holds
+      // the group's row for update (0048) and a lesson insert's key to it waits
+      // there, so the second side always checks after the first committed. The
+      // unit lock of the commit check is proven by 0060's own same-moment test
+      // (claims-recheck, 'checks a merge and a block written at the same
+      // moment'); what this shows is that a block with no lock of its
+      // own lets no membership change slip past.
       const run = async (heldFirst: 'block' | 'membership', date: string) => {
         const oxford = await schoolClass();
         const [pupil = ''] = await kit.pupils(north, oxford, 1);
@@ -705,11 +710,38 @@ describe('dated lessons and their time claims in the database', () => {
         const boys = await group([oxford], sport);
         const girls = await group([oxford], technology);
         await kit.inGroup(north, boys, sport, pupil);
+        // The version and pattern the block stands on, written before either side.
+        const source = await kit.source(north, years.get(north)?.year ?? '', [
+          { classId: null, groupId: boys, subjectId: sport },
+          { classId: null, groupId: girls, subjectId: technology },
+        ]);
+        const [boysRow, girlsRow] = source.lessons;
         const writeBlock = (transaction: Transaction) =>
-          write(transaction, north, { date, start: '14:00', end: '14:45' }, [
-            { groupId: boys, subjectId: sport },
-            { groupId: girls, subjectId: technology },
-          ]);
+          write(
+            transaction,
+            north,
+            {
+              date,
+              start: '14:00',
+              end: '14:45',
+              versionId: source.versionId,
+              patternBlockId: source.patternBlockId,
+            },
+            [
+              {
+                groupId: boys,
+                subjectId: sport,
+                loadRowId: boysRow?.loadRowId ?? '',
+                patternEntryId: boysRow?.patternEntryId ?? '',
+              },
+              {
+                groupId: girls,
+                subjectId: technology,
+                loadRowId: girlsRow?.loadRowId ?? '',
+                patternEntryId: girlsRow?.patternEntryId ?? '',
+              },
+            ],
+          );
         const joinGirls = (transaction: Transaction) =>
           kit.members.groupMember(
             { branch: north, groupId: girls, subjectId: technology, studentId: pupil, from: date },
@@ -744,16 +776,15 @@ describe('dated lessons and their time claims in the database', () => {
       // transaction's own too, and only created_xact tells it from a new
       // block; the new block is written under a savepoint, as by a route.
       const free = async (blockId: string) => {
+        // The try and the unlock in one statement, so on one connection.
         const found = await sql<{ free: boolean }>`
-          select pg_try_advisory_lock(hashtextextended('timetable_block:' || ${blockId}::text, 0)) as free
+          select case
+            when pg_try_advisory_lock(hashtextextended('timetable_block:' || ${blockId}::text, 0))
+              then pg_advisory_unlock(hashtextextended('timetable_block:' || ${blockId}::text, 0))
+            else false
+          end as free
         `.execute(database.migrator);
-        const isFree = found.rows[0]?.free ?? false;
-        if (isFree) {
-          await sql`
-            select pg_advisory_unlock(hashtextextended('timetable_block:' || ${blockId}::text, 0))
-          `.execute(database.migrator);
-        }
-        return isFree;
+        return found.rows[0]?.free ?? false;
       };
       const oxford = await schoolClass();
       const before = await place(north, { date: '2026-10-29', start: '14:00', end: '14:45' }, [

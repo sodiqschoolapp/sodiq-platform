@@ -1178,6 +1178,7 @@ How to read the task lines:
   - Build: a data generator for three times the estimated yearly data with invented names; automated measurement of each target.
   - Done when: every target is met or the gap is written in `docs/progress.md` with a plan.
   - From 5.12c (pull request #203, decisions 2 and 3): the real-size run (`apps/api/src/modules/timetable/real-size.database.test.ts`, `REAL_SIZE=full`) builds the school at its size, publishes it and times the board, a move, the publish and the published week; it runs small in CI. The measure before each release at full size and the 1,000 simultaneous users of `12` (Load) are this task's. Its full run missed two targets: the board's drag check of every slot (406 ms, target 0.2 s) and the publish check (1.2 s, target 1 s).
+  - From 5.12d (pull request #204, decision 4): a dated double pair still takes one advisory lock per pair at its commit check (`lesson_blocks_double`, 0058): a branch whose year has doubles holds one lock per double lesson of the year in its publish (about 6,800 at 200 doubles a week) and can again run out of the lock table at `max_locks_per_transaction` 64. The real-size run has no doubles; adding them to it shows whether that pair lock needs the treatment 0107 gave the block lock (`created_xact`).
 
 - [ ] **10.2 Backups, restore drill and monitoring**
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
