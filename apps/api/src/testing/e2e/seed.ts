@@ -3184,6 +3184,11 @@ try {
      */
     publishable?: boolean;
     /**
+     * Task 5.12b: no version at all (no draft, no rows, no lessons placed);
+     * the browser walk builds and publishes one.
+     */
+    empty?: boolean;
+    /**
      * Task 5.6c-2: a block shared by both classes (the group 7-Ecology of
      * 7 Oxford and 7 Princeton, Monday slot 3, Aliyeva's) and a person with
      * no lessons to invigilate (the staff id and phone given).
@@ -3574,6 +3579,33 @@ try {
           )
           .execute();
       }
+      if (scene.publishable === true) {
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({
+            branch_id: gridBranch,
+            subject_id: geometry.id,
+            attendance: 20,
+            classwork: 40,
+            homework: 40,
+          })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: gridBranch,
+              subject_id: geometry.id,
+              quarter_id: quarter.id,
+              attendance: 20,
+              classwork: 40,
+              homework: 40,
+            })),
+          )
+          .execute();
+      }
+      // Task 5.12b: the browser walk starts from no version.
+      if (scene.empty === true) return;
       const draft = await transaction
         .insertInto('timetable_versions')
         .values({
@@ -3624,31 +3656,6 @@ try {
             load_row_id: row.id,
             teacher_id: rowTeacher,
           })
-          .execute();
-      }
-      if (scene.publishable === true) {
-        await transaction
-          .insertInto('subject_daily_weights')
-          .values({
-            branch_id: gridBranch,
-            subject_id: geometry.id,
-            attendance: 20,
-            classwork: 40,
-            homework: 40,
-          })
-          .execute();
-        await transaction
-          .insertInto('subject_quarter_weights')
-          .values(
-            quarters.map((quarter) => ({
-              branch_id: gridBranch,
-              subject_id: geometry.id,
-              quarter_id: quarter.id,
-              attendance: 20,
-              classwork: 40,
-              homework: 40,
-            })),
-          )
           .execute();
       }
       if (scene.examShared !== undefined) {
@@ -4023,6 +4030,21 @@ try {
     publishable: true,
   });
   seeded.draftPublish = { login: publishVice.login, password: publishVice.firstPassword };
+
+  // The browser walk (task 5.12b): the publishable scene's branch with its
+  // dated quarters, Geometry's distributions and one room, but no version:
+  // the Academic Vice Principal builds a draft, publishes it and reads the
+  // published week.
+  const walkVice = await gridScene({
+    branch: 'Build walk browser test branch',
+    vice: ['Sevara', 'Toshmatova'],
+    staffId: 'S-269368',
+    phone: '+998935557368',
+    rooms: ['Room 31'],
+    publishable: true,
+    empty: true,
+  });
+  seeded.buildWalk = { login: walkVice.login, password: walkVice.firstPassword };
 
   // One-day changes (task 5.6a-1): the publishable scene again, in a branch
   // of its own, which the browser test publishes before it cancels and

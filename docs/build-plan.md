@@ -951,7 +951,7 @@ How to read the task lines:
   - Build: the generated test of `14` against the database (random dated lessons, pattern entries and edits; the constraints refuse exactly the clashes of a model); the publish preview checked against what the publish writes and leaves alone; the membership routes answering a student put into two lessons of one block with a code of their own; one index of the named cases of `14` and the tests that prove each.
   - Done when: the generated tests and the preview check pass in CI, and each named case of `14`, Timetable, points to a passing test.
 
-- [ ] **5.12b Simultaneous actions and the browser walk** (5.12 split in three, pull request #201, decision 1, Look first)
+- [x] **5.12b Simultaneous actions and the browser walk** (5.12 split in three, pull request #201, decision 1, Look first)
   - Read: `14` (Timetable, Whole system), `06` (Protection), `03` (Building, floor, room).
   - Build: a room's forced delete at the same moment as each writer that names a room (a room closure, an exam room, a load row, a class's home room, a pattern entry), in both orders, each writer answering 404 `not_found` for a room deleted while it waited; one browser run that builds a draft (load, placement), publishes it and opens the published week.
   - Done when: each pair has a test in both orders, and the browser walk passes in CI.

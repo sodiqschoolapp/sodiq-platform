@@ -776,4 +776,311 @@ describe('the forced delete of a building, floor or room and its restore', () =>
       }
     });
   });
+
+  // Task 5.12b, pull request #202 (`14`, Timetable, Database rules: "This
+  // holds even if the application code has a fault or two people save at the
+  // same moment"; `03`, Building, floor, room: "a referenced one stays
+  // archive-only"; the From line of 5.8c). Each writer that names a room
+  // against the room's forced delete, both real routes, in both orders: a
+  // third transaction holds the room as the delete holds it, the first route
+  // is sent and waits, then the second. The room is referenced by nothing
+  // before the race, so only the order decides: the delete first, the writer
+  // answers 404 `not_found` and writes nothing; the writer first, the delete
+  // is refused and the room stays.
+  describe('a room deleted for good while a writer that names it waits (task 5.12b)', () => {
+    /** Two real requests behind the room held `for update`, the first sent first. */
+    async function behindRoom(
+      branch: string,
+      room: string,
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+    ): Promise<[Response, Response]> {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app
+        .get(Transactions)
+        .run([branch], async (transaction: Transaction) => {
+          await sql`select id from rooms where id = ${room} for update`.execute(transaction);
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const one = first().then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      const two = second().then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(2);
+      release();
+      expect(await held).toBeUndefined();
+      return Promise.all([one, two]);
+    }
+
+    /** The audit entries of the branch with an action. */
+    const entriesOf = async (branch: string, action: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('audit_log')
+          .select('id')
+          .where('branch_id', '=', branch)
+          .where('action', '=', action)
+          .execute()
+      ).length;
+
+    /** The lessons of the branch in a room, not cancelled. */
+    const lessonsIn = async (branch: string, room: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('branch_id', '=', branch)
+          .where('room_id', '=', room)
+          .where('cancel_cause', 'is', null)
+          .execute()
+      ).length;
+
+    /** A draft of the scene's year from the second quarter, held by the Super Admin. */
+    async function draftOf(s: PublishedScene): Promise<string> {
+      const created = await t.post('/api/timetable/versions', s.branch, {
+        academicYearId: s.year,
+        startsOn: '2026-11-09',
+        copyFrom: null,
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      return (created.body as { id: string }).id;
+    }
+
+    interface Writer {
+      /** The writer's request, naming the room. */
+      readonly send: () => Promise<Response>;
+      /** The status of the writer's own success. */
+      readonly status: number;
+      /** What the writer writes: its rows and its entries, as a count. */
+      readonly written: () => Promise<number>;
+      /** What a refused writer leaves as it was (the lessons' room, the home room). */
+      readonly kept?: () => Promise<unknown>;
+    }
+
+    const WRITERS: Readonly<Record<string, (s: PublishedScene, room: string) => Promise<Writer>>> =
+      {
+        'a room closure': (s, room) =>
+          Promise.resolve({
+            send: () =>
+              t.post('/api/timetable/room-closures', s.branch, {
+                roomId: room,
+                startsOn: '2026-10-19',
+                endsOn: '2026-10-23',
+                reason: 'Repairs',
+              }),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('room_closures')
+                  .select('id')
+                  .where('room_id', '=', room)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'room_closure.create')),
+          }),
+        '"move all" of a closure into the room': async (s, room) => {
+          // The class's home room closed for a week; its lessons there go to the room.
+          const closed = await t.post('/api/timetable/room-closures', s.branch, {
+            roomId: s.room,
+            startsOn: '2026-10-19',
+            endsOn: '2026-10-23',
+            reason: 'Repairs',
+          });
+          expect(closed.status, JSON.stringify(closed.body)).toBe(201);
+          const closure = (closed.body as { id: string }).id;
+          const inRoom = await lessonsIn(s.branch, s.room);
+          expect(inRoom).toBeGreaterThan(0);
+          return {
+            send: () =>
+              t.post(`/api/timetable/room-closures/${closure}/move`, s.branch, {
+                roomId: room,
+                reason: 'Repairs',
+              }),
+            status: 200,
+            written: async () =>
+              (await lessonsIn(s.branch, room)) +
+              (await entriesOf(s.branch, 'room_closure.move')) +
+              (await entriesOf(s.branch, 'lesson.room_change')),
+            kept: async () => {
+              expect(await lessonsIn(s.branch, s.room)).toBe(inRoom);
+            },
+          };
+        },
+        'an exam room': (s, room) =>
+          Promise.resolve({
+            send: () =>
+              keyed(
+                '/api/timetable/exams',
+                s.branch,
+                {
+                  date: '2026-10-19',
+                  firstLesson: 2,
+                  lastLesson: 2,
+                  title: 'Quarter exam',
+                  subjectId: null,
+                  rooms: [
+                    {
+                      roomId: room,
+                      classIds: [s.classId],
+                      groupIds: [],
+                      invigilatorIds: [s.teacher.staffId],
+                    },
+                  ],
+                  blockChoices: [],
+                  confirm: true,
+                },
+                t.admin,
+                randomUUID(),
+              ),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('exams')
+                  .select('id')
+                  .where('branch_id', '=', s.branch)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'exam.create')),
+          }),
+        'a load row': async (s, room) => {
+          const draft = await draftOf(s);
+          return {
+            send: () =>
+              t.post(`/api/timetable/versions/${draft}/load`, s.branch, {
+                classId: s.classId,
+                groupId: null,
+                subjectId: s.subject,
+                teacherId: s.teacher.staffId,
+                lessonsPerWeek: 1,
+                roomId: room,
+                roomType: null,
+                doubleLessons: false,
+              }),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('teaching_load_rows')
+                  .select('id')
+                  .where('version_id', '=', draft)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'teaching_load.create')),
+          };
+        },
+        "a class's home room": async (s, room) => {
+          const before = await t.database.migrator
+            .selectFrom('classes')
+            .select(['grade', 'name', 'language', 'max_size', 'version', 'main_room_id'])
+            .where('id', '=', s.classId)
+            .executeTakeFirstOrThrow();
+          // The class's home room before the race is another room.
+          expect(before.main_room_id).toBe(s.room);
+          return {
+            send: () =>
+              t.put(`/api/classes/${s.classId}`, s.branch, {
+                grade: before.grade,
+                name: before.name,
+                language: before.language,
+                mainRoomId: room,
+                maxSize: before.max_size,
+                version: before.version,
+              }),
+            status: 200,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('classes')
+                  .select('id')
+                  .where('main_room_id', '=', room)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'class.edit')),
+            kept: async () => {
+              const after = await t.database.migrator
+                .selectFrom('classes')
+                .select(['main_room_id', 'version'])
+                .where('id', '=', s.classId)
+                .executeTakeFirstOrThrow();
+              expect(after).toEqual({ main_room_id: s.room, version: before.version });
+            },
+          };
+        },
+        'a pattern entry': async (s, room) => {
+          const draft = await draftOf(s);
+          // The row names no room: the room comes from the request only.
+          const row = await load.row({
+            branch_id: s.branch,
+            version_id: draft,
+            class_id: s.classId,
+            subject_id: s.subject,
+            teacher_id: s.teacher.staffId,
+            lessons_per_week: 1,
+          });
+          return {
+            send: () =>
+              t.post(`/api/timetable/versions/${draft}/pattern`, s.branch, {
+                loadRowId: row,
+                weekday: 2,
+                slotPosition: 1,
+                roomId: room,
+              }),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('pattern_entries')
+                  .select('id')
+                  .where('version_id', '=', draft)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'pattern_block.create')),
+          };
+        },
+      };
+
+    for (const [name, writerOf] of Object.entries(WRITERS)) {
+      it(`${name}: the delete first answers the writer 404 with nothing written; the writer first refuses the delete`, async () => {
+        for (const deleteFirst of [true, false]) {
+          const s = await publishedScene(t, load);
+          // A room nothing references before the race.
+          const room = (await place(s.branch)).room;
+          const writer = await writerOf(s, room);
+          const before = await writer.written();
+          const deleteRoom = () => forceDelete(s.branch, 'room', room);
+          const [one, two] = await behindRoom(
+            s.branch,
+            room,
+            deleteFirst ? deleteRoom : writer.send,
+            deleteFirst ? writer.send : deleteRoom,
+          );
+          const [deleted, written] = deleteFirst ? [one, two] : [two, one];
+          if (deleteFirst) {
+            done(deleted);
+            refusedWith(written, 404, 'not_found');
+            expect(await writer.written()).toBe(before);
+            await writer.kept?.();
+            expect(await rowOf('room', room)).toBeUndefined();
+          } else {
+            expect(written.status, JSON.stringify(written.body)).toBe(writer.status);
+            expect(await writer.written()).toBeGreaterThan(before);
+            refusedWith(deleted, 409, 'place_referenced');
+            expect(await rowOf('room', room)).toBeDefined();
+            const stored = await t.database.migrator
+              .selectFrom('forced_deletes')
+              .select('id')
+              .where('record_id', '=', room)
+              .execute();
+            expect(stored).toEqual([]);
+          }
+        }
+      });
+    }
+  });
 });

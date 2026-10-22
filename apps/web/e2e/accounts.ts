@@ -75,6 +75,7 @@ export type AccountKey =
   | 'draftGridDouble'
   | 'draftGridMixed'
   | 'draftPublish'
+  | 'buildWalk'
   | 'dayChanges'
   | 'exams'
   | 'absences'

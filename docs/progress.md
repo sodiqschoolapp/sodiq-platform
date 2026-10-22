@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.12b Simultaneous actions and the browser walk
+
+- A room's forced delete at the same moment as each writer that names a room (a room closure, "move all" of a closure, an exam room, a load row, a class's home room, a pattern entry) is tested in both orders with both real routes (`place-forced-deletes.test.ts`, "a room deleted for good while a writer that names it waits"): the delete first, the writer answers 404 `not_found` and writes nothing (five of the six answered 500 before); the writer first, the delete answers `place_referenced`.
+- `refusingGoneRoom` (`setup-refusals.ts`) maps the room keys of the writers without the publish lock to 404; an exam reads its rooms again `for key share` behind the publish lock (`holdRooms`).
+- A browser walk builds a timetable from no version (draft, load row, placement, room), publishes it from step 8 and reads the class's published week (`apps/web/e2e/timetable-walk.spec.ts`, seed `buildWalk`, `gridScene` option `empty`).
+- Left out: the real-size run (5.12c); "lessons with data were not lost" (6.1).
+
+The next sessions must know:
+
+- A new writer that reads a room without a lock and writes its key runs inside `refusingGoneRoom` and adds its key to `ROOM_KEYS`; a writer behind the publish lock reads its rooms again after the lock instead.
+- Locally the browser tests need `PLAYWRIGHT_BROWSERS_PATH` pointed at a folder whose `chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell` links to `/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell` (the cloud image has the older build).
+- The next task is 5.12c.
+
 ## 22 October 2026: task 5.12a Named cases and generated tests
 
 - 5.12 is split in three (5.12a, 5.12b, 5.12c, Look first). Generated tests throw random dated lessons, pattern entries and edits at the database and prove that its constraints refuse exactly the clashes of a written model (teacher, room, class in one block, student twice), by clock time, across two branches (`claims-generated.database.test.ts`, with the index of every timetable layer and named case of `14` at its top).
