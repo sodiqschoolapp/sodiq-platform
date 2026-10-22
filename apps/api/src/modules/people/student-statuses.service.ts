@@ -17,6 +17,7 @@ import {
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
+import { studentCellCount } from '../journal/cells.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -72,6 +73,10 @@ import { Students } from './students.service.js';
 
 const CHECK_VIOLATION = '23514';
 const EXCLUSION_VIOLATION = '23P01';
+const FOREIGN_KEY_VIOLATION = '23503';
+
+/** The keys to `students` of tables of student data (task 6.1a; 0108). */
+const DATA_KEYS: Readonly<Record<string, true>> = { journal_cells_student_fkey: true };
 
 /** The database guards of 0033 and 0045 and the refusal each gives. */
 const GUARDS: Readonly<Record<string, ErrorCode>> = {
@@ -96,6 +101,16 @@ async function guarded<T>(work: () => Promise<T>): Promise<T> {
     return await work();
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
+    // Task 6.1a (From 2.4b-1): the tables of student data reference the
+    // student with no action, so their key refuses the delete of a student
+    // with data, whatever the branch filter sees.
+    if (
+      failure.code === FOREIGN_KEY_VIOLATION &&
+      typeof failure.constraint === 'string' &&
+      Object.hasOwn(DATA_KEYS, failure.constraint)
+    ) {
+      throw new ApiException('student_has_data', 409);
+    }
     const code =
       (failure.code === CHECK_VIOLATION || failure.code === EXCLUSION_VIOLATION) &&
       typeof failure.constraint === 'string' &&
@@ -662,7 +677,14 @@ export class StudentStatuses {
           .where('student_id', '=', id)
           .orderBy('id')
           .execute();
-        if (holdsData(rows, row.scholarship_type, contracts.length)) {
+        if (
+          holdsData(
+            rows,
+            row.scholarship_type,
+            contracts.length,
+            await studentCellCount(transaction, id),
+          )
+        ) {
           throw new ApiException('student_has_data', 409);
         }
         const uids = await transaction

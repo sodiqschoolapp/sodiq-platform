@@ -262,8 +262,16 @@ export const en = {
     restore_before_graduation: 'Choose a date on or after the day the student graduated.',
     date_in_closed_year: 'That date is in a closed academic year. Choose a date in an open year.',
     student_has_data:
-      'This student holds data (a scholarship, a leaving, a graduation or a second contract) and cannot be deleted. Two records of one student with data are merged by the Super Admin.',
+      'This student holds data (a scholarship, a leaving, a graduation, a second contract or journal entries) and cannot be deleted. Two records of one student with data are merged by the Super Admin.',
     student_changed: 'This student was changed by someone else. Reload the page and try again.',
+    cell_stale:
+      'Someone saved this cell before you. Both values are shown: choose the one to keep.',
+    cell_closed:
+      'This student is not in the class or group on the date of this lesson, so the cell is closed.',
+    lesson_cancelled_cell:
+      'This lesson is cancelled. Its cells cannot be changed; restore the lesson first.',
+    student_merge_has_cells:
+      'The record to merge has marks or attendance in a journal, which a merge cannot carry yet. Ask the developer to carry them first.',
     student_needs_relative:
       'A student is saved with at least one relative. Add a relative, then save again.',
     relative_phone_taken:
@@ -2788,6 +2796,7 @@ export const en = {
       shows: 'Hidden fields shown',
       classes: 'Classes',
       timetable: 'Timetable',
+      journal: 'Journal',
     },
     scopes: {
       branch: 'This branch',
@@ -3101,6 +3110,7 @@ export const en = {
       journal: {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
+        cells_save: 'Journal cells saved',
       },
       absence: {
         create: 'Absence entered',

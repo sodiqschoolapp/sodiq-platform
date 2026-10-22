@@ -494,6 +494,39 @@ export interface JournalActingTeachers {
   valid_until: string | null;
 }
 
+export interface JournalCellHistory {
+  branch_id: string;
+  cell_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  id: Generated<string>;
+  lesson_id: string;
+  mark_after: number | null;
+  mark_before: number | null;
+  score_after: number | null;
+  score_before: number | null;
+  student_id: string;
+  version: number;
+  work_id: string | null;
+  written_xact: Generated<string>;
+}
+
+export interface JournalCells {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  lesson_id: string;
+  mark: number | null;
+  score: number | null;
+  student_id: string;
+  version: number;
+  work_id: string | null;
+}
+
 export interface Journals {
   academic_year_id: string;
   branch_id: string;
@@ -503,6 +536,16 @@ export interface Journals {
   id: Generated<string>;
   runs: string;
   subject_id: string;
+}
+
+export interface JournalWorks {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  lesson_id: string;
+  not_held: Generated<boolean>;
+  total: number | null;
 }
 
 export interface KnownDevices {
@@ -1311,6 +1354,9 @@ export interface DB {
   group_memberships: GroupMemberships;
   groups: Groups;
   journal_acting_teachers: JournalActingTeachers;
+  journal_cell_history: JournalCellHistory;
+  journal_cells: JournalCells;
+  journal_works: JournalWorks;
   journals: Journals;
   known_devices: KnownDevices;
   lesson_absence_taught: LessonAbsenceTaught;

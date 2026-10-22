@@ -345,10 +345,18 @@ export const ERROR_CODES = [
   'restore_before_graduation',
   /** The date falls in a closed academic year of the branch (edge/students-classes-groups; db/migrations/0033; task 2.4b-1). */
   'date_in_closed_year',
-  /** The student holds data (a scholarship, a leaving, a graduation, a second contract): leave or merge instead of deleting (edge/students-classes-groups; task 2.4b-1). */
+  /** The student holds data (a scholarship, a leaving, a graduation, a second contract, from task 6.1a a journal cell): leave or merge instead of deleting (edge/students-classes-groups; task 2.4b-1). */
   'student_has_data',
   /** The student's status changed since the page was read (edge/students-classes-groups: "student changed, reload"; task 2.4b-1). */
   'student_changed',
+  /** A journal cell was saved from an old version: someone saved it first; both values are shown (edge/journal, Saving and working together; task 6.1a). */
+  'cell_stale',
+  /** The student is not expected in the lesson on its date, so the cell is closed (07, Editing rules and locks; task 6.1a). */
+  'cell_closed',
+  /** The lesson is cancelled: its cells take no new value (task 6.1a, decision 8). */
+  'lesson_cancelled_cell',
+  /** The merged record has journal entries, which a merge does not carry yet (task 6.1a, decision 9). */
+  'student_merge_has_cells',
   /** A student is saved, or a student of 2.4a edited, without a relative (`04`: "A student cannot be saved without at least one relative"; task 2.5a). */
   'student_needs_relative',
   /** The new main phone of a relative belongs to another relative (`04`, Changing a phone; task 2.5a). `details` names the holder. */
@@ -938,6 +946,20 @@ export const errorDetailSchema = z.object({
   room: z.object({ id: z.uuid(), name: z.string() }).optional(),
   /** What stands in the way of a save of the quarters, on a `quarter_past_lessons`, `quarter_leaves_exam` or `quarter_splits_move` (task 5.6b-5a) or a `quarter_rating_exams` (task 5.6c-3b), or an exam left out by new year dates, on a `year_leaves_exam` (task 5.6b-5b). */
   quarterItem: quarterItemSchema.optional(),
+  /**
+   * The stored journal cell a save was refused against, on a `cell_stale`
+   * (task 6.1a; edge/journal: "the stored value is kept, and both values are
+   * shown for the user to choose"): its value (the mark or the number, `null`
+   * when empty), its version and who saved it when. `recordId` is the cell.
+   */
+  storedCell: z
+    .object({
+      value: z.int().min(0).nullable(),
+      version: z.int().min(1),
+      changedBy: z.uuid(),
+      changedAt: z.iso.datetime(),
+    })
+    .optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),
 });

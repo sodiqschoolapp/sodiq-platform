@@ -273,8 +273,16 @@ export const uz: Texts<'one' | 'other'> = {
     restore_before_graduation: 'Bitirgan kun yoki undan keyingi kunni tanlang.',
     date_in_closed_year: 'Bu kun yopilgan oʻquv yilida. Ochiq yildagi kunni tanlang.',
     student_has_data:
-      'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish yoki ikkinchi shartnoma), uni oʻchirib boʻlmaydi. Bitta oʻquvchining maʼlumotli ikki yozuvini Super Admin birlashtiradi.',
+      'Oʻquvchida maʼlumotlar bor (stipendiya, ketish, bitirish, ikkinchi shartnoma yoki jurnaldagi yozuvlar), uni oʻchirib boʻlmaydi. Bitta oʻquvchining maʼlumotli ikki yozuvini Super Admin birlashtiradi.',
     student_changed: 'Oʻquvchini boshqa kishi oʻzgartirdi. Sahifani yangilang va qayta urining.',
+    cell_stale:
+      'Bu katakchani sizdan oldin boshqa kishi saqladi. Ikkala qiymat koʻrsatilgan: qaysi biri qolishini tanlang.',
+    cell_closed:
+      'Oʻquvchi ushbu dars sanasida sinf yoki guruhda emas, shuning uchun katakcha yopiq.',
+    lesson_cancelled_cell:
+      'Bu dars bekor qilingan. Uning katakchalarini oʻzgartirib boʻlmaydi; avval darsni tiklang.',
+    student_merge_has_cells:
+      'Birlashtiriladigan yozuvda jurnaldagi baholar yoki davomat bor, birlashtirish ularni hozircha koʻchira olmaydi. Avval ularni koʻchirishni dasturchidan soʻrang.',
     student_needs_relative:
       'Oʻquvchi kamida bitta qarindosh bilan saqlanadi. Qarindosh qoʻshing, soʻng qayta saqlang.',
     relative_phone_taken:
@@ -2819,6 +2827,7 @@ export const uz: Texts<'one' | 'other'> = {
       shows: 'Koʻrsatilgan yashirin maydonlar',
       classes: 'Sinflar',
       timetable: 'Dars jadvali',
+      journal: 'Jurnal',
     },
     scopes: {
       branch: 'Shu filial',
@@ -3132,6 +3141,7 @@ export const uz: Texts<'one' | 'other'> = {
       journal: {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
+        cells_save: 'Jurnal katakchalari saqlandi',
       },
       absence: {
         create: 'Kelmaslik qaydi kiritildi',

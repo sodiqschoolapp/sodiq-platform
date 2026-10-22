@@ -15,6 +15,8 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { CellsKit } from '../../testing/cells-kit.js';
+import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -35,6 +37,7 @@ describe('leaving, return and delete of a student', () => {
   let headTeacher: string;
   let seniorHeadTeacher: string;
   let closedYearStudent: StudentDetail;
+  let currentYear: string;
   let count = 0;
 
   function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -379,6 +382,7 @@ describe('leaving, return and delete of a student', () => {
     }
     closedYearStudent = await create({ startsOn: '2025-09-02' });
     const closed = yearIds[0] ?? '';
+    currentYear = yearIds[1] ?? '';
     for (const status of ['current', 'closed']) {
       await t.database.migrator
         .updateTable('academic_years')
@@ -811,6 +815,60 @@ describe('leaving, return and delete of a student', () => {
         const fresh = await detail(student.id);
         refusedWith(await remove(fresh), 409, 'student_has_data');
       }
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses a student with a journal cell (task 6.1a, From 2.4b-1)', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const student = await create();
+      const lesson = await cells.lesson(
+        t.north,
+        currentYear,
+        student.class?.id ?? '',
+        '2026-10-12',
+      );
+      await cells.cell(t.north, {
+        lessonId: lesson,
+        studentId: student.id,
+        mark: 1,
+        by: await cells.lessons.load.classes.account(),
+        at: t.clock.now().toISOString(),
+      });
+      const fresh = await detail(student.id);
+      expect(fresh.deletable).toBe(false);
+      const before = await snapshot();
+      refusedWith(await remove(fresh), 409, 'student_has_data');
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses a student whose only cell this branch does not see, by the key', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      // A student of the other branch with a cell there, who then moved here:
+      // the cell stays with its lesson's branch (0108), out of this branch's sight.
+      const student = await create({}, t.south);
+      const southYear = await t.database.migrator
+        .selectFrom('academic_years')
+        .select('id')
+        .where('branch_id', '=', t.south)
+        .executeTakeFirstOrThrow();
+      const lesson = await cells.lesson(
+        t.south,
+        southYear.id,
+        student.class?.id ?? '',
+        '2026-10-12',
+      );
+      await cells.cell(t.south, {
+        lessonId: lesson,
+        studentId: student.id,
+        mark: 1,
+        by: await cells.lessons.load.classes.account(),
+        at: t.clock.now().toISOString(),
+      });
+      await moveStudentBranch(t.database.migrator, student.id, t.south, t.north);
+      const fresh = await detail(student.id);
+      expect(fresh.deletable).toBe(true);
+      const before = await snapshot();
+      refusedWith(await remove(fresh), 409, 'student_has_data');
       expect(await snapshot()).toEqual(before);
     });
 

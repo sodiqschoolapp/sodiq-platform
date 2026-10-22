@@ -27,9 +27,13 @@ async function refusal(work: Promise<unknown>): Promise<{ code?: string; constra
  * student (8.5, the journal) fails the first test until it is named here and
  * the merge carries it.
  */
-const MERGE_DOES: Readonly<Record<string, 'carried' | 'left behind' | 'follows' | 'released'>> = {
+const MERGE_DOES: Readonly<
+  Record<string, 'carried' | 'left behind' | 'follows' | 'released' | 'refused'>
+> = {
   class_memberships: 'carried',
   group_memberships: 'carried',
+  // Task 6.1a, decision 9: a record with cells is not merged until 8.6 carries them.
+  journal_cells: 'refused',
   student_accounts: 'left behind',
   student_branch_moves: 'carried',
   student_contracts: 'carried',
