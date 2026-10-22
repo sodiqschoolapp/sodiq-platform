@@ -20,7 +20,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
-import { DateField, SelectField, TextAreaField } from '@/components/field';
+import { CHECKED, DateField, SelectField, TextAreaField } from '@/components/field';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
@@ -47,6 +47,7 @@ import { classesQuery } from '@/features/classes/classes-api';
 import { roomsQuery } from '@/features/setup/setup-api';
 import { BlockedRules } from './blocked-rules';
 import { BulkCancelDialog } from './bulk-cancel-dialog';
+import { HeldDataTick } from './held-data';
 import { CorrectionDialog, correctionKinds } from './correction-dialog';
 import { ForcedDeleteDialog, LessonHistoryDialog } from './lesson-forced-delete';
 import { SubstituteDialog, WithdrawSubstitutionDialog } from './substitute-dialog';
@@ -893,9 +894,14 @@ function CancelDialog({
   const { t } = useTranslation();
   const done = useRef(false);
   const key = useRef(crypto.randomUUID());
-  const form = useRecordForm<'reason', LessonCancelBody>({
+  const form = useRecordForm<'reason' | 'confirm', LessonCancelBody>({
     schema: lessonCancelBodySchema,
-    initial: { reason: '' },
+    initial: { reason: '', confirm: '' },
+    // Task 6.1b-2 (decision 2): the tick under the list of a lesson with data.
+    read: (typed) => ({
+      reason: typed.reason,
+      ...(typed.confirm === CHECKED ? { confirm: true } : {}),
+    }),
     save: async (body) => {
       await cancelLesson(lesson.id, body, key.current);
       done.current = true;
@@ -940,6 +946,9 @@ function CancelDialog({
         >
           <TextAreaField label={t('timetable.day.reason')} rows={3} {...form.bind('reason')} />
           <FailureAlert error={form.failure} />
+          {form.failure instanceof ApiFailure && form.failure.code === 'cancel_holds_data' && (
+            <HeldDataTick details={form.failure.details ?? []} confirm={form.bind('confirm')} />
+          )}
           <DialogFooter>
             <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.keep')}</DialogClose>
             <Button type="submit" variant="destructive" disabled={form.status === 'saving'}>

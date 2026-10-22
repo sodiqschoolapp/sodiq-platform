@@ -535,6 +535,15 @@ export const uz: Texts<'one' | 'other'> = {
     bulk_choice_missing:
       'Tanlanmagan sinflar bilan umumiy dars uchun hali qaror yoʻq. Qayta tekshiring va har biri uchun tanlang.',
     bulk_choice_unknown: 'Tekshiruvdan keyin umumiy darslar oʻzgardi. Qayta tekshiring.',
+    cancel_holds_data:
+      'Darsda maʼlumotlar bor. Ularni tekshiring, yozuvlar saqlanishini belgilang va qayta bekor qiling.',
+    bulk_data_choice_missing:
+      'Maʼlumotli dars uchun tanlov yoʻq. Har biri uchun «Oʻtkazilgan deb qoldirish» yoki «Bekor qilish»ni tanlang.',
+    bulk_data_choice_unknown:
+      'Tanlov bu ommaviy bekor qilish endi maʼlumot bilan bekor qilmaydigan darsni koʻrsatadi. Qayta tekshiring.',
+    bulk_data_choice_split: 'Juft darsning ikki yarmi bitta tanlovni oladi.',
+    bulk_data_choice_conflict:
+      'Bekor qilish tanlangan umumiy dars butunlay bekor qilinadi: uning bir qismini saqlash uchun umumiy darsni qoldiring.',
     bulk_scope_changed:
       'Tekshiruvdan keyin bekor qilinadigan darslar oʻzgardi. Bekor qilishdan oldin qayta tekshiring.',
     withdraw_started:
@@ -4044,6 +4053,15 @@ export const uz: Texts<'one' | 'other'> = {
       taken: 'Oʻrinbosari bor, oʻzgartirilmadi: {{dates}}',
       close: 'Yopish',
     },
+    held: {
+      title: 'Bu darsda maʼlumotlar bor:',
+      attendance: 'davomat belgilari: {{count}}',
+      scores: 'ballar: {{count}}',
+      totals: 'maksimumli ishlar: {{count}}',
+      notHeld: 'oʻtkazilmagan deb belgilangan ishlar: {{count}}',
+      confirm:
+        'Baribir bekor qilish; yozuvlar saqlanadi, chizib qoʻyiladi va hech bir koʻrsatkichga kirmaydi',
+    },
     bulk: {
       open: 'Ommaviy bekor qilish',
       title: '{{date}} kuni ommaviy bekor qilish',
@@ -4060,6 +4078,13 @@ export const uz: Texts<'one' | 'other'> = {
       choice_keep: 'Boshqa sinflar uchun qoldirish; tanlangan sinflar oʻquvchilari ozod',
       alreadyCancelled: 'Allaqachon bekor qilingan, oʻzgarishsiz qoladi',
       held: 'Allaqachon boshlangan, oʻzgarishsiz qoladi',
+      withData: 'Maʼlumotli darslar',
+      dataDouble: 'Juft darsning ikkinchi yarmi ham shu tanlovni oladi.',
+      dataBlockCancelled:
+        'Uning umumiy darsi butunlay bekor qilinadi, shuning uchun u ham bekor qilinadi.',
+      data_keep: 'Oʻtkazilgan deb qoldirish',
+      data_cancel:
+        'Bekor qilish; yozuvlar saqlanadi, chizib qoʻyiladi va hech bir koʻrsatkichga kirmaydi',
       chooseEach: 'Har bir umumiy dars uchun tanlang.',
       reasonNeeded: 'Ommaviy bekor qilish sababini yozing.',
       send: 'Darslarni bekor qilish',
