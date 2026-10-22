@@ -111,6 +111,11 @@ export async function publishedScene(
     accounts?: { readonly teacher?: string; readonly spare?: string };
     startTime?: string;
     secondSubject?: boolean;
+    /**
+     * Task 6.2: a graded subject with the weights of the branch, daily 20 · 40 · 40
+     * and the same for each quarter, in place of the attendance-only one.
+     */
+    graded?: boolean;
   } = {},
 ) {
   const branch = input.branch ?? (await t.newBranch());
@@ -132,7 +137,33 @@ export async function publishedScene(
     input.startTime,
   );
   await t.assign(branch, regular);
-  const subject = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+  const subject = await load.classes.subject({
+    grades: [7],
+    journalType: input.graded === true ? 'graded' : 'attendance_only',
+  });
+  if (input.graded === true) {
+    const weights = { attendance: 20, classwork: 40, homework: 40 };
+    await t.database.migrator
+      .insertInto('subject_daily_weights')
+      .values({ branch_id: branch, subject_id: subject, ...weights })
+      .execute();
+    const quarters = await t.database.migrator
+      .selectFrom('quarters')
+      .select('id')
+      .where('academic_year_id', '=', year)
+      .execute();
+    await t.database.migrator
+      .insertInto('subject_quarter_weights')
+      .values(
+        quarters.map((quarter) => ({
+          branch_id: branch,
+          subject_id: subject,
+          quarter_id: quarter.id,
+          ...weights,
+        })),
+      )
+      .execute();
+  }
   const room = await load.classes.room(branch);
   const otherRoom = await load.classes.room(branch);
   const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });

@@ -92,6 +92,8 @@ export const viewLessonSchema = dayLessonSchema
      * (decision 7), shown "Replaced by <name>".
      */
     replacedHere: z.boolean(),
+    /** Task 6.2: the journal of its class or group and subject in its year, opened from the lesson; `null` when none is open. */
+    journalId: z.uuid().nullable(),
   });
 
 export type ViewLesson = z.infer<typeof viewLessonSchema>;

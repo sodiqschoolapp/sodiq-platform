@@ -503,6 +503,19 @@ export class TimetableViews {
     for (const row of groupClasses) {
       classesOfGroup.set(row.group_id, [...(classesOfGroup.get(row.group_id) ?? []), row.class_id]);
     }
+    // Task 6.2 (From 5.9b, decision 7 of #198): each lesson names its journal, opened from it.
+    const journalOf = new Map(
+      (
+        await transaction
+          .selectFrom('journals')
+          .select(['id', 'academic_year_id', 'class_id', 'group_id', 'subject_id'])
+          .where('branch_id', '=', branchId)
+          .execute()
+      ).map((one) => [
+        `${one.academic_year_id}|${one.class_id ?? one.group_id ?? ''}|${one.subject_id}`,
+        one.id,
+      ]),
+    );
     const busyAll =
       input.busyOf === undefined || input.busyOf === null
         ? []
@@ -549,6 +562,7 @@ export class TimetableViews {
           ...one,
           classIds,
           lessonNumber: null,
+          journalId: journalOf.get(`${year.id}|${one.unit.id}|${one.subject.id}`) ?? null,
           replacedHere:
             input.replacedOf !== undefined &&
             one.substitution?.replaced?.id === input.replacedOf &&

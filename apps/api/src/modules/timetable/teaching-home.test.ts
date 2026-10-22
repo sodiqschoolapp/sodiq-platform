@@ -190,6 +190,40 @@ describe('the teaching home page', () => {
     );
   });
 
+  it("names each lesson's journal in its own branch, opened from the home page (task 6.2, From 5.9b)", async () => {
+    const browser = await account();
+    const here = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
+    // The other branch's day starts at 06:00, so its lesson comes first.
+    const away = await publishedScene(t, load, { startTime: '06:00' });
+    await link(here.teacher.staffId, away.branch);
+    const awayLesson = await lessonOf(away, DATE);
+    await teach(awayLesson.id, here.teacher.staffId);
+    const own = await lessonOf(here, DATE);
+    const journalOf = async (classId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', classId)
+          .where('subject_id', 'in', [here.subject, away.subject])
+          .executeTakeFirstOrThrow()
+      ).id;
+    await at(
+      browser,
+      [
+        { role: 'teacher', branchId: here.branch },
+        { role: 'teacher', branchId: away.branch },
+      ],
+      async (home) => {
+        const read = homeOf(await home(here.branch));
+        expect(read.lessons.map((one) => [one.id, one.branch.id, one.journalId])).toEqual([
+          [awayLesson.id, away.branch, await journalOf(away.classId)],
+          [own.id, here.branch, await journalOf(here.classId)],
+        ]);
+      },
+    );
+  });
+
   it('gives a Senior Head Teacher the lessons of a branch their record is linked to, read from another branch', async () => {
     const browser = await account();
     const away = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
