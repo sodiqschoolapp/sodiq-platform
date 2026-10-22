@@ -201,3 +201,55 @@ export async function workWithTotal(
     .executeTakeFirstOrThrow();
   return row.id;
 }
+
+/**
+ * Task 6.1b-2: a store row of a forced delete, written as the migrator, that
+ * keeps a mark of the student (`forced_deletes.rows.cells`), as the forced
+ * delete of a lesson keeps it; restorable for 30 days from `at`. Answers its id.
+ */
+export async function markInStore(
+  migrator: Database,
+  input: {
+    readonly branchId: string;
+    readonly studentId: string;
+    readonly by: string;
+    readonly at: string;
+  },
+): Promise<string> {
+  return migrator.transaction().execute(async (transaction) => {
+    await sql`select set_config('app.now', ${input.at}, true)`.execute(transaction);
+    const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+    const cellId = found.rows[0]?.id ?? '';
+    const row = await transaction
+      .insertInto('forced_deletes')
+      .values({
+        branch_id: input.branchId,
+        record_type: 'lesson',
+        record_id: cellId,
+        rows: JSON.stringify({
+          block: null,
+          cells: [
+            {
+              id: cellId,
+              student_id: input.studentId,
+              work_id: null,
+              mark: 1,
+              score: null,
+              version: 1,
+              changed_by: input.by,
+              changed_how: 'entry',
+              changed_at: input.at,
+            },
+          ],
+          works: [],
+        }),
+        reason: 'Entered for the wrong class',
+        deleted_by: input.by,
+        deleted_at: new Date(input.at),
+        restore_until: new Date(input.at),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return row.id;
+  });
+}
