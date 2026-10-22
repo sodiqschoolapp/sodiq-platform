@@ -167,7 +167,7 @@ export function StudentsPage() {
   const { t, i18n } = useTranslation();
   const number = useMemo(() => new Intl.NumberFormat(i18n.language), [i18n.language]);
   const navigate = useNavigate();
-  const search = useSearch({ from: '/app/people/students' });
+  const search: ListSearch = useSearch({ from: '/app/people/students' });
   const { role, branchId } = useView();
   const queryClient = useQueryClient();
   const confirm = useConfirm();

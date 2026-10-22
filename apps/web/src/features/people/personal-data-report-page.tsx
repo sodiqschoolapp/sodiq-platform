@@ -29,6 +29,13 @@ import {
 import { isLanguage, LANGUAGE_NAMES } from '@/i18n/languages';
 import { nameOf } from '@/features/setup/setup-api';
 import { producePersonalDataReport, staffPhotoQuery, studentPhotoQuery } from './people-api';
+import {
+  accountText,
+  cellChangeText,
+  cellKindText,
+  cellLessonText,
+  cellValueText,
+} from './cell-lines';
 import { mergeValueText } from './student-merge';
 import { formatMomentIn, schoolDateText, weekdayName } from '@/lib/dates';
 
@@ -280,6 +287,88 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
           ],
         }))}
       />
+      <StudentJournal report={report} words={words} />
+    </>
+  );
+}
+
+/**
+ * The student's marks and attendance (task 6.1c, decision 10): every cell
+ * with a value, by lesson, and the history lines of the student's cells,
+ * newest first, each with who changed it and how.
+ */
+function StudentJournal({ report, words }: { report: StudentReport; words: Words }) {
+  const { t, language } = words;
+  const { journal } = report;
+  const lessonText = (lesson: StudentReport['journal']['history'][number]['lesson']) =>
+    cellLessonText(t, language, lesson, (date) => words.date(date));
+  return (
+    <>
+      <section className="grid gap-3">
+        <h3 className={SECTION_TITLE}>{t('people.report.journalTitle')}</h3>
+        {journal.cells.length === 0 ? (
+          <p className="text-sm">{t('people.report.noCells')}</p>
+        ) : (
+          <ol className="grid gap-2 text-sm" data-journal="cells">
+            {journal.cells.map((cell) => (
+              <li key={cell.id} className="grid gap-0.5 break-inside-avoid">
+                <p className="font-semibold">
+                  {[cell.branch, lessonText(cell.lesson)].join(' · ')}
+                </p>
+                <p>
+                  {cellKindText(t, cell)}:{' '}
+                  {[
+                    cellValueText(t, cell, cell.value),
+                    cell.total === null ? null : String(cell.total),
+                  ]
+                    .filter((part) => part !== null)
+                    .join(' / ')}
+                </p>
+                <p className="text-muted-foreground print:text-current">
+                  {t('people.report.cellBy', {
+                    name: accountText(cell.changedBy, words.empty),
+                    moment: words.moment(cell.changedAt),
+                    version: cell.version,
+                  })}
+                  {' · '}
+                  {t(`journal.changes.${cell.changedHow}`)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+      <section className="grid gap-3">
+        <h3 className={SECTION_TITLE}>{t('people.report.historyTitle')}</h3>
+        {journal.history.length === 0 ? (
+          <p className="text-sm">{t('people.report.noHistory')}</p>
+        ) : (
+          <ol className="grid gap-2 text-sm" data-journal="history">
+            {journal.history.map((line) => (
+              <li key={line.id} className="grid gap-0.5 break-inside-avoid">
+                <p className="font-semibold">
+                  {words.moment(line.changedAt)} · {t(`journal.changes.${line.changedHow}`)}
+                </p>
+                <p>
+                  {[line.branch, lessonText(line.lesson), cellKindText(t, line)].join(' · ')}:{' '}
+                  {cellChangeText(t, line)}
+                </p>
+                <p className="text-muted-foreground print:text-current">
+                  {t('people.report.lineBy', { name: accountText(line.changedBy, words.empty) })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
+        {journal.historyLeftOut !== null && (
+          <p className="text-sm">
+            {t('people.report.historyLeftOut', {
+              count: journal.historyLeftOut.count,
+              moment: words.moment(journal.historyLeftOut.oldestAt),
+            })}
+          </p>
+        )}
+      </section>
     </>
   );
 }

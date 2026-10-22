@@ -43,6 +43,7 @@ import { ExamsPage } from '@/features/timetable/exams-page';
 import { examsSearch } from '@/features/timetable/exams-search';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
+import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
 import { StaffPage } from '@/features/people/staff-page';
@@ -447,6 +448,14 @@ const neverUsedRoute = createRoute({
   component: guarded('account_access', NeverUsedPage),
 });
 
+/** The entries after a password reset of the branch, a section of People (task 6.1c). */
+const resetEntriesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/reset-entries',
+  validateSearch: resetEntriesSearch,
+  component: guarded('account_access', ResetEntriesPage),
+});
+
 const yearsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/years',
@@ -556,6 +565,7 @@ const routeTree = rootRoute.addChildren([
     vacanciesRoute,
     headTeachersRoute,
     neverUsedRoute,
+    resetEntriesRoute,
     auditRoute,
     forcedDeletesRoute,
     personalDataRoute,
