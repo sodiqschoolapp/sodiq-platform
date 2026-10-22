@@ -3883,6 +3883,7 @@ export const en = {
       cause_exam: 'Cancelled for an exam',
       cause_exam_week: 'Cancelled: exam week',
       cause_day_off: 'Cancelled: day off',
+      cause_kept_data: 'Not in the timetable any more: kept for its data',
       cancel: 'Cancel lesson',
       restore: 'Restore',
       cancelTitle: 'Cancel {{subject}} at {{time}}',

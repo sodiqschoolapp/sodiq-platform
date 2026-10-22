@@ -969,7 +969,8 @@ describe('exams under a calendar change', () => {
 
       expect((await examRow(sat.id)).starts_at).toEqual(at(OCT19, '10:50'));
       const [moved] = await lessonOf(s.branch, OCT19, s.groups[0] ?? '');
-      expect(moved?.block_id).not.toBe(sport?.block_id);
+      // Task 6.1b-1 (decision 6): the block moves in place with its id.
+      expect(moved?.block_id).toBe(sport?.block_id);
       expect(moved?.cancel_cause).toBeNull();
       expect(await outsOf(sat.id)).toEqual([{ block_id: moved?.block_id, class_id: s.seniorId }]);
     });

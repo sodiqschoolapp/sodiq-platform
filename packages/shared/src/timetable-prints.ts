@@ -52,7 +52,9 @@ export interface ViewExportTexts {
   exam: string;
   changed: string;
   cancelledReason: string;
-  causes: Readonly<Record<'not_in_template' | 'exam' | 'exam_week' | 'day_off', string>>;
+  causes: Readonly<
+    Record<'not_in_template' | 'exam' | 'exam_week' | 'day_off' | 'kept_data', string>
+  >;
   replacedBy: string;
   substituteFor: string;
   needsTeacher: string;
@@ -105,6 +107,7 @@ const uz: ViewExportTexts = {
   cancelledReason: 'Bekor qilingan: {{reason}}',
   causes: {
     not_in_template: 'Bekor qilingan: kun shablonida yoʻq',
+    kept_data: 'Endi jadvalda yoʻq: maʼlumotlari uchun saqlangan',
     exam: 'Imtihon tufayli bekor qilingan',
     exam_week: 'Bekor qilingan: imtihonlar haftasi',
     day_off: 'Bekor qilingan: dam olish kuni',
@@ -165,6 +168,7 @@ const ru: ViewExportTexts = {
   cancelledReason: 'Отменён: {{reason}}',
   causes: {
     not_in_template: 'Отменён: нет в шаблоне дня',
+    kept_data: 'Больше нет в расписании: сохранён из-за данных',
     exam: 'Отменён из-за экзамена',
     exam_week: 'Отменён: неделя экзаменов',
     day_off: 'Отменён: выходной',
@@ -225,6 +229,7 @@ const en: ViewExportTexts = {
   cancelledReason: 'Cancelled: {{reason}}',
   causes: {
     not_in_template: 'Cancelled: not in the day’s template',
+    kept_data: 'Not in the timetable any more: kept for its data',
     exam: 'Cancelled for an exam',
     exam_week: 'Cancelled: exam week',
     day_off: 'Cancelled: day off',

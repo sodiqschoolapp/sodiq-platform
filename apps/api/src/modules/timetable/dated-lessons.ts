@@ -283,6 +283,8 @@ export function pairDated<W extends PairWanted>(
    * its one-day cancel (task 5.6a-1, build decision).
    */
   recreated: Map<W, PairStored>;
+  /** Task 6.1b-1: the wanted lessons paired by pass 2. */
+  second: Set<W>;
 } {
   const pinned = options.pinned ?? new Set<string>();
   const holding = options.holding ?? new Set<string>();
@@ -371,6 +373,7 @@ export function pairDated<W extends PairWanted>(
       row,
     );
   }
+  const second = new Set<W>();
   for (const block of blocks) {
     for (const lesson of [...block.lessons].sort((a, b) => compare(a.entryId, b.entryId))) {
       if (pairs.has(lesson) || lesson.patternDate === undefined) continue;
@@ -380,6 +383,7 @@ export function pairDated<W extends PairWanted>(
       if (found === undefined) continue;
       pairs.set(lesson, found);
       paired.add(found.id);
+      second.add(lesson);
     }
   }
 
@@ -412,7 +416,7 @@ export function pairDated<W extends PairWanted>(
     }
     return chosen;
   });
-  return { pairs, reused, recreated };
+  return { pairs, reused, recreated, second };
 }
 
 /**
@@ -457,9 +461,8 @@ function removedOf(row: Omit<StoredRow, 'load_row_id' | 'pattern_entry_id' | 'ca
 
 /**
  * The pattern date of each stored lesson named (task 6.1b-1, decision 6): the
- * date its oldest one-day change in force moved it from, when a move of it is
- * in force, as `splitMoves` of `quarter-lessons.ts` reads it; else its own
- * date. It matches `patternDateOf` of the lesson a version wants there, so a
+ * date its oldest one-day move in force moved it from, as `lessonPlacesOf`
+ * (`substitutions-read.ts`) reads it; else its own date. It matches `patternDateOf` of the lesson a version wants there, so a
  * lesson moved onto the same weekday a week later never pairs with the
  * entry's own lesson of that date (`.claude/rules/timetable.md`).
  */
@@ -473,12 +476,8 @@ async function storedPatternDates(
     select distinct on (c.lesson_id) c.lesson_id, c.from_date::text as from_date
     from lesson_day_changes c
     where c.lesson_id = any(${rows.map((row) => row.id)}::uuid[])
+      and c.kind = 'move'
       and not exists (select 1 from lesson_day_change_ends e where e.change_id = c.id)
-      and exists (
-        select 1 from lesson_day_changes m
-        where m.lesson_id = c.lesson_id and m.kind = 'move'
-          and not exists (select 1 from lesson_day_change_ends e where e.change_id = m.id)
-      )
     order by c.lesson_id, c.changed_at, c.id
   `.execute(transaction);
   for (const one of moved.rows) dates.set(one.lesson_id, one.from_date);
@@ -601,6 +600,123 @@ async function keepWithData(
 }
 
 
+/**
+ * The stored blocks and lessons of a branch from `firstDate` to `lastDate`,
+ * in the order of their id; with `lock`, `for update`, as the writer takes
+ * them.
+ */
+async function storedRunOf(
+  transaction: Transaction,
+  branchId: string,
+  firstDate: string,
+  lastDate: string,
+  lock: boolean,
+): Promise<{ allBlocks: StoredBlock[]; allStored: StoredRow[] }> {
+  const blocks = transaction
+    .selectFrom('lesson_blocks')
+    .select(['id', 'version_id', 'pattern_block_id', 'double_pair_id', 'starts_at', 'ends_at'])
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id');
+  const allBlocks = await (lock ? blocks.forUpdate() : blocks).execute();
+  if (allBlocks.length === 0) return { allBlocks, allStored: [] };
+  const lessons = transaction
+    .selectFrom('lessons')
+    .select([
+      'id',
+      'block_id',
+      sql<string>`lesson_date::text`.as('lesson_date'),
+      'starts_at',
+      'ends_at',
+      'class_id',
+      'group_id',
+      'subject_id',
+      'load_row_id',
+      'pattern_entry_id',
+      'teacher_id',
+      'room_id',
+      'cancel_cause',
+      'cancel_reason',
+    ])
+    .where('branch_id', '=', branchId)
+    .where('lesson_date', '>=', firstDate)
+    .where('lesson_date', '<=', lastDate)
+    .orderBy('id');
+  const allStored = await (lock ? lessons.forUpdate() : lessons).execute();
+  return { allBlocks, allStored };
+}
+
+/** A lesson of a preview's list of lessons with data (task 6.1b-1): its place in minutes of its day. */
+export interface KeepLine {
+  readonly id: string;
+  readonly date: string;
+  readonly start: number;
+  readonly end: number;
+  readonly unitId: string;
+  readonly subjectId: string;
+  readonly teacherId: string | null;
+  readonly roomId: string | null;
+  /** Its cancel before the write (review correction 1). */
+  readonly cancelCause: string | null;
+}
+
+/**
+ * The lessons with data that a write of the run would keep cancelled
+ * `kept_data`, and those that would refuse it (task 6.1b-1, decision 5,
+ * review correction 2; `06`, Impact preview: "any lesson holding data that
+ * blocks a removal"): `datedKeeps` over the stored lessons and the lessons
+ * the version wants, as `writeDatedLessons` reads them, without a lock. The
+ * publish preview reads it; a preview that runs the write reads the write.
+ */
+export async function keepsOfRun(
+  transaction: Transaction,
+  input: {
+    readonly state: PatternState;
+    readonly findings: DatedFindings;
+    readonly firstDate: string;
+    readonly lastDate: string;
+    readonly plan: DayWritePlan | null;
+    /** The stored lessons a kept move from outside the run keeps (`DayWritePlan.keepStored`). */
+    readonly keepStored: ReadonlySet<string>;
+  },
+): Promise<{ kept: KeepLine[]; refused: KeepLine[] }> {
+  const { allStored } = await storedRunOf(
+    transaction,
+    input.state.pattern.model.data.branchId,
+    input.firstDate,
+    input.lastDate,
+    false,
+  );
+  const keptBlocks = new Set(
+    allStored.filter((one) => input.keepStored.has(one.id)).map((one) => one.block_id),
+  );
+  const stored = allStored.filter(
+    (one) => !input.keepStored.has(one.id) && !keptBlocks.has(one.block_id),
+  );
+  const wanted = await wantedOf(transaction, input.state, input.findings, input.plan);
+  const keeps = await datedKeeps(transaction, stored, wanted, input.findings.begins);
+  const lineOf = (row: StoredRow): KeepLine => {
+    const pair = storedPairOf(row, input.findings.begins);
+    return {
+      id: row.id,
+      date: pair.date,
+      start: pair.start,
+      end: pair.end,
+      unitId: pair.unitId,
+      subjectId: pair.subjectId,
+      teacherId: row.teacher_id,
+      roomId: row.room_id,
+      cancelCause: row.cancel_cause,
+    };
+  };
+  return {
+    kept: keeps.kept.filter((row) => row.cancel_cause !== KEPT_DATA).map(lineOf),
+    refused: keeps.refused.map(lineOf),
+  };
+}
+
+
 /** Whether a stored cancel is one the expansion writes, not a one-day change. */
 export const isGeneratedCause = (cause: string | null): boolean =>
   cause !== null && GENERATED_CAUSES.has(cause);
@@ -684,42 +800,7 @@ export async function writeDatedLessons(
   await exams?.start(transaction);
 
   // The stored blocks and lessons of the run, locked in the order of their id.
-  const allBlocks = await transaction
-    .selectFrom('lesson_blocks')
-    .select(['id', 'version_id', 'pattern_block_id', 'double_pair_id', 'starts_at', 'ends_at'])
-    .where('branch_id', '=', branchId)
-    .where('lesson_date', '>=', firstDate)
-    .where('lesson_date', '<=', lastDate)
-    .orderBy('id')
-    .forUpdate()
-    .execute();
-  const allStored: StoredRow[] =
-    allBlocks.length === 0
-      ? []
-      : await transaction
-          .selectFrom('lessons')
-          .select([
-            'id',
-            'block_id',
-            sql<string>`lesson_date::text`.as('lesson_date'),
-            'starts_at',
-            'ends_at',
-            'class_id',
-            'group_id',
-            'subject_id',
-            'load_row_id',
-            'pattern_entry_id',
-            'teacher_id',
-            'room_id',
-            'cancel_cause',
-            'cancel_reason',
-          ])
-          .where('branch_id', '=', branchId)
-          .where('lesson_date', '>=', firstDate)
-          .where('lesson_date', '<=', lastDate)
-          .orderBy('id')
-          .forUpdate()
-          .execute();
+  const { allBlocks, allStored } = await storedRunOf(transaction, branchId, firstDate, lastDate, true);
   // Task 5.6a-5a (decision 7): a kept move from a date before the run stays
   // where it is, under its version; the write neither pairs nor removes it.
   const keepStored = plan?.keepStored ?? new Set<string>();
@@ -895,20 +976,27 @@ export async function writeDatedLessons(
       const moved =
         found.load_row_id !== lesson.loadRowId || found.pattern_entry_id !== lesson.entryId;
       const staffed = found.teacher_id !== lesson.teacherId || found.room_id !== lesson.roomId;
-      // The cancel the lesson has from the version: the expansion's own, or a
-      // one-day cancel kept on it (decision 8 of 5.5b-1); task 6.1b-1: a pair
-      // of pass 2 takes the expansion's cancel, or none, in place of a
-      // generated or `kept_data` one.
+      // The cancel the lesson keeps: a one-day cancel stays on it (decision 8
+      // of 5.5b-1). Task 6.1b-1 (decision 6): a pair of pass 2 takes the
+      // cancel a lesson created there would take (the expansion's, a one-day
+      // change or a bulk cancel applied again, or none), as the lesson was
+      // removed and created again before.
+      const second = paired.second.has(lesson);
       const kind =
         lesson.cause !== null
           ? { cause: lesson.cause, reason: null }
-          : found.cancel_cause === 'reason' || found.cancel_cause === 'exam'
+          : !second && (found.cancel_cause === 'reason' || found.cancel_cause === 'exam')
             ? { cause: found.cancel_cause, reason: found.cancel_reason }
             : { cause: null, reason: null };
       // Task 5.6a-5a: a one-day cancel applied again on a lesson held.
-      const oneDay = kind.cause === null ? lesson.oneDayCancel : null;
+      const oneDay =
+        kind.cause !== null
+          ? null
+          : second
+            ? (lesson.oneDayCancel ?? lesson.bulkCancel)
+            : lesson.oneDayCancel;
       // Task 5.6a-5b-1: a part of a block decided `keep` is held.
-      const hold = held.has(found.id);
+      const hold = !second && held.has(found.id);
       const cancel = hold
         ? { cause: null, reason: null }
         : oneDay !== null

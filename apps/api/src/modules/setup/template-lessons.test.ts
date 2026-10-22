@@ -1340,7 +1340,8 @@ describe('template changes after publishing', () => {
       ]);
       okay(saved);
       const moved = await lessonOf(s, OCT26, s.seniorId);
-      expect(moved.id).not.toBe(lesson.id);
+      // Task 6.1b-1 (decision 6): the lesson keeps its id at its new times.
+      expect(moved.id).toBe(lesson.id);
       const rows = await t.database.migrator
         .selectFrom('substitution_lessons')
         .select(['id', 'substitution_id', 'lesson_id', 'end_cause', 'relaxed', 'starts_at'])
@@ -1348,7 +1349,8 @@ describe('template changes after publishing', () => {
         .orderBy('id')
         .execute();
       expect(rows).toEqual([
-        expect.objectContaining({ id: row.id, lesson_id: null, end_cause: 'recorded_again' }),
+        // The row of the old times stays on the lesson, ended; the new one at the new times.
+        expect.objectContaining({ id: row.id, lesson_id: lesson.id, end_cause: 'recorded_again' }),
         expect.objectContaining({
           substitution_id: record.id,
           lesson_id: moved.id,
@@ -1526,11 +1528,9 @@ describe('template changes after publishing', () => {
         .select(['block_id', 'choice', 'starts_at'])
         .where('branch_id', '=', s.branch)
         .execute();
-      // The row of the block the write replaced keeps no block; the one recorded again names the new block.
-      expect(choices.map((one) => [one.choice, clock(one.starts_at)])).toEqual([
-        ['keep', '09:40'],
-        ['keep', '09:40'],
-      ]);
+      // Task 6.1b-1 (decision 6): the block moves in place with its id, so its
+      // one row stays on it at the new times.
+      expect(choices.map((one) => [one.choice, clock(one.starts_at)])).toEqual([['keep', '09:40']]);
       expect(choices.flatMap((one) => (one.block_id === null ? [] : [one.block_id]))).toEqual([
         group[0]?.block_id,
       ]);

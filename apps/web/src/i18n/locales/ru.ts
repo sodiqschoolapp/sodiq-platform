@@ -4073,6 +4073,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cause_exam: 'Отменён из-за экзамена',
       cause_exam_week: 'Отменён: неделя экзаменов',
       cause_day_off: 'Отменён: выходной день',
+      cause_kept_data: 'Больше нет в расписании: сохранён из-за данных',
       cancel: 'Отменить урок',
       restore: 'Восстановить',
       cancelTitle: 'Отменить {{subject}} в {{time}}',

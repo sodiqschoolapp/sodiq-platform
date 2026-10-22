@@ -1727,6 +1727,8 @@ export class TimetablePublish {
         exams: examItems,
         substitutions: [...sortings.values()].flatMap((one) => one.substitutions),
         keptStored: new Map([...sortings].map(([id, one]) => [id, one.keptStoredIds])),
+        // Task 6.1b-1: the run's write plan before any decision.
+        plan: planOfRun(ownSorting, bulk.get(null) ?? [], new Map(), new Map()),
       },
       carriedSorted.flatMap((one) =>
         one.left || one.before === null || one.written === null

@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { markedLesson } from '../../testing/cells-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -329,7 +330,7 @@ describe('the protection of dated lessons through the other writers', () => {
     expect(await lines([(await lessonOf(s, '2026-10-26')).id])).toEqual([]);
   });
 
-  it('a day template change from a date writes a removed line per lesson it moves in time and creates it again at the new time, by the Super Admin', async () => {
+  it('a day template change from a date moves each lesson in time in place: its id, its cells and a line of its times, by the Super Admin', async () => {
     const s = await publishedScene(t, load);
     const template = await t.database.migrator
       .selectFrom('day_templates')
@@ -349,7 +350,15 @@ describe('the protection of dated lessons through the other writers', () => {
     const lesson = await typeOf('Lesson');
     const pause = await typeOf('Break');
     const moved = await lessonOf(s, '2026-10-19');
+    const later = await lessonOf(s, '2026-10-26');
     const kept = await lessonOf(s, '2026-10-12');
+    // Task 6.1b-1 (decision 6, the From line of 5.8b): a lesson with a mark.
+    const { studentId } = await markedLesson(t.app, t.database.migrator, {
+      branchId: s.branch,
+      classId: s.classId,
+      lessonId: moved.id,
+      accountId: adminAccount,
+    });
     const before = await units(s.branch);
     ok(
       await t.post(`/api/setup/day-templates/${template.id}/versions`, s.branch, {
@@ -358,32 +367,32 @@ describe('the protection of dated lessons through the other writers', () => {
         slotTypeIds: [lesson, pause, lesson, pause, lesson],
       }),
     );
-    // A lesson pairs only with a stored one of the same start and end
-    // (`pairDated`, decision 4 of task 5.5b-1): a retimed lesson is removed
-    // and created again, never changed in place. The lessons before the date stay.
+    // A rewrite of the version pairs a lesson by its pattern entry and
+    // pattern date (`pairDated`, pass 2): every lesson stays with its id,
+    // its class, group and subject, at the new time.
     const after = await units(s.branch);
-    expect(keptUnits(before, after)).toBe(2);
-    expect(after.has(moved.id)).toBe(false);
+    expect(keptUnits(before, after)).toBe(before.size);
+    const now = await lessonOf(s, '2026-10-19');
+    expect(now.id).toBe(moved.id);
+    expect(now.starts_at.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
+    expect((await lessonOf(s, '2026-10-26')).id).toBe(later.id);
+    const cells = await t.database.migrator
+      .selectFrom('journal_cells')
+      .select(['student_id', 'mark'])
+      .where('lesson_id', '=', moved.id)
+      .execute();
+    expect(cells).toEqual([{ student_id: studentId, mark: 1 }]);
     const found = await lines([moved.id]);
     expect(found).toHaveLength(1);
     expect(found[0]).toMatchObject({
-      kind: 'removed',
+      kind: 'changed',
       teacher_before: moved.teacher_id,
-      room_before: moved.room_id,
+      teacher_after: moved.teacher_id,
       actions: ['day_template.version_create'],
     });
     expect(found[0]?.starts_before?.toISOString()).toBe(moved.starts_at.toISOString());
+    expect(found[0]?.starts_after?.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
     allBy(found, adminAccount);
-    // Its successor: the same class, group and subject, at the new time, with no line.
-    const again = await lessonOf(s, '2026-10-19');
-    expect(again).toMatchObject({
-      class_id: moved.class_id,
-      group_id: moved.group_id,
-      subject_id: moved.subject_id,
-      teacher_id: moved.teacher_id,
-    });
-    expect(again.starts_at.toISOString()).toBe(at('2026-10-19', '08:30').toISOString());
-    expect(await lines([again.id])).toEqual([]);
     expect(await lines([kept.id])).toEqual([]);
   });
 

@@ -3924,6 +3924,7 @@ export const uz: Texts<'one' | 'other'> = {
       cause_exam: 'Imtihon tufayli bekor qilingan',
       cause_exam_week: 'Bekor qilingan: imtihonlar haftasi',
       cause_day_off: 'Bekor qilingan: dam olish kuni',
+      cause_kept_data: 'Endi jadvalda yoʻq: maʼlumotlari uchun saqlangan',
       cancel: 'Darsni bekor qilish',
       restore: 'Tiklash',
       cancelTitle: '{{time}} dagi {{subject}} darsini bekor qilish',

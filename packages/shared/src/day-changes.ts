@@ -77,13 +77,14 @@ export const lessonMoveBodySchema = z.strictObject({
 
 export type LessonMoveBody = z.infer<typeof lessonMoveBodySchema>;
 
-/** The causes a stored lesson can be cancelled with (0058). */
+/** The causes a stored lesson can be cancelled with (0058; `kept_data`, 0110, task 6.1b-1). */
 export const LESSON_CANCEL_CAUSES = [
   'not_in_template',
   'exam',
   'exam_week',
   'day_off',
   'reason',
+  'kept_data',
 ] as const;
 
 const names = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
