@@ -124,11 +124,12 @@ describe('the permission check', () => {
     expect(decideIn(SCHOOL_VIEW, [held('teacher', NORTH)], null)).toBeUndefined();
   });
 
+  // Task 7.1a: `plans` is in the table now; `requests` (7.2) is not yet.
   it('gives nothing in an area the table does not have', () => {
     const superAdmin = held('super_admin', null);
 
     expect(
-      decideIn({ area: 'plans', action: 'view', branch: 'request' }, [superAdmin], NORTH),
+      decideIn({ area: 'requests', action: 'view', branch: 'request' }, [superAdmin], NORTH),
     ).toBeUndefined();
   });
 });
