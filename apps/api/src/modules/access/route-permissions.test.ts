@@ -133,6 +133,27 @@ const VIEW_READERS: readonly Role[] = [
   'teacher',
 ];
 
+/** The roles of `journal` `edit` (task 6.3, decision 1 with review correction 1). */
+const JOURNAL_WRITERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'tutor',
+  'teacher',
+];
+
+/** The readers of `absence_reasons` (task 6.3, decision 6). */
+const ABSENCE_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+];
+
+/** The writers of `absence_reasons` (task 6.3, decision 6). */
+const ABSENCE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal', 'tutor'];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -661,6 +682,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // Task 6.2: the Journals page and the journal grid, scope in the route (journals.test.ts).
   'GET /api/journal/journals': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/journals/:journalId': { branch: 'request', roles: VIEW_READERS },
+  // Task 6.3: attendance entry (scope in the route, attendance.test.ts), the history of a
+  // cell (within the reader's grid) and the reasons of absence (student-absences.test.ts).
+  'POST /api/journal/lessons/:lessonId/attendance': { branch: 'request', roles: JOURNAL_WRITERS },
+  'POST /api/journal/lessons/:lessonId/all-present': { branch: 'request', roles: JOURNAL_WRITERS },
+  'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
+    branch: 'request',
+    roles: VIEW_READERS,
+  },
+  'GET /api/journal/student-absences': { branch: 'request', roles: ABSENCE_READERS },
+  'PUT /api/journal/student-absences/:studentId/:date': {
+    branch: 'request',
+    roles: ABSENCE_WRITERS,
+  },
   // Task 5.9b: the teaching home page, own lessons only (teaching-home.test.ts).
   'GET /api/timetable/home': { branch: 'request', roles: VIEW_READERS },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.

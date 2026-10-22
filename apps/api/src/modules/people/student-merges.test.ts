@@ -461,6 +461,59 @@ describe('the merge of two student records', () => {
     });
   });
 
+  describe('reasons of absence (task 6.3, correction 2)', () => {
+    const reason = (branch: string, studentId: string, date: string, category: string) =>
+      t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .insertInto('student_absence_reasons')
+          .values({
+            branch_id: branch,
+            student_id: studentId,
+            absence_date: date,
+            category,
+            note: '',
+            changed_by: await classes.account(),
+            changed_at: t.clock.now(),
+          })
+          .execute();
+      });
+
+    it('carries the reasons to the kept record, and refuses two of one date', async () => {
+      const east = await insertBranch(t.database.migrator, 'East reasons');
+      const eastYear = await classes.year(east);
+      const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      await reason(east, first.id, '2026-09-14', 'illness');
+      await reason(east, twice.id, '2026-09-14', 'family');
+      const before = await rowsOf();
+      const response = await merge(first.id, twice.uid, east);
+      expect(response.status, JSON.stringify(response.body)).toBe(409);
+      expect(errorCode(response)).toBe('student_merge_absence_reasons');
+      expect(await rowsOf()).toEqual(before);
+      // Reasons of other dates: carried.
+      const one = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const two = await pupil({ branch: east, classId, from: '2026-09-10' });
+      await reason(east, one.id, '2026-09-14', 'illness');
+      await reason(east, two.id, '2026-09-15', 'family');
+      merged(await merge(one.id, two.uid, east));
+      const rows = await t.database.migrator
+        .selectFrom('student_absence_reasons')
+        .select(['student_id', 'category'])
+        .where('branch_id', '=', east)
+        .where('student_id', 'in', [one.id, two.id])
+        .orderBy('absence_date')
+        .execute();
+      expect(rows).toEqual([
+        { student_id: one.id, category: 'illness' },
+        { student_id: one.id, category: 'family' },
+      ]);
+    });
+  });
+
   describe('marks kept by a forced delete (task 6.1b-2, decision 7)', () => {
     it('refuses the merge of a record whose mark a forced delete keeps for its restore, and changes nothing', async () => {
       const east = await insertBranch(t.database.migrator, 'East kept');

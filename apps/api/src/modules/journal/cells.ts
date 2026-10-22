@@ -274,7 +274,8 @@ async function staleDetails(
  * How many journal cells with a value the student has that the branch sees
  * (task 6.1a, decision 13): one is enough to refuse the delete; empty cells go
  * with the student (0109), and a cell only another branch sees is refused by
- * the key all the same.
+ * the key all the same. Task 6.3: a reason of absence counts too, also a
+ * cleared one, whose key refuses the delete as well (0113).
  */
 export async function studentCellCount(
   transaction: Transaction,
@@ -286,5 +287,10 @@ export async function studentCellCount(
     .where('student_id', '=', studentId)
     .where((eb) => eb.or([eb('mark', 'is not', null), eb('score', 'is not', null)]))
     .executeTakeFirstOrThrow();
-  return Number(found.count);
+  const reasons = await transaction
+    .selectFrom('student_absence_reasons')
+    .select((eb) => eb.fn.countAll<string>().as('count'))
+    .where('student_id', '=', studentId)
+    .executeTakeFirstOrThrow();
+  return Number(found.count) + Number(reasons.count);
 }

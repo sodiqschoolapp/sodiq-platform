@@ -3175,6 +3175,10 @@ export const en = {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
         cells_save: 'Journal cells saved',
+        all_present: 'All present marked',
+      },
+      absence_reason: {
+        set: 'Reason of absence set',
       },
       absence: {
         create: 'Absence entered',

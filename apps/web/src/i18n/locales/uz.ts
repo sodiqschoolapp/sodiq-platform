@@ -3207,6 +3207,10 @@ export const uz: Texts<'one' | 'other'> = {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
         cells_save: 'Jurnal katakchalari saqlandi',
+        all_present: 'Hammasi keldi deb belgilandi',
+      },
+      absence_reason: {
+        set: 'Dars qoldirish sababi belgilandi',
       },
       absence: {
         create: 'Kelmaslik qaydi kiritildi',

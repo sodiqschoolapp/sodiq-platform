@@ -83,6 +83,8 @@ const FOREIGN_KEY_VIOLATION = '23503';
 const DATA_KEYS: Readonly<Record<string, true>> = {
   journal_cells_student_fkey: true,
   student_forced_cells: true,
+  // Task 6.3: the reasons of absence (0113).
+  student_absence_reasons_student_fkey: true,
 };
 
 /** The database guards of 0033 and 0045 and the refusal each gives. */

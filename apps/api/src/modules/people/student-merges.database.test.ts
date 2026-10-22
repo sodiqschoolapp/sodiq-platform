@@ -34,6 +34,8 @@ const MERGE_DOES: Readonly<
   group_memberships: 'carried',
   // Task 6.1a, decision 9: a record with cells is not merged until 8.6 carries them.
   journal_cells: 'refused',
+  // Task 6.3, correction 2: the reasons of absence go to the kept record.
+  student_absence_reasons: 'carried',
   student_accounts: 'left behind',
   student_branch_moves: 'carried',
   student_contracts: 'carried',
