@@ -22,6 +22,7 @@ import { PHOTO_TYPES, REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared
 import type { Request } from 'express';
 import { z } from 'zod';
 import { UploadedFile, type FileRoute } from './file-routes.js';
+import { PDF_MEDIA_TYPE } from './pdf.js';
 import { PhotoFileInterceptor } from './photo-file.js';
 import { RESPONSE_SCHEMA } from './response-schema.interceptor.js';
 import { HeaderPipe, SchemaPipe } from './validation.js';
@@ -198,14 +199,20 @@ export const RETURNS_FILE = Symbol('RETURNS_FILE');
 /**
  * For a route that answers an Excel file (an export, task 2.2c-1): status 200
  * with the file, described in the document as a binary answer of that type.
- * The handler returns an `XlsxFile`; `XlsxFileInterceptor` sends it.
+ * The handler returns an `XlsxFile`; `XlsxFileInterceptor` sends it. With
+ * `{ pdf: true }` the route may answer a `PdfFile` too, and the document
+ * names both types (task 5.9c-1, review correction 5).
  */
-export function ReturnsFile(): MethodDecorator {
+export function ReturnsFile(options: { pdf?: true } = {}): MethodDecorator {
+  const binary = { schema: { type: 'string', format: 'binary' } } as const;
   return applyDecorators(
     HttpCode(200),
     ApiResponse({
       status: 200,
-      content: { [XLSX_MEDIA_TYPE]: { schema: { type: 'string', format: 'binary' } } },
+      content: {
+        [XLSX_MEDIA_TYPE]: binary,
+        ...(options.pdf === true ? { [PDF_MEDIA_TYPE]: binary } : {}),
+      },
     }),
     SetMetadata(RETURNS_FILE, true),
     UseInterceptors(XlsxFileInterceptor),

@@ -151,38 +151,56 @@ export class TimetableViews {
 
   /** The whole school: every class of the branch. */
   branch(access: Access, query: BranchViewQuery): Promise<TimetableView> {
+    return this.transactions.run(access.branchIds, (transaction) =>
+      this.branchIn(transaction, access, query),
+    );
+  }
+
+  /** The same view read in the caller's transaction (task 5.9c-1, decision 14: the file reads it once). */
+  async branchIn(
+    transaction: Transaction,
+    access: Access,
+    query: BranchViewQuery,
+  ): Promise<TimetableView> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const scope = await scopeOf(transaction, access);
-      if (!scope.school) throw scopeRefusal();
-      return this.viewOf(transaction, access, branchId, 'branch', query.date, query.span, {
-        subject: null,
-        pick: () => ({ lesson: () => true, examRooms: (exam) => exam.rooms }),
-      });
+    const scope = await scopeOf(transaction, access);
+    if (!scope.school) throw scopeRefusal();
+    return this.viewOf(transaction, access, branchId, 'branch', query.date, query.span, {
+      subject: null,
+      pick: () => ({ lesson: () => true, examRooms: (exam) => exam.rooms }),
     });
   }
 
   /** A class: its own lessons and those of its groups, and the exams it sits. */
   class(access: Access, query: ClassViewQuery): Promise<TimetableView> {
+    return this.transactions.run(access.branchIds, (transaction) =>
+      this.classIn(transaction, access, query),
+    );
+  }
+
+  /** The same view read in the caller's transaction (task 5.9c-1, decision 14: the file reads it once). */
+  async classIn(
+    transaction: Transaction,
+    access: Access,
+    query: ClassViewQuery,
+  ): Promise<TimetableView> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const found = await transaction
-        .selectFrom('classes')
-        .select(['id', 'grade', 'name'])
-        .where('id', '=', query.classId)
-        .where('branch_id', '=', branchId)
-        .executeTakeFirst();
-      if (found === undefined) throw notFound();
-      const scope = await scopeOf(transaction, access);
-      if (scope.classes !== 'all' && !scope.classes.has(found.id)) throw scopeRefusal();
-      return this.viewOf(transaction, access, branchId, 'class', query.date, query.span, {
-        subject: { id: found.id, name: classDisplayName(found.grade, found.name) },
-        classId: found.id,
-        pick: () => ({
-          lesson: (lesson) => lesson.classIds.includes(found.id),
-          examRooms: (exam) => exam.rooms.filter((room) => room.classIds.includes(found.id)),
-        }),
-      });
+    const found = await transaction
+      .selectFrom('classes')
+      .select(['id', 'grade', 'name'])
+      .where('id', '=', query.classId)
+      .where('branch_id', '=', branchId)
+      .executeTakeFirst();
+    if (found === undefined) throw notFound();
+    const scope = await scopeOf(transaction, access);
+    if (scope.classes !== 'all' && !scope.classes.has(found.id)) throw scopeRefusal();
+    return this.viewOf(transaction, access, branchId, 'class', query.date, query.span, {
+      subject: { id: found.id, name: classDisplayName(found.grade, found.name) },
+      classId: found.id,
+      pick: () => ({
+        lesson: (lesson) => lesson.classIds.includes(found.id),
+        examRooms: (exam) => exam.rooms.filter((room) => room.classIds.includes(found.id)),
+      }),
     });
   }
 
@@ -194,77 +212,95 @@ export class TimetableViews {
    * only the lessons and exams of those subjects, and no busy block (decision 4).
    */
   teacher(access: Access, query: TeacherViewQuery): Promise<TimetableView> {
+    return this.transactions.run(access.branchIds, (transaction) =>
+      this.teacherIn(transaction, access, query),
+    );
+  }
+
+  /** The same view read in the caller's transaction (task 5.9c-1, decision 14: the file reads it once). */
+  async teacherIn(
+    transaction: Transaction,
+    access: Access,
+    query: TeacherViewQuery,
+  ): Promise<TimetableView> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const found = await transaction
-        .selectFrom('staff')
-        .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name'])
-        .where('id', '=', query.staffId)
-        .executeTakeFirst();
-      // Read through the branch filter: a staff record linked to another branch only is not found.
-      if (found === undefined) {
-        throw notFound();
-      }
-      const scope = await scopeOf(transaction, access);
-      const own = scope.own === found.id;
-      let subjectsOn: ((date: string) => ReadonlySet<string>) | null = null;
-      if (!own && !scope.whole) {
-        if (scope.subjects.size === 0 || found.kind === 'vacancy') throw scopeRefusal();
-        const dates = viewDates(query.date, query.span);
-        const byDate = await subjectsTaughtOn(transaction, branchId, found.id, dates);
-        const shown = new Map(
-          dates.map((date) => [
-            date,
-            new Set([...(byDate.get(date) ?? [])].filter((id) => scope.subjects.has(id))),
-          ]),
-        );
-        if (![...shown.values()].some((ids) => ids.size > 0)) throw scopeRefusal();
-        subjectsOn = (date) => shown.get(date) ?? new Set();
-      }
-      const name =
-        found.kind === 'vacancy'
-          ? (found.vacancy_name ?? '')
-          : listName({ firstName: found.first_name ?? '', lastName: found.last_name ?? '' });
-      return this.viewOf(transaction, access, branchId, 'teacher', query.date, query.span, {
-        subject: { id: found.id, name },
-        busyOf: found.kind === 'person' && subjectsOn === null ? found.id : null,
-        pick: (date) => {
-          const subjects = subjectsOn?.(date) ?? null;
-          return {
-            lesson: (lesson) =>
-              (lesson.teacher?.id === found.id || lesson.replacedHere) &&
-              (subjects === null || subjects.has(lesson.subject.id)),
-            examRooms: (exam) =>
-              subjects !== null && (exam.subject === null || !subjects.has(exam.subject.id))
-                ? []
-                : exam.rooms.filter((room) => room.invigilatorIds.includes(found.id)),
-          };
-        },
-        replacedOf: found.id,
-      });
+    const found = await transaction
+      .selectFrom('staff')
+      .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name'])
+      .where('id', '=', query.staffId)
+      .executeTakeFirst();
+    // Read through the branch filter: a staff record linked to another branch only is not found.
+    if (found === undefined) {
+      throw notFound();
+    }
+    const scope = await scopeOf(transaction, access);
+    const own = scope.own === found.id;
+    let subjectsOn: ((date: string) => ReadonlySet<string>) | null = null;
+    if (!own && !scope.whole) {
+      if (scope.subjects.size === 0 || found.kind === 'vacancy') throw scopeRefusal();
+      const dates = viewDates(query.date, query.span);
+      const byDate = await subjectsTaughtOn(transaction, branchId, found.id, dates);
+      const shown = new Map(
+        dates.map((date) => [
+          date,
+          new Set([...(byDate.get(date) ?? [])].filter((id) => scope.subjects.has(id))),
+        ]),
+      );
+      if (![...shown.values()].some((ids) => ids.size > 0)) throw scopeRefusal();
+      subjectsOn = (date) => shown.get(date) ?? new Set();
+    }
+    const name =
+      found.kind === 'vacancy'
+        ? (found.vacancy_name ?? '')
+        : listName({ firstName: found.first_name ?? '', lastName: found.last_name ?? '' });
+    return this.viewOf(transaction, access, branchId, 'teacher', query.date, query.span, {
+      subject: { id: found.id, name },
+      busyOf: found.kind === 'person' && subjectsOn === null ? found.id : null,
+      pick: (date) => {
+        const subjects = subjectsOn?.(date) ?? null;
+        return {
+          lesson: (lesson) =>
+            (lesson.teacher?.id === found.id || lesson.replacedHere) &&
+            (subjects === null || subjects.has(lesson.subject.id)),
+          examRooms: (exam) =>
+            subjects !== null && (exam.subject === null || !subjects.has(exam.subject.id))
+              ? []
+              : exam.rooms.filter((room) => room.invigilatorIds.includes(found.id)),
+        };
+      },
+      replacedOf: found.id,
     });
   }
 
   /** A room: the lessons and exams held in it. */
   room(access: Access, query: RoomViewQuery): Promise<TimetableView> {
+    return this.transactions.run(access.branchIds, (transaction) =>
+      this.roomIn(transaction, access, query),
+    );
+  }
+
+  /** The same view read in the caller's transaction (task 5.9c-1, decision 14: the file reads it once). */
+  async roomIn(
+    transaction: Transaction,
+    access: Access,
+    query: RoomViewQuery,
+  ): Promise<TimetableView> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const found = await transaction
-        .selectFrom('rooms')
-        .select(['id', 'name'])
-        .where('id', '=', query.roomId)
-        .where('branch_id', '=', branchId)
-        .executeTakeFirst();
-      if (found === undefined) throw notFound();
-      const scope = await scopeOf(transaction, access);
-      if (!scope.whole) throw scopeRefusal();
-      return this.viewOf(transaction, access, branchId, 'room', query.date, query.span, {
-        subject: { id: found.id, name: found.name },
-        pick: () => ({
-          lesson: (lesson) => lesson.room?.id === found.id,
-          examRooms: (exam) => exam.rooms.filter((room) => room.room.id === found.id),
-        }),
-      });
+    const found = await transaction
+      .selectFrom('rooms')
+      .select(['id', 'name'])
+      .where('id', '=', query.roomId)
+      .where('branch_id', '=', branchId)
+      .executeTakeFirst();
+    if (found === undefined) throw notFound();
+    const scope = await scopeOf(transaction, access);
+    if (!scope.whole) throw scopeRefusal();
+    return this.viewOf(transaction, access, branchId, 'room', query.date, query.span, {
+      subject: { id: found.id, name: found.name },
+      pick: () => ({
+        lesson: (lesson) => lesson.room?.id === found.id,
+        examRooms: (exam) => exam.rooms.filter((room) => room.room.id === found.id),
+      }),
     });
   }
 
