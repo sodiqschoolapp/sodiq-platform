@@ -128,7 +128,7 @@ describe('the permission check', () => {
     const superAdmin = held('super_admin', null);
 
     expect(
-      decideIn({ area: 'journal', action: 'view', branch: 'request' }, [superAdmin], NORTH),
+      decideIn({ area: 'plans', action: 'view', branch: 'request' }, [superAdmin], NORTH),
     ).toBeUndefined();
   });
 });
