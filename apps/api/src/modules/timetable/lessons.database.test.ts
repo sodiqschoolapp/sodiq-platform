@@ -625,6 +625,184 @@ describe('dated lessons and their time claims in the database', () => {
     });
   });
 
+  // Task 5.12d (0107, decisions 1 and 2): a block inserted by the transaction
+  // takes no lock of its own, so a publish of a branch's year (about 30,000
+  // blocks) fits the lock table; its classes and groups are still locked, and
+  // every other block still is.
+  describe('the locks of a block the transaction inserted', () => {
+    /** The advisory locks the transaction holds, after every deferred check ran. */
+    async function advisoryLocks(transaction: Transaction): Promise<number> {
+      await sql`set constraints all immediate`.execute(transaction);
+      const found = await sql<{ locks: number }>`
+        select count(*)::int as locks from pg_locks
+        where pid = pg_backend_pid() and locktype = 'advisory'
+      `.execute(transaction);
+      return found.rows[0]?.locks ?? 0;
+    }
+
+    it('holds as many advisory locks for 300 new blocks of a class as for one', async () => {
+      const oxford = await schoolClass();
+      const source = await kit.source(north, years.get(north)?.year ?? '', [
+        { classId: oxford, groupId: null, subjectId: subject },
+      ]);
+      const from = source.lessons[0];
+      /** `count` blocks of the class, five minutes each, from 06:00 of 19 to 23 October. */
+      const writeBlocks = (transaction: Transaction, count: number, first: number) =>
+        (async () => {
+          for (let index = first; index < first + count; index += 1) {
+            const day = 19 + Math.floor(index / 60);
+            const minutes = 6 * 60 + (index % 60) * 5;
+            const time = (value: number) =>
+              `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+            await write(
+              transaction,
+              north,
+              {
+                date: `2026-10-${String(day)}`,
+                start: time(minutes),
+                end: time(minutes + 5),
+                versionId: source.versionId,
+                patternBlockId: source.patternBlockId,
+              },
+              [
+                {
+                  classId: oxford,
+                  loadRowId: from?.loadRowId ?? '',
+                  patternEntryId: from?.patternEntryId ?? '',
+                },
+              ],
+            );
+          }
+        })();
+      // Each in a transaction rolled back, so both write the same times.
+      const locksFor = async (count: number) => {
+        let locks = -1;
+        await refusal(
+          inBranch(north, async (transaction) => {
+            await writeBlocks(transaction, count, 0);
+            locks = await advisoryLocks(transaction);
+            throw new Error('Rolled back.');
+          }),
+        );
+        return locks;
+      };
+      const one = await locksFor(1);
+      expect(one).toBeGreaterThan(0);
+      expect(await locksFor(300)).toBe(one);
+    });
+
+    it('still orders a new block of an open transaction and a membership change, in both orders', async () => {
+      // The two sides meet only on the lock of the group (0060): the
+      // membership row and the lessons share no row and no index.
+      const run = async (heldFirst: 'block' | 'membership', date: string) => {
+        const oxford = await schoolClass();
+        const [pupil = ''] = await kit.pupils(north, oxford, 1);
+        const sport = await kit.load.classes.subject({ grades: [7] });
+        const technology = await kit.load.classes.subject({ grades: [7] });
+        const boys = await group([oxford], sport);
+        const girls = await group([oxford], technology);
+        await kit.inGroup(north, boys, sport, pupil);
+        const writeBlock = (transaction: Transaction) =>
+          write(transaction, north, { date, start: '14:00', end: '14:45' }, [
+            { groupId: boys, subjectId: sport },
+            { groupId: girls, subjectId: technology },
+          ]);
+        const joinGirls = (transaction: Transaction) =>
+          kit.members.groupMember(
+            { branch: north, groupId: girls, subjectId: technology, studentId: pupil, from: date },
+            transaction,
+          );
+        const held = holding(
+          (work) => inBranch(north, work),
+          async (transaction) => {
+            await (heldFirst === 'block' ? writeBlock(transaction) : joinGirls(transaction));
+            await sql`set constraints all immediate`.execute(transaction);
+          },
+        );
+        await held.ready;
+        const second = inBranch(north, async (transaction) => {
+          await (heldFirst === 'block' ? joinGirls(transaction) : writeBlock(transaction));
+        }).then(
+          () => 'written',
+          (error: unknown) => (error as { constraint?: string }).constraint,
+        );
+        await untilWaiting(1);
+        held.release();
+        await held.done;
+        return second;
+      };
+      expect(await run('block', '2026-10-27')).toBe('lesson_block_student_twice');
+      expect(await run('membership', '2026-10-28')).toBe('lesson_block_student_twice');
+    });
+
+    it('takes the lock of a block it updated, and none of a block it inserted', async () => {
+      // The block's own key (0060), probed from another connection while the
+      // transaction is open: an updated block's row version is the
+      // transaction's own too, and only created_at tells it from a new block.
+      const free = async (blockId: string) => {
+        const found = await sql<{ free: boolean }>`
+          select pg_try_advisory_lock(hashtextextended('timetable_block:' || ${blockId}::text, 0)) as free
+        `.execute(database.migrator);
+        const isFree = found.rows[0]?.free ?? false;
+        if (isFree) {
+          await sql`
+            select pg_advisory_unlock(hashtextextended('timetable_block:' || ${blockId}::text, 0))
+          `.execute(database.migrator);
+        }
+        return isFree;
+      };
+      const oxford = await schoolClass();
+      const before = await place(north, { date: '2026-10-29', start: '14:00', end: '14:45' }, [
+        { classId: oxford, cancel: true },
+      ]);
+      const probed: Record<string, boolean> = {};
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('lesson_blocks')
+          .set({ double_pair_id: null })
+          .where('id', '=', before.block)
+          .execute();
+        await transaction
+          .updateTable('lessons')
+          .set({ cancel_cause: null, cancel_reason: null })
+          .where('id', '=', before.lessons[0] ?? '')
+          .execute();
+        const inserted = await write(
+          transaction,
+          north,
+          { date: '2026-10-29', start: '15:00', end: '15:45' },
+          [{ classId: oxford }],
+        );
+        await sql`set constraints lessons_block_students immediate`.execute(transaction);
+        probed.updated = await free(before.block);
+        probed.inserted = await free(inserted.block);
+        await heldEntry(transaction, north);
+      });
+      expect(probed).toEqual({ updated: false, inserted: true });
+    });
+
+    it('refuses an update of a block’s created_at', async () => {
+      const block = await place(north, { date: '2026-10-29', start: '15:00', end: '15:45' }, [
+        { classId: await schoolClass() },
+      ]);
+      const update = (db: Transaction | TestDatabase['migrator']) =>
+        db
+          .updateTable('lesson_blocks')
+          .set({ created_at: sql<Date>`now()` })
+          .where('id', '=', block.block)
+          .execute();
+      // The application has no right on the column (0058 grants), and the
+      // trigger refuses it to every user, the migrator included.
+      expect(await refusal(inBranch(north, update))).toMatchObject({
+        code: INSUFFICIENT_PRIVILEGE,
+      });
+      expect(await refusal(update(database.migrator))).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'lesson_block_created_at_fixed',
+      });
+    });
+  });
+
   describe('the times of a block', () => {
     it('moves its lessons and their claims with it, and refuses a move into a teacher’s other lesson', async () => {
       const smith = await teacher();

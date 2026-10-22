@@ -529,6 +529,9 @@ export interface LessonBlockClassOuts {
 export interface LessonBlocks {
   academic_year_id: string;
   branch_id: string;
+  /**
+   * The moment of the insert. timetable_lock_block (0107) reads it with xmin to tell a block inserted by the transaction; never updated (lesson_blocks_created_at_fixed).
+   */
   created_at: Generated<Timestamp>;
   /**
    * The two blocks of a double lesson share it; made by the API, one branch only.
