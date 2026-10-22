@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { subjectColourSchema } from './subjects.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -21,8 +22,8 @@ const journalUnitSchema = z.object({
 const journalSubjectSchema = z.object({
   id: z.uuid(),
   names: subjectNames,
-  /** The subject colour (`#RRGGBB`), drawn as in the timetable (review correction 3). */
-  colour: z.string(),
+  /** The subject colour, drawn as in the timetable (review correction 3). */
+  colour: subjectColourSchema,
 });
 
 /** Without a year: the year of today in the branch, or the latest one. */

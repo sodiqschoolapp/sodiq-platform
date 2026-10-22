@@ -11,7 +11,7 @@ import {
   type ViewSpan,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { DateField, SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { timetableViewQuery, viewChoicesQuery } from './timetable-api';
 import { ViewFiles } from './view-files';
@@ -331,6 +331,9 @@ export function useLessonMarks() {
 function DayTable({ items, language }: { items: Item[]; language: Language }) {
   const { t } = useTranslation();
   const marks = useLessonMarks();
+  // Task 6.2 (07, Opening a journal: "From the teacher's timetable: clicking a
+  // lesson opens the journal already scrolled sideways to that date").
+  const journals = useMayView('journal');
   if (items.length === 0)
     return <p className="text-sm text-muted-foreground">{t('timetable.views.noLessons')}</p>;
   return (
@@ -386,7 +389,20 @@ function DayTable({ items, language }: { items: Item[]; language: Language }) {
               <TableRow key={lesson.id} data-lesson={lesson.id}>
                 <TableCell>{time}</TableCell>
                 <TableCell>{lesson.unit.name}</TableCell>
-                <TableCell>{lesson.subject.names[language]}</TableCell>
+                <TableCell>
+                  {journals && lesson.journalId !== null ? (
+                    <Link
+                      to="/journal/$journalId"
+                      params={{ journalId: lesson.journalId }}
+                      search={{ date: lesson.date }}
+                      className="text-link"
+                    >
+                      {lesson.subject.names[language]}
+                    </Link>
+                  ) : (
+                    lesson.subject.names[language]
+                  )}
+                </TableCell>
                 <TableCell>
                   {lesson.replacedHere
                     ? (lesson.substitution?.replaced?.name ?? '')

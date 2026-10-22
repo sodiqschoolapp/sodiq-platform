@@ -1,5 +1,5 @@
 import type { HomeBusy, HomeExam, HomeLesson, Role, TeachingHome } from '@sodiq/shared';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
@@ -32,6 +32,7 @@ const lesson = (n: number, fields: Partial<HomeLesson> = {}): HomeLesson => ({
   classIds: [uid(101)],
   lessonNumber: 1,
   replacedHere: false,
+  journalId: null,
   branch: NORTH,
   startsAt: '2026-10-19T03:00:00.000Z',
   endsAt: '2026-10-19T03:45:00.000Z',
@@ -96,8 +97,8 @@ function openHome(answer: () => Response | Promise<Response>, role: Role = 'teac
       ),
     'GET /api/timetable/home': answer,
   });
-  renderApp('/', 'en');
-  return calls;
+  const shell = renderApp('/', 'en');
+  return Object.assign(calls, { shell });
 }
 
 describe('the teaching home page', () => {
@@ -141,6 +142,7 @@ describe('the teaching home page', () => {
           'Room 12',
           'South',
           en.timetable.day.changed,
+          '',
         ],
         [
           '1',
@@ -150,9 +152,10 @@ describe('the teaching home page', () => {
           'Room 12',
           'North',
           en.timetable.day.asPlanned,
+          '',
         ],
-        ['', '10:00–10:45', 'Busy in East', 'East', ''],
-        ['', '11:00–11:45', '8 Yale', 'Quarter exam', 'Hall', 'North', en.timetable.day.exam],
+        ['', '10:00–10:45', 'Busy in East', 'East', '', ''],
+        ['', '11:00–11:45', '8 Yale', 'Quarter exam', 'Hall', 'North', en.timetable.day.exam, ''],
       ]);
     });
     expect(document.querySelector('[data-home-today] thead')?.textContent).toContain(
@@ -172,12 +175,46 @@ describe('the teaching home page', () => {
     openHome(() => json(homeOf({ lessons: [lesson(1)] })));
     await waitFor(() => {
       expect(rowsOf('data-home-today')).toEqual([
-        ['1', '08:00–08:45', '7 Oxford', 'Mathematics', 'Room 12', en.timetable.day.asPlanned],
+        ['1', '08:00–08:45', '7 Oxford', 'Mathematics', 'Room 12', en.timetable.day.asPlanned, ''],
       ]);
     });
     expect(document.querySelector('[data-home-today] thead')?.textContent).not.toContain(
       en.home.lessons.branch,
     );
+  });
+
+  it("opens the journal of today's lesson at its date, in the lesson's own branch (task 6.2, From 5.9b)", async () => {
+    const calls = openHome(() =>
+      json(
+        homeOf({
+          branches: [NORTH, SOUTH],
+          lessons: [
+            lesson(1, { journalId: uid(900) }),
+            lesson(2, {
+              branch: SOUTH,
+              start: 600,
+              end: 645,
+              startsAt: '2026-10-19T05:00:00.000Z',
+              endsAt: '2026-10-19T05:45:00.000Z',
+              journalId: uid(901),
+            }),
+          ],
+        }),
+      ),
+    );
+    const buttons = await screen.findAllByRole('button', { name: en.journal.open });
+    expect(buttons).toHaveLength(2);
+    // The lesson of the other branch: the tab switches to it first, so the journal is read there.
+    fireEvent.click(buttons[1] as HTMLElement);
+    await waitFor(() => {
+      expect(calls.shell.router.state.location.pathname).toBe(`/journal/${uid(901)}`);
+    });
+    expect(calls.shell.router.state.location.search).toEqual({ date: TODAY });
+    expect(calls.shell.view.snapshot().branchId).toBe(SOUTH.id);
+    await waitFor(() => {
+      const read = calls.filter((call) => call.route === `GET /api/journal/journals/${uid(901)}`);
+      expect(read.length).toBeGreaterThan(0);
+    });
   });
 
   it('marks a cancelled lesson and one replaced away', async () => {
@@ -202,7 +239,7 @@ describe('the teaching home page', () => {
       ),
     );
     await waitFor(() => {
-      expect(rowsOf('data-home-today').map((row) => row[row.length - 1])).toEqual([
+      expect(rowsOf('data-home-today').map((row) => row[row.length - 2])).toEqual([
         'Cancelled: School trip',
         'Replaced by Nurova Lola',
       ]);
@@ -247,7 +284,7 @@ describe('the teaching home page', () => {
       ),
     );
     await waitFor(() => {
-      expect(rowsOf('data-home-today')[0]?.at(-1)).toBe('substitute for Nurova Lola');
+      expect(rowsOf('data-home-today')[0]?.at(-2)).toBe('substitute for Nurova Lola');
     });
     const block = document.querySelector('[data-home-week] [data-busy]');
     expect(block?.className).toBe('text-muted-foreground');
