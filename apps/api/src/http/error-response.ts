@@ -460,6 +460,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   plan_scope: 'This plan is outside what the role may read or write.',
   plan_row_taken: 'The row already holds an item.',
   plan_row_unknown: 'The quarter has no row with that number.',
+  plan_row_moved: 'Another lesson stands at the row now: the plan moved since it was read.',
+  plan_closed: 'The plan is closed with its journal.',
   plan_item_stale: 'A field was changed by somebody else since it was read.',
   plan_row_held: 'The lesson of the row is held.',
   plan_file_too_large: 'The file is larger than 20 MB.',

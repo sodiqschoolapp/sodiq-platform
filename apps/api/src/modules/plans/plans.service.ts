@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   planItemSchema,
+  planLessonItemSchema,
   planListSchema,
   planSchema,
   type ErrorDetail,
@@ -8,6 +9,7 @@ import {
   type PlanItem,
   type PlanItemCreate,
   type PlanItemSave,
+  type PlanLessonItem,
   type PlanList,
   type PlanListQuery,
   type PlanQuery,
@@ -25,12 +27,14 @@ import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
+import { substitutionsInForce } from '../timetable/substitutions-read.js';
 import {
   clockOf,
   datedQuarters,
   planIdOf,
   planItems,
   planRows,
+  preparedRequestOf,
   quarterOfToday,
   referenceDateOf,
   worksOf,
@@ -82,6 +86,12 @@ interface Scene {
   readonly branchId: string;
   readonly journal: JournalRow;
   readonly closed: boolean;
+  /**
+   * Task 7.1b, decision 9: the journal has a run day on or after today; a
+   * plan whose journal has none (a subject removed from the class) is closed
+   * with the journal (`09`).
+   */
+  readonly open: boolean;
   readonly quarters: readonly PlanQuarter[];
   readonly quarter: PlanQuarter;
   readonly timeZone: string;
@@ -334,10 +344,95 @@ export class PlansService {
       quarters: scene.quarters,
       quarterId: scene.quarter.id,
       owner: scene.ownerId === null ? null : (names.get(scene.ownerId) ?? null),
-      canEdit: scene.reach.edit && !scene.closed,
-      closed: scene.closed,
+      canEdit: scene.reach.edit && !scene.closed && scene.open,
+      closed: scene.closed || !scene.open,
       rows: rows.map((row) => ({ ...row, item: byPosition.get(row.number) ?? null })),
-      unattached: items.filter((item) => item.position > rows.length),
+      notCovered: items.filter((item) => item.position > rows.length),
+      request: planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id),
+    });
+  }
+
+  /**
+   * The item of one lesson (task 7.1b, decision 11): for a reader of its plan,
+   * or for the substitute of that lesson while the substitution is in force
+   * (`09`: "The substitute sees the item of that lesson and cannot edit it";
+   * `edge/lesson-plans`: "a substitute, for that lesson's item").
+   */
+  lessonItem(access: Access, lessonId: string): Promise<PlanLessonItem> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const lesson = await transaction
+        .selectFrom('lessons')
+        .select([
+          'id',
+          'class_id',
+          'group_id',
+          'subject_id',
+          'teacher_id',
+          'cancel_cause',
+          sql<string>`lesson_date::text`.as('lesson_date'),
+        ])
+        .where('id', '=', lessonId)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (lesson === undefined) throw notFound();
+      const found = await transaction
+        .selectFrom('journals')
+        .innerJoin('academic_years', 'academic_years.id', 'journals.academic_year_id')
+        .innerJoin('quarters', 'quarters.academic_year_id', 'academic_years.id')
+        .select(['journals.id as journal_id', 'quarters.id as quarter_id'])
+        .where('journals.branch_id', '=', branchId)
+        .where('journals.subject_id', '=', lesson.subject_id)
+        .where((builder) =>
+          lesson.class_id === null
+            ? builder('journals.group_id', '=', lesson.group_id)
+            : builder('journals.class_id', '=', lesson.class_id),
+        )
+        .where('quarters.start_date', '<=', lesson.lesson_date)
+        .where('quarters.end_date', '>=', lesson.lesson_date)
+        .executeTakeFirst();
+      if (found === undefined) throw new ApiException('journal_no_quarter', 409);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        branchId,
+        found.journal_id,
+        found.quarter_id,
+      );
+      if (!scene.reach.read) {
+        // The substitute of this lesson only: its teacher while a substitution is in force.
+        const reader = await planReaderOf(transaction, access);
+        const substitutes =
+          reader.staffId !== null && lesson.teacher_id === reader.staffId
+            ? await substitutionsInForce(transaction, [
+                { id: lesson.id, teacherId: lesson.teacher_id },
+              ])
+            : new Map();
+        if (!substitutes.has(lesson.id)) throw scopeRefusal();
+      }
+      if (scene.journal.subject.attendanceOnly) {
+        throw new ApiException('plan_attendance_only', 409);
+      }
+      const rows = await planRows(
+        transaction,
+        branchId,
+        scene.journal,
+        scene.quarter,
+        scene.timeZone,
+        scene.now,
+      );
+      const row = rows.find((one) => one.lessonId === lesson.id);
+      const planId = await planIdOf(transaction, scene.journal.id, scene.quarter.id);
+      const items = planId === null || row === undefined ? [] : await planItems(transaction, planId);
+      return planLessonItemSchema.parse({
+        lessonId: lesson.id,
+        journalId: scene.journal.id,
+        date: lesson.lesson_date,
+        number: row?.number ?? null,
+        subject: subjectOf(scene.journal),
+        unit: unitOf(scene.journal),
+        item: items.find((item) => item.position === row?.number) ?? null,
+      });
     });
   }
 
@@ -379,10 +474,17 @@ export class PlansService {
       referenceDateOf(quarter, today),
     );
     const reader: PlanReader = await planReaderOf(transaction, access);
+    const open = await transaction
+      .selectFrom('journals')
+      .select('id')
+      .where('id', '=', journal.id)
+      .where(sql<boolean>`runs && datemultirange(daterange(${today}::date, null))`)
+      .executeTakeFirst();
     return {
       branchId,
       journal,
       closed: year.status === 'closed',
+      open: open !== undefined,
       quarters,
       quarter,
       timeZone,
@@ -406,6 +508,7 @@ export class PlansService {
       throw new ApiException('plan_attendance_only', 409);
     }
     if (scene.closed) throw new ApiException('plan_year_closed', 409);
+    if (!scene.open) throw new ApiException('plan_closed', 409);
     return { ...scene, assignmentId: scene.reach.assignmentId };
   }
 
@@ -529,7 +632,19 @@ export class PlansService {
             scene.timeZone,
             scene.now,
           );
+          // Task 7.1b (decision 12): the create names the lesson of its row;
+          // another branch's or an unknown lesson is 404, checked first.
+          const lesson = await transaction
+            .selectFrom('lessons')
+            .select('id')
+            .where('id', '=', input.lessonId)
+            .where('branch_id', '=', branchId)
+            .executeTakeFirst();
+          if (lesson === undefined) throw notFound();
           if (input.position > rows.length) throw new ApiException('plan_row_unknown', 409);
+          if (rows[input.position - 1]?.lessonId !== input.lessonId) {
+            throw new ApiException('plan_row_moved', 409);
+          }
           let planId = await planIdOf(transaction, journalId, scene.quarter.id);
           if (planId === null) {
             const plan = await transaction
@@ -550,6 +665,12 @@ export class PlansService {
                 journal_id: journalId,
                 quarter_id: scene.quarter.id,
               })
+              .execute();
+            // Task 7.1b: the plan is laid on its rows before the commit (its
+            // snapshot, `PlanFollow`), as after any change of the timetable.
+            await transaction
+              .insertInto('lesson_plan_follow_marks')
+              .values({ branch_id: branchId, journal_id: journalId })
               .execute();
             await this.audit.record(transaction, {
               branchId,

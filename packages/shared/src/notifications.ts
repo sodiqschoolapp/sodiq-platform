@@ -337,6 +337,23 @@ export const NOTIFICATION_KINDS = {
     date: schoolDateSchema,
     start: clockTime,
   }),
+  /**
+   * Task 7.1b (decision 8 as changed on pull request #213): a change of the
+   * timetable moved items of the owner's plans or prepared an edit request
+   * for them (`edge/lesson-plans`: "One notice per teacher per event, listing
+   * their plans"): the classes or groups of the plans, how many moved and how
+   * many got a request.
+   */
+  'plans.followed': z.strictObject({
+    units: z.array(z.string().min(1).max(120)).min(1).max(200),
+    plans: z.int().min(1),
+    requests: z.int().min(0),
+  }),
+  /** The same event for a Head Teacher of the subject: "one per Head Teacher with counts". */
+  'plans.followed_counts': z.strictObject({
+    plans: z.int().min(1),
+    requests: z.int().min(0),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

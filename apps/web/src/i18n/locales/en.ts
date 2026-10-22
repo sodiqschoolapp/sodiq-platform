@@ -653,6 +653,8 @@ export const en = {
       'This plan is not yours to read or change. Only the teacher of the class writes its plan.',
     plan_row_taken: 'This row already holds an item. Open the row again to edit it.',
     plan_row_unknown: 'The quarter has no lesson for this row any more. Open the plan again.',
+    plan_row_moved: 'The lessons of the plan moved since you opened it. Open the plan again and choose the row.',
+    plan_closed: 'This plan is closed with its journal: the class has no more lessons of this subject.',
     plan_item_stale:
       'Someone changed this row meanwhile. The value saved now is shown under the field; type your change again.',
     plan_row_held: 'The lesson of this row has been held, so the row cannot be cleared.',

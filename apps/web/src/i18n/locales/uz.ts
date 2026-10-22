@@ -665,6 +665,8 @@ export const uz: Texts<'one' | 'other'> = {
     plan_scope: 'Bu reja sizga ochiq emas. Sinf rejasini faqat uning oʻqituvchisi yozadi.',
     plan_row_taken: 'Bu qatorda allaqachon yozuv bor. Oʻzgartirish uchun qatorni qayta oching.',
     plan_row_unknown: 'Chorakda bu qator uchun endi dars yoʻq. Rejani qayta oching.',
+    plan_row_moved: 'Reja ochilgandan keyin uning darslari surildi. Rejani qayta oching va qatorni tanlang.',
+    plan_closed: 'Bu reja jurnal bilan birga yopilgan: sinfda bu fan boʻyicha boshqa dars yoʻq.',
     plan_item_stale:
       'Bu qatorni kimdir oʻzgartirdi. Hozir saqlangan qiymat maydon ostida koʻrsatilgan; oʻzgarishingizni qayta kiriting.',
     plan_row_held: 'Bu qatorning darsi oʻtilgan, qatorni tozalab boʻlmaydi.',

@@ -658,6 +658,15 @@ export interface LessonHistory {
   written_xact: Generated<string>;
 }
 
+export interface LessonPlanAbsorbed {
+  absorbing_lesson_id: string;
+  branch_id: string;
+  id: Generated<string>;
+  journal_id: string;
+  plan_id: string;
+  removed_lesson_id: string;
+}
+
 export interface LessonPlanFiles {
   branch_id: string;
   bytes: number;
@@ -669,12 +678,19 @@ export interface LessonPlanFiles {
   type: string;
 }
 
+export interface LessonPlanFollowMarks {
+  branch_id: string;
+  journal_id: string;
+  written_xact: Generated<string>;
+}
+
 export interface LessonPlanItems {
   branch_id: string;
   cleared_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   links: Generated<string[]>;
+  moved_from: string | null;
   objectives: Generated<string>;
   plan_id: string;
   position: number;
@@ -685,8 +701,44 @@ export interface LessonPlanJournals {
   branch_id: string;
   created_at: Generated<Timestamp>;
   journal_id: string;
+  laid_at: Timestamp | null;
   plan_id: string;
   quarter_id: string;
+}
+
+export interface LessonPlanRequestCauses {
+  at: Timestamp;
+  branch_id: string;
+  id: Generated<string>;
+  items: number;
+  kind: string;
+  on_date: string;
+  request_id: string;
+  staff_id: string | null;
+}
+
+export interface LessonPlanRequests {
+  branch_id: string;
+  from_date: string;
+  id: Generated<string>;
+  journal_id: string;
+  kind: string;
+  plan_id: string;
+  prepared_at: Timestamp;
+  quarter_id: string;
+  status: string;
+  updated_at: Timestamp;
+}
+
+export interface LessonPlanRows {
+  branch_id: string;
+  journal_id: string;
+  lesson_date: string;
+  lesson_id: string;
+  owner_staff_id: string | null;
+  plan_id: string;
+  position: number;
+  starts_at: Timestamp;
 }
 
 export interface LessonPlans {
@@ -1429,9 +1481,14 @@ export interface DB {
   lesson_day_changes: LessonDayChanges;
   lesson_exam_cancels: LessonExamCancels;
   lesson_history: LessonHistory;
+  lesson_plan_absorbed: LessonPlanAbsorbed;
   lesson_plan_files: LessonPlanFiles;
+  lesson_plan_follow_marks: LessonPlanFollowMarks;
   lesson_plan_items: LessonPlanItems;
   lesson_plan_journals: LessonPlanJournals;
+  lesson_plan_request_causes: LessonPlanRequestCauses;
+  lesson_plan_requests: LessonPlanRequests;
+  lesson_plan_rows: LessonPlanRows;
   lesson_plan_works: LessonPlanWorks;
   lesson_plans: LessonPlans;
   lessons: Lessons;

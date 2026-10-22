@@ -457,7 +457,7 @@ describe('lesson plans in the database', () => {
     );
   });
 
-  it('lets the application delete only works, and change no plan, quarter or position', async () => {
+  it('lets the application delete only works, and change no plan or quarter (7.1b moves the position)', async () => {
     const u = await unit(north, await yearOf(north));
     const planId = await plan(u);
     const { id } = await item(north, planId, 1);
@@ -476,7 +476,9 @@ describe('lesson plans in the database', () => {
       );
       expect(refused.code, table).toBe(INSUFFICIENT_PRIVILEGE);
     }
-    for (const set of [{ position: 2 }, { plan_id: planId }]) {
+    // Task 7.1b (pull request #213): the follow of the queue rewrites the
+    // position (0115), so the application may change it; the plan stays.
+    for (const set of [{ plan_id: planId }]) {
       const refused = await refusal(
         inBranch(north, (transaction) =>
           transaction.updateTable('lesson_plan_items').set(set).where('id', '=', id).execute(),

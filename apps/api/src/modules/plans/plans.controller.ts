@@ -8,6 +8,8 @@ import {
   planItemParamsSchema,
   planItemSaveSchema,
   planItemSchema,
+  planLessonItemSchema,
+  planLessonParamsSchema,
   planListQuerySchema,
   planListSchema,
   planParamsSchema,
@@ -21,6 +23,8 @@ import {
   type PlanItemCreate,
   type PlanItemParams,
   type PlanItemSave,
+  type PlanLessonItem,
+  type PlanLessonParams,
   type PlanList,
   type PlanListQuery,
   type PlanParams,
@@ -76,6 +80,17 @@ export class PlansController {
     @ValidQuery(planQuerySchema) query: PlanQuery,
   ): Promise<Plan> {
     return this.plans.plan(access, params.journalId, query);
+  }
+
+  /** Task 7.1b: the item of one lesson, for a reader of its plan or the lesson's substitute. */
+  @Get('lessons/:lessonId')
+  @Requires('plans', 'view')
+  @Returns(planLessonItemSchema)
+  lessonItem(
+    @CurrentAccess() access: Access,
+    @ValidParams(planLessonParamsSchema) params: PlanLessonParams,
+  ): Promise<PlanLessonItem> {
+    return this.plans.lessonItem(access, params.lessonId);
   }
 
   @Post('journals/:journalId/items')
