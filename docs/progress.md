@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.12c The real-size run
+
+- `real-size.database.test.ts` builds an invented school (`apps/api/src/testing/real-size.ts`), places each branch's pattern with a seed placer that the rule engine decides, confirms the five builder steps, and publishes branch by branch through the routes, timing the board, the drag check, a saved move, the publish check, the publish and the published weeks; small in CI, the school's size with `REAL_SIZE=full` (report `apps/api/real-size-report-<size>.md`).
+- The full run (3 branches, 80 classes, 2,000 students, 221 teachers, 20 in two branches) placed branch 1 whole with no blocked result, then **its publish failed**: "out of shared memory", one advisory lock per dated block (0058, 0060) over about 30,000 blocks at `max_locks_per_transaction` 64. Split: 5.12d (Look first).
+- Missed targets at full size: the board's drag check of every slot 406 ms (target 0.2 s), the publish check 1.2 s (target 1 s); the board 100 ms, a saved move 140 ms.
+- Left out: the publish at the real size and the rest of the full run (5.12d); a journal page (6.2); 1,000 users and the speed fixes (10.1); doubles (not in the owner's lines).
+
+The next sessions must know:
+
+- The next task is 5.12d. The placer takes about 6 minutes per full branch; the full run needs the PostgreSQL lock table to hold one publish (or fewer locks).
+- `dayTemplatesKit({ start })` starts the kit's clock elsewhere than 10 October.
+
 ## 22 October 2026: task 5.12b Simultaneous actions and the browser walk
 
 - A room's forced delete at the same moment as each writer that names a room (a room closure, "move all" of a closure, an exam room, a load row, a class's home room, a pattern entry) is tested in both orders with both real routes (`place-forced-deletes.test.ts`, "a room deleted for good while a writer that names it waits"): the delete first, the writer answers 404 `not_found` and writes nothing (five of the six answered 500 before); the writer first, the delete answers `place_referenced`.

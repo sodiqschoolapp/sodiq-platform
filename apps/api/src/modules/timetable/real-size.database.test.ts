@@ -409,10 +409,12 @@ function report(input: {
     '',
     '| Branch | Blocks | Lessons | Not placed | Time |',
     '| --- | --- | --- | --- | --- |',
-    ...school.branches.map((branch) => {
-      const placed = input.placedOf.get(branch.id);
-      return `| ${branch.name} | ${String(placed?.blocks ?? 0)} | ${String(placed?.lessons ?? 0)} | ${placed === undefined || placed.notPlaced.length === 0 ? 'none' : placed.notPlaced.map((one) => `${one.unit} ${one.subject} ×${String(one.lessons)}`).join(', ')} | ${(placed?.seconds ?? 0).toFixed(1)} s |`;
-    }),
+    ...school.branches
+      .filter((branch) => input.placedOf.has(branch.id))
+      .map((branch) => {
+        const placed = input.placedOf.get(branch.id);
+        return `| ${branch.name} | ${String(placed?.blocks ?? 0)} | ${String(placed?.lessons ?? 0)} | ${placed === undefined || placed.notPlaced.length === 0 ? 'none' : placed.notPlaced.map((one) => `${one.unit} ${one.subject} ×${String(one.lessons)}`).join(', ')} | ${(placed?.seconds ?? 0).toFixed(1)} s |`;
+      }),
     '',
     '## Builder steps',
     '',
