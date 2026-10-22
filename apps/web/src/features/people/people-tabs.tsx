@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useScrollRow } from '@/components/scroll-row';
 import { useView } from '@/features/access/use-view';
 
-type Section = 'staff' | 'students' | 'parents' | 'vacancies' | 'head-teachers' | 'never-used';
+type Section =
+  'staff' | 'students' | 'parents' | 'vacancies' | 'head-teachers' | 'never-used' | 'reset-entries';
 
 const SECTIONS: readonly {
   key: Section;
@@ -15,7 +16,8 @@ const SECTIONS: readonly {
     | '/people/parents'
     | '/people/vacancies'
     | '/people/head-teachers'
-    | '/people/never-used';
+    | '/people/never-used'
+    | '/people/reset-entries';
   area: string;
   title:
     | 'people.staff.title'
@@ -23,7 +25,8 @@ const SECTIONS: readonly {
     | 'people.relatives.title'
     | 'people.vacancies.title'
     | 'people.headTeachers.title'
-    | 'people.neverUsed.title';
+    | 'people.neverUsed.title'
+    | 'people.resetEntries.title';
 }[] = [
   { key: 'staff', to: '/people/staff', area: 'staff', title: 'people.staff.title' },
   // Task 2.4a: the students of the branch.
@@ -53,6 +56,13 @@ const SECTIONS: readonly {
     to: '/people/never-used',
     area: 'account_access',
     title: 'people.neverUsed.title',
+  },
+  // Task 6.1c: the entries after a reset, for the same readers.
+  {
+    key: 'reset-entries',
+    to: '/people/reset-entries',
+    area: 'account_access',
+    title: 'people.resetEntries.title',
   },
 ];
 

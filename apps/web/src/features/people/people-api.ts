@@ -9,6 +9,7 @@ import {
   neverUsedListSchema,
   personalDataReportSchema,
   relativeDetailSchema,
+  resetEntriesSchema,
   relativeListSchema,
   relativeNoValidPhoneSchema,
   relativePhoneMatchResultSchema,
@@ -356,6 +357,33 @@ export const neverUsedQuery = (branchId: string | null) =>
       neverUsedListSchema.parse(
         await answerOf(
           api.GET('/api/people/accounts/never-used', { params: { header: branchHeader() } }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/**
+ * The entries after a password reset of the branch (task 6.1c): the dates
+ * as the page sends them, left out for the server's last 30 days.
+ */
+export const resetEntriesQuery = (
+  branchId: string | null,
+  range: { readonly from?: string; readonly to?: string },
+) =>
+  queryOptions({
+    queryKey: [...PEOPLE_KEY, 'reset-entries', branchId, range.from ?? null, range.to ?? null],
+    queryFn: async () =>
+      resetEntriesSchema.parse(
+        await answerOf(
+          api.GET('/api/people/accounts/reset-entries', {
+            params: {
+              header: branchHeader(),
+              query: {
+                ...(range.from === undefined ? {} : { from: range.from }),
+                ...(range.to === undefined ? {} : { to: range.to }),
+              },
+            },
+          }),
         ),
       ),
     enabled: branchId !== null,

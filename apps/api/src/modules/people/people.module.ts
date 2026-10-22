@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AccountAccessController } from './account-access.controller.js';
 import { AccountAccess } from './account-access.service.js';
+import { ResetEntries } from './reset-entries.service.js';
 import { AvailabilityController } from './availability.controller.js';
 import { BranchMovesController } from './branch-moves.controller.js';
 import { BranchMoves } from './branch-moves.service.js';
@@ -86,6 +87,7 @@ import { Vacancies } from './vacancies.service.js';
     Staff,
     StaffAccounts,
     AccountAccess,
+    ResetEntries,
     HeadTeachers,
     StaffPhotos,
     StaffAvailability,

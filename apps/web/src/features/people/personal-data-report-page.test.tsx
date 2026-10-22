@@ -70,6 +70,45 @@ const REPORT: StudentReport = {
     statuses: [{ status: 'active', from: '2026-09-02', until: null, cause: 'start', reason: null }],
     account: { createdAt: '2026-09-01T05:00:00.000Z', switchedOn: false },
   },
+  // Task 6.1c: the marks and attendance.
+  journal: {
+    cells: [
+      {
+        id: uid(61),
+        branch: NORTH.name,
+        lesson: {
+          date: '2026-10-12',
+          startsAt: '2026-10-12T03:00:00.000Z',
+          subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+          taughtTo: '7 Oxford',
+          cancelled: false,
+        },
+        attendance: false,
+        workKind: 'classwork',
+        total: 40,
+        value: 35,
+        version: 2,
+        changedAt: '2026-10-12T05:00:00.000Z',
+        changedHow: 'correction',
+        changedBy: { accountId: uid(62), login: 'm.usmonova', name: 'Usmonova Malika' },
+      },
+    ],
+    history: [
+      {
+        id: uid(63),
+        branch: NORTH.name,
+        changedAt: '2026-10-12T05:00:00.000Z',
+        lesson: null,
+        attendance: true,
+        workKind: null,
+        before: 1,
+        after: 2,
+        changedHow: 'entry',
+        changedBy: { accountId: uid(62), login: 'm.usmonova', name: null },
+      },
+    ],
+    historyLeftOut: { count: 3, oldestAt: '2026-09-02T05:00:00.000Z' },
+  },
   relatives: [
     {
       id: uid(51),
@@ -144,6 +183,29 @@ describe('the personal data report page', () => {
     ).toBeTruthy();
     expect(report.getByText(/PD-2026\/1/)).toBeTruthy();
     expect(produced(calls)).toHaveLength(1);
+  });
+
+  // Task 6.1c, decision 10: the marks and attendance and the journal history.
+  it('shows the cells with who changed them, and the journal history with the lines left out', async () => {
+    openReport();
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: 'Ismoilova Gulnoza', level: 2 });
+    const report = within(sheet());
+    expect(report.getByRole('heading', { name: en.people.report.journalTitle })).toBeTruthy();
+    const cell = sheet().querySelector('[data-journal="cells"] li');
+    expect(cell?.textContent).toContain('Mathematics');
+    expect(cell?.textContent).toContain('7 Oxford');
+    expect(cell?.textContent).toContain(`${en.journal.classwork}: 35 / 40`);
+    expect(cell?.textContent).toContain('Usmonova Malika');
+    expect(cell?.textContent).toContain(en.journal.changes.correction);
+    const line = sheet().querySelector('[data-journal="history"] li');
+    // A deleted lesson, a person with no readable name by login, the mark in words.
+    expect(line?.textContent).toContain(en.journal.lessonGone);
+    expect(line?.textContent).toContain('m.usmonova');
+    expect(line?.textContent).toContain(
+      `1 (${en.journal.marks.present}) → 2 (${en.journal.marks.late})`,
+    );
+    expect(report.getByText(/^Older lines not shown: 3/)).toBeTruthy();
   });
 
   it('names the entries left out with their count and the oldest moment', async () => {

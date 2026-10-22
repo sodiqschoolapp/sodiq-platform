@@ -3,6 +3,13 @@ import { studentMergeFieldSchema } from './student-merges.js';
 import { schoolDateSchema } from './academic-year.js';
 import { auditEntrySchema } from './audit.js';
 import { relationshipSchema } from './relatives.js';
+import {
+  accountNamedSchema,
+  cellChangeSchema,
+  cellLessonSchema,
+  cellLineSchema,
+  cellWorkKindSchema,
+} from './reset-entries.js';
 import { roleSchema } from './roles.js';
 import { instructionLanguageSchema } from './settings.js';
 import {
@@ -128,6 +135,34 @@ export const studentReportSchema = z.strictObject({
       }),
     ),
     account: portalAccountSchema.nullable(),
+  }),
+  /**
+   * The student's marks and attendance (task 6.1c, decision 10): every cell
+   * with a value in every branch, by lesson start, and the history lines of
+   * the student's cells, newest first, at most `PERSONAL_DATA_ENTRY_LIMIT`.
+   */
+  journal: z.strictObject({
+    cells: z.array(
+      z.strictObject({
+        id: z.uuid(),
+        branch: z.string(),
+        lesson: cellLessonSchema,
+        attendance: z.boolean(),
+        workKind: cellWorkKindSchema.nullable(),
+        /** The work's total, when set. */
+        total: z.int().nullable(),
+        value: z.int(),
+        version: z.int(),
+        changedAt: z.iso.datetime(),
+        changedHow: cellChangeSchema,
+        changedBy: accountNamedSchema,
+      }),
+    ),
+    history: z.array(cellLineSchema.extend({ branch: z.string(), changedBy: accountNamedSchema })),
+    /** The lines beyond the limit: how many, and the moment of the oldest. */
+    historyLeftOut: z
+      .strictObject({ count: z.int().min(1), oldestAt: z.iso.datetime() })
+      .nullable(),
   }),
   /** Every relative ever linked to the student, with every link (decision 2). */
   relatives: z.array(

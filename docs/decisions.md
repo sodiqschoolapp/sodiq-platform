@@ -289,6 +289,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: reports over the cells (task 6.1c)
+
+Plan approved on pull request #209 with corrections 1 to 5; decisions 1 to 11 confirmed there (1 and 4 with corrections 1 and 2). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (personal data across branches; a `SECURITY DEFINER` reader). `password_resets_of_branch` (0112) answers a reset written in another branch's log for an account of the branch; the resetter is named by login and, through `audit_names`, by name in any branch, as the audit screen names actors (2.6a, decision 12), where the account section of 2.3a names the login always and the name only when the record is readable; only the entries of the branch of the request are listed | Decision 1, correction 1; one account serves every branch |
+| **Look first** (a reading of "entries"). An entry is a line of `journal_cell_history` the reset account wrote in `[reset, reset + 48 h)`; totals, "not held" and comments join with 8.1 and 8.2 | Decision 2; From lines on 8.1 and 8.2 |
+| The resets listed: the administrator's (with the second-step reset), the email reset and the re-hire password | Decision 3 |
+| The email mark: an email reset whose last email write before it is a `staff.edit` by another account; its actor and moment are the reset entry's own `lastEmailChange` | Decision 4, correction 2 |
+| Readers: `account_access` `view` (Super Admin, Academic Vice Principal, Principal); accounts of the branch's staff and any account that wrote a line of the branch in the 48 hours; the range of the reset's moment in school dates, 30 days by default, at most 366; resets newest first, lines oldest first, no cap; reading not logged, no export | Decisions 5 to 9 |
+| The student report holds the cells with a value in every branch and every history line of the student's cells (at most 2,000 with the count of the rest); the marks of a forced-delete store row are not cells, their values are in the history lines the forced delete wrote; who changed a cell by login and name | Decisions 10 and 11 |
+| **Build decision.** The page shows one panel per reset with its entries in a table, not a `ListPage`: a report grouped by reset, as the personal data report is a printed sheet | A list of resets with a list inside each; the flat list would lose which reset an entry follows |
+| **Build decision.** A line under a reset whose student is no longer of the branch (a branch move after the entry) shows the lesson and the values, and "—" for the student: the student's name and UID belong to the other branch now | The row filter; personal data across branches is not widened for this report (permission review of the build) |
+| **Build decision.** The range rules (the end before the start, at most 366 days) are in `resetEntriesQuerySchema` for the dates the request sends and in the service again once a missing end is filled from the clock, as the audit screen does (2.6a) | The schema validates the input (`.claude/rules/api.md`); only the service knows the defaults |
+| **Build decision.** The handbook pages (correction 4) are not written: the handbook is paused until the release (16 October 2026); 9.6 and 3.7 write it from the finished platform | `docs/handbook/README.md`, Paused |
+
 ## 22 October 2026: cancels and the forced delete over lessons with data (task 6.1b-2)
 
 Plan approved on pull request #208 with corrections 1 to 4; decisions 1 to 11 confirmed there (decision 9 changed by correction 2). Flagged on issue #42.
