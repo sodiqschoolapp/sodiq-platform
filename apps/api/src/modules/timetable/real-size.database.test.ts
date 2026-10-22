@@ -94,173 +94,202 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
       const readyOf = new Map<string, Record<string, boolean>>();
       const probes: { branch: string; elsewhere: number; rules: readonly string[] }[] = [];
 
-      for (const [index, branch] of school.branches.entries()) {
-        const vice = asVice(t, branch);
-        // A later branch's draft holds the shared teachers' lessons of the
-        // branches published before it, and the engine keeps the travel time
-        // to them (review correction 2; `06`, Busy elsewhere, Travel time).
-        if (index > 0) {
-          const empty = await gridOf(t, branch);
-          for (const teacher of new Set(school.sharedTeachers)) {
-            const probe = travelProbe(empty, teacher);
-            if (probe === null) continue;
-            probes.push({ branch: branch.name, ...probe });
-            expect(
-              probe.elsewhere,
-              `${branch.name}: busy elsewhere of a shared teacher`,
-            ).toBeGreaterThan(0);
-            expect(
-              probe.rules,
-              `${branch.name}: the lesson right after one in another branch`,
-            ).toContain('travel_time');
+      let gaps: Gap[] = [];
+      const write = async (failure: string | null) => {
+        const text = report({
+          failure,
+          readyOf,
+          probes,
+          school,
+          built,
+          placedOf,
+          timings,
+          boards,
+          checks,
+          lessonsWritten,
+          gaps,
+          machine: await machineOf(t),
+          total: (performance.now() - startedAt) / 1000,
+        });
+        await writeFile(REPORT, text);
+        return text;
+      };
+
+      // A step that fails still leaves the report of every step before it.
+      try {
+        for (const [index, branch] of school.branches.entries()) {
+          const vice = asVice(t, branch);
+          // A later branch's draft holds the shared teachers' lessons of the
+          // branches published before it, and the engine keeps the travel time
+          // to them (review correction 2; `06`, Busy elsewhere, Travel time).
+          if (index > 0) {
+            const empty = await gridOf(t, branch);
+            for (const teacher of new Set(school.sharedTeachers)) {
+              const probe = travelProbe(empty, teacher);
+              if (probe === null) continue;
+              probes.push({ branch: branch.name, ...probe });
+              expect(
+                probe.elsewhere,
+                `${branch.name}: busy elsewhere of a shared teacher`,
+              ).toBeGreaterThan(0);
+              expect(
+                probe.rules,
+                `${branch.name}: the lesson right after one in another branch`,
+              ).toContain('travel_time');
+            }
           }
-        }
-        const placed = await placeDraft(t, branch);
-        placedOf.set(branch.id, placed);
-        expect(placed.notPlaced, `${branch.name}: lessons not placed`).toEqual([]);
+          const placed = await placeDraft(t, branch);
+          placedOf.set(branch.id, placed);
+          expect(placed.notPlaced, `${branch.name}: lessons not placed`).toEqual([]);
 
-        // Every step of the builder ready (review correction 3): the
-        // templates confirmed, every row placed, every teacher's hours over
-        // their lessons, the rooms of the rows there, the rules confirmed.
-        const readiness = (await confirmSteps(t, branch)) as Record<
-          (typeof STEPS)[number],
-          { ready: boolean }
-        > & { ready: boolean };
-        expect(readiness.ready, `${branch.name}: ${JSON.stringify(readiness)}`).toBe(true);
-        readyOf.set(
-          branch.name,
-          Object.fromEntries(STEPS.map((step) => [step, readiness[step].ready])),
-        );
-
-        const board = await timed(size.repeats, () => gridOf(t, branch));
-        timings.push({
-          what: `${branch.name}: open the board of the draft`,
-          target: 'under 1 s',
-          runs: board.runs,
-        });
-        expect(blockedOf(board.last), `${branch.name}: blocked on the draft's board`).toEqual([]);
-        boards.push({ branch: branch.name, when: 'draft', ...resultsByRule(board.last.results) });
-
-        const move = moveCheck(board.last, size.repeats);
-        timings.push({
-          what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots, as the board marks them when a drag starts)`,
-          target: 'under 0.2 s',
-          runs: move.runs,
-        });
-
-        // A saved move on the board and back, through the route.
-        const target = movableBlock(board.last);
-        expect(target, `${branch.name}: a block with a free slot to move to`).not.toBeNull();
-        if (target !== null) {
-          const there = await once(() =>
-            vice.post(
-              `/api/timetable/versions/${branch.version}/pattern/${target.blockId}/move`,
-              target.to,
-            ),
+          // Every step of the builder ready (review correction 3): the
+          // templates confirmed, every row placed, every teacher's hours over
+          // their lessons, the rooms of the rows there, the rules confirmed.
+          const readiness = (await confirmSteps(t, branch)) as Record<
+            (typeof STEPS)[number],
+            { ready: boolean }
+          > & { ready: boolean };
+          expect(readiness.ready, `${branch.name}: ${JSON.stringify(readiness)}`).toBe(true);
+          readyOf.set(
+            branch.name,
+            Object.fromEntries(STEPS.map((step) => [step, readiness[step].ready])),
           );
-          expect(there.last.status, JSON.stringify(there.last.body)).toBe(200);
-          const back = await once(() =>
-            vice.post(
-              `/api/timetable/versions/${branch.version}/pattern/${target.blockId}/move`,
-              target.from,
-            ),
-          );
-          expect(back.last.status, JSON.stringify(back.last.body)).toBe(200);
+
+          const board = await timed(size.repeats, () => gridOf(t, branch));
           timings.push({
-            what: `${branch.name}: a saved move (route, write)`,
+            what: `${branch.name}: open the board of the draft`,
             target: 'under 1 s',
-            runs: [...there.runs, ...back.runs],
+            runs: board.runs,
+          });
+          expect(blockedOf(board.last), `${branch.name}: blocked on the draft's board`).toEqual([]);
+          boards.push({ branch: branch.name, when: 'draft', ...resultsByRule(board.last.results) });
+
+          const move = moveCheck(board.last, size.repeats);
+          timings.push({
+            what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots, as the board marks them when a drag starts)`,
+            target: 'under 0.2 s',
+            runs: move.runs,
+          });
+
+          // A saved move on the board and back, through the route.
+          const target = movableBlock(board.last);
+          expect(target, `${branch.name}: a block with a free slot to move to`).not.toBeNull();
+          if (target !== null) {
+            const there = await once(() =>
+              vice.post(
+                `/api/timetable/versions/${branch.version}/pattern/${target.blockId}/move`,
+                target.to,
+              ),
+            );
+            expect(there.last.status, JSON.stringify(there.last.body)).toBe(200);
+            const back = await once(() =>
+              vice.post(
+                `/api/timetable/versions/${branch.version}/pattern/${target.blockId}/move`,
+                target.from,
+              ),
+            );
+            expect(back.last.status, JSON.stringify(back.last.body)).toBe(200);
+            timings.push({
+              what: `${branch.name}: a saved move (route, write)`,
+              target: 'under 1 s',
+              runs: [...there.runs, ...back.runs],
+            });
+          }
+
+          const check = await timed(size.repeats, async () => {
+            const response = await vice.get(
+              `/api/timetable/versions/${branch.version}/publish-check?startsOn=${RUN_START}`,
+            );
+            expect(response.status, JSON.stringify(response.body)).toBe(200);
+            return response.body as PublishCheck;
+          });
+          timings.push({
+            what: `${branch.name}: publish check`,
+            target: 'under 1 s',
+            runs: check.runs,
+          });
+          const stops = checkStops(check.last);
+          checks.push({ branch: branch.name, ...stops, warnings: check.last.warnings.length });
+          expect(stops, `${branch.name}: ${JSON.stringify(check.last.refusals)}`).toEqual({
+            refusals: 0,
+            blocked: 0,
+          });
+
+          const before = await lessonCount(t, branch);
+          const published = await once(() =>
+            vice.post(`/api/timetable/versions/${branch.version}/publish`, { startsOn: RUN_START }),
+          );
+          expect(published.last.status, JSON.stringify(published.last.body)).toBe(200);
+          const written = (await lessonCount(t, branch)) - before;
+          lessonsWritten += written;
+          timings.push({
+            what: `${branch.name}: publish (${String(written)} dated lessons written)`,
+            target: 'reported',
+            runs: published.runs,
           });
         }
 
-        const check = await timed(size.repeats, async () => {
-          const response = await vice.get(
-            `/api/timetable/versions/${branch.version}/publish-check?startsOn=${RUN_START}`,
+        // Every published board read again once all are published: still nothing blocked.
+        for (const branch of school.branches) {
+          const board = await timed(size.repeats, () => gridOf(t, branch));
+          timings.push({
+            what: `${branch.name}: open the board of the published version`,
+            target: 'under 1 s',
+            runs: board.runs,
+          });
+          expect(blockedOf(board.last), `${branch.name}: blocked on the published board`).toEqual(
+            [],
           );
-          expect(response.status, JSON.stringify(response.body)).toBe(200);
-          return response.body as PublishCheck;
-        });
-        timings.push({
-          what: `${branch.name}: publish check`,
-          target: 'under 1 s',
-          runs: check.runs,
-        });
-        const stops = checkStops(check.last);
-        checks.push({ branch: branch.name, ...stops, warnings: check.last.warnings.length });
-        expect(stops, `${branch.name}: ${JSON.stringify(check.last.refusals)}`).toEqual({
-          refusals: 0,
-          blocked: 0,
-        });
+          boards.push({
+            branch: branch.name,
+            when: 'published, all branches',
+            ...resultsByRule(board.last.results),
+          });
+          const vice = asVice(t, branch);
+          const classId = branch.classes[0]?.id ?? '';
+          const classWeek = await timed(size.repeats, async () => {
+            const response = await vice.get(
+              `/api/timetable/views/class?date=${RUN_START}&span=week&classId=${classId}`,
+            );
+            expect(response.status, JSON.stringify(response.body)).toBe(200);
+            return response;
+          });
+          timings.push({
+            what: `${branch.name}: the published week of a class`,
+            target: 'under 1 s',
+            runs: classWeek.runs,
+          });
+          const teacher =
+            school.sharedTeachers.find((id) => branch.teachers.includes(id)) ??
+            branch.teachers[0] ??
+            '';
+          const teacherWeek = await timed(size.repeats, async () => {
+            const response = await vice.get(
+              `/api/timetable/views/teacher?date=${RUN_START}&span=week&staffId=${teacher}`,
+            );
+            expect(response.status, JSON.stringify(response.body)).toBe(200);
+            return response;
+          });
+          timings.push({
+            what: `${branch.name}: the published week of a teacher`,
+            target: 'under 1 s',
+            runs: teacherWeek.runs,
+          });
+        }
 
-        const before = await lessonCount(t, branch);
-        const published = await once(() =>
-          vice.post(`/api/timetable/versions/${branch.version}/publish`, { startsOn: RUN_START }),
-        );
-        expect(published.last.status, JSON.stringify(published.last.body)).toBe(200);
-        const written = (await lessonCount(t, branch)) - before;
-        lessonsWritten += written;
-        timings.push({
-          what: `${branch.name}: publish (${String(written)} dated lessons written)`,
-          target: 'reported',
-          runs: published.runs,
-        });
+        // A teacher shared between branches teaches in both on one day, the
+        // travel time kept between the two branches' lessons (`06`, Travel time).
+        gaps = await sharedDays(t, school);
+        expect(
+          gaps.length,
+          'a shared teacher with lessons in two branches on one day',
+        ).toBeGreaterThan(0);
+        for (const gap of gaps)
+          expect(gap.minutes, JSON.stringify(gap)).toBeGreaterThanOrEqual(TRAVEL_MINUTES);
+      } catch (error) {
+        await write(error instanceof Error ? error.message : String(error));
+        throw error;
       }
-
-      // Every published board read again once all are published: still nothing blocked.
-      for (const branch of school.branches) {
-        const board = await timed(size.repeats, () => gridOf(t, branch));
-        timings.push({
-          what: `${branch.name}: open the board of the published version`,
-          target: 'under 1 s',
-          runs: board.runs,
-        });
-        expect(blockedOf(board.last), `${branch.name}: blocked on the published board`).toEqual([]);
-        boards.push({
-          branch: branch.name,
-          when: 'published, all branches',
-          ...resultsByRule(board.last.results),
-        });
-        const vice = asVice(t, branch);
-        const classId = branch.classes[0]?.id ?? '';
-        const classWeek = await timed(size.repeats, async () => {
-          const response = await vice.get(
-            `/api/timetable/views/class?date=${RUN_START}&span=week&classId=${classId}`,
-          );
-          expect(response.status, JSON.stringify(response.body)).toBe(200);
-          return response;
-        });
-        timings.push({
-          what: `${branch.name}: the published week of a class`,
-          target: 'under 1 s',
-          runs: classWeek.runs,
-        });
-        const teacher =
-          school.sharedTeachers.find((id) => branch.teachers.includes(id)) ??
-          branch.teachers[0] ??
-          '';
-        const teacherWeek = await timed(size.repeats, async () => {
-          const response = await vice.get(
-            `/api/timetable/views/teacher?date=${RUN_START}&span=week&staffId=${teacher}`,
-          );
-          expect(response.status, JSON.stringify(response.body)).toBe(200);
-          return response;
-        });
-        timings.push({
-          what: `${branch.name}: the published week of a teacher`,
-          target: 'under 1 s',
-          runs: teacherWeek.runs,
-        });
-      }
-
-      // A teacher shared between branches teaches in both on one day, the
-      // travel time kept between the two branches' lessons (`06`, Travel time).
-      const gaps = await sharedDays(t, school);
-      expect(
-        gaps.length,
-        'a shared teacher with lessons in two branches on one day',
-      ).toBeGreaterThan(0);
-      for (const gap of gaps)
-        expect(gap.minutes, JSON.stringify(gap)).toBeGreaterThanOrEqual(TRAVEL_MINUTES);
 
       // The report holds every measure of every branch.
       for (const branch of school.branches) {
@@ -271,22 +300,8 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
           ).not.toEqual([]);
         }
       }
-      const text = report({
-        readyOf,
-        probes,
-        school,
-        built,
-        placedOf,
-        timings,
-        boards,
-        checks,
-        lessonsWritten,
-        gaps,
-        machine: await machineOf(t),
-        total: (performance.now() - startedAt) / 1000,
-      });
+      const text = await write(null);
       for (const one of timings) expect(text).toContain(`| ${one.what} |`);
-      await writeFile(REPORT, text);
     },
     LIMIT,
   );
@@ -341,6 +356,7 @@ async function sharedDays(t: DayTemplatesKit, school: School): Promise<Gap[]> {
 const ms = (value: number) => `${value.toFixed(value < 10 ? 1 : 0)} ms`;
 
 function report(input: {
+  failure: string | null;
   readyOf: Map<string, Record<string, boolean>>;
   probes: { branch: string; elsewhere: number; rules: readonly string[] }[];
   school: School;
@@ -366,6 +382,14 @@ function report(input: {
     '',
     `Run by \`apps/api/src/modules/timetable/real-size.database.test.ts\` (\`REAL_SIZE=${size.name}\`), data and placer in \`apps/api/src/testing/real-size.ts\`. Clock: ${RUN_CLOCK}; every version published from ${RUN_START}. Machine: ${input.machine}; one API process and its database on one machine, no network.`,
     '',
+    ...(input.failure === null
+      ? []
+      : [
+          '## Stopped',
+          '',
+          `The run stopped at a failed step: ${input.failure.split('\n')[0] ?? ''}`,
+          '',
+        ]),
     '## Size',
     '',
     `| | Count |`,
@@ -419,7 +443,7 @@ function report(input: {
         `| ${one.branch} | ${String(one.refusals)} | ${String(one.blocked)} | ${String(one.warnings)} |`,
     ),
     '',
-    `Shared teachers on a day in two branches: ${String(input.gaps.length)} teacher-days; the least gap between their lessons in two branches is ${String(Math.min(...input.gaps.map((one) => one.minutes)))} minutes (travel time ${String(TRAVEL_MINUTES)}).`,
+    `Shared teachers on a day in two branches: ${String(input.gaps.length)} teacher-days; the least gap between their lessons in two branches is ${input.gaps.length === 0 ? 'not measured' : `${String(Math.min(...input.gaps.map((one) => one.minutes)))} minutes`} (travel time ${String(TRAVEL_MINUTES)}).`,
     '',
     ...input.probes.map(
       (one) =>

@@ -1191,8 +1191,11 @@ export async function machineOf(t: DayTemplatesKit): Promise<string> {
   const version = await sql<{ server_version: string }>`show server_version`.execute(
     t.database.migrator,
   );
+  const locks = await sql<{
+    max_locks_per_transaction: string;
+  }>`show max_locks_per_transaction`.execute(t.database.migrator);
   const cpu = cpus();
-  return `${String(cpu.length)} CPUs (${cpu[0]?.model ?? 'unknown'}), Node ${process.version}, PostgreSQL ${version.rows[0]?.server_version ?? 'unknown'}`;
+  return `${String(cpu.length)} CPUs (${cpu[0]?.model ?? 'unknown'}), Node ${process.version}, PostgreSQL ${version.rows[0]?.server_version ?? 'unknown'} (max_locks_per_transaction ${locks.rows[0]?.max_locks_per_transaction ?? 'unknown'})`;
 }
 
 /**

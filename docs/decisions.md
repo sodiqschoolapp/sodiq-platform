@@ -299,6 +299,7 @@ Plan approved on pull request #203 with corrections 1 to 3; decisions 1 to 8 con
 | The run's clock is 26 August 2026, 10:00 branch time; every draft starts and is published from Monday 7 September 2026 (`dayTemplatesKit({ start })`) | Decision 7, correction 2 |
 | The 0.2-second target is put on the board's check of a dragged lesson at every slot of the week (`useSlotStatuses`); a saved move through the route is reported apart against 1 second | Plan review finding 3; code review finding 4 |
 | The data has no double lessons: the owner's lines name groups, splits and shared teachers | Code review finding 6 |
+| **Look first** (task split). The full run stops at the first publish: "out of shared memory", one advisory lock per dated block (0058 `lessons_block_students`, 0060 `timetable_lock_block`) over about 30,000 blocks at `max_locks_per_transaction` 64. 5.12c delivers the run and its report up to that step; 5.12d makes the publish work at that size and runs the rest. The run was not made with the setting raised: changing the database server's settings was refused in the session | Decision 9, taken during the build; the run's purpose (`14`, Speed tests) |
 
 ## 22 October 2026: simultaneous actions and the browser walk (task 5.12b)
 
