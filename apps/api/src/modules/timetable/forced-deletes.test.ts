@@ -525,8 +525,10 @@ describe('the forced delete of a dated lesson and its restore', () => {
       const { created_at: _lessonCreated, ...kept } = lesson;
       void _lessonCreated;
       expect(await rowOf(lesson.id)).toMatchObject(kept);
-      const { created_at: _blockCreated, ...keptBlock } = block ?? {};
+      // created_xact is the restoring transaction's (0107), as created_at is its moment.
+      const { created_at: _blockCreated, created_xact: _blockXact, ...keptBlock } = block ?? {};
       void _blockCreated;
+      void _blockXact;
       expect(await blockOf(lesson.block_id)).toMatchObject(keptBlock);
       expect(await claimsOf(lesson.id)).not.toEqual([]);
       expect((await historyOf(lesson.id)).map((one) => one.kind)).toEqual([

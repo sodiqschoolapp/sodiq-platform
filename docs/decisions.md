@@ -285,6 +285,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: the publish at the real size (task 5.12d)
+
+Plan approved on pull request #204 with corrections 1 to 3; decisions 1 to 5 confirmed there, decision 2 changed in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A block inserted by the current transaction takes no advisory lock of its own in the commit check of Class in one block (`timetable_lock_block`, 0107); every other block keeps its lock, and the locks of the block's classes and groups stay, in the same order. No lock is added, so no new wait or deadlock | Decision 1. A block no other transaction can see has no second writer until the commit; a publish's year (about 30,000 blocks) then fits the lock table at the default `max_locks_per_transaction`. Not taken: 256 shared keys (the plan review found a deadlock with any membership change), a row lock on `lesson_blocks`, one lock per branch |
+| **Look first** (changed in the build). "Inserted by this transaction" is a new column `lesson_blocks.created_xact xid8`, written by a trigger on every insert (`pg_current_xact_id()`, the top-level id) and never updated (`lesson_block_created_xact_fixed`); rows of before 0107 keep null and keep their lock. The plan's reading (`xmin` and `created_at = now()`) never matched: every route runs its work under the request key's savepoint (`request-keys.ts`), so `xmin` is a subtransaction's id; the first full run still held about 9,500 advisory locks in the publish | Decision 2, as `.claude/rules/database.md` (plan review of #63) and `day_template_versions.created_xact`, `forced_deletes.created_xact` do. `created_at` stays bookkeeping. A trigger rather than a default, so a forced-delete restore's inserted row is the restorer's too |
+| **Look first.** `max_locks_per_transaction` stays at the default on every server, CI and the session included | Decision 3; a production setting is the owner's (stop list 1), and the run at the default is the proof |
+| The dated double pair's lock (`lesson_blocks_double`, one per pair) is unchanged; its count at size is written on 10.1 | Decision 4; a reused block keeps its pair id, so a pair is not always new to the transaction; the run has no doubles |
+| The missed targets are reported again from the full run, not fixed here | Decision 5; speed fixes are 10.1's (5.12c, decision 2) |
+| The generated school gives each shared teacher's row of a later branch to a different class of grade 5 or above | Taken in the build: all ten shared rows fell on the first class (grade 1), whose day ends before 11:45, when a shared teacher starts in the second branch, so lessons had no place; no earlier run reached a second branch |
+| The run's travel probe of a later branch checks only the teachers shared with a branch already published, and each later branch must probe at least one | Taken in the build: a teacher shared with a later branch has no lesson elsewhere yet; no earlier run reached a second branch |
+
 ## 22 October 2026: the real-size run (task 5.12c)
 
 Plan approved on pull request #203 with corrections 1 to 3; decisions 1 to 8 confirmed there. Flagged on issue #42.
