@@ -12,6 +12,7 @@ import {
   machineOf,
   median,
   moveCheck,
+  travelProbe,
   movableBlock,
   once,
   placeDraft,
@@ -46,7 +47,19 @@ import {
 
 const size = SIZES[process.env.REAL_SIZE === 'full' ? 'full' : 'small'];
 const LIMIT = size.name === 'full' ? 3 * 60 * 60_000 : 10 * 60_000;
-const REPORT = resolve(import.meta.dirname, '../../../real-size-report.md');
+const REPORT = resolve(import.meta.dirname, `../../../real-size-report-${size.name}.md`);
+/** Every measure the report gives for each branch (the plan's table). */
+const MEASURES = [
+  'open the board of the draft',
+  'check a move',
+  'a saved move',
+  'publish check',
+  'publish (',
+  'open the board of the published version',
+  'the published week of a class',
+  'the published week of a teacher',
+] as const;
+const STEPS = ['templates', 'load', 'teachers', 'rooms', 'rules'] as const;
 
 let t: DayTemplatesKit;
 
@@ -78,14 +91,46 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
       const checks: { branch: string; refusals: number; blocked: number; warnings: number }[] = [];
       let lessonsWritten = 0;
 
-      for (const branch of school.branches) {
+      const readyOf = new Map<string, Record<string, boolean>>();
+      const probes: { branch: string; elsewhere: number; rules: readonly string[] }[] = [];
+
+      for (const [index, branch] of school.branches.entries()) {
         const vice = asVice(t, branch);
+        // A later branch's draft holds the shared teachers' lessons of the
+        // branches published before it, and the engine keeps the travel time
+        // to them (review correction 2; `06`, Busy elsewhere, Travel time).
+        if (index > 0) {
+          const empty = await gridOf(t, branch);
+          for (const teacher of new Set(school.sharedTeachers)) {
+            const probe = travelProbe(empty, teacher);
+            if (probe === null) continue;
+            probes.push({ branch: branch.name, ...probe });
+            expect(
+              probe.elsewhere,
+              `${branch.name}: busy elsewhere of a shared teacher`,
+            ).toBeGreaterThan(0);
+            expect(
+              probe.rules,
+              `${branch.name}: the lesson right after one in another branch`,
+            ).toContain('travel_time');
+          }
+        }
         const placed = await placeDraft(t, branch);
         placedOf.set(branch.id, placed);
         expect(placed.notPlaced, `${branch.name}: lessons not placed`).toEqual([]);
 
-        const readiness = (await confirmSteps(t, branch)) as { ready: boolean };
+        // Every step of the builder ready (review correction 3): the
+        // templates confirmed, every row placed, every teacher's hours over
+        // their lessons, the rooms of the rows there, the rules confirmed.
+        const readiness = (await confirmSteps(t, branch)) as Record<
+          (typeof STEPS)[number],
+          { ready: boolean }
+        > & { ready: boolean };
         expect(readiness.ready, `${branch.name}: ${JSON.stringify(readiness)}`).toBe(true);
+        readyOf.set(
+          branch.name,
+          Object.fromEntries(STEPS.map((step) => [step, readiness[step].ready])),
+        );
 
         const board = await timed(size.repeats, () => gridOf(t, branch));
         timings.push({
@@ -98,18 +143,14 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
 
         const move = moveCheck(board.last, size.repeats);
         timings.push({
-          what: `${branch.name}: check a move (one slot)`,
+          what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots, as the board marks them when a drag starts)`,
           target: 'under 0.2 s',
-          runs: move.one,
-        });
-        timings.push({
-          what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots, as a drag starts)`,
-          target: 'reported',
-          runs: move.week,
+          runs: move.runs,
         });
 
         // A saved move on the board and back, through the route.
         const target = movableBlock(board.last);
+        expect(target, `${branch.name}: a block with a free slot to move to`).not.toBeNull();
         if (target !== null) {
           const there = await once(() =>
             vice.post(
@@ -221,22 +262,31 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
       for (const gap of gaps)
         expect(gap.minutes, JSON.stringify(gap)).toBeGreaterThanOrEqual(TRAVEL_MINUTES);
 
-      await writeFile(
-        REPORT,
-        report({
-          school,
-          built,
-          placedOf,
-          timings,
-          boards,
-          checks,
-          lessonsWritten,
-          gaps,
-          machine: await machineOf(t),
-          total: (performance.now() - startedAt) / 1000,
-        }),
-      );
-      console.info(`The real-size report: ${REPORT}`);
+      // The report holds every measure of every branch.
+      for (const branch of school.branches) {
+        for (const measure of MEASURES) {
+          expect(
+            timings.filter((one) => one.what.startsWith(`${branch.name}: ${measure}`)),
+            `${branch.name}: ${measure}`,
+          ).not.toEqual([]);
+        }
+      }
+      const text = report({
+        readyOf,
+        probes,
+        school,
+        built,
+        placedOf,
+        timings,
+        boards,
+        checks,
+        lessonsWritten,
+        gaps,
+        machine: await machineOf(t),
+        total: (performance.now() - startedAt) / 1000,
+      });
+      for (const one of timings) expect(text).toContain(`| ${one.what} |`);
+      await writeFile(REPORT, text);
     },
     LIMIT,
   );
@@ -291,6 +341,8 @@ async function sharedDays(t: DayTemplatesKit, school: School): Promise<Gap[]> {
 const ms = (value: number) => `${value.toFixed(value < 10 ? 1 : 0)} ms`;
 
 function report(input: {
+  readyOf: Map<string, Record<string, boolean>>;
+  probes: { branch: string; elsewhere: number; rules: readonly string[] }[];
   school: School;
   built: number;
   placedOf: Map<string, Placed>;
@@ -338,6 +390,15 @@ function report(input: {
       return `| ${branch.name} | ${String(placed?.blocks ?? 0)} | ${String(placed?.lessons ?? 0)} | ${placed === undefined || placed.notPlaced.length === 0 ? 'none' : placed.notPlaced.map((one) => `${one.unit} ${one.subject} ×${String(one.lessons)}`).join(', ')} | ${(placed?.seconds ?? 0).toFixed(1)} s |`;
     }),
     '',
+    '## Builder steps',
+    '',
+    '| Branch | Templates | Load | Teachers | Rooms | Rules |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...[...input.readyOf].map(
+      ([branch, steps]) =>
+        `| ${branch} | ${STEPS.map((step) => (steps[step] === true ? 'ready' : 'not ready')).join(' | ')} |`,
+    ),
+    '',
     '## Rule engine',
     '',
     '| Board | When | Blocked | Warnings by rule |',
@@ -360,6 +421,11 @@ function report(input: {
     '',
     `Shared teachers on a day in two branches: ${String(input.gaps.length)} teacher-days; the least gap between their lessons in two branches is ${String(Math.min(...input.gaps.map((one) => one.minutes)))} minutes (travel time ${String(TRAVEL_MINUTES)}).`,
     '',
+    ...input.probes.map(
+      (one) =>
+        `${one.branch}, draft before placement: a shared teacher has ${String(one.elsewhere)} lessons busy elsewhere; a lesson put right after one of them is blocked by ${one.rules.join(', ')}.`,
+    ),
+    '',
     '## Times',
     '',
     `Each read timed ${String(size.repeats)} times after one warm-up; a write once.`,
@@ -376,6 +442,7 @@ function report(input: {
     '- A journal page: the journal does not exist yet (task 6.2 times it on this data; decision 1).',
     "- The generate step and the solver's time (task 5.11).",
     '- 1,000 simultaneous users (task 10.1, Speed tests; decision 3).',
+    "- Double lessons: the owner's lines name groups, splits and shared teachers; no row of the data allows doubles, so every block is single.",
     '',
   ];
   return lines.join('\n');

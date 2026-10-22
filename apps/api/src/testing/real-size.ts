@@ -12,11 +12,13 @@ import {
   checkCandidates,
   checkedPlacements,
   newBlockOf,
+  NEW_BLOCK_ID,
   patternModel,
   patternPlacements,
+  suggestPlaces,
   type PatternBlock,
   type PatternModel,
-  type RuleResult,
+  type PatternRowData,
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -100,7 +102,7 @@ interface Lesson {
 }
 
 /** The weekly load of a class by grade: 24 lessons in grades 1 to 4, 27 to 30 above. */
-export function curriculumOf(grade: number): Lesson[] {
+function curriculumOf(grade: number): Lesson[] {
   if (grade <= 4) {
     return [
       { subject: 'Mathematics', perWeek: 5, way: 'whole' },
@@ -187,7 +189,7 @@ const LAST_NAMES = ['Sobirova', 'Toirov', 'Umarova', 'Valiyev', 'Xolmatova', 'Yo
 const CLASS_NAMES = ['Oxford', 'Cambridge', 'Princeton'];
 
 /** Mulberry32: the same invented data for the same seed. */
-export function seededRandom(seed: number): () => number {
+function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -708,8 +710,6 @@ export interface Placed {
   readonly seconds: number;
 }
 
-const slotKey = (weekday: number, start: number) => `${String(weekday)}:${String(start)}`;
-
 /**
  * The seed placer (until 5.11): every block of the draft's rows is placed at
  * the first lesson slot, fewest of its subject and of its classes' lessons on
@@ -725,191 +725,245 @@ export async function placeDraft(t: DayTemplatesKit, branch: BranchOfRun): Promi
   const grid = await gridOf(t, branch);
   const model = patternModel(grid.facts);
   const rows = grid.facts.rows;
-  const placed: PatternBlock[] = [];
-  const busy = new Map<string, Set<string>>();
-  const holds = (weekday: number, start: number, end: number, ids: readonly string[]) => {
-    for (const [key, set] of busy) {
-      const [day, from] = key.split(':').map(Number);
-      if (day !== weekday || from === undefined) continue;
-      const slotEnd = endOf.get(key) ?? from;
-      if (from < end && start < slotEnd && ids.some((id) => set.has(id))) return true;
-    }
-    return false;
-  };
-  const endOf = new Map<string, number>();
-  const take = (weekday: number, start: number, end: number, ids: readonly string[]) => {
-    const key = slotKey(weekday, start);
-    endOf.set(key, end);
-    const set = busy.get(key) ?? new Set<string>();
-    for (const id of ids) set.add(id);
-    busy.set(key, set);
-  };
-  const perDay = new Map<string, number>();
-  const count = (id: string, weekday: number) => perDay.get(`${id}|${String(weekday)}`) ?? 0;
-  const roomsOfType = (type: string) =>
-    grid.facts.rooms.filter((room) => room.type === type).map((room) => room.id);
-
-  // One entry per lesson to place: a block of rows (a whole class row, the
-  // groups of a block, a mixed pairing of two halves) and how many times.
-  const todo: { readonly rowIds: readonly string[]; times: number }[] = [];
-  const seen = new Set<string>();
-  for (const row of rows) {
-    if (seen.has(row.id)) continue;
-    if (row.mixedBlock) {
-      // A class's halves: boys of one subject with girls of the other, and the reverse.
-      const halves = rows.filter(
-        (other) =>
-          other.mixedBlock &&
-          model.unitOf(other.groupId ?? '').classIds.join() ===
-            model.unitOf(row.groupId ?? '').classIds.join(),
-      );
-      const subjects = [...new Set(halves.map((one) => one.subjectId))];
-      const [first, second] = subjects.map((subject) =>
-        halves.filter((one) => one.subjectId === subject).sort((a, b) => (a.id < b.id ? -1 : 1)),
-      );
-      if (
-        first?.length === 2 &&
-        second?.length === 2 &&
-        first[0] !== undefined &&
-        first[1] !== undefined &&
-        second[0] !== undefined &&
-        second[1] !== undefined
-      ) {
-        todo.push({ rowIds: [first[0].id, second[1].id], times: first[0].lessonsPerWeek });
-        todo.push({ rowIds: [first[1].id, second[0].id], times: first[1].lessonsPerWeek });
-      } else {
-        for (const one of halves) todo.push({ rowIds: [one.id], times: one.lessonsPerWeek });
-      }
-      for (const one of halves) seen.add(one.id);
-      continue;
-    }
-    for (const id of row.block) seen.add(id);
-    todo.push({ rowIds: row.block, times: row.lessonsPerWeek });
+  const roomsOfType = new Map<string, string[]>();
+  for (const room of grid.facts.rooms) {
+    roomsOfType.set(room.type, [...(roomsOfType.get(room.type) ?? []), room.id]);
   }
-  // Hardest first: wider blocks, then rows of shared teachers, then more lessons.
-  const elsewhere = new Set(grid.facts.busyElsewhere.map((one) => one.teacherId));
-  const weight = (item: (typeof todo)[number]) =>
-    item.rowIds.length * 100 +
-    (item.rowIds.some((id) => elsewhere.has(model.rowOf(id).teacherId)) ? 50 : 0) +
-    item.times;
-  todo.sort((a, b) => weight(b) - weight(a));
 
-  const notPlaced = new Map<string, { unit: string; subject: string; lessons: number }>();
-  let next = 0;
-  for (const item of todo) {
-    const unitRows = item.rowIds.map((id) => model.rowOf(id));
+  // One item per lesson to place: a block of rows (a whole class row, the
+  // groups of a block, a mixed pairing of two halves), once per lesson a week.
+  interface Item {
+    readonly rows: readonly PatternRowData[];
+    readonly classIds: readonly string[];
+    /** What the item holds while placed: its classes and its teachers. */
+    readonly keys: readonly string[];
+    readonly subjects: readonly string[];
+    readonly template: PatternBlock;
+    readonly cells: readonly {
+      weekday: number;
+      slotPosition: number;
+      start: number;
+      end: number;
+    }[];
+    readonly shared: boolean;
+  }
+  const elsewhere = new Set(grid.facts.busyElsewhere.map((one) => one.teacherId));
+  const items: Item[] = [];
+  const itemOf = (rowIds: readonly string[], times: number) => {
+    const unitRows = rowIds.map((id) => model.rowOf(id));
     const classIds = [
       ...new Set(
         unitRows.flatMap((row) => model.unitOf(row.classId ?? row.groupId ?? '').classIds),
       ),
     ];
-    const teacherIds = unitRows.map((row) => `t:${row.teacherId}`);
-    const subjectKeys = unitRows.map((row) => `${row.subjectId}`);
-    for (let time = 0; time < item.times; time += 1) {
-      const template =
-        item.rowIds.length === 2 && unitRows.every((row) => row.mixedBlock)
-          ? newBlockOf(model, item.rowIds[0] ?? '', item.rowIds[1])
-          : newBlockOf(model, item.rowIds[0] ?? '');
-      next += 1;
-      const base: PatternBlock = {
-        ...template,
-        id: `seed:${String(next)}`,
-        lessons: template.lessons.map((one) => ({
-          ...one,
-          id: `seed:${String(next)}:${one.loadRowId}`,
-        })),
-      };
-      const cells: PatternBlock[] = [];
-      for (let weekday = 1; weekday <= 7; weekday += 1) {
-        for (const slot of model.dayOfRows(unitRows, weekday)?.slots ?? []) {
-          if (slot.kind !== 'lesson') continue;
-          const [first] = blockPlacements(model, base, weekday, slot.position) ?? [];
-          if (first === undefined) continue;
-          cells.push({
-            ...base,
-            weekday,
-            slotPosition: slot.position,
-            start: first.start,
-            end: first.end,
-          });
-        }
-      }
-      const score = (cell: PatternBlock) =>
-        Math.max(
-          ...classIds.map((id) =>
-            subjectKeys.reduce((sum, subject) => sum + count(`${id}:${subject}`, cell.weekday), 0),
-          ),
-        ) *
-          1000 +
-        Math.max(...classIds.map((id) => count(id, cell.weekday))) * 10 +
-        cell.slotPosition / 100;
-      cells.sort((a, b) => score(a) - score(b));
-      let done = false;
-      for (const cell of cells) {
-        if (holds(cell.weekday, cell.start, cell.end, [...classIds, ...teacherIds])) continue;
-        // Rooms: the row's own or the class's classroom must be free; a row
-        // with a room type takes a free room of that type.
-        const chosen: string[] = [];
-        let roomsFree = true;
-        const lessons = cell.lessons.map((one) => {
-          const row = model.rowOf(one.loadRowId);
-          if (row.roomType === null) return one;
-          const free = roomsOfType(row.roomType).find(
-            (room) => !chosen.includes(room) && !holds(cell.weekday, cell.start, cell.end, [room]),
-          );
-          if (free === undefined) {
-            roomsFree = false;
-            return one;
-          }
-          chosen.push(free);
-          return { ...one, roomId: free };
-        });
-        const own = lessons.map((one) => one.roomId).filter((id): id is string => id !== null);
-        if (
-          !roomsFree ||
-          holds(
-            cell.weekday,
-            cell.start,
-            cell.end,
-            own.filter((id) => !chosen.includes(id)),
-          )
-        )
-          continue;
-        const candidate = { ...cell, lessons };
-        const results = checkCandidates(
-          checkedPlacements(model, placed),
-          model.facts,
-          patternPlacements(model, [candidate]),
-        );
-        if (results.some((one) => one.severity === 'blocked')) continue;
-        placed.push(candidate);
-        take(cell.weekday, cell.start, cell.end, [...classIds, ...teacherIds, ...own]);
-        for (const id of classIds) {
-          perDay.set(`${id}|${String(cell.weekday)}`, count(id, cell.weekday) + 1);
-          for (const subject of subjectKeys) {
-            perDay.set(
-              `${id}:${subject}|${String(cell.weekday)}`,
-              count(`${id}:${subject}`, cell.weekday) + 1,
-            );
-          }
-        }
-        done = true;
-        break;
-      }
-      if (!done) {
-        for (const row of unitRows) {
-          const unit = row.classId ?? row.groupId ?? '';
-          const key = `${unit}|${row.subjectId}`;
-          const known = notPlaced.get(key) ?? { unit, subject: row.subjectId, lessons: 0 };
-          notPlaced.set(key, { ...known, lessons: known.lessons + 1 });
+    const first = rowIds[0] ?? '';
+    const template =
+      rowIds.length === 2 && unitRows.every((row) => row.mixedBlock)
+        ? newBlockOf(model, first, rowIds[1])
+        : newBlockOf(model, first);
+    const cells = [];
+    for (let weekday = 1; weekday <= 7; weekday += 1) {
+      for (const slot of model.dayOfRows(unitRows, weekday)?.slots ?? []) {
+        if (slot.kind !== 'lesson') continue;
+        const [at] = blockPlacements(model, template, weekday, slot.position) ?? [];
+        if (at !== undefined) {
+          cells.push({ weekday, slotPosition: slot.position, start: at.start, end: at.end });
         }
       }
     }
+    for (let time = 0; time < times; time += 1) {
+      items.push({
+        rows: unitRows,
+        classIds,
+        keys: [...classIds, ...unitRows.map((row) => `teacher:${row.teacherId}`)],
+        subjects: unitRows.map((row) => row.subjectId),
+        template,
+        cells,
+        shared: unitRows.some((row) => elsewhere.has(row.teacherId)),
+      });
+    }
+  };
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (seen.has(row.id)) continue;
+    if (row.mixedBlock) {
+      // A class's halves: boys of one subject with girls of the other, and the reverse.
+      const classes = model.unitOf(row.groupId ?? '').classIds.join();
+      const halves = rows.filter(
+        (other) =>
+          other.mixedBlock && model.unitOf(other.groupId ?? '').classIds.join() === classes,
+      );
+      const [first, second] = [...new Set(halves.map((one) => one.subjectId))].map((subject) =>
+        halves.filter((one) => one.subjectId === subject).sort((a, b) => (a.id < b.id ? -1 : 1)),
+      );
+      const [a1, a2] = first ?? [];
+      const [b1, b2] = second ?? [];
+      if (first?.length === 2 && second?.length === 2 && a1 && a2 && b1 && b2) {
+        itemOf([a1.id, b2.id], a1.lessonsPerWeek);
+        itemOf([a2.id, b1.id], a2.lessonsPerWeek);
+      } else {
+        for (const one of halves) itemOf([one.id], one.lessonsPerWeek);
+      }
+      for (const one of halves) seen.add(one.id);
+      continue;
+    }
+    for (const id of row.block) seen.add(id);
+    itemOf(row.block, row.lessonsPerWeek);
   }
+
+  // What is placed, and what each slot holds (classes, teachers, rooms) and
+  // each class has on each day, rebuilt after a rearrangement.
+  const placed = new Map<string, { block: PatternBlock; item: Item }>();
+  const busy = new Map<string, Set<string>>();
+  const perDay = new Map<string, number>();
+  const at = (weekday: number, start: number) => `${String(weekday)}:${String(start)}`;
+  const rooms = (block: PatternBlock) =>
+    block.lessons.map((one) => one.roomId).filter((id): id is string => id !== null);
+  const holdsAny = (weekday: number, start: number, ids: readonly string[]) => {
+    const set = busy.get(at(weekday, start));
+    return set !== undefined && ids.some((id) => set.has(id));
+  };
+  const add = (block: PatternBlock, item: Item) => {
+    placed.set(block.id, { block, item });
+    const key = at(block.weekday, block.start);
+    const set = busy.get(key) ?? new Set<string>();
+    for (const id of [...item.keys, ...rooms(block)]) set.add(id);
+    busy.set(key, set);
+    for (const id of item.classIds) {
+      const day = `${id}|${String(block.weekday)}`;
+      perDay.set(day, (perDay.get(day) ?? 0) + 1);
+      for (const subject of item.subjects) {
+        const ofSubject = `${id}:${subject}|${String(block.weekday)}`;
+        perDay.set(ofSubject, (perDay.get(ofSubject) ?? 0) + 1);
+      }
+    }
+  };
+  const rebuild = () => {
+    const all = [...placed.values()];
+    placed.clear();
+    busy.clear();
+    perDay.clear();
+    for (const one of all) add(one.block, one.item);
+  };
+  /** The item at a cell with a free room of each row's type; `null` when the slot is taken. */
+  const blockAt = (item: Item, cell: Item['cells'][number], id: string): PatternBlock | null => {
+    if (holdsAny(cell.weekday, cell.start, item.keys)) return null;
+    const chosen: string[] = [];
+    const lessons = [];
+    for (const one of item.template.lessons) {
+      const type = model.rowOf(one.loadRowId).roomType;
+      if (type === null) {
+        if (one.roomId !== null && holdsAny(cell.weekday, cell.start, [one.roomId])) return null;
+        lessons.push({ ...one, id: `${id}:${one.loadRowId}` });
+        continue;
+      }
+      const free = (roomsOfType.get(type) ?? []).find(
+        (room) => !chosen.includes(room) && !holdsAny(cell.weekday, cell.start, [room]),
+      );
+      if (free === undefined) return null;
+      chosen.push(free);
+      lessons.push({ ...one, id: `${id}:${one.loadRowId}`, roomId: free });
+    }
+    return { ...item.template, ...cell, id, lessons };
+  };
+  const day = (key: string, weekday: number) => perDay.get(`${key}|${String(weekday)}`) ?? 0;
+  const score = (item: Item, cell: Item['cells'][number]) =>
+    Math.max(
+      ...item.classIds.map((id) =>
+        item.subjects.reduce((sum, subject) => sum + day(`${id}:${subject}`, cell.weekday), 0),
+      ),
+    ) *
+      1000 +
+    Math.max(...item.classIds.map((id) => day(id, cell.weekday))) * 10 +
+    cell.slotPosition / 100;
+  const blockedFor = (changed: readonly PatternBlock[]) =>
+    checkCandidates(
+      checkedPlacements(
+        model,
+        [...placed.values()].map((one) => one.block),
+      ),
+      model.facts,
+      patternPlacements(model, changed),
+    ).some((one) => one.severity === 'blocked');
+
+  // The item with the fewest free slots first (wider blocks and shared
+  // teachers first among equals); the engine has the last word on each place.
+  const notPlaced = new Map<string, { unit: string; subject: string; lessons: number }>();
+  const left = new Set(items);
+  let next = 0;
+  while (left.size > 0) {
+    let item: Item | undefined;
+    let fewest = Number.POSITIVE_INFINITY;
+    for (const one of left) {
+      const free = one.cells.filter((cell) => blockAt(one, cell, 'probe') !== null).length;
+      const rank = free * 10 - one.rows.length - (one.shared ? 5 : 0);
+      if (rank < fewest) {
+        fewest = rank;
+        item = one;
+      }
+    }
+    if (item === undefined) break;
+    left.delete(item);
+    next += 1;
+    const id = `seed:${String(next)}`;
+    let done = false;
+    for (const cell of [...item.cells].sort((a, b) => score(item, a) - score(item, b))) {
+      const block = blockAt(item, cell, id);
+      if (block === null || blockedFor([block])) continue;
+      add(block, item);
+      done = true;
+      break;
+    }
+    if (!done) {
+      // "Suggest a place" of the engine: a free slot, or a rearrangement of
+      // up to two placed blocks that makes room.
+      const fresh: PatternBlock = {
+        ...item.template,
+        lessons: item.template.lessons.map((one) => ({
+          ...one,
+          id: `${NEW_BLOCK_ID}:${one.loadRowId}`,
+        })),
+      };
+      const found = suggestPlaces(
+        model,
+        [...placed.values()].map((one) => one.block),
+        fresh,
+        { budget: 4000 },
+      );
+      const suggestion = found.free[0] ?? found.rearrangements[0];
+      if (suggestion !== undefined) {
+        for (const change of suggestion.changes) {
+          if (change.from === null) {
+            const block: PatternBlock = {
+              ...change.to,
+              id,
+              lessons: change.to.lessons.map((one) => ({ ...one, id: `${id}:${one.loadRowId}` })),
+            };
+            placed.set(id, { block, item });
+          } else {
+            const known = placed.get(change.from.id);
+            if (known !== undefined)
+              placed.set(change.from.id, { block: change.to, item: known.item });
+          }
+        }
+        rebuild();
+        done = true;
+      }
+    }
+    if (!done) {
+      for (const row of item.rows) {
+        const unit = row.classId ?? row.groupId ?? '';
+        const key = `${unit}|${row.subjectId}`;
+        const known = notPlaced.get(key) ?? { unit, subject: row.subjectId, lessons: 0 };
+        notPlaced.set(key, { ...known, lessons: known.lessons + 1 });
+      }
+    }
+  }
+  const blocks = [...placed.values()].map((one) => one.block);
 
   // Written as `writeBlock` writes them, in one transaction of the migrator.
   await t.database.migrator.transaction().execute(async (transaction) => {
-    for (const block of placed) {
+    for (const block of blocks) {
       const written = await transaction
         .insertInto('pattern_blocks')
         .values({
@@ -946,8 +1000,8 @@ export async function placeDraft(t: DayTemplatesKit, branch: BranchOfRun): Promi
     grid.rows.map((row) => [row.subject.id, row.subject.names.en] as const),
   );
   return {
-    lessons: placed.reduce((sum, block) => sum + block.lessons.length, 0),
-    blocks: placed.length,
+    lessons: blocks.reduce((sum, block) => sum + block.lessons.length, 0),
+    blocks: blocks.length,
     notPlaced: [...notPlaced.values()].map((one) => ({
       unit: names.get(one.unit) ?? one.unit,
       subject: subjectNames.get(one.subject) ?? one.subject,
@@ -1021,14 +1075,10 @@ export async function once<T>(work: () => Promise<T>): Promise<{ runs: number[];
 /**
  * The board's check while a lesson is dragged (`12`: check a timetable move
  * for conflicts, under 0.2 seconds): `checkCandidates` of a stored block at
- * one other lesson slot, on the facts the grid answers, as `useSlotStatus`
- * checks a cell; and at every lesson slot of the week, as the whole board is
- * marked when a drag starts.
+ * every other lesson slot of the week, on the facts the grid answers, as the
+ * board marks every cell when a drag starts (`useSlotStatuses`).
  */
-export function moveCheck(
-  grid: GridAnswer,
-  repeats: number,
-): { one: number[]; week: number[]; slots: number } {
+export function moveCheck(grid: GridAnswer, repeats: number): { runs: number[]; slots: number } {
   const model: PatternModel = patternModel(grid.facts);
   const blocks: PatternBlock[] = grid.blocks;
   const block = blocks.find((one) => one.lessons.length === 1) ?? blocks[0];
@@ -1049,22 +1099,69 @@ export function moveCheck(
       });
     }
   }
-  const check = (cell: PatternBlock): RuleResult[] =>
-    checkCandidates(placements, model.facts, patternPlacements(model, [cell]));
-  const one: number[] = [];
-  const week: number[] = [];
-  const first = cells[0];
-  if (first === undefined) throw new Error('No other slot.');
-  check(first);
+  const checkAll = () => {
+    for (const cell of cells)
+      checkCandidates(placements, model.facts, patternPlacements(model, [cell]));
+  };
+  checkAll();
+  const runs: number[] = [];
   for (let index = 0; index < repeats; index += 1) {
-    let started = performance.now();
-    check(cells[index % cells.length] ?? first);
-    one.push(performance.now() - started);
-    started = performance.now();
-    for (const cell of cells) check(cell);
-    week.push(performance.now() - started);
+    const started = performance.now();
+    checkAll();
+    runs.push(performance.now() - started);
   }
-  return { one, week, slots: cells.length };
+  return { runs, slots: cells.length };
+}
+
+/**
+ * The travel time against a published branch (`06`, Teachers who work in
+ * several branches: Busy elsewhere, Travel time; review correction 2): on the
+ * draft of a later branch, a lesson of a shared teacher put in the lesson
+ * slot right after one of their lessons of the earlier branch (a break of 10
+ * or 20 minutes, shorter than the travel time). Answers the busy-elsewhere
+ * lessons of the teacher the draft's facts hold and the rules the engine
+ * gives that lesson; `null` when the teacher has no row in the draft.
+ */
+export function travelProbe(
+  grid: GridAnswer,
+  teacherId: string,
+): { readonly elsewhere: number; readonly rules: readonly string[] } | null {
+  const model = patternModel(grid.facts);
+  const row = grid.facts.rows.find((one) => one.teacherId === teacherId && one.classId !== null);
+  const away = grid.facts.busyElsewhere.filter((one) => one.teacherId === teacherId);
+  if (row === undefined) return null;
+  for (const lesson of away) {
+    const slot = model.dayOfRows([row], lesson.weekday)?.slots.find(
+      (one) =>
+        one.kind === 'lesson' &&
+        one.start >= lesson.end &&
+        one.start < lesson.end + TRAVEL_MINUTES &&
+        // Free of every lesson of the teacher there, so only the travel time is broken.
+        !away.some(
+          (other) =>
+            other.weekday === lesson.weekday && other.start < one.end && one.start < other.end,
+        ),
+    );
+    if (slot === undefined) continue;
+    const probe: PatternBlock = {
+      ...newBlockOf(model, row.id),
+      id: 'probe',
+      weekday: lesson.weekday,
+      slotPosition: slot.position,
+      start: slot.start,
+      end: slot.end,
+    };
+    const results = checkCandidates(
+      checkedPlacements(model, grid.blocks),
+      model.facts,
+      patternPlacements(model, [probe]),
+    );
+    return {
+      elsewhere: away.length,
+      rules: results.filter((one) => one.severity === 'blocked').map((one) => one.rule),
+    };
+  }
+  return { elsewhere: away.length, rules: [] };
 }
 
 /** The blocked results of a board by rule, and the warnings by rule. */
