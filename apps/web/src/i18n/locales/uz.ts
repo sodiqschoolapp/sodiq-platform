@@ -652,6 +652,16 @@ export const uz: Texts<'one' | 'other'> = {
     timetable_view_scope:
       'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
     journal_scope: 'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
+    journal_entry_scope:
+      'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
+    entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
+    lesson_not_held:
+      'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',
+    absence_scope: 'Bu sizning sinfingiz emas. Oʻz sinflaringizdan birini tanlang.',
+    absence_not_member:
+      'Oʻquvchi bu sanada filialning hech bir sinfida boʻlmagan. Sanani tekshiring.',
+    student_merge_absence_reasons:
+      'Ikkala yozuvda ham bir xil sana uchun dars qoldirish sababi bor. Ikki sababdan birini tozalang, soʻng qayta birlashtiring.',
     journal_no_quarter:
       'Bu oʻquv yili choraklarining sanalari hali belgilanmagan, shuning uchun jurnalni koʻrsatib boʻlmaydi. Oʻquv ishlari boʻyicha direktor oʻrinbosari ularni Maktab sozlamalarida belgilaydi.',
     place_referenced:

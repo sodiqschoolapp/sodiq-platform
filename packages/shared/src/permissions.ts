@@ -509,17 +509,42 @@ export const PERMISSIONS = freezeTable({
    * draw from them, own rows only, for the Tutor; and for the Teacher the
    * journals they own on a quarter's reference date, whole, and the lessons
    * they owned or substituted elsewhere (decision 3 with review correction 1).
+   *
+   * `edit` (task 6.3, pull request #211, decision 1 as changed by review
+   * correction 1, Look first): the Teacher ("Enters and edits in own
+   * journals"; a substitute is a teacher, 06), the Tutor ("Enters attendance
+   * in own Ma'naviyat soati and Homework slot journals"), the Academic Vice
+   * Principal ("corrects with a reason", 8.4) and the Super Admin. The route
+   * decides the lesson for every request (`attendance-scope.ts`): only the
+   * lessons the person teaches or owns, whatever the role.
    */
   journal: rows({
-    super_admin: ['view'],
+    super_admin: ['view', 'edit'],
     principal: ['view'],
-    academic_vice_principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
     spiritual_vice_principal: ['view'],
     head_tutor: ['view'],
-    tutor: ['view'],
+    tutor: ['view', 'edit'],
     senior_head_teacher: ['view'],
     head_teacher: ['view'],
-    teacher: ['view'],
+    teacher: ['view', 'edit'],
+  }),
+  /**
+   * The reasons of a student's absence (task 6.3, pull request #211, decision
+   * 6, Look first): edge/journal, "A Tutor records why a student was absent":
+   * "The class Tutor and the Academic Vice Principal can edit it until the
+   * quarter closes. Teachers see the category only." Read by the roles who
+   * see attendance (07: the Principal, the Vice Principal for Spiritual and
+   * Moral Education, the Head Tutor) and the Tutor (own classes, decided in
+   * the route); Teachers and Head Teachers see the category in the journal.
+   */
+  absence_reasons: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view', 'edit'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

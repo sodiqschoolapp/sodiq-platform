@@ -638,6 +638,17 @@ export const en = {
       'The timetable of this class, teacher or room is not among those your role can see. Choose one from the list.',
     journal_scope:
       'This journal is not among those your role can read. Open one from the Journals page.',
+    journal_entry_scope:
+      'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
+    entry_not_started:
+      'This lesson has not started yet. Attendance can be entered from its start time.',
+    lesson_not_held:
+      'This lesson has no teacher recorded (it needs a teacher or is unresolved), so nothing can be entered. The Academic Vice Principal resolves it first.',
+    absence_scope: 'This class is not one of yours. Choose one of your own classes.',
+    absence_not_member:
+      'The student was not in a class of this branch on that date. Check the date.',
+    student_merge_absence_reasons:
+      'Both records have a reason of absence for the same date. Clear one of the two reasons, then merge again.',
     journal_no_quarter:
       'The quarters of this year have no dates yet, so the journal cannot be shown. The Academic Vice Principal sets them in School setup.',
     place_referenced:
