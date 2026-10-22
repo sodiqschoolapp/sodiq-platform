@@ -491,4 +491,24 @@ describe('the protection of dated lessons through their writers', () => {
       ),
     ).toEqual([held.id]);
   });
+  // Task 6.1b-1 (decision 6): pass 2 of `pairDated` pairs by pattern entry,
+  // which never crosses versions: a draft gets pattern entries of its own.
+  it('gives a draft copied from a version pattern entries of its own', async () => {
+    const s = await publishedScene(t, load);
+    const draft = await draftFrom(s, '2026-11-09');
+    const entriesOf = async (version: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('pattern_entries')
+          .innerJoin('pattern_blocks', 'pattern_blocks.id', 'pattern_entries.block_id')
+          .select('pattern_entries.id')
+          .where('pattern_blocks.version_id', '=', version)
+          .execute()
+      ).map((one) => one.id);
+    const own = await entriesOf(s.version);
+    const copied = await entriesOf(draft);
+    expect(own.length).toBeGreaterThan(0);
+    expect(copied).toHaveLength(own.length);
+    expect(copied.filter((id) => own.includes(id))).toEqual([]);
+  });
 });
