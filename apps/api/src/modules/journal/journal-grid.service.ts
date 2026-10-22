@@ -328,8 +328,12 @@ export class JournalGridReader {
     }
     const studentIds = new Set<string>();
     for (const students of expected.values()) for (const id of students) studentIds.add(id);
-    for (const row of memberships)
-      if (row.validFrom <= referenceDate) studentIds.add(row.studentId);
+    // A reader of their own lessons only sees the students expected at them (`02`, Teacher:
+    // "the students they teach ... and no other student"; permission review, should-fix 1).
+    if (shape !== 'lessons') {
+      for (const row of memberships)
+        if (row.validFrom <= referenceDate) studentIds.add(row.studentId);
+    }
     let students = (await studentsOf(transaction, [...studentIds])).sort(compareStudentNames);
     const folded = (studentId: string): boolean => {
       const rows = rowsOf.get(studentId) ?? [];

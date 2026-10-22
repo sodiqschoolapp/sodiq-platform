@@ -552,6 +552,9 @@ describe('the journal grid', () => {
       const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
       expect(grid.shape).toBe('lessons');
       expect(grid.lessons.map((one) => one.id)).toEqual([s.lessons[1]]);
+      // Only the students expected at the lesson taught: Bakirova was away on the 19th
+      // (02, Teacher: "the students they teach ... and no other student").
+      expect(grid.students.map((one) => one.id)).toEqual([s.abdullayev, s.zokirov, s.oktamov]);
       expect(grid.students.every((one) => one.quarter === null && one.months === null)).toBe(true);
       expect(grid.bottom).toBeNull();
       const list = journalListSchema.parse(
@@ -612,6 +615,83 @@ describe('the journal grid', () => {
         expect(list.journals).toEqual([]);
       },
     );
+  });
+
+  it('gives the Super Admin and the Academic Vice Principal every journal whole, and lists every one of the branch', async () => {
+    const s = await gradedScene();
+    const other = await journalOf(s.scene.otherClass);
+    const away = await gradedScene();
+    for (const held of [
+      { role: 'super_admin' as const },
+      { role: 'academic_vice_principal' as const, branchId: s.scene.branch },
+      { role: 'principal' as const, branchId: s.scene.branch },
+      { role: 'spiritual_vice_principal' as const, branchId: s.scene.branch },
+    ]) {
+      const browser = await account();
+      await as(browser, [held], async (get) => {
+        const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+        expect(grid.shape, held.role).toBe(
+          held.role === 'spiritual_vice_principal' ? 'attendance' : 'whole',
+        );
+        const list = journalListSchema.parse(
+          (await get(s.scene.branch, '/api/journal/journals')).body,
+        );
+        expect(list.journals.map((one) => one.id).sort(), held.role).toEqual(
+          [s.journal, other].sort(),
+        );
+        // Another branch's journal is 404 here, also for the Super Admin.
+        expect(
+          (await get(s.scene.branch, `/api/journal/journals/${away.journal}`)).status,
+          held.role,
+        ).toBe(404);
+      });
+    }
+  });
+
+  it('gives a Senior Head Teacher the journals of own subjects in the branch of the request only', async () => {
+    const s = await gradedScene();
+    const elsewhere = await load.classes.subject({ grades: [7] });
+    const own = await account();
+    await as(own, [{ role: 'senior_head_teacher', subjectIds: [s.scene.subject] }], async (get) => {
+      expect(gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).shape).toBe(
+        'whole',
+      );
+      const list = journalListSchema.parse(
+        (await get(s.scene.branch, '/api/journal/journals')).body,
+      );
+      expect(list.journals.map((one) => one.subject.id)).toEqual([
+        s.scene.subject,
+        s.scene.subject,
+      ]);
+    });
+    const other = await account();
+    await as(other, [{ role: 'senior_head_teacher', subjectIds: [elsewhere] }], async (get) => {
+      const refused = await get(s.scene.branch, `/api/journal/journals/${s.journal}`);
+      expect(refused.status).toBe(403);
+      const list = journalListSchema.parse(
+        (await get(s.scene.branch, '/api/journal/journals')).body,
+      );
+      expect(list.journals).toEqual([]);
+    });
+  });
+
+  it("gives a Tutor the journals of own class whole and refuses another class's", async () => {
+    const s = await gradedScene();
+    const other = await journalOf(s.scene.otherClass);
+    const tutor = await account();
+    await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
+    await as(tutor, [], async (get) => {
+      const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+      expect(grid.shape).toBe('whole');
+      expect(grid.bottom).not.toBeNull();
+      const refused = await get(s.scene.branch, `/api/journal/journals/${other}`);
+      expect(refused.status).toBe(403);
+      const list = journalListSchema.parse(
+        (await get(s.scene.branch, '/api/journal/journals')).body,
+      );
+      expect(list.journals.map((one) => one.id)).toEqual([s.journal]);
+    });
   });
 
   it('answers 404 for an unknown journal and for one of another branch', async () => {
