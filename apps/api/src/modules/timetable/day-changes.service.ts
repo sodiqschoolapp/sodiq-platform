@@ -1177,10 +1177,6 @@ export class TimetableDayChanges {
   }
 }
 
-/**
- * Refuses a one-day change whose check found a blocked rule, with the
- * results and the free rooms of its time, by name.
- */
 /** What one lesson of a cancel holds (task 6.1b-2), for its entry. */
 type HeldDataEntry = {
   lessonId: string;
@@ -1225,6 +1221,10 @@ export async function refuseHeldData(
   return entries;
 }
 
+/**
+ * Refuses a one-day change whose check found a blocked rule, with the
+ * results and the free rooms of its time, by name.
+ */
 export async function refuseBlocked(
   transaction: Transaction,
   branchId: string,

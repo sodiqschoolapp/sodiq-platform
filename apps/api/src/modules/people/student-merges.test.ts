@@ -468,20 +468,25 @@ describe('the merge of two student records', () => {
       const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
       const first = await pupil({ branch: east, classId, from: '2026-09-02' });
       const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
-      await markInStore(t.database.migrator, {
+      const store = await markInStore(t.database.migrator, {
         branchId: east,
         studentId: twice.id,
         by: await classes.account(),
         at: t.clock.now().toISOString(),
       });
-      const before = await t.database.migrator.selectFrom('audit_log').select('id').execute();
+      const before = await rowsOf();
       const response = await merge(first.id, twice.uid, east);
       expect(response.status, JSON.stringify(response.body)).toBe(409);
       expect(errorCode(response)).toBe('student_merge_has_cells');
       expect((await fresh(twice.id, east)).id).toBe(twice.id);
-      expect(await t.database.migrator.selectFrom('audit_log').select('id').execute()).toHaveLength(
-        before.length,
-      );
+      expect(await rowsOf()).toEqual(before);
+      // Its 30 days over: the mark can no longer come back, and the merge goes through.
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({ restore_until: t.clock.now() })
+        .where('id', '=', store)
+        .execute();
+      merged(await merge(first.id, twice.uid, east));
     });
   });
 

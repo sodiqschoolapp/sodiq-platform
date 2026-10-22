@@ -251,7 +251,7 @@ export function CorrectionDialog({
             </div>
           )}
           {code === 'cancel_holds_data' && details.length > 0 && (
-            <HeldDataTick details={details} confirm={form.bind('confirm')} />
+            <HeldDataTick details={details} lessons={[lesson]} confirm={form.bind('confirm')} />
           )}
           <DialogFooter>
             <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.back')}</DialogClose>

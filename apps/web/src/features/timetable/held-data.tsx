@@ -1,4 +1,4 @@
-import type { ErrorDetail, HeldData } from '@sodiq/shared';
+import { timeText, type DayLesson, type ErrorDetail, type HeldData } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { CheckboxField } from '@/components/field';
 
@@ -29,9 +29,12 @@ export function HeldDataText({ held }: { held: HeldData }) {
  */
 export function HeldDataTick({
   details,
+  lessons,
   confirm,
 }: {
   details: readonly ErrorDetail[];
+  /** The lessons the list may name (the refusal names each by `recordId`): its time and class or group. */
+  lessons: readonly DayLesson[];
   confirm: Omit<Parameters<typeof CheckboxField>[0], 'label'>;
 }) {
   const { t } = useTranslation();
@@ -43,7 +46,8 @@ export function HeldDataTick({
           detail.heldData === undefined
             ? []
             : [
-                <li key={`${detail.path}-${String(index)}`}>
+                <li key={`${detail.path}-${String(index)}`} data-held-lesson={detail.recordId}>
+                  {lessonName(lessons.find((one) => one.id === detail.recordId))}
                   <HeldDataText held={detail.heldData} />
                 </li>,
               ],
@@ -52,4 +56,11 @@ export function HeldDataTick({
       <CheckboxField {...confirm} label={t('timetable.held.confirm')} />
     </div>
   );
+}
+
+/** A lesson as the list names it: its time and class or group, before what it holds. */
+function lessonName(lesson: DayLesson | undefined): string {
+  return lesson === undefined
+    ? ''
+    : `${timeText(lesson.start)}–${timeText(lesson.end)} ${lesson.unit.name}: `;
 }

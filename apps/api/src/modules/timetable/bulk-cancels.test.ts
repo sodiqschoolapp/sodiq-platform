@@ -18,7 +18,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
-import { workWithTotal } from '../../testing/cells-kit.js';
+import { inOrderOnLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -1018,11 +1018,15 @@ describe('the bulk cancel', () => {
           .executeTakeFirstOrThrow();
         copied.push(lesson.id);
       }
+      // Task 6.1b-2 (plan test 21): the half held outside the slots holds data
+      // and is not listed with the lessons with data.
+      await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: copied[0] ?? '' });
       const { check: answer, saved } = await checkAndSave(s.branch, {
         date: YESTERDAY,
         classIds: [s.oxford],
         lessonNumbers: [3],
       });
+      expect(answer.withData).toEqual([]);
       expect(answer.cancel.map((one) => one.lesson.id)).toEqual([copied[1]]);
       // Listed as started: no single cancel is offered for it.
       expect(answer.cancel[0]?.lesson.canCancel).toBe(false);
@@ -1270,6 +1274,22 @@ describe('the bulk cancel', () => {
           sharedBlockId: null,
         }),
       ]);
+      // A lesson with data already cancelled keeps its cause and is not listed.
+      const later = await oneLesson(s, '2026-10-26', { classId: s.oxford }, s.maths);
+      await totalOn(s, later.id);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Rain' })
+        .where('id', '=', later.id)
+        .execute();
+      const already = await checked(s.branch, {
+        date: '2026-10-26',
+        classIds: [s.oxford],
+        // Slot 2 brings a lesson to cancel; a scope with none is refused.
+        lessonNumbers: [1, 2],
+      });
+      expect(already.alreadyCancelled.map((one) => one.id)).toEqual([later.id]);
+      expect(already.withData).toEqual([]);
     });
 
     it('refuses a missing, an unknown, a conflicting and a split choice, each with its ids, and nothing changes', async () => {
@@ -1345,6 +1365,13 @@ describe('the bulk cancel', () => {
         [maths.id]: 'cancel',
       });
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const cancelledAnswer = bulkCancelAnswerSchema.parse(cancelled.body);
+      expect(cancelledAnswer).toMatchObject({ cancelled: [maths.id], keptWithData: [] });
+      const [cancelEntry] = await t.entries('lesson.bulk_cancel', cancelledAnswer.id);
+      expect(cancelEntry?.new_value).toMatchObject({
+        dataChoices: [{ lessonId: maths.id, choice: 'cancel' }],
+        lessonIds: [maths.id],
+      });
       expect(await rowOf(maths.id)).toMatchObject({
         cancel_cause: 'reason',
         cancel_reason: 'Excursion to the museum',
@@ -1444,22 +1471,30 @@ describe('the bulk cancel', () => {
       const refused = await saving;
       refusedWith(refused, 409, 'bulk_data_choice_missing');
       expect(listed(refused)).toEqual([maths.id]);
-      // The bulk save first: the mark that comes after it is refused.
+      // The bulk save first: the mark, which waits behind it on the lesson, is
+      // then refused.
       const s2 = await scene();
       const body2 = { date: NEXT_MONDAY, classIds: [s2.oxford], lessonNumbers: [1] };
       const maths2 = await oneLesson(s2, NEXT_MONDAY, { classId: s2.oxford }, s2.maths);
       const tuesday2 = await oneLesson(s2, NEXT_TUESDAY, { classId: s2.oxford }, s2.physics);
       const student2 = await markOn(s2, tuesday2.id);
-      const done = await saveWith(s2, body2, await checked(s2.branch, body2), 'keep', {});
-      expect(done.status, JSON.stringify(done.body)).toBe(200);
-      const late = await t.app
-        .get(Transactions)
-        .run([s2.branch], (transaction) =>
-          saveCells(transaction, t.app.get(Audit), { accountId: account }, [
-            { lessonId: maths2.id, studentId: student2, workId: null, value: 1, version: null },
-          ]),
-        )
-        .catch((error: unknown) => error);
+      const answer2 = await checked(s2.branch, body2);
+      const [done, late] = await inOrderOnLesson({
+        app: t.app,
+        migrator: t.database.migrator,
+        branchId: s2.branch,
+        lessonId: maths2.id,
+        first: () => saveWith(s2, body2, answer2, 'keep', {}),
+        second: () =>
+          t.app
+            .get(Transactions)
+            .run([s2.branch], (transaction) =>
+              saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+                { lessonId: maths2.id, studentId: student2, workId: null, value: 1, version: null },
+              ]),
+            ),
+      });
+      expect((done as Response).status, JSON.stringify((done as Response).body)).toBe(200);
       expect(late).toMatchObject({ code: 'lesson_cancelled_cell' });
     });
 
@@ -1665,6 +1700,20 @@ describe('the bulk cancel', () => {
           await save(
             s.branch,
             { ...full, blocks: [...blocks], lessonIds: [...lessonIds] },
+            t.vicePrincipal,
+            key,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      // Task 6.1b-2 (permission review should-fix 1): a lesson of the data
+      // choices of another branch and an unknown one, on a repeat too.
+      for (const lessonId of [foreignLesson.id, UNKNOWN]) {
+        refusedWith(
+          await save(
+            s.branch,
+            { ...full, dataChoices: [{ lessonId, choice: 'keep' }] },
             t.vicePrincipal,
             key,
           ),

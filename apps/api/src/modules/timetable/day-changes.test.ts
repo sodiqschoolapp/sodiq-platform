@@ -16,7 +16,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
-import { markedLesson } from '../../testing/cells-kit.js';
+import { inOrderOnLesson, markedLesson } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -3129,12 +3129,19 @@ describe('one-day changes: cancel and restore', () => {
         release();
         expect(await held).toBeUndefined();
         heldOf(await cancelling);
-        // The cancel first (no data yet, so no tick): the save that follows is refused.
+        // The cancel first (no data yet, so no tick): the save, which waits
+        // behind it on the lesson, is then refused.
         const other = await pastOne(s, { date: '2026-10-08' });
-        changed(await correct(s.branch, other, { kind: 'cancel' }));
-        expect(await saveOn(s, other, student, null)).toMatchObject({
-          code: 'lesson_cancelled_cell',
+        const [cancelled, late] = await inOrderOnLesson({
+          app: t.app,
+          migrator: t.database.migrator,
+          branchId: s.branch,
+          lessonId: other,
+          first: () => correct(s.branch, other, { kind: 'cancel' }),
+          second: () => saveOn(s, other, student, null),
         });
+        changed(cancelled as Response);
+        expect(late).toMatchObject({ code: 'lesson_cancelled_cell' });
       });
     });
 

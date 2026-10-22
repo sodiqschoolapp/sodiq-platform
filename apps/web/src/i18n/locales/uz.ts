@@ -4054,7 +4054,7 @@ export const uz: Texts<'one' | 'other'> = {
       close: 'Yopish',
     },
     held: {
-      title: 'Bu darsda maʼlumotlar bor:',
+      title: 'Maʼlumotli darslar:',
       attendance: 'davomat belgilari: {{count}}',
       scores: 'ballar: {{count}}',
       totals: 'maksimumli ishlar: {{count}}',

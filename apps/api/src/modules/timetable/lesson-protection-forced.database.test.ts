@@ -61,6 +61,8 @@ describe('the forced delete of a lesson that holds data in the database', () => 
   let members: MembersKit;
   let north: string;
   let account: string;
+  /** The teacher who typed the cells: another account than the one that deletes and restores. */
+  let writer: string;
   let year: { year: string; quarters: string[] };
   let subject: string;
 
@@ -147,7 +149,7 @@ describe('the forced delete of a lesson that holds data in the database', () => 
             mark: values.mark ?? null,
             score: values.score ?? null,
             version: 1,
-            changed_by: account,
+            changed_by: writer,
             changed_how: 'entry',
             changed_at: new Date(NOW),
           })
@@ -288,6 +290,7 @@ describe('the forced delete of a lesson that holds data in the database', () => 
     year = await kit.year(north);
     subject = await kit.load.classes.subject({ grades: [5, 6, 7, 8, 9, 10, 11] });
     account = await kit.load.classes.account();
+    writer = await kit.load.classes.account();
     members = new MembersKit(database.migrator, account);
   });
 
@@ -344,6 +347,8 @@ describe('the forced delete of a lesson that holds data in the database', () => 
         score_after: null,
         changed_by: account,
       });
+      // The line of who typed it stays theirs.
+      expect(lines[0]?.changed_by).toBe(writer);
     }
   });
 
@@ -580,7 +585,9 @@ describe('the forced delete of a lesson that holds data in the database', () => 
           changed_how: 'restored',
           mark_after: cell.mark,
           score_after: cell.score,
+          changed_by: account,
         });
+        expect(lines[0]?.changed_by).toBe(writer);
       }
       const holds = await sql<{
         holds: boolean;

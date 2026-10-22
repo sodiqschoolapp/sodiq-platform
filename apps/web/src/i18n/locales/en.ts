@@ -4009,7 +4009,7 @@ export const en = {
       close: 'Close',
     },
     held: {
-      title: 'This lesson holds data:',
+      title: 'Lessons that hold data:',
       attendance: 'attendance marks: {{count}}',
       scores: 'numbers: {{count}}',
       totals: 'works with a total: {{count}}',

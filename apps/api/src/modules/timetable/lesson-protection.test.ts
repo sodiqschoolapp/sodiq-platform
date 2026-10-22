@@ -390,9 +390,12 @@ describe('the protection of dated lessons through their writers', () => {
     const s = await publishedScene(t, load);
     const held = await lessonOf(s, '2026-11-16');
     await mark(s, held.id);
+    // Task 6.1b-2 (decision 2, Look first): a cancel of a lesson with data
+    // takes the tick under what it holds.
     ok(
       await keyed(`/api/timetable/lessons/${held.id}/cancel`, s.branch, {
         reason: 'Excursion to the museum',
+        confirm: true,
       }),
     );
     const draft = await draftWithout(s, '2026-11-09');

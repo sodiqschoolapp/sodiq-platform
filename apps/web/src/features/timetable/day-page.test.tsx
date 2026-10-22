@@ -1,4 +1,11 @@
-import type { DayAnswer, DayExam, DayLesson, Room, SchoolClass } from '@sodiq/shared';
+import {
+  timeText,
+  type DayAnswer,
+  type DayExam,
+  type DayLesson,
+  type Room,
+  type SchoolClass,
+} from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -332,6 +339,13 @@ describe('the day page', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.cancelSend }));
     expect(await within(dialog).findByText(en.timetable.held.title)).not.toBeNull();
     expect(within(dialog).getByText('attendance marks: 2, numbers: 5')).not.toBeNull();
+    // Each lesson listed is named by its time and class (spec review of the code, should-fix 3).
+    const named = dialog.querySelector(`[data-held-lesson="${uid(301)}"]`)?.textContent ?? '';
+    expect(
+      named.startsWith(
+        `${timeText(lesson(1).start)}–${timeText(lesson(1).end)} ${lesson(1).unit.name}: `,
+      ),
+    ).toBe(true);
     fireEvent.click(within(dialog).getByLabelText(en.timetable.held.confirm));
     fireEvent.click(within(dialog).getByRole('button', { name: en.timetable.day.cancelSend }));
     expect(await screen.findByText(en.timetable.day.cancelled)).not.toBeNull();

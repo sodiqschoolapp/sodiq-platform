@@ -19,7 +19,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
-import { markedLesson, workWithTotal } from '../../testing/cells-kit.js';
+import { inOrderOnLesson, markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
@@ -210,13 +210,18 @@ describe('the forced delete of a dated lesson and its restore', () => {
    * Task 6.1b-2: a mark of a new member of the lesson's class on the lesson,
    * saved through `saveCells`; answers the student.
    */
-  const mark = async (s: Scene, lessonId: string, classId = s.classId) =>
+  const mark = async (
+    s: Scene,
+    lessonId: string,
+    classId = s.classId,
+    accountId: string = adminAccount,
+  ) =>
     (
       await markedLesson(t.app, t.database.migrator, {
         branchId: s.branch,
         classId,
         lessonId,
-        accountId: adminAccount,
+        accountId,
       })
     ).studentId;
 
@@ -1131,17 +1136,20 @@ describe('the forced delete of a dated lesson and its restore', () => {
       // A lesson of the version in force, so a restore finds it in force; the
       // database takes data on any lesson.
       const id = (await lessonOf(s, NEXT_MONDAY)).id;
-      const student = await mark(s, id);
-      const other = await mark(s, id);
+      // The teacher who types the cells is another account than the Super
+      // Admin who deletes and restores (spec review of the code, should-fix 1).
+      const writer = await load.classes.account();
+      const student = await mark(s, id, s.classId, writer);
+      const other = await mark(s, id, s.classId, writer);
       const work = await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: id });
       await t.app.get(Transactions).run([s.branch], (transaction) =>
-        saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+        saveCells(transaction, t.app.get(Audit), { accountId: writer }, [
           { lessonId: id, studentId: student, workId: work, value: 24, version: null },
           // The second member's mark cleared: an empty cell with a line.
           { lessonId: id, studentId: other, workId: null, value: null, version: 1 },
         ]),
       );
-      return { id, student, other, work };
+      return { id, student, other, work, writer };
     }
 
     it('keeps every cell and work in the store and its entry, removes them with the lesson, and keeps their history', async () => {
@@ -1169,16 +1177,20 @@ describe('the forced delete of a dated lesson and its restore', () => {
       // Every line stays, and each cell with a value gets the delete's line.
       const lines = await t.database.migrator
         .selectFrom('journal_cell_history')
-        .select(['cell_id', 'changed_how'])
+        .select(['cell_id', 'changed_how', 'changed_by'])
         .where('lesson_id', '=', lesson.id)
         .orderBy('changed_at')
         .orderBy('version')
         .execute();
       for (const cell of cells) {
-        const own = lines.filter((one) => one.cell_id === cell.id).map((one) => one.changed_how);
-        expect(own.at(-1)).toBe(
-          cell.mark === null && cell.score === null ? 'entry' : 'forced_delete',
+        const own = lines.filter((one) => one.cell_id === cell.id);
+        const empty = cell.mark === null && cell.score === null;
+        expect(own.at(-1)).toMatchObject(
+          empty
+            ? { changed_how: 'entry', changed_by: lesson.writer }
+            : { changed_how: 'forced_delete', changed_by: adminAccount },
         );
+        expect(own[0]?.changed_by).toBe(lesson.writer);
       }
     });
 
@@ -1219,6 +1231,31 @@ describe('the forced delete of a dated lesson and its restore', () => {
         ]),
       );
       expect(saved[0]).toMatchObject({ value: 2, version: (attendance?.version ?? 0) + 1 });
+    });
+
+    it('puts back a lesson cancelled with its data cancelled, with its cells (plan test 8)', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const cells = await cellsOf(lesson.id);
+      // The one-day cancel with the tick: a correction is for a past lesson,
+      // which no version in force would let back (`forced_delete_version`).
+      const cancelled = await keyed(
+        `/api/timetable/lessons/${lesson.id}/cancel`,
+        s.branch,
+        { reason: 'Excursion', confirm: true },
+        t.admin,
+        randomUUID(),
+      );
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      done(await restore(s.branch, store));
+      expect(await rowOf(lesson.id)).toMatchObject({
+        cancel_cause: 'reason',
+        cancel_reason: 'Excursion',
+      });
+      expect(
+        (await cellsOf(lesson.id)).map((one) => [one.id, one.mark, one.score, one.changed_how]),
+      ).toEqual(cells.map((one) => [one.id, one.mark, one.score, 'restored']));
     });
 
     it('restores a store row written before 6.1b-2, with no cells and no works', async () => {
@@ -1327,21 +1364,30 @@ describe('the forced delete of a dated lesson and its restore', () => {
           (one) => one.student_id === third && one.mark === 0,
         ),
       ).toBe(true);
-      // The delete first: the save that comes after it finds no lesson.
-      const late = await t.app
-        .get(Transactions)
-        .run([s.branch], (transaction) =>
-          saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
-            {
-              lessonId: lesson.id,
-              studentId: lesson.student,
-              workId: null,
-              value: 1,
-              version: null,
-            },
-          ]),
-        )
-        .catch((error: unknown) => error);
+      // The delete first: the save, which waits behind it on the lesson, then
+      // finds no lesson.
+      const s2 = await scene();
+      const second = await dataLesson(s2);
+      const [deleted, late] = await inOrderOnLesson({
+        app: t.app,
+        migrator: t.database.migrator,
+        branchId: s2.branch,
+        lessonId: second.id,
+        first: () => forceDelete(s2.branch, second.id),
+        second: () =>
+          t.app.get(Transactions).run([s2.branch], (transaction) =>
+            saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+              {
+                lessonId: second.id,
+                studentId: second.student,
+                workId: null,
+                value: 1,
+                version: null,
+              },
+            ]),
+          ),
+      });
+      done(deleted as Response);
       expect(late).toMatchObject({ code: 'cell_closed' });
     });
   });

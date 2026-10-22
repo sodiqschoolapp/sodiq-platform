@@ -253,3 +253,69 @@ export async function markInStore(
     return row.id;
   });
 }
+
+/**
+ * Task 6.1b-2 (spec review of the code, must-fix 2): two real changes of one
+ * lesson in a fixed order, both waiting on its row. A third transaction holds
+ * the lesson `for update`, which both conflict with: `first` starts and waits
+ * on it (a cancel or a forced delete locks the lesson `for update`), then
+ * `second` starts and queues behind it (a save of cells takes the lesson `for
+ * share`), so the row goes to `first` when the hold is released. Each answers
+ * its value or the error it threw.
+ */
+export async function inOrderOnLesson<A, B>(input: {
+  readonly app: INestApplication;
+  readonly migrator: Database;
+  readonly branchId: string;
+  readonly lessonId: string;
+  readonly first: () => Promise<A>;
+  readonly second: () => Promise<B>;
+}): Promise<[unknown, unknown]> {
+  const waiting = async () => {
+    const found = await sql<{ n: number }>`
+      select count(distinct l.pid)::int as n
+      from pg_locks l join pg_stat_activity a on a.pid = l.pid
+      where a.datname = current_database() and not l.granted
+    `.execute(input.migrator);
+    return found.rows[0]?.n ?? 0;
+  };
+  const until = async (count: number) => {
+    for (let tries = 0; tries < 800; tries += 1) {
+      if ((await waiting()) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`Fewer than ${String(count)} waited on the lesson.`);
+  };
+  let release: () => void = () => undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let ready: () => void = () => undefined;
+  const isReady = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  const held = input.app
+    .get(Transactions)
+    .run([input.branchId], async (transaction) => {
+      await transaction
+        .selectFrom('lessons')
+        .select('id')
+        .where('id', '=', input.lessonId)
+        .forUpdate()
+        .execute();
+      ready();
+      await released;
+    })
+    .catch((error: unknown) => error);
+  await isReady;
+  const one = input.first().catch((error: unknown) => error);
+  await until(1);
+  const two = input.second().catch((error: unknown) => error);
+  await until(2);
+  release();
+  const heldError = await held;
+  if (heldError !== undefined) {
+    throw heldError instanceof Error ? heldError : new Error('The hold on the lesson failed.');
+  }
+  return Promise.all([one, two]);
+}

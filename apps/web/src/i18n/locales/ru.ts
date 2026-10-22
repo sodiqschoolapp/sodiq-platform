@@ -4208,7 +4208,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       close: 'Закрыть',
     },
     held: {
-      title: 'В этом уроке есть данные:',
+      title: 'Уроки с данными:',
       attendance: 'отметки посещаемости: {{count}}',
       scores: 'баллы: {{count}}',
       totals: 'работы с максимумом: {{count}}',

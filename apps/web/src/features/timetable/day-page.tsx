@@ -499,6 +499,7 @@ export function DayPage(): React.JSX.Element {
       {cancelling !== null && (
         <CancelDialog
           lesson={cancelling}
+          lessons={day.data?.lessons ?? []}
           subject={cancelling.subject.names[language]}
           onClose={() => {
             setCancelling(null);
@@ -882,11 +883,14 @@ function ChangeDialog({
  */
 function CancelDialog({
   lesson,
+  lessons,
   subject,
   onClose,
   onCancelled,
 }: {
   lesson: DayLesson;
+  /** The day's lessons, to name each lesson a refusal lists (task 6.1b-2). */
+  lessons: readonly DayLesson[];
   subject: string;
   onClose: () => void;
   onCancelled: () => Promise<void>;
@@ -947,7 +951,11 @@ function CancelDialog({
           <TextAreaField label={t('timetable.day.reason')} rows={3} {...form.bind('reason')} />
           <FailureAlert error={form.failure} />
           {form.failure instanceof ApiFailure && form.failure.code === 'cancel_holds_data' && (
-            <HeldDataTick details={form.failure.details ?? []} confirm={form.bind('confirm')} />
+            <HeldDataTick
+              details={form.failure.details ?? []}
+              lessons={lessons}
+              confirm={form.bind('confirm')}
+            />
           )}
           <DialogFooter>
             <DialogClose render={<Button variant="ghost" />}>{t('timetable.day.keep')}</DialogClose>
