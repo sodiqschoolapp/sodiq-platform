@@ -16,9 +16,12 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { markedLesson } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from '../journal/cells.js';
 import { DAY_REFUSALS, MOVE_REFUSALS } from './day-changes.service.js';
 import { followTutors } from './tutor-lessons.js';
 import { HELD_ENTRY_ACTION, heldEntry } from '../../testing/held-entry.js';
@@ -2925,6 +2928,214 @@ describe('one-day changes: cancel and restore', () => {
         'lesson_cancelled',
       );
       expect(await everything()).toEqual(before);
+    });
+
+    // Task 6.1b-2 (decision 2; the From line of 5.6a-1): edge/timetable,
+    // After publishing: "A lesson that already has attendance must be
+    // cancelled. Only the Academic Vice Principal, with a reason and a list of
+    // what is affected. The entries are kept, struck through and left out of
+    // every figure. Restoring the lesson brings them back."
+    describe('a lesson that holds data (task 6.1b-2)', () => {
+      const markOn = async (s: Scene, lessonId: string) =>
+        (
+          await markedLesson(t.app, t.database.migrator, {
+            branchId: s.branch,
+            classId: s.classId,
+            lessonId,
+            accountId: await load.classes.account(),
+          })
+        ).studentId;
+
+      const cellsOf = (lessonId: string) =>
+        t.database.migrator
+          .selectFrom('journal_cells')
+          .selectAll()
+          .where('lesson_id', '=', lessonId)
+          .orderBy('id')
+          .execute();
+
+      const heldOf = (response: Response) => {
+        refusedWith(response, 409, 'cancel_holds_data');
+        return (
+          response.body as {
+            error: { details: { recordId: string; heldData: Record<string, number> }[] };
+          }
+        ).error.details;
+      };
+
+      const saveOn = (s: Scene, lessonId: string, studentId: string, version: number | null) =>
+        t.app
+          .get(Transactions)
+          .run([s.branch], async (transaction) =>
+            saveCells(transaction, t.app.get(Audit), { accountId: await load.classes.account() }, [
+              { lessonId, studentId, workId: null, value: 2, version },
+            ]),
+          )
+          .catch((error: unknown) => error);
+
+      it('refuses the correction’s cancel without the tick, with what the lesson holds, and nothing changes', async () => {
+        const s = await scene();
+        const lesson = await pastOne(s);
+        await markOn(s, lesson);
+        await markOn(s, lesson);
+        const before = await everything();
+        const cells = await cellsOf(lesson);
+        expect(heldOf(await correct(s.branch, lesson, { kind: 'cancel' }))).toEqual([
+          expect.objectContaining({
+            recordId: lesson,
+            heldData: { attendance: 2, scores: 0, totals: 0, notHeld: 0 },
+          }),
+        ]);
+        expect(await everything()).toEqual(before);
+        expect(await cellsOf(lesson)).toEqual(cells);
+      });
+
+      it('cancels it with the tick, keeps its cells, which take no value, and a restore brings it back with them', async () => {
+        const s = await scene();
+        const lesson = await pastOne(s);
+        const student = await markOn(s, lesson);
+        const cells = await cellsOf(lesson);
+        const answer = changed(
+          await correct(s.branch, lesson, { kind: 'cancel', reason: 'Nobody came', confirm: true }),
+        );
+        expect(answer.lesson).toMatchObject({ state: 'cancelled', cancelCause: 'reason' });
+        expect(await cellsOf(lesson)).toEqual(cells);
+        const [entry] = await t.entries('lesson.correct', lesson);
+        expect(entry?.new_value).toMatchObject({
+          kind: 'cancel',
+          confirmed: true,
+          heldData: [{ lessonId: lesson, attendance: 1, scores: 0, totals: 0, notHeld: 0 }],
+        });
+        // A cancelled lesson takes no value (0109).
+        expect(await saveOn(s, lesson, student, cells[0]?.version ?? null)).toMatchObject({
+          code: 'lesson_cancelled_cell',
+        });
+        // "Restoring the lesson brings them back."
+        changed(await correct(s.branch, lesson, { kind: 'restore', reason: 'It took place' }));
+        expect((await rowOf(lesson))?.cancel_cause).toBeNull();
+        expect(await cellsOf(lesson)).toEqual(cells);
+        expect(await saveOn(s, lesson, student, cells[0]?.version ?? null)).toMatchObject([
+          { value: 2 },
+        ]);
+      });
+
+      it('cancels a lesson with no data with no tick, as before', async () => {
+        const s = await scene();
+        const lesson = await pastOne(s);
+        changed(await correct(s.branch, lesson, { kind: 'cancel' }));
+        const [entry] = await t.entries('lesson.correct', lesson);
+        expect(entry?.new_value).not.toHaveProperty('heldData');
+      });
+
+      it('takes the tick into the request key: a repeat without it is not the stored answer', async () => {
+        const s = await scene();
+        const lesson = await pastOne(s);
+        await markOn(s, lesson);
+        const key = randomUUID();
+        changed(await correct(s.branch, lesson, { kind: 'cancel', confirm: true }, t.admin, key));
+        refusedWith(
+          await correct(s.branch, lesson, { kind: 'cancel' }, t.admin, key),
+          409,
+          'request_key_reused',
+        );
+        const future = await lessonOf(s, NEXT_MONDAY);
+        await markOn(s, future.id);
+        const dayKey = randomUUID();
+        changed(
+          await keyed(
+            `/api/timetable/lessons/${future.id}/cancel`,
+            s.branch,
+            { reason: 'Excursion', confirm: true },
+            t.admin,
+            dayKey,
+          ),
+        );
+        refusedWith(
+          await cancel(s.branch, future.id, 'Excursion', t.admin, dayKey),
+          409,
+          'request_key_reused',
+        );
+      });
+
+      it('refuses a one-day cancel of a double whose other half holds data without the tick, listing that half; with it both are cancelled', async () => {
+        const s = await scene({ twoLessons: true });
+        const both = await t.database.migrator
+          .selectFrom('lessons')
+          .select(['id', 'block_id'])
+          .where('class_id', '=', s.classId)
+          .where('lesson_date', '=', NEXT_MONDAY)
+          .orderBy('starts_at')
+          .execute();
+        const [first, second] = both;
+        if (first === undefined || second === undefined) throw new Error('No double lesson.');
+        await t.database.migrator
+          .updateTable('lesson_blocks')
+          .set({ double_pair_id: randomUUID() })
+          .where('id', 'in', [first.block_id, second.block_id])
+          .execute();
+        // The database takes data on a lesson to come; the routes of 6.3 will not.
+        await markOn(s, second.id);
+        const before = await everything();
+        expect(heldOf(await cancel(s.branch, first.id)).map((one) => one.recordId)).toEqual([
+          second.id,
+        ]);
+        expect(await everything()).toEqual(before);
+        changed(
+          await keyed(
+            `/api/timetable/lessons/${first.id}/cancel`,
+            s.branch,
+            { reason: 'Excursion', confirm: true },
+            t.admin,
+            randomUUID(),
+          ),
+        );
+        expect((await rowOf(first.id))?.cancel_cause).toBe('reason');
+        expect((await rowOf(second.id))?.cancel_cause).toBe('reason');
+        expect(await cellsOf(second.id)).toHaveLength(1);
+      });
+
+      it('a save of the first mark held open and a cancel without the tick: the save first refuses the cancel; the cancel first refuses the save', async () => {
+        const s = await scene();
+        const lesson = await pastOne(s);
+        const student = await members.student(s.branch, { startsOn: '2026-09-01' });
+        await members.member({
+          branch: s.branch,
+          classId: s.classId,
+          studentId: student,
+          from: '2026-09-01',
+        });
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let ready: () => void = () => undefined;
+        const isReady = new Promise<void>((resolve) => {
+          ready = resolve;
+        });
+        const account = await load.classes.account();
+        const held = t.app
+          .get(Transactions)
+          .run([s.branch], async (transaction) => {
+            await saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+              { lessonId: lesson, studentId: student, workId: null, value: 1, version: null },
+            ]);
+            ready();
+            await released;
+          })
+          .catch((error: unknown) => error);
+        await isReady;
+        const cancelling = correct(s.branch, lesson, { kind: 'cancel' }).then((one) => one);
+        await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+        release();
+        expect(await held).toBeUndefined();
+        heldOf(await cancelling);
+        // The cancel first (no data yet, so no tick): the save that follows is refused.
+        const other = await pastOne(s, { date: '2026-10-08' });
+        changed(await correct(s.branch, other, { kind: 'cancel' }));
+        expect(await saveOn(s, other, student, null)).toMatchObject({
+          code: 'lesson_cancelled_cell',
+        });
+      });
     });
 
     it('takes one lesson at a time: a half of a double alone (decision 1)', async () => {
