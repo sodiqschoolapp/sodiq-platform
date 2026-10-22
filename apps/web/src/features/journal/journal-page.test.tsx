@@ -285,6 +285,43 @@ describe('a journal', () => {
     );
   });
 
+  it('heads each work with its title and "Soni" with its total (07, Layout, row 3)', async () => {
+    open(GRID);
+    await waitFor(() => {
+      expect(
+        document.querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`),
+      ).not.toBeNull();
+    });
+    expect(
+      document
+        .querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`)
+        ?.textContent?.trim(),
+    ).toBe('CW 1Soni 30');
+  });
+
+  it('filters the students who left, and those with an empty cell', async () => {
+    open(GRID, `/journal/${JOURNAL}?filter=left`);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Left or moved: 1 student' })).toBeDefined();
+    });
+    expect(cellOf(uid(101), 'name')).toBeNull();
+    expect(cellOf(uid(102), 'name')).toBeNull();
+  });
+
+  it('keeps only the students with an empty cell in a held lesson', async () => {
+    open(GRID, `/journal/${JOURNAL}?filter=empty`);
+    // Oʻktamov has no mark on the held lessons; Zokirov has every mark and number.
+    await waitFor(() => {
+      expect(cellOf(uid(102), 'name')).not.toBeNull();
+    });
+    expect(cellOf(uid(101), 'name')).toBeNull();
+  });
+
+  it('says so when the quarter has no lessons yet', async () => {
+    open({ ...GRID, lessons: [], students: [], bottom: null });
+    await screen.findByText(en.journal.page.noLessons);
+  });
+
   it('shows the refusal of a journal outside the role', async () => {
     open(null);
     await screen.findByText(en.errors.journal_scope);

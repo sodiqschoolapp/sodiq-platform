@@ -459,6 +459,39 @@ describe('the journal grid', () => {
     });
   });
 
+  it('gives an attendance-only subject its attendance average alone, no lesson score, result or grade, also by month', async () => {
+    // edge/calculation, "Ma'naviyat soati and the Homework slot": "Attendance-only subjects have
+    // no weights, no lesson score, no result and no grade. They show an attendance average".
+    const browser = await account();
+    const scene = await publishedScene(t, load);
+    const [first, second] = await lessonsOf(scene);
+    const id = await student(scene.branch, scene.classId, { first: 'Aziz', last: 'Karimov' });
+    await save(scene.branch, [
+      { lessonId: first?.id ?? '', studentId: id, value: 1 },
+      { lessonId: second?.id ?? '', studentId: id, value: 2 },
+    ]);
+    const journal = await journalOf(scene.classId);
+    await as(browser, [{ role: 'principal', branchId: scene.branch }], async (get) => {
+      const grid = gridOf(await get(scene.branch, `/api/journal/journals/${journal}`));
+      expect(grid.journal.attendanceOnly).toBe(true);
+      const karimov = grid.students.find((one) => one.id === id);
+      const only = {
+        attendance: 75,
+        classwork: null,
+        homework: null,
+        ratingExam: null,
+        result: null,
+      };
+      expect(karimov?.quarter).toEqual(only);
+      // The month holds the held, not cancelled lessons dated in it (review correction 5).
+      expect(karimov?.months).toEqual({ '2026-10': only });
+      expect(karimov?.cells.map((cell) => cell.score)).toEqual([null, null, null]);
+      expect(grid.bottom?.quarter).toEqual({ ...only, result: null });
+      expect(grid.legend.daily).toBeNull();
+      expect(grid.legend.quarterly).toBeNull();
+    });
+  });
+
   it('gives the Vice Principal for Spiritual and Moral Education and the Head Tutor attendance only', async () => {
     const s = await gradedScene();
     for (const role of ['spiritual_vice_principal', 'head_tutor'] as const) {

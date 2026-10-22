@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.2 Journal grid
+
+- `GET /api/journal/journals` (the Journals page: tabs Classes and Groups, then the subject, by year) and `GET /api/journal/journals/:journalId?quarterId=` (one quarter): the area `journal`, view only, for the nine roles of `07`, with the scope of each decided in `journal-scope.ts` (whole, attendance only, a Tutor's own rows of a group, a substitute's or former owner's lessons). Every figure (percent, AVG, quarter and month figures, bottom row) comes from `packages/calc` on the server; `groupAverage` is new (`CALC_VERSION` 3).
+- The web: `/journal` and `/journal/$journalId` with AG Grid Community 36.2.0 (MIT): students and figures pinned left, a column group per lesson (date, weekday, slot; A, CW n and HW n with "Soni" and the total, AVG), cancelled lessons grey and struck through, closed cells with a sign, the folded "Left or moved" section, the bottom row, the month switch, student search and the Filter, lesson mode, the legend with "changed on". The home page opens each of today's lessons' journal (switching branch first when needed); the timetable views link the subject of a lesson to its journal at that date.
+- Timed: the real-size run opens a full quarter's journal per branch (small: 35 ms; full: see the pull request), asserted under 1 s; the browser test opens it from the home page (362 ms locally, not asserted).
+- Left out: typing anything (6.3, 8.1 to 8.4), exemptions (8.5), results across journals after a transfer (8.6, From line), lesson status and reminders (8.7), plan titles and topic (8.8), export and print (8.9).
+
+The next sessions must know:
+
+- A journal's answer is built in `apps/api/src/modules/journal/journal-grid.service.ts` (reads in `journal-grid.query.ts`); cells are in the order of `lessons`, works in the order of each lesson's `works`. 6.3 and 8.x add entry on top of this answer.
+- A test of a graded journal uses `publishedScene(t, load, { graded: true })`; `CellsKit.groupLesson` writes a group's lesson. AG Grid renders in jsdom with column virtualisation off in tests (`suppressColumnVirtualisation` when `MODE === 'test'`): read a cell as `[row-id="<student>"] [col-id="<lesson>:a"]`.
+
 ## 22 October 2026: task 6.1c Reports over the cells
 
 - 0112: `password_resets_of_branch` (SECURITY DEFINER, Look first) answers the resets (administrator's, also the second-step reset; by email; the re-hire password) of the accounts of the branch's staff and of any account that wrote a cell line of the branch within 48 hours, from both logs, ids, kinds and moments only, with the email change the email reset's entry names and the action that wrote that email.
