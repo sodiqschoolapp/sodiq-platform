@@ -4238,6 +4238,34 @@ try {
     .execute();
   seeded.timetableFiles = { login: filesVice.login, password: filesVice.firstPassword };
 
+  // The print of a version (task 5.9c-2): the publishable scene in a branch of
+  // its own, left a draft; the browser test prints the draft from Version
+  // history in English, Russian and Uzbek and reads DRAFT, the fonts and the
+  // text of every page. The second class is named in Uzbek Cyrillic, as above.
+  const versionFilesVice = await gridScene({
+    branch: 'Version files browser test branch',
+    vice: ['Zarina', 'Usmonova'],
+    staffId: 'S-269367',
+    phone: '+998935557377',
+    rooms: [],
+    publishable: true,
+  });
+  const versionFilesBranch = await migrator
+    .selectFrom('branches')
+    .select('id')
+    .where('name', '=', 'Version files browser test branch')
+    .executeTakeFirstOrThrow();
+  await migrator
+    .updateTable('classes')
+    .set({ name: 'Ғўзақаҳ' })
+    .where('branch_id', '=', versionFilesBranch.id)
+    .where('name', '=', 'Princeton')
+    .execute();
+  seeded.versionFiles = {
+    login: versionFilesVice.login,
+    password: versionFilesVice.firstPassword,
+  };
+
   // The forced delete of a lesson (task 5.8b): the publishable scene in a
   // branch of its own. The forced delete is the Super Admin's only, and the
   // seed holds no fourth Super Admin (at most three, correction 1 of the

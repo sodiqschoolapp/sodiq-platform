@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { LANGUAGE_NAMES } from '../src/i18n/languages';
 import { en } from '../src/i18n/locales/en';
 import { ru } from '../src/i18n/locales/ru';
@@ -27,12 +27,14 @@ function mondaysAhead(count: number): string[] {
  * it (`filename*`): the name the browser keeps depends on the machine's
  * locale, a Cyrillic one is dropped without a UTF-8 one.
  */
-async function download(page: Page, button: string): Promise<{ name: string; bytes: Buffer }> {
+async function download(
+  page: Page,
+  button: string,
+  within: Page | Locator = page,
+): Promise<{ name: string; bytes: Buffer }> {
   const started = page.waitForEvent('download');
-  const answered = page.waitForResponse((response) =>
-    response.url().endsWith('/api/timetable/views/export'),
-  );
-  await page.getByRole('button', { name: button, exact: true }).click();
+  const answered = page.waitForResponse((response) => response.url().endsWith('/export'));
+  await within.getByRole('button', { name: button, exact: true }).click();
   const disposition = (await answered).headers()['content-disposition'] ?? '';
   const file = await started;
   const path = await file.path();
@@ -41,14 +43,20 @@ async function download(page: Page, button: string): Promise<{ name: string; byt
 }
 
 /** Switches the account's language from the person menu; the page then speaks it. */
-async function speak(page: Page, from: typeof en, to: 'ru' | 'uz', texts: typeof en) {
+async function speak(
+  page: Page,
+  from: typeof en,
+  to: 'ru' | 'uz',
+  texts: typeof en,
+  title = texts.timetable.views.title,
+) {
   const saved = page.waitForResponse(
     (response) => response.url().endsWith('/api/auth/language') && response.status() === 204,
   );
   await openPersonMenu(page, from);
   await page.getByRole('menuitemradio', { name: LANGUAGE_NAMES[to], exact: true }).click();
   await saved;
-  await expect(heading(page, texts.timetable.views.title)).toBeVisible();
+  await expect(heading(page, title)).toBeVisible();
 }
 
 /** The fonts the server may embed: Golos Text, and Bitter for U+02BB alone (decision 16). */
@@ -142,5 +150,73 @@ test('an Academic Vice Principal downloads the timetable as PDF and Excel in Rus
   const text = uzbek.pages.join('');
   expect(text).toContain(pdfText('Oʻqituvchi dars jadvali'));
   expect(text).toContain(pdfText('holatiga'));
+  expect(text).not.toContain('�');
+});
+
+// edge/timetable, "The wall timetable is out of date": "A printed pattern
+// carries the version, 'valid from', the print time and 'one-day changes not
+// included'. ... A draft print is marked DRAFT" (task 5.9c-2, pull request
+// #200, Done when: "a draft print reads DRAFT and the PDFs show Uzbek Latin
+// and Cyrillic correctly"). The seed's draft is left unpublished; the
+// Academic Vice Principal prints it from Version history in English, Russian
+// and Uzbek, and every page is read back. All names are invented.
+test('an Academic Vice Principal prints a draft version, marked DRAFT, in three languages', async ({
+  page,
+}) => {
+  const account = accountOf('versionFiles');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/versions');
+  await expect(heading(page, en.timetable.history.title)).toBeVisible();
+  const open = async () => {
+    await page.getByRole('button', { name: /^(Version 1|Версия 1|1-versiya)$/ }).click();
+    const panel = page.getByRole('complementary', { name: /^(Version 1|Версия 1|1-versiya)$/ });
+    await expect(panel.locator('[data-view-files]')).toBeVisible();
+    return panel;
+  };
+
+  // English: DRAFT on every page.
+  const english = await download(page, en.timetable.views.pdf, await open());
+  expect(english.name).toBe('version-1-school.pdf');
+  const draft = readPdf(english.bytes);
+  expect(draft.pages.length).toBeGreaterThan(0);
+  for (const font of draft.fonts) expect(font).toMatch(EMBEDDED);
+  for (const text of draft.pages) {
+    expect(text).toContain(pdfText('DRAFT'));
+    expect(text).toContain(pdfText('Version 1, planned from'));
+    expect(text).toContain(pdfText('One-day changes not included'));
+    expect(text).not.toContain('�');
+  }
+
+  // Russian: ЧЕРНОВИК and a class named in Uzbek Cyrillic.
+  await speak(page, en, 'ru', ru, ru.timetable.history.title);
+  const russian = readPdf((await download(page, ru.timetable.views.pdf, await open())).bytes);
+  for (const font of russian.fonts) expect(font).toMatch(EMBEDDED);
+  for (const text of russian.pages) {
+    expect(text).toContain(pdfText('ЧЕРНОВИК'));
+    expect(text).toContain(pdfText('Изменения на один день не учтены'));
+    expect(text).not.toContain('�');
+  }
+  expect(russian.pages.join('')).toContain(pdfText('7 Ғўзақаҳ'));
+
+  // Uzbek: oʻ with U+02BB, drawn from the embedded fonts.
+  await speak(page, ru, 'uz', uz, uz.timetable.history.title);
+  const uzbek = readPdf((await download(page, uz.timetable.views.pdf, await open())).bytes);
+  for (const font of uzbek.fonts) expect(font).toMatch(EMBEDDED);
+  expect(uzbek.fonts.some((font) => font.startsWith('Bitter-'))).toBe(true);
+  const text = uzbek.pages.join('');
+  expect(text).toContain(pdfText('QORALAMA'));
+  expect(text).toContain(pdfText('Bir kunlik oʻzgarishlar kiritilmagan'));
   expect(text).not.toContain('�');
 });

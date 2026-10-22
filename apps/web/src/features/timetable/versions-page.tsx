@@ -21,6 +21,7 @@ import { useView } from '@/features/access/use-view';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { comparisonQuery, createVersion, historyQuery, invalidateTimetable } from './timetable-api';
+import { VersionFiles } from './version-files';
 import { NewDraftForm } from './version-form';
 import { VersionsCompare } from './versions-compare';
 
@@ -44,6 +45,7 @@ export function VersionsPage() {
   const search = useSearch({ from: '/app/timetable/versions' });
   const { role, branchId } = useView();
   const canCreate = role !== null && permits(PERMISSIONS, role, 'timetable', 'create');
+  const canPrint = role !== null && permits(PERMISSIONS, role, 'timetable', 'export');
   const years = useQuery(yearsQuery(branchId));
   const offered = useMemo(() => years.data?.years ?? [], [years.data]);
   const [chosenYear, setChosenYear] = useState<string | null>(null);
@@ -159,6 +161,7 @@ export function VersionsPage() {
               history={history.data}
               years={offered}
               canCreate={canCreate}
+              canPrint={canPrint}
             />
           )
         }
@@ -167,17 +170,19 @@ export function VersionsPage() {
   );
 }
 
-/** A version of the history: where it stands, a comparison with another version, and its restore. */
+/** A version of the history: where it stands, a comparison with another version, its print (5.9c-2) and its restore. */
 function VersionPanel({
   version,
   history,
   years,
   canCreate,
+  canPrint,
 }: {
   version: TimetableVersion;
   history: TimetableHistory;
   years: readonly AcademicYear[];
   canCreate: boolean;
+  canPrint: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -274,6 +279,8 @@ function VersionPanel({
           </>
         )}
       </section>
+
+      {canPrint && <VersionFiles version={version} />}
 
       {canCreate && year !== undefined && year.status !== 'closed' && (
         <section aria-labelledby={`restore-${version.id}`} className="grid gap-3">

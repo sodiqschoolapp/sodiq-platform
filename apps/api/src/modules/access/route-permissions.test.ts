@@ -527,6 +527,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
+  // Task 5.9c-2: Print, PDF and Excel of a version's pattern, for the roles that view the versions.
+  'POST /api/timetable/versions/:id/export': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
   'GET /api/timetable/versions/:id/load': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],

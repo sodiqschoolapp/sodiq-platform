@@ -329,6 +329,11 @@ describe('every export is logged', () => {
     'POST /api/timetable/views/export': { action: 'timetable_view.export' },
   };
 
+  /** The files of a version's pattern (task 5.9c-2, pull request #200): one entry with the version and the count. */
+  const VERSION_FILES: Record<string, { action: string }> = {
+    'POST /api/timetable/versions/:id/export': { action: 'timetable_version.export' },
+  };
+
   /** The entries of an action in both logs. */
   const countOf = async (action: string): Promise<number> => {
     const found = await sql<{ count: number }>`
@@ -396,7 +401,12 @@ describe('every export is logged', () => {
       .map((route) => route.name)
       .sort();
     expect(exports).toEqual(
-      [...Object.keys(EXPORTS), ...Object.keys(REPORTS), ...Object.keys(VIEW_FILES)].sort(),
+      [
+        ...Object.keys(EXPORTS),
+        ...Object.keys(REPORTS),
+        ...Object.keys(VIEW_FILES),
+        ...Object.keys(VERSION_FILES),
+      ].sort(),
     );
   });
 
@@ -431,6 +441,49 @@ describe('every export is logged', () => {
         span: 'day',
         format: 'xlsx',
       });
+      expect(refused.status).toBe(404);
+      expect(await countOf(spec.action)).toBe(before + 1);
+    },
+  );
+
+  it.each(Object.entries(VERSION_FILES))(
+    '%s writes one entry with the version and the count',
+    async (route, spec) => {
+      const year = await t.database.migrator
+        .selectFrom('academic_years')
+        .select('id')
+        .where('branch_id', '=', t.north)
+        .executeTakeFirstOrThrow();
+      const draft = await t.post('/api/timetable/versions', t.north, {
+        academicYearId: year.id,
+        startsOn: '2026-10-19',
+        copyFrom: null,
+      });
+      expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+      const version = (draft.body as { id: string }).id;
+      const path = route.replace('POST ', '').replace(':id', version);
+      const before = await countOf(spec.action);
+      const response = await exportOf(path, { kind: 'branch', format: 'xlsx' });
+      expect(response.status).toBe(200);
+      expect(await countOf(spec.action)).toBe(before + 1);
+      const [entry] = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['details', 'branch_id'])
+        .where('action', '=', spec.action)
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .execute();
+      expect(entry?.branch_id).toBe(t.north);
+      expect(entry?.details).toMatchObject({
+        versionId: version,
+        status: 'draft',
+        kind: 'branch',
+        format: 'xlsx',
+        lessons: 0,
+      });
+
+      const refused = await exportOf(path, { kind: 'class', classId: UNKNOWN, format: 'xlsx' });
       expect(refused.status).toBe(404);
       expect(await countOf(spec.action)).toBe(before + 1);
     },

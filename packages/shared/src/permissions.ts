@@ -304,7 +304,10 @@ function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
  *   timetables, changes nothing"). The scoped timetable views of the Tutor,
  *   the Head Tutor and the Head Teachers are views of lessons and come with
  *   task 5.9. A new area for new routes, decided on pull request #99
- *   (decision 4) and flagged on issue #42.
+ *   (decision 4) and flagged on issue #42. `export` (task 5.9c-2, pull
+ *   request #200, decision 1): Print, PDF and Excel of a version's weekly
+ *   pattern, a draft included, for the three roles that view the versions;
+ *   `permissions.test.ts` keeps `export` with `view`.
  */
 export const PERMISSIONS = freezeTable({
   branches: rows({
@@ -468,9 +471,9 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['edit'],
   }),
   timetable: rows({
-    super_admin: ['view', 'create', 'edit', 'archive'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+    super_admin: ['view', 'create', 'edit', 'archive', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive', 'export'],
   }),
   /**
    * The read-only timetable views by class, teacher, room and the whole branch

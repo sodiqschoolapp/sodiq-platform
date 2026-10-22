@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES } from './language.js';
-import { fillText, VIEW_EXPORT_TEXTS, viewExportRequestSchema } from './timetable-prints.js';
+import {
+  fillText,
+  PATTERN_EXPORT_TEXTS,
+  versionExportRequestSchema,
+  VIEW_EXPORT_TEXTS,
+  viewExportRequestSchema,
+} from './timetable-prints.js';
 
 const id = '0190f0c4-0000-7000-8000-000000000001';
 const common = { date: '2026-11-09', span: 'week', format: 'pdf' } as const;
@@ -54,6 +60,49 @@ describe('the request of a timetable file', () => {
   });
 });
 
+// Task 5.9c-2 (decision 5): the four kinds of the views, weekly, each with its own id only.
+describe('the request of a version file', () => {
+  it('takes each kind with its own id only', () => {
+    expect(versionExportRequestSchema.safeParse({ kind: 'branch', format: 'pdf' }).success).toBe(
+      true,
+    );
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'class', classId: id, format: 'xlsx' }).success,
+    ).toBe(true);
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'teacher', staffId: id, format: 'pdf' }).success,
+    ).toBe(true);
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'room', roomId: id, format: 'pdf' }).success,
+    ).toBe(true);
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'branch', classId: id, format: 'pdf' }).success,
+    ).toBe(false);
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'class', roomId: id, format: 'pdf' }).success,
+    ).toBe(false);
+    expect(versionExportRequestSchema.safeParse({ kind: 'class', format: 'pdf' }).success).toBe(
+      false,
+    );
+  });
+
+  it('refuses a date, a span, an unknown kind or format', () => {
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'branch', format: 'pdf', span: 'week' }).success,
+    ).toBe(false);
+    expect(
+      versionExportRequestSchema.safeParse({ kind: 'branch', format: 'pdf', date: '2026-11-09' })
+        .success,
+    ).toBe(false);
+    expect(versionExportRequestSchema.safeParse({ kind: 'school', format: 'pdf' }).success).toBe(
+      false,
+    );
+    expect(versionExportRequestSchema.safeParse({ kind: 'branch', format: 'csv' }).success).toBe(
+      false,
+    );
+  });
+});
+
 const values = (value: unknown): string[] =>
   typeof value === 'string'
     ? [value]
@@ -71,9 +120,14 @@ describe('the texts of a timetable file', () => {
         : value !== null && typeof value === 'object'
           ? Object.entries(value).flatMap(([key, one]) => paths(one, `${path}.${key}`))
           : [];
-    const english = new Map(paths(VIEW_EXPORT_TEXTS.en));
+    const english = new Map(
+      paths({ view: VIEW_EXPORT_TEXTS.en, pattern: PATTERN_EXPORT_TEXTS.en }),
+    );
     for (const language of LANGUAGES) {
-      const texts = paths(VIEW_EXPORT_TEXTS[language]);
+      const texts = paths({
+        view: VIEW_EXPORT_TEXTS[language],
+        pattern: PATTERN_EXPORT_TEXTS[language],
+      });
       expect(texts.map(([path]) => path).sort(), language).toEqual([...english.keys()].sort());
       for (const [path, text] of texts) {
         expect(text.trim(), `${language} ${path}`).not.toBe('');
@@ -85,7 +139,7 @@ describe('the texts of a timetable file', () => {
   });
 
   it('write Uzbek oʻ and gʻ with U+02BB, never the keyboard apostrophe', () => {
-    for (const text of values(VIEW_EXPORT_TEXTS.uz)) {
+    for (const text of values([VIEW_EXPORT_TEXTS.uz, PATTERN_EXPORT_TEXTS.uz])) {
       expect(text, text).not.toMatch(/['`’‘]/);
     }
   });

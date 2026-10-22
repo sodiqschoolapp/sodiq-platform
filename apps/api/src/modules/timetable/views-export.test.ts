@@ -1,11 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { BRANCH_HEADER, REQUEST_KEY_HEADER } from '@sodiq/shared';
-import ExcelJS from 'exceljs';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
-import { ApiException } from '../../http/api-exception.js';
-import type { PdfRenderer } from '../../http/pdf.js';
 import { PDF_MEDIA_TYPE } from '../../http/pdf.js';
 import { XLSX_MEDIA_TYPE } from '../../http/xlsx.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
@@ -13,55 +10,12 @@ import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
-import { errorCode } from '../../testing/sign-in-kit.js';
+import { linesOf, RecordingPdf, refusedFile as refused } from '../../testing/pdf-kit.js';
 import { binary } from '../../testing/xlsx-kit.js';
 
 const NEXT_MONDAY = '2026-10-19';
 
-/** Keeps the HTML of each PDF it is asked for; a fake for the API tests (Chromium runs in the browser test). */
-class RecordingPdf implements PdfRenderer {
-  readonly htmls: string[] = [];
-  failing = false;
-
-  render(html: string): Promise<Buffer> {
-    if (this.failing) return Promise.reject(new ApiException('pdf_unavailable', 503));
-    this.htmls.push(html);
-    return Promise.resolve(Buffer.from('%PDF-1.7 recorded'));
-  }
-
-  get last(): string {
-    const html = this.htmls[this.htmls.length - 1];
-    if (html === undefined) throw new Error('No PDF was made.');
-    return html;
-  }
-}
-
 type Body = Readonly<Record<string, string | undefined>>;
-
-/** A refusal is JSON; the file routes read every body as bytes. */
-const refused = (response: Response, status: number, code: string) => {
-  const body: unknown = Buffer.isBuffer(response.body)
-    ? JSON.parse(response.body.toString('utf8'))
-    : response.body;
-  expect(response.status, JSON.stringify(body)).toBe(status);
-  expect(errorCode({ ...response, body } as Response)).toBe(code);
-};
-
-/** The lines of the one sheet, each cell as ExcelJS reads it back. */
-async function linesOf(content: Buffer) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(content as unknown as ArrayBuffer);
-  const [sheet] = workbook.worksheets;
-  if (sheet === undefined) throw new Error('The file has no sheet.');
-  const lines: { values: unknown[]; bold: boolean }[] = [];
-  sheet.eachRow({ includeEmpty: true }, (row) => {
-    lines.push({
-      values: (row.values as unknown[]).slice(1),
-      bold: row.getCell(1).font?.bold === true,
-    });
-  });
-  return { sheet, lines };
-}
 
 // All names are invented. Task 5.9c-1, pull request #199: Print, PDF and
 // Excel of the timetable views (06, Views and outputs: "Print, PDF and Excel

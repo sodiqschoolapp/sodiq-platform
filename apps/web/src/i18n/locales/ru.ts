@@ -3206,6 +3206,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       timetable_version: {
         create: 'Создан черновик расписания',
+        export: 'Версия расписания распечатана или выгружена',
         edit: 'Изменён черновик расписания',
         templates_confirm: 'Подтверждены шаблоны дня черновика',
         preferences: 'Изменены веса предпочтений черновика',
@@ -3789,6 +3790,14 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       nothingToCompare: 'Других версий в году нет.',
       changesFrom: 'Изменения от {{before}} к {{after}}',
       noDifferences: 'У двух версий одинаковые нагрузка и уроки.',
+      printTitle: 'Печать',
+      printWhat: 'Что печатать',
+      printOptions: {
+        branch: 'Вся школа',
+        class: 'Класс {{name}}',
+        teacher: 'Учитель {{name}}',
+        room: 'Кабинет {{name}}',
+      },
       restoreTitle: 'Восстановление',
       restore: 'Восстановить как новый черновик',
       noRoom: 'без кабинета',

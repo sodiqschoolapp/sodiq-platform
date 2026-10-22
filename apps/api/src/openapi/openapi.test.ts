@@ -280,6 +280,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/versions/{id}/compare',
         '/api/timetable/versions/{id}/day-keeps',
         '/api/timetable/versions/{id}/edit-lock',
+        '/api/timetable/versions/{id}/export',
         '/api/timetable/versions/{id}/grid',
         '/api/timetable/versions/{id}/load',
         '/api/timetable/versions/{id}/load/teachers',

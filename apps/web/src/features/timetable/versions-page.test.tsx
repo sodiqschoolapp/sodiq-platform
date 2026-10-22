@@ -1,14 +1,15 @@
 import type {
   AcademicYear,
+  GridAnswer,
   LoadRow,
   TimetableHistory,
   TimetableVersion,
   VersionComparison,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -136,6 +137,67 @@ const vice = () =>
 const principal = () =>
   sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }], branches: [NORTH] });
 
+/** The board of the draft V3, with what the print offers: a class, a teacher and a room. */
+const GRID: GridAnswer = {
+  version: V3,
+  editable: true,
+  classes: [{ id: OXFORD, name: 'Oxford', grade: 7 }],
+  rows: [
+    {
+      id: uid(701),
+      unit: {
+        kind: 'class',
+        id: OXFORD,
+        name: 'Oxford',
+        grades: [7],
+        language: 'uz',
+        archived: false,
+      },
+      subject: {
+        id: MATHS,
+        names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        colour: 'blue',
+      },
+      teacher: { id: KARIMOVA.id, kind: 'person', name: KARIMOVA.name },
+      lessonsPerWeek: 2,
+      mixedBlock: false,
+    },
+  ],
+  rooms: [ROOM],
+  blocks: [],
+  facts: {
+    branchId: NORTH.id,
+    startDate: '2027-01-11',
+    versionEnd: '2027-05-31',
+    teachers: [],
+    subjects: [],
+    rooms: [],
+    units: [],
+    classStudents: [],
+    days: [],
+    year: { firstDate: '2026-09-01', lastDate: '2027-05-31', quarters: [] },
+    travel: [],
+    classDailyLessons: null,
+    rows: [],
+    busyElsewhere: [],
+    otherDrafts: [],
+    branches: [],
+  },
+  pins: [],
+  locks: [],
+  results: [],
+  left: { blocks: [], rows: [] },
+};
+
+const pdfAnswer = () =>
+  new Response(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="version-3-school.pdf"; filename*=UTF-8''version-3-school.pdf`,
+    },
+  });
+
 const rowsDrawn = (): string[][] =>
   [...document.querySelectorAll('tbody tr')]
     .filter((one) => one.closest('[role="complementary"]') === null)
@@ -146,6 +208,7 @@ async function openList(
     session?: ReturnType<typeof sessionOf>;
     history?: TimetableHistory;
     comparison?: VersionComparison;
+    exportAnswer?: () => Response;
   } = {},
 ) {
   const made: TimetableVersion[] = [];
@@ -156,6 +219,8 @@ async function openList(
     [`GET /api/timetable/versions/${V1.id}/compare`]: () => json(input.comparison ?? COMPARISON),
     'GET /api/timetable/versions': () =>
       json({ versions: [V1, V2, V3, ...made], today: '2026-10-10' }),
+    [`GET /api/timetable/versions/${V3.id}/grid`]: () => json(GRID),
+    [`POST /api/timetable/versions/${V3.id}/export`]: () => (input.exportAnswer ?? pdfAnswer)(),
     'POST /api/timetable/versions': (body) => {
       const { startsOn } = body as { startsOn: string };
       const draft = version(4, {
@@ -343,5 +408,72 @@ describe('the version history page', () => {
   it('shows the empty state of a year with no versions', async () => {
     await openList({ history: { ...HISTORY, versions: [], quarters: [] } });
     expect(await screen.findByText(texts.emptyTitle)).toBeTruthy();
+  });
+});
+
+// Task 5.9c-2, pull request #200: Print, PDF and Excel of a version's weekly
+// pattern (06, step 8 "Print and export"; edge/timetable, "The wall
+// timetable is out of date"), for the roles with timetable export.
+describe('the print of a version', () => {
+  const sent = (calls: { route: string; body: unknown }[]) =>
+    calls
+      .filter((one) => one.route === `POST /api/timetable/versions/${V3.id}/export`)
+      .map((one) => one.body);
+
+  it('offers the school, the classes, teachers and rooms of the version, and sends each with its own id', async () => {
+    const saved: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push(this.download);
+    });
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    const revoked = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined);
+    try {
+      const calls = await openList();
+      const panel = await openPanel('Version 3');
+      const select = await within(panel).findByLabelText(texts.printWhat);
+      expect([...select.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+        'The whole school',
+        'Class 7 Oxford',
+        'Teacher Karimova Aziza',
+        'Room Room 12',
+      ]);
+      within(panel).getByRole('button', { name: en.timetable.views.pdf }).click();
+      await waitFor(() => {
+        expect(saved).toEqual(['version-3-school.pdf']);
+      });
+      for (const [value, body] of [
+        [`class:${OXFORD}`, { kind: 'class', classId: OXFORD, format: 'xlsx' }],
+        [`teacher:${KARIMOVA.id}`, { kind: 'teacher', staffId: KARIMOVA.id, format: 'xlsx' }],
+        [`room:${ROOM.id}`, { kind: 'room', roomId: ROOM.id, format: 'xlsx' }],
+      ] as const) {
+        fireEvent.change(select, { target: { value } });
+        const before = sent(calls).length;
+        within(panel).getByRole('button', { name: en.timetable.views.excel }).click();
+        await waitFor(() => {
+          expect(sent(calls)).toHaveLength(before + 1);
+        });
+        expect(sent(calls).at(-1)).toEqual(body);
+      }
+      expect(sent(calls)[0]).toEqual({ kind: 'branch', format: 'pdf' });
+    } finally {
+      click.mockRestore();
+      created.mockRestore();
+      revoked.mockRestore();
+    }
+  });
+
+  it('shows a refusal under the buttons', async () => {
+    await openList({ exportAnswer: () => refusal('pdf_unavailable', 503) });
+    const panel = await openPanel('Version 3');
+    (await within(panel).findByRole('button', { name: en.timetable.views.pdf })).click();
+    expect(await within(panel).findByText(en.errors.pdf_unavailable)).toBeTruthy();
+  });
+
+  it('is shown to the Principal, who may print a draft (decision 1)', async () => {
+    await openList({ session: principal() });
+    const panel = await openPanel('Version 3');
+    expect(await within(panel).findByLabelText(texts.printWhat)).toBeTruthy();
   });
 });

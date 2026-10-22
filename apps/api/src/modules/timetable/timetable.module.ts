@@ -30,6 +30,7 @@ import { LessonForcedDeletesController } from './forced-deletes.controller.js';
 import { LessonForcedDeletes, LessonHistoryReader } from './forced-deletes.service.js';
 import { TeachingHomeController } from './teaching-home.controller.js';
 import { TimetableViewsController } from './views.controller.js';
+import { TimetableVersionExports } from './version-export.service.js';
 import { TimetableViewExports } from './views-export.service.js';
 import { TimetableViews } from './views.service.js';
 import { CONFIG } from '../../config/config.module.js';
@@ -58,6 +59,7 @@ import { ChromiumPdfRenderer, PDF_RENDERER } from '../../http/pdf.js';
     Timetable,
     TimetableViews,
     TimetableViewExports,
+    TimetableVersionExports,
     {
       provide: PDF_RENDERER,
       useFactory: (config: AppConfig) => new ChromiumPdfRenderer(config),

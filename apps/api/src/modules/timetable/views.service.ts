@@ -52,6 +52,37 @@ import { hasStoredLessons } from './stored-lessons.js';
 import { Timetable } from './timetable.service.js';
 import { versionOnDate, type VersionInForce } from './version-on-date.js';
 
+/** The lowest of some grades, `undefined` for none. */
+export const lowestGrade = (grades: readonly number[]): number | undefined =>
+  grades.length === 0 ? undefined : Math.min(...grades);
+
+/**
+ * A teacher or a vacancy with the name the views print, read through the
+ * branch filter: a staff record linked to another branch only, or unknown,
+ * is 404 (task 5.9a; the version print of task 5.9c-2 reads it the same way).
+ */
+export async function staffOfBranch(
+  transaction: Transaction,
+  staffId: string,
+): Promise<{ id: string; kind: 'person' | 'vacancy'; name: string }> {
+  const found = await transaction
+    .selectFrom('staff')
+    .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name'])
+    .where('id', '=', staffId)
+    .executeTakeFirst();
+  if (found === undefined) {
+    throw notFound();
+  }
+  return {
+    id: found.id,
+    kind: found.kind === 'vacancy' ? 'vacancy' : 'person',
+    name:
+      found.kind === 'vacancy'
+        ? (found.vacancy_name ?? '')
+        : listName({ firstName: found.first_name ?? '', lastName: found.last_name ?? '' }),
+  };
+}
+
 /**
  * The read-only timetable views (task 5.9a, pull request #197; `06`, Views
  * and outputs): by class, by teacher, by room and for the whole school, by
@@ -224,15 +255,7 @@ export class TimetableViews {
     query: TeacherViewQuery,
   ): Promise<TimetableView> {
     const branchId = branchOf(access);
-    const found = await transaction
-      .selectFrom('staff')
-      .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name'])
-      .where('id', '=', query.staffId)
-      .executeTakeFirst();
-    // Read through the branch filter: a staff record linked to another branch only is not found.
-    if (found === undefined) {
-      throw notFound();
-    }
+    const found = await staffOfBranch(transaction, query.staffId);
     const scope = await scopeOf(transaction, access);
     const own = scope.own === found.id;
     let subjectsOn: ((date: string) => ReadonlySet<string>) | null = null;
@@ -249,10 +272,7 @@ export class TimetableViews {
       if (![...shown.values()].some((ids) => ids.size > 0)) throw scopeRefusal();
       subjectsOn = (date) => shown.get(date) ?? new Set();
     }
-    const name =
-      found.kind === 'vacancy'
-        ? (found.vacancy_name ?? '')
-        : listName({ firstName: found.first_name ?? '', lastName: found.last_name ?? '' });
+    const { name } = found;
     return this.viewOf(transaction, access, branchId, 'teacher', query.date, query.span, {
       subject: { id: found.id, name },
       busyOf: found.kind === 'person' && subjectsOn === null ? found.id : null,
@@ -562,7 +582,11 @@ export class TimetableViews {
         if (grade !== undefined) gradeSlots.set(grade, slots);
       });
       for (const one of dayLessons) {
-        const grade = unitGrades(one.classIds)[0];
+        // The lowest grade of its classes: the order of `classIds` is the
+        // database's, and the pattern print numbers a lesson the same way
+        // (task 5.9c-2, approval correction 3; the block's minutes are read
+        // from the template of the lowest grade, `blockPlacements`).
+        const grade = lowestGrade(unitGrades(one.classIds));
         const slots = grade === undefined ? [] : (gradeSlots.get(grade) ?? []);
         one.lessonNumber =
           slots.find((slot) => slot.start === one.start && slot.end === one.end)?.lessonNumber ??
