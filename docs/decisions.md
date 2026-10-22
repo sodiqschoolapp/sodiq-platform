@@ -304,6 +304,8 @@ Plan approved on pull request #206 with corrections 1 to 4; decisions 1 to 9 con
 | **Build decision.** A pair of pass 2 takes the cancel a lesson created there would take (the expansion's, a one-day change or a bulk cancel applied again, or none), not the stored one-day cancel | The sorting of the stored changes decides at the new times, as when the lesson was created again |
 | **Build decision.** A substitution row of a lesson moved in place is recorded again at the lesson's new times (`settleSubstitutions`) | The row's times must match its lesson |
 | **Build decision.** The year's own dates cannot cut off a lesson: quarters stay inside the year (`outside_year`), so only the quarters' save has the refusal | `academic-years.service.ts` |
+| **Build decision.** The publish check answers `canPublish` false while `heldData` is not empty | The Publish button follows the server's refusal (spec review of the code, should-fix 1) |
+| **Build decision.** A `kept_data` lesson its version wants again is listed as given back only when it is held after the write; cancelled in place, it is listed with that cancel | The list says what the lesson is after the write (spec review of the code, should-fix 5) |
 
 ## 22 October 2026: cells, versions and history (task 6.1a)
 
