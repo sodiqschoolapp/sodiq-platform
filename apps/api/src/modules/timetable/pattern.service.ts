@@ -37,7 +37,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { notFound, refusingConstraints, refusingGoneRoom } from '../setup/setup-refusals.js';
 import { LOAD_REFUSALS, LoadFacts, type StoredLoadRow } from './load-facts.js';
 import { readPatternFacts, type PatternFacts } from './pattern-facts.js';
 import { readVersionDays } from './version-days.js';
@@ -185,74 +185,81 @@ export class TimetablePattern {
    * class in one block; a mixed half alone takes its whole split.
    */
   place(access: Access, id: string, input: PlaceRecord, requestId: string): Promise<GridAnswer> {
-    return refusingPattern(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
-        const state = await this.stateOf(transaction, version, access.accountId);
-        const row = state.rows.find((one) => one.id === input.loadRowId);
-        if (row === undefined) {
-          throw notFound();
-        }
-        const { model } = state.pattern;
-        this.checkPartner(state, row.id, input.partnerRowId);
-        // Task 5.4b-2a: a room chosen in the picker is a room of the branch.
-        if (input.roomId !== undefined && !this.isRoomOf(state, input.roomId)) {
-          throw notFound();
-        }
-        // One builder of a new block (task 5.4b-2b, review correction 2); task
-        // 5.4c-3b: a pairing with its partner, else a mixed half's whole split.
-        const fresh = newBlockOf(model, row.id, input.partnerRowId);
-        // Task 5.4c-2: the undo of a removal gives each lesson its room back.
-        const rooms = input.rooms ?? [];
-        for (const room of rooms) {
-          if (
-            !fresh.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
-            (room.roomId !== null && !this.isRoomOf(state, room.roomId))
-          ) {
+    return refusingGoneRoom(() =>
+      refusingPattern(() =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+          const state = await this.stateOf(transaction, version, access.accountId);
+          const row = state.rows.find((one) => one.id === input.loadRowId);
+          if (row === undefined) {
             throw notFound();
           }
-        }
-        const lessons = fresh.lessons.map((lesson) => {
-          const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
-          if (room !== undefined) return { ...lesson, roomId: room.roomId };
-          return lesson.loadRowId === row.id && input.roomId !== undefined
-            ? { ...lesson, roomId: input.roomId }
-            : lesson;
-        });
-        if (input.double === true) {
-          const doublePairId = randomUUID();
-          const [first, second] = newPairOf(model, row.id, input.partnerRowId);
-          const pair = pairAt(
+          const { model } = state.pattern;
+          this.checkPartner(state, row.id, input.partnerRowId);
+          // Task 5.4b-2a: a room chosen in the picker is a room of the branch.
+          if (input.roomId !== undefined && !this.isRoomOf(state, input.roomId)) {
+            throw notFound();
+          }
+          // One builder of a new block (task 5.4b-2b, review correction 2); task
+          // 5.4c-3b: a pairing with its partner, else a mixed half's whole split.
+          const fresh = newBlockOf(model, row.id, input.partnerRowId);
+          // Task 5.4c-2: the undo of a removal gives each lesson its room back.
+          const rooms = input.rooms ?? [];
+          for (const room of rooms) {
+            if (
+              !fresh.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
+              (room.roomId !== null && !this.isRoomOf(state, room.roomId))
+            ) {
+              throw notFound();
+            }
+          }
+          const lessons = fresh.lessons.map((lesson) => {
+            const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
+            if (room !== undefined) return { ...lesson, roomId: room.roomId };
+            return lesson.loadRowId === row.id && input.roomId !== undefined
+              ? { ...lesson, roomId: input.roomId }
+              : lesson;
+          });
+          if (input.double === true) {
+            const doublePairId = randomUUID();
+            const [first, second] = newPairOf(model, row.id, input.partnerRowId);
+            const pair = pairAt(
+              model,
+              [
+                { ...first, lessons, doublePairId },
+                {
+                  ...second,
+                  lessons: second.lessons.map((lesson, index) => ({
+                    ...lesson,
+                    roomId: lessons[index]?.roomId ?? lesson.roomId,
+                  })),
+                  doublePairId,
+                },
+              ],
+              first.id,
+              input.weekday,
+              input.slotPosition,
+            );
+            if (pair === null) {
+              throw refused('pattern_no_slot');
+            }
+            this.refuseBlocked(state, pair);
+            for (const half of pair) {
+              await this.insertBlock(transaction, access, state, half, requestId);
+            }
+            return this.gridAfter(transaction, version, access.accountId);
+          }
+          const placed = blockAt(
             model,
-            [
-              { ...first, lessons, doublePairId },
-              {
-                ...second,
-                lessons: second.lessons.map((lesson, index) => ({
-                  ...lesson,
-                  roomId: lessons[index]?.roomId ?? lesson.roomId,
-                })),
-                doublePairId,
-              },
-            ],
-            first.id,
+            { id: fresh.id, lessons },
             input.weekday,
             input.slotPosition,
           );
-          if (pair === null) {
-            throw refused('pattern_no_slot');
-          }
-          this.refuseBlocked(state, pair);
-          for (const half of pair) {
-            await this.insertBlock(transaction, access, state, half, requestId);
-          }
+          this.refuseBlocked(state, [placed]);
+          await this.insertBlock(transaction, access, state, placed, requestId);
           return this.gridAfter(transaction, version, access.accountId);
-        }
-        const placed = blockAt(model, { id: fresh.id, lessons }, input.weekday, input.slotPosition);
-        this.refuseBlocked(state, [placed]);
-        await this.insertBlock(transaction, access, state, placed, requestId);
-        return this.gridAfter(transaction, version, access.accountId);
-      }),
+        }),
+      ),
     );
   }
 
@@ -379,63 +386,65 @@ export class TimetablePattern {
     requestId: string,
   ): Promise<GridAnswer> {
     const branchId = branchOf(access);
-    return refusingPattern(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
-        const state = await this.stateOf(transaction, version, access.accountId);
-        const block = this.blockOf(state, blockId);
-        const lesson = block.lessons.find((one) => one.id === input.lessonId);
-        const { model } = state.pattern;
-        // Task 5.4c-2 (decision 7): `null` gives back "no room" on an undo.
-        if (
-          lesson === undefined ||
-          (input.roomId !== null && !this.isRoomOf(state, input.roomId))
-        ) {
-          throw notFound();
-        }
-        // Task 5.4c-3a, decision 7: in a double, the row's lesson of both halves.
-        const changed = roomLessons(state.blocks, block, lesson.id).flatMap((one) => {
-          const found = one.block.lessons.find((each) => each.id === one.lessonId);
-          return found === undefined ? [] : [{ block: one.block, lesson: found }];
-        });
-        if (changed.every((one) => one.lesson.roomId === input.roomId)) {
-          return this.gridOf(transaction, state);
-        }
-        const change = roomChange(model, state.blocks, block, lesson.id, input.roomId);
-        if (!change.accepted) {
-          throw blockedRefusal(change.blocked);
-        }
-        for (const one of changed) {
-          await transaction
-            .updateTable('pattern_entries')
-            .set({ room_id: input.roomId })
-            .where('id', '=', one.lesson.id)
-            .execute();
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'pattern_entry.room',
-            record: { type: 'pattern_entry', id: one.lesson.id },
-            oldValue: {
-              versionId: id,
-              blockId: one.block.id,
-              loadRowId: one.lesson.loadRowId,
-              roomId: one.lesson.roomId,
-              ...pairValue(one.block),
-            },
-            newValue: {
-              versionId: id,
-              blockId: one.block.id,
-              loadRowId: one.lesson.loadRowId,
-              roomId: input.roomId,
-              ...pairValue(one.block),
-            },
-            requestId,
+    return refusingGoneRoom(() =>
+      refusingPattern(() =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+          const state = await this.stateOf(transaction, version, access.accountId);
+          const block = this.blockOf(state, blockId);
+          const lesson = block.lessons.find((one) => one.id === input.lessonId);
+          const { model } = state.pattern;
+          // Task 5.4c-2 (decision 7): `null` gives back "no room" on an undo.
+          if (
+            lesson === undefined ||
+            (input.roomId !== null && !this.isRoomOf(state, input.roomId))
+          ) {
+            throw notFound();
+          }
+          // Task 5.4c-3a, decision 7: in a double, the row's lesson of both halves.
+          const changed = roomLessons(state.blocks, block, lesson.id).flatMap((one) => {
+            const found = one.block.lessons.find((each) => each.id === one.lessonId);
+            return found === undefined ? [] : [{ block: one.block, lesson: found }];
           });
-        }
-        return this.gridAfter(transaction, version, access.accountId);
-      }),
+          if (changed.every((one) => one.lesson.roomId === input.roomId)) {
+            return this.gridOf(transaction, state);
+          }
+          const change = roomChange(model, state.blocks, block, lesson.id, input.roomId);
+          if (!change.accepted) {
+            throw blockedRefusal(change.blocked);
+          }
+          for (const one of changed) {
+            await transaction
+              .updateTable('pattern_entries')
+              .set({ room_id: input.roomId })
+              .where('id', '=', one.lesson.id)
+              .execute();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'pattern_entry.room',
+              record: { type: 'pattern_entry', id: one.lesson.id },
+              oldValue: {
+                versionId: id,
+                blockId: one.block.id,
+                loadRowId: one.lesson.loadRowId,
+                roomId: one.lesson.roomId,
+                ...pairValue(one.block),
+              },
+              newValue: {
+                versionId: id,
+                blockId: one.block.id,
+                loadRowId: one.lesson.loadRowId,
+                roomId: input.roomId,
+                ...pairValue(one.block),
+              },
+              requestId,
+            });
+          }
+          return this.gridAfter(transaction, version, access.accountId);
+        }),
+      ),
     );
   }
 
@@ -456,158 +465,160 @@ export class TimetablePattern {
     requestId: string,
   ): Promise<GridAnswer> {
     const branchId = branchOf(access);
-    return refusingPattern(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const version = await this.timetable.lockDraft(transaction, access, id, requestId);
-        const state = await this.stateOf(transaction, version, access.accountId);
-        const { model } = state.pattern;
-        const changes = input.changes.map((change) => {
-          let from: PatternBlock | null = null;
-          let block: {
-            readonly id: string;
-            readonly lessons: readonly BlockLesson[];
-            readonly doublePairId: string | null;
-          };
-          if (change.blockId !== undefined) {
-            from = this.blockOf(state, change.blockId);
-            block = from;
-          } else {
-            const row = state.rows.find((one) => one.id === change.loadRowId);
-            if (row === undefined) {
-              throw notFound();
+    return refusingGoneRoom(() =>
+      refusingPattern(() =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          const version = await this.timetable.lockDraft(transaction, access, id, requestId);
+          const state = await this.stateOf(transaction, version, access.accountId);
+          const { model } = state.pattern;
+          const changes = input.changes.map((change) => {
+            let from: PatternBlock | null = null;
+            let block: {
+              readonly id: string;
+              readonly lessons: readonly BlockLesson[];
+              readonly doublePairId: string | null;
+            };
+            if (change.blockId !== undefined) {
+              from = this.blockOf(state, change.blockId);
+              block = from;
+            } else {
+              const row = state.rows.find((one) => one.id === change.loadRowId);
+              if (row === undefined) {
+                throw notFound();
+              }
+              this.checkPartner(state, row.id, change.partnerRowId);
+              block = newBlockOf(model, row.id, change.partnerRowId);
             }
-            this.checkPartner(state, row.id, change.partnerRowId);
-            block = newBlockOf(model, row.id, change.partnerRowId);
-          }
-          const rooms = change.rooms ?? [];
-          for (const room of rooms) {
-            if (
-              !block.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
-              (room.roomId !== null && !this.isRoomOf(state, room.roomId))
-            ) {
-              throw notFound();
+            const rooms = change.rooms ?? [];
+            for (const room of rooms) {
+              if (
+                !block.lessons.some((lesson) => lesson.loadRowId === room.loadRowId) ||
+                (room.roomId !== null && !this.isRoomOf(state, room.roomId))
+              ) {
+                throw notFound();
+              }
             }
-          }
-          const lessons = block.lessons.map((lesson) => {
-            const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
-            return room === undefined ? lesson : { ...lesson, roomId: room.roomId };
+            const lessons = block.lessons.map((lesson) => {
+              const room = rooms.find((one) => one.loadRowId === lesson.loadRowId);
+              return room === undefined ? lesson : { ...lesson, roomId: room.roomId };
+            });
+            const to = blockAt(
+              model,
+              { id: block.id, lessons, doublePairId: block.doublePairId },
+              change.weekday,
+              change.slotPosition,
+            );
+            return { from, to };
           });
-          const to = blockAt(
-            model,
-            { id: block.id, lessons, doublePairId: block.doublePairId },
-            change.weekday,
-            change.slotPosition,
+          const effective = changes.filter(
+            ({ from, to }) =>
+              from === null ||
+              from.weekday !== to.weekday ||
+              from.slotPosition !== to.slotPosition ||
+              from.lessons.some((lesson, index) => lesson.roomId !== to.lessons[index]?.roomId),
           );
-          return { from, to };
-        });
-        const effective = changes.filter(
-          ({ from, to }) =>
-            from === null ||
-            from.weekday !== to.weekday ||
-            from.slotPosition !== to.slotPosition ||
-            from.lessons.some((lesson, index) => lesson.roomId !== to.lessons[index]?.roomId),
-        );
-        // Task 5.4c-3a: a removed half of a double takes the other half with it.
-        const removed = (input.remove ?? []).flatMap((blockId) => {
-          const block = this.blockOf(state, blockId);
-          const other = otherHalf(state.blocks, block);
-          return other === undefined ? [block] : [block, other];
-        });
-        if (effective.length === 0 && removed.length === 0) {
-          return this.gridOf(transaction, state);
-        }
-        // Task 5.4c-1, decision 8: an applied suggestion leaves a locked lesson
-        // where it is and moves nothing into a locked day (From 5.4b-2b line);
-        // task 5.4c-2: nor does its undo remove a locked lesson.
-        if (
-          effective.some(
-            ({ from, to }) => lockedBy(model, state.locks, from ?? to, to).length > 0,
-          ) ||
-          removed.some((block) => lockedBy(model, state.locks, block, block).length > 0)
-        ) {
-          throw refused('pattern_locked');
-        }
-        const kept = state.blocks.filter((block) => !removed.some((one) => one.id === block.id));
-        this.refuseBlocked(
-          { ...state, blocks: kept },
-          effective.map((one) => one.to),
-        );
-        await deferPatternClashes(transaction);
-        // At most one new block (`rearrangeRecordSchema`); the others keep their ids.
-        const others = (blockId: string) =>
-          [...effective.map((one) => one.to.id), ...removed.map((one) => one.id)].filter(
-            (one) => one !== blockId,
-          );
-        const fresh = effective.find((one) => one.from === null);
-        const freshId =
-          fresh === undefined
-            ? null
-            : await this.insertBlock(
-                transaction,
-                access,
-                state,
-                fresh.to,
-                requestId,
-                others(fresh.to.id),
-              );
-        const withFresh = (blockIds: readonly string[]) =>
-          blockIds.map((blockId) =>
-            fresh !== undefined && blockId === fresh.to.id ? (freshId ?? blockId) : blockId,
-          );
-        for (const block of removed) {
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'pattern_block.delete',
-            record: { type: 'pattern_block', id: block.id },
-            oldValue: {
-              ...this.removedValue(state, block),
-              rearrangedWith: withFresh(others(block.id)),
-            },
-            requestId,
+          // Task 5.4c-3a: a removed half of a double takes the other half with it.
+          const removed = (input.remove ?? []).flatMap((blockId) => {
+            const block = this.blockOf(state, blockId);
+            const other = otherHalf(state.blocks, block);
+            return other === undefined ? [block] : [block, other];
           });
-          await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
-        }
-        for (const { from, to } of effective) {
-          if (from === null) continue;
-          if (from.weekday !== to.weekday || from.slotPosition !== to.slotPosition) {
-            await this.writeSlot(transaction, to);
+          if (effective.length === 0 && removed.length === 0) {
+            return this.gridOf(transaction, state);
           }
-          for (const [index, lesson] of to.lessons.entries()) {
-            if (lesson.roomId !== from.lessons[index]?.roomId) {
-              await transaction
-                .updateTable('pattern_entries')
-                .set({ room_id: lesson.roomId })
-                .where('id', '=', lesson.id)
-                .execute();
+          // Task 5.4c-1, decision 8: an applied suggestion leaves a locked lesson
+          // where it is and moves nothing into a locked day (From 5.4b-2b line);
+          // task 5.4c-2: nor does its undo remove a locked lesson.
+          if (
+            effective.some(
+              ({ from, to }) => lockedBy(model, state.locks, from ?? to, to).length > 0,
+            ) ||
+            removed.some((block) => lockedBy(model, state.locks, block, block).length > 0)
+          ) {
+            throw refused('pattern_locked');
+          }
+          const kept = state.blocks.filter((block) => !removed.some((one) => one.id === block.id));
+          this.refuseBlocked(
+            { ...state, blocks: kept },
+            effective.map((one) => one.to),
+          );
+          await deferPatternClashes(transaction);
+          // At most one new block (`rearrangeRecordSchema`); the others keep their ids.
+          const others = (blockId: string) =>
+            [...effective.map((one) => one.to.id), ...removed.map((one) => one.id)].filter(
+              (one) => one !== blockId,
+            );
+          const fresh = effective.find((one) => one.from === null);
+          const freshId =
+            fresh === undefined
+              ? null
+              : await this.insertBlock(
+                  transaction,
+                  access,
+                  state,
+                  fresh.to,
+                  requestId,
+                  others(fresh.to.id),
+                );
+          const withFresh = (blockIds: readonly string[]) =>
+            blockIds.map((blockId) =>
+              fresh !== undefined && blockId === fresh.to.id ? (freshId ?? blockId) : blockId,
+            );
+          for (const block of removed) {
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'pattern_block.delete',
+              record: { type: 'pattern_block', id: block.id },
+              oldValue: {
+                ...this.removedValue(state, block),
+                rearrangedWith: withFresh(others(block.id)),
+              },
+              requestId,
+            });
+            await transaction.deleteFrom('pattern_blocks').where('id', '=', block.id).execute();
+          }
+          for (const { from, to } of effective) {
+            if (from === null) continue;
+            if (from.weekday !== to.weekday || from.slotPosition !== to.slotPosition) {
+              await this.writeSlot(transaction, to);
             }
+            for (const [index, lesson] of to.lessons.entries()) {
+              if (lesson.roomId !== from.lessons[index]?.roomId) {
+                await transaction
+                  .updateTable('pattern_entries')
+                  .set({ room_id: lesson.roomId })
+                  .where('id', '=', lesson.id)
+                  .execute();
+              }
+            }
+            const roomsOf = (block: PatternBlock) =>
+              block.lessons.map((lesson) => ({
+                id: lesson.id,
+                loadRowId: lesson.loadRowId,
+                roomId: lesson.roomId,
+              }));
+            const rearrangedWith = withFresh(others(to.id));
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'pattern_block.rearrange',
+              record: { type: 'pattern_block', id: from.id },
+              oldValue: {
+                versionId: id,
+                rearrangedWith,
+                ...this.slotOf(from),
+                lessons: roomsOf(from),
+              },
+              newValue: { versionId: id, rearrangedWith, ...this.slotOf(to), lessons: roomsOf(to) },
+              requestId,
+            });
           }
-          const roomsOf = (block: PatternBlock) =>
-            block.lessons.map((lesson) => ({
-              id: lesson.id,
-              loadRowId: lesson.loadRowId,
-              roomId: lesson.roomId,
-            }));
-          const rearrangedWith = withFresh(others(to.id));
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'pattern_block.rearrange',
-            record: { type: 'pattern_block', id: from.id },
-            oldValue: {
-              versionId: id,
-              rearrangedWith,
-              ...this.slotOf(from),
-              lessons: roomsOf(from),
-            },
-            newValue: { versionId: id, rearrangedWith, ...this.slotOf(to), lessons: roomsOf(to) },
-            requestId,
-          });
-        }
-        return this.gridAfter(transaction, version, access.accountId);
-      }),
+          return this.gridAfter(transaction, version, access.accountId);
+        }),
+      ),
     );
   }
 

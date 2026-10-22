@@ -311,6 +311,7 @@ export class TimetableExams {
           this.transactions.run(access.branchIds, async (transaction) => {
             await refuseForeignIds(transaction, branchId, input.examId ?? null, input);
             await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+            await holdRooms(transaction, input);
             const stored =
               input.examId === undefined
                 ? null
@@ -372,6 +373,7 @@ export class TimetableExams {
         this.transactions.run(access.branchIds, async (transaction) => {
           await refuseForeignIds(transaction, branchId, id, input);
           await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          await holdRooms(transaction, input);
           const once = await this.requestKeys.runOnce(
             transaction,
             {
@@ -1093,6 +1095,28 @@ async function yearOfDate(
 }
 
 /** The ids of a body and path that must be of the branch: 404 otherwise. */
+/**
+ * The exam rooms of the body read again behind the publish lock and held: a
+ * room's forced delete (task 5.8c), which takes the same lock first, may have
+ * removed one while this request waited (task 5.12b, decision 6 of the plan;
+ * as the one-day room change does).
+ */
+async function holdRooms(
+  transaction: Transaction,
+  input: Partial<ExamInput> & { keepCancelled?: string[] | undefined },
+): Promise<void> {
+  const wanted = [...new Set((input.rooms ?? []).map((one) => one.roomId))].sort();
+  if (wanted.length === 0) return;
+  const held = await transaction
+    .selectFrom('rooms')
+    .select('id')
+    .where('id', 'in', wanted)
+    .orderBy('id')
+    .forKeyShare()
+    .execute();
+  if (held.length !== wanted.length) throw notFound();
+}
+
 async function refuseForeignIds(
   transaction: Transaction,
   branchId: string,

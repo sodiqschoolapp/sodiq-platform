@@ -70,7 +70,12 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { changesOf, notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import {
+  changesOf,
+  notFound,
+  refusingConstraints,
+  refusingGoneRoom,
+} from '../setup/setup-refusals.js';
 import { accountNames, editLockFresh } from './edit-lock.js';
 import {
   LOAD_REFUSALS,
@@ -1710,95 +1715,97 @@ export class Timetable {
   /** A row of a draft: every rule of the engine (decision 7); the first problem is the refusal. */
   createRow(access: Access, id: string, input: LoadRowRecord, requestId: string): Promise<LoadRow> {
     const branchId = branchOf(access);
-    return refusingConstraints(
-      () =>
-        this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, access, id, requestId);
-          const context = await this.contextOf(transaction, version);
-          const unit = await this.unitOf(transaction, context, input.classId, input.groupId);
-          await lockSubjects(transaction, [input.subjectId]);
-          const subject = (await readSubjectFacts(transaction, [input.subjectId])).get(
-            input.subjectId,
-          );
-          if (subject === undefined) {
-            throw notFound();
-          }
-          // Task 3.6c-2, decision 1: the server writes a Tutor row's teacher.
-          let teacherId: string;
-          if (isTutorRow(unit.unit, subject)) {
-            if (input.teacherId !== null) {
-              throw teacherField('load_tutor_row_teacher');
+    return refusingGoneRoom(() =>
+      refusingConstraints(
+        () =>
+          this.transactions.run(access.branchIds, async (transaction) => {
+            const version = await this.lockDraft(transaction, access, id, requestId);
+            const context = await this.contextOf(transaction, version);
+            const unit = await this.unitOf(transaction, context, input.classId, input.groupId);
+            await lockSubjects(transaction, [input.subjectId]);
+            const subject = (await readSubjectFacts(transaction, [input.subjectId])).get(
+              input.subjectId,
+            );
+            if (subject === undefined) {
+              throw notFound();
             }
-            if (unit.unit.tutorOnStart === null) {
-              this.refuse(['load_no_tutor']);
+            // Task 3.6c-2, decision 1: the server writes a Tutor row's teacher.
+            let teacherId: string;
+            if (isTutorRow(unit.unit, subject)) {
+              if (input.teacherId !== null) {
+                throw teacherField('load_tutor_row_teacher');
+              }
+              if (unit.unit.tutorOnStart === null) {
+                this.refuse(['load_no_tutor']);
+              }
+              teacherId = unit.unit.tutorOnStart ?? '';
+            } else if (input.teacherId === null) {
+              throw teacherField('load_teacher_needed');
+            } else {
+              teacherId = input.teacherId.toLowerCase();
             }
-            teacherId = unit.unit.tutorOnStart ?? '';
-          } else if (input.teacherId === null) {
-            throw teacherField('load_teacher_needed');
-          } else {
-            teacherId = input.teacherId.toLowerCase();
-          }
-          const teacher = await this.teacherOf(transaction, context, teacherId);
-          const room = await this.roomOf(transaction, context, input.roomId);
-          // Task 3.4b: the row among the version's rows, for its block and the
-          // split-or-whole rule (the version is locked FOR UPDATE).
-          const candidate: StoredLoadRow = {
-            id: NEW_ROW_ID,
-            class_id: input.classId === null ? null : input.classId.toLowerCase(),
-            group_id: input.groupId === null ? null : input.groupId.toLowerCase(),
-            subject_id: input.subjectId.toLowerCase(),
-            teacher_id: teacherId,
-            lessons_per_week: input.lessonsPerWeek,
-            room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
-            room_type: input.roomType,
-            double_lessons: input.doubleLessons,
-            mixed_block: input.mixedBlock,
-            short_reason: input.shortReason ?? null,
-          };
-          const blocks = await LoadFacts.of(transaction, context, [candidate], {
-            versionRows: await this.rowsOf(transaction, id),
-          });
-          const problems = loadRowProblems({
-            versionYearId: context.yearId,
-            unit: unit.unit,
-            subject,
-            teacher,
-            room,
-            sharedSlot: await sharedSlotOf(transaction, context, unit.unit),
-            ...blocks.blockFactsOf(candidate),
-          });
-          this.refuse(refusingProblems(problems));
-          await this.refuseTaken(transaction, id, input);
-          const created = await transaction
-            .insertInto('teaching_load_rows')
-            .values({
-              branch_id: branchId,
-              version_id: id,
-              class_id: input.classId,
-              group_id: input.groupId,
-              subject_id: input.subjectId,
+            const teacher = await this.teacherOf(transaction, context, teacherId);
+            const room = await this.roomOf(transaction, context, input.roomId);
+            // Task 3.4b: the row among the version's rows, for its block and the
+            // split-or-whole rule (the version is locked FOR UPDATE).
+            const candidate: StoredLoadRow = {
+              id: NEW_ROW_ID,
+              class_id: input.classId === null ? null : input.classId.toLowerCase(),
+              group_id: input.groupId === null ? null : input.groupId.toLowerCase(),
+              subject_id: input.subjectId.toLowerCase(),
               teacher_id: teacherId,
               lessons_per_week: input.lessonsPerWeek,
-              room_id: input.roomId,
+              room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
               room_type: input.roomType,
               double_lessons: input.doubleLessons,
               mixed_block: input.mixedBlock,
               short_reason: input.shortReason ?? null,
-            })
-            .returning(ROW_COLUMNS)
-            .executeTakeFirstOrThrow();
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'teaching_load.create',
-            record: { type: 'teaching_load_row', id: created.id },
-            newValue: { versionId: id, ...fieldsOf(created) },
-            requestId,
-          });
-          return this.rowAnswer(transaction, context, id, created);
-        }),
-      LOAD_REFUSALS,
+            };
+            const blocks = await LoadFacts.of(transaction, context, [candidate], {
+              versionRows: await this.rowsOf(transaction, id),
+            });
+            const problems = loadRowProblems({
+              versionYearId: context.yearId,
+              unit: unit.unit,
+              subject,
+              teacher,
+              room,
+              sharedSlot: await sharedSlotOf(transaction, context, unit.unit),
+              ...blocks.blockFactsOf(candidate),
+            });
+            this.refuse(refusingProblems(problems));
+            await this.refuseTaken(transaction, id, input);
+            const created = await transaction
+              .insertInto('teaching_load_rows')
+              .values({
+                branch_id: branchId,
+                version_id: id,
+                class_id: input.classId,
+                group_id: input.groupId,
+                subject_id: input.subjectId,
+                teacher_id: teacherId,
+                lessons_per_week: input.lessonsPerWeek,
+                room_id: input.roomId,
+                room_type: input.roomType,
+                double_lessons: input.doubleLessons,
+                mixed_block: input.mixedBlock,
+                short_reason: input.shortReason ?? null,
+              })
+              .returning(ROW_COLUMNS)
+              .executeTakeFirstOrThrow();
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'teaching_load.create',
+              record: { type: 'teaching_load_row', id: created.id },
+              newValue: { versionId: id, ...fieldsOf(created) },
+              requestId,
+            });
+            return this.rowAnswer(transaction, context, id, created);
+          }),
+        LOAD_REFUSALS,
+      ),
     );
   }
 
@@ -1820,112 +1827,114 @@ export class Timetable {
     requestId: string,
   ): Promise<LoadRow> {
     const branchId = branchOf(access);
-    return refusingConstraints(
-      () =>
-        this.transactions.run(access.branchIds, async (transaction) => {
-          const version = await this.lockDraft(transaction, access, id, requestId);
-          const context = await this.contextOf(transaction, version);
-          const before = await this.rowOf(transaction, id, rowId);
-          // Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row;
-          // `null` keeps the teacher of any row.
-          if (
-            input.teacherId !== null &&
-            before.class_id !== null &&
-            (await this.isTutorSubject(transaction, before.subject_id))
-          ) {
-            throw teacherField('load_tutor_row_teacher');
-          }
-          const after: StoredLoadRow = {
-            ...before,
-            teacher_id:
-              input.teacherId === null ? before.teacher_id : input.teacherId.toLowerCase(),
-            lessons_per_week: input.lessonsPerWeek,
-            room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
-            room_type: input.roomType,
-            double_lessons: input.doubleLessons,
-            mixed_block: input.mixedBlock ?? before.mixed_block,
-            short_reason:
-              input.shortReason === undefined ? (before.short_reason ?? null) : input.shortReason,
-          };
-          const changes = changesOf(fieldsOf(before), fieldsOf(after));
-          if (changes === null) {
-            return this.rowAnswer(transaction, context, id, before);
-          }
-          const unit = await this.unitOf(transaction, context, before.class_id, before.group_id);
-          if (after.teacher_id !== before.teacher_id) {
-            await lockSubjects(transaction, [before.subject_id]);
-          }
-          const subject = (await readSubjectFacts(transaction, [before.subject_id])).get(
-            before.subject_id,
-          );
-          if (subject === undefined) {
-            throw notFound();
-          }
-          const checked: LoadProblem[] = [];
-          if (after.teacher_id !== before.teacher_id) {
-            const teacher = await this.teacherOf(transaction, context, after.teacher_id);
-            checked.push(...teacherProblems(unit.unit, subject, teacher));
-            this.refuse(checked);
-            // Task 5.4b-2a, review correction 1: the row's placed lessons with the new teacher.
-            const blocked = await teacherChangeBlocked(
-              transaction,
-              context,
-              id,
-              await this.rowsOf(transaction, id),
-              [after],
+    return refusingGoneRoom(() =>
+      refusingConstraints(
+        () =>
+          this.transactions.run(access.branchIds, async (transaction) => {
+            const version = await this.lockDraft(transaction, access, id, requestId);
+            const context = await this.contextOf(transaction, version);
+            const before = await this.rowOf(transaction, id, rowId);
+            // Task 3.6c-2, decision 1: nobody names the teacher of a Tutor row;
+            // `null` keeps the teacher of any row.
+            if (
+              input.teacherId !== null &&
+              before.class_id !== null &&
+              (await this.isTutorSubject(transaction, before.subject_id))
+            ) {
+              throw teacherField('load_tutor_row_teacher');
+            }
+            const after: StoredLoadRow = {
+              ...before,
+              teacher_id:
+                input.teacherId === null ? before.teacher_id : input.teacherId.toLowerCase(),
+              lessons_per_week: input.lessonsPerWeek,
+              room_id: input.roomId === null ? null : input.roomId.toLowerCase(),
+              room_type: input.roomType,
+              double_lessons: input.doubleLessons,
+              mixed_block: input.mixedBlock ?? before.mixed_block,
+              short_reason:
+                input.shortReason === undefined ? (before.short_reason ?? null) : input.shortReason,
+            };
+            const changes = changesOf(fieldsOf(before), fieldsOf(after));
+            if (changes === null) {
+              return this.rowAnswer(transaction, context, id, before);
+            }
+            const unit = await this.unitOf(transaction, context, before.class_id, before.group_id);
+            if (after.teacher_id !== before.teacher_id) {
+              await lockSubjects(transaction, [before.subject_id]);
+            }
+            const subject = (await readSubjectFacts(transaction, [before.subject_id])).get(
+              before.subject_id,
             );
-            if (blocked.length > 0) {
-              throw blockedRefusal(blocked);
+            if (subject === undefined) {
+              throw notFound();
             }
-          }
-          if (after.room_id !== before.room_id) {
-            const room = await this.roomOf(transaction, context, after.room_id);
-            if (room?.closed === true) {
-              throw refused('load_room_closed');
+            const checked: LoadProblem[] = [];
+            if (after.teacher_id !== before.teacher_id) {
+              const teacher = await this.teacherOf(transaction, context, after.teacher_id);
+              checked.push(...teacherProblems(unit.unit, subject, teacher));
+              this.refuse(checked);
+              // Task 5.4b-2a, review correction 1: the row's placed lessons with the new teacher.
+              const blocked = await teacherChangeBlocked(
+                transaction,
+                context,
+                id,
+                await this.rowsOf(transaction, id),
+                [after],
+              );
+              if (blocked.length > 0) {
+                throw blockedRefusal(blocked);
+              }
             }
-          }
-          const parts = await this.blockEdit(transaction, context, id, before, after);
-          for (const row of [after, ...parts.map((part) => part.after)]) {
-            await transaction
-              .updateTable('teaching_load_rows')
-              .set({
-                teacher_id: row.teacher_id,
-                lessons_per_week: row.lessons_per_week,
-                room_id: row.room_id,
-                room_type: row.room_type,
-                double_lessons: row.double_lessons,
-                mixed_block: row.mixed_block,
-                ...(row.id === after.id ? { short_reason: after.short_reason ?? null } : {}),
-              })
-              .where('id', '=', row.id)
-              .execute();
-          }
-          const partsOf = (side: 'before' | 'after') =>
-            parts.map((part) => ({
-              rowId: part.before.id,
-              lessonsPerWeek: part[side].lessons_per_week,
-              mixedBlock: part[side].mixed_block,
-            }));
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'teaching_load.edit',
-            record: { type: 'teaching_load_row', id: rowId },
-            oldValue: {
-              ...changes.oldValue,
-              ...(parts.length > 0 ? { parts: partsOf('before') } : {}),
-            },
-            newValue: {
-              ...changes.newValue,
-              ...(parts.length > 0 ? { parts: partsOf('after') } : {}),
-            },
-            requestId,
-          });
-          return this.rowAnswer(transaction, context, id, after);
-        }),
-      // Task 5.4b-2a, review correction 1: the guard of the placed lessons, after the engine.
-      { ...LOAD_REFUSALS, pattern_entries_teacher_excl: 'pattern_clash' },
+            if (after.room_id !== before.room_id) {
+              const room = await this.roomOf(transaction, context, after.room_id);
+              if (room?.closed === true) {
+                throw refused('load_room_closed');
+              }
+            }
+            const parts = await this.blockEdit(transaction, context, id, before, after);
+            for (const row of [after, ...parts.map((part) => part.after)]) {
+              await transaction
+                .updateTable('teaching_load_rows')
+                .set({
+                  teacher_id: row.teacher_id,
+                  lessons_per_week: row.lessons_per_week,
+                  room_id: row.room_id,
+                  room_type: row.room_type,
+                  double_lessons: row.double_lessons,
+                  mixed_block: row.mixed_block,
+                  ...(row.id === after.id ? { short_reason: after.short_reason ?? null } : {}),
+                })
+                .where('id', '=', row.id)
+                .execute();
+            }
+            const partsOf = (side: 'before' | 'after') =>
+              parts.map((part) => ({
+                rowId: part.before.id,
+                lessonsPerWeek: part[side].lessons_per_week,
+                mixedBlock: part[side].mixed_block,
+              }));
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'teaching_load.edit',
+              record: { type: 'teaching_load_row', id: rowId },
+              oldValue: {
+                ...changes.oldValue,
+                ...(parts.length > 0 ? { parts: partsOf('before') } : {}),
+              },
+              newValue: {
+                ...changes.newValue,
+                ...(parts.length > 0 ? { parts: partsOf('after') } : {}),
+              },
+              requestId,
+            });
+            return this.rowAnswer(transaction, context, id, after);
+          }),
+        // Task 5.4b-2a, review correction 1: the guard of the placed lessons, after the engine.
+        { ...LOAD_REFUSALS, pattern_entries_teacher_excl: 'pattern_clash' },
+      ),
     );
   }
 

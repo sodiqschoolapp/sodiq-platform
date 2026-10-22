@@ -144,3 +144,41 @@ export async function refusingConstraints<T>(
     throw error;
   }
 }
+
+const FOREIGN_KEY_VIOLATION = '23503';
+
+/**
+ * The keys to `rooms` of the writers that read a room without a lock and then
+ * write its key (task 5.12b, the From line of 5.8c): a room closure, "move
+ * all" of a closure (the lessons), a load row and a pattern entry.
+ */
+const ROOM_KEYS: ReadonlySet<string> = new Set([
+  'room_closures_room_fkey',
+  'lessons_room_fkey',
+  'teaching_load_rows_room_fkey',
+  'pattern_entries_room_fkey',
+]);
+
+/**
+ * Runs a write that names a room the request read without a lock: a forced
+ * delete of that room committed in between (`03`, Building, floor, room) is
+ * found by the room's key, and the room is answered as one never there, 404
+ * `not_found`. The keys are on (room, branch), and the room was read in the
+ * branch of the request, so no other cause reaches them. Wrap the whole
+ * `transactions.run(...)` call; anything else is thrown again as it came.
+ */
+export async function refusingGoneRoom<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const failure = error as { code?: unknown; constraint?: unknown };
+    if (
+      failure.code === FOREIGN_KEY_VIOLATION &&
+      typeof failure.constraint === 'string' &&
+      ROOM_KEYS.has(failure.constraint)
+    ) {
+      throw notFound();
+    }
+    throw error;
+  }
+}

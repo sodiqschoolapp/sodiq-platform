@@ -22,7 +22,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { notFound } from '../setup/setup-refusals.js';
+import { notFound, refusingGoneRoom } from '../setup/setup-refusals.js';
 import { awayLessons } from './away-read.js';
 import { dayBeginnings } from './dated-check.js';
 import { blockedDetail, recordChanges, valuesOf as lessonValuesOf } from './day-changes.service.js';
@@ -173,46 +173,48 @@ export class TimetableRoomClosures {
   /** Closes a room of the branch from a day to a day (decisions 3 and 4). */
   create(access: Access, input: RoomClosureRecord, requestId: string): Promise<RoomClosure> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const room = await this.roomOf(transaction, branchId, input.roomId);
-      if (room.status === 'closed') throw new ApiException('room_closure_room', 422);
-      const { moment, today, beginsOf } = await this.timesOf(
-        transaction,
-        branchId,
-        input.startsOn,
-        input.endsOn,
-      );
-      if (input.startsOn < today) throw new ApiException('room_closure_past', 409);
-      const from = input.startsOn === today ? moment : beginsOf(input.startsOn);
-      const until = beginsOf(nextDay(input.endsOn));
-      await this.refuseOverlap(transaction, input.roomId, null, from, until);
-      const row = await this.writing(() =>
-        transaction
-          .insertInto('room_closures')
-          .values({
-            branch_id: branchId,
-            room_id: input.roomId,
-            starts_on: input.startsOn,
-            ends_on: input.endsOn,
-            applies_from: from,
-            applies_until: until,
-            reason: input.reason,
-            created_by: access.accountId,
-          })
-          .returning(RETURNING)
-          .executeTakeFirstOrThrow(),
-      );
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        action: 'room_closure.create',
-        record: { type: 'room_closure', id: row.id },
-        newValue: valuesOf(row),
-        requestId,
-      });
-      return answerOf(row, room.name, moment);
-    });
+    return refusingGoneRoom(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const room = await this.roomOf(transaction, branchId, input.roomId);
+        if (room.status === 'closed') throw new ApiException('room_closure_room', 422);
+        const { moment, today, beginsOf } = await this.timesOf(
+          transaction,
+          branchId,
+          input.startsOn,
+          input.endsOn,
+        );
+        if (input.startsOn < today) throw new ApiException('room_closure_past', 409);
+        const from = input.startsOn === today ? moment : beginsOf(input.startsOn);
+        const until = beginsOf(nextDay(input.endsOn));
+        await this.refuseOverlap(transaction, input.roomId, null, from, until);
+        const row = await this.writing(() =>
+          transaction
+            .insertInto('room_closures')
+            .values({
+              branch_id: branchId,
+              room_id: input.roomId,
+              starts_on: input.startsOn,
+              ends_on: input.endsOn,
+              applies_from: from,
+              applies_until: until,
+              reason: input.reason,
+              created_by: access.accountId,
+            })
+            .returning(RETURNING)
+            .executeTakeFirstOrThrow(),
+        );
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'room_closure.create',
+          record: { type: 'room_closure', id: row.id },
+          newValue: valuesOf(row),
+          requestId,
+        });
+        return answerOf(row, room.name, moment);
+      }),
+    );
   }
 
   /** Changes the days of a closure (decision 4). */
@@ -433,148 +435,150 @@ export class TimetableRoomClosures {
     requestId: string,
   ): Promise<RoomClosureMoveAnswer> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      await this.roomOf(transaction, branchId, input.roomId);
-      const closure = await this.lockedRow(transaction, branchId, id);
-      if (input.roomId === closure.room_id) throw new ApiException('room_move_same', 422);
-      const moment = await transactionMoment(transaction);
-      if (closure.applies_until.getTime() <= moment.getTime()) {
-        throw new ApiException('room_closure_ended', 409);
-      }
-      const from =
-        closure.applies_from.getTime() > moment.getTime() ? closure.applies_from : moment;
-      const listOf = () =>
-        transaction
-          .selectFrom('lessons')
-          .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
-          .select([
-            sql<string>`lessons.lesson_date::text`.as('date'),
-            'lesson_blocks.academic_year_id',
-          ])
-          .where('lessons.branch_id', '=', branchId)
-          .where('lessons.room_id', '=', closure.room_id)
-          .where('lessons.cancel_cause', 'is', null)
-          .where('lessons.starts_at', '>', from)
-          .where('lessons.starts_at', '<', closure.applies_until)
-          .execute();
-      // The publish locks of every year first, then the list read again under
-      // them: a publish that committed meanwhile may have written lessons on
-      // other dates (spec review of the code, should-fix 2).
-      let listed = await listOf();
-      if (listed.length === 0) throw new ApiException('room_closure_nothing', 409);
-      const locked = new Set<string>();
-      for (;;) {
-        const years = [...new Set(listed.map((one) => one.academic_year_id))]
-          .filter((one) => !locked.has(one))
-          .sort();
-        if (years.length === 0) break;
-        for (const yearId of years) {
-          await lockPublishChain(transaction, branchId, yearId);
-          locked.add(yearId);
+    return refusingGoneRoom(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        await this.roomOf(transaction, branchId, input.roomId);
+        const closure = await this.lockedRow(transaction, branchId, id);
+        if (input.roomId === closure.room_id) throw new ApiException('room_move_same', 422);
+        const moment = await transactionMoment(transaction);
+        if (closure.applies_until.getTime() <= moment.getTime()) {
+          throw new ApiException('room_closure_ended', 409);
         }
-        listed = await listOf();
-      }
-      const dates = [...new Set(listed.map((one) => one.date))].sort();
-      const week = await snapshotDates(transaction, branchId, dates);
-      const services = { timetable: this.timetable, pattern: this.pattern };
-      const blocked: ErrorDetail[] = [];
-      const movedIds: string[] = [];
-      for (const date of dates) {
-        // Read again after the locks: a publish or a change may have moved one.
-        const day = await storedLessonsOn(transaction, branchId, date);
-        const inRoom = (one: StoredDayLesson) =>
-          one.cancelCause === null &&
-          one.roomId === closure.room_id &&
-          one.startsAt.getTime() >= closure.applies_from.getTime() &&
-          one.startsAt.getTime() < closure.applies_until.getTime();
-        const done = new Set<string>();
-        for (const lesson of day.filter(inRoom)) {
-          if (done.has(lesson.id)) continue;
-          const pair = pairOf(day, lesson);
-          for (const half of pair) done.add(half.id);
-          // A double has started when its earlier half has (5.6a-1, decision 3).
-          if (pair.some((half) => half.startsAt.getTime() <= moment.getTime())) continue;
-          const lessons = pair.filter((half) => half.cancelCause === null);
-          const checked = await storedDayCheck(transaction, services, {
-            accountId: access.accountId,
-            lessons,
-            roomId: input.roomId,
-            closures: true,
-          });
-          if (checked.blocked.length > 0) {
-            blocked.push(
-              ...checked.blocked.map((one) =>
-                blockedDetail(one, 'A blocked rule of a lesson moved to the room on its date.'),
-              ),
+        const from =
+          closure.applies_from.getTime() > moment.getTime() ? closure.applies_from : moment;
+        const listOf = () =>
+          transaction
+            .selectFrom('lessons')
+            .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+            .select([
+              sql<string>`lessons.lesson_date::text`.as('date'),
+              'lesson_blocks.academic_year_id',
+            ])
+            .where('lessons.branch_id', '=', branchId)
+            .where('lessons.room_id', '=', closure.room_id)
+            .where('lessons.cancel_cause', 'is', null)
+            .where('lessons.starts_at', '>', from)
+            .where('lessons.starts_at', '<', closure.applies_until)
+            .execute();
+        // The publish locks of every year first, then the list read again under
+        // them: a publish that committed meanwhile may have written lessons on
+        // other dates (spec review of the code, should-fix 2).
+        let listed = await listOf();
+        if (listed.length === 0) throw new ApiException('room_closure_nothing', 409);
+        const locked = new Set<string>();
+        for (;;) {
+          const years = [...new Set(listed.map((one) => one.academic_year_id))]
+            .filter((one) => !locked.has(one))
+            .sort();
+          if (years.length === 0) break;
+          for (const yearId of years) {
+            await lockPublishChain(transaction, branchId, yearId);
+            locked.add(yearId);
+          }
+          listed = await listOf();
+        }
+        const dates = [...new Set(listed.map((one) => one.date))].sort();
+        const week = await snapshotDates(transaction, branchId, dates);
+        const services = { timetable: this.timetable, pattern: this.pattern };
+        const blocked: ErrorDetail[] = [];
+        const movedIds: string[] = [];
+        for (const date of dates) {
+          // Read again after the locks: a publish or a change may have moved one.
+          const day = await storedLessonsOn(transaction, branchId, date);
+          const inRoom = (one: StoredDayLesson) =>
+            one.cancelCause === null &&
+            one.roomId === closure.room_id &&
+            one.startsAt.getTime() >= closure.applies_from.getTime() &&
+            one.startsAt.getTime() < closure.applies_until.getTime();
+          const done = new Set<string>();
+          for (const lesson of day.filter(inRoom)) {
+            if (done.has(lesson.id)) continue;
+            const pair = pairOf(day, lesson);
+            for (const half of pair) done.add(half.id);
+            // A double has started when its earlier half has (5.6a-1, decision 3).
+            if (pair.some((half) => half.startsAt.getTime() <= moment.getTime())) continue;
+            const lessons = pair.filter((half) => half.cancelCause === null);
+            const checked = await storedDayCheck(transaction, services, {
+              accountId: access.accountId,
+              lessons,
+              roomId: input.roomId,
+              closures: true,
+            });
+            if (checked.blocked.length > 0) {
+              blocked.push(
+                ...checked.blocked.map((one) =>
+                  blockedDetail(one, 'A blocked rule of a lesson moved to the room on its date.'),
+                ),
+              );
+              continue;
+            }
+            for (const one of lessons) {
+              await transaction
+                .updateTable('lessons')
+                .set({ room_id: input.roomId, teacher_id: checked.teacherIds.get(one.id) ?? null })
+                .where('id', '=', one.id)
+                .execute();
+            }
+            await recordChanges(
+              transaction,
+              access,
+              'room',
+              lessons.map((one) => ({ from: one, to: { ...one, roomId: input.roomId } })),
+              input.reason,
             );
-            continue;
+            const lessonIds = lessons.map((one) => one.id);
+            // The same entry as the room route's, for each lesson moved
+            // (spec review should-fix 5).
+            await this.audit.record(transaction, {
+              branchId,
+              actorId: access.accountId,
+              assignmentId: access.assignmentId,
+              action: 'lesson.room_change',
+              record: { type: 'lesson', id: lesson.id },
+              oldValue: { ...lessonValuesOf(lesson), lessonIds },
+              newValue: {
+                ...lessonValuesOf({
+                  ...lesson,
+                  roomId: input.roomId,
+                  teacherId: checked.teacherIds.get(lesson.id) ?? null,
+                }),
+                lessonIds,
+                teacherIds: Object.fromEntries(checked.teacherIds),
+                reason: input.reason,
+                warnings: checked.warnings.map((one) => one.rule),
+                roomClosureId: id,
+              },
+              requestId,
+            });
+            movedIds.push(...lessonIds);
           }
-          for (const one of lessons) {
-            await transaction
-              .updateTable('lessons')
-              .set({ room_id: input.roomId, teacher_id: checked.teacherIds.get(one.id) ?? null })
-              .where('id', '=', one.id)
-              .execute();
-          }
-          await recordChanges(
-            transaction,
-            access,
-            'room',
-            lessons.map((one) => ({ from: one, to: { ...one, roomId: input.roomId } })),
-            input.reason,
-          );
-          const lessonIds = lessons.map((one) => one.id);
-          // The same entry as the room route's, for each lesson moved
-          // (spec review should-fix 5).
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            action: 'lesson.room_change',
-            record: { type: 'lesson', id: lesson.id },
-            oldValue: { ...lessonValuesOf(lesson), lessonIds },
-            newValue: {
-              ...lessonValuesOf({
-                ...lesson,
-                roomId: input.roomId,
-                teacherId: checked.teacherIds.get(lesson.id) ?? null,
-              }),
-              lessonIds,
-              teacherIds: Object.fromEntries(checked.teacherIds),
-              reason: input.reason,
-              warnings: checked.warnings.map((one) => one.rule),
-              roomClosureId: id,
-            },
-            requestId,
-          });
-          movedIds.push(...lessonIds);
         }
-      }
-      // All or nothing (decision 6): the transaction rolls back every move.
-      if (blocked.length > 0) {
-        throw new ApiException('room_move_blocked', 409, undefined, blocked);
-      }
-      if (movedIds.length === 0) throw new ApiException('room_closure_nothing', 409);
-      await sql`set constraints all immediate`.execute(transaction);
-      const notices = await sendWeekChanges(transaction, this.notifications, week, {
-        kind: 'timetable.day_changed',
-      });
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        action: 'room_closure.move',
-        record: { type: 'room_closure', id },
-        newValue: {
-          roomId: input.roomId,
-          reason: input.reason,
-          lessonIds: movedIds,
-          notices: { ...notices },
-        },
-        requestId,
-      });
-      return { moved: movedIds.length };
-    });
+        // All or nothing (decision 6): the transaction rolls back every move.
+        if (blocked.length > 0) {
+          throw new ApiException('room_move_blocked', 409, undefined, blocked);
+        }
+        if (movedIds.length === 0) throw new ApiException('room_closure_nothing', 409);
+        await sql`set constraints all immediate`.execute(transaction);
+        const notices = await sendWeekChanges(transaction, this.notifications, week, {
+          kind: 'timetable.day_changed',
+        });
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'room_closure.move',
+          record: { type: 'room_closure', id },
+          newValue: {
+            roomId: input.roomId,
+            reason: input.reason,
+            lessonIds: movedIds,
+            notices: { ...notices },
+          },
+          requestId,
+        });
+        return { moved: movedIds.length };
+      }),
+    );
   }
 
   /** A room of the branch of the request, or 404. */
