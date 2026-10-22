@@ -40,7 +40,14 @@ const CARRIED = [
  * Task 6.1a: a journal cell keeps the branch of its lesson, as a class row
  * keeps the branch of its class.
  */
-const KEPT = ['class_memberships', 'group_memberships', 'journal_cells', 'student_moves'];
+const KEPT = [
+  'class_memberships',
+  'group_memberships',
+  'journal_cells',
+  // Task 6.3: a reason of absence stays in the branch of its date.
+  'student_absence_reasons',
+  'student_moves',
+];
 /**
  * The tables whose key names the student under another column follow the
  * record by that key: the merges kept on the record (`kept_id`, task 3.3d,
@@ -238,6 +245,30 @@ describe('branch moves in the database', () => {
       );
     });
 
+    it('keeps a reason of absence in the branch of its date (task 6.3, spec review of the plan, must-fix 6)', async () => {
+      const facts = await pupil();
+      await database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${NOW}, true)`.execute(transaction);
+        await transaction
+          .insertInto('student_absence_reasons')
+          .values({
+            branch_id: north,
+            student_id: facts.student,
+            absence_date: '2026-10-12',
+            category: 'illness',
+            note: '',
+            changed_by: await classes.account(),
+            changed_at: new Date(NOW),
+          })
+          .execute();
+      });
+      const move = await release(facts.student);
+      await inBranches([south, north], (transaction) =>
+        acceptWrites(transaction, { ...facts, move }),
+      );
+      expect(await branchOf('student_absence_reasons', facts.student)).toEqual([north]);
+    });
+
     it('keeps a journal cell in the branch of its lesson (task 6.1a)', async () => {
       const cells = await CellsKit.create(database.migrator);
       const facts = await pupil();
@@ -280,7 +311,8 @@ describe('branch moves in the database', () => {
       // The kit writes no move and no cell (the cell has its own test above); the
       // rows it writes are in both branches.
       for (const table of KEPT.filter(
-        (one) => one !== 'student_moves' && one !== 'journal_cells',
+        (one) =>
+          one !== 'student_moves' && one !== 'journal_cells' && one !== 'student_absence_reasons',
       )) {
         expect((await branchOf(table, student)).sort()).toEqual([north, south].sort());
       }

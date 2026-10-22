@@ -1,4 +1,5 @@
 import type {
+  AttendanceMark,
   JournalBottom,
   JournalFigures,
   JournalGrid as Grid,
@@ -11,6 +12,7 @@ import {
   type ColDef,
   type ColGroupDef,
   type GridApi,
+  type CellKeyDownEvent,
   type ICellRendererParams,
   type IHeaderParams,
 } from 'ag-grid-community';
@@ -18,7 +20,10 @@ import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
 import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CheckCircleIcon, CheckIcon, InfoIcon } from '@/components/icons';
+import { Button } from '@/components/ui/button';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { cellKey, type AttendanceEntry } from './attendance-entry';
 
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
@@ -72,17 +77,41 @@ const THEME = themeQuartz.withParams({
   wrapperBorderRadius: 0,
 });
 
-/** A header of two lines: the title, and "Soni" with the total under a work. */
-function TwoLineHeader(props: IHeaderParams & { second?: string; label?: string }) {
+/** A button under a header: "all present" over the A column (`07`, Layout, Lessons, row 3). */
+interface HeaderAction {
+  readonly label: string;
+  readonly disabled: boolean;
+  readonly run: () => void;
+}
+
+/** A header of two lines: the title, and "Soni" with the total under a work, or an action. */
+function TwoLineHeader(
+  props: IHeaderParams & { second?: string; label?: string; action?: HeaderAction },
+) {
   return (
     <div className="grid leading-tight" aria-label={props.label}>
       <span className="font-semibold">{props.displayName}</span>
       {props.second !== undefined && (
         <span className="text-xs text-muted-foreground">{props.second}</span>
       )}
+      {props.action !== undefined && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={props.action.label}
+          title={props.action.label}
+          disabled={props.action.disabled}
+          onClick={props.action.run}
+        >
+          <CheckCircleIcon className="size-4" aria-hidden="true" />
+        </Button>
+      )}
     </div>
   );
 }
+
+/** The keys that type a mark in an A cell (`edge/journal`: "An attendance digit saves at once and moves down"). */
+const MARK_KEYS: Readonly<Record<string, AttendanceMark>> = { '0': 0, '1': 1, '2': 2, '3': 3 };
 
 interface GridProps {
   readonly grid: Grid;
@@ -97,6 +126,8 @@ interface GridProps {
   readonly onToggleFolded: () => void;
   /** The lesson to scroll to on opening. */
   readonly scrollTo: string | null;
+  /** Attendance entry (task 6.3): a lesson with `canEnter` takes marks. */
+  readonly entry?: AttendanceEntry | undefined;
 }
 
 export function JournalGridView({
@@ -108,6 +139,7 @@ export function JournalGridView({
   foldedOpen,
   onToggleFolded,
   scrollTo,
+  entry,
 }: GridProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -115,6 +147,14 @@ export function JournalGridView({
   const whole = grid.shape === 'whole';
   const figuresShown = grid.shape !== 'lessons';
   const graded = !grid.journal.attendanceOnly && grid.shape !== 'attendance';
+  // The categories of the reasons of absence by student and date (task 6.3, decision 7).
+  const reasons = useMemo(
+    () => new Map(grid.absences.map((one) => [`${one.studentId}|${one.date}`, one.category])),
+    [grid.absences],
+  );
+  const saved = entry?.saved;
+  const busy = entry?.busy ?? false;
+  const entering = entry !== undefined;
 
   const figuresOf = useCallback(
     (student: JournalStudent): JournalFigures | null =>
@@ -319,8 +359,21 @@ export function JournalGridView({
         {
           colId: `${lesson.id}:a`,
           headerName: t('journal.grid.attendanceShort'),
-          headerComponentParams: { label: t('journal.grid.attendance') },
-          width: 52,
+          headerComponentParams: {
+            label: t('journal.grid.attendance'),
+            ...(entering && lesson.canEnter
+              ? {
+                  action: {
+                    label: t('journal.entry.allPresent'),
+                    disabled: busy,
+                    run: () => {
+                      entry?.allPresent(lesson.id);
+                    },
+                  },
+                }
+              : {}),
+          },
+          width: lesson.canEnter ? 64 : 52,
           cellClass: (params) =>
             cancelled ||
             (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
@@ -331,13 +384,60 @@ export function JournalGridView({
             if (row?.kind !== 'student') return null;
             const cell = row.student.cells[index];
             if (cell === undefined) return null;
-            if (cell.mark === null) return cell.closed ? closedSign : null;
+            const savedSign = saved?.has(cellKey(lesson.id, row.student.id)) === true && (
+              <span
+                className="ml-0.5 text-xs text-success"
+                aria-label={t('journal.entry.saved')}
+                title={t('journal.entry.saved')}
+                data-saved="true"
+              >
+                <CheckIcon className="inline size-3" aria-hidden="true" />
+              </span>
+            );
+            if (cell.mark === null) return cell.closed ? closedSign : savedSign || null;
+            const reason =
+              cell.mark === 0 || cell.mark === 3
+                ? reasons.get(`${row.student.id}|${lesson.date}`)
+                : undefined;
+            const reasonText =
+              reason === undefined
+                ? undefined
+                : t('journal.entry.reason', {
+                    category: t(
+                      `journal.absences.categories.${reason}` as 'journal.absences.categories.unknown',
+                    ),
+                  });
             return (
               <span
-                data-mark={cell.mark}
-                className={cn('rounded-sm px-1.5 py-0.5', MARK_TINT[cell.mark], struck)}
+                title={
+                  [
+                    cell.typedBy === null
+                      ? undefined
+                      : t('journal.entry.typedBy', { name: cell.typedBy }),
+                    reasonText,
+                  ]
+                    .filter((part) => part !== undefined)
+                    .join(' · ') || undefined
+                }
               >
-                {cell.mark}
+                <span
+                  data-mark={cell.mark}
+                  className={cn('rounded-sm px-1.5 py-0.5', MARK_TINT[cell.mark], struck)}
+                >
+                  {cell.mark}
+                </span>
+                {reasonText !== undefined && (
+                  <span
+                    className="ml-0.5 inline-flex align-middle text-info"
+                    role="img"
+                    aria-label={reasonText}
+                    title={reasonText}
+                    data-reason={reason}
+                  >
+                    <InfoIcon className="size-3.5" aria-hidden="true" />
+                  </span>
+                )}
+                {savedSign}
               </span>
             );
           },
@@ -428,7 +528,55 @@ export function JournalGridView({
           ]),
       ...lessonGroups,
     ];
-  }, [grid, t, language, figuresOf, figuresShown, graded, whole, month]);
+  }, [
+    grid,
+    t,
+    language,
+    figuresOf,
+    figuresShown,
+    graded,
+    whole,
+    month,
+    reasons,
+    saved,
+    busy,
+    entering,
+    entry,
+  ]);
+
+  /**
+   * The keyboard of an A cell (`07`, Keyboard: "digits type"; `edge/journal`: "An attendance
+   * digit saves at once and moves down"): 0 to 3 save, Delete or Backspace clears, H opens the
+   * history. Every other key types nothing.
+   */
+  const onCellKeyDown = useCallback(
+    (event: CellKeyDownEvent<GridRow>) => {
+      const current = entry;
+      const key = event.event instanceof KeyboardEvent ? event.event.key : null;
+      const colId = event.column.getColId();
+      const row = event.data;
+      if (current === undefined || key === null || row?.kind !== 'student' || !colId.endsWith(':a'))
+        return;
+      const lessonId = colId.slice(0, -2);
+      const index = grid.lessons.findIndex((one) => one.id === lessonId);
+      const lesson = grid.lessons[index];
+      if (lesson === undefined) return;
+      if (key === 'h' || key === 'H') {
+        current.openHistory(lessonId, row.student);
+        return;
+      }
+      const cell = row.student.cells[index];
+      if (!lesson.canEnter || cell === undefined || cell.closed) return;
+      const mark = MARK_KEYS[key];
+      if (mark !== undefined || key === 'Delete' || key === 'Backspace') {
+        current.mark(lessonId, row.student, mark ?? null);
+        if (mark !== undefined && event.rowIndex !== null) {
+          event.api.setFocusedCell(event.rowIndex + 1, colId);
+        }
+      }
+    },
+    [grid.lessons, entry],
+  );
 
   const pinnedBottomRowData = useMemo(
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
@@ -438,6 +586,8 @@ export function JournalGridView({
   return (
     <div className="h-[70vh] min-h-96" data-journal-grid="true">
       <AgGridReact<GridRow>
+        // Room for the "all present" button under the A of a lesson the reader enters.
+        headerHeight={grid.lessons.some((lesson) => lesson.canEnter) && entering ? 64 : 40}
         modules={[AllCommunityModule]}
         theme={THEME}
         rowData={rows}
@@ -464,6 +614,13 @@ export function JournalGridView({
         )}
         // jsdom has no layout: every column is drawn there, as AG Grid cannot measure.
         suppressColumnVirtualisation={import.meta.env.MODE === 'test'}
+        onCellKeyDown={onCellKeyDown}
+        onCellDoubleClicked={(event) => {
+          const colId = event.column.getColId();
+          if (event.data?.kind === 'student' && colId.endsWith(':a')) {
+            entry?.openHistory(colId.slice(0, -2), event.data.student);
+          }
+        }}
         onGridReady={(event) => {
           api.current = event.api;
         }}

@@ -638,6 +638,17 @@ export const en = {
       'The timetable of this class, teacher or room is not among those your role can see. Choose one from the list.',
     journal_scope:
       'This journal is not among those your role can read. Open one from the Journals page.',
+    journal_entry_scope:
+      'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
+    entry_not_started:
+      'This lesson has not started yet. Attendance can be entered from its start time.',
+    lesson_not_held:
+      'This lesson has no teacher recorded (it needs a teacher or is unresolved), so nothing can be entered. The Academic Vice Principal resolves it first.',
+    absence_scope: 'This class is not one of yours. Choose one of your own classes.',
+    absence_not_member:
+      'The student was not in a class of this branch on that date. Check the date.',
+    student_merge_absence_reasons:
+      'Both records have a reason of absence for the same date. Clear one of the two reasons, then merge again.',
     journal_no_quarter:
       'The quarters of this year have no dates yet, so the journal cannot be shown. The Academic Vice Principal sets them in School setup.',
     place_referenced:
@@ -3164,6 +3175,10 @@ export const en = {
         open: 'Journal opened at a publish',
         runs: 'Days of a journal changed by a publish',
         cells_save: 'Journal cells saved',
+        all_present: 'All present marked',
+      },
+      absence_reason: {
+        set: 'Reason of absence set',
       },
       absence: {
         create: 'Absence entered',
@@ -4983,6 +4998,60 @@ export const en = {
       changedOn: '(changed on {{date}})',
       markers:
         '{{provisional}}: provisional, a weighted part has no data yet; {{leftOut}}: a part left out.',
+    },
+    entry: {
+      markButton: '{{mark}}: {{name}}',
+      allPresent: 'All present',
+      allPresentFilled_one: '{{count}} student marked present.',
+      allPresentFilled_other: '{{count}} students marked present.',
+      allPresentSkipped_one: '{{count}} already marked, left as typed.',
+      allPresentSkipped_other: '{{count}} already marked, left as typed.',
+      saved: 'Saved',
+      presentEarlier:
+        'Was at school at an earlier lesson today: {{names}}. The Tutor sees this day.',
+      typedBy: 'Typed by {{name}}',
+      history: 'History',
+      historyTitle: 'History: {{student}}',
+      historyEmpty: 'Nothing entered in this lesson yet.',
+      historyCell: 'Cell',
+      historyBefore: 'Before',
+      historyAfter: 'After',
+      historyWho: 'Who',
+      historyWhen: 'When',
+      historyHow: 'How',
+      close: 'Close',
+      reason: 'Reason: {{category}}',
+    },
+    absences: {
+      title: 'Student absences',
+      class: 'Class',
+      from: 'From',
+      to: 'To',
+      date: 'Date',
+      student: 'Student',
+      lessons: 'Lessons missed',
+      atSchoolEarlier: 'At school earlier that day',
+      category: 'Reason',
+      note: 'Note',
+      none: 'No reason yet',
+      categories: {
+        illness: 'Illness',
+        family: 'Family',
+        school_permitted: 'Permitted by the school',
+        unexcused: 'Unexcused',
+        unknown: 'Unknown',
+      },
+      noCategory: 'Choose a reason',
+      setReason: 'Set the reason',
+      clear: 'Clear the reason',
+      clearTitle: 'Clear the reason?',
+      clearText: 'The reason leaves the journal and this list; the audit log keeps it.',
+      changedBy: 'Set by {{name}} on {{date}}',
+      caption: 'Absences by student and day',
+      emptyTitle: 'No absences in these days',
+      empty: 'A day with a 0 or 3 mark, or with a reason, is listed here.',
+      noClass: 'No class to show.',
+      cancel: 'Cancel',
     },
     marks: {
       absent: 'Absent from school',

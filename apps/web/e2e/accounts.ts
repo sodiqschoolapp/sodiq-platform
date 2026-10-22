@@ -90,6 +90,8 @@ export type AccountKey =
   | 'versionFiles'
   | 'whoTeacher'
   | 'journalTeacher'
+  | 'attendanceTeacher'
+  | 'attendanceTutor'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
 

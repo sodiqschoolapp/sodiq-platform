@@ -1,6 +1,6 @@
 import type { JournalList } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SelectField } from '@/components/field';
@@ -8,7 +8,7 @@ import { ListPage } from '@/components/list/list-page';
 import type { Column, Filter, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Segmented } from '@/components/ui/segmented';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
 import { journalsQuery } from './journal-api';
@@ -31,6 +31,8 @@ export function JournalsPage(): React.JSX.Element {
   const navigate = useNavigate();
   const search: JournalsSearch = useSearch({ from: '/app/journal' });
   const { branchId } = useView();
+  // Task 6.3: the roles that read the reasons of absence reach their page from here.
+  const absences = useMayView('absence_reasons');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
   const tab = search.tab ?? 'class';
@@ -91,6 +93,13 @@ export function JournalsPage(): React.JSX.Element {
       <PageHeader
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
+        actions={
+          absences ? (
+            <Link to="/journal/student-absences" className="text-link">
+              {t('journal.absences.title')}
+            </Link>
+          ) : undefined
+        }
       />
       <div className="grid gap-4">
         <div className="flex flex-wrap items-end gap-4">

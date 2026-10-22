@@ -840,6 +840,18 @@ export const ERROR_CODES = [
   'journal_scope',
   /** The journal's year has no quarter with dates yet, so no quarter can be shown (task 6.2). */
   'journal_no_quarter',
+  /** The person may not enter this lesson: it is not theirs to teach or own (07, Who can do what; task 6.3, decision 3). */
+  'journal_entry_scope',
+  /** The lesson has not started: attendance is entered from its start time (07, Editing rules and locks; task 6.3, decision 15). */
+  'entry_not_started',
+  /** The lesson needs a teacher or is unresolved, so it is not held and takes no entry (edge/00-definitions, Held lesson; task 6.3, decision 15). */
+  'lesson_not_held',
+  /** The class is outside the Tutor's own classes (edge/journal, "A Tutor records why a student was absent"; task 6.3, decision 8). */
+  'absence_scope',
+  /** The student was in no class of the branch on that date (task 6.3, decision 8). */
+  'absence_not_member',
+  /** Both records have a reason of absence for the same date in one branch (task 6.3, correction 2). */
+  'student_merge_absence_reasons',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

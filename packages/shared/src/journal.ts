@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { absenceCategorySchema } from './attendance.js';
 import { subjectColourSchema } from './subjects.js';
 
 /**
@@ -135,6 +136,8 @@ export const journalLessonSchema = z.object({
   /** The month whose figures count it, `YYYY-MM`. */
   month: z.string().regex(/^\d{4}-\d{2}$/),
   works: z.array(journalWorkSchema),
+  /** The reader may enter its attendance now: held, theirs to teach or own (task 6.3, decisions 3 and 15). */
+  canEnter: z.boolean(),
 });
 
 export type JournalLesson = z.infer<typeof journalLessonSchema>;
@@ -144,6 +147,10 @@ const journalCellSchema = z.object({
   /** Outside the student's membership, or before the lesson starts (`07`, Editing rules). */
   closed: z.boolean(),
   mark: z.int().min(0).max(3).nullable(),
+  /** The attendance cell's version, `null` while never saved (task 6.3: the version a typed mark is sent with). */
+  version: z.int().min(1).nullable(),
+  /** Who typed the attendance cell last (task 6.3, decision 16: "Every entry shows who typed it"). */
+  typedBy: z.string().nullable(),
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
     z.object({ score: z.int().min(0).nullable(), percent: z.int().min(0).max(100).nullable() }),
@@ -234,6 +241,17 @@ export const journalGridSchema = z.object({
   bottom: z
     .object({ quarter: bottomSchema, months: z.record(z.string(), bottomSchema) })
     .nullable(),
+  /**
+   * The reasons of absence of the students shown, in the quarter: the category
+   * only (task 6.3, decision 7: "Teachers see the category only").
+   */
+  absences: z.array(
+    z.object({
+      studentId: z.uuid(),
+      date: schoolDateSchema,
+      category: absenceCategorySchema,
+    }),
+  ),
   legend: z.object({
     lateValue: z.int(),
     skippedValue: z.int(),

@@ -260,7 +260,8 @@ export const AUDIT_ACTION_GROUPS = {
     'room_closure.move',
   ],
   // Task 6.1a: journal cells saved (one entry per save; the lines are in the cell history).
-  journal: ['journal.cells_save'],
+  // Task 6.3: "all present" (one entry per action) and a reason of absence set or cleared.
+  journal: ['journal.cells_save', 'journal.all_present', 'absence_reason.set'],
   exports: [
     'building.export',
     'room.export',

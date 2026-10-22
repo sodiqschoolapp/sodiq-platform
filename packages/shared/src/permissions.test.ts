@@ -398,7 +398,8 @@ describe('a frozen permission table', () => {
     }
   });
 
-  it('gives the journals to the nine roles of 07, Who can do what, to view only (task 6.2, decision 2)', () => {
+  it('gives the journals to the nine roles of 07, Who can do what (task 6.2, decision 2), and entry to four (task 6.3, correction 1)', () => {
+    const writers = ['super_admin', 'academic_vice_principal', 'tutor', 'teacher'];
     const readers = [
       'super_admin',
       'principal',
@@ -411,7 +412,26 @@ describe('a frozen permission table', () => {
       'teacher',
     ];
     for (const role of ROLES) {
-      expect(PERMISSIONS.journal[role], role).toEqual(readers.includes(role) ? ['view'] : []);
+      expect(PERMISSIONS.journal[role], role).toEqual(
+        writers.includes(role) ? ['view', 'edit'] : readers.includes(role) ? ['view'] : [],
+      );
+    }
+  });
+
+  it('gives the reasons of absences to the attendance readers and their writing to the Tutor, the Academic Vice Principal and the Super Admin (task 6.3, decision 6)', () => {
+    const readers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+    ];
+    const writers = ['super_admin', 'academic_vice_principal', 'tutor'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.absence_reasons[role], role).toEqual(
+        writers.includes(role) ? ['view', 'edit'] : readers.includes(role) ? ['view'] : [],
+      );
     }
   });
 
@@ -425,6 +445,7 @@ describe('a frozen permission table', () => {
 
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
+      'absence_reasons',
       'academic_years',
       'account_access',
       'accounts',

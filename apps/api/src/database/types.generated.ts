@@ -962,6 +962,18 @@ export interface StaffSubjects {
   subject_id: string;
 }
 
+export interface StudentAbsenceReasons {
+  absence_date: string;
+  branch_id: string;
+  category: string | null;
+  changed_at: Timestamp;
+  changed_by: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  note: Generated<string>;
+  student_id: string;
+}
+
 export interface StudentAccounts {
   branch_id: string;
   created_at: Timestamp;
@@ -1396,6 +1408,7 @@ export interface DB {
   staff_status_role_ends: StaffStatusRoleEnds;
   staff_statuses: StaffStatuses;
   staff_subjects: StaffSubjects;
+  student_absence_reasons: StudentAbsenceReasons;
   student_accounts: StudentAccounts;
   student_branch_moves: StudentBranchMoves;
   student_contracts: StudentContracts;

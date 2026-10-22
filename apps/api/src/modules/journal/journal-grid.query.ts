@@ -241,6 +241,9 @@ export interface GridCellRow {
   readonly workId: string | null;
   readonly mark: number | null;
   readonly score: number | null;
+  readonly version: number;
+  /** The account that wrote the value last (task 6.3, decision 16). */
+  readonly changedBy: string;
 }
 
 export async function lessonCells(
@@ -250,7 +253,7 @@ export async function lessonCells(
   if (lessonIds.length === 0) return [];
   const rows = await transaction
     .selectFrom('journal_cells')
-    .select(['lesson_id', 'student_id', 'work_id', 'mark', 'score'])
+    .select(['lesson_id', 'student_id', 'work_id', 'mark', 'score', 'version', 'changed_by'])
     .where('lesson_id', 'in', [...lessonIds])
     .execute();
   return rows.map((row) => ({
@@ -259,6 +262,36 @@ export async function lessonCells(
     workId: row.work_id,
     mark: row.mark,
     score: row.score,
+    version: row.version,
+    changedBy: row.changed_by,
+  }));
+}
+
+/**
+ * The categories of the reasons of absence of `studentIds` from `from` to
+ * `to`, cleared ones left out (task 6.3, decision 7: never the note).
+ */
+export async function absenceCategories(
+  transaction: Transaction,
+  studentIds: readonly string[],
+  from: string,
+  to: string,
+): Promise<{ studentId: string; date: string; category: string }[]> {
+  if (studentIds.length === 0) return [];
+  const rows = await transaction
+    .selectFrom('student_absence_reasons')
+    .select(['student_id', sql<string>`absence_date::text`.as('date'), 'category'])
+    .where('student_id', 'in', [...studentIds])
+    .where('absence_date', '>=', from)
+    .where('absence_date', '<=', to)
+    .where('category', 'is not', null)
+    .orderBy('absence_date')
+    .orderBy('student_id')
+    .execute();
+  return rows.map((row) => ({
+    studentId: row.student_id,
+    date: row.date,
+    category: row.category ?? '',
   }));
 }
 

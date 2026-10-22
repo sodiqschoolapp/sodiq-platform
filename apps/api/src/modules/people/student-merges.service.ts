@@ -1139,6 +1139,36 @@ export class StudentMerges {
       .execute();
     chained.sort((a, b) => a.id.localeCompare(b.id));
 
+    // Task 6.3 (review correction 2): the reasons of absence go to the kept
+    // record, each staying in the branch of its date; two of one date in one
+    // branch refuse the merge by their key.
+    const reasons = await transaction
+      .selectFrom('student_absence_reasons')
+      .select(['id', 'branch_id'])
+      .where('student_id', '=', merged.id)
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    if (reasons.length > 0) {
+      try {
+        await transaction
+          .updateTable('student_absence_reasons')
+          .set({ student_id: kept.id })
+          .where(
+            'id',
+            'in',
+            reasons.map((row) => row.id),
+          )
+          .execute();
+      } catch (error) {
+        const failure = error as { code?: unknown; constraint?: unknown };
+        if (failure.code === '23505' && failure.constraint === 'student_absence_reasons_key') {
+          throw new ApiException('student_merge_absence_reasons', 409);
+        }
+        throw error;
+      }
+    }
+
     // The merged record removed; its UIDs stay reserved, released (0033).
     // Task 6.1a (decision 9): journal cells are not carried yet, so their key
     // refuses the removal of a record that has any, whatever branch holds them;
@@ -1179,6 +1209,7 @@ export class StudentMerges {
         ),
       },
       relativesLinked: linked,
+      absenceReasons: reasons.map((row) => row.id),
       chained: chained.map((row) => row.id),
       filled: Object.fromEntries(
         plan.filled.map((field) => [field, textOf(merged.whole, FIELD_COLUMNS[field])]),
@@ -1194,6 +1225,7 @@ export class StudentMerges {
           .filter((one) => one.row.side === 'merged')
           .map((one) => one.row.branchId),
         ...plan.moves.filter((one) => one.row.side === 'merged').map((one) => one.row.branchId),
+        ...reasons.map((row) => row.branch_id),
       ].map((one) => one.toLowerCase()),
     );
     // The personal values (the fields filled, the values left behind) only

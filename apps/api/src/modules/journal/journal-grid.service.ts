@@ -36,10 +36,13 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
+import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
+import { namedAccounts } from './cell-lines.query.js';
 import { expectedStudents } from './expected-students.js';
 import {
   classesOfStudents,
   gridWeights,
+  absenceCategories,
   journalLessons,
   journalRows,
   lessonCells,
@@ -165,6 +168,59 @@ export class JournalGridReader {
         journals: journals.map(listed),
       });
     });
+  }
+
+  /**
+   * What the reader's grid shows of a student's cells in a lesson (task 6.3,
+   * decision 16, review correction 3): the shape of the grid of the lesson's
+   * journal and quarter when it shows that lesson and that student, else
+   * `null`. The cell history answers through it, so it reads what the grid
+   * reads and no more.
+   */
+  async cellShapeIn(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    lessonId: string,
+    studentId: string,
+  ): Promise<JournalShape | null> {
+    const lesson = await transaction
+      .selectFrom('lessons')
+      .select([sql<string>`lesson_date::text`.as('date'), 'class_id', 'group_id', 'subject_id'])
+      .where('id', '=', lessonId)
+      .executeTakeFirstOrThrow();
+    let journals = transaction
+      .selectFrom('journals')
+      .select(['id', 'academic_year_id'])
+      .where('branch_id', '=', branchId)
+      .where('subject_id', '=', lesson.subject_id);
+    journals =
+      lesson.class_id === null
+        ? journals.where('group_id', '=', lesson.group_id ?? '')
+        : journals.where('class_id', '=', lesson.class_id);
+    const journal = await journals.executeTakeFirst();
+    if (journal === undefined) return null;
+    const quarter = await transaction
+      .selectFrom('quarters')
+      .select('id')
+      .where('academic_year_id', '=', journal.academic_year_id)
+      .where('start_date', '<=', lesson.date)
+      .where('end_date', '>=', lesson.date)
+      .executeTakeFirst();
+    if (quarter === undefined) return null;
+    let grid: JournalGrid;
+    try {
+      grid = await this.gridIn(transaction, access, branchId, journal.id, {
+        quarterId: quarter.id,
+      });
+    } catch (error) {
+      if (error instanceof ApiException && error.code === 'journal_scope') return null;
+      throw error;
+    }
+    const shows =
+      grid.lessons.some((one) => one.id === lessonId) &&
+      grid.students.some((one) => one.id === studentId);
+    return shows ? grid.shape : null;
   }
 
   /** One journal for one quarter. */
@@ -375,13 +431,25 @@ export class JournalGridReader {
     const months = [...new Set(lessons.map((one) => one.date.slice(0, 7)))];
 
     const exactOf = new Map<string, { quarter: Exact; months: Map<string, Exact> }>();
+    // Who typed each attendance cell (task 6.3, decision 16).
+    const typists = await namedAccounts(
+      transaction,
+      cells.flatMap((cell) => (cell.workId === null ? [cell.changedBy] : [])),
+    );
     const gridStudents: JournalStudent[] = students.map((student, index) => {
       const marks = new Map<string, number | null>();
+      const attendanceCells = new Map<string, { version: number; typedBy: string | null }>();
       const scores = new Map<string, number | null>();
       for (const cell of cells) {
         if (cell.studentId !== student.id) continue;
-        if (cell.workId === null) marks.set(cell.lessonId, cell.mark);
-        else scores.set(cell.workId, cell.score);
+        if (cell.workId === null) {
+          marks.set(cell.lessonId, cell.mark);
+          const typist = typists.get(cell.changedBy);
+          attendanceCells.set(cell.lessonId, {
+            version: cell.version,
+            typedBy: typist?.name ?? typist?.login ?? null,
+          });
+        } else scores.set(cell.workId, cell.score);
       }
       const gridCells: JournalCell[] = lessons.map((lesson) => {
         const isExpected = expectedOf.get(lesson.id)?.has(student.id) ?? false;
@@ -407,6 +475,8 @@ export class JournalGridReader {
         return {
           closed: !isExpected || lesson.startsAt.getTime() > now.getTime(),
           mark,
+          version: attendanceCells.get(lesson.id)?.version ?? null,
+          typedBy: attendanceCells.get(lesson.id)?.typedBy ?? null,
           works:
             shape === 'attendance'
               ? []
@@ -567,6 +637,35 @@ export class JournalGridReader {
             ),
           };
 
+    // Entry (task 6.3, decisions 1, 3 and 15): a held lesson the reader teaches or owns,
+    // with a role that enters; the routes decide the same way.
+    const entering = entersByRole(access, branchId);
+    const staffId = entering ? await ownStaffOf(transaction, access.accountId) : null;
+    const canEnter = (lesson: GridLessonRow): boolean =>
+      entering &&
+      held.get(lesson.id) === true &&
+      teachesOrOwns(
+        { date: lesson.date, teacherId: lesson.teacherId, journalId: journal.id },
+        facts,
+        staffId,
+        today,
+      );
+    // The categories of absence of the students shown (decision 7), on the dates of the shown
+    // lessons each student is expected at (permission review of the code, should-fix 4).
+    const expectedOn = new Set(
+      lessons.flatMap((lesson) =>
+        [...(expectedOf.get(lesson.id) ?? [])].map((studentId) => `${studentId}|${lesson.date}`),
+      ),
+    );
+    const absences = (
+      await absenceCategories(
+        transaction,
+        students.map((student) => student.id),
+        quarter.startDate,
+        quarter.endDate,
+      )
+    ).filter((one) => expectedOn.has(`${one.studentId}|${one.date}`));
+
     const others = (await readableJournals(transaction, access, branchId, year.id)).map(listed);
     return journalGridSchema.parse({
       journal: {
@@ -603,6 +702,7 @@ export class JournalGridReader {
             ? null
             : { cause: lesson.cancelCause, reason: lesson.cancelReason },
         month: lesson.date.slice(0, 7),
+        canEnter: canEnter(lesson),
         works:
           shape === 'attendance'
             ? []
@@ -622,6 +722,7 @@ export class JournalGridReader {
       })),
       students: gridStudents,
       bottom,
+      absences,
       legend: {
         lateValue: weights.lateValue,
         skippedValue: weights.skippedValue,

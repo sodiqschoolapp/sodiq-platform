@@ -652,6 +652,16 @@ export const uz: Texts<'one' | 'other'> = {
     timetable_view_scope:
       'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
     journal_scope: 'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
+    journal_entry_scope:
+      'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
+    entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
+    lesson_not_held:
+      'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',
+    absence_scope: 'Bu sizning sinfingiz emas. Oʻz sinflaringizdan birini tanlang.',
+    absence_not_member:
+      'Oʻquvchi bu sanada filialning hech bir sinfida boʻlmagan. Sanani tekshiring.',
+    student_merge_absence_reasons:
+      'Ikkala yozuvda ham bir xil sana uchun dars qoldirish sababi bor. Ikki sababdan birini tozalang, soʻng qayta birlashtiring.',
     journal_no_quarter:
       'Bu oʻquv yili choraklarining sanalari hali belgilanmagan, shuning uchun jurnalni koʻrsatib boʻlmaydi. Oʻquv ishlari boʻyicha direktor oʻrinbosari ularni Maktab sozlamalarida belgilaydi.',
     place_referenced:
@@ -3197,6 +3207,10 @@ export const uz: Texts<'one' | 'other'> = {
         open: 'Nashrda jurnal ochildi',
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
         cells_save: 'Jurnal katakchalari saqlandi',
+        all_present: 'Hammasi keldi deb belgilandi',
+      },
+      absence_reason: {
+        set: 'Dars qoldirish sababi belgilandi',
       },
       absence: {
         create: 'Kelmaslik qaydi kiritildi',
@@ -5029,6 +5043,60 @@ export const uz: Texts<'one' | 'other'> = {
       changedOn: '({{date}} kuni oʻzgartirilgan)',
       markers:
         '{{provisional}}: taxminiy, ulushli qismda hali maʼlumot yoʻq; {{leftOut}}: qism hisobga olinmagan.',
+    },
+    entry: {
+      markButton: '{{mark}}: {{name}}',
+      allPresent: 'Hammasi keldi',
+      allPresentFilled_one: '{{count}} oʻquvchi keldi deb belgilandi.',
+      allPresentFilled_other: '{{count}} oʻquvchi keldi deb belgilandi.',
+      allPresentSkipped_one: '{{count}} tasi allaqachon belgilangan, oʻzgartirilmadi.',
+      allPresentSkipped_other: '{{count}} tasi allaqachon belgilangan, oʻzgartirilmadi.',
+      saved: 'Saqlandi',
+      presentEarlier:
+        'Bugun avvalgi darsda maktabda boʻlgan: {{names}}. Sinf rahbari bu kunni koʻradi.',
+      typedBy: 'Kiritgan: {{name}}',
+      history: 'Tarix',
+      historyTitle: 'Tarix: {{student}}',
+      historyEmpty: 'Bu darsda hali hech narsa kiritilmagan.',
+      historyCell: 'Katakcha',
+      historyBefore: 'Avval',
+      historyAfter: 'Keyin',
+      historyWho: 'Kim',
+      historyWhen: 'Qachon',
+      historyHow: 'Qanday',
+      close: 'Yopish',
+      reason: 'Sabab: {{category}}',
+    },
+    absences: {
+      title: 'Oʻquvchilarning dars qoldirishlari',
+      class: 'Sinf',
+      from: 'Dan',
+      to: 'Gacha',
+      date: 'Sana',
+      student: 'Oʻquvchi',
+      lessons: 'Qoldirilgan darslar',
+      atSchoolEarlier: 'Shu kuni avvalroq maktabda boʻlgan',
+      category: 'Sabab',
+      note: 'Izoh',
+      none: 'Sabab koʻrsatilmagan',
+      categories: {
+        illness: 'Kasallik',
+        family: 'Oilaviy sabab',
+        school_permitted: 'Maktab ruxsati bilan',
+        unexcused: 'Sababsiz',
+        unknown: 'Nomaʼlum',
+      },
+      noCategory: 'Sababni tanlang',
+      setReason: 'Sababni koʻrsatish',
+      clear: 'Sababni tozalash',
+      clearTitle: 'Sabab tozalansinmi?',
+      clearText: 'Sabab jurnaldan va bu roʻyxatdan chiqadi; audit jurnali uni saqlaydi.',
+      changedBy: '{{name}} koʻrsatgan, {{date}}',
+      caption: 'Oʻquvchilar va kunlar boʻyicha dars qoldirishlar',
+      emptyTitle: 'Bu kunlarda dars qoldirish yoʻq',
+      empty: '0 yoki 3 belgisi yoki sababi bor kun shu yerda koʻrinadi.',
+      noClass: 'Koʻrsatish uchun sinf yoʻq.',
+      cancel: 'Bekor qilish',
     },
     marks: {
       absent: 'Maktabga kelmagan',

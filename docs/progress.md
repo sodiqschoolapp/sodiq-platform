@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.3 Attendance
+
+- `POST /api/journal/lessons/:lessonId/attendance` (typed marks 0 to 3 through `saveCells`) and `/all-present` (one request, one audit entry, one history line per cell), entered only by the lesson's teacher or the journal's owner on its date or today (`attendance-entry.ts`), from the start of a held lesson; `GET .../students/:studentId/history` within the reader's grid.
+- 0113 `student_absence_reasons` and Journal, Student absences (`/journal/student-absences`, area `absence_reasons`): the Tutor of the class and the Academic Vice Principal set or clear a reason; the grid shows its category, never the note. The grid takes 0 to 3 in an A cell, "all present" sits over each A column, lesson mode has the large buttons.
+- Left out: the edit period and corrections (8.4), exemptions and the reason's file (8.5), undo and "copy attendance" (8.3a), "keep or clear" (8.1), the reason's lock at the close (9.2b), the attendance figures (9.4a, 9.4b); a From line each.
+
+The next sessions must know:
+
+- Who enters a lesson is `teachesOrOwns` and its state `entryStateOf` (`apps/api/src/modules/journal/attendance-entry.ts`); the grid's `canEnter` reads the same functions, and 8.1 and 8.4 add numbers and the lock there.
+- A test that writes a cell or a reason as the migrator sets `app.now` first (`atMoment` of `attendance.test.ts`); the triggers refuse a row with no moment.
+- The browser test of attendance has a branch and accounts of its own (`attendanceTeacher`, `attendanceTutor` in `seed.ts`).
+
 ## 22 October 2026: task 6.2 Journal grid
 
 - `GET /api/journal/journals` (the Journals page: tabs Classes and Groups, then the subject, by year) and `GET /api/journal/journals/:journalId?quarterId=` (one quarter): the area `journal`, view only, for the nine roles of `07`, with the scope of each decided in `journal-scope.ts` (whole, attendance only, a Tutor's own rows of a group, a substitute's or former owner's lessons). Every figure (percent, AVG, quarter and month figures, bottom row) comes from `packages/calc` on the server; `groupAverage` is new (`CALC_VERSION` 3).

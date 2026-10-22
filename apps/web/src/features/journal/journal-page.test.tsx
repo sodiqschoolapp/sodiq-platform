@@ -22,9 +22,12 @@ const cell = (
   works: { score: number | null; percent: number | null }[] = [],
   score: number | null = null,
   closed = false,
+  version: number | null = mark === null ? null : 1,
 ) => ({
   closed,
   mark,
+  version,
+  typedBy: mark === null ? null : 'Karimova Aziza',
   works,
   score,
 });
@@ -90,6 +93,7 @@ const GRID: JournalGrid = {
       held: true,
       cancelled: null,
       month: '2026-10',
+      canEnter: false,
       works: [{ id: uid(70), kind: 'classwork', position: 1, total: 30, notHeld: false }],
     },
     {
@@ -101,6 +105,7 @@ const GRID: JournalGrid = {
       held: true,
       cancelled: null,
       month: '2026-10',
+      canEnter: false,
       works: [],
     },
     {
@@ -112,6 +117,7 @@ const GRID: JournalGrid = {
       held: false,
       cancelled: { cause: 'reason', reason: 'School trip' },
       month: '2026-10',
+      canEnter: false,
       works: [],
     },
   ],
@@ -132,6 +138,7 @@ const GRID: JournalGrid = {
       cells: [cell(0), cell(null), cell(null, [], null, true)],
     }),
   ],
+  absences: [],
   bottom: {
     quarter: { attendance: 75, classwork: 60, homework: 50, ratingExam: null, result: 59 },
     months: {

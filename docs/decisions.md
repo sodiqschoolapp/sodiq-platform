@@ -289,6 +289,36 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: attendance (task 6.3)
+
+Plan approved on pull request #211 with corrections 1 to 5; decisions 1 to 16 confirmed there (decision 1 changed by correction 1, decision 13 marked Look first by correction 5). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (widening what existing roles may do). `journal` `edit` for the Super Admin, the Academic Vice Principal, the Tutor and the Teacher; the Principal, the Vice Principal for Spiritual and Moral Education, the Head Tutor and the Head Teachers keep `view`. The route lets a person enter only a lesson they teach or own (`attendance-entry.ts`), whatever the role; a substitute enters through the Teacher or Tutor role | Decision 1, correction 1; `07`, Who can do what; `02`, Principal: "Changes nothing" |
+| **Look first** (a reading of a journal rule). No edit period before 8.4: a lesson is entered from its start with no end | Decision 2; 8.4 builds the lock moment |
+| **Look first** (a reading of who enters). The lesson's teacher (the substitute in force, the person of a correction of kind `teacher`), the journal's owner on the lesson's date (the acting teacher included) and the journal's owner today | Decision 3; `edge/journal`, "A teacher is replaced from Monday" |
+| **Look first** (a new permission area, personal data readers). `absence_reasons`: `view` for the Super Admin, the Principal, the Academic Vice Principal, the Vice Principal for Spiritual and Moral Education, the Head Tutor and the Tutor (own classes); `edit` for the Tutor (own classes), the Academic Vice Principal and the Super Admin; a Teacher sees the category in the journal only. The area joins `CLASS_SCOPED_AREAS`, so a Tutor's classes are read for its routes | Decision 6; `edge/journal`, "A Tutor records why a student was absent" |
+| **Look first** (a spec item moved). The reason's optional file goes to 8.5 with the exemption's document | Decision 10 |
+| **Look first** (spec rows moved). The Attendance figures of `edge/journal` go to 9.4a and 9.4b as functions of `packages/calc` | Decision 13, correction 5 |
+| **Look first** (a reading of Held lesson). Entry only on a held lesson: `entry_not_started` before the start, `lesson_not_held` while unresolved, `lesson_cancelled_cell` when cancelled; judged by the transaction's moment after the lesson's FOR SHARE lock | Decision 15 |
+| "All present" fills 1 into every empty attendance cell of the expected students under the lesson's lock, skips and reports what was written meanwhile; one audit entry `journal.all_present`, one history line per cell | Decision 4; the Done when |
+| The typed save reuses `saveCells`, up to 60 cells of one lesson per call | Decision 5 |
+| The grid answers the category of a reason for the students and dates the reader's scope shows, never the note | Decision 7 |
+| "The class Tutor" is a Tutor whose rows in force now name the student's class on the date; a date with no membership is refused (`absence_not_member`); a reason is cleared by no category and stays as a row | Decision 8 |
+| A 0 typed after a 1, 2 or 3 in an earlier lesson of the day answers `presentEarlier`; the grid shows the hint, Student absences marks the day | Decision 9 |
+| The lock of a reason at the quarter's close is 9.2b's; no notification; undo and "copy attendance" are 8.3a's, "keep or clear" 8.1's | Decisions 11, 12, 14; correction 4 |
+| Who typed a cell and its history from the cell are built here; the history answers only the cells the reader's grid shows (attendance only for an attendance reader) | Decision 16, correction 3 |
+| A reason stays in the branch of its date on a branch move (`KEPT`); a merge carries it to the kept record, guarded by `student_absence_reasons_merge`, and two of one date refuse it (`student_merge_absence_reasons`); a student with a reason is not deleted | Spec review of the plan, must-fix 6; correction 2 |
+| **Build decision.** A typed mark before the start answers the new code `entry_not_started`, not `lesson_not_started`, whose text is about a correction of a past lesson (5.6a-4) | `.claude/rules/web.md`: the text of a code is true on every path |
+| **Build decision.** The "all present" button over the A column is an icon with the words as its name; the grid takes 0 to 3, Delete and Backspace in an A cell, and H or a double click opens the history | `07`, Keyboard: "digits type; a key opens the comment" |
+| **Build decision.** Student absences lists a class from the address, or the reader's first; its link is on the Journals page and in Ctrl+K | No menu item of its own: the menu lists the modules |
+| **Build decision.** The browser test seeds a branch of its own with one lesson yesterday at 08:00 and opens it from the Journals page, so it is started whatever the hour of the run | The "Journal browser test branch" holds a lesson today at 08:00 and its own test (spec review of the code, should-fix 7) |
+| **Build decision.** An entry's audit entry names the Teacher's assignment, then the Tutor's, else the first that permits the route (`entryAssignment`) | The person enters as the one who teaches (permission review of the code, should-fix 3) |
+| **Build decision.** The grid answers a category only on the dates of shown lessons the student is expected at; Student absences lists marks of held lessons only | Permission review should-fix 4; spec review should-fix 5; `edge/00-definitions`, Held lesson |
+| **Build decision.** Two first saves of one reason at one moment: the second reads the row the first wrote and changes it, its audit entry naming that value as the old one | `CLAUDE.md`, Every change is audited (spec review of the code, should-fix 1) |
+| **Build decision.** "At school earlier" is a notice above the grid naming the students, not a mark on the cell | `edge/journal` asks that "a hint is shown"; the notice names every student of the save at once (spec review of the code, should-fix 6, not followed) |
+
 ## 22 October 2026: the journal grid (task 6.2)
 
 Plan approved on pull request #210 with corrections 1 to 5; decisions 1 to 23 confirmed there (decision 3 changed by correction 1); decision 6 changed in the build. Flagged on issue #42.

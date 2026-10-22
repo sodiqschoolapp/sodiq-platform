@@ -841,6 +841,33 @@ describe('leaving, return and delete of a student', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    it('refuses a student whose only reason of absence, a cleared one, is one this branch does not see, by the key (task 6.3)', async () => {
+      const student = await create();
+      const by = await (await CellsKit.create(t.database.migrator)).lessons.load.classes.account();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .insertInto('student_absence_reasons')
+          .values({
+            // Kept in the branch of its date after a move (0113): out of this branch's sight.
+            branch_id: t.south,
+            student_id: student.id,
+            absence_date: '2026-10-12',
+            category: null,
+            note: '',
+            changed_by: by,
+            changed_at: t.clock.now(),
+          })
+          .execute();
+      });
+      const fresh = await detail(student.id);
+      const before = await snapshot();
+      refusedWith(await remove(fresh), 409, 'student_has_data');
+      expect(await snapshot()).toEqual(before);
+    });
+
     it('refuses a student whose only mark is kept by a forced delete of another branch that can still be restored, and deletes once its 30 days are over (task 6.1b-2, decision 7)', async () => {
       const student = await create();
       const by = await t.database.migrator
