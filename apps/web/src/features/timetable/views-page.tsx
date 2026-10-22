@@ -285,14 +285,18 @@ function DayHeading({ day, language }: { day: ViewDay; language: Language }) {
       <h2 className={SECTION_TITLE}>
         {weekdayName(language, weekdayOf(day.date))}, {schoolDateText(day.date, language)}
       </h2>
-      {day.outsideYear && <p className="text-sm text-muted">{t('timetable.views.outsideYear')}</p>}
+      {day.outsideYear && (
+        <p className="text-sm text-muted-foreground">{t('timetable.views.outsideYear')}</p>
+      )}
       {!day.outsideYear && day.version === null && (
-        <p className="text-sm text-muted">{t('timetable.views.noVersion')}</p>
+        <p className="text-sm text-muted-foreground">{t('timetable.views.noVersion')}</p>
       )}
       {day.dayOff !== null && (
         <p className="text-sm">{t('timetable.views.dayOff', { name: day.dayOff })}</p>
       )}
-      {day.fromPattern && <p className="text-sm text-muted">{t('timetable.views.fromPattern')}</p>}
+      {day.fromPattern && (
+        <p className="text-sm text-muted-foreground">{t('timetable.views.fromPattern')}</p>
+      )}
     </div>
   );
 }
@@ -322,7 +326,7 @@ function DayTable({ items, language }: { items: Item[]; language: Language }) {
   const { t } = useTranslation();
   const marks = useLessonMarks();
   if (items.length === 0)
-    return <p className="text-sm text-muted">{t('timetable.views.noLessons')}</p>;
+    return <p className="text-sm text-muted-foreground">{t('timetable.views.noLessons')}</p>;
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -491,7 +495,7 @@ function WeekGrid({ view, language }: { view: TimetableView; language: Language 
                         <p
                           key={`${item.kind}-${String(item.start)}-${item.kind === 'lesson' ? item.lesson.id : item.kind === 'exam' ? item.exam.id : item.busy.branch.id}`}
                           {...(item.kind === 'busy'
-                            ? { 'data-busy': 'true', className: 'text-muted' }
+                            ? { 'data-busy': 'true', className: 'text-muted-foreground' }
                             : {})}
                         >
                           {text(item)}
@@ -539,7 +543,7 @@ function SchoolDay({
     ),
   ].sort((a, b) => a - b);
   if (items.length === 0)
-    return <p className="text-sm text-muted">{t('timetable.views.noLessons')}</p>;
+    return <p className="text-sm text-muted-foreground">{t('timetable.views.noLessons')}</p>;
   const ofClass = (classId: string) =>
     items.filter((item) =>
       item.kind === 'lesson'

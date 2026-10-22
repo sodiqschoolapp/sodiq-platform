@@ -240,8 +240,23 @@ function WeekTable({
     ...new Set([...home.days.map((day) => day.date), ...items.map((item) => item.at.date)]),
   ].sort();
   const dayOffs = home.days.filter((day) => day.dayOff !== null);
+  // A day off is named also in a week with nothing else in it.
+  const dayOffLines = dayOffs.map((day) => (
+    <p key={`${day.branch.id}-${day.date}`} className="text-sm" data-day-off={day.date}>
+      {t('home.lessons.dayOffIn', {
+        date: schoolDateText(day.date, language, false),
+        branch: day.branch.name,
+        name: day.dayOff ?? '',
+      })}
+    </p>
+  ));
   if (items.length === 0) {
-    return <EmptyState text={t('home.lessons.noWeek')} />;
+    return (
+      <div className="grid gap-4">
+        <EmptyState text={t('home.lessons.noWeek')} />
+        {dayOffLines}
+      </div>
+    );
   }
   const rows = [
     ...new Map(
@@ -281,7 +296,7 @@ function WeekTable({
                         <p
                           key={item.key}
                           {...(item.kind === 'busy'
-                            ? { 'data-busy': 'true', className: 'text-muted' }
+                            ? { 'data-busy': 'true', className: 'text-muted-foreground' }
                             : {})}
                         >
                           {text(item, named).join(' · ')}
@@ -294,15 +309,7 @@ function WeekTable({
           </TableBody>
         </Table>
       </div>
-      {dayOffs.map((day) => (
-        <p key={`${day.branch.id}-${day.date}`} className="text-sm">
-          {t('home.lessons.dayOffIn', {
-            date: schoolDateText(day.date, language, false),
-            branch: day.branch.name,
-            name: day.dayOff ?? '',
-          })}
-        </p>
-      ))}
+      {dayOffLines}
     </div>
   );
 }

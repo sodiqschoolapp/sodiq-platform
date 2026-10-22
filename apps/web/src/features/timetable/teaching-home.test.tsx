@@ -81,7 +81,7 @@ const rowsOf = (section: string): string[][] =>
     [...one.querySelectorAll('td')].map((cell) => cell.textContent ?? ''),
   );
 
-function openHome(answer: () => Response, role: Role = 'teacher') {
+function openHome(answer: () => Response | Promise<Response>, role: Role = 'teacher') {
   const calls = fakeApi({
     'GET /api/auth/session': () =>
       json(
@@ -209,6 +209,50 @@ describe('the teaching home page', () => {
     });
   });
 
+  it('shows the loading outline while the week is asked for', async () => {
+    let release: () => void = () => undefined;
+    openHome(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = () => {
+            resolve(json(homeOf({ lessons: [lesson(1)] })));
+          };
+        }),
+    );
+    await waitFor(() => {
+      expect(document.querySelector('[role="status"][aria-busy="true"]')).not.toBeNull();
+    });
+    expect(document.querySelector('[data-home-today]')).toBeNull();
+    release();
+    await waitFor(() => {
+      expect(rowsOf('data-home-today')).toHaveLength(1);
+    });
+    expect(document.querySelector('[role="status"][aria-busy="true"]')).toBeNull();
+  });
+
+  it('marks a lesson the person substitutes, and draws a busy block in the quiet text colour', async () => {
+    openHome(() =>
+      json(
+        homeOf({
+          lessons: [
+            lesson(1, {
+              substitution: {
+                id: uid(800),
+                replaced: { id: uid(601), kind: 'person', name: 'Nurova Lola' },
+              },
+            }),
+          ],
+          busy: [busy],
+        }),
+      ),
+    );
+    await waitFor(() => {
+      expect(rowsOf('data-home-today')[0]?.at(-1)).toBe('substitute for Nurova Lola');
+    });
+    const block = document.querySelector('[data-home-week] [data-busy]');
+    expect(block?.className).toBe('text-muted-foreground');
+  });
+
   it('says so when there is nothing today or this week, with a day off named', async () => {
     openHome(() =>
       json(
@@ -227,6 +271,9 @@ describe('the teaching home page', () => {
     );
     expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
     expect(screen.getByText(en.home.lessons.noWeek)).toBeDefined();
+    expect(document.querySelector('[data-day-off]')?.textContent).toBe(
+      '19 October, North: day off, Teachers’ Day',
+    );
   });
 
   it('shows a failure with a retry, and the Tutor gets the same part', async () => {

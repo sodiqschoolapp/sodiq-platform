@@ -254,6 +254,24 @@ describe('the teaching home page', () => {
     );
   });
 
+  it('lists a lesson the person substitutes, with the teacher replaced (5.9a decision 8)', async () => {
+    const browser = await account();
+    const here = await publishedScene(t, load, { accounts: { spare: browser.account.id } });
+    const lesson = await lessonOf(here, DATE);
+    const substituted = await keyed(`/api/timetable/lessons/${lesson.id}/substitute`, here.branch, {
+      teacherId: here.spareTeacher.staffId,
+      reason: 'Training day',
+    });
+    expect(substituted.status, JSON.stringify(substituted.body)).toBe(200);
+    await at(browser, [{ role: 'teacher', branchId: here.branch }], async (home) => {
+      const read = homeOf(await home(here.branch));
+      expect(
+        read.lessons.map((one) => [one.id, one.replacedHere, one.substitution?.replaced?.id]),
+      ).toEqual([[lesson.id, false, here.teacher.staffId]]);
+      expect(read.lessons[0]?.teacher?.id).toBe(here.spareTeacher.staffId);
+    });
+  });
+
   it('shows a branch with no current role as busy blocks with time and branch only, in time order', async () => {
     const browser = await account();
     const here = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
@@ -414,6 +432,14 @@ describe('the teaching home page', () => {
         expect(read.days.every((one) => one.branch.id === here.branch)).toBe(true);
       },
     );
+    // A record linked only to a branch with no year: an empty week with today, no error.
+    const alone = await account();
+    const lone = await load.teacher(empty, { accountId: alone.account.id });
+    expect(lone.staffId).toBeDefined();
+    await at(alone, [{ role: 'teacher', branchId: empty }], async (home) => {
+      const read = homeOf(await home(empty));
+      expect(read).toMatchObject({ branches: [], days: [], lessons: [], exams: [], busy: [] });
+    });
     const nobody = await account();
     await at(nobody, [{ role: 'teacher', branchId: here.branch }], async (home) => {
       const read = homeOf(await home(here.branch));
