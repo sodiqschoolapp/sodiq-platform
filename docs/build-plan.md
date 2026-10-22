@@ -1021,7 +1021,7 @@ How to read the task lines:
 
 ## Phase 7. Lesson plans
 
-- [ ] **7.1a Plans and items**
+- [x] **7.1a Plans and items** (pull request #212)
   - Read: `09` (What a plan contains), `edge/lesson-plans` (How items stay attached).
   - Build: a plan per class or group and subject; items with topic, any number of classworks and homeworks (at most 10 of each) and files; file limits; attachment of items to lessons in order; who can see a plan.
   - Done when: a plan fills the lessons of a quarter in order.
@@ -1033,6 +1033,7 @@ How to read the task lines:
   - From 5.7a-3a (pull request #188, decision 16): `09`, When something else changes, "The teacher of the class changes: The plan stays with the class and the new teacher becomes its owner. It stays locked; the system prepares an edit request so that the new teacher can adjust the future lessons." A vacancy fill is such a change, read from `vacancy_fills` and `vacancy_fill_rows` (the date, the person, the rows); `edge/timetable`: "the hired teacher becomes the plan's owner".
   - From 5.7a-3c (pull request #190, decision 9; spec review of the plan, must-fix 2): the plan's owner on a day is `journalOwnerOn` (`apps/api/src/modules/timetable/journal-owners.ts`: the teacher of the journal's row in the published version in force that day; under a vacancy the acting teacher in force (`journal_acting_teachers`, 0100, counted only on days the row names the vacancy and the person is active in the branch), else `none`). The row "The teacher of the class changes" applies each time the owner passes between "no teacher", the acting teacher and the hired teacher: the plan stays with the class and locked, an edit request is prepared for the new owner, the part taught earlier stays readable. `edge/timetable`: "For that period the acting teacher owns the plan".
   - From 5.7b-1 (pull request #191, decision 10): `09`, "A substitute takes one lesson: The substitute sees the item of that lesson and cannot edit it"; `edge/lesson-plans`: "a substitute, for that lesson's item". The substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101).
+  - From 7.1a (pull request #212, decision 5 and review correction 2): an item stands at a position of its plan's queue (`lesson_plan_items.position`, 0114) and fills the row of that number, worked out on each read (`planRows`, `apps/api/src/modules/plans/plan-read.ts`); nothing is stored per lesson yet. This task stores the fixed part (`09`: "The items of lessons already held never move"; "A lesson is cancelled after its date: Its item moves to the next lesson not yet held") and the queue, and names the items past the last row (`unattached` of `GET /api/plans/journals/:journalId`) as "not covered".
 
 - [ ] **7.1c Shared plans**
   - Read: `09` (What a plan contains), `05` (Language of instruction).
@@ -1045,6 +1046,7 @@ How to read the task lines:
   - Done when: nothing opens without an approved request and nobody approves their own.
   - From 3.6b-3 (pull request #123, decision 2, Look first): an open plan edit request is routed by the post of its subject (`02`, "Subjects, not departments", "Who approves"), read in force on each request (`edge/people-roles-accounts`, row 16), so it follows any change of the post on its date with no job; a department move changes no approver.
   - From 5.7a-3c (pull request #190, decision 9): `edge/timetable`, "The plan, the journal and the reports of a vacancy's subject": "Until an acting teacher is named or the vacancy is filled, nobody writes its plan: the plan window lists it as 'vacancy', not as overdue against anyone". The window reads the owner with `journalOwnerOn` (`apps/api/src/modules/timetable/journal-owners.ts`: the teacher of the journal's row in the published version in force that day; under a vacancy the acting teacher in force (`journal_acting_teachers`, 0100, counted only on days the row names the vacancy and the person is active in the branch), else `none`): `none` is listed as "vacancy", the acting teacher is the plan's owner in the period.
+  - From 7.1a (pull request #212, Left out): `edge/lesson-plans`, The window and requests, "A teacher is hired in week 5": "A plan record exists for every journal and quarter that needs one, from the moment the journal exists." 7.1a makes the record (`lesson_plans`, `lesson_plan_journals`, 0114) on the first write (`createItem`, `apps/api/src/modules/plans/plans.service.ts`); this task makes one for every journal of a graded subject and quarter, which "overdue" and the prepared requests read. Until this task the owner writes every row of every quarter of an open year (7.1a, decision 4); the window and the lock go on top of the same routes.
 
 - [ ] **7.3 Master plans**
   - Read: `09` (Master plans), `edge/lesson-plans`.
@@ -1136,6 +1138,7 @@ How to read the task lines:
   - Build: topic and titles shown in the journal; "topic not delivered" and "homework not given"; plan reports (completeness, progress, share of "not held").
   - Done when: marking a homework "not given" removes the next lesson's homework column.
   - From 5.7b-1 (pull request #191, decision 10): `edge/lesson-plans`, "A substitute supervises the class": "On the lesson card the substitute or the teacher sets 'topic not delivered'"; the substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101).
+  - From 7.1a (pull request #212, decision 10): `edge/lesson-plans`, "A wrongly copied plan must be removed; an inspector asks for a printout": "Plans export to PDF and Excel with their marks." Export of a plan, logged as every export, with the plan reports.
 
 - [ ] **8.9 Journal exports and the support view**
   - Read: `07` (last paragraph), `edge/journal`, `edge/system-behaviour`.
@@ -1176,6 +1179,7 @@ How to read the task lines:
   - From 5.6a-1 (pull request #160, decision 12): `edge/timetable`, After publishing, "A lesson that already has attendance must be cancelled": "Not possible in a closed quarter." A one-day cancel or restore of a lesson in a closed quarter is refused, and so is the cancel and the restore of the correction of a past lesson (`POST /api/timetable/lessons/:id/correction`, kinds `cancel` and `restore`; 6.1b-2, permission review should-fix 2).
   - From 6.1b-2 (pull request #208, review correction 4): the same "Not possible in a closed quarter" for the bulk cancel (`apps/api/src/modules/timetable/bulk-cancels.service.ts`): a bulk cancel of a date in a closed quarter, and so its "cancel" choice over a lesson with data, is refused, with a route test.
   - From 6.3 (pull request #211, decision 11): `edge/journal`, "A Tutor records why a student was absent": "The class Tutor and the Academic Vice Principal can edit it until the quarter closes." A closed quarter refuses the set and the clear of a reason (`student_absence_reasons`, 0113) of a date inside it, in the database and through the route, with a test each.
+  - From 7.1a (pull request #212, spec review of the plan, should-fix 6): `edge/lesson-plans`, Plans and the journal: "Nothing is possible in a closed quarter." The writes of a plan (`apps/api/src/modules/plans/plans.service.ts`, `plan-files.service.ts`) are refused in a closed quarter, with a route test; today only a closed year refuses them (`plan_year_closed`).
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.

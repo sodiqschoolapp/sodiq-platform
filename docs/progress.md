@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 7.1a Plans and items
+
+- 0114: `lesson_plans`, `lesson_plan_journals` (one plan per journal and quarter), `lesson_plan_items` (a position in the queue), `lesson_plan_works` (10 of a kind) and `lesson_plan_files` (10 per item, 20 MB, a fixed list of types). Area `plans`; routes under `/api/plans` (list, plan, item create, save, clear, file add, read, remove), only the owner writes, the stale check per field.
+- The rows of a plan are the quarter's lessons not cancelled (`planRows`, `plan-read.ts`), item p fills row p, worked out on each read. The web: `/plans` (state per quarter) and `/plans/$journalId` with the row panel ("same topic as the previous lesson", "will be checked today in lesson N", files).
+- Left out: re-attachment and "not covered" (7.1b), shared plans and copies (7.1c), the window, lock and requests and a record for every journal (7.2), masters (7.3), the plan in the journal, reports and export (8.8), the closed quarter (9.2b); a From line each.
+
+The next sessions must know:
+
+- A plan's files use the photos' store (`PHOTO_STORE`, `planFileKey`); a route test passes `photoStore: new MemoryPhotoStore()` to the kit.
+- Who reads and writes is `planReachOf` (`plan-scope.ts`); `PlansService.itemWriteScene` and `lockItem` are what a new write of an item calls first.
+- The browser test has a branch of its own (`plansTeacher` in `seed.ts`) with two lessons after today.
+
 ## 22 October 2026: task 6.3 Attendance
 
 - `POST /api/journal/lessons/:lessonId/attendance` (typed marks 0 to 3 through `saveCells`) and `/all-present` (one request, one audit entry, one history line per cell), entered only by the lesson's teacher or the journal's owner on its date or today (`attendance-entry.ts`), from the start of a held lesson; `GET .../students/:studentId/history` within the reader's grid.
