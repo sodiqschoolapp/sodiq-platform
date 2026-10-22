@@ -226,6 +226,8 @@ describe('lesson plans and their items', () => {
         .selectFrom(table)
         .selectAll()
         .where('branch_id', '=', branch)
+        // In a fixed order: an update moves a row in the table.
+        .orderBy(table === 'lesson_plan_journals' ? 'plan_id' : 'id')
         .execute();
     }
     return rows;
