@@ -75,8 +75,15 @@ const CHECK_VIOLATION = '23514';
 const EXCLUSION_VIOLATION = '23P01';
 const FOREIGN_KEY_VIOLATION = '23503';
 
-/** The keys to `students` of tables of student data (task 6.1a; 0108). */
-const DATA_KEYS: Readonly<Record<string, true>> = { journal_cells_student_fkey: true };
+/**
+ * The keys to `students` of tables of student data (task 6.1a; 0108), and the
+ * marks a forced delete keeps for their restore (task 6.1b-2, decision 7;
+ * `student_forced_cells`, 0111).
+ */
+const DATA_KEYS: Readonly<Record<string, true>> = {
+  journal_cells_student_fkey: true,
+  student_forced_cells: true,
+};
 
 /** The database guards of 0033 and 0045 and the refusal each gives. */
 const GUARDS: Readonly<Record<string, ErrorCode>> = {

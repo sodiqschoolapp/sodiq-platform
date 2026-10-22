@@ -1141,12 +1141,17 @@ export class StudentMerges {
 
     // The merged record removed; its UIDs stay reserved, released (0033).
     // Task 6.1a (decision 9): journal cells are not carried yet, so their key
-    // refuses the removal of a record that has any, whatever branch holds them.
+    // refuses the removal of a record that has any, whatever branch holds them;
+    // task 6.1b-2 (decision 7): so do its marks a forced delete keeps (0111).
     try {
       await transaction.deleteFrom('students').where('id', '=', merged.id).execute();
     } catch (error) {
       const failure = error as { code?: unknown; constraint?: unknown };
-      if (failure.code === '23503' && failure.constraint === 'journal_cells_student_fkey') {
+      if (
+        failure.code === '23503' &&
+        (failure.constraint === 'journal_cells_student_fkey' ||
+          failure.constraint === 'student_forced_cells')
+      ) {
         throw new ApiException('student_merge_has_cells', 409);
       }
       throw error;
