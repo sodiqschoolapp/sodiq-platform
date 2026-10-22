@@ -201,6 +201,24 @@ describe('Lesson plans', () => {
     });
   });
 
+  it('adds up to 10 classworks, and says a homework of the first of two lessons is checked today', async () => {
+    open({ path: `/plans/${JOURNAL}` });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /19 October · lesson 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.panel.fill }));
+    const form = await screen.findByRole('form', { name: 'Row 2' });
+    // The next row is the same day, lesson 2 (edge/lesson-plans, "A double lesson").
+    expect(within(form).getByText('Will be checked today in lesson 2.')).toBeDefined();
+    for (let added = 0; added < 10; added += 1) {
+      fireEvent.click(within(form).getByRole('button', { name: en.plans.panel.addClasswork }));
+    }
+    expect(within(form).getByRole('textbox', { name: 'Classwork 10' })).toBeDefined();
+    expect(within(form).queryByRole('button', { name: en.plans.panel.addClasswork })).toBeNull();
+    expect(within(form).getByRole('button', { name: en.plans.panel.addHomework })).toBeDefined();
+  });
+
   it('offers the topic of the previous lesson on the second of two lessons of a day', async () => {
     const plan = planOf(true);
     const second = plan.rows[1];

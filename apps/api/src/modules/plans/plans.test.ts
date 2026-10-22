@@ -6,6 +6,8 @@ import {
   planListSchema,
   planSchema,
   type Plan,
+  type PhotoType,
+  type PlanFileType,
   type PlanItem,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -21,7 +23,23 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { Audit } from '../audit/audit.service.js';
-import { MemoryPhotoStore } from '../people/photo-store.js';
+import { MemoryPhotoStore, type PhotoStore } from '../people/photo-store.js';
+
+/** The memory store, switched off for one test (no store configured on the server). */
+class SwitchedStore implements PhotoStore {
+  configured = true;
+  private readonly memory = new MemoryPhotoStore();
+
+  put(key: string, bytes: Buffer, type: PhotoType | PlanFileType): Promise<void> {
+    return this.memory.put(key, bytes, type);
+  }
+
+  get(key: string): Promise<Buffer> {
+    return this.memory.get(key);
+  }
+}
+
+const store = new SwitchedStore();
 import {
   publishedScene,
   publishOf,
@@ -258,7 +276,7 @@ describe('lesson plans and their items', () => {
     });
 
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true, photoStore: new MemoryPhotoStore() });
+    t = await dayTemplatesKit({ jobs: true, photoStore: store });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -396,6 +414,23 @@ describe('lesson plans and their items', () => {
       planOf(await read(senior, [{ role: 'senior_head_teacher', subjectIds: [s.scene.subject] }]))
         .canEdit,
     ).toBe(false);
+    const otherSenior = await account();
+    expect(
+      codeOf(
+        await read(otherSenior, [{ role: 'senior_head_teacher', subjectIds: [otherSubject] }]),
+      ),
+    ).toBe('plan_scope');
+    // A Head Teacher of the subject in another branch who teaches here reads nothing by the post.
+    const elsewhereHead = await account();
+    const otherBranch = await t.newBranch();
+    expect(
+      codeOf(
+        await read(elsewhereHead, [
+          { role: 'head_teacher', branchId: otherBranch, subjectIds: [s.scene.subject] },
+          { role: 'teacher', branchId: branch },
+        ]),
+      ),
+    ).toBe('plan_scope');
     for (const held of [
       { role: 'super_admin' as const },
       { role: 'academic_vice_principal' as const, branchId: branch },
@@ -417,15 +452,36 @@ describe('lesson plans and their items', () => {
       s.otherJournal,
     ]);
     expect((await listOf(elsewhere, [])).plans).toEqual([]);
+    const both = [s.journal, s.otherJournal];
+    expect((await listOf(head, [])).plans.map((one) => one.journalId)).toEqual(both);
+    expect((await listOf(otherHead, [])).plans).toEqual([]);
+    const vice = await account();
+    expect(
+      (await listOf(vice, [{ role: 'academic_vice_principal', branchId: branch }])).plans.map(
+        (one) => one.journalId,
+      ),
+    ).toEqual(both);
   });
 
   it('refuses a write from everyone but the owner, leaving every row and the audit log', async () => {
     const s = await plannedScene();
     const branch = s.scene.branch;
     const [item] = await fill(s, s.q2, [1]);
+    const file = await t.database.migrator
+      .insertInto('lesson_plan_files')
+      .values({
+        branch_id: branch,
+        item_id: item?.id ?? '',
+        name: 'Sheet.pdf',
+        type: 'application/pdf',
+        bytes: PDF.length,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     const before = await planRowsOf(branch);
     const audit = await planEntries();
     const writes = (api: Api) => [
+      api.del(`/api/plans/files/${file.id}`),
       api.post(`/api/plans/journals/${s.journal}/items`, {
         quarterId: s.q2,
         position: 2,
@@ -729,7 +785,13 @@ describe('lesson plans and their items', () => {
         request_id: saved.headers['x-request-id'],
       });
       expect(entry?.new_value).not.toHaveProperty('objectives');
-      expect(entry?.assignment_id).not.toBeNull();
+      const teaching = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', s.owner.account.id)
+        .where('role', '=', 'teacher')
+        .executeTakeFirstOrThrow();
+      expect(entry?.assignment_id).toBe(teaching.id);
     });
   });
 
@@ -900,6 +962,221 @@ describe('lesson plans and their items', () => {
     });
     const removed = await entryNaming('plan.file_remove', file.id);
     expect(removed).toMatchObject({ old_value: { id: file.id, name: 'Ishchi varaq.pdf' } });
+  });
+
+  it('changes nothing for a work id of another item, another branch or none in a save', async () => {
+    const s = await plannedScene();
+    const other = await plannedScene();
+    const branch = s.scene.branch;
+    const withWork = (topic: string) =>
+      values({ topic, classworks: [{ title: `Work of ${topic}`, description: '' }] });
+    const [item, second] = await as(s.owner, branch, teacherOf(s), async (api) => [
+      itemOf(
+        await api.post(`/api/plans/journals/${s.journal}/items`, {
+          quarterId: s.q2,
+          position: 1,
+          values: withWork('First'),
+        }),
+        201,
+      ),
+      itemOf(
+        await api.post(`/api/plans/journals/${s.journal}/items`, {
+          quarterId: s.q2,
+          position: 2,
+          values: withWork('Second'),
+        }),
+        201,
+      ),
+    ]);
+    const otherItem = await as(other.owner, other.scene.branch, teacherOf(other), async (api) =>
+      itemOf(
+        await api.post(`/api/plans/journals/${other.journal}/items`, {
+          quarterId: other.q2,
+          position: 1,
+          values: withWork('Elsewhere'),
+        }),
+        201,
+      ),
+    );
+    const own = item ?? planItemSchema.parse({});
+    const before = [await planRowsOf(branch), await planRowsOf(other.scene.branch)];
+    const audit = await planEntries();
+    await as(s.owner, branch, [], async (api) => {
+      for (const id of [
+        second?.classworks[0]?.id ?? '',
+        otherItem.classworks[0]?.id ?? '',
+        UNKNOWN,
+      ]) {
+        const foreign = { id, title: 'Work of First', description: '' };
+        // As an edit: refused, the work is not the item's.
+        const edited = await api.put(`/api/plans/items/${own.id}`, {
+          base: { ...baseOf(own), classworks: [...own.classworks, foreign] },
+          values: { ...baseOf(own), classworks: [...own.classworks, { ...foreign, title: 'X' }] },
+        });
+        expect(edited.status, JSON.stringify(edited.body)).toBe(409);
+        expect(codeOf(edited)).toBe('plan_item_stale');
+        // As a removal: nothing to remove.
+        const removed = await api.put(`/api/plans/items/${own.id}`, {
+          base: { ...baseOf(own), classworks: [...own.classworks, foreign] },
+          values: baseOf(own),
+        });
+        expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+      }
+    });
+    expect([await planRowsOf(branch), await planRowsOf(other.scene.branch)]).toEqual(before);
+    expect(await planEntries()).toBe(audit);
+  });
+
+  it('answers files_not_configured on a server with no file store, and keeps nothing', async () => {
+    const s = await plannedScene();
+    const [item] = await fill(s, s.q2, [1]);
+    const id = item?.id ?? '';
+    const file = await as(s.owner, s.scene.branch, teacherOf(s), async (api) =>
+      planFileSchema.parse(
+        (await api.upload(`/api/plans/items/${id}/files?name=a.pdf`, 'application/pdf', PDF)).body,
+      ),
+    );
+    store.configured = false;
+    try {
+      await as(s.owner, s.scene.branch, [], async (api) => {
+        const added = await api.upload(
+          `/api/plans/items/${id}/files?name=b.pdf`,
+          'application/pdf',
+          PDF,
+        );
+        expect(added.status).toBe(503);
+        expect(codeOf(added)).toBe('files_not_configured');
+        const read = await api.get(`/api/plans/files/${file.id}`);
+        expect(codeOf(read)).toBe('files_not_configured');
+      });
+    } finally {
+      store.configured = true;
+    }
+    const files = await t.database.migrator
+      .selectFrom('lesson_plan_files')
+      .select('name')
+      .where('item_id', '=', id)
+      .execute();
+    expect(files.map((one) => one.name)).toEqual(['a.pdf']);
+  });
+
+  it('lets a teacher with either grade of a two-grade group read its plan, and no other grade', async () => {
+    const branch = await t.newBranch();
+    const year = await load.classes.year(branch);
+    for (const [index, [start, end]] of QUARTERS.entries()) {
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year)
+        .where('number', '=', index + 1)
+        .execute();
+    }
+    const subject = await load.classes.subject({ grades: [7, 8, 9] });
+    const seventh = await load.classes.schoolClass(branch, year, { grade: 7 });
+    const eighth = await load.classes.schoolClass(branch, year, { grade: 8 });
+    const group = await load.classes.group(branch, year, subject, [seventh, eighth]);
+    const journal = await t.database.migrator
+      .insertInto('journals')
+      .values({
+        branch_id: branch,
+        academic_year_id: year,
+        class_id: null,
+        group_id: group,
+        subject_id: subject,
+        runs: '{[2026-09-07,)}',
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const reader = async (grades: number[]) => {
+      const browser = await account();
+      await load.teacher(branch, {
+        subjects: [{ subject, grades }],
+        accountId: browser.account.id,
+      });
+      return as(browser, branch, [{ role: 'teacher', branchId: branch }], (api) =>
+        api.get(`/api/plans/journals/${journal.id}`),
+      );
+    };
+    for (const grades of [[7], [8]]) {
+      const answer = await reader(grades);
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect(planSchema.parse(answer.body).canEdit).toBe(false);
+    }
+    expect(codeOf(await reader([9]))).toBe('plan_scope');
+  });
+
+  it('lets a child row through while the journal or the item is held for a plan write', async () => {
+    const acting = new ActingKit(t.database.migrator);
+    const branch = await t.newBranch();
+    const scene = await acting.scene(branch);
+    const s = await plannedScene();
+    const [item] = await fill(s, s.q2, [1]);
+    /** Holds `lock` open, runs `child`, and says whether it finished within two seconds. */
+    const passesWhileHeld = async (
+      heldBranch: string,
+      lock: (transaction: Transaction) => Promise<unknown>,
+      child: () => Promise<unknown>,
+    ): Promise<boolean> => {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let locked: () => void = () => undefined;
+      const isLocked = new Promise<void>((resolve) => {
+        locked = resolve;
+      });
+      const held = t.app.get(Transactions).run([heldBranch], async (transaction) => {
+        await lock(transaction);
+        locked();
+        await released;
+      });
+      await isLocked;
+      const done = await Promise.race([
+        child().then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+      ]);
+      release();
+      await held;
+      return done;
+    };
+    // The journal as a first write locks it; an acting period names the journal.
+    expect(
+      await passesWhileHeld(
+        branch,
+        (transaction) =>
+          transaction
+            .selectFrom('journals')
+            .select('id')
+            .where('id', '=', scene.journal)
+            .forNoKeyUpdate()
+            .execute(),
+        () => acting.period(scene, '2026-09-07'),
+      ),
+    ).toBe(true);
+    // The item as a save locks it; a work of the item names it.
+    expect(
+      await passesWhileHeld(
+        s.scene.branch,
+        (transaction) =>
+          transaction
+            .selectFrom('lesson_plan_items')
+            .select('id')
+            .where('id', '=', item?.id ?? '')
+            .forNoKeyUpdate()
+            .execute(),
+        () =>
+          t.database.migrator
+            .insertInto('lesson_plan_works')
+            .values({
+              branch_id: s.scene.branch,
+              item_id: item?.id ?? '',
+              kind: 'homework',
+              position: 1,
+              title: 'Read',
+            })
+            .execute(),
+      ),
+    ).toBe(true);
   });
 
   it('answers 404 for another branch’s or an unknown journal, quarter, item, file and year', async () => {
@@ -1185,6 +1462,13 @@ describe('lesson plans and their items', () => {
         .where('branch_id', '=', s.scene.branch)
         .execute();
       expect(plans).toHaveLength(1);
+      const created = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('branch_id', '=', s.scene.branch)
+        .where('action', '=', 'plan.create')
+        .execute();
+      expect(created).toHaveLength(1);
     });
 
     it('refuses the 11th file of two uploads at 9: the second waits on the item', async () => {

@@ -72,10 +72,8 @@ export class PlanFiles {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const scene = await this.plans.itemWriteScene(transaction, access, itemId);
+          // Under the item's lock the trigger `lesson_plan_files_limit` refuses an 11th file.
           await this.plans.lockItem(transaction, itemId);
-          if ((await this.activeFiles(transaction, itemId)) >= PLAN_FILES_MAX) {
-            throw fullRefusal();
-          }
           await transaction
             .insertInto('lesson_plan_files')
             .values({

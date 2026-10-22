@@ -4977,7 +4977,8 @@ export const en = {
       objectives: 'Objectives and materials',
       links: 'Links',
       linksNote: 'One web address per line.',
-      linksInvalid: 'Write up to 10 web addresses, one per line, each starting with https://.',
+      linksInvalid:
+        'Write up to 10 web addresses, one per line, each starting with http:// or https://.',
       classworkTitle: 'Classwork {{number}}',
       homeworkTitle: 'Homework {{number}}',
       description: 'Description',

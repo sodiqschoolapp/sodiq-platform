@@ -697,7 +697,11 @@ export class PlansService {
             const before = base[list];
             const now = storedWorks[list];
             const kept = sent.filter((work) => work.id !== undefined);
-            const removed = before.filter((work) => !kept.some((one) => one.id === work.id));
+            // A work of the base that the item no longer holds (or never held) is nothing to remove.
+            const removed = before.filter(
+              (work) =>
+                !kept.some((one) => one.id === work.id) && now.some((one) => one.id === work.id),
+            );
             const edited = kept.filter((work) => {
               const was = before.find((one) => one.id === work.id);
               return was !== undefined && !sameWork(was, work);

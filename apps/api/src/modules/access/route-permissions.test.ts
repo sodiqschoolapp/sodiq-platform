@@ -1139,7 +1139,7 @@ describe('the harness', () => {
       ...ROUTE_ACCESS,
       'GET /api/permission-faults/undeclared': 'any_signed_in',
       'GET /api/permission-faults/twice': 'public',
-      'GET /api/permission-faults/early': { branch: 'request', roles: PLAN_WRITERS },
+      'GET /api/permission-faults/early': { branch: 'request', roles: ['teacher'] },
       'GET /api/removed': 'public',
     };
 

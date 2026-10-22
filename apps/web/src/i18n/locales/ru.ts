@@ -5275,7 +5275,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       objectives: 'Цели и материалы',
       links: 'Ссылки',
       linksNote: 'Одна ссылка в строке.',
-      linksInvalid: 'Не больше 10 ссылок, по одной в строке, каждая начинается с https://.',
+      linksInvalid:
+        'Не больше 10 ссылок, по одной в строке, каждая начинается с http:// или https://.',
       classworkTitle: 'Классная работа {{number}}',
       homeworkTitle: 'Домашняя работа {{number}}',
       description: 'Описание',

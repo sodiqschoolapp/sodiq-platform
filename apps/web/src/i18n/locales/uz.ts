@@ -5023,7 +5023,7 @@ export const uz: Texts<'one' | 'other'> = {
       links: 'Havolalar',
       linksNote: 'Har qatorda bitta havola.',
       linksInvalid:
-        'Koʻpi bilan 10 ta havola, har qatorda bittadan, har biri https:// bilan boshlanadi.',
+        'Koʻpi bilan 10 ta havola, har qatorda bittadan, har biri http:// yoki https:// bilan boshlanadi.',
       classworkTitle: '{{number}}-sinf ishi',
       homeworkTitle: '{{number}}-uy vazifasi',
       description: 'Tavsif',

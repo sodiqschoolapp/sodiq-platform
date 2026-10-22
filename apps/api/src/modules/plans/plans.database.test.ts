@@ -387,6 +387,76 @@ describe('lesson plans in the database', () => {
     }
   });
 
+  it('refuses a row whose parent is of another branch, by every composite key', async () => {
+    const own = await unit(north, await yearOf(north));
+    const other = await unit(south, await yearOf(south));
+    const otherPlan = await plan(other);
+    const otherItem = await item(south, otherPlan, 1);
+    const ownPlan = await plan(own);
+    const key = async (work: Promise<unknown>, constraint: string) => {
+      const refused = await refusal(work);
+      expect(refused.code, constraint).toBe(
+        constraint.endsWith('_fkey') ? FOREIGN_KEY_VIOLATION : CHECK_VIOLATION,
+      );
+      expect(refused.constraint).toBe(constraint);
+    };
+    const m = database.migrator;
+    await key(
+      m
+        .insertInto('lesson_plans')
+        .values({ branch_id: north, quarter_id: other.quarter, subject_id: own.subject })
+        .execute(),
+      'lesson_plans_quarter_fkey',
+    );
+    await key(
+      m
+        .insertInto('lesson_plan_journals')
+        .values({
+          branch_id: north,
+          plan_id: ownPlan,
+          journal_id: other.journal,
+          quarter_id: own.quarter,
+        })
+        .execute(),
+      // The check of the link reads the journal in the plan's branch first and finds
+      // none; the key stands behind it.
+      'lesson_plan_journal_subject',
+    );
+    await key(
+      m
+        .insertInto('lesson_plan_items')
+        .values({ branch_id: north, plan_id: otherPlan, position: 1, topic: 'Fractions' })
+        .execute(),
+      'lesson_plan_items_plan_fkey',
+    );
+    await key(
+      m
+        .insertInto('lesson_plan_works')
+        .values({
+          branch_id: north,
+          item_id: otherItem.id,
+          kind: 'classwork',
+          position: 1,
+          title: 'X',
+        })
+        .execute(),
+      'lesson_plan_works_item_fkey',
+    );
+    await key(
+      m
+        .insertInto('lesson_plan_files')
+        .values({
+          branch_id: north,
+          item_id: otherItem.id,
+          name: 'a.pdf',
+          type: 'application/pdf',
+          bytes: 1,
+        })
+        .execute(),
+      'lesson_plan_files_item_fkey',
+    );
+  });
+
   it('lets the application delete only works, and change no plan, quarter or position', async () => {
     const u = await unit(north, await yearOf(north));
     const planId = await plan(u);

@@ -4,6 +4,7 @@ import {
   S3Client,
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
+import type { PhotoType, PlanFileType } from '@sodiq/shared';
 import type { PhotosConfig } from '../../config/config.js';
 
 /** Injection token of the `PhotoStore` the configuration chose. */
@@ -25,7 +26,7 @@ export interface PhotoStore {
    * the types its route declares: a photo's, or a plan file's (task 7.1a,
    * decision 1: the files of plan items go to the same store under `plans/`).
    */
-  put(key: string, bytes: Buffer, type: string): Promise<void>;
+  put(key: string, bytes: Buffer, type: PhotoType | PlanFileType): Promise<void>;
   /** The bytes under the key; throws when the store fails or holds nothing there. */
   get(key: string): Promise<Buffer>;
 }
@@ -61,9 +62,9 @@ export class NoPhotoStore implements PhotoStore {
 /** Photos in the memory of the process, lost on a restart: tests, the browser tests, a laptop. */
 export class MemoryPhotoStore implements PhotoStore {
   readonly configured = true;
-  private readonly objects = new Map<string, { bytes: Buffer; type: string }>();
+  private readonly objects = new Map<string, { bytes: Buffer; type: PhotoType | PlanFileType }>();
 
-  put(key: string, bytes: Buffer, type: string): Promise<void> {
+  put(key: string, bytes: Buffer, type: PhotoType | PlanFileType): Promise<void> {
     this.objects.set(key, { bytes: Buffer.from(bytes), type });
     return Promise.resolve();
   }
@@ -118,7 +119,7 @@ export class R2PhotoStore implements PhotoStore {
     private readonly bucket: string,
   ) {}
 
-  async put(key: string, bytes: Buffer, type: string): Promise<void> {
+  async put(key: string, bytes: Buffer, type: PhotoType | PlanFileType): Promise<void> {
     await this.client.send(
       new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes, ContentType: type }),
     );

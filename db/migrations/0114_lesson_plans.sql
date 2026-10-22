@@ -14,7 +14,7 @@
 -- The plan approved on pull request #212 with corrections 1 to 4: decisions
 -- 1 to 10. Nothing here names a lesson: an item stands at a position of the
 -- plan's queue, and the row it fills is worked out on each read
--- (apps/api/src/modules/plans/attach.ts); 7.1b stores the fixed part. The
+-- (`planRows`, apps/api/src/modules/plans/plan-read.ts); 7.1b stores the fixed part. The
 -- bounds are the constants of packages/shared/src/plans.ts.
 
 -- ---------------------------------------------------------------------------
