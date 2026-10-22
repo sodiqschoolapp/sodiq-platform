@@ -841,6 +841,35 @@ describe('leaving, return and delete of a student', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    it('deletes a student whose cells are all empty, the history kept (decision 13)', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const student = await create();
+      const lesson = await cells.lesson(
+        t.north,
+        currentYear,
+        student.class?.id ?? '',
+        '2026-10-12',
+      );
+      const by = await cells.lessons.load.classes.account();
+      const cell = await cells.cell(t.north, {
+        lessonId: lesson,
+        studentId: student.id,
+        mark: 1,
+        by,
+        at: t.clock.now().toISOString(),
+      });
+      await cells.clear(cell, by, t.clock.now().toISOString());
+      const fresh = await detail(student.id);
+      expect(fresh.deletable).toBe(true);
+      expect((await remove(fresh)).status).toBe(204);
+      const lines = await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .select('version')
+        .where('cell_id', '=', cell)
+        .execute();
+      expect(lines).toHaveLength(2);
+    });
+
     it('refuses a student whose only cell this branch does not see, by the key', async () => {
       const cells = await CellsKit.create(t.database.migrator);
       // A student of the other branch with a cell there, who then moved here:

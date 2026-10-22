@@ -316,6 +316,7 @@ describe('journal cells in the database', () => {
       await cell(north, { lesson: id, student, work: second, score: 4 });
       const failed = await refusal(cell(north, { lesson: id, student, work: first, score: 5 }));
       expect(failed.code).toBe(UNIQUE_VIOLATION);
+      expect(failed.constraint).toBe('journal_cells_key');
     });
 
     it('refuses a cell of a work of another lesson', async () => {
@@ -671,6 +672,10 @@ describe('journal cells in the database', () => {
       const written = await cell(north, { lesson: id, student, mark: 1 });
       await inBranch(north, (transaction) => cancel(transaction, north, id));
       expect((await refusal(change(north, written.id, { mark: 0 }))).constraint).toBe(
+        'journal_cell_cancelled',
+      );
+      // Nor is it cleared (0109): the entries are kept until the lesson is restored.
+      expect((await refusal(change(north, written.id, { mark: null }))).constraint).toBe(
         'journal_cell_cancelled',
       );
       const kept = await database.migrator

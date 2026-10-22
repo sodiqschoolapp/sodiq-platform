@@ -8,9 +8,10 @@ import { at, LessonsKit, QUARTER_DATES } from './lessons-kit.js';
  * so a class never meets itself, and a cell written as the writer writes one.
  * Names are invented.
  */
-export class CellsKit {
-  private slot = 0;
+/** The time of the next lesson, counted over every kit of the test file. */
+let slot = 0;
 
+export class CellsKit {
   private constructor(
     private readonly migrator: Database,
     readonly lessons: LessonsKit,
@@ -25,9 +26,16 @@ export class CellsKit {
     return new CellsKit(migrator, lessons, subject);
   }
 
-  /** The quarter of a year holding the date; quarters with no dates get those of `QUARTER_DATES`. */
+  /**
+   * The quarter of a year holding the date. A quarter with no dates gets its
+   * dates of `QUARTER_DATES` only when it is the one that holds the date: the
+   * year is shared with the test's other records, and a dated last quarter
+   * moves the end of their rows (found by the spec review of the code of 6.1a).
+   */
   private async quarterOf(year: string, date: string): Promise<string> {
-    for (const [index, [start, end]] of QUARTER_DATES.entries()) {
+    const index = QUARTER_DATES.findIndex(([start, end]) => start <= date && date <= end);
+    const [start, end] = QUARTER_DATES[index] ?? [];
+    if (start !== undefined && end !== undefined) {
       await this.migrator
         .updateTable('quarters')
         .set({ start_date: start, end_date: end })
@@ -52,8 +60,8 @@ export class CellsKit {
       { classId, groupId: null, subjectId: this.subject },
     ]);
     const quarter = await this.quarterOf(year, date);
-    this.slot += 1;
-    const minutes = 7 * 60 + (this.slot % 12) * 50;
+    slot += 1;
+    const minutes = 7 * 60 + (slot % 12) * 50;
     const time = (total: number) =>
       `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
     return this.migrator.transaction().execute(async (transaction) => {
@@ -112,6 +120,18 @@ export class CellsKit {
         .returning('id')
         .executeTakeFirstOrThrow();
       return row.id;
+    });
+  }
+
+  /** Clears a cell, as a save of no value writes it, at the moment given. */
+  async clear(cellId: string, by: string, at: string): Promise<void> {
+    await this.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${at}, true)`.execute(transaction);
+      await transaction
+        .updateTable('journal_cells')
+        .set({ mark: null, score: null, changed_by: by, changed_how: 'entry' })
+        .where('id', '=', cellId)
+        .execute();
     });
   }
 }

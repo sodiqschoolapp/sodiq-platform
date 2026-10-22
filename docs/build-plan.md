@@ -1009,7 +1009,7 @@ How to read the task lines:
   - Build: attendance marks and their values; "all present"; absence reasons recorded by the Tutor; attendance-only journals (Homework slot, Ma'naviyat soati).
   - Done when: "all present" is one request with one history entry per cell.
   - From 5.7b-1 (pull request #191, decision 10): `07`, Who can do what: "Substitute teacher | Enters for the substituted lesson only"; `edge/timetable`, After publishing, "A substitute wants to finish the numbers two days later": "The substitute is the teacher of that lesson and has the normal edit period for that column only. The journal's own teacher can also edit it until it locks. Every entry shows who typed it." The substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101); the person recorded by a correction of kind `teacher` (5.6a-4) is that lesson's teacher the same way. The journal's own teacher is `journalOwnerOn`.
-  - From 6.1a (pull request #205, decision 11): `07`, Editing rules and locks: "Attendance and scores can be entered from the lesson's start time, not before." `saveCells` accepts a save before the start; the route refuses it.
+  - From 6.1a (pull request #205, decision 11): `07`, Editing rules and locks: "Attendance and scores can be entered from the lesson's start time, not before." `saveCells` accepts a save before the start; the route refuses it. Its input schema stays within the checks of `journal_cells` (a mark 0 to 3, a whole number 0 or more; `.claude/rules/database.md`, a shared schema never wider than the check), which `saveCells` throws on.
 
 ## Phase 7. Lesson plans
 

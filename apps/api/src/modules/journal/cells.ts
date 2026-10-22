@@ -65,7 +65,9 @@ const valueOf = (row: { work_id: string | null; mark: number | null; score: numb
  *
  * The routes that call it (6.3, 8.1, 8.3a) decide who may write which cell,
  * the lesson's start and the edit period, and check every id against the
- * branch of the request first.
+ * branch of the request first. Their input schemas stay within the database's
+ * checks (a mark 0 to 3, a whole number 0 or more); a value outside them is a
+ * fault of the caller and throws here.
  */
 export async function saveCells(
   transaction: Transaction,
@@ -77,6 +79,15 @@ export async function saveCells(
   const keys = new Set(saves.map(keyOf));
   if (keys.size !== saves.length) {
     throw new Error('A call saves each cell once.');
+  }
+  for (const save of saves) {
+    const { value } = save;
+    if (
+      value !== null &&
+      (!Number.isInteger(value) || value < 0 || (save.workId === null && value > 3))
+    ) {
+      throw new Error('A mark is 0 to 3 and a number a whole number from 0.');
+    }
   }
   // The lessons first, FOR SHARE in the order of the id (review must-fix 2 of
   // the plan): the cell trigger reads them, so a cancel, a date move or a
@@ -260,9 +271,10 @@ async function staleDetails(
 }
 
 /**
- * How many journal cells of the student the branch sees (task 6.1a): one is
- * enough to refuse the delete; one only another branch sees is refused by the
- * key all the same.
+ * How many journal cells with a value the student has that the branch sees
+ * (task 6.1a, decision 13): one is enough to refuse the delete; empty cells go
+ * with the student (0109), and a cell only another branch sees is refused by
+ * the key all the same.
  */
 export async function studentCellCount(
   transaction: Transaction,
@@ -272,6 +284,7 @@ export async function studentCellCount(
     .selectFrom('journal_cells')
     .select((eb) => eb.fn.countAll<string>().as('count'))
     .where('student_id', '=', studentId)
+    .where((eb) => eb.or([eb('mark', 'is not', null), eb('score', 'is not', null)]))
     .executeTakeFirstOrThrow();
   return Number(found.count);
 }

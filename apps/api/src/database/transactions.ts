@@ -50,7 +50,7 @@ export async function assertLessonChangesAudited(transaction: Transaction): Prom
   `.execute(transaction);
   if (found.rows[0]?.unaudited !== false) {
     throw new Error(
-      'A change of a dated lesson has no audit entry in its branch (lesson_change_unaudited).',
+      'A change of a dated lesson or a journal cell has no audit entry in its branch (lesson_change_unaudited).',
     );
   }
 }

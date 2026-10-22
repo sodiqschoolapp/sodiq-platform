@@ -418,8 +418,8 @@ export function planCancelReturn(
  * number, exemption, result, scholarship, stipend entry or comment"; decision
  * 14): a scholarship, a live row that is not active, a second contract. The
  * same conditions as `students_delete_guard` (0033). From task 6.1a also a
- * journal cell, empty ones too: the key of `journal_cells` (0108) refuses the
- * delete of any (decision 13).
+ * journal cell with a value (decision 13): empty ones go with the student
+ * (0109), and the key of `journal_cells` (0108) refuses the rest.
  */
 export function holdsData(
   rows: readonly StoredStudentStatus[],

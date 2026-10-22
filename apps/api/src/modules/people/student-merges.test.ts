@@ -10,6 +10,7 @@ import { sql } from 'kysely';
 import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
@@ -434,11 +435,15 @@ describe('the merge of two student records', () => {
 
   describe('journal cells (task 6.1a, decision 9)', () => {
     it('refuses the merge of a record with a cell, and changes nothing', async () => {
+      // A branch and a year of their own: the lesson dates a quarter of its year.
       const cells = await CellsKit.create(t.database.migrator);
-      const first = await pupil({ from: '2026-09-02' });
-      const twice = await pupil({ from: '2026-09-10' });
-      const lesson = await cells.lesson(t.north, northYear, twice.class?.id ?? '', '2026-10-12');
-      await cells.cell(t.north, {
+      const east = await insertBranch(t.database.migrator, 'East');
+      const eastYear = await classes.year(east);
+      const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const lesson = await cells.lesson(east, eastYear, classId, '2026-10-12');
+      await cells.cell(east, {
         lessonId: lesson,
         studentId: twice.id,
         mark: 1,
@@ -446,10 +451,10 @@ describe('the merge of two student records', () => {
         at: t.clock.now().toISOString(),
       });
       const before = await t.database.migrator.selectFrom('audit_log').select('id').execute();
-      const response = await merge(first.id, twice.uid);
+      const response = await merge(first.id, twice.uid, east);
       expect(response.status, JSON.stringify(response.body)).toBe(409);
       expect(errorCode(response)).toBe('student_merge_has_cells');
-      expect((await fresh(twice.id)).id).toBe(twice.id);
+      expect((await fresh(twice.id, east)).id).toBe(twice.id);
       expect(await t.database.migrator.selectFrom('audit_log').select('id').execute()).toHaveLength(
         before.length,
       );

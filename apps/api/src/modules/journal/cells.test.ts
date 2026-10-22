@@ -14,6 +14,8 @@ import { saveCells, type CellSave } from './cells.js';
 /** Thursday 15 October 2026, 10:00 in Tashkent. */
 const NOW = '2026-10-15T10:00:00+05:00';
 const DAY = '2026-10-14';
+/** An assignment id for the audit entry (the log has no key to it). */
+const ASSIGNMENT = '0190a000-0000-7000-8000-0000000000a1';
 
 /** The code and details of a refusal of the writer, or a failure when it saved. */
 async function refusal(work: Promise<unknown>): Promise<ApiException> {
@@ -197,21 +199,38 @@ describe('saveCells', () => {
       expect(await stored(lesson)).toMatchObject([{ student_id: one, mark: 2 }]);
     });
 
-    it('takes two calls of the same cells in opposite orders one after the other', async () => {
+    it('takes the cells of two calls in one order, so opposite orders do not deadlock', async () => {
       const { lesson, students } = await scene(2);
-      const [one, two] = [students[0] ?? '', students[1] ?? ''];
-      const held = await holdOpen((transaction) =>
-        saveCells(transaction, audit, { accountId: teacher }, [
-          attendance(lesson, two, 1, null),
-          attendance(lesson, one, 1, null),
-        ]),
-      );
+      // The first cell of the order and the second (by student id).
+      const [low, high] = [...students].sort((a, b) => a.localeCompare(b)) as [string, string];
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      // The held call has written its first cell only, and writes the second after the release.
+      const held = inNorth(async (transaction) => {
+        await saveCells(transaction, audit, { accountId: teacher }, [
+          attendance(lesson, low, 1, null),
+        ]);
+        ready();
+        await released;
+        await saveCells(transaction, audit, { accountId: teacher }, [
+          attendance(lesson, high, 1, null),
+        ]);
+      }).catch((error: unknown) => error);
+      await isReady;
+      // Sent in the opposite order: without the sort it would hold the second
+      // cell while it waits for the first, and the held call would wait for it.
       const second = refusal(
-        save([attendance(lesson, one, 0, null), attendance(lesson, two, 0, null)], colleague),
+        save([attendance(lesson, high, 0, null), attendance(lesson, low, 0, null)], colleague),
       );
       await untilWaiting();
-      held.release();
-      expect(await held.done).toBeUndefined();
+      release();
+      expect(await held).toBeUndefined();
       expect((await second).code).toBe('cell_stale');
       expect((await stored(lesson)).map((row) => row.mark)).toEqual([1, 1]);
     });
@@ -242,7 +261,7 @@ describe('saveCells', () => {
         saveCells(
           transaction,
           audit,
-          { accountId: teacher, requestId: 'request-9' },
+          { accountId: teacher, assignmentId: ASSIGNMENT, requestId: 'request-9' },
           students.map((student) => attendance(lesson, student, 1, null)),
         ),
       );
@@ -255,6 +274,7 @@ describe('saveCells', () => {
       expect(entries[0]).toMatchObject({
         action: 'journal.cells_save',
         actor_id: teacher,
+        assignment_id: ASSIGNMENT,
         branch_id: north,
         request_id: 'request-9',
         details: { count: 2 },
@@ -311,6 +331,34 @@ describe('saveCells', () => {
       );
       expect(unknown.code).toBe('cell_closed');
       expect(await stored(lesson)).toEqual([]);
+    });
+
+    it('answers cell_closed when a held delete of the lesson commits first', async () => {
+      const { classId, students } = await scene();
+      // A lesson dated after today with no data: a delete is allowed (0079, 0105).
+      const lesson = await cells.lesson(north, year, classId, '2026-10-19');
+      const held = await holdOpen(async (transaction) => {
+        await audit.record(transaction, {
+          branchId: north,
+          actorId: teacher,
+          action: 'test.delete',
+        });
+        await transaction.deleteFrom('lessons').where('id', '=', lesson).execute();
+      });
+      const saving = refusal(save([attendance(lesson, students[0] ?? '', 1, null)]));
+      await untilWaiting();
+      held.release();
+      expect(await held.done).toBeUndefined();
+      expect((await saving).code).toBe('cell_closed');
+    });
+
+    it('throws for a value outside the database checks', async () => {
+      const { lesson, students } = await scene();
+      for (const value of [4, -1, 1.5]) {
+        await expect(save([attendance(lesson, students[0] ?? '', value, null)])).rejects.toThrow(
+          'A mark is 0 to 3',
+        );
+      }
     });
 
     it('answers lesson_cancelled_cell for a cancelled lesson', async () => {

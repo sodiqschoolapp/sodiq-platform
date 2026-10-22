@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -237,6 +238,30 @@ describe('branch moves in the database', () => {
       );
     });
 
+    it('keeps a journal cell in the branch of its lesson (task 6.1a)', async () => {
+      const cells = await CellsKit.create(database.migrator);
+      const facts = await pupil();
+      const lesson = await cells.lesson(north, northYear, facts.oxford, '2026-10-12');
+      await cells.cell(north, {
+        lessonId: lesson,
+        studentId: facts.student,
+        mark: 1,
+        by: await classes.account(),
+        at: NOW,
+      });
+      const move = await release(facts.student);
+      await inBranches([south, north], (transaction) =>
+        acceptWrites(transaction, { ...facts, move }),
+      );
+      expect(await branchOf('journal_cells', facts.student)).toEqual([north]);
+      const students = await database.migrator
+        .selectFrom('students')
+        .select('branch_id')
+        .where('id', '=', facts.student)
+        .executeTakeFirstOrThrow();
+      expect(students.branch_id).toBe(south);
+    });
+
     it('commits through every deferred check for the receiving branch joined to the sending one', async () => {
       const { student, row, groupRow, move } = await moved();
       for (const table of CARRIED) {
@@ -252,7 +277,8 @@ describe('branch moves in the database', () => {
         .where('id', '=', student)
         .executeTakeFirstOrThrow();
       expect(students.branch_id).toBe(south);
-      // The kit writes no move and no cell; the rows it writes are in both branches.
+      // The kit writes no move and no cell (the cell has its own test above); the
+      // rows it writes are in both branches.
       for (const table of KEPT.filter(
         (one) => one !== 'student_moves' && one !== 'journal_cells',
       )) {
