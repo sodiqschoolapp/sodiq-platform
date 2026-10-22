@@ -289,6 +289,48 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: the journal grid (task 6.2)
+
+Plan approved on pull request #210 with corrections 1 to 5; decisions 1 to 23 confirmed there (decision 3 changed by correction 1); decision 6 changed in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new dependency). `ag-grid-community` and `ag-grid-react` 36.2.0, MIT, pinned exactly in `apps/web/package.json`; nothing of the Enterprise edition; `pnpm audit --prod` clean | Decision 1; `13` and `CLAUDE.md`, Stack |
+| **Look first** (personal data readers). The area `journal`, `view`, for the nine roles of `07`, Who can do what; the Vice Principal for Spiritual and Moral Education and the Head Tutor read the attendance columns and average only, of every journal of the branch | Decision 2 |
+| **Look first** (who reads a teacher's journal). A Teacher reads a quarter whole when owning the journal on its reference date (`journalOwnerOn`); otherwise the lessons owned on their dates or taught as a substitute, with no figures and no bottom row | Decision 3 as changed by correction 1; `02`, Teacher; `edge/journal`, "A teacher is replaced from Monday" |
+| **Look first** (a reading of a journal calculation rule). A student's figures in 6.2 use that journal's lessons only; the results across journals after a transfer are 8.6's (From line); the student who left is folded and outside the bottom row | Decision 4; `edge/calculation`, week 6 |
+| **Look first** (a reading of a calculation rule). The bottom row is the exact mean of the members on the reference date with a number, each once, rounded once; a month's reference date is its last day, or today inside it | Decision 5 |
+| **Look first** (the calculation module changed). `groupAverage` is added to `packages/calc` and `CALC_VERSION` is raised to 3, since `version.test.ts` pins every change of the module's source (task 4.3, decision 11); no existing formula and no stored result changes | Decision 6 as changed in the build: the plan said the version stays |
+| The figures are calculated on the server with `packages/calc` and sent as shown | Decision 7 |
+| Only held, not cancelled lessons enter a figure; a lesson not started has closed cells | Decision 8 |
+| The rating exam column shows in rating subjects (the school-wide switch until 8.2) and stays empty until 8.2; the result is provisional meanwhile | Decision 9 |
+| No exemption marks or section until 8.5 | Decision 10 |
+| A work without a title is "CW n" or "HW n" by its place in the lesson | Decision 11 |
+| Lesson mode is read only, opened below 640 px or by the switch | Decision 12 |
+| Month figures for every month with a lesson; the attendance-only month figure is the attendance average alone | Decision 13, correction 5 |
+| The header names the owner on the reference date, or "none" | Decision 14 |
+| One student order, `compareStudentNames` (`packages/shared`): surname, first name, paternal name, UID, in the order "... z, oʻ, gʻ, sh, ch, ng" | Decision 15 |
+| A past year's journal is labelled read only | Decision 16 |
+| Reading a journal writes no audit entry | Decision 17 |
+| The real-size run asserts the server's answer under 1 s; the browser test records its time | Decision 18 |
+| 404 for an unknown id or another branch's, then 403 `journal_scope` outside the scope | Decision 19 |
+| The widest reading of the assignments decides: whole, then a Tutor's own rows, then attendance, then lessons | Decision 20 |
+| The Filter: all, current members, left or moved, with an empty cell in a held lesson shown | Decision 21 |
+| "Changed on" is the school date of the newest `subject_quarter_weights.set` entry of the subject and quarter after the quarter's first day | Decision 22 |
+| A month figure in a rating subject is labelled "without the rating exam" and is not provisional for it | Decision 23 |
+| The A column of each lesson; under each work "Soni" and its total (none while unset); the subject as a chip with its colour on the page and on the Journals page; a Tutor's scope is the Tutor rows in force now | Corrections 2, 3 and 4 |
+| **Build decision.** The API depends on the workspace package `@sodiq/calc` (no new library): the figures are the server's | Decision 7 |
+| **Build decision.** A lesson with no classwork and no homework is answered with no works and drawn as one narrow A column with no AVG; the answer carries no separate `narrow` field | `07`, Layout; the same fact, said once |
+| **Build decision.** The journal page's year selector lists the branch's years; choosing another opens the Journals page of that year, since a journal belongs to one year | `07`, Opening a journal, Selectors (spec review of the code, must-fix 4) |
+| **Build decision.** The students of a quarter: everyone expected at one of its lessons, and the members on or before the reference date; one whose rows all end before it is folded, one who joins after it is not | `07`, Layout; `edge/00-definitions`, Expected student |
+| **Build decision.** A Tutor of a group reads the students whose class on the reference date (for a folded one, on their last day in the group) is one of the Tutor's; the bottom row is hidden when a row is left out | `edge/journal`, "A Tutor opens the journal of a group that mixes three classes" |
+| **Build decision.** A quarter whose reference date would come before its first day (a quarter not begun) reads on its first day; a year with no dated quarter answers 409 `journal_no_quarter` | `edge/00-definitions`, Reference date, read for a quarter not begun |
+| **Build decision.** A reader of their own lessons (a substitute, a former owner) sees only the students expected at those lessons | `02`, Teacher: "the students they teach ... and no other student" (permission review of the code, should-fix 1) |
+| **Build decision.** A Teacher who also holds an attendance role (Head Tutor) reads another teacher's journal by the attendance role, also on a lesson they substituted: the widest reading of decision 20, where attendance of every row is wider than one lesson | Decision 20 (permission review of the code, should-fix 2) |
+| **Build decision.** The lesson the journal opens at is the closest by days to the date asked or today, the later one on a tie | `07`, Opening a journal: "the lesson closest to today" (spec review of the code, should-fix 11) |
+| **Build decision.** A cancelled lesson's reason is written in its column group's header and its cells are grey and struck through | `07`, Layout: "grey with the reason" (spec review of the code, should-fix 6) |
+| **Build decision.** The column labels A, CW, HW, AVG and "Soni" are the same in the three languages, as the school's journal names them; the rest is translated | `07`, Layout quotes them |
+
 ## 22 October 2026: reports over the cells (task 6.1c)
 
 Plan approved on pull request #209 with corrections 1 to 5; decisions 1 to 11 confirmed there (1 and 4 with corrections 1 and 2). Flagged on issue #42.

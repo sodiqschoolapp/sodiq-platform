@@ -290,6 +290,14 @@ describe('the timetable views', () => {
       const cookie = cookies.own ?? '';
       const read = viewOf(await view('teacher', { staffId: s.teacher.staffId }, cookie));
       expect(read.lessons.map((one) => one.teacher?.id)).toEqual([s.teacher.staffId]);
+      // Task 6.2 (07, Opening a journal): each lesson names its journal, opened from the view.
+      const journal = await t.database.migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('class_id', '=', s.classId)
+        .where('subject_id', '=', s.subject)
+        .executeTakeFirstOrThrow();
+      expect(read.lessons.map((one) => one.journalId)).toEqual([journal.id]);
       refused(
         await view('teacher', { staffId: s.otherTeacher.staffId }, cookie),
         403,

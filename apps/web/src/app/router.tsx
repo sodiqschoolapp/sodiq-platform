@@ -61,6 +61,9 @@ import { RoomsPage, roomsSearch } from '@/features/setup/rooms-page';
 import { SetupPage } from '@/features/setup/setup-page';
 import { listSearch } from '@/components/list/list-state';
 import { SignInPage } from '@/features/auth/sign-in-page';
+import { JournalPage } from '@/features/journal/journal-page';
+import { journalSearch, journalsSearch } from '@/features/journal/journal-search';
+import { JournalsPage } from '@/features/journal/journals-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
 import { AppLayout } from './app-layout';
@@ -349,6 +352,22 @@ const viewsRoute = createRoute({
   component: guarded('timetable_views', ViewsPage),
 });
 
+/** The Journals page (task 6.2): tabs Classes and Groups, then the subject. */
+const journalsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal',
+  validateSearch: journalsSearch,
+  component: guarded('journal', JournalsPage),
+});
+
+/** A journal for one quarter (task 6.2): the grid, or lesson mode. */
+const journalRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/$journalId',
+  validateSearch: journalSearch,
+  component: guarded('journal', JournalPage),
+});
+
 /** Version history (task 5.8a). */
 const versionsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -557,6 +576,8 @@ const routeTree = rootRoute.addChildren([
     roomClosuresRoute,
     versionsRoute,
     viewsRoute,
+    journalsRoute,
+    journalRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

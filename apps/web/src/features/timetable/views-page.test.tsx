@@ -37,6 +37,7 @@ const lesson = (n: number, fields: Partial<ViewLesson> = {}): ViewLesson => ({
   classIds: [uid(101)],
   lessonNumber: 1,
   replacedHere: false,
+  journalId: null,
   ...fields,
 });
 
@@ -154,6 +155,21 @@ describe('the timetable views', () => {
   });
 
   // Task 6.1b-1 (decision 2): a lesson kept for its data that a version no longer has.
+  it("opens a lesson's journal at its date from the subject (task 6.2; 07, Opening a journal)", async () => {
+    await openPage(
+      viewOf({
+        lessons: [lesson(1, { journalId: uid(900) }), lesson(2, { start: 535, end: 580 })],
+      }),
+      {
+        role: 'teacher',
+      },
+    );
+    const link = await screen.findByRole('link', { name: 'Mathematics' });
+    expect(link.getAttribute('href')).toBe(`/journal/${uid(900)}?date=2026-10-12`);
+    // A lesson with no journal names its subject without a link.
+    expect(screen.getAllByRole('link', { name: 'Mathematics' })).toHaveLength(1);
+  });
+
   it('marks a lesson kept for its data with its cause in words', async () => {
     await openPage(
       viewOf({ lessons: [lesson(1, { cancelCause: 'kept_data', state: 'cancelled' })] }),

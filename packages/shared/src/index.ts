@@ -387,7 +387,7 @@ export {
   storedPhone,
   typedPhoneText,
 } from './phones.js';
-export { listName, searchWords } from './names.js';
+export { compareStudentNames, listName, searchWords } from './names.js';
 export {
   CALENDAR_ENTRY_KINDS,
   CALENDAR_ENTRY_NAME_MAX_LENGTH,
@@ -1669,3 +1669,28 @@ export {
   type ResetEntry,
   type ResetKind,
 } from './reset-entries.js';
+export {
+  JOURNAL_PARTS,
+  JOURNAL_SHAPES,
+  journalGridQuerySchema,
+  journalGridSchema,
+  journalLessonSchema,
+  journalListQuerySchema,
+  journalListSchema,
+  journalParamsSchema,
+  journalStudentSchema,
+  type JournalBottom,
+  type JournalCell,
+  type JournalFigures,
+  type JournalGrid,
+  type JournalGridQuery,
+  type JournalLesson,
+  type JournalList,
+  type JournalListQuery,
+  type JournalParams,
+  type JournalPart,
+  type JournalShape,
+  type JournalStudent,
+  type JournalWork,
+  type ShownResult,
+} from './journal.js';

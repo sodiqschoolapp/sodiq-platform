@@ -94,6 +94,8 @@ describe('OpenAPI document', () => {
         '/api/groups/{id}/members/{memberId}/withdraw',
         '/api/groups/{id}/restore',
         '/api/health',
+        '/api/journal/journals',
+        '/api/journal/journals/{journalId}',
         '/api/notifications',
         '/api/notifications/read-all',
         '/api/notifications/{id}/read',

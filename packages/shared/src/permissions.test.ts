@@ -398,6 +398,23 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the journals to the nine roles of 07, Who can do what, to view only (task 6.2, decision 2)', () => {
+    const readers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+      'teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.journal[role], role).toEqual(readers.includes(role) ? ['view'] : []);
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -423,6 +440,7 @@ describe('a frozen permission table', () => {
       'group_transfers',
       'groups',
       'head_teachers',
+      'journal',
       'personal_data_report',
       'quarters',
       'relatives',

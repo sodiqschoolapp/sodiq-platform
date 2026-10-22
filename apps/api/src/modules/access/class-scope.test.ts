@@ -81,6 +81,7 @@ describe('class scope', () => {
       'student_contact',
       'groups',
       'student_history',
+      'journal',
     ]);
   });
 

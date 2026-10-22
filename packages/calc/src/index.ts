@@ -9,6 +9,7 @@ export {
   type Work,
 } from './daily.js';
 export { Fraction } from './fraction.js';
+export { groupAverage, type GroupAverage } from './group.js';
 export { GRADE_BANDS, gradeOf, type Grade, type GradeBand } from './grade.js';
 export { CalcInputError, type CalcInputErrorCode } from './input.js';
 export {

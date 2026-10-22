@@ -92,6 +92,13 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     to: '/timetable',
     icon: MENU_ICONS.timetable,
   },
+  // The journals (task 6.2): the area `journal` of the same name decides who sees it.
+  journal: {
+    titleKey: 'menu.journal',
+    shortKey: 'menu.short.journal',
+    to: '/journal',
+    icon: MENU_ICONS.journal,
+  },
   // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
   audit_log: {
     titleKey: 'menu.audit_log',

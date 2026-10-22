@@ -117,3 +117,88 @@ export const listName = (person: {
   readonly firstName: string;
   readonly lastName: string;
 }): string => `${person.lastName} ${person.firstName}`;
+
+/** Stand-ins for oʻ and gʻ while the other apostrophes are dropped. */
+const O_OKINA = '\u0001';
+const G_OKINA = '\u0002';
+
+/** Cyrillic letters whose Uzbek Latin is a letter of its own in the order. */
+const CYRILLIC_ORDER_LETTERS: Readonly<Record<string, string>> = { ў: O_OKINA, ғ: G_OKINA };
+
+/** The letters of the Uzbek Latin alphabet after z, in order (edge/journal: "... z, oʻ, gʻ, sh, ch, ng"). */
+const AFTER_Z = [O_OKINA, G_OKINA, 'sh', 'ch', 'ng'] as const;
+
+/**
+ * The ranks of a name's letters in the one fixed order of `edge/journal`
+ * ("Uzbek names: Oʻktam, Gʻulomov, Shodiyev, and names typed in Cyrillic": "One
+ * fixed order (... z, oʻ, gʻ, sh, ch, ng) is used everywhere: grid, exports,
+ * prints, in all three languages"; task 6.2, decision 15): Cyrillic read as its
+ * Uzbek Latin, any apostrophe after o or g making oʻ or gʻ, the letters a to z
+ * in their Latin order, the five two-letter letters after z, anything else after
+ * them by its code.
+ */
+function orderRanks(text: string): number[] {
+  const lower = text.normalize('NFKC').toLocaleLowerCase('en');
+  let latin = '';
+  for (const letter of lower) {
+    latin += CYRILLIC_ORDER_LETTERS[letter] ?? CYRILLIC_TO_LATIN[letter] ?? letter;
+  }
+  latin = latin
+    .replace(/o['`ʻʼ’‘]/g, O_OKINA)
+    .replace(/g['`ʻʼ’‘]/g, G_OKINA)
+    .replace(APOSTROPHES, '');
+  const ranks: number[] = [];
+  for (let at = 0; at < latin.length;) {
+    const single = AFTER_Z.indexOf(latin.charAt(at) as (typeof AFTER_Z)[number]);
+    const pair = AFTER_Z.indexOf(latin.slice(at, at + 2) as (typeof AFTER_Z)[number]);
+    const special = single >= 0 ? single : pair;
+    if (special >= 0) {
+      ranks.push(27 + special);
+      at += single >= 0 ? 1 : 2;
+      continue;
+    }
+    const code = latin.charCodeAt(at);
+    ranks.push(code >= 97 && code <= 122 ? code - 96 : code === 32 || code === 45 ? 0 : 100 + code);
+    at += 1;
+  }
+  return ranks;
+}
+
+function compareRanks(left: string, right: string): number {
+  const a = orderRanks(left);
+  const b = orderRanks(right);
+  for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return a.length - b.length;
+}
+
+/**
+ * The order of students in the journal, its exports and prints (`07`, Layout:
+ * "surname and name in alphabetical order"; `edge/journal`, "Two students in the
+ * list have the same surname and name": "The paternal name is added; if they are
+ * still equal, the UID tells them apart"): surname, first name, paternal name
+ * (none first), then UID, each in the order of `orderRanks`.
+ */
+export function compareStudentNames(
+  left: {
+    readonly lastName: string;
+    readonly firstName: string;
+    readonly paternalName: string | null;
+    readonly uid: string;
+  },
+  right: {
+    readonly lastName: string;
+    readonly firstName: string;
+    readonly paternalName: string | null;
+    readonly uid: string;
+  },
+): number {
+  return (
+    compareRanks(left.lastName, right.lastName) ||
+    compareRanks(left.firstName, right.firstName) ||
+    compareRanks(left.paternalName ?? '', right.paternalName ?? '') ||
+    (left.uid < right.uid ? -1 : left.uid > right.uid ? 1 : 0)
+  );
+}

@@ -6,6 +6,7 @@ import {
   type TeachingHome,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
@@ -17,6 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { useSwitchBranch } from '@/features/access/use-switch-branch';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { teachingHomeQuery } from './timetable-api';
@@ -62,7 +65,7 @@ const itemsOf = (home: TeachingHome): Item[] =>
  * from all branches appear together in time order, each labelled with its
  * branch"; Views and outputs: "Teacher home page: today's lessons as a list
  * (period, time, class or group, subject, room, button to open the journal)
- * and the week as a table"). The journal button comes with the journal (6.2).
+ * and the week as a table"). The journal button came with the journal (6.2).
  * The branch is named on every item once the week holds more than one.
  */
 export function TeachingHome(): React.JSX.Element {
@@ -164,6 +167,7 @@ function TodayList({
             <TableHead>{t('timetable.day.room')}</TableHead>
             {named && <TableHead>{t('home.lessons.branch')}</TableHead>}
             <TableHead>{t('timetable.day.state')}</TableHead>
+            <TableHead>{t('journal.page.journalColumn')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -179,6 +183,7 @@ function TodayList({
                     {t('timetable.views.busyIn', { branch: item.at.branch.name })}
                   </TableCell>
                   {branch}
+                  <TableCell />
                   <TableCell />
                 </TableRow>
               );
@@ -197,6 +202,7 @@ function TodayList({
                   <TableCell>{exam.rooms.map((room) => room.room.name).join(', ')}</TableCell>
                   {branch}
                   <TableCell className="font-semibold">{t('timetable.day.exam')}</TableCell>
+                  <TableCell />
                 </TableRow>
               );
             }
@@ -210,12 +216,62 @@ function TodayList({
                 <TableCell>{lesson.room?.name ?? ''}</TableCell>
                 {branch}
                 <TableCell>{marks(lesson).join(' · ') || t('timetable.day.asPlanned')}</TableCell>
+                <TableCell>
+                  {lesson.journalId !== null && (
+                    <OpenJournal
+                      journalId={lesson.journalId}
+                      date={lesson.date}
+                      branchId={lesson.branch.id}
+                    />
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+/**
+ * The button that opens the journal of a lesson of today (task 6.2, From 5.9b:
+ * "button to open the journal"), at the lesson's date, in its own branch: a
+ * lesson of another branch switches the tab's branch first, through
+ * `useSwitchBranch`, so the journal is read with that branch.
+ */
+function OpenJournal({
+  journalId,
+  date,
+  branchId,
+}: {
+  journalId: string;
+  date: string;
+  branchId: string;
+}) {
+  const { t } = useTranslation();
+  const { branchId: current } = useView();
+  const navigate = useNavigate();
+  const switchBranch = useSwitchBranch();
+  const open = () => {
+    void navigate({ to: '/journal/$journalId', params: { journalId }, search: { date } });
+  };
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={() => {
+        if (branchId === current) {
+          open();
+          return;
+        }
+        void switchBranch(branchId).then((switched) => {
+          if (switched) open();
+        });
+      }}
+    >
+      {t('journal.open')}
+    </Button>
   );
 }
 

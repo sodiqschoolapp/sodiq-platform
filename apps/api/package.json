@@ -31,6 +31,7 @@
     "@nestjs/swagger": "^12.0.2",
     "@opentelemetry/api": "1.9.1",
     "@sentry/node": "11.5.0",
+    "@sodiq/calc": "workspace:*",
     "@sodiq/shared": "workspace:*",
     "@sodiq/timetable-rules": "workspace:*",
     "exceljs": "4.4.0",

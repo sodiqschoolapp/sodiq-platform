@@ -82,6 +82,8 @@ describe('the routes that work without sign-in', () => {
       'GET /api/groups/placement',
       'GET /api/groups/slot-check',
       'GET /api/health',
+      'GET /api/journal/journals',
+      'GET /api/journal/journals/:journalId',
       'GET /api/notifications',
       'GET /api/people/accounts/never-used',
       'GET /api/people/accounts/reset-entries',

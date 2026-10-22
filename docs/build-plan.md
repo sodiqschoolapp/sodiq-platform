@@ -1002,7 +1002,7 @@ How to read the task lines:
   - From 2.6b (pull request #76, Left out): the student's marks and attendance join the personal data report (`personal-data.service.ts`), once cells exist.
   - From 2.3c-2 (pull request #66, decision 6): the report also counts a password reset by email (`auth.password_reset_by_email`), and marks one that follows an email change by somebody else (the entry's `lastEmailChange`).
 
-- [ ] **6.2 Journal grid**
+- [x] **6.2 Journal grid**
   - Read: `07` (Opening a journal, Layout, Who can do what), `12`.
   - Build: the AG Grid Community grid with pinned student columns, lesson columns grouped by date, scroll to the nearest date, summary columns from `packages/calc`, the bottom row, student search, and lesson mode for today's lesson.
   - Done when: the grid meets the speed targets in `12` with a full quarter of data.
@@ -1017,6 +1017,7 @@ How to read the task lines:
   - Done when: "all present" is one request with one history entry per cell.
   - From 5.7b-1 (pull request #191, decision 10): `07`, Who can do what: "Substitute teacher | Enters for the substituted lesson only"; `edge/timetable`, After publishing, "A substitute wants to finish the numbers two days later": "The substitute is the teacher of that lesson and has the normal edit period for that column only. The journal's own teacher can also edit it until it locks. Every entry shows who typed it." The substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101); the person recorded by a correction of kind `teacher` (5.6a-4) is that lesson's teacher the same way. The journal's own teacher is `journalOwnerOn`.
   - From 6.1a (pull request #205, decision 11): `07`, Editing rules and locks: "Attendance and scores can be entered from the lesson's start time, not before." `saveCells` accepts a save before the start; the route refuses it. Its input schema stays within the checks of `journal_cells` (a mark 0 to 3, a whole number 0 or more; `.claude/rules/database.md`, a shared schema never wider than the check), which `saveCells` throws on.
+  - From 6.2 (pull request #210, review correction 2 and decision 12): `07`, Layout, Lessons, row 3: the "all present" button over the A column of each lesson in the grid (`journal-grid.tsx`, a header of the A column), and the attendance marks of lesson mode (`LessonMode`, `journal-page.tsx`) as large buttons; 6.2 draws both read only.
 
 ## Phase 7. Lesson plans
 
@@ -1113,6 +1114,7 @@ How to read the task lines:
   - From 3.3d (pull request #98, decision 4 and correction 5): the journal side of a merge of two student records (`student_merges`, 0054): the entries of the merged record are carried to the kept record with its class and group rows; two records holding entries on common days (the days a merge cuts or leaves behind) are refused or resolved, the merge listing them, as the late transfer lists its entries. The journal's tables of student data reference `students` with no action and are carried by the merge or refuse it by their key; each is named in `MERGE_DOES` of `student-merges.database.test.ts` and in a list of `student-branch-moves.database.test.ts`.
   - From 3.3b (pull request #96, decision 2): the journal side of a return (`edge`, "A student returns"): "In the same quarter and class: one row, with the gap closed. Into another class: handled like a transfer. In a later year: nothing is carried into the journals". The return writes no `student_moves` row; its class row has the cause `return`, and a return into the class left gives back the group the leaving cut.
   - From 4.3 (pull request #104, decisions 6, 10 and 12): the result at leaving is `finalQuarterRecord(…, 'at_leaving')`, stored when the student leaves the school or the branch; N of the few-lessons flag (`heldInJournals`) counts, for each school day of the quarter, the held lessons of the journal the student belonged to that day, before the first membership and in a gap the journal of the next membership, after leaving the subject or the branch nothing; class and group averages count only number outcomes of members on the reference date.
+  - From 6.2 (pull request #210, decision 4, Look first): the grid's figures of a student (`journal-grid.service.ts`) use the lessons of that journal only; a student moved in mid-quarter shows a partial result with no marker until the results follow the student across journals, with the carried-in averages and their marker (`07`, Transfers).
 
 - [ ] **8.7 Lesson status, reminders and the discipline report**
   - Read: `07` (Lesson status, Reminders).

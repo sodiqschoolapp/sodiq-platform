@@ -61,9 +61,21 @@ export class CellsKit {
 
   /** A lesson of the class on the date, of its own block. */
   async lesson(branch: string, year: string, classId: string, date: string): Promise<string> {
-    const source = await this.lessons.source(branch, year, [
-      { classId, groupId: null, subjectId: this.subject },
-    ]);
+    return this.unitLesson(branch, year, { classId, groupId: null }, date);
+  }
+
+  /** Task 6.2: a lesson of a group of the kit's subject on the date, of its own block. */
+  async groupLesson(branch: string, year: string, groupId: string, date: string): Promise<string> {
+    return this.unitLesson(branch, year, { classId: null, groupId }, date);
+  }
+
+  private async unitLesson(
+    branch: string,
+    year: string,
+    unit: { readonly classId: string | null; readonly groupId: string | null },
+    date: string,
+  ): Promise<string> {
+    const source = await this.lessons.source(branch, year, [{ ...unit, subjectId: this.subject }]);
     const quarter = await this.quarterOf(year, date);
     slot += 1;
     const minutes = 7 * 60 + (slot % 12) * 50;
@@ -92,7 +104,8 @@ export class CellsKit {
           lesson_date: block.lesson_date,
           starts_at: block.starts_at,
           ends_at: block.ends_at,
-          class_id: classId,
+          class_id: unit.classId,
+          group_id: unit.groupId,
           subject_id: this.subject,
           load_row_id: source.lessons[0]?.loadRowId ?? '',
           pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
