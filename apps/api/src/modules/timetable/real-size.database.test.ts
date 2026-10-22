@@ -36,7 +36,7 @@ import {
  * real routes, each later branch checked after the earlier ones are published
  * (a shared teacher's lessons there are busy elsewhere, with the travel time);
  * the board, a move, the publish check, the publish and the published week
- * are timed and written to `apps/api/real-size-report.md`.
+ * are timed and written to `apps/api/real-size-report-<size>.md` (git-ignored).
  *
  * Small (2 branches, 4 classes) in CI; `REAL_SIZE=full` runs the school's
  * size (3 branches, 80 classes, 2,000 students): decision 2 of the plan.

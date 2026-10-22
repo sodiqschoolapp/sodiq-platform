@@ -1177,7 +1177,7 @@ How to read the task lines:
   - Read: `12` (Speed targets), `14` (Whole system), `edge/system-behaviour`.
   - Build: a data generator for three times the estimated yearly data with invented names; automated measurement of each target.
   - Done when: every target is met or the gap is written in `docs/progress.md` with a plan.
-  - From 5.12c (pull request #203, decisions 2 and 3): the real-size run (`apps/api/src/modules/timetable/real-size.database.test.ts`, `REAL_SIZE=full`) builds the school at its size, publishes it and times the board, a move, the publish and the published week; it runs small in CI. The measure before each release at full size and the 1,000 simultaneous users of `12` (Load) are this task's.
+  - From 5.12c (pull request #203, decisions 2 and 3): the real-size run (`apps/api/src/modules/timetable/real-size.database.test.ts`, `REAL_SIZE=full`) builds the school at its size, publishes it and times the board, a move, the publish and the published week; it runs small in CI. The measure before each release at full size and the 1,000 simultaneous users of `12` (Load) are this task's. Its full run missed two targets: the board's drag check of every slot (406 ms, target 0.2 s) and the publish check (1.2 s, target 1 s).
 
 - [ ] **10.2 Backups, restore drill and monitoring**
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
