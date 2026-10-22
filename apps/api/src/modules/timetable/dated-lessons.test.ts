@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   needKeyOf,
   pairDated,
+  pinnedPairing,
   writtenTeacherOf,
   type PairStored,
   type PairWanted,
@@ -170,6 +171,138 @@ describe('the pairing of stored and new dated lessons', () => {
     );
     expect(idsOf(pairs, [a, b, c])).toEqual([null, 'lesson-b', 'lesson-c']);
     expect(idsOf(recreated, [a, b, c])).toEqual(['lesson-a', null, null]);
+  });
+});
+
+// Task 6.1b-1, pull request #206 (decisions 2, 3 and 6): lessons with data
+// and lessons moved in time by a rewrite of their own version. 06, What a
+// change does to existing data: "Removed, if they hold no data"; Protection:
+// "Its teacher, room and time can change, with a log entry"; .claude/rules/
+// timetable.md: a lesson is named by its pattern entry and pattern date. All
+// names are invented.
+describe('the pairing of lessons with data and of lessons moved in time', () => {
+  const at = (entryId: string, patternDate = DATE) => ({ entryId, patternDate });
+
+  it('pairs by pattern entry, pattern date and date across other times and cancels (pass 2), and pass 1 first', () => {
+    const moved = wanted('entry-1', { start: 510, end: 555, ...at('entry-1') });
+    const cancelled = wanted('entry-2', {
+      unitId: 'class-cambridge',
+      cause: 'not_in_template',
+      ...at('entry-2'),
+    });
+    const exact = wanted('entry-3', { unitId: 'class-princeton', ...at('entry-3') });
+    const { pairs, second } = pairDated(
+      [
+        stored('lesson-a', 'block-a', at('entry-1')),
+        stored('lesson-b', 'block-b', { unitId: 'class-cambridge', ...at('entry-2') }),
+        // An exact pair of another entry is taken in pass 1 before its own entry's.
+        stored('lesson-c', 'block-c', { unitId: 'class-princeton', ...at('entry-9') }),
+        stored('lesson-d', 'block-d', {
+          unitId: 'class-princeton',
+          start: 600,
+          end: 645,
+          ...at('entry-3'),
+        }),
+      ],
+      [{ lessons: [moved] }, { lessons: [cancelled] }, { lessons: [exact] }],
+    );
+    expect(idsOf(pairs, [moved, cancelled, exact])).toEqual(['lesson-a', 'lesson-b', 'lesson-c']);
+    expect([...second]).toEqual([moved, cancelled]);
+  });
+
+  it('never pairs by pass 2 across another entry, pattern date, date, class or subject', () => {
+    const lesson = wanted('entry-1', { start: 510, end: 555, ...at('entry-1') });
+    const { pairs } = pairDated(
+      [
+        stored('other-entry', 'block-a', at('entry-2')),
+        stored('other-date', 'block-b', { date: '2026-11-23', ...at('entry-1', '2026-11-23') }),
+        stored('other-unit', 'block-c', { unitId: 'class-cambridge', ...at('entry-1') }),
+        stored('other-subject', 'block-d', { subjectId: 'art', ...at('entry-1') }),
+        // A stored lesson with no pattern entry is paired by pass 1 only.
+        stored('no-entry', 'block-e'),
+      ],
+      [{ lessons: [lesson] }],
+    );
+    expect(idsOf(pairs, [lesson])).toEqual([null]);
+  });
+
+  it("does not take a lesson moved onto the same weekday a week later for the entry's own lesson there", () => {
+    // The lesson of 16 November moved to 23 November by a one-day move: its
+    // pattern date stays 16 November.
+    const own = wanted('entry-1', {
+      date: '2026-11-23',
+      start: 510,
+      end: 555,
+      ...at('entry-1', '2026-11-23'),
+    });
+    const { pairs } = pairDated(
+      [
+        stored('moved-here', 'block-a', {
+          date: '2026-11-23',
+          ...at('entry-1', DATE),
+        }),
+      ],
+      [{ lessons: [own] }],
+    );
+    expect(idsOf(pairs, [own])).toEqual([null]);
+  });
+
+  it('reuses first the block of the most paired lessons with data, then the most paired', () => {
+    const a = wanted('entry-a', { unitId: 'group-1' });
+    const b = wanted('entry-b', { unitId: 'group-2' });
+    const c = wanted('entry-c', { unitId: 'group-3' });
+    const rows = [
+      stored('lesson-a', 'block-z', { unitId: 'group-1' }),
+      stored('lesson-b', 'block-z', { unitId: 'group-2' }),
+      stored('lesson-c', 'block-y', { unitId: 'group-3' }),
+    ];
+    const plain = pairDated(rows, [{ lessons: [a, b, c] }]);
+    expect(plain.reused).toEqual(['block-z']);
+    const withData = pairDated(rows, [{ lessons: [a, b, c] }], {
+      holding: new Set(['lesson-c']),
+    });
+    expect(withData.reused).toEqual(['block-y']);
+    expect(idsOf(withData.recreated, [a, b, c])).toEqual(['lesson-a', 'lesson-b', null]);
+  });
+
+  it('never reuses a pinned block: its lessons that pair are created again', () => {
+    const a = wanted('entry-a', { unitId: 'group-1' });
+    const { pairs, reused, recreated } = pairDated(
+      [stored('lesson-a', 'block-z', { unitId: 'group-1' })],
+      [{ lessons: [a] }],
+      { pinned: new Set(['block-z']) },
+    );
+    expect(reused).toEqual([null]);
+    expect(idsOf(pairs, [a])).toEqual([null]);
+    expect(idsOf(recreated, [a])).toEqual(['lesson-a']);
+  });
+
+  it('pins the block of a lesson with data that no wanted lesson pairs, reuses another block for the rest, and pins none whose lessons with data all pair', () => {
+    // Block z holds group 1 (with data, dropped by the version) and group 2;
+    // block y holds group 3 (with data). The version wants groups 2 and 3 in
+    // one block, which would reuse block z for group 2 alone ...
+    const g2 = wanted('entry-2', { unitId: 'group-2' });
+    const g3 = wanted('entry-3', { unitId: 'group-3' });
+    const rows = [
+      stored('lesson-1', 'block-z', { unitId: 'group-1' }),
+      stored('lesson-2', 'block-z', { unitId: 'group-2' }),
+      stored('lesson-3', 'block-y', { unitId: 'group-3' }),
+    ];
+    const { paired, pinned } = pinnedPairing(
+      rows,
+      [{ lessons: [g2, g3] }],
+      new Set(['lesson-1', 'lesson-3']),
+    );
+    // ... but block z is pinned, so block y is reused and group 2 created again.
+    expect([...pinned]).toEqual(['block-z']);
+    expect(paired.reused).toEqual(['block-y']);
+    expect(idsOf(paired.pairs, [g2, g3])).toEqual([null, 'lesson-3']);
+    expect(idsOf(paired.recreated, [g2, g3])).toEqual(['lesson-2', null]);
+
+    // A block whose lessons with data all pair exactly is never pinned.
+    const kept = pinnedPairing(rows.slice(1), [{ lessons: [g2, g3] }], new Set(['lesson-2']));
+    expect([...kept.pinned]).toEqual([]);
+    expect(kept.paired.reused).toEqual(['block-z']);
   });
 });
 

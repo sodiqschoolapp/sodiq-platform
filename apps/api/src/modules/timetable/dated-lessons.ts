@@ -529,27 +529,42 @@ export async function datedKeeps(
     entryId: row.pattern_entry_id,
     patternDate: patternDates.get(row.id) ?? row.lesson_date,
   }));
+  const { paired, pinned } = pinnedPairing(pairStored, blocks, holding);
+  const pairedIds = new Set(
+    [...paired.pairs.values(), ...paired.recreated.values()].map((one) => one.id),
+  );
+  const recreated = new Set([...paired.recreated.values()].map((one) => one.id));
+  return {
+    paired,
+    pinned,
+    holding,
+    kept: stored.filter((row) => holding.has(row.id) && !pairedIds.has(row.id)),
+    refused: stored.filter((row) => holding.has(row.id) && recreated.has(row.id)),
+  };
+}
+
+/**
+ * The pairing of `datedKeeps` (task 6.1b-1, decision 2): `pairDated` run
+ * again with the block of each stored lesson of `holding` that no wanted
+ * lesson pairs pinned, until no block is added; the set only grows, so it
+ * ends.
+ */
+export function pinnedPairing<W extends PairWanted>(
+  stored: readonly PairStored[],
+  blocks: readonly { readonly lessons: readonly W[] }[],
+  holding: ReadonlySet<string>,
+): { paired: ReturnType<typeof pairDated<W>>; pinned: Set<string> } {
   const pinned = new Set<string>();
   for (;;) {
-    const paired = pairDated(pairStored, blocks, { pinned, holding });
+    const paired = pairDated(stored, blocks, { pinned, holding });
     const pairedIds = new Set(
       [...paired.pairs.values(), ...paired.recreated.values()].map((one) => one.id),
     );
     const lost = stored.filter(
-      (row) => holding.has(row.id) && !pairedIds.has(row.id) && !pinned.has(row.block_id),
+      (one) => holding.has(one.id) && !pairedIds.has(one.id) && !pinned.has(one.blockId),
     );
-    if (lost.length > 0) {
-      for (const row of lost) pinned.add(row.block_id);
-      continue;
-    }
-    const recreated = new Set([...paired.recreated.values()].map((one) => one.id));
-    return {
-      paired,
-      pinned,
-      holding,
-      kept: stored.filter((row) => holding.has(row.id) && !pairedIds.has(row.id)),
-      refused: stored.filter((row) => holding.has(row.id) && recreated.has(row.id)),
-    };
+    if (lost.length === 0) return { paired, pinned };
+    for (const one of lost) pinned.add(one.blockId);
   }
 }
 
