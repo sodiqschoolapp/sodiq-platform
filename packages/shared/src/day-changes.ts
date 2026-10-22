@@ -37,6 +37,8 @@ export type LessonParams = z.infer<typeof lessonParamsSchema>;
  */
 export const lessonCancelBodySchema = z.strictObject({
   reason: z.string().trim().min(1).max(DAY_CHANGE_REASON_MAX),
+  /** The tick under the list of what a lesson with data holds (`cancel_holds_data`; task 6.1b-2, decision 2). */
+  confirm: z.boolean().optional(),
 });
 
 export type LessonCancelBody = z.infer<typeof lessonCancelBodySchema>;
@@ -217,7 +219,9 @@ export type DayChangeAnswer = z.infer<typeof dayChangeAnswerSchema>;
  * a correction answered with `correction_needs_confirm` (decisions 2 and 13).
  */
 export const lessonCorrectionBodySchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('cancel'), reason }),
+  // Task 6.1b-2 (decision 2): `confirm` is the tick under the list of what a
+  // lesson with data holds (`cancel_holds_data`).
+  z.strictObject({ kind: z.literal('cancel'), reason, confirm: z.boolean().optional() }),
   z.strictObject({
     kind: z.literal('restore'),
     roomId: z.uuid().optional(),

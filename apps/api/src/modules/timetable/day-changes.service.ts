@@ -45,6 +45,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons, settledByTaught } from './away-read.js';
+import { dataHeldBy } from './lesson-data.js';
 import { roomsOutLessons } from './rooms-out-read.js';
 import {
   endSubstitutionRows,
@@ -238,8 +239,10 @@ export class TimetableDayChanges {
     key: string,
     requestId: string,
   ): Promise<DayChangeAnswer> {
-    return this.keyed(access, id, key, 'timetable.lesson_cancel', { reason: input.reason }, (t) =>
-      this.cancelLocked(t, access, id, input.reason, requestId),
+    // Task 6.1b-2: the tick is part of the request (spec review should-fix 1).
+    const fields = { reason: input.reason, ...(input.confirm === true ? { confirm: 'true' } : {}) };
+    return this.keyed(access, id, key, 'timetable.lesson_cancel', fields, (t) =>
+      this.cancelLocked(t, access, id, input.reason, input.confirm === true, requestId),
     );
   }
 
@@ -324,7 +327,7 @@ export class TimetableDayChanges {
     if ((input.kind === 'room' || input.kind === 'restore') && input.roomId !== undefined) {
       fields.roomId = input.roomId;
     }
-    if (input.kind !== 'cancel' && input.confirm === true) fields.confirm = 'true';
+    if (input.confirm === true) fields.confirm = 'true';
     const roomId = input.kind === 'room' || input.kind === 'restore' ? input.roomId : undefined;
     return this.keyed(
       access,
@@ -535,6 +538,7 @@ export class TimetableDayChanges {
     access: Access,
     id: string,
     reason: string,
+    confirm: boolean,
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
@@ -544,6 +548,7 @@ export class TimetableDayChanges {
     }
     // Both halves of a double; a half already cancelled keeps its cause (decision 4).
     const lessonIds = pair.filter((one) => one.cancelCause === null).map((one) => one.id);
+    const heldData = await refuseHeldData(transaction, lessonIds, confirm);
     await transaction
       .updateTable('lessons')
       .set({ cancel_cause: 'reason', cancel_reason: reason })
@@ -564,6 +569,7 @@ export class TimetableDayChanges {
         lessonIds,
         cancelCause: 'reason',
         reason,
+        ...(heldData.length === 0 ? {} : { heldData, confirmed: true }),
         notices: { ...notices },
       },
       requestId,
@@ -963,10 +969,12 @@ export class TimetableDayChanges {
     const inForce = (await substitutionsInForce(transaction, [lesson])).get(id);
     const backToReplaced =
       input.kind === 'teacher' && inForce !== undefined && input.teacherId === inForce.replacedId;
+    let heldData: HeldDataEntry[] = [];
     if (input.kind === 'cancel') {
       if (lesson.cancelCause !== null) {
         throw new ApiException('lesson_cancelled', 409);
       }
+      heldData = await refuseHeldData(transaction, [id], input.confirm === true);
       cancelCause = 'reason';
     } else {
       if (input.kind === 'restore' && lesson.cancelCause !== 'reason') {
@@ -1137,6 +1145,7 @@ export class TimetableDayChanges {
         ...(substitutionId === null ? {} : { substitutionId }),
         ...(endedSubstitution === null ? {} : { endedSubstitution }),
         ...(input.kind !== 'cancel' && input.confirm === true ? { confirmed: true } : {}),
+        ...(heldData.length === 0 ? {} : { heldData, confirmed: true }),
         warnings: warnings.map((one) => one.rule),
         notices: { ...notices },
       },
@@ -1172,6 +1181,50 @@ export class TimetableDayChanges {
  * Refuses a one-day change whose check found a blocked rule, with the
  * results and the free rooms of its time, by name.
  */
+/** What one lesson of a cancel holds (task 6.1b-2), for its entry. */
+type HeldDataEntry = {
+  lessonId: string;
+  attendance: number;
+  scores: number;
+  totals: number;
+  notHeld: number;
+};
+
+/**
+ * The cancel of a lesson that holds data (task 6.1b-2, decision 2;
+ * edge/timetable, After publishing: "A lesson that already has attendance
+ * must be cancelled. Only the Academic Vice Principal, with a reason and a
+ * list of what is affected. The entries are kept, struck through and left out
+ * of every figure. Restoring the lesson brings them back."): refused with what
+ * each lesson holds until it is sent again with the tick. A cancel never
+ * touches the cells and works, so a restore brings them back. Read after the
+ * lesson's lock, which a save of cells waits for or has committed before.
+ * Answers what the lessons hold, for the entry.
+ */
+export async function refuseHeldData(
+  transaction: Transaction,
+  lessonIds: readonly string[],
+  confirm: boolean,
+): Promise<HeldDataEntry[]> {
+  const held = await dataHeldBy(transaction, lessonIds);
+  const entries = [...held].map(([lessonId, data]) => ({ lessonId, ...data }));
+  if (entries.length > 0 && !confirm) {
+    throw new ApiException(
+      'cancel_holds_data',
+      409,
+      undefined,
+      entries.map(({ lessonId, ...data }) => ({
+        path: `lessons.${lessonId}`,
+        code: 'cancel_holds_data',
+        message: 'The lesson holds data, kept by the cancel.',
+        recordId: lessonId,
+        heldData: data,
+      })),
+    );
+  }
+  return entries;
+}
+
 export async function refuseBlocked(
   transaction: Transaction,
   branchId: string,

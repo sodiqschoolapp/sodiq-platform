@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { DAY_CHANGE_REASON_MAX, dayLessonSchema } from './day-changes.js';
+import { heldDataSchema } from './held-data.js';
 
 /**
  * A bulk cancel of the published timetable (task 5.6a-3, pull request #162;
@@ -62,6 +63,20 @@ export const bulkCancelBodySchema = z.strictObject({
       message: 'One choice for each block.',
     }),
   lessonIds: z.array(z.uuid()).max(10000).refine(distinct, { message: 'Each lesson once.' }),
+  /**
+   * Task 6.1b-2 (decision 4; edge/time-dates-calendar: "For a lesson that
+   * already has data, the Academic Vice Principal chooses 'keep as held' or
+   * 'cancel'"): one choice for each lesson with data the save cancels under
+   * the block choices; `lessonIds` leaves out those kept and the other half
+   * of their double.
+   */
+  dataChoices: z
+    .array(z.strictObject({ lessonId: z.uuid(), choice: z.enum(BULK_CANCEL_CHOICES) }))
+    .max(10000)
+    .refine((choices) => distinct(choices.map((one) => one.lessonId)), {
+      message: 'One choice for each lesson.',
+    })
+    .default([]),
 });
 
 export type BulkCancelBody = z.infer<typeof bulkCancelBodySchema>;
@@ -86,6 +101,21 @@ export const bulkCancelSharedSchema = z.object({
 
 export type BulkCancelShared = z.infer<typeof bulkCancelSharedSchema>;
 
+/**
+ * A lesson with data that a bulk cancel would cancel under some choice of
+ * its block (task 6.1b-2, decision 4): what it holds, the lessons of the
+ * other half of its double that take its choice, and its shared block, whose
+ * "cancel" cancels it whatever it is given (`null` when not shared).
+ */
+export const bulkCancelDataLessonSchema = z.object({
+  lessonId: z.uuid(),
+  heldData: heldDataSchema,
+  pairLessonIds: z.array(z.uuid()),
+  sharedBlockId: z.uuid().nullable(),
+});
+
+export type BulkCancelDataLesson = z.infer<typeof bulkCancelDataLessonSchema>;
+
 /** What a bulk cancel would do, written nowhere (decision 12). */
 export const bulkCancelCheckAnswerSchema = z.object({
   date: schoolDateSchema,
@@ -96,6 +126,8 @@ export const bulkCancelCheckAnswerSchema = z.object({
   alreadyCancelled: z.array(dayLessonSchema),
   /** The other half of a double outside the slots that has started: held, not cancelled (review correction 1). */
   held: z.array(dayLessonSchema),
+  /** Task 6.1b-2: the lessons of `cancel` and `shared` that hold data, by start. */
+  withData: z.array(bulkCancelDataLessonSchema),
 });
 
 export type BulkCancelCheckAnswer = z.infer<typeof bulkCancelCheckAnswerSchema>;
@@ -106,6 +138,8 @@ export const bulkCancelAnswerSchema = z.object({
   cancelled: z.array(z.uuid()),
   /** The shared blocks kept, the chosen classes' students exempt (decision 1). */
   kept: z.array(z.uuid()),
+  /** Task 6.1b-2: the lessons with data kept as held, and the other halves of their doubles. */
+  keptWithData: z.array(z.uuid()),
 });
 
 export type BulkCancelAnswer = z.infer<typeof bulkCancelAnswerSchema>;

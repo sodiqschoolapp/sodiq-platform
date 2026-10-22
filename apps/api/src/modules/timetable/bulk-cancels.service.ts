@@ -8,6 +8,7 @@ import {
   type BulkCancelCheckAnswer,
   type BulkCancelCheckBody,
   type BulkCancelChoice,
+  type BulkCancelDataLesson,
   type ErrorDetail,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -22,6 +23,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { DAY_REFUSALS, classSlotsOn, dayLessonsOf } from './day-changes.service.js';
 import { dayBeginnings } from './dated-check.js';
+import { dataHeldBy } from './lesson-data.js';
 import { PUBLISH_LOCK, lockPublishChain, refusingPublish } from './publish.service.js';
 import { storedLessonsOn, type StoredDayLesson } from './stored-day.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
@@ -158,6 +160,7 @@ export class TimetableBulkCancels {
           }),
         alreadyCancelled: show(scope.alreadyCancelled),
         held: show(scope.held),
+        withData: await withDataOf(transaction, scope.items),
       });
     });
   }
@@ -196,6 +199,11 @@ export class TimetableBulkCancels {
                   .map((one) => `${one.blockId}:${one.choice}`)
                   .join(','),
                 lessonIds: [...input.lessonIds].sort().join(','),
+                // Task 6.1b-2 (spec review should-fix 1).
+                dataChoices: [...input.dataChoices]
+                  .sort((a, b) => a.lessonId.localeCompare(b.lessonId))
+                  .map((one) => `${one.lessonId}:${one.choice}`)
+                  .join(','),
               },
             },
             async () =>
@@ -249,8 +257,10 @@ export class TimetableBulkCancels {
       throw new ApiException('bulk_cancel_empty', 409);
     }
     // Every lesson the check listed to cancel under these choices, and no
-    // other (decision 12; spec review of the code, must-fix 2).
-    const cancelled = lessonsToCancel(scope.items, choiceOf);
+    // other (decision 12; spec review of the code, must-fix 2); task 6.1b-2:
+    // less the lessons with data kept as held, read after the locks.
+    const keptData = await keptWithData(transaction, scope.items, choiceOf, input.dataChoices);
+    const cancelled = lessonsToCancel(scope.items, choiceOf).filter((one) => !keptData.has(one.id));
     const toCancel = new Set(cancelled.map((one) => one.id));
     const listed = new Set(input.lessonIds);
     const differ = [
@@ -357,11 +367,15 @@ export class TimetableBulkCancels {
         })),
         alreadyCancelled: scope.alreadyCancelled.map((one) => one.id),
         held: scope.held.map((one) => one.id),
+        dataChoices: [...input.dataChoices]
+          .sort((a, b) => a.lessonId.localeCompare(b.lessonId))
+          .map((one) => ({ lessonId: one.lessonId, choice: one.choice })),
+        keptWithData: [...keptData].sort(),
         notices: { ...notices },
       },
       requestId,
     });
-    return { id: record.id, cancelled: cancelledIds, kept };
+    return { id: record.id, cancelled: cancelledIds, kept, keptWithData: [...keptData].sort() };
   }
 }
 
@@ -382,9 +396,127 @@ function lessonsToCancel(
     .sort(byStart);
 }
 
+/**
+ * The lessons with data a bulk cancel could cancel (task 6.1b-2, decision 4;
+ * edge/time-dates-calendar: "For a lesson that already has data, the Academic
+ * Vice Principal chooses 'keep as held' or 'cancel'"): every lesson of an
+ * item, shared or not, with what it holds, the lessons of the other half of
+ * its double of the same class or group, which take its choice (edge/timetable,
+ * Structure: "moved, cancelled and substituted together"), and its shared
+ * block. By start.
+ */
+async function withDataOf(
+  transaction: Transaction,
+  items: readonly Item[],
+): Promise<BulkCancelDataLesson[]> {
+  const lessons = items.flatMap((item) => item.lessons).sort(byStart);
+  const held = await dataHeldBy(
+    transaction,
+    lessons.map((one) => one.id),
+  );
+  return lessons.flatMap((lesson) => {
+    const heldData = held.get(lesson.id);
+    if (heldData === undefined) return [];
+    const item = items.find((one) => one.blockIds.includes(lesson.blockId));
+    return [
+      {
+        lessonId: lesson.id,
+        heldData,
+        pairLessonIds: item === undefined ? [] : pairLessonsOf(item, lesson).map((one) => one.id),
+        sharedBlockId: item?.shared === true ? item.blockId : null,
+      },
+    ];
+  });
+}
+
+/** The lessons of the other half of a lesson's double in its item, of the same class or group. */
+function pairLessonsOf(item: Item, lesson: StoredDayLesson): StoredDayLesson[] {
+  return item.lessons.filter(
+    (one) =>
+      one.blockId !== lesson.blockId &&
+      one.classId === lesson.classId &&
+      one.groupId === lesson.groupId,
+  );
+}
+
+/**
+ * The lessons a bulk cancel keeps held for their data (task 6.1b-2, decision
+ * 4): a lesson with data that the block choices cancel takes its own choice;
+ * "keep" holds it and the other half of its double. Refused, with the ids:
+ * a lesson with data with no choice (`bulk_data_choice_missing`), a choice for
+ * a lesson the save does not cancel with data (`bulk_data_choice_unknown`), a
+ * "keep" in a shared block chosen "cancel", which is cancelled whole
+ * (`bulk_data_choice_conflict`; edge/timetable, After publishing: "cancel the
+ * whole block, or keep it"), and two halves of a double chosen differently
+ * (`bulk_data_choice_split`).
+ */
+async function keptWithData(
+  transaction: Transaction,
+  items: readonly Item[],
+  choiceOf: ReadonlyMap<string, BulkCancelChoice>,
+  dataChoices: readonly { lessonId: string; choice: BulkCancelChoice }[],
+): Promise<Set<string>> {
+  const cancelled = lessonsToCancel(items, choiceOf);
+  const held = await dataHeldBy(
+    transaction,
+    cancelled.map((one) => one.id),
+  );
+  const chosen = new Map(dataChoices.map((one) => [one.lessonId, one.choice]));
+  const missing = [...held.keys()].filter((id) => !chosen.has(id));
+  if (missing.length > 0) throw refusal('bulk_data_choice_missing', 'dataChoices', missing.sort());
+  const unknown = [...chosen.keys()].filter((id) => !held.has(id));
+  if (unknown.length > 0) throw refusal('bulk_data_choice_unknown', 'dataChoices', unknown.sort());
+  const itemOf = (lesson: StoredDayLesson) =>
+    items.find((one) => one.blockIds.includes(lesson.blockId));
+  const conflict = cancelled.filter((lesson) => {
+    const item = itemOf(lesson);
+    return (
+      chosen.get(lesson.id) === 'keep' &&
+      item?.shared === true &&
+      choiceOf.get(item.blockId) === 'cancel'
+    );
+  });
+  if (conflict.length > 0) {
+    throw refusal(
+      'bulk_data_choice_conflict',
+      'dataChoices',
+      conflict.map((one) => one.id),
+    );
+  }
+  const kept = new Set<string>();
+  const split = new Set<string>();
+  const toCancel = new Set(cancelled.map((one) => one.id));
+  for (const lesson of cancelled) {
+    const choice = chosen.get(lesson.id);
+    if (choice === undefined) continue;
+    const item = itemOf(lesson);
+    const pair = item === undefined ? [] : pairLessonsOf(item, lesson);
+    for (const other of pair) {
+      const otherChoice = chosen.get(other.id);
+      if (otherChoice !== undefined && otherChoice !== choice) {
+        split.add(lesson.id);
+        split.add(other.id);
+      }
+    }
+    if (choice === 'keep') {
+      kept.add(lesson.id);
+      for (const other of pair) if (toCancel.has(other.id)) kept.add(other.id);
+    }
+  }
+  if (split.size > 0) throw refusal('bulk_data_choice_split', 'dataChoices', [...split].sort());
+  return kept;
+}
+
 /** A refusal that lists ids under one path. */
 function refusal(
-  code: 'bulk_choice_missing' | 'bulk_choice_unknown' | 'bulk_scope_changed',
+  code:
+    | 'bulk_choice_missing'
+    | 'bulk_choice_unknown'
+    | 'bulk_scope_changed'
+    | 'bulk_data_choice_missing'
+    | 'bulk_data_choice_unknown'
+    | 'bulk_data_choice_split'
+    | 'bulk_data_choice_conflict',
   path: string,
   ids: readonly string[],
 ) {
@@ -416,14 +548,16 @@ async function ofBranch(
       .execute();
     if (found.length !== blockIds.length) throw notFound();
   }
-  if (input.lessonIds.length > 0) {
+  // Task 6.1b-2: the lessons of the data choices too.
+  for (const lessonIds of [input.lessonIds, input.dataChoices.map((one) => one.lessonId)]) {
+    if (lessonIds.length === 0) continue;
     const found = await transaction
       .selectFrom('lessons')
       .select('id')
-      .where('id', 'in', input.lessonIds)
+      .where('id', 'in', lessonIds)
       .where('branch_id', '=', branchId)
       .execute();
-    if (found.length !== input.lessonIds.length) throw notFound();
+    if (found.length !== lessonIds.length) throw notFound();
   }
 }
 
