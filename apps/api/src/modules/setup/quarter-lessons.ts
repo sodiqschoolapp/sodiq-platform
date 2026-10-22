@@ -196,8 +196,10 @@ export class QuarterLessons {
     }
 
     const moved = await this.moveBlocks(transaction, yearId, moving);
+    // Task 6.1b-1: a preview refused for lessons with data on the dates cut
+    // off writes nothing there; a kept lesson would leave its quarter.
     const rewrite: CalendarRewrite =
-      rewritten.length === 0
+      rewritten.length === 0 || dataLessons.items.length > 0
         ? { lessons: NO_LESSONS, audit: null }
         : await this.lessons.rewrite(transaction, {
             branchId,
