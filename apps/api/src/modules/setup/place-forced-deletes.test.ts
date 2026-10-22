@@ -866,24 +866,25 @@ describe('the forced delete of a building, floor or room and its restore', () =>
 
     const WRITERS: Readonly<Record<string, (s: PublishedScene, room: string) => Promise<Writer>>> =
       {
-        'a room closure': async (s, room) => ({
-          send: () =>
-            t.post('/api/timetable/room-closures', s.branch, {
-              roomId: room,
-              startsOn: '2026-10-19',
-              endsOn: '2026-10-23',
-              reason: 'Repairs',
-            }),
-          status: 201,
-          written: async () =>
-            (
-              await t.database.migrator
-                .selectFrom('room_closures')
-                .select('id')
-                .where('room_id', '=', room)
-                .execute()
-            ).length + (await entriesOf(s.branch, 'room_closure.create')),
-        }),
+        'a room closure': (s, room) =>
+          Promise.resolve({
+            send: () =>
+              t.post('/api/timetable/room-closures', s.branch, {
+                roomId: room,
+                startsOn: '2026-10-19',
+                endsOn: '2026-10-23',
+                reason: 'Repairs',
+              }),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('room_closures')
+                  .select('id')
+                  .where('room_id', '=', room)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'room_closure.create')),
+          }),
         '"move all" of a closure into the room': async (s, room) => {
           // The class's home room closed for a week; its lessons there go to the room.
           const closed = await t.post('/api/timetable/room-closures', s.branch, {
@@ -908,41 +909,42 @@ describe('the forced delete of a building, floor or room and its restore', () =>
               (await entriesOf(s.branch, 'lesson.room_change')),
           };
         },
-        'an exam room': async (s, room) => ({
-          send: () =>
-            keyed(
-              '/api/timetable/exams',
-              s.branch,
-              {
-                date: '2026-10-19',
-                firstLesson: 2,
-                lastLesson: 2,
-                title: 'Quarter exam',
-                subjectId: null,
-                rooms: [
-                  {
-                    roomId: room,
-                    classIds: [s.classId],
-                    groupIds: [],
-                    invigilatorIds: [s.teacher.staffId],
-                  },
-                ],
-                blockChoices: [],
-                confirm: true,
-              },
-              t.admin,
-              randomUUID(),
-            ),
-          status: 201,
-          written: async () =>
-            (
-              await t.database.migrator
-                .selectFrom('exams')
-                .select('id')
-                .where('branch_id', '=', s.branch)
-                .execute()
-            ).length + (await entriesOf(s.branch, 'exam.create')),
-        }),
+        'an exam room': (s, room) =>
+          Promise.resolve({
+            send: () =>
+              keyed(
+                '/api/timetable/exams',
+                s.branch,
+                {
+                  date: '2026-10-19',
+                  firstLesson: 2,
+                  lastLesson: 2,
+                  title: 'Quarter exam',
+                  subjectId: null,
+                  rooms: [
+                    {
+                      roomId: room,
+                      classIds: [s.classId],
+                      groupIds: [],
+                      invigilatorIds: [s.teacher.staffId],
+                    },
+                  ],
+                  blockChoices: [],
+                  confirm: true,
+                },
+                t.admin,
+                randomUUID(),
+              ),
+            status: 201,
+            written: async () =>
+              (
+                await t.database.migrator
+                  .selectFrom('exams')
+                  .select('id')
+                  .where('branch_id', '=', s.branch)
+                  .execute()
+              ).length + (await entriesOf(s.branch, 'exam.create')),
+          }),
         'a load row': async (s, room) => {
           const draft = await draftOf(s);
           return {
