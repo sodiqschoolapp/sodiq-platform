@@ -7,6 +7,7 @@ import {
   dayDecisionsSchema,
   dayKeepBodySchema,
   NEEDS_TEACHER_REASONS,
+  heldDataLessonSchema,
   previewNamesSchema,
   shortenedDaySchema,
   transitionKeySchema,
@@ -506,6 +507,24 @@ export const calendarLessonsSchema = z.object({
   groupBlocksUnused: z.array(
     z.object({ weekday: weekdaySchema, start: z.int(), groupIds: z.array(z.uuid()) }),
   ),
+  /**
+   * Task 6.1b-1 (decisions 2, 5 and 6): the lessons with data the save keeps
+   * cancelled, `kept_data` or by its own cancel in place (`cause`, after the
+   * save; `cancelCause` before it).
+   */
+  keptWithData: z.array(
+    heldDataLessonSchema.extend({
+      cause: z.string().regex(/^[a-z_]+$/),
+    }),
+  ),
+  /** Task 6.1b-1: the lessons kept with data that the save gives back to their version. */
+  givenBack: z.array(heldDataLessonSchema),
+  /**
+   * Task 6.1b-1 (decision 3, review correction 2): the lessons with data that
+   * would have to move to another block; the save refuses them,
+   * `lessons_hold_data`.
+   */
+  heldData: z.array(heldDataLessonSchema),
   names: previewNamesSchema,
 });
 
