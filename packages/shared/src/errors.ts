@@ -803,6 +803,8 @@ export const ERROR_CODES = [
   'journal_substitute_none',
   /** A lesson holds data (attendance, marks, a comment) and is never deleted; only the Super Admin's forced delete removes it (06, Protection; task 5.8b). */
   'lesson_holds_data',
+  /** Task 6.1b-1 (decision 3): the change would move a lesson that holds data to another block, or cut off the days of one (decision 7); `details` lists each. */
+  'lessons_hold_data',
   /** The forced delete can no longer be restored: its 30 days have passed (06, Protection; task 5.8b). */
   'forced_delete_expired',
   /** The forced delete was restored already (task 5.8b). */

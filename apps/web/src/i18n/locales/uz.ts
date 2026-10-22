@@ -626,6 +626,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Dars qaytariladigan oʻqituvchining shu vaqtda boshqa darsi yoki imtihoni bor yoki yoʻlga vaqti yetmaydi. Avval oʻsha darsni oʻzgartiring.',
     lesson_holds_data:
       'Darsda davomat yoki baholar bor, shuning uchun uni oʻchirib boʻlmaydi. Uni faqat Super Admin sabab koʻrsatib butunlay oʻchira oladi.',
+    lessons_hold_data:
+      'Baʼzi darslarda allaqachon davomat yoki baholar bor, bu oʻzgarish esa ularni jadvalning boshqa joyiga koʻchirgan yoki kunlarini kesib tashlagan boʻlardi. Darslar roʻyxatda. Rejani shunday oʻzgartiringki, bu darslar oʻz joyida qolsin.',
     forced_delete_expired: 'Bu darsni tiklash uchun 30 kun oʻtib ketdi, uni endi tiklab boʻlmaydi.',
     forced_delete_restored: 'Bu dars allaqachon tiklangan. Roʻyxatni yangilang.',
     forced_delete_version:

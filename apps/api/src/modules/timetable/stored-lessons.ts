@@ -2,7 +2,7 @@ import type { ImpactLesson } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { dayBeginnings } from './dated-check.js';
-import { isGeneratedCause, storedPairOf } from './dated-lessons.js';
+import { isGeneratedCause, KEPT_DATA, storedPairOf } from './dated-lessons.js';
 
 /**
  * The dated lessons stored in a branch from `firstDate` to `lastDate`, as the
@@ -19,8 +19,10 @@ import { isGeneratedCause, storedPairOf } from './dated-lessons.js';
  * it out of both sides (5.5a-2b-1, decision 4); one with a one-day cancel is
  * kept as a lesson held, as the writer keeps it (5.5b-1, decision 8), unless
  * `cancelled` is `'none'`: the transition week counts no cancelled lesson
- * (5.5a-2b-1, decision 10; decision 4). `'generated'` gives only the lessons
- * the expansion created cancelled (the preview of a calendar save, task 5.6b-1).
+ * (5.5a-2b-1, decision 10; decision 4). A lesson kept with data (`kept_data`,
+ * task 6.1b-1) is left out as one the expansion created cancelled.
+ * `'generated'` gives only the lessons the expansion created cancelled (the
+ * preview of a calendar save, task 5.6b-1).
  */
 export async function storedImpactLessons(
   transaction: Transaction,
@@ -104,7 +106,8 @@ export async function storedLessonRows(
         ? row.cancel_cause !== null
         : input.cancelled === 'generated'
           ? !isGeneratedCause(row.cancel_cause)
-          : isGeneratedCause(row.cancel_cause)
+          : // Task 6.1b-1: a lesson kept with data is no lesson of a version.
+            isGeneratedCause(row.cancel_cause) || row.cancel_cause === KEPT_DATA
     ) {
       return [];
     }

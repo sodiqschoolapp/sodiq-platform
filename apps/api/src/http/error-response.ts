@@ -432,6 +432,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   substitution_return_blocked: 'The teacher returned has another lesson or exam at that time.',
   journal_substitute_none: 'No lesson of the journal in the period can take this substitute.',
   lesson_holds_data: 'The lesson holds data and cannot be deleted.',
+  lessons_hold_data: 'The change would move or cut off lessons that hold data.',
   forced_delete_expired: 'The 30 days to restore this record have passed.',
   forced_delete_restored: 'The record was restored already.',
   forced_delete_version: 'Another timetable is in force on the date of the lesson.',

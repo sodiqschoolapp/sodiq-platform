@@ -610,6 +610,8 @@ export const en = {
       'The teacher the lesson goes back to has another lesson or exam at that time, or too little time to travel to it. Change that lesson first.',
     lesson_holds_data:
       'The lesson holds attendance or marks, so it cannot be removed. Only the Super Admin can delete it for good, with a reason.',
+    lessons_hold_data:
+      'Some lessons already hold attendance or marks, and this change would move them to another place in the timetable or cut off their days. The lessons are listed. Change the plan so that these lessons stay where they are.',
     forced_delete_expired:
       'The 30 days to restore this lesson have passed, so it can no longer be restored.',
     forced_delete_restored: 'This lesson was restored already. Reload the list to see it.',
