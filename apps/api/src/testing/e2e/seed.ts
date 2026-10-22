@@ -5494,6 +5494,179 @@ try {
     password: attendanceTutor.firstPassword,
   };
 
+  // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
+  // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
+  // days at 08:00. The browser test fills the plan's two rows. All names are invented.
+  const plansBranch = await insertBranch(migrator, 'Plans browser test branch');
+  const plansTeacher = await create('Gulnora', 'Saidova');
+  await transactions.run([plansBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: plansTeacher.id,
+      role: 'teacher',
+      branchId: plansBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const lessonsKit = await LessonsKit.create(migrator);
+    const planning = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Planning',
+      journalType: 'graded',
+    });
+    const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+    const { yearId, classId, staffId, quarterId } = await migrator
+      .transaction()
+      .execute(async (transaction) => {
+        const academic = await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow();
+        const steam = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow();
+        const person = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-777801',
+            account_id: plansTeacher.id,
+            first_name: 'Gulnora',
+            last_name: 'Saidova',
+            sex: 'female',
+            birth_date: '1987-03-04',
+            phone: '+998935557801',
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: person.id, branch_id: plansBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: person.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: person.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: person.id, subject_id: planning, grades: [7] })
+          .execute();
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({
+            branch_id: plansBranch,
+            start_date: startDate,
+            end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const quarters = await transaction
+          .insertInto('quarters')
+          .values(
+            [
+              [startDate, plus(20)],
+              [plus(30), plus(90)],
+              [plus(100), plus(170)],
+              [plus(180), isoDate(new Date(yearStart.getTime() + 364 * dayMs))],
+            ].map(([start, end], index) => ({
+              branch_id: plansBranch,
+              academic_year_id: year.id,
+              number: index + 1,
+              start_date: start,
+              end_date: end,
+            })),
+          )
+          .returning('id')
+          .execute();
+        const harvard = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: plansBranch,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Harvard',
+            language: 'uz',
+            max_size: 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        return {
+          yearId: year.id,
+          classId: harvard.id,
+          staffId: person.id,
+          quarterId: quarters[0]?.id ?? '',
+        };
+      });
+    const source = await lessonsKit.source(
+      plansBranch,
+      yearId,
+      [{ classId, groupId: null, subjectId: planning, rowTeacherId: staffId }],
+      startDate,
+    );
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: plansBranch,
+        academic_year_id: yearId,
+        class_id: classId,
+        group_id: null,
+        subject_id: planning,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    for (const date of [plus(1), plus(8)]) {
+      await migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: plansBranch,
+            academic_year_id: yearId,
+            quarter_id: quarterId,
+            lesson_date: date,
+            starts_at: new Date(`${date}T08:00:00+05:00`),
+            ends_at: new Date(`${date}T08:45:00+05:00`),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('lessons')
+          .values({
+            branch_id: plansBranch,
+            block_id: block.id,
+            lesson_date: block.lesson_date,
+            starts_at: block.starts_at,
+            ends_at: block.ends_at,
+            class_id: classId,
+            subject_id: planning,
+            teacher_id: staffId,
+            load_row_id: source.lessons[0]?.loadRowId ?? '',
+            pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+          })
+          .execute();
+      });
+    }
+  }
+  seeded.plansTeacher = { login: plansTeacher.login, password: plansTeacher.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

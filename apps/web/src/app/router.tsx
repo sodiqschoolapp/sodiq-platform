@@ -64,6 +64,9 @@ import { SignInPage } from '@/features/auth/sign-in-page';
 import { JournalPage } from '@/features/journal/journal-page';
 import { journalSearch, journalsSearch } from '@/features/journal/journal-search';
 import { JournalsPage } from '@/features/journal/journals-page';
+import { PlanPage } from '@/features/plans/plan-page';
+import { PlansPage } from '@/features/plans/plans-page';
+import { planSearch, plansSearch } from '@/features/plans/plans-search';
 import {
   StudentAbsencesPage,
   studentAbsencesSearch,
@@ -380,6 +383,22 @@ const journalRoute = createRoute({
   component: guarded('journal', JournalPage),
 });
 
+/** The Lesson plans page (task 7.1a): tabs Classes and Groups, the state of each quarter. */
+const plansRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans',
+  validateSearch: plansSearch,
+  component: guarded('plans', PlansPage),
+});
+
+/** The plan of a journal for one quarter (task 7.1a). */
+const planRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/$journalId',
+  validateSearch: planSearch,
+  component: guarded('plans', PlanPage),
+});
+
 /** Version history (task 5.8a). */
 const versionsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -591,6 +610,8 @@ const routeTree = rootRoute.addChildren([
     journalsRoute,
     studentAbsencesRoute,
     journalRoute,
+    plansRoute,
+    planRoute,
     loadRoute,
     peopleRoute,
     staffRoute,

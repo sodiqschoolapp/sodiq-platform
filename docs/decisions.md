@@ -289,6 +289,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: lesson plans and their items (task 7.1a)
+
+Plan approved on pull request #212 with corrections 1 to 4; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a declared file route). `PUT /api/plans/items/:itemId/files` takes the file as its raw body (`PLAN_FILE_ROUTE` of `file-routes.ts`), as the photos do; the bytes go to the photos' object store under `plans/<item>/<file>`, keys never reused; no store call while a transaction is open | Decision 1; the owner's answer 2 of "Decided ahead for tasks 2.1 to 2.6" |
+| **Look first** (a new permission area). `plans`: `view` for the Super Admin, the Principal, the Academic Vice Principal, the Senior Head Teacher, the Head Teacher and the Teacher; `edit` for the Teacher and, because the table gives the Super Admin every action any role has (`checkTable`), the Super Admin, whom the route refuses (`plan_scope`) as it owns no plan. The route reads: every plan of the branch for the three whole-branch roles, own subjects for the Head Teachers, the plan owned on the quarter's reference date and the subject with a grade of the unit in the profile (either grade of a two-grade group) for the Teacher; only the owner writes | Decision 2 (the Super Admin's `edit` added in the build); `edge/lesson-plans`, "Who may read a plan?" |
+| The fixed list of file types: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3, MP4, with the first bytes checked; 20,000,000 bytes, 10 files per item | Decision 3; `edge/lesson-plans`, the limits |
+| No window and no lock before 7.2: the owner writes every row of every quarter of an open year; "Clear" only for a row whose lesson is not held (`lessonStateOf`, as the grid); a closed year refuses every write (`plan_year_closed`), the closed quarter is 9.2b's | Decision 4; review should-fix 6 |
+| A row is a lesson of the quarter not cancelled, read with the grid's `journalLessons`; item p fills row p, worked out on each read; nothing is stored per lesson, so no plan holds a publish or a forced delete; the fixed part is 7.1b's | Decision 5; review must-fixes 1 and 4, correction 2 |
+| The owner is `journalOwnerOn` on the quarter's reference date | Decision 6 |
+| Topic 300, objectives 2,000, work title 60, description 1,000, 10 links of 500 characters (`http://` or `https://`), 10 classworks and 10 homeworks per item, held by checks and triggers that count under the route's lock of the item | Decision 7; review must-fix 3 |
+| A work removed from an item is deleted, its values in the audit entry of the save; a file removed is marked and kept | Decision 8; correction 4 |
+| The stale check is per field: the body carries its base; a field whose value equals its base is neither compared nor written; works are compared by id; `plan_item_stale` names each refused field with the value stored now (`storedPlanValue`) | Decision 9; correction 3 |
+| One plan per journal and quarter (`lesson_plan_journals`), made on the first write under the journal's `for no key update` lock; a record for every journal is 7.2's | Review must-fix 3, correction 1; Left out with a From line on 7.2 |
+| **Build decision.** The form of a row has one slot per possible work (10 of each); a work keeps its id in its slot, and emptying a slot removes it | Identity of works (decision 9) with the shared form pieces |
+| **Build decision.** The audit entries of a plan are in a group of their own, "Lesson plans" | The Audit log filters by group |
+
 ## 22 October 2026: attendance (task 6.3)
 
 Plan approved on pull request #211 with corrections 1 to 5; decisions 1 to 16 confirmed there (decision 1 changed by correction 1, decision 13 marked Look first by correction 5). Flagged on issue #42.

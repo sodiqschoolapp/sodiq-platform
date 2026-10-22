@@ -61,11 +61,12 @@ describe('the search of pages', () => {
       expect(document.activeElement).toBe(box());
     });
     // The teacher's "Timetable" opens the timetable views (task 5.9a, decision 2);
-    // "Journal" the Journals page (task 6.2).
+    // "Journal" the Journals page (task 6.2); "Lesson plans" the plans (task 7.1a).
     expect(optionNames()).toEqual([
       en.home.title,
       en.menu.timetable,
       en.menu.journal,
+      en.menu.plans,
       en.account.title,
       en.password.titleOwn,
       en.sample.title,
@@ -229,6 +230,7 @@ describe('the search of pages', () => {
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
     fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
 
     fireEvent.keyDown(box(), { key: 'Enter' });
 
@@ -254,7 +256,7 @@ describe('the search of pages', () => {
     pressShortcut();
     await dialog();
     expect(box().value).toBe('');
-    expect(optionNames()).toHaveLength(6);
+    expect(optionNames()).toHaveLength(7);
   });
 
   // The side panel of a list closes on Escape unless a dialog took the key (0.8b-1).

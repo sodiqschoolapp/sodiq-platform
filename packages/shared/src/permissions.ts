@@ -546,6 +546,26 @@ export const PERMISSIONS = freezeTable({
     head_tutor: ['view'],
     tutor: ['view', 'edit'],
   }),
+  /**
+   * Lesson plans (task 7.1a, pull request #212, decision 2, Look first):
+   * edge/lesson-plans, "Who may read a plan?": "The owner; teachers with the
+   * same subject and grade in their profile; the subject's Head Teacher and
+   * Senior Head Teacher; the Academic Vice Principal, Principal and Super
+   * Admin ... Only the owner edits." The route decides the scope for every
+   * request (`plan-scope.ts`); `edit` is the Teacher's, the plan's owner in
+   * the route, and the Super Admin's as the table holds for every area
+   * (`checkTable`), which the route refuses with `plan_scope` as it owns no
+   * plan. The Tutor reads topic and homework through the journal (8.8);
+   * a substitute's reading of one item is 7.1b's.
+   */
+  plans: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view', 'edit'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

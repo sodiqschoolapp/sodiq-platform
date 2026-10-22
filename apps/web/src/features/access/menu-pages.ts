@@ -99,6 +99,13 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     to: '/journal',
     icon: MENU_ICONS.journal,
   },
+  // The lesson plans (task 7.1a): the area `plans` of the same name decides who sees it.
+  plans: {
+    titleKey: 'menu.plans',
+    shortKey: 'menu.short.plans',
+    to: '/plans',
+    icon: MENU_ICONS.plans,
+  },
   // The Audit log (task 2.6a): the area `audit_log` of the same name decides who sees it.
   audit_log: {
     titleKey: 'menu.audit_log',

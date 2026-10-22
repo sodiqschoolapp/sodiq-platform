@@ -852,6 +852,32 @@ export const ERROR_CODES = [
   'absence_not_member',
   /** Both records have a reason of absence for the same date in one branch (task 6.3, correction 2). */
   'student_merge_absence_reasons',
+  /** The plan is of the branch but outside what the role may read of it, or the reader may not write it: only the owner edits (edge/lesson-plans, "Who may read a plan?"; task 7.1a). */
+  'plan_scope',
+  /** The row already holds an item; the details name it (task 7.1a). */
+  'plan_row_taken',
+  /** The quarter has no row with that number: rows are the lessons of the quarter not cancelled (task 7.1a, decision 5). */
+  'plan_row_unknown',
+  /** A field the save changes was changed by somebody else since it was read; the details hold the stored value of each (edge/lesson-plans, "A plan is open in two tabs"; task 7.1a, decision 9). */
+  'plan_item_stale',
+  /** The lesson of the row is held, so the row cannot be cleared (edge/lesson-plans: "'Clear' empties only rows of lessons not yet held"; task 7.1a). */
+  'plan_row_held',
+  /** The file is larger than 20 MB (edge/lesson-plans, "Limits"; task 7.1a). */
+  'plan_file_too_large',
+  /** The item holds 10 files already (edge/lesson-plans, "Limits"; task 7.1a). */
+  'plan_files_full',
+  /** The item would hold more than 10 classworks or 10 homeworks: another save added some meanwhile (build plan 7.1a; task 7.1a). */
+  'plan_works_full',
+  /** The file is not of a type on the list, or its content is not of the type it says (task 7.1a, decision 3). */
+  'plan_file_type',
+  /** The subject is attendance only and has no plan (09: "This is not a setting"; task 7.1a). */
+  'plan_attendance_only',
+  /** The year is closed: nothing in its plans changes (edge/lesson-plans: "Nothing is possible in a closed quarter"; task 7.1a). */
+  'plan_year_closed',
+  /** No file store is configured on this server: plan files cannot be added or opened yet (task 7.1a, decision 1). */
+  'files_not_configured',
+  /** The file store did not answer in time or refused (task 7.1a, decision 1). */
+  'files_unavailable',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -988,6 +1014,20 @@ export const errorDetailSchema = z.object({
       changedBy: z.uuid(),
       changedAt: z.iso.datetime(),
     })
+    .optional(),
+  /**
+   * The value stored now of a field a plan save was refused for, on a
+   * `plan_item_stale` (task 7.1a, decision 9): the topic or the objectives
+   * as text, the links as a list, a work as its title and description, or
+   * `null` for a work removed since. `path` names the field.
+   */
+  storedPlanValue: z
+    .union([
+      z.string(),
+      z.array(z.string()),
+      z.object({ title: z.string(), description: z.string() }),
+      z.null(),
+    ])
     .optional(),
   /**
    * What a lesson holds, on a `cancel_holds_data` (task 6.1b-2, decision 2):
