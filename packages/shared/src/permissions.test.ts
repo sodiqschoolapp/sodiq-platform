@@ -363,7 +363,7 @@ describe('a frozen permission table', () => {
   // timetable and every class of the branch; Head Teachers and Senior Head
   // Teachers the teachers of their subjects; Principal and Vice Principals the
   // whole branch"; 02, Teacher: "Own timetable". The scope inside is the route's.
-  it('gives the timetable views to the nine roles that see lessons, view only', () => {
+  it('gives the timetable views to the nine roles that see lessons, to view and export', () => {
     const readers = [
       'super_admin',
       'principal',
@@ -377,8 +377,15 @@ describe('a frozen permission table', () => {
     ];
     for (const role of ROLES) {
       expect(PERMISSIONS.timetable_views[role], role).toEqual(
-        readers.includes(role) ? ['view'] : [],
+        readers.includes(role) ? ['view', 'export'] : [],
       );
+    }
+  });
+
+  it('lets every role that sees a timetable view export it, and no other (task 5.9c-1, decision 2)', () => {
+    for (const role of ROLES) {
+      const actions = PERMISSIONS.timetable_views[role];
+      expect(actions.includes('export'), role).toBe(actions.includes('view'));
     }
   });
 

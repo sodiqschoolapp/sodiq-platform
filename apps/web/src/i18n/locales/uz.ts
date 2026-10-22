@@ -627,6 +627,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars birga oʻtilgan boshqa darslar endi yoʻq, shuning uchun u qaytmaydi. Agar ular ham butunlay oʻchirilgan boʻlsa, avval ularni tiklang.',
     forced_delete_restore_blocked:
       'Dars qaytmaydi: u quyidagi jadval qoidasini buzadi. Avval uning oʻrnini egallagan darsni oʻzgartiring.',
+    pdf_unavailable:
+      'Hozir server PDF tayyorlay olmaydi. Bir necha daqiqadan keyin qayta urinib koʻring yoki Excel faylini yuklab oling.',
     timetable_view_scope:
       'Bu sinf, oʻqituvchi yoki xona jadvali rolingizga ochiq emas. Roʻyxatdan tanlang.',
     place_referenced:
@@ -3089,6 +3091,9 @@ export const uz: Texts<'one' | 'other'> = {
         restore: 'Guruh tiklandi',
         export: 'Guruhlar eksport qilindi',
       },
+      timetable_view: {
+        export: 'Dars jadvali chop etildi yoki yuklab olindi',
+      },
       timetable_version: {
         create: 'Dars jadvali qoralamasi yaratildi',
         edit: 'Dars jadvali qoralamasi oʻzgartirildi',
@@ -3590,6 +3595,9 @@ export const uz: Texts<'one' | 'other'> = {
     viewsLink: 'Dars jadvalini koʻrish',
     views: {
       title: 'Dars jadvalini koʻrish',
+      print: 'Chop etish',
+      pdf: 'PDF',
+      excel: 'Excel',
       nothing: 'Bu filialda rolingiz uchun koʻriladigan dars jadvali yoʻq.',
       empty: 'Bu davrda oʻquv kunlari yoʻq.',
       kind: 'Koʻrinish',

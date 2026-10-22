@@ -934,11 +934,17 @@ How to read the task lines:
   - Build: the home page of every role that teaches (Teacher, Head Teacher, Senior Head Teacher, Tutor): today's lessons from all branches together in time order, each labelled with its branch (period, time, class or group, subject, room, the journal button once 6.2 exists), and the week as a table; the changed mark; exams the person invigilates. Needs one cross-branch read of the person's own lessons, which carries class, subject and room names of another branch (a `SECURITY DEFINER` function in a migration of its own).
   - Done when: a teacher of two branches sees both branches' lessons of today in time order, each with its branch, with no branch switch.
 
-- [ ] **5.9c Print, PDF and Excel** (5.9 split in three, pull request #197, decision 1)
-  - Read: `06` (Views and outputs, How surprises are prevented: One source), `edge/timetable` ("The wall timetable is out of date"), `edge/system-behaviour`.
-  - Build: print, PDF and Excel of one class, one teacher, one room or the whole school, in the scope of 5.9a; a printed pattern carries the version, "valid from", the print time and "one-day changes not included"; a printed day or week includes them with an "as of" time; a draft print is marked DRAFT; every export logged and following the role; PDFs made on the server. Only the PDF library is a new dependency (Look first): the font is decided already, the Golos Text files (`docs/decisions.md`, "Decided ahead for tasks 2.2d and 2.7", approval 1: "The PDFs made on the server later use the same Golos Text files").
+- [x] **5.9c-1 Print, PDF and Excel of the timetable views** (5.9c split in two, pull request #199, decision 1, Look first)
+  - Read: `06` (Views and outputs, How surprises are prevented: One source, Exam), `edge/timetable` ("The wall timetable is out of date", Exams), `edge/system-behaviour`, `13` (Exports), `docs/design-system.md` (Printouts and PDFs).
+  - Build: print, PDF and Excel of one class, one teacher, one room or the whole school by day or by week, in the scope of 5.9a; a printed day or week includes the one-day changes with an "as of" time, each day's version and "valid from", and "one-day changes not included" on a day read from its pattern; exams marked "exam"; every file logged and following the role; PDFs made on the server by headless Chromium with the Golos Text files embedded. Only the PDF library is a new dependency (Look first).
   - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
-  - From 5.6c-1 (pull request #181, decision 15; the print half, pull request #197): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams": "Every timetable view and print shows exams for its class, teacher or room".
+
+- [ ] **5.9c-2 Print of a timetable version** (5.9c split in two, pull request #199, decision 1, Look first)
+  - Read: `edge/timetable` ("The wall timetable is out of date"), `06` (How surprises are prevented: One source), `docs/design-system.md` (Printouts and PDFs).
+  - Build: the PDF and Excel of a version's weekly pattern from the versions page under the area `timetable`, on the renderer of 5.9c-1: a published version carries its number, "valid from", the print time and "one-day changes not included"; a draft is marked DRAFT; every file logged. The `export` action on `timetable` for the roles that view drafts is this task's own Look first decision.
+  - Done when: a draft print reads DRAFT and the PDFs show Uzbek Latin and Cyrillic correctly.
+  - From 5.6c-1 (pull request #181, decision 15; the print half, pull request #197): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams": "Every timetable view and print shows exams for its class, teacher or room". The printed views of 5.9c-1 show them; a weekly pattern holds no exam, which is dated.
+  - From 5.9c-1 (pull request #199, decision 4): the test environment has no Chromium; until the owner gives it one (a larger plan or another runtime, issue #42), its PDFs answer "not available" and Excel works.
 
 - [ ] **5.12 Timetable end-to-end tests**
   - Read: `14` (Timetable).

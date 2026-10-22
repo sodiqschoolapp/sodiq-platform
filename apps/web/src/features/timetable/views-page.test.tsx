@@ -1,8 +1,8 @@
 import type { TimetableView, ViewChoices, ViewDay, ViewLesson } from '@sodiq/shared';
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -259,5 +259,111 @@ describe('the timetable views', () => {
       choices: { ...CHOICES, branch: false, classes: [], teachers: [], own: null },
     });
     expect(await screen.findByText(en.timetable.views.nothing)).toBeDefined();
+  });
+});
+
+// Task 5.9c-1, pull request #199: Print, PDF and Excel of the view shown
+// (06, Views and outputs). The server makes and logs every file.
+describe('the timetable files', () => {
+  const pdfAnswer = () =>
+    new Response(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="class-2026-10-12.pdf"; filename*=UTF-8''sinf-7-Oxford-2026-10-12.pdf`,
+      },
+    });
+
+  const openWith = async (answer: () => Response) => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [{ role: 'tutor', branchId: NORTH.id }],
+            branches: [NORTH],
+            language: 'en',
+          }),
+        ),
+      'GET /api/timetable/views/choices': () => json(CHOICES),
+      'GET /api/timetable/views/class': () => json(viewOf({ kind: 'class' })),
+      'POST /api/timetable/views/export': () => answer(),
+    });
+    renderApp(`/timetable/views?kind=class&id=${uid(101)}&date=2026-10-12&span=week`, 'en');
+    await screen.findByRole('button', { name: en.timetable.views.pdf });
+    return calls;
+  };
+
+  const sent = (calls: { route: string; body: unknown }[]) =>
+    calls.filter((one) => one.route === 'POST /api/timetable/views/export').map((one) => one.body);
+
+  it('sends the view shown for the PDF and for Excel, with the id its kind takes', async () => {
+    const saved: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push(this.download);
+    });
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    const revoked = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined);
+    try {
+      const calls = await openWith(pdfAnswer);
+      screen.getByRole('button', { name: en.timetable.views.pdf }).click();
+      await waitFor(() => {
+        expect(saved).toEqual(['sinf-7-Oxford-2026-10-12.pdf']);
+      });
+      screen.getByRole('button', { name: en.timetable.views.excel }).click();
+      await waitFor(() => {
+        expect(sent(calls)).toHaveLength(2);
+      });
+      expect(sent(calls)).toEqual([
+        { kind: 'class', classId: uid(101), date: '2026-10-12', span: 'week', format: 'pdf' },
+        { kind: 'class', classId: uid(101), date: '2026-10-12', span: 'week', format: 'xlsx' },
+      ]);
+    } finally {
+      click.mockRestore();
+      created.mockRestore();
+      revoked.mockRestore();
+    }
+  });
+
+  it('opens the tab for Print in the click and gives it the PDF once it comes', async () => {
+    const tab = { location: { href: '' }, close: () => undefined };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:printout');
+    try {
+      const calls = await openWith(pdfAnswer);
+      screen.getByRole('button', { name: en.timetable.views.print }).click();
+      // Opened at once, before the server answered.
+      expect(open.mock.calls).toEqual([['', '_blank']]);
+      await waitFor(() => {
+        expect(tab.location.href).toBe('blob:printout');
+      });
+      expect(sent(calls)).toEqual([
+        { kind: 'class', classId: uid(101), date: '2026-10-12', span: 'week', format: 'pdf' },
+      ]);
+    } finally {
+      open.mockRestore();
+      created.mockRestore();
+    }
+  });
+
+  it('closes the tab and says so when the server cannot make the PDF', async () => {
+    let closed = 0;
+    const tab = {
+      location: { href: '' },
+      close: () => {
+        closed += 1;
+      },
+    };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    try {
+      await openWith(() => refusal('pdf_unavailable', 503));
+      screen.getByRole('button', { name: en.timetable.views.print }).click();
+      expect(await screen.findByText(en.errors.pdf_unavailable)).toBeTruthy();
+      expect(closed).toBe(1);
+      expect(tab.location.href).toBe('');
+    } finally {
+      open.mockRestore();
+    }
   });
 });

@@ -811,6 +811,8 @@ export const ERROR_CODES = [
   'forced_delete_place_parent',
   /** The class, teacher or room is of the branch but outside what the role may see of the timetable (06, Views and outputs; task 5.9a, decision 4). */
   'timetable_view_scope',
+  /** A PDF cannot be made on this server now: no Chromium, or too many waiting (task 5.9c-1, decision 4). Excel still works. */
+  'pdf_unavailable',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

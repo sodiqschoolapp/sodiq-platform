@@ -113,8 +113,8 @@ export function fileNameOf(disposition: string | null, fallback: string): string
   return /filename="([^"]+)"/i.exec(disposition ?? '')?.[1] ?? fallback;
 }
 
-/** Hands the file to the browser as a download. */
-function save(file: Blob, name: string): void {
+/** Hands the file to the browser as a download (also the timetable files, task 5.9c-1). */
+export function save(file: Blob, name: string): void {
   const address = URL.createObjectURL(file);
   const link = document.createElement('a');
   link.href = address;

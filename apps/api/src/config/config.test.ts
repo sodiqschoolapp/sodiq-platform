@@ -34,6 +34,15 @@ describe('loadConfig', () => {
     });
   });
 
+  // Task 5.9c-1, decision 4: the Chromium of the PDFs, or the one playwright-core installs.
+  it('takes the path of the Chromium that makes the PDFs, none when unset or empty', () => {
+    expect(loadConfig({ ...VALID, CHROMIUM_PATH: '/opt/chromium/chrome' }).chromiumPath).toBe(
+      '/opt/chromium/chrome',
+    );
+    expect(loadConfig(VALID).chromiumPath).toBeUndefined();
+    expect(loadConfig({ ...VALID, CHROMIUM_PATH: '' }).chromiumPath).toBeUndefined();
+  });
+
   // Task 2.3c-2, decisions 14 and 15 of pull request #66.
   describe('the mail', () => {
     it('takes the origin of the web app, with no path', () => {

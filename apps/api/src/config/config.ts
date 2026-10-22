@@ -25,6 +25,10 @@ const environmentSchema = z.object({
   // The directory of the web app's built files, which the API then serves on
   // its own origin (task 0.10). Unset: the API serves no files (Vite does).
   WEB_FILES: z.preprocess(emptyAsUnset, z.string().optional()),
+  // The Chromium that makes the PDFs (task 5.9c-1, decision 4). Unset: the
+  // one playwright-core installs; none there: the PDF routes answer
+  // `pdf_unavailable` and everything else works.
+  CHROMIUM_PATH: z.preprocess(emptyAsUnset, z.string().optional()),
   // Error reports (task 0.10). Unset: none are sent.
   SENTRY_DSN: z.preprocess(emptyAsUnset, z.url({ protocol: /^https?$/ }).optional()),
   SENTRY_ENVIRONMENT: z.preprocess(emptyAsUnset, z.string().default('development')),
@@ -87,6 +91,7 @@ const PROBLEM: Record<VariableName, string> = {
     'SECOND_STEP_KEY must be set to 32 random bytes in base64 (on a developer machine: copy the line from .env.example to .env)',
   TRUST_PROXY: 'TRUST_PROXY must be 0 or 1',
   WEB_FILES: 'WEB_FILES must be a directory',
+  CHROMIUM_PATH: 'CHROMIUM_PATH must be the path of a Chromium program, or unset',
   SENTRY_DSN: 'SENTRY_DSN must be an https:// address, or unset',
   SENTRY_ENVIRONMENT: 'SENTRY_ENVIRONMENT must be a name',
   RENDER_GIT_COMMIT: 'RENDER_GIT_COMMIT must be a commit',
@@ -118,6 +123,8 @@ export interface AppConfig {
   /** Where photos are kept: the R2 bucket, memory (a laptop, the browser tests) or nowhere. */
   photos: PhotosConfig;
   mail: MailConfig;
+  /** The Chromium of the PDFs (task 5.9c-1), or the one playwright-core installs. */
+  chromiumPath: string | undefined;
 }
 
 export interface MailConfig {
@@ -195,6 +202,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     },
     photos: photosOf(data),
     mail: { webOrigin: data.WEB_ORIGIN, outboxDir: data.MAIL_OUTBOX_DIR },
+    chromiumPath: data.CHROMIUM_PATH,
   };
 }
 

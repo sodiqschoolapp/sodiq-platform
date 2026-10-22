@@ -101,7 +101,7 @@ export interface DayTemplatesKit {
 }
 
 export async function dayTemplatesKit(
-  options: Pick<TestAppOptions, 'photoStore' | 'mailer'> & {
+  options: Pick<TestAppOptions, 'photoStore' | 'mailer' | 'pdfRenderer'> & {
     /** For a test whose routes enqueue jobs: the job queue of the test database. */
     jobs?: boolean;
   } = {},

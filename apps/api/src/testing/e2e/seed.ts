@@ -4211,6 +4211,33 @@ try {
   });
   seeded.timetableViews = { login: viewsVice.login, password: viewsVice.firstPassword };
 
+  // Print, PDF and Excel of the timetable views (task 5.9c-1): the publishable
+  // scene in a branch of its own; the browser test publishes, downloads the
+  // school week as a PDF in Russian and a teacher's week in Uzbek, and reads
+  // the fonts and the text of every page of each file.
+  const filesVice = await gridScene({
+    branch: 'Timetable files browser test branch',
+    vice: ['Munisa', 'Rahmonova'],
+    staffId: 'S-269366',
+    phone: '+998935557366',
+    rooms: [],
+    publishable: true,
+  });
+  // The scene's second class with a name in Uzbek Cyrillic (ў, ғ, қ, ҳ), letters only
+  // the cyrillic-ext file of Golos Text holds; names are printed as entered.
+  const filesBranch = await migrator
+    .selectFrom('branches')
+    .select('id')
+    .where('name', '=', 'Timetable files browser test branch')
+    .executeTakeFirstOrThrow();
+  await migrator
+    .updateTable('classes')
+    .set({ name: 'Ғўзақаҳ' })
+    .where('branch_id', '=', filesBranch.id)
+    .where('name', '=', 'Princeton')
+    .execute();
+  seeded.timetableFiles = { login: filesVice.login, password: filesVice.firstPassword };
+
   // The forced delete of a lesson (task 5.8b): the publishable scene in a
   // branch of its own. The forced delete is the Super Admin's only, and the
   // seed holds no fourth Super Admin (at most three, correction 1 of the

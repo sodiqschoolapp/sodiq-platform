@@ -1627,3 +1627,13 @@ export {
   type ViewLesson,
   type ViewSpan,
 } from './timetable-views.js';
+export {
+  VIEW_EXPORT_ASCII_NAMES,
+  VIEW_EXPORT_FORMATS,
+  VIEW_EXPORT_TEXTS,
+  fillText,
+  viewExportRequestSchema,
+  type ViewExportFormat,
+  type ViewExportRequest,
+  type ViewExportTexts,
+} from './timetable-prints.js';

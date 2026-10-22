@@ -9,6 +9,7 @@ import { EXPORT_COLUMNS_HEADER, EXPORT_ROWS_LEFT_OUT_HEADER } from '@sodiq/share
 import ExcelJS from 'exceljs';
 import type { Response } from 'express';
 import { map, type Observable } from 'rxjs';
+import { PDF_MEDIA_TYPE, PdfFile } from './pdf.js';
 
 /** The media type of an Excel workbook. */
 export const XLSX_MEDIA_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -16,15 +17,21 @@ export const XLSX_MEDIA_TYPE = 'application/vnd.openxmlformats-officedocument.sp
 /**
  * One cell of an export (edge cases, system behaviour: "Excel exports contain
  * real numbers and dates"): a text, a number, a school date (`YYYY-MM-DD`)
- * written as a date cell, or nothing.
+ * written as a date cell, a clock time in minutes of the day written as a
+ * time cell (task 5.9c-1), or nothing.
  */
-export type Cell = string | number | { date: string } | null;
+export type Cell = string | number | { date: string } | { time: number } | null;
 
 export interface Sheet {
   /** The name of the sheet, in the language of the file. */
   name: string;
   headings: readonly string[];
   rows: readonly (readonly Cell[])[];
+  /**
+   * Lines above the heading row (task 5.9c-1: the title, "as of" and the
+   * versions of a timetable); the heading row then is the frozen, bold one.
+   */
+  preamble?: readonly string[];
 }
 
 /**
@@ -40,34 +47,51 @@ function dateOf(date: string): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-/** One sheet with a bold, frozen heading row and columns as wide as their longest text. */
+/** A clock time as a time cell: the part of a day Excel counts in. */
+const MINUTES_PER_DAY = 1440;
+
+const valueOf = (cell: Cell): string | number | Date | null =>
+  cell === null || typeof cell !== 'object'
+    ? cell
+    : 'date' in cell
+      ? dateOf(cell.date)
+      : cell.time / MINUTES_PER_DAY;
+
+const textLength = (cell: Cell | undefined): number =>
+  cell === null || cell === undefined
+    ? 0
+    : typeof cell !== 'object'
+      ? String(cell).length
+      : 'date' in cell
+        ? cell.date.length
+        : 5;
+
+/**
+ * One sheet with a bold, frozen heading row (below the preamble lines, if
+ * any) and columns as wide as their longest text.
+ */
 export async function writeWorkbook(sheet: Sheet): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
+  const preamble = sheet.preamble ?? [];
   const worksheet = workbook.addWorksheet(sheet.name, {
-    views: [{ state: 'frozen', ySplit: 1 }],
+    views: [{ state: 'frozen', ySplit: preamble.length + 1 }],
   });
+  for (const line of preamble) {
+    worksheet.addRow([line]);
+  }
   worksheet.addRow([...sheet.headings]).font = { bold: true };
   for (const row of sheet.rows) {
-    worksheet.addRow(
-      row.map((cell) => (cell !== null && typeof cell === 'object' ? dateOf(cell.date) : cell)),
-    );
+    worksheet.addRow(row.map(valueOf));
   }
   sheet.headings.forEach((heading, index) => {
     const column = worksheet.getColumn(index + 1);
-    const widest = Math.max(
-      heading.length,
-      ...sheet.rows.map((row) => {
-        const cell = row[index];
-        return cell === null || cell === undefined
-          ? 0
-          : typeof cell === 'object'
-            ? cell.date.length
-            : String(cell).length;
-      }),
-    );
+    const widest = Math.max(heading.length, ...sheet.rows.map((row) => textLength(row[index])));
     column.width = Math.min(Math.max(widest + 2, 8), 60);
-    if (sheet.rows.some((row) => typeof row[index] === 'object' && row[index] !== null)) {
+    const kinds = sheet.rows.map((row) => row[index]);
+    if (kinds.some((cell) => cell !== null && typeof cell === 'object' && 'date' in cell)) {
       column.numFmt = 'yyyy-mm-dd';
+    } else if (kinds.some((cell) => cell !== null && typeof cell === 'object' && 'time' in cell)) {
+      column.numFmt = 'hh:mm';
     }
   });
   return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -95,7 +119,7 @@ export class XlsxFile {
 }
 
 /** RFC 6266 and RFC 5987: an ASCII `filename` and the real name in `filename*`. */
-export function contentDisposition(file: XlsxFile): string {
+export function contentDisposition(file: { fileName: string; asciiName: string }): string {
   const ascii = file.asciiName.replace(/[^\w.-]/g, '_');
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`;
 }
@@ -103,7 +127,8 @@ export function contentDisposition(file: XlsxFile): string {
 /**
  * Sends the `XlsxFile` a route returns as the file, with its type, its name
  * and the header naming the columns written, so the page says which columns
- * the server left out. `Cache-Control: no-store` is already set for every
+ * the server left out; or the `PdfFile` of a route that also makes PDFs
+ * (task 5.9c-1, review correction 5), with its type and name. `Cache-Control: no-store` is already set for every
  * answer (`no-store.ts`).
  */
 @Injectable()
@@ -111,6 +136,13 @@ export class XlsxFileInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     return next.handle().pipe(
       map((answer: unknown) => {
+        if (answer instanceof PdfFile) {
+          return new StreamableFile(answer.content, {
+            type: PDF_MEDIA_TYPE,
+            disposition: contentDisposition(answer),
+            length: answer.content.length,
+          });
+        }
         if (!(answer instanceof XlsxFile)) {
           throw new Error(
             `${context.getClass().name}.${context.getHandler().name} answers a file, and returned something else.`,
