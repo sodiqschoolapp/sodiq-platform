@@ -8,8 +8,10 @@ import {
   type Plan,
   type PlanItem,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import request, { type Response, type Test } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ActingKit } from '../../testing/acting-kit.js';
 import {
   dayTemplatesKit,
@@ -18,8 +20,14 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { Audit } from '../audit/audit.service.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
-import { publishedScene, QUARTERS, type PublishedScene } from '../../testing/published-scene.js';
+import {
+  publishedScene,
+  publishOf,
+  QUARTERS,
+  type PublishedScene,
+} from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -969,7 +977,50 @@ describe('lesson plans and their items', () => {
     expect(await planEntries()).toBe(audit);
   });
 
-  it('lets a publish and a forced delete remove a future lesson that holds an item', async () => {
+  it('lets a publish move the lessons of a plan with items: the items follow the new dates', async () => {
+    const s = await plannedScene();
+    await fill(s, s.q2, [1, 2]);
+    const created = await t.post('/api/timetable/versions', s.scene.branch, {
+      academicYearId: s.scene.year,
+      startsOn: '2026-11-02',
+      copyFrom: s.scene.version,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const draft = (created.body as { id: string }).id;
+    // The copy moves the class's maths to Wednesday; the other class keeps Monday.
+    await t.database.migrator
+      .deleteFrom('pattern_blocks')
+      .where('version_id', '=', draft)
+      .execute();
+    const rows = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select(['id', 'class_id'])
+      .where('version_id', '=', draft)
+      .execute();
+    for (const row of rows) {
+      const placed = await t.post(`/api/timetable/versions/${draft}/pattern`, s.scene.branch, {
+        loadRowId: row.id,
+        weekday: row.class_id === s.scene.classId ? 3 : 1,
+        slotPosition: 1,
+      });
+      expect(placed.status, JSON.stringify(placed.body)).toBe(201);
+    }
+    const confirmed = await t.post(
+      `/api/timetable/versions/${draft}/templates/confirm`,
+      s.scene.branch,
+    );
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(draft);
+    const published = await publishOf(t)(s.scene.branch, draft, '2026-11-02');
+    expect(published.status, JSON.stringify(published.body)).toBe(200);
+    const plan = await as(s.owner, s.scene.branch, teacherOf(s), async (api) =>
+      planOf(await api.get(`/api/plans/journals/${s.journal}?quarterId=${s.q2}`)),
+    );
+    expect(plan.rows[0]?.date).toBe('2026-11-11');
+    expect(plan.rows.slice(0, 2).map((row) => row.item?.topic)).toEqual(['Topic 1', 'Topic 2']);
+  });
+
+  it('lets a forced delete remove a future lesson that holds an item', async () => {
     const s = await plannedScene();
     await fill(s, s.q2, [1, 2]);
     const [lesson] = await lessonsOf(s.scene, '2026-11-09', '2026-11-09');
@@ -985,5 +1036,213 @@ describe('lesson plans and their items', () => {
     );
     expect(plan.rows[0]?.date).toBe('2026-11-16');
     expect(plan.rows[0]?.item?.topic).toBe('Topic 1');
+  });
+  describe('at the same moment', () => {
+    /**
+     * Holds `hold` open in a transaction of the application for the branch, starts
+     * `run` once the hold has written, waits until `run` waits on the held
+     * transaction (`pg_blocking_pids`, `api.md`), then commits.
+     */
+    async function heldThen(
+      branch: string,
+      hold: (transaction: Transaction) => Promise<void>,
+      run: () => Test,
+    ): Promise<Response> {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: (pid: number) => void = () => undefined;
+      const isReady = new Promise<number>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app
+        .get(Transactions)
+        .run([branch], async (transaction) => {
+          await hold(transaction);
+          const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+            transaction,
+          );
+          ready(pid.rows[0]?.pid ?? 0);
+          await released;
+        })
+        .catch((error: unknown) => error);
+      const heldPid = await isReady;
+      // A supertest request is sent only once it is awaited: start it now.
+      const answer = new Promise<Response>((resolve, reject) => {
+        run().then(resolve, reject);
+      });
+      let waited = false;
+      for (let tries = 0; tries < 800 && !waited; tries += 1) {
+        const found = await sql<{ n: number }>`
+          select count(*)::int as n from pg_stat_activity a
+          where a.datname = current_database() and ${heldPid}::int = any (pg_blocking_pids(a.pid))
+        `.execute(t.database.migrator);
+        waited = (found.rows[0]?.n ?? 0) >= 1;
+        if (!waited) await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      release();
+      expect(waited, 'the route waited on the held transaction').toBe(true);
+      const heldError = await held;
+      if (heldError !== undefined) {
+        throw heldError instanceof Error ? heldError : new Error('The hold failed.');
+      }
+      return answer;
+    }
+
+    it('refuses the second of two saves of one field: it waits on the item and finds it changed', async () => {
+      const s = await plannedScene();
+      const [item] = await fill(s, s.q2, [1]);
+      const id = item?.id ?? '';
+      await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+        const answer = await heldThen(
+          s.scene.branch,
+          async (transaction) => {
+            // The first save, held before its commit: it locks the item and writes the topic.
+            await transaction
+              .selectFrom('lesson_plan_items')
+              .select('id')
+              .where('id', '=', id)
+              .forNoKeyUpdate()
+              .execute();
+            await transaction
+              .updateTable('lesson_plan_items')
+              .set({ topic: 'Written first' })
+              .where('id', '=', id)
+              .execute();
+            await t.app.get(Audit).record(transaction, {
+              branchId: s.scene.branch,
+              actorId: s.owner.account.id,
+              action: 'plan.item_edit',
+              record: { type: 'lesson_plan_item', id },
+            });
+          },
+          () =>
+            api.put(`/api/plans/items/${id}`, {
+              base: baseOf(item ?? planItemSchema.parse({})),
+              values: values({ topic: 'Written second' }),
+            }),
+        );
+        expect(answer.status, JSON.stringify(answer.body)).toBe(409);
+        expect(codeOf(answer)).toBe('plan_item_stale');
+        expect(apiErrorSchema.parse(answer.body).error.details?.[0]?.storedPlanValue).toBe(
+          'Written first',
+        );
+      });
+    });
+
+    it('makes one plan of two first writes: the second waits on the journal and finds the row taken', async () => {
+      const s = await plannedScene();
+      await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+        const answer = await heldThen(
+          s.scene.branch,
+          async (transaction) => {
+            // The first write, held before its commit: the journal's lock, the plan and the item.
+            await transaction
+              .selectFrom('journals')
+              .select('id')
+              .where('id', '=', s.journal)
+              .forNoKeyUpdate()
+              .execute();
+            const plan = await transaction
+              .insertInto('lesson_plans')
+              .values({ branch_id: s.scene.branch, quarter_id: s.q2, subject_id: s.scene.subject })
+              .returning('id')
+              .executeTakeFirstOrThrow();
+            await transaction
+              .insertInto('lesson_plan_journals')
+              .values({
+                branch_id: s.scene.branch,
+                plan_id: plan.id,
+                journal_id: s.journal,
+                quarter_id: s.q2,
+              })
+              .execute();
+            await transaction
+              .insertInto('lesson_plan_items')
+              .values({ branch_id: s.scene.branch, plan_id: plan.id, position: 1, topic: 'First' })
+              .execute();
+            await t.app.get(Audit).record(transaction, {
+              branchId: s.scene.branch,
+              actorId: s.owner.account.id,
+              action: 'plan.create',
+              record: { type: 'lesson_plan', id: plan.id },
+            });
+          },
+          () =>
+            api.post(`/api/plans/journals/${s.journal}/items`, {
+              quarterId: s.q2,
+              position: 1,
+              values: values({ topic: 'Second' }),
+            }),
+        );
+        expect(answer.status, JSON.stringify(answer.body)).toBe(409);
+        expect(codeOf(answer)).toBe('plan_row_taken');
+      });
+      const plans = await t.database.migrator
+        .selectFrom('lesson_plans')
+        .select('id')
+        .where('branch_id', '=', s.scene.branch)
+        .execute();
+      expect(plans).toHaveLength(1);
+    });
+
+    it('refuses the 11th file of two uploads at 9: the second waits on the item', async () => {
+      const s = await plannedScene();
+      const [item] = await fill(s, s.q2, [1]);
+      const id = item?.id ?? '';
+      for (let index = 0; index < 9; index += 1) {
+        await t.database.migrator
+          .insertInto('lesson_plan_files')
+          .values({
+            branch_id: s.scene.branch,
+            item_id: id,
+            name: `f${index}.pdf`,
+            type: 'application/pdf',
+            bytes: PDF.length,
+          })
+          .execute();
+      }
+      await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+        const answer = await heldThen(
+          s.scene.branch,
+          async (transaction) => {
+            // The first upload's row, held before its commit under the item's lock.
+            await transaction
+              .selectFrom('lesson_plan_items')
+              .select('id')
+              .where('id', '=', id)
+              .forNoKeyUpdate()
+              .execute();
+            await transaction
+              .insertInto('lesson_plan_files')
+              .values({
+                branch_id: s.scene.branch,
+                item_id: id,
+                name: 'tenth.pdf',
+                type: 'application/pdf',
+                bytes: PDF.length,
+              })
+              .execute();
+            await t.app.get(Audit).record(transaction, {
+              branchId: s.scene.branch,
+              actorId: s.owner.account.id,
+              action: 'plan.file_add',
+              record: { type: 'lesson_plan_item', id },
+            });
+          },
+          () =>
+            api.upload(`/api/plans/items/${id}/files?name=eleventh.pdf`, 'application/pdf', PDF),
+        );
+        expect(answer.status, JSON.stringify(answer.body)).toBe(409);
+        expect(codeOf(answer)).toBe('plan_files_full');
+      });
+      const files = await t.database.migrator
+        .selectFrom('lesson_plan_files')
+        .select('name')
+        .where('item_id', '=', id)
+        .execute();
+      expect(files).toHaveLength(10);
+    });
   });
 });
