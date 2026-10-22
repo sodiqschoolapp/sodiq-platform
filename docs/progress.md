@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 6.1a Cells, versions and history
+
+- 0108 and 0109: `journal_works` (the minimum a cell's key needs), `journal_cells` unique on (lesson, student, work) with nulls not distinct, a version the database raises on every change, and an append-only `journal_cell_history` partitioned by month, written by a trigger and tied to an audit entry of its transaction (`lesson_history_unaudited` reads both histories).
+- `saveCells` (`apps/api/src/modules/journal/cells.ts`) refuses a stale save with the stored cell (`cell_stale`, `storedCell` in `details`), `cell_closed` for a student not expected, `lesson_cancelled_cell`; one `journal.cells_save` entry per call. `lesson_student_expected` and `lesson_expected_students` answer who is expected; `lesson_holds_data` reads cells and works; empty rows go with their lesson or student.
+- Split (Look first): 6.1b (the writers of dated lessons with lessons holding data) and 6.1c (the reports). Left out: routes and screens (6.2, 6.3), totals (8.1), comments (8.2), exemptions (8.5), the carry of cells in a merge (8.6).
+
+The next sessions must know:
+
+- No route writes a cell yet; 6.1b is merged before 6.3. Until then a forced delete or a time move of a lesson with cells would be refused.
+- A cell has a value only through `saveCells`; a test fixture writes cells with `CellsKit` (`apps/api/src/testing/cells-kit.ts`), which dates a quarter of the year it is given: give it a branch and year of the test's own where possible.
+- A test file that runs `createTestDatabase` while another run uses the server makes the other run's global teardown fail; run the database tests one at a time.
+
 ## 22 October 2026: task 5.12d The publish at the real size
 
 - 0107: the commit check of Class in one block takes no lock of its own for a block the current transaction inserted (`lesson_blocks.created_xact`, written by a trigger, never updated); the class and group locks stay. A publish of a branch's year went from about 9,500 advisory locks and "out of shared memory" to under 200, at the default `max_locks_per_transaction` 64.

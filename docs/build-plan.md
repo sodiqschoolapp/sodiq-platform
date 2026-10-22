@@ -971,7 +971,7 @@ How to read the task lines:
 
 ## Phase 6. Journal: model, grid and attendance
 
-- [ ] **6.1a Cells, versions and history** (6.1 split in three, pull request #205, decision 1, Look first)
+- [x] **6.1a Cells, versions and history** (6.1 split in three, pull request #205, decision 1, Look first)
   - Read: `07`, `edge/journal`, `edge/developer-rules`.
   - Build: cells unique on lesson, student and work, each with a version number; history per cell; who is expected in a lesson on its date; `lesson_holds_data` reading the cells and works; a lesson whose rows hold no data still removed.
   - Done when: a stale save is refused and history records who changed what.
