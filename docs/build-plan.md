@@ -946,13 +946,23 @@ How to read the task lines:
   - From 5.6c-1 (pull request #181, decision 15; the print half, pull request #197): `06`, Exam: "It is shown on every timetable view and printout, marked 'exam'"; `edge/timetable`, Exams, "Who sees exams": "Every timetable view and print shows exams for its class, teacher or room". The printed views of 5.9c-1 show them; a weekly pattern holds no exam, which is dated.
   - From 5.9c-1 (pull request #199, decision 4): the test environment has no Chromium; until the owner gives it one (a larger plan or another runtime, issue #42), its PDFs answer "not available" and Excel works.
 
-- [ ] **5.12 Timetable end-to-end tests**
-  - Read: `14` (Timetable).
-  - Build: the named cases of the quality plan as automated tests, including simultaneous actions.
-  - Done when: all named cases pass in CI.
+- [ ] **5.12a Named cases and generated tests** (5.12 split in three, pull request #201, decision 1, Look first)
+  - Read: `14` (Timetable), `edge/developer-rules`, `edge/timetable` (Structure).
+  - Build: the generated test of `14` against the database (random dated lessons, pattern entries and edits; the constraints refuse exactly the clashes of a model); the publish preview checked against what the publish writes and leaves alone; the membership routes answering a student put into two lessons of one block with a code of their own; one index of the named cases of `14` and the tests that prove each.
+  - Done when: the generated tests and the preview check pass in CI, and each named case of `14`, Timetable, points to a passing test.
+
+- [ ] **5.12b Simultaneous actions and the browser walk** (5.12 split in three, pull request #201, decision 1, Look first)
+  - Read: `14` (Timetable, Whole system), `06` (Protection), `03` (Building, floor, room).
+  - Build: a room's forced delete at the same moment as each writer that names a room (a room closure, an exam room, a load row, a class's home room, a pattern entry), in both orders, each writer answering 404 `not_found` for a room deleted while it waited; one browser run that builds a draft (load, placement), publishes it and opens the published week.
+  - Done when: each pair has a test in both orders, and the browser walk passes in CI.
+  - From 5.8c (pull request #196, not sure): a room's forced delete takes the publish lock first, so the writers of dated lessons and the one-day room change wait and then read the room again (404). The other writers that name a room (a room closure, an exam room, a load row, a class's home room, a pattern entry) read the room without a lock before they write its key: a forced delete of that room committed in between gives them a foreign-key error (500). A simultaneous-actions case of this task runs each against a room's forced delete and maps the error to `not_found`.
+
+- [ ] **5.12c The real-size run** (5.12 split in three, pull request #201, decision 1, Look first)
+  - Read: `14` (Whole system: Speed tests), `12` (speed targets).
+  - Build: the run of the owner's lines below, on invented data, by a script the report names.
+  - Done when: the run's report (the board, the publish and a journal page timed; the timetable checked by the rule engine with no blocked result) is in the pull request.
   - From the owner (15 October 2026): one run at the real school's size on invented data (3 branches, about 80 classes, 200 teachers and 2,000 students, with groups, splits and teachers shared between branches): generate, check with the rule engine, publish a version and open the board; the report gives the solver's time, the lessons it could not place, and the time of the board, the publish and a journal page.
   - From the owner (20 October 2026): generation (5.10, 5.11) moved after the release of 25 October. Until then the real-size run places its timetable with a seed script on the same invented data, checks it with the rule engine and goes on from the publish; 5.11 adds the generate step and the solver's time to this run.
-  - From 5.8c (pull request #196, not sure): a room's forced delete takes the publish lock first, so the writers of dated lessons and the one-day room change wait and then read the room again (404). The other writers that name a room (a room closure, an exam room, a load row, a class's home room, a pattern entry) read the room without a lock before they write its key: a forced delete of that room committed in between gives them a foreign-key error (500). A simultaneous-actions case of this task runs each against a room's forced delete and maps the error to `not_found`.
 
 ## Phase 6. Journal: model, grid and attendance
 
@@ -969,6 +979,7 @@ How to read the task lines:
   - From 5.6a-3 (pull request #162, decisions 8 and 15): `edge/time-dates-calendar`, "The school closes at 11:00 today, or yesterday is declared a day off afterwards. Today and past dates cannot become a day off. A bulk cancel is used instead, for the whole branch from a chosen slot. Cancelled lessons stay visible in grey with the reason. For a lesson that already has data, the Academic Vice Principal chooses 'keep as held' or 'cancel'." The bulk cancel (`apps/api/src/modules/timetable/bulk-cancels.service.ts`) cancels started and past lessons; once cells exist, its check lists each lesson in scope that holds data and the save takes the choice for each.
   - From 5.8b (pull request #195, decision 2, Look first): `lesson_holds_data(uuid)` (0105) is the one place that answers "the lesson holds data" (`edge/00-definitions`, Data on a lesson); it answers no until this task replaces its body (`create or replace`) to read the cells, and `lessonsHoldingData` (`apps/api/src/modules/timetable/lesson-data.ts`) reads it in code. The database refuses the delete of such a lesson (`lessons_delete_data`) except by the Super Admin's forced delete, so the forced delete takes the lesson's cells out first and keeps them in its store row (`forced_deletes.rows`), and its restore puts them back; and the two route tests of 5.8b that expect `lesson_holds_data` from a withdraw (`lesson-protection.test.ts`) and the database tests with a stand-in function are replaced by "kept and listed" (the From line of 5.5b-1 above).
   - From 5.8b (pull request #195, writer tests, Look first): a day template, slot or calendar change that moves a lesson in time removes it and creates it again with a new id (`pairDated` pairs only on the same start and end, `dated-lessons.ts`; `lesson-protection-writers.test.ts` asserts it today). Once `lesson_holds_data` reads the cells, such a change over a lesson with data would be refused (`lesson_holds_data`); `06`, Protection: "Its teacher, room and time can change, with a log entry". This task makes a lesson moved in time by those writers keep its id and change its times in place (the history writes the line), with a test that moves a lesson holding data and finds its cells on it.
+  - From 5.12a (pull request #201, decision 4): `14`, Timetable, Generated tests: "after each, the tests check ... that lessons with data were not lost". The generated test of the database (`claims-generated.database.test.ts`) puts random cells on its lessons once `lesson_holds_data` reads them, and asserts after each edit that no lesson holding data was removed.
 
 - [ ] **6.2 Journal grid**
   - Read: `07` (Opening a journal, Layout, Who can do what), `12`.
@@ -1194,7 +1205,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - From 5.4c-3b (pull request #138, decisions 3 to 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." The solver places a mixed split either whole or as pairings slot by slot with a half of another subject's mixed split of the same class (`partnersIn` of `packages/timetable-rules/src/facts-data.ts`); the engine's re-check accepts exactly those blocks (`checkBlocks`: any other set of rows in one block is `split_apart` with `rows`). `subject_twice` is counted per student (decision 2, Look first).
 
 - [ ] **5.11 Generation in the product**
-  - From the owner (20 October 2026): add the generate step and the solver's time to the real-size run of 5.12 (`docs/build-plan.md`, 5.12).
+  - From the owner (20 October 2026): add the generate step and the solver's time to the real-size run of 5.12c (`docs/build-plan.md`, 5.12c).
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
   - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.
   - Done when: a variant from older inputs is marked "inputs changed" and re-checked before use.
