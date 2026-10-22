@@ -977,7 +977,7 @@ How to read the task lines:
   - Done when: a stale save is refused and history records who changed what.
   - From 2.4b-1 (pull request #68): every table of student data (cells, attendance, comments) references `students` with no action, never `on delete cascade`, so the key refuses the delete of a student with data whatever the branch filter sees; the service of the delete maps `23503` on such a key to `student_has_data` (`edge/students-classes-groups`: "A student is created twice by mistake").
 
-- [ ] **6.1b-1 The writers of dated lessons keep lessons with data** (6.1b split in two, pull request #206, decision 1, Look first; merged before 6.3, decision 12 of #205)
+- [x] **6.1b-1 The writers of dated lessons keep lessons with data** (6.1b split in two, pull request #206, decision 1, Look first; merged before 6.3, decision 12 of #205)
   - Read: `06` (Protection, What a change does to existing data, How surprises are prevented), `edge/timetable` (After publishing, Versions and drafts), `edge/time-dates-calendar` (The academic year is extended or shortened), `edge/00-definitions` (Data on a lesson).
   - Build: `writeDatedLessons` and `removeDatedLessons` (`apps/api/src/modules/timetable/dated-lessons.ts`) with lessons that hold data (`lesson_holds_data`, 0108): kept and listed, a lesson moved in time by a rewrite of its own version changed in place.
   - Done when: every From line below has its test, with cells written by `saveCells` (`apps/api/src/modules/journal/cells.ts`).
