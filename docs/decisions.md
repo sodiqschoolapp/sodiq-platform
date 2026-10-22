@@ -24,6 +24,10 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 22 October 2026: tasks are not split without need
+
+Decided by the owner on 22 October 2026: splitting a task is not advised. Phase 5 grew from 10 tasks (12 with the two deferred) to 70 through splits, some three and four levels deep (5.6b-2c-1, 5.5a-3b-2), and each part costs a plan, a plan review, a CI run and a code review. A session now plans and builds the whole task. It splits only when one session truly cannot build and test the task, names the piece that does not fit, uses as few parts as possible and never splits a part again; what a part cannot hold goes to a From line of a later task (`.claude/skills/next-task/SKILL.md` step 7, `CLAUDE.md` step 3). The reviewers' rule against needless splits (15 October 2026) stays: such a split is a correction to merge the parts back.
+
 ## 20 October 2026: generation after the release
 
 Decided by the owner on 20 October 2026: the solver service (5.10) and generation in the product (5.11) move to "Deferred until after 25 October 2026", first of that list, so that the journal, lesson plans and results reach the test site by 25 October. Generation is the largest remaining piece (a separate Kotlin service), and a timetable can already be built by hand in the grid with the rule engine, "Suggest a place" and the readiness check. 5.12 keeps its real-size run, with the timetable placed by a seed script until 5.11 adds the generate step. Release 1 still includes generation.
