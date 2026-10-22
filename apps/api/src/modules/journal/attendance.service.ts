@@ -14,7 +14,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { enterableLesson, type EntryLesson } from './attendance-entry.js';
+import { enterableLesson, entryAssignment, type EntryLesson } from './attendance-entry.js';
 import { cellChange, lineValues, namedAccounts } from './cell-lines.query.js';
 import { saveCells } from './cells.js';
 import { JournalGridReader } from './journal-grid.service.js';
@@ -127,7 +127,7 @@ export class AttendanceService {
         this.audit,
         {
           accountId: access.accountId,
-          assignmentId: access.assignmentId,
+          assignmentId: entryAssignment(access),
           ...(requestId === undefined ? {} : { requestId }),
         },
         input.saves.map((save) => ({
@@ -223,7 +223,7 @@ export class AttendanceService {
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
-        assignmentId: access.assignmentId,
+        assignmentId: entryAssignment(access),
         action: 'journal.all_present',
         record: { type: 'lesson', id: lesson.id },
         newValue: {

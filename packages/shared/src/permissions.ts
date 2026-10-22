@@ -515,7 +515,7 @@ export const PERMISSIONS = freezeTable({
    * journals"; a substitute is a teacher, 06), the Tutor ("Enters attendance
    * in own Ma'naviyat soati and Homework slot journals"), the Academic Vice
    * Principal ("corrects with a reason", 8.4) and the Super Admin. The route
-   * decides the lesson for every request (`attendance-scope.ts`): only the
+   * decides the lesson for every request (`attendance-entry.ts`): only the
    * lessons the person teaches or owns, whatever the role.
    */
   journal: rows({

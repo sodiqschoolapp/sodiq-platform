@@ -159,8 +159,30 @@ describe('the merge of two student records', () => {
         .execute(),
       t.database.migrator.selectFrom('student_uids').selectAll().orderBy('uid').execute(),
       t.database.migrator.selectFrom('relatives').selectAll().orderBy('id').execute(),
+      // Task 6.3: the reasons of absence a merge carries (permission review, must-fix 1).
+      t.database.migrator.selectFrom('student_absence_reasons').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
+
+  /** A reason of absence of the student, written as the migrator at the clock's moment (task 6.3). */
+  const reasonOf = (branch: string, studentId: string, date: string, category: string) =>
+    t.database.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .insertInto('student_absence_reasons')
+        .values({
+          branch_id: branch,
+          student_id: studentId,
+          absence_date: date,
+          category,
+          note: '',
+          changed_by: await classes.account(),
+          changed_at: t.clock.now(),
+        })
+        .execute();
+    });
 
   const statusesOf = (id: string) =>
     t.database.migrator
@@ -462,24 +484,7 @@ describe('the merge of two student records', () => {
   });
 
   describe('reasons of absence (task 6.3, correction 2)', () => {
-    const reason = (branch: string, studentId: string, date: string, category: string) =>
-      t.database.migrator.transaction().execute(async (transaction) => {
-        await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
-          transaction,
-        );
-        await transaction
-          .insertInto('student_absence_reasons')
-          .values({
-            branch_id: branch,
-            student_id: studentId,
-            absence_date: date,
-            category,
-            note: '',
-            changed_by: await classes.account(),
-            changed_at: t.clock.now(),
-          })
-          .execute();
-      });
+    const reason = reasonOf;
 
     it('carries the reasons to the kept record, and refuses two of one date', async () => {
       const east = await insertBranch(t.database.migrator, 'East reasons');
@@ -1149,6 +1154,9 @@ describe('the merge of two student records', () => {
     it("answers 404 for another branch's path record and an unknown one on both routes, as the Super Admin, with nothing written", async () => {
       const south = await pupil({ branch: t.south });
       const north = await pupil();
+      // A reason on each record, which a merge would carry (task 6.3).
+      await reasonOf(t.south, south.id, '2026-09-14', 'illness');
+      await reasonOf(t.north, north.id, '2026-09-14', 'family');
       const before = await rowsOf();
       for (const id of [south.id, UNKNOWN]) {
         refusedWith(await preview(id, north.uid), 404, 'not_found');

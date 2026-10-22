@@ -39,6 +39,21 @@ export interface EntryLesson {
   readonly journalId: string | null;
 }
 
+/**
+ * The assignment an entry's audit entry names (permission review of the code,
+ * should-fix 3): the Teacher's, then the Tutor's, of those that permit the
+ * route, since a person enters only the lessons they teach or own; the first
+ * permitting one otherwise (a Super Admin or an Academic Vice Principal who
+ * teaches the lesson with no Teacher assignment).
+ */
+export function entryAssignment(access: Access): string {
+  return (
+    access.permitting.find((assignment) => assignment.role === 'teacher')?.id ??
+    access.permitting.find((assignment) => assignment.role === 'tutor')?.id ??
+    access.assignmentId
+  );
+}
+
 /** Whether a current assignment of the account lets it enter in the branch (`journal` `edit`). */
 export function entersByRole(access: Access, branchId: string): boolean {
   return access.assignments.some(

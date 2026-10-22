@@ -650,9 +650,13 @@ export class JournalGridReader {
         staffId,
         today,
       );
-    // The categories of absence of the students shown (decision 7); a lesson reader's on the
-    // dates of their lessons only.
-    const shownDates = new Set(lessons.map((lesson) => lesson.date));
+    // The categories of absence of the students shown (decision 7), on the dates of the shown
+    // lessons each student is expected at (permission review of the code, should-fix 4).
+    const expectedOn = new Set(
+      lessons.flatMap((lesson) =>
+        [...(expectedOf.get(lesson.id) ?? [])].map((studentId) => `${studentId}|${lesson.date}`),
+      ),
+    );
     const absences = (
       await absenceCategories(
         transaction,
@@ -660,7 +664,7 @@ export class JournalGridReader {
         quarter.startDate,
         quarter.endDate,
       )
-    ).filter((one) => shape !== 'lessons' || shownDates.has(one.date));
+    ).filter((one) => expectedOn.has(`${one.studentId}|${one.date}`));
 
     const others = (await readableJournals(transaction, access, branchId, year.id)).map(listed);
     return journalGridSchema.parse({

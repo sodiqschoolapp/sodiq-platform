@@ -317,6 +317,29 @@ describe('the reasons of absence', () => {
       expect(list.classes.map((one) => one.id).sort()).toEqual([s.classId, s.otherClass].sort());
       expect(list.days.every((day) => !day.canEdit)).toBe(true);
     });
+    // The other readers (permission review of the code, should-fix 5): the Principal and the
+    // Vice Principal for Spiritual and Moral Education read and write nothing, the Super Admin both.
+    for (const [role, edits] of [
+      ['principal', false],
+      ['spiritual_vice_principal', false],
+      ['super_admin', true],
+    ] as const) {
+      const browser = await account();
+      await as(
+        s.branch,
+        browser,
+        [role === 'super_admin' ? { role } : { role, branchId: s.branch }],
+        async ({ get }) => {
+          const answer = await get(
+            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+          );
+          expect(answer.status, role).toBe(200);
+          const list = studentAbsencesSchema.parse(answer.body);
+          expect(list.days).toHaveLength(2);
+          expect(list.days.every((day) => day.canEdit === edits)).toBe(true);
+        },
+      );
+    }
     for (const role of ['teacher', 'head_teacher'] as const) {
       const browser = await account();
       await as(

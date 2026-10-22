@@ -176,13 +176,22 @@ describe('attendance entry', () => {
       return work(transaction);
     });
 
+  /** Every row the entry routes write in a branch: the cells and their history (0108). */
   const cellsOfBranch = (branch: string) =>
-    t.database.migrator
-      .selectFrom('journal_cells')
-      .selectAll()
-      .where('branch_id', '=', branch)
-      .orderBy('id')
-      .execute();
+    Promise.all([
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+      t.database.migrator
+        .selectFrom('journal_cell_history')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute(),
+    ]);
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
@@ -525,6 +534,13 @@ describe('attendance entry', () => {
         expect(codeOf(await typeOne(calls, s.branch, s.second, s.valiyev))).toBe(
           'journal_entry_scope',
         );
+        // "All present" too (permission review of the code, should-fix 2).
+        expect(
+          (await calls.post(s.branch, `/api/journal/lessons/${s.first}/all-present`)).status,
+        ).toBe(200);
+        expect(
+          codeOf(await calls.post(s.branch, `/api/journal/lessons/${s.second}/all-present`)),
+        ).toBe('journal_entry_scope');
       });
 
       const headTutor = await account();
@@ -677,6 +693,28 @@ describe('attendance entry', () => {
       });
       expect(await journalEntries()).toBe(auditBefore);
       expect(await cellsOfBranch(s.branch)).toEqual(before);
+      // Through the scope: an Academic Vice Principal or a Super Admin who teaches the lesson
+      // enters it (permission review of the code, should-fix 1).
+      for (const [browser, lesson] of [
+        [vice, s.second],
+        [admin, s.third],
+      ] as const) {
+        const staff = await load.teacher(s.branch, {
+          subjects: [{ subject: s.subject, grades: [7] }],
+          accountId: browser.account.id,
+        });
+        await t.database.migrator
+          .updateTable('lessons')
+          .set({ teacher_id: staff.staffId })
+          .where('id', '=', lesson)
+          .execute();
+        await as(browser, [], async (calls) => {
+          expect((await typeOne(calls, s.branch, lesson, s.ahmedov)).status).toBe(200);
+          expect(
+            (await calls.post(s.branch, `/api/journal/lessons/${lesson}/all-present`)).status,
+          ).toBe(200);
+        });
+      }
     });
   });
 
@@ -890,6 +928,88 @@ describe('attendance entry', () => {
     });
   });
 
+  describe('the history of a cell, by role (permission review, must-fix 2)', () => {
+    /** A Tutor of the class: the role from 1 September, a staff record and a Tutor row. */
+    async function tutorOf(branch: string, classId: string): Promise<Browser> {
+      const browser = await account();
+      const assignment = await t.kit.giveRole(browser.account.id, {
+        role: 'tutor',
+        branchId: branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await load.classes.person(branch, ['uz'], { accountId: browser.account.id });
+      await load.classes.tutorRow(branch, classId, assignment.id);
+      return browser;
+    }
+
+    it('answers every reader whose grid shows the cell, and refuses a Tutor of another class and a Head Teacher of another subject', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        await post(s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+          saves: [{ studentId: s.ahmedov, mark: 3, version: null }],
+        });
+      });
+      const path = `/api/journal/lessons/${s.first}/students/${s.ahmedov}/history`;
+      const lines = (response: Response) => {
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return cellHistorySchema.parse(response.body).lines.map((line) => line.after);
+      };
+      for (const role of [
+        'principal',
+        'academic_vice_principal',
+        'spiritual_vice_principal',
+      ] as const) {
+        const browser = await account();
+        await as(browser, [{ role, branchId: s.branch }], async ({ get }) => {
+          expect(lines(await get(s.branch, path)), role).toEqual([3]);
+        });
+      }
+      const admin = await account();
+      await as(admin, [{ role: 'super_admin' }], async ({ get }) => {
+        expect(lines(await get(s.branch, path))).toEqual([3]);
+      });
+      const head = await account();
+      await as(
+        head,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+        async ({ get }) => {
+          expect(lines(await get(s.branch, path))).toEqual([3]);
+        },
+      );
+      // A Senior Head Teacher of the subject holds no assignment of the branch.
+      const senior = await account();
+      await as(
+        senior,
+        [{ role: 'senior_head_teacher', subjectIds: [s.subject] }],
+        async ({ get }) => {
+          expect(lines(await get(s.branch, path))).toEqual([3]);
+        },
+      );
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      const otherHead = await account();
+      await as(
+        otherHead,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
+        async ({ get }) => {
+          const refused = await get(s.branch, path);
+          expect(refused.status).toBe(403);
+          expect(codeOf(refused)).toBe('journal_scope');
+        },
+      );
+      const ownTutor = await tutorOf(s.branch, s.classId);
+      await as(ownTutor, [], async ({ get }) => {
+        expect(lines(await get(s.branch, path))).toEqual([3]);
+      });
+      const otherTutor = await tutorOf(s.branch, s.otherClass);
+      await as(otherTutor, [], async ({ get }) => {
+        const refused = await get(s.branch, path);
+        expect(refused.status).toBe(403);
+        expect(codeOf(refused)).toBe('journal_scope');
+      });
+    });
+  });
+
   describe('the grid', () => {
     const gridOf = (response: Response): JournalGrid => {
       expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -915,6 +1035,8 @@ describe('attendance entry', () => {
       for (const [studentId, date] of [
         [s.ahmedov, '2026-10-12'],
         [s.boboyev, '2026-10-19'],
+        // A day with no lesson of the journal: not answered (should-fix 4).
+        [s.ahmedov, '2026-10-14'],
       ] as const) {
         await atMoment((transaction) =>
           transaction
@@ -955,6 +1077,12 @@ describe('attendance entry', () => {
           { studentId: s.boboyev, date: '2026-10-19', category: 'illness' },
         ]);
         expect(JSON.stringify(response.body)).not.toContain('A note for the Tutor');
+      });
+      // The Academic Vice Principal reads every lesson and enters none of them (should-fix 5).
+      const vice = await account();
+      await as(vice, [{ role: 'academic_vice_principal', branchId: s.branch }], async ({ get }) => {
+        const grid = gridOf(await get(s.branch, `/api/journal/journals/${journal}`));
+        expect(grid.lessons.map((lesson) => lesson.canEnter)).toEqual([false, false, false]);
       });
       // A substitute: the lesson of the 19th only, and the reasons of its date only.
       await as(substitute, [{ role: 'teacher', branchId: s.branch }], async ({ get }) => {
