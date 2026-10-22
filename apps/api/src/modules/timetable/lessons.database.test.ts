@@ -674,12 +674,15 @@ describe('dated lessons and their time claims in the database', () => {
             );
           }
         })();
-      // Each in a transaction rolled back, so both write the same times.
+      // Each in a transaction rolled back, so both write the same times; under
+      // a savepoint, as every route's work runs under its request key's.
       const locksFor = async (count: number) => {
         let locks = -1;
         await refusal(
           inBranch(north, async (transaction) => {
+            await sql`savepoint request_key`.execute(transaction);
             await writeBlocks(transaction, count, 0);
+            await sql`release savepoint request_key`.execute(transaction);
             locks = await advisoryLocks(transaction);
             throw new Error('Rolled back.');
           }),
@@ -738,7 +741,8 @@ describe('dated lessons and their time claims in the database', () => {
     it('takes the lock of a block it updated, and none of a block it inserted', async () => {
       // The block's own key (0060), probed from another connection while the
       // transaction is open: an updated block's row version is the
-      // transaction's own too, and only created_at tells it from a new block.
+      // transaction's own too, and only created_xact tells it from a new
+      // block; the new block is written under a savepoint, as by a route.
       const free = async (blockId: string) => {
         const found = await sql<{ free: boolean }>`
           select pg_try_advisory_lock(hashtextextended('timetable_block:' || ${blockId}::text, 0)) as free
@@ -767,12 +771,14 @@ describe('dated lessons and their time claims in the database', () => {
           .set({ cancel_cause: null, cancel_reason: null })
           .where('id', '=', before.lessons[0] ?? '')
           .execute();
+        await sql`savepoint request_key`.execute(transaction);
         const inserted = await write(
           transaction,
           north,
           { date: '2026-10-29', start: '15:00', end: '15:45' },
           [{ classId: oxford }],
         );
+        await sql`release savepoint request_key`.execute(transaction);
         await sql`set constraints lessons_block_students immediate`.execute(transaction);
         probed.updated = await free(before.block);
         probed.inserted = await free(inserted.block);
@@ -781,14 +787,14 @@ describe('dated lessons and their time claims in the database', () => {
       expect(probed).toEqual({ updated: false, inserted: true });
     });
 
-    it('refuses an update of a block’s created_at', async () => {
+    it('writes the inserting transaction into created_xact and refuses its update', async () => {
       const block = await place(north, { date: '2026-10-29', start: '15:00', end: '15:45' }, [
         { classId: await schoolClass() },
       ]);
       const update = (db: Transaction | TestDatabase['migrator']) =>
         db
           .updateTable('lesson_blocks')
-          .set({ created_at: sql<Date>`now()` })
+          .set({ created_xact: null })
           .where('id', '=', block.block)
           .execute();
       // The application has no right on the column (0058 grants), and the
@@ -798,8 +804,14 @@ describe('dated lessons and their time claims in the database', () => {
       });
       expect(await refusal(update(database.migrator))).toMatchObject({
         code: CHECK_VIOLATION,
-        constraint: 'lesson_block_created_at_fixed',
+        constraint: 'lesson_block_created_xact_fixed',
       });
+      const stored = await database.migrator
+        .selectFrom('lesson_blocks')
+        .select('created_xact')
+        .where('id', '=', block.block)
+        .executeTakeFirstOrThrow();
+      expect(stored.created_xact).not.toBeNull();
     });
   });
 

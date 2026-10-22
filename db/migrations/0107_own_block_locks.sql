@@ -12,52 +12,55 @@
 -- branch's year is about 30,000 blocks in one transaction, more than the lock
 -- table holds at the default max_locks_per_transaction.
 --
--- The plan approved on pull request #204 (decisions 1 and 2, Look first): the
--- block's own lock orders two writers of one block, each of which sees only its
--- own lessons. A block inserted by an open transaction is seen by no other
--- one: a lesson insert into it fails its key check, and a lesson update or a
+-- The plan approved on pull request #204 (decision 1, Look first): the block's
+-- own lock orders two writers of one block, each of which sees only its own
+-- lessons. A block inserted by an open transaction is seen by no other one: a
+-- lesson insert into it fails its key check, and a lesson update or a
 -- membership check reads no lesson of it. So it needs no lock of its own until
 -- the commit, after which every writer takes the lock as before. The locks of
 -- its classes and groups stay, in the same order, so a membership change still
 -- waits for the publish or the publish for it; no lock is added.
 
 -- ---------------------------------------------------------------------------
--- created_at is read by the rule below: an update of it is refused, so that an
--- older block can never pass as one inserted by this transaction (decision 2).
--- The application has no update right on the column (0058 grants the update of
--- quarter_id, lesson_date, starts_at, ends_at and double_pair_id only); the
--- trigger refuses it to every user, so that a later grant cannot open it.
--- The forced-delete restore inserts its stored row, which this does not touch.
+-- The transaction that inserted a block (decision 2, changed in the build).
+-- The plan read "inserted by this transaction" from xmin and created_at, but
+-- every route's work runs under the savepoint of its request key
+-- (request-keys.ts), so xmin holds the id of a subtransaction and never
+-- matched a publish's blocks. As day_template_versions.created_xact (0017) and
+-- forced_deletes.created_xact (0105): the top-level id, written by the trigger
+-- on every insert (a restored stored row included: it is inserted now) and
+-- never changed by an update. Rows written before this migration keep null and
+-- so keep their lock. The column is added without a default, so the table is
+-- not rewritten.
 
-comment on column lesson_blocks.created_at is
-  'The moment of the insert. timetable_lock_block (0107) reads it with xmin to tell a block inserted by the transaction; never updated (lesson_blocks_created_at_fixed).';
+alter table lesson_blocks add column created_xact xid8;
 
-create function lesson_blocks_created_at_fixed() returns trigger
+comment on column lesson_blocks.created_xact is
+  'The top-level transaction that inserted the block (0107): timetable_lock_block takes no lock of its own for a block of the current transaction. Written by lesson_blocks_created_xact on insert, never updated.';
+
+create function lesson_blocks_created_xact() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
 as $$
 begin
-  if new.created_at is distinct from old.created_at then
-    raise exception 'lesson_block_created_at_fixed'
-      using errcode = 'check_violation', constraint = 'lesson_block_created_at_fixed';
+  if tg_op = 'INSERT' then
+    new.created_xact := pg_current_xact_id();
+  elsif new.created_xact is distinct from old.created_xact then
+    raise exception 'lesson_block_created_xact_fixed'
+      using errcode = 'check_violation', constraint = 'lesson_block_created_xact_fixed';
   end if;
   return new;
 end;
 $$;
 
-create trigger lesson_blocks_created_at_fixed
-  before update of created_at on lesson_blocks
-  for each row execute function lesson_blocks_created_at_fixed();
+create trigger lesson_blocks_created_xact
+  before insert or update of created_xact on lesson_blocks
+  for each row execute function lesson_blocks_created_xact();
 
 -- ---------------------------------------------------------------------------
 -- 0060, replaced: the advisory locks of the units of a block (its classes and
 -- groups, in the order of the id), then of the block, unless this transaction
--- inserted the block (decision 1). Inserted by this transaction: its row
--- version was written by the transaction's own id (a block written inside a
--- savepoint has the id of the subtransaction and keeps its lock) and its
--- created_at is the start of this transaction (an update keeps the older
--- created_at, so a block that existed before keeps its lock). Runs as the
--- invoker.
+-- inserted the block (decision 1). Runs as the invoker.
 create or replace function timetable_lock_block(block_ref uuid) returns void
 language plpgsql
 set search_path = pg_catalog, public
@@ -77,9 +80,7 @@ begin
   end loop;
   if exists (
     select 1 from lesson_blocks b
-      where b.id = block_ref
-        and b.xmin = pg_current_xact_id()::xid
-        and b.created_at = now()
+      where b.id = block_ref and b.created_xact = pg_current_xact_id()
   ) then
     return;
   end if;
