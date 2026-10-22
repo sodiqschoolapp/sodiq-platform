@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { BRANCH_HEADER, REQUEST_KEY_HEADER } from '@sodiq/shared';
+import { BRANCH_HEADER, publishCheckSchema, REQUEST_KEY_HEADER } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
-import { errorCode } from '../../testing/sign-in-kit.js';
 
 const ok = (response: Response) => {
   expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -118,12 +118,101 @@ describe('the protection of dated lessons through their writers', () => {
     return draft;
   }
 
-  /** Lessons the stand-in of 6.1's cells says hold data. */
-  const holdData = (ids: readonly string[]) =>
+  /** A draft copied from `copyFrom` without the first class's load row: its lessons from `startsOn` go. */
+  async function draftWithout(s: PublishedScene, startsOn: string, copyFrom = s.version) {
+    const created = await t.post('/api/timetable/versions', s.branch, {
+      academicYearId: s.year,
+      startsOn,
+      copyFrom,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const draft = (created.body as { id: string }).id;
+    const row = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select('id')
+      .where('version_id', '=', draft)
+      .where('class_id', '=', s.classId)
+      .executeTakeFirstOrThrow();
+    const archived = await request(t.kit.server)
+      .delete(`/api/timetable/versions/${draft}/load/${row.id}`)
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, s.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID());
+    expect(archived.status, JSON.stringify(archived.body)).toBeLessThan(300);
+    const confirmed = await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(draft);
+    return draft;
+  }
+
+  /** The publish preview of a draft on a start. */
+  const checkOf = async (s: PublishedScene, draft: string, startsOn: string) => {
+    const answer = await t.get(
+      `/api/timetable/versions/${draft}/publish-check?startsOn=${startsOn}`,
+      s.branch,
+    );
+    expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+    const impact = publishCheckSchema.parse(answer.body).impact;
+    if (impact === null) throw new Error('The check has no impact preview.');
+    return impact;
+  };
+
+  /** A publish with the key of the stored one-day changes its preview gave. */
+  const publishKeyed = (s: PublishedScene, draft: string, startsOn: string, dayChangesKey: string) =>
+    request(t.kit.server)
+      .post(`/api/timetable/versions/${draft}/publish`)
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, s.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID())
+      .send({ startsOn, dayChangesKey });
+
+  /** The newest audit entry of the action in the branch, its new value. */
+  const entryOf = async (branch: string, action: string) =>
+    (
+      await t.database.migrator
+        .selectFrom('audit_log')
+        .select('new_value')
+        .where('branch_id', '=', branch)
+        .where('action', '=', action)
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirstOrThrow()
+    ).new_value as {
+      datedLessons?: {
+        keptWithData?: {
+          id: string;
+          cancelCause: string | null;
+          reason: string | null;
+          cause: string;
+        }[];
+        givenBack?: { id: string }[];
+      };
+    };
+
+  /** The stored lesson by id, `undefined` when it is gone. */
+  const lessonById = (id: string) =>
     t.database.migrator
-      .insertInto('test_lessons_with_data' as never)
-      .values(ids.map((id) => ({ lesson_id: id })))
+      .selectFrom('lessons')
+      .select(['id', 'block_id', 'cancel_cause', 'cancel_reason', 'teacher_id'])
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+  /** The cells of a lesson. */
+  const cellsOf = (lessonId: string) =>
+    t.database.migrator
+      .selectFrom('journal_cells')
+      .select(['student_id', 'mark'])
+      .where('lesson_id', '=', lessonId)
       .execute();
+
+  /** A mark on the lesson, saved through `saveCells` (task 6.1b-1). */
+  const mark = (s: PublishedScene, lessonId: string, classId = s.classId) =>
+    markedLesson(t.app, t.database.migrator, {
+      branchId: s.branch,
+      classId,
+      lessonId,
+      accountId: adminAccount,
+    });
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
@@ -135,16 +224,6 @@ describe('the protection of dated lessons through their writers', () => {
         .where('id', '=', t.adminAssignment)
         .executeTakeFirstOrThrow()
     ).account_id;
-    // A stand-in for the cells of 6.1: the lessons this table names hold data.
-    await sql`create table test_lessons_with_data (lesson_id uuid primary key)`.execute(
-      t.database.migrator,
-    );
-    await sql`grant select on test_lessons_with_data to sodiq_app`.execute(t.database.migrator);
-    await sql`
-      create or replace function lesson_holds_data(lesson_ref uuid) returns boolean
-      language sql stable set search_path = pg_catalog, public
-      as $$ select exists (select 1 from test_lessons_with_data t where t.lesson_id = lesson_ref) $$
-    `.execute(t.database.migrator);
   });
 
   afterAll(async () => {
@@ -246,55 +325,170 @@ describe('the protection of dated lessons through their writers', () => {
     expect(gone.map((one) => one.actors)).toEqual([[adminAccount], [adminAccount], [adminAccount]]);
   });
 
-  it('refuses a publish that would remove a lesson holding data, and changes nothing (6.1 keeps and lists it)', async () => {
+  // Task 6.1b-1 (decision 2; 06, What a change does to existing data:
+  // "Removed, if they hold no data"; Impact preview: "any lesson holding data
+  // that blocks a removal"): replaces the refusal of 5.8b (decision 8).
+  it('a publish whose version drops a lesson with a mark keeps it with its id and cells, cancelled kept_data, listed in the preview and the entry; one without data goes', async () => {
     const s = await publishedScene(t, load);
-    const created = await t.post('/api/timetable/versions', s.branch, {
-      academicYearId: s.year,
-      startsOn: '2026-11-09',
-      copyFrom: s.version,
-    });
-    expect(created.status, JSON.stringify(created.body)).toBe(201);
-    const draft = (created.body as { id: string }).id;
-    // The class's maths is taken out of the draft: its lessons from the start go.
-    const row = await t.database.migrator
-      .selectFrom('teaching_load_rows')
-      .select('id')
-      .where('version_id', '=', draft)
-      .where('class_id', '=', s.classId)
-      .executeTakeFirstOrThrow();
-    const archived = await request(t.kit.server)
-      .delete(`/api/timetable/versions/${draft}/load/${row.id}`)
-      .set('Cookie', t.admin)
-      .set(BRANCH_HEADER, s.branch)
-      .set(REQUEST_KEY_HEADER, randomUUID());
-    expect(archived.status, JSON.stringify(archived.body)).toBeLessThan(300);
-    const confirmed = await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch);
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
-    await load.freeEditLock(draft);
+    const draft = await draftWithout(s, '2026-11-09');
     const held = await lessonOf(s, '2026-11-16');
-    await holdData([held.id]);
-    const before = await unitsOf(s.branch);
-    const published = await publishOf(t)(s.branch, draft, '2026-11-09');
-    expect(published.status, JSON.stringify(published.body)).toBe(409);
-    expect(errorCode(published)).toBe('lesson_holds_data');
-    expect(await unitsOf(s.branch)).toEqual(before);
-    expect(await linesOf([held.id])).toEqual([]);
+    const gone = await lessonOf(s, '2026-11-23');
+    const { studentId } = await mark(s, held.id);
+
+    const impact = await checkOf(s, draft, '2026-11-09');
+    expect(impact.keptWithData.map((one) => [one.lessonId, one.date, one.cancelCause])).toEqual([
+      [held.id, '2026-11-16', null],
+    ]);
+    expect(impact.heldData).toEqual([]);
+    ok(await publishOf(t)(s.branch, draft, '2026-11-09'));
+
+    expect(await lessonById(held.id)).toMatchObject({
+      block_id: held.block_id,
+      cancel_cause: 'kept_data',
+      cancel_reason: null,
+    });
+    expect(await cellsOf(held.id)).toEqual([{ student_id: studentId, mark: 1 }]);
+    expect(await lessonById(gone.id)).toBeUndefined();
+    const entry = await entryOf(s.branch, 'timetable_version.publish');
+    expect(entry.datedLessons?.keptWithData).toEqual([
+      expect.objectContaining({ id: held.id, cancelCause: null, reason: null, cause: 'kept_data' }),
+    ]);
+    const lines = await linesOf([held.id]);
+    expect(lines.map((one) => [one.kind, one.cancel_before, one.cancel_after])).toEqual([
+      ['changed', null, 'kept_data'],
+    ]);
+    expect(lines[0]?.actors).toEqual([adminAccount]);
   });
 
-  it('refuses a withdraw that would remove a lesson holding data, and changes nothing (6.1 keeps and lists it)', async () => {
-    const other = await publishedScene(t, load);
-    const draft = await draftFrom(other, '2026-11-09');
-    ok(await publishOf(t)(other.branch, draft, '2026-11-09'));
-    const kept = await lessonOf(other, '2026-10-26');
-    await holdData([kept.id]);
-    const otherBefore = await unitsOf(other.branch);
-    const withdrawn = await keyed(
-      `/api/timetable/versions/${other.version}/withdraw`,
-      other.branch,
-      {},
+  it('a copy of an earlier version published over a lesson with a work total keeps and lists it', async () => {
+    const s = await publishedScene(t, load);
+    // A later version gives the class another teacher; the earlier one copied
+    // again without the class's row from the next week.
+    const later = await draftFrom(s, '2026-11-09');
+    ok(await publishOf(t)(s.branch, later, '2026-11-09'));
+    const held = await lessonOf(s, '2026-11-16');
+    await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: held.id });
+    const restored = await draftWithout(s, '2026-11-16', s.version);
+    const impact = await checkOf(s, restored, '2026-11-16');
+    expect(impact.keptWithData.map((one) => one.lessonId)).toEqual([held.id]);
+    ok(await publishOf(t)(s.branch, restored, '2026-11-16'));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+    expect(
+      (await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData?.map(
+        (one) => one.id,
+      ),
+    ).toEqual([held.id]);
+  });
+
+  it('a lesson with data cancelled with a reason and dropped by a publish is kept, kept_data, its earlier cause and reason listed (review correction 1)', async () => {
+    const s = await publishedScene(t, load);
+    const held = await lessonOf(s, '2026-11-16');
+    await mark(s, held.id);
+    ok(
+      await keyed(`/api/timetable/lessons/${held.id}/cancel`, s.branch, {
+        reason: 'Excursion to the museum',
+      }),
     );
-    expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(409);
-    expect(errorCode(withdrawn)).toBe('lesson_holds_data');
-    expect(await unitsOf(other.branch)).toEqual(otherBefore);
+    const draft = await draftWithout(s, '2026-11-09');
+    const impact = await checkOf(s, draft, '2026-11-09');
+    expect(impact.keptWithData.map((one) => [one.lessonId, one.cancelCause])).toEqual([
+      [held.id, 'reason'],
+    ]);
+    ok(await publishKeyed(s, draft, '2026-11-09', impact.dayChanges.key));
+    expect(await lessonById(held.id)).toMatchObject({
+      cancel_cause: 'kept_data',
+      cancel_reason: null,
+    });
+    expect((await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData).toEqual(
+      [
+        expect.objectContaining({
+          id: held.id,
+          cancelCause: 'reason',
+          reason: 'Excursion to the museum',
+          cause: 'kept_data',
+        }),
+      ],
+    );
+  });
+
+  it('a kept lesson stays kept, not listed again, on later writes, and comes back held with its id and cells when its own version runs again', async () => {
+    const s = await publishedScene(t, load);
+    const held = await lessonOf(s, '2026-11-23');
+    const { studentId } = await mark(s, held.id);
+    const without = await draftWithout(s, '2026-11-09');
+    ok(await publishOf(t)(s.branch, without, '2026-11-09'));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+
+    // A later version over it: kept again, listed by nobody.
+    const created = await t.post('/api/timetable/versions', s.branch, {
+      academicYearId: s.year,
+      startsOn: '2026-11-16',
+      copyFrom: without,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const third = (created.body as { id: string }).id;
+    const confirmed = await t.post(`/api/timetable/versions/${third}/templates/confirm`, s.branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(third);
+    expect((await checkOf(s, third, '2026-11-16')).keptWithData).toEqual([]);
+    ok(await publishOf(t)(s.branch, third, '2026-11-16'));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+    expect(
+      (await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData,
+    ).toBeUndefined();
+
+    // Both withdrawn, the first version runs again: the lesson is held again.
+    ok(await keyed(`/api/timetable/versions/${third}/withdraw`, s.branch, {}));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+    ok(await keyed(`/api/timetable/versions/${without}/withdraw`, s.branch, {}));
+    expect(await lessonById(held.id)).toMatchObject({
+      block_id: held.block_id,
+      cancel_cause: null,
+      teacher_id: held.teacher_id,
+    });
+    expect(await cellsOf(held.id)).toEqual([{ student_id: studentId, mark: 1 }]);
+    expect(
+      (await entryOf(s.branch, 'timetable_version.withdraw')).datedLessons?.givenBack?.map(
+        (one) => one.id,
+      ),
+    ).toEqual([held.id]);
+  });
+
+  it('a withdraw of the first version keeps a lesson with data with its block, kept_data and listed, and removes the rest', async () => {
+    const s = await publishedScene(t, load);
+    const held = await lessonOf(s, '2026-10-26');
+    const gone = await lessonOf(s, '2026-11-09');
+    await mark(s, held.id);
+    ok(await keyed(`/api/timetable/versions/${s.version}/withdraw`, s.branch, {}));
+    expect(await lessonById(held.id)).toMatchObject({
+      block_id: held.block_id,
+      cancel_cause: 'kept_data',
+    });
+    expect(await lessonById(gone.id)).toBeUndefined();
+    expect(
+      (await entryOf(s.branch, 'timetable_version.withdraw')).datedLessons?.keptWithData?.map(
+        (one) => [one.id, one.cause],
+      ),
+    ).toEqual([[held.id, 'kept_data']]);
+  });
+
+  it('a withdraw that runs the earlier version again keeps and lists a lesson with data the earlier version does not have', async () => {
+    const s = await publishedScene(t, load);
+    // The later version teaches the class on a lesson the earlier one lacks:
+    // the earlier one without the class's row, the later one with it.
+    const without = await draftWithout(s, '2026-11-09');
+    ok(await publishOf(t)(s.branch, without, '2026-11-09'));
+    const back = await draftFrom(s, '2026-11-16');
+    ok(await publishOf(t)(s.branch, back, '2026-11-16'));
+    const held = await lessonOf(s, '2026-11-23');
+    expect(held.cancel_cause).toBeNull();
+    await mark(s, held.id);
+    ok(await keyed(`/api/timetable/versions/${back}/withdraw`, s.branch, {}));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+    expect(
+      (await entryOf(s.branch, 'timetable_version.withdraw')).datedLessons?.keptWithData?.map(
+        (one) => one.id,
+      ),
+    ).toEqual([held.id]);
   });
 });
