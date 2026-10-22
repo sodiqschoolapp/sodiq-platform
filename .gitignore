@@ -21,6 +21,7 @@ CLAUDE.local.md
 !.vscode/extensions.json
 
 # test output
+apps/api/real-size-report-*.md
 playwright-report/
 test-results/
 

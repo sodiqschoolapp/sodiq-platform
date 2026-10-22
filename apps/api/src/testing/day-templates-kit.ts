@@ -104,13 +104,15 @@ export async function dayTemplatesKit(
   options: Pick<TestAppOptions, 'photoStore' | 'mailer' | 'pdfRenderer'> & {
     /** For a test whose routes enqueue jobs: the job queue of the test database. */
     jobs?: boolean;
+    /** Task 5.12c: the clock's first moment, `START` unless given; the accounts are signed in then. */
+    start?: string;
   } = {},
 ): Promise<DayTemplatesKit> {
   const database = await createTestDatabase();
-  const clock = new FixedClock(START);
+  const { jobs, start, ...rest } = options;
+  const clock = new FixedClock(start ?? START);
   const north = await insertBranch(database.migrator, 'North');
   const south = await insertBranch(database.migrator, 'South');
-  const { jobs, ...rest } = options;
   const app = await createTestApp({
     database: database.app,
     clock,
