@@ -21,6 +21,7 @@ import { Audit } from '../audit/audit.service.js';
 import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { departmentInForce, todayOf } from './department-moves.js';
+import { studentJournal } from '../journal/student-cells.query.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf, neverUsedAccounts } from './staff-account-records.js';
 import { FIELD_COLUMNS, textOf } from './student-merges.js';
@@ -159,6 +160,7 @@ export class PersonalData {
         account_created_at: Date | null;
         account_switched_on_at: Date | null;
       }>`select * from personal_data_relatives(${id}::uuid)`.execute(transaction);
+      const journal = await studentJournal(transaction, id);
       const frame = await this.frame(
         transaction,
         access,
@@ -166,6 +168,12 @@ export class PersonalData {
         branches,
         { kind: 'student', id, accountId: null, assignmentIds: [] },
         requestId,
+        // Task 6.1c: the counts of the cells and lines, not their values.
+        {
+          cells: journal.cells.length,
+          cellLines: journal.history.length,
+          cellLinesLeftOut: journal.historyLeftOut?.count ?? 0,
+        },
       );
       // A relative with no live link left is hidden from `entryAnswers`'s
       // name lookup; its name comes from `personal_data_relatives` (decision 2).
@@ -182,6 +190,7 @@ export class PersonalData {
         kind: 'student',
         ...frame,
         entries,
+        journal,
         student: {
           id: student.id,
           uid: student.uid,
@@ -719,6 +728,7 @@ export class PersonalData {
     branches: readonly string[],
     person: ReportPerson,
     requestId: string,
+    counts: Readonly<Record<string, number>> = {},
   ): Promise<ReportFrame> {
     const branchId = branchOf(access);
     const branch = await transaction
@@ -757,6 +767,7 @@ export class PersonalData {
         sections: [...SECTIONS[person.kind]],
         entries: found.rows.length,
         entriesLeftOut: leftOut,
+        ...counts,
       },
       requestId,
     });
@@ -776,7 +787,17 @@ export class PersonalData {
 
 /** The parts of each report, named in its audit entry (decision 5). */
 const SECTIONS: Readonly<Record<PersonalDataKind, readonly string[]>> = {
-  student: ['record', 'uids', 'contracts', 'statuses', 'account', 'relatives', 'photo', 'entries'],
+  student: [
+    'record',
+    'uids',
+    'contracts',
+    'statuses',
+    'account',
+    'relatives',
+    'photo',
+    'journal',
+    'entries',
+  ],
   staff: [
     'record',
     'branches',

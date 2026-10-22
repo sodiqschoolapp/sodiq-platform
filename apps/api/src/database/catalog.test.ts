@@ -186,6 +186,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'password_resets_of_branch(uuid,timestamp with time zone,timestamp with time zone)':
+    'The password resets of the accounts of the staff of a branch, and of any account that wrote a cell line of the branch within 48 hours of its reset, read from every log whatever branch wrote the entry, ids, kinds and moments only, for the report of entries after a reset (edge/people-roles-accounts, Accounts and sign-in; task 6.1c, decision 1 of pull request #209, Look first): one account serves every branch, so a reset made in one branch opens the account in all of them.',
   'student_in_forced_store(uuid)':
     'Whether a store row of a forced delete that can still be restored keeps a mark of the student, a yes or no asked by the trigger that refuses the delete of that student, whatever branch holds the row, as the cell key refused it before the delete (06, Protection: "The attendance and marks are kept for 30 days and can be restored"; task 6.1b-2, decision 7 of pull request #208, Look first).',
   'lesson_history_unaudited(xid8)':

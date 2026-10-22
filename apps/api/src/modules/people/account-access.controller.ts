@@ -4,18 +4,23 @@ import {
   firstPasswordSlipSchema,
   lockSchema,
   neverUsedListSchema,
+  resetEntriesQuerySchema,
+  resetEntriesSchema,
   staffParamsSchema,
   type AccountAccess as AccountAccessAnswer,
   type FirstPasswordSlip,
   type Lock,
   type NeverUsedList,
+  type ResetEntries as ResetEntriesAnswer,
+  type ResetEntriesQuery,
   type StaffParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { AccountAccess } from './account-access.service.js';
+import { ResetEntries } from './reset-entries.service.js';
 
 /**
  * The sign-in access of a staff record's account (task 2.3c-1, pull request
@@ -27,7 +32,10 @@ import { AccountAccess } from './account-access.service.js';
  */
 @Controller('people')
 export class AccountAccessController {
-  constructor(private readonly accountAccess: AccountAccess) {}
+  constructor(
+    private readonly accountAccess: AccountAccess,
+    private readonly resetEntries: ResetEntries,
+  ) {}
 
   @Get('staff/:id/account/access')
   @Requires('account_access', 'view')
@@ -96,5 +104,20 @@ export class AccountAccessController {
   @Returns(neverUsedListSchema)
   neverUsed(@CurrentAccess() access: Access): Promise<NeverUsedList> {
     return this.accountAccess.neverUsed(access);
+  }
+
+  /**
+   * Entries made within 48 hours of a password reset (task 6.1c, pull request
+   * #209; Accounts and sign-in: "A report lists entries made within 48 hours
+   * of a reset"): the readers of "Accounts never used" (decision 5).
+   */
+  @Get('accounts/reset-entries')
+  @Requires('account_access', 'view')
+  @Returns(resetEntriesSchema)
+  resetEntriesReport(
+    @CurrentAccess() access: Access,
+    @ValidQuery(resetEntriesQuerySchema) query: ResetEntriesQuery,
+  ): Promise<ResetEntriesAnswer> {
+    return this.resetEntries.read(access, query);
   }
 }

@@ -401,6 +401,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ACCESS_EDITORS,
   },
   'GET /api/people/accounts/never-used': { branch: 'request', roles: SETUP_VIEWERS },
+  // Task 6.1c: the report of entries after a reset, for the readers of "Accounts never used".
+  'GET /api/people/accounts/reset-entries': { branch: 'request', roles: SETUP_VIEWERS },
   // Task 2.3b-2: the alert of a branch with no active Academic Vice Principal.
   'GET /api/access/branches-without-vice-principal': { branch: 'none', roles: ['super_admin'] },
   // Task 2.3b-1: the subjects of an appointment under `accounts` `edit`; the
