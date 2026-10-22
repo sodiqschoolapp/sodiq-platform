@@ -197,7 +197,15 @@ type Operation =
   | { op: 'cancel'; block: number; lesson: number }
   | { op: 'restore'; block: number; lesson: number }
   // Task 6.1b-1 (the From line of 5.12a): a mark saved, a block deleted.
-  | { op: 'cell'; block: number; lesson: number; student: number; mark: number }
+  | {
+      op: 'cell';
+      block: number;
+      lesson: number;
+      student: number;
+      mark: number;
+      /** A student of the fixture who is not expected in the lesson. */
+      outsider: boolean;
+    }
   | { op: 'delete'; block: number };
 
 const operation: fc.Arbitrary<Operation> = fc.oneof(
@@ -243,6 +251,7 @@ const operation: fc.Arbitrary<Operation> = fc.oneof(
       lesson: fc.nat(),
       student: fc.nat(),
       mark: fc.integer({ min: 0, max: 3 }),
+      outsider: fc.boolean(),
     }),
   },
   fc.record({ op: fc.constant('delete' as const), block: fc.nat() }),
@@ -268,7 +277,7 @@ interface Refused {
 type DataAnswer =
   | { kind: 'accepted' }
   | { kind: 'constraint'; name: 'lesson_holds_data' }
-  | { kind: 'code'; name: 'lesson_cancelled_cell' };
+  | { kind: 'code'; name: 'lesson_cancelled_cell' | 'cell_closed' };
 
 /** Rolls the run back at its end, so no run sees another's rows. */
 class RunOver extends Error {}
@@ -712,15 +721,24 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     if (one.op === 'cell') {
       // Task 6.1b-1: a mark of an expected student, saved as the writer saves it.
       const unit = pick(kind.units, block.lessons.indexOf(lesson));
-      const students = studentsOf(unit, block.date);
-      if (students.length === 0) return undefined;
+      const expectedHere = studentsOf(unit, block.date);
+      const everyone = [
+        ...new Set([...fixture.members.values()].flat().map((member) => member.student)),
+      ];
+      const students = one.outsider
+        ? everyone.filter((student) => !expectedHere.includes(student))
+        : expectedHere;
+      // An outsider on a cancelled lesson meets two refusals; the model keeps to one.
+      if (students.length === 0 || (one.outsider && lesson.cancelled)) return undefined;
       const student = pick(students, one.student);
       const before = lesson.cells.get(student);
       return {
         next: copy,
-        data: lesson.cancelled
-          ? { kind: 'code', name: 'lesson_cancelled_cell' }
-          : { kind: 'accepted' },
+        data: one.outsider
+          ? { kind: 'code', name: 'cell_closed' }
+          : lesson.cancelled
+            ? { kind: 'code', name: 'lesson_cancelled_cell' }
+            : { kind: 'accepted' },
         write: async (transaction) => {
           const [saved] = await saveCells(transaction, audit, { accountId: fixture.account }, [
             {
@@ -831,6 +849,9 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
                   reached.add(failure.constraint ?? '');
                 }
                 expect(await stored(transaction)).toEqual(expected(blocks));
+                // Task 6.1b-1: a move, a cancel, a restore, a teacher or room
+                // change keeps every lesson's cells.
+                expect(await cellsStored(transaction)).toEqual(cellsExpected(blocks));
               }
               throw new RunOver();
             });
@@ -850,6 +871,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     // Task 6.1b-1: every answer of a cell and a delete was reached.
     expect([...dataAnswers].sort()).toEqual([
       'cell:accepted',
+      'cell:cell_closed',
       'cell:lesson_cancelled_cell',
       'delete:accepted',
       'delete:lesson_holds_data',

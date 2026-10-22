@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { markedLesson, workWithTotal } from '../../testing/cells-kit.js';
+import { substitutedIn } from '../../testing/substitutions-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
@@ -515,5 +516,82 @@ describe('the protection of dated lessons through their writers', () => {
     expect(own.length).toBeGreaterThan(0);
     expect(copied).toHaveLength(own.length);
     expect(copied.filter((id) => own.includes(id))).toEqual([]);
+  });
+  // Review correction 3 (5.7b-1, decision 6): a substitution in force on a
+  // lesson kept with data ends `dropped`, as on a removed lesson.
+  it('ends a substitution in force on a lesson kept with data, dropped', async () => {
+    const s = await publishedScene(t, load);
+    const held = await lessonOf(s, '2026-11-16');
+    await mark(s, held.id);
+    expect(await substitutedIn(t.database.migrator, s.branch, '2026-11-16', 100)).toBeGreaterThan(
+      0,
+    );
+    const draft = await draftWithout(s, '2026-11-09');
+    const impact = await checkOf(s, draft, '2026-11-09');
+    ok(await publishKeyed(s, draft, '2026-11-09', impact.dayChanges.key));
+    expect(await lessonById(held.id)).toMatchObject({ cancel_cause: 'kept_data' });
+    const rows = await t.database.migrator
+      .selectFrom('substitution_lessons')
+      .select(['end_cause'])
+      .where('lesson_id', '=', held.id)
+      .execute();
+    expect(rows).toEqual([{ end_cause: 'dropped' }]);
+  });
+
+  // Plan test 3 (06, What a change does to existing data, "Lesson moved to
+  // another day or slot": "Created at the new time"): another version's move.
+  it('a publish that moves a lesson with data to another slot creates the lesson at the new time and keeps the old one, listed in the preview and the entry', async () => {
+    const s = await publishedScene(t, load);
+    const held = await lessonOf(s, '2026-11-16');
+    await mark(s, held.id);
+    const created = await t.post('/api/timetable/versions', s.branch, {
+      academicYearId: s.year,
+      startsOn: '2026-11-09',
+      copyFrom: s.version,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const draft = (created.body as { id: string }).id;
+    const block = await t.database.migrator
+      .selectFrom('pattern_entries')
+      .innerJoin('teaching_load_rows', 'teaching_load_rows.id', 'pattern_entries.load_row_id')
+      .select('pattern_entries.block_id')
+      .where('teaching_load_rows.version_id', '=', draft)
+      .where('teaching_load_rows.class_id', '=', s.classId)
+      .executeTakeFirstOrThrow();
+    const moved = await t.post(
+      `/api/timetable/versions/${draft}/pattern/${block.block_id}/move`,
+      s.branch,
+      { weekday: 1, slotPosition: 5 },
+    );
+    expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    const confirmed = await t.post(`/api/timetable/versions/${draft}/templates/confirm`, s.branch);
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+    await load.freeEditLock(draft);
+
+    const impact = await checkOf(s, draft, '2026-11-09');
+    expect(impact.keptWithData.map((one) => one.lessonId)).toEqual([held.id]);
+    ok(await publishOf(t)(s.branch, draft, '2026-11-09'));
+    expect(await lessonById(held.id)).toMatchObject({
+      block_id: held.block_id,
+      cancel_cause: 'kept_data',
+    });
+    const day = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'starts_at', 'cancel_cause'])
+      .where('branch_id', '=', s.branch)
+      .where('class_id', '=', s.classId)
+      .where('lesson_date', '=', '2026-11-16')
+      .orderBy('starts_at')
+      .execute();
+    expect(day).toHaveLength(2);
+    expect(day.find((one) => one.id !== held.id)).toMatchObject({ cancel_cause: null });
+    expect(day.find((one) => one.id !== held.id)?.starts_at.getTime() ?? 0).toBeGreaterThan(
+      held.starts_at.getTime(),
+    );
+    expect(
+      (await entryOf(s.branch, 'timetable_version.publish')).datedLessons?.keptWithData?.map(
+        (one) => one.id,
+      ),
+    ).toEqual([held.id]);
   });
 });

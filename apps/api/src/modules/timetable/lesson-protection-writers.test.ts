@@ -620,13 +620,26 @@ describe('the protection of dated lessons through the other writers', () => {
         items: [expect.objectContaining({ kind: 'data_lesson', date: '2027-05-31' })],
         more: 0,
       });
+      // Another branch with lessons of its own, and the audit log of both.
+      const other = await publishedScene(t, load);
+      const entries = () =>
+        t.database.migrator
+          .selectFrom('audit_log')
+          .select('id')
+          .where('branch_id', 'in', [s.branch, other.branch])
+          .orderBy('id')
+          .execute();
       const before = await units(s.branch);
+      const otherBefore = await units(other.branch);
+      const logged = await entries();
       const refused = await t.put(`/api/setup/academic-years/${s.year}/quarters`, s.branch, {
         quarters: dates,
       });
       expect(refused.status, JSON.stringify(refused.body)).toBe(409);
       expect((refused.body as { error: { code: string } }).error.code).toBe('lessons_hold_data');
       expect(await units(s.branch)).toEqual(before);
+      expect(await units(other.branch)).toEqual(otherBefore);
+      expect(await entries()).toEqual(logged);
       expect(await lessonById(held.id)).toMatchObject({ cancel_cause: null });
       const quarter = await t.database.migrator
         .selectFrom('quarters')

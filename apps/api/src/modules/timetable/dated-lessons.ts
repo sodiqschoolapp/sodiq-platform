@@ -10,7 +10,7 @@ import type { DatedFindings } from './dated-check.js';
 import type { DayWritePlan } from './day-changes-kept.js';
 import { lessonsHoldingData } from './lesson-data.js';
 import type { PatternState } from './pattern.service.js';
-import { endSubstitutionRows } from './substitutions-read.js';
+import { endSubstitutionRows, lessonPlacesOf } from './substitutions-read.js';
 
 /**
  * The dated lessons of a version written at publish (task 5.5b-1, pull
@@ -470,18 +470,11 @@ async function storedPatternDates(
   transaction: Transaction,
   rows: readonly StoredRow[],
 ): Promise<Map<string, string>> {
-  const dates = new Map(rows.map((row) => [row.id, row.lesson_date]));
-  if (rows.length === 0) return dates;
-  const moved = await sql<{ lesson_id: string; from_date: string }>`
-    select distinct on (c.lesson_id) c.lesson_id, c.from_date::text as from_date
-    from lesson_day_changes c
-    where c.lesson_id = any(${rows.map((row) => row.id)}::uuid[])
-      and c.kind = 'move'
-      and not exists (select 1 from lesson_day_change_ends e where e.change_id = c.id)
-    order by c.lesson_id, c.changed_at, c.id
-  `.execute(transaction);
-  for (const one of moved.rows) dates.set(one.lesson_id, one.from_date);
-  return dates;
+  const places = await lessonPlacesOf(
+    transaction,
+    rows.map((row) => row.id),
+  );
+  return new Map(rows.map((row) => [row.id, places.get(row.id)?.pattern_date ?? row.lesson_date]));
 }
 
 /** What a write of dated lessons keeps, by `datedKeeps`. */
@@ -1058,7 +1051,9 @@ export async function writeDatedLessons(
           ...(times === undefined ? {} : { times }),
         });
       }
-      if (found.cancel_cause === KEPT_DATA) {
+      // A `kept_data` lesson its version wants again is given back when it is
+      // held; one the version cancels in place is listed with that cancel.
+      if (found.cancel_cause === KEPT_DATA && cancel.cause === null) {
         givenBack.push(removedOf(found));
       } else if (
         cancel.cause !== null &&

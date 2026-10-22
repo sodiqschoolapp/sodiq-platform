@@ -5256,6 +5256,34 @@ describe('publish', () => {
         expect(others.every((one) => one.cancel_cause === null)).toBe(true);
       });
 
+      it('refuses a withdraw that would move a lesson with data to another block, and changes nothing', async () => {
+        const { s, english, groups, without, wednesday, mark } = await groupsScene();
+        versionOf(await publish(s.branch, without, '2026-10-26'));
+        // G1 and G2 now each a block of the later version, both with data:
+        // the earlier version's one block of the three can keep only one.
+        const day = (await lessonsOf(s.branch)).filter(
+          (one) => one.subject_id === english && one.date === wednesday,
+        );
+        const g1 = day.find((one) => one.group_id === groups[0]);
+        const g2 = day.find((one) => one.group_id === groups[1]);
+        expect(g1?.block_id).not.toBe(g2?.block_id);
+        await mark(g1?.id ?? '');
+        await mark(g2?.id ?? '');
+        const before = await lessonsOf(s.branch);
+        const refused = await request(t.kit.server)
+          .post(`/api/timetable/versions/${without}/withdraw`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({});
+        expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+        expect(errorCode(refused)).toBe('lessons_hold_data');
+        expect(
+          (refused.body as { error: { details: { recordId: string }[] } }).error.details,
+        ).toHaveLength(1);
+        expect(await lessonsOf(s.branch)).toEqual(before);
+      });
+
       it('keeps one half of a double holding data, dropped by the version, with its pair id; the other half goes', async () => {
         const s = await scene({ lessons: 2, placed: 0 });
         await t.database.migrator

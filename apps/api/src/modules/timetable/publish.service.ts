@@ -566,7 +566,11 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
-        canPublish: version.status === 'draft' && findings.refusals.length === 0,
+        // Task 6.1b-1 (decision 3): a lesson with data in the way refuses the publish too.
+        canPublish:
+          version.status === 'draft' &&
+          findings.refusals.length === 0 &&
+          (findings.impact?.answer.heldData.length ?? 0) === 0,
       };
     });
   }
@@ -836,7 +840,8 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
-        canPublish: findings.refusals.length === 0,
+        canPublish:
+          findings.refusals.length === 0 && (findings.impact?.answer.heldData.length ?? 0) === 0,
       },
     };
   }
