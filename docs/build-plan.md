@@ -957,7 +957,7 @@ How to read the task lines:
   - Done when: each pair has a test in both orders, and the browser walk passes in CI.
   - From 5.8c (pull request #196, not sure): a room's forced delete takes the publish lock first, so the writers of dated lessons and the one-day room change wait and then read the room again (404). The other writers that name a room (a room closure, an exam room, a load row, a class's home room, a pattern entry) read the room without a lock before they write its key: a forced delete of that room committed in between gives them a foreign-key error (500). A simultaneous-actions case of this task runs each against a room's forced delete and maps the error to `not_found`.
 
-- [ ] **5.12c The real-size run** (5.12 split in three, pull request #201, decision 1, Look first)
+- [x] **5.12c The real-size run** (5.12 split in three, pull request #201, decision 1, Look first)
   - Read: `14` (Whole system: Speed tests), `12` (speed targets).
   - Build: the run of the owner's lines below, on invented data, by a script the report names.
   - Done when: the run's report (the board, the publish and a journal page timed; the timetable checked by the rule engine with no blocked result) is in the pull request.
@@ -986,6 +986,7 @@ How to read the task lines:
   - Build: the AG Grid Community grid with pinned student columns, lesson columns grouped by date, scroll to the nearest date, summary columns from `packages/calc`, the bottom row, student search, and lesson mode for today's lesson.
   - Done when: the grid meets the speed targets in `12` with a full quarter of data.
   - From 5.9b (pull request #198, decision 7): `06`, Views and outputs: "Teacher home page: today's lessons as a list (period, time, class or group, subject, room, button to open the journal)". The home page's list is `TeachingHome` (`apps/web/src/features/timetable/teaching-home.tsx`), from `GET /api/timetable/home`; each lesson of today gets the button that opens its journal (of its own branch).
+  - From 5.12c (pull request #203, decision 1, Look first): the journal page is timed on the real-size data of `real-size.database.test.ts` (`REAL_SIZE=full`): open a journal for a quarter, against `12`.
   - From 4.3 (pull request #104, row table): `edge/calculation`, "The month switch in the journal": "It shows the averages over that month's lessons. The month result uses the quarter's weights without the rating exam and is labelled so", from `packages/calc`.
 
 - [ ] **6.3 Attendance**
@@ -1171,6 +1172,7 @@ How to read the task lines:
   - Read: `12` (Speed targets), `14` (Whole system), `edge/system-behaviour`.
   - Build: a data generator for three times the estimated yearly data with invented names; automated measurement of each target.
   - Done when: every target is met or the gap is written in `docs/progress.md` with a plan.
+  - From 5.12c (pull request #203, decisions 2 and 3): the real-size run (`apps/api/src/modules/timetable/real-size.database.test.ts`, `REAL_SIZE=full`) builds the school at its size, publishes it and times the board, a move, the publish and the published week; it runs small in CI. The measure before each release at full size and the 1,000 simultaneous users of `12` (Load) are this task's.
 
 - [ ] **10.2 Backups, restore drill and monitoring**
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
