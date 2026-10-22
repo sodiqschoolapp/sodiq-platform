@@ -486,7 +486,10 @@ export function viewHtml(
   const landscape = view.span === 'week' || view.kind === 'branch';
   const body =
     view.kind === 'branch'
-      ? view.days.map((day) => schoolDay(view, day, texts, language)).join('')
+      ? // Each day of the school starts a page of its own: one sheet a day for the wall.
+        view.days
+          .map((day) => schoolDay(view, day, texts, language))
+          .join('<div class="next-day"></div>')
       : view.span === 'day' || view.days.some((day) => day.axis === 'clock')
         ? view.days.map((day) => dayList(view, day, texts, language)).join('')
         : weekGrid(view, texts, language);
@@ -516,6 +519,7 @@ h1 { font-size: 13pt; margin: 0 0 1mm; }
 h2 { font-size: 9.5pt; margin: 0; }
 .day p { margin: 0; font-weight: 400; }
 section { break-inside: avoid-page; margin-bottom: 4mm; }
+.next-day { break-before: page; }
 table { border-collapse: collapse; width: 100%; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }

@@ -1,6 +1,6 @@
 import type { TimetableView, ViewChoices, ViewDay, ViewLesson } from '@sodiq/shared';
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
@@ -298,14 +298,13 @@ describe('the timetable files', () => {
 
   it('sends the view shown for the PDF and for Excel, with the id its kind takes', async () => {
     const saved: string[] = [];
-    const click = HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
       saved.push(this.download);
-    };
-    const created = URL.createObjectURL;
-    const revoked = URL.revokeObjectURL;
-    URL.createObjectURL = () => 'blob:file';
-    URL.revokeObjectURL = () => undefined;
+    });
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    const revoked = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined);
     try {
       const calls = await openWith(pdfAnswer);
       screen.getByRole('button', { name: en.timetable.views.pdf }).click();
@@ -321,27 +320,21 @@ describe('the timetable files', () => {
         { kind: 'class', classId: uid(101), date: '2026-10-12', span: 'week', format: 'xlsx' },
       ]);
     } finally {
-      HTMLAnchorElement.prototype.click = click;
-      URL.createObjectURL = created;
-      URL.revokeObjectURL = revoked;
+      click.mockRestore();
+      created.mockRestore();
+      revoked.mockRestore();
     }
   });
 
   it('opens the tab for Print in the click and gives it the PDF once it comes', async () => {
-    const tab = { location: { href: '' }, closed: false, close: () => undefined };
-    const opened: unknown[] = [];
-    const open = window.open;
-    window.open = ((...args: unknown[]) => {
-      opened.push(args);
-      return tab;
-    }) as typeof window.open;
-    const created = URL.createObjectURL;
-    URL.createObjectURL = () => 'blob:printout';
+    const tab = { location: { href: '' }, close: () => undefined };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:printout');
     try {
       const calls = await openWith(pdfAnswer);
       screen.getByRole('button', { name: en.timetable.views.print }).click();
       // Opened at once, before the server answered.
-      expect(opened).toEqual([['', '_blank']]);
+      expect(open.mock.calls).toEqual([['', '_blank']]);
       await waitFor(() => {
         expect(tab.location.href).toBe('blob:printout');
       });
@@ -349,8 +342,8 @@ describe('the timetable files', () => {
         { kind: 'class', classId: uid(101), date: '2026-10-12', span: 'week', format: 'pdf' },
       ]);
     } finally {
-      window.open = open;
-      URL.createObjectURL = created;
+      open.mockRestore();
+      created.mockRestore();
     }
   });
 
@@ -362,8 +355,7 @@ describe('the timetable files', () => {
         closed += 1;
       },
     };
-    const open = window.open;
-    window.open = (() => tab) as unknown as typeof window.open;
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     try {
       await openWith(() => refusal('pdf_unavailable', 503));
       screen.getByRole('button', { name: en.timetable.views.print }).click();
@@ -371,7 +363,7 @@ describe('the timetable files', () => {
       expect(closed).toBe(1);
       expect(tab.location.href).toBe('');
     } finally {
-      window.open = open;
+      open.mockRestore();
     }
   });
 });

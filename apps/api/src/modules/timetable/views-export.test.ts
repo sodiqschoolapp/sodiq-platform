@@ -296,6 +296,9 @@ describe('the timetable files', () => {
       expect(html).toMatch(/@bottom-left \{ content: "As of 10\.10\.2026 23:55"/);
       expect(html).toMatch(/@bottom-right \{ content: "Page " counter\(page\)/);
       expect(html).toContain('size: A4 landscape');
+      // The school's week: each day on a page of its own.
+      const school = await printed({ kind: 'branch', span: 'week' });
+      expect(school.match(/<div class="next-day"><\/div>/g)).toHaveLength(4);
     });
 
     it('marks a changed, a cancelled and a replaced lesson as the views do', async () => {

@@ -285,6 +285,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 22 October 2026: print, PDF and Excel of the timetable views (task 5.9c-1)
+
+Plan approved on pull request #199 with corrections 1 to 8; decisions 1 to 15 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 5.9c is split into 5.9c-1 (the dated views as print, PDF and Excel) and 5.9c-2 (the print of a version's weekly pattern and the DRAFT print) | Decision 1 |
+| **Look first** (widening what roles may do). `timetable_views` gains `export` for the nine roles that hold `view`, in the scope of their view; `permissions.test.ts` keeps the two rows equal | Decision 2; `06`, Views and outputs |
+| **Look first** (new dependency). `playwright-core` 1.63.0 in `apps/api`, the version the lockfile already holds through `@playwright/test`; `@fontsource-variable/golos-text` and `@fontsource-variable/bitter` 5.3.0 (approved, decided ahead 2.2d) in `apps/api` too | Decision 3; `13`, Exports |
+| **Look first** (test environment). `render.yaml` unchanged: no Chromium there, PDFs answer 503 `pdf_unavailable`, Excel works; the owner decides on Chromium there (a larger plan or another runtime) | Decision 4 |
+| **Look first** (a design-system text that is not true). The Golos Text files have no glyph for U+02BB (oʻ, gʻ), though `docs/design-system.md` says they cover it; the PDFs draw that one character from Bitter's latin file, embedded beside Golos Text with `unicode-range: U+02BB`. The web app draws it today with a font of the device | Decision 16 (build): without it Chromium drew U+02BB in Liberation Serif, a font of the machine, or nothing |
+| Print is the server's PDF opened in a new tab; the export is synchronous, one render at a time per process, at most 8 waiting, 30 seconds each | Decisions 5 and 6 |
+| The file is built from the 5.9a view answer only, read in one transaction; the PDF is rendered outside any transaction; the audit entry is written in a second transaction before the file is sent; a failed render writes none | Decisions 7 and 14 |
+| "As of" is the moment of the request in branch time on every page (an `@page` margin box, correction 3) and in the entry; each day names its version and "valid from" | Decisions 8 and 9 |
+| Texts in the account's language from `VIEW_EXPORT_TEXTS` of `packages/shared` (correction 1); names as entered, HTML-escaped; dates `DD.MM.YYYY` in the three languages | Decision 10; build decision for the date form |
+| Excel: one row per lesson, exam or busy block with date and time cells, a preamble, the frozen and bold row moved to the heading; each row also carries its day's notes (day off, no version, outside the year, read from its pattern) | Decision 11; build decision: a day off entered past the calendar routes keeps its lessons |
+| A refusal of the PDF shows under the buttons (`FailureAlert`), where the plan named a toast | Build decision: `.claude/rules/web.md`, a failed call beside its controls |
+
 ## 21 October 2026: the teacher home page (task 5.9b)
 
 Plan approved on pull request #198 with corrections 1 and 2; decisions 1 to 7 confirmed there. Flagged on issue #42.

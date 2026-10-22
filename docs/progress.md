@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.9c-1 Print, PDF and Excel of the timetable views
+
+- Timetable views (`/timetable/views`) has Print, PDF and Excel for the school, a class, a teacher or a room, by day or by week, in the 5.9a scope of the role (`POST /api/timetable/views/export`, area `timetable_views`, action `export`). Each file stamps "as of", the version and "valid from" of each day, "one-day changes not included" on a day read from its pattern, and logs one `timetable_view.export` entry.
+- PDFs are made by headless Chromium (`playwright-core`, `ChromiumPdfRenderer`, `http/pdf.ts`) with Golos Text embedded, and U+02BB from Bitter's latin file: the Golos Text files have no glyph for it (decision 16, Look first). Excel is one row per lesson, exam or busy block below a preamble.
+- Left out: the print of a version's weekly pattern and the DRAFT print (5.9c-2); Chromium on the test environment (issue #42; there the PDF answers `pdf_unavailable`, Excel works).
+
+The next sessions must know:
+
+- `CHROMIUM_PATH` names the Chromium of the PDFs; unset, the one `playwright-core` installs. The API tests give a fake renderer (`createTestApp({ pdfRenderer })`); the real one runs in the browser test (`e2e/timetable-files.spec.ts`), whose `e2e/pdf-text.ts` reads fonts and page texts of a PDF.
+- `TimetableViews` has `branchIn`, `classIn`, `teacherIn`, `roomIn` that read in the caller's transaction; `ReturnsFile({ pdf: true })` declares both file types.
+- `publishedScene` takes `secondSubject`: the teacher also teaches the other class a second subject on Monday's second slot.
+- The next task is 5.9c-2.
+
 ## 21 October 2026: task 5.9b Teacher home page
 
 - The home page of the Teacher, both Head Teachers and the Tutor lists the person's own lessons and invigilated exams of today from every branch in time order, each with its branch once there are two, and the week as a table by clock time (`GET /api/timetable/home`, `TeachingHome`).
