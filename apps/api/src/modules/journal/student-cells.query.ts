@@ -116,7 +116,7 @@ export async function studentJournal(
       changedAt: line.changed_at.toISOString(),
       lesson: cellLesson(lessons.get(line.lesson_id)),
       attendance: line.work_id === null,
-                workKind: line.work_id === null ? null : (works.get(line.work_id)?.kind ?? null),
+      workKind: line.work_id === null ? null : (works.get(line.work_id)?.kind ?? null),
       ...lineValues(line),
       changedHow: cellChange(line.changed_how),
       changedBy: named(line.changed_by),

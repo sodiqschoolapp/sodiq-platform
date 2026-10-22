@@ -78,6 +78,8 @@ describe('the marks and attendance of the student report', () => {
     const studentId = pupil ?? '';
     const lesson = await cells.lesson(t.north, year, classId, '2026-10-12');
     const later = await cells.lesson(t.north, year, classId, '2026-10-13');
+    // Made last, dated first: the cells come by lesson start, not by id.
+    const earlier = await cells.lesson(t.north, year, classId, '2026-10-11');
     const work = await workWithTotal(t.database.migrator, {
       branchId: t.north,
       lessonId: lesson,
@@ -89,6 +91,7 @@ describe('the marks and attendance of the student report', () => {
         { lessonId: lesson, studentId, workId: null, value: 1, version: null },
         { lessonId: lesson, studentId, workId: work, value: 35, version: null },
         { lessonId: later, studentId, workId: null, value: 2, version: null },
+        { lessonId: earlier, studentId, workId: null, value: 3, version: null },
         { lessonId: lesson, studentId: other ?? '', workId: null, value: 3, version: null },
       ],
       '2026-10-12T10:00:00+05:00',
@@ -120,39 +123,47 @@ describe('the marks and attendance of the student report', () => {
         date: cell.lesson?.date,
         branch: cell.branch,
       })),
-    ).toEqual(
-      expect.arrayContaining([
-        {
-          attendance: true,
-          workKind: null,
-          total: null,
-          value: 1,
-          version: 1,
-          how: 'entry',
-          by: 'Usmonova Malika',
-          date: '2026-10-12',
-          branch: 'North',
-        },
-        {
-          attendance: false,
-          workKind: 'classwork',
-          total: 40,
-          value: 35,
-          version: 1,
-          how: 'entry',
-          by: 'Usmonova Malika',
-          date: '2026-10-12',
-          branch: 'North',
-        },
-      ]),
-    );
-    expect(journal.cells).toHaveLength(2);
+    ).toEqual([
+      {
+        attendance: true,
+        workKind: null,
+        total: null,
+        value: 3,
+        version: 1,
+        how: 'entry',
+        by: 'Usmonova Malika',
+        date: '2026-10-11',
+        branch: 'North',
+      },
+      {
+        attendance: true,
+        workKind: null,
+        total: null,
+        value: 1,
+        version: 1,
+        how: 'entry',
+        by: 'Usmonova Malika',
+        date: '2026-10-12',
+        branch: 'North',
+      },
+      {
+        attendance: false,
+        workKind: 'classwork',
+        total: 40,
+        value: 35,
+        version: 1,
+        how: 'entry',
+        by: 'Usmonova Malika',
+        date: '2026-10-12',
+        branch: 'North',
+      },
+    ]);
     const ofLater = journal.history.filter((line) => line.lesson?.date === '2026-10-13');
     expect(ofLater.map((line) => [line.before, line.after])).toEqual([
       [2, null],
       [null, 2],
     ]);
-    expect(journal.history).toHaveLength(4);
+    expect(journal.history).toHaveLength(5);
     expect(journal.historyLeftOut).toBeNull();
     // Newest first, by moment then id.
     expect(journal.history.map((line) => line.changedAt)).toEqual(
@@ -163,8 +174,27 @@ describe('the marks and attendance of the student report', () => {
     expect(theirs.journal.cells.map((cell) => cell.value)).toEqual([3]);
     // The export entry counts the cells and lines, not their values.
     const [entry] = await t.entries('student.personal_data_report', studentId);
-    expect(entry?.details).toMatchObject({ cells: 2, cellLines: 4, cellLinesLeftOut: 0 });
+    expect(entry?.details).toMatchObject({ cells: 3, cellLines: 5, cellLinesLeftOut: 0 });
     expect(JSON.stringify(entry?.details)).not.toContain('35');
+  });
+
+  // Decision 10: a cancelled lesson's cells are shown with the cancel.
+  it('shows the cells of a cancelled lesson as cancelled', async () => {
+    const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
+    const studentId = pupil ?? '';
+    const lesson = await cells.lesson(t.north, year, classId, '2026-10-16');
+    await save(
+      t.north,
+      [{ lessonId: lesson, studentId, workId: null, value: 1, version: null }],
+      '2026-10-16T10:00:00+05:00',
+    );
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: 'School trip' })
+      .where('id', '=', lesson)
+      .execute();
+    const { journal } = await report(studentId);
+    expect(journal.cells.map((cell) => [cell.value, cell.lesson?.cancelled])).toEqual([[1, true]]);
   });
 
   it('holds the cells of a branch the student has left', async () => {

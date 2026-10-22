@@ -29,6 +29,17 @@ describe('the report of entries after a reset', () => {
   let t: DayTemplatesKit;
   let cells: CellsKit;
   let adminAccount: string;
+
+  /** The account of the kit's holder of a role. */
+  const accountOf = async (role: 'super_admin' | 'academic_vice_principal') =>
+    (
+      await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', role)
+        .orderBy('id')
+        .executeTakeFirstOrThrow()
+    ).account_id;
   const scenes = new Map<string, { classId: string; year: string; students: string[] }>();
 
   const classes = () => cells.lessons.load.classes;
@@ -135,21 +146,18 @@ describe('the report of entries after a reset', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit({ start: NOW });
     cells = await CellsKit.create(t.database.migrator);
-    adminAccount = (
-      await t.database.migrator
-        .selectFrom('assignments')
-        .select('account_id')
-        .where('role', '=', 'super_admin')
-        .executeTakeFirstOrThrow()
-    ).account_id;
+    adminAccount = await accountOf('super_admin');
   });
 
   afterAll(async () => {
     await t.close();
   });
 
-  it('lists the entries of the 48 hours of an administrator reset, and none before or after', async () => {
+  it('lists the entries of the 48 hours of a reset by the Academic Vice Principal, and none before or after', async () => {
     const teacher = await classes().person(t.north, ['uz'], { first: 'Nodira', last: 'Rahimova' });
+    // A Teacher of the branch, whom the Academic Vice Principal may reset.
+    await classes().role(teacher.accountId, t.north, 'teacher');
+    const viceAccount = await accountOf('academic_vice_principal');
     const colleague = await classes().person(t.north, ['uz']);
     const first = await lesson(t.north);
     const second = await lesson(t.north);
@@ -162,6 +170,8 @@ describe('the report of entries after a reset', () => {
     const reset = await t.post(
       `/api/people/staff/${teacher.staffId}/account/password-reset`,
       t.north,
+      {},
+      t.vicePrincipal,
     );
     expect(reset.status, JSON.stringify(reset.body)).toBe(200);
     await mark({
@@ -199,8 +209,8 @@ describe('the report of entries after a reset', () => {
     );
     expect(found?.kind).toBe('administrator');
     expect(found?.at).toBe(iso(NOW));
-    expect(found?.by?.accountId).toBe(adminAccount);
-    // The kit's Super Admin has no staff record: a login and no name.
+    expect(found?.by?.accountId).toBe(viceAccount);
+    // The kit's Academic Vice Principal has no staff record: a login and no name.
     expect(found?.by?.login).toEqual(expect.any(String));
     expect(found?.by?.name).toBeNull();
     expect(found?.person.name).toBe('Rahimova Nodira');
@@ -437,6 +447,24 @@ describe('the report of entries after a reset', () => {
     expect(ok(onlyTo).from).toBe('2026-09-13');
   });
 
+  // Decision 3: the second-step reset writes the administrator's reset too.
+  it('lists the second-step reset as a reset by an administrator', async () => {
+    const browser = await t.kit.completeSession('Zarina', 'Hamidova');
+    const person = await classes().person(t.north, ['uz'], { accountId: browser.account.id });
+    const response = await t.post(
+      `/api/people/staff/${person.staffId}/account/second-step-reset`,
+      t.north,
+    );
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    const resets = resetOf(
+      ok(await report(t.north, '2026-11-02', '2026-11-02')),
+      browser.account.id,
+    );
+    expect(resets.map((reset) => [reset.kind, reset.at, reset.by?.accountId])).toEqual([
+      ['administrator', iso(NOW), adminAccount],
+    ]);
+  });
+
   it('refuses a Teacher, a Tutor and a Head Teacher of the branch', async () => {
     const tutor = await t.kit.fullSession('Shahlo', 'Nazarova');
     await t.kit.giveRole(tutor.account.id, { role: 'tutor', branchId: t.north });
@@ -453,16 +481,29 @@ describe('the report of entries after a reset', () => {
   // `kind = 'person'` can be reached by no fixture; the answer's columns are
   // held here: ids, kinds and moments only (decision 1).
   it('answers through password_resets_of_branch ids, kinds and moments only', async () => {
+    const own = await classes().person(t.north, ['uz']);
+    await entry({
+      branch: t.north,
+      action: 'account.password_reset',
+      at: at('2026-10-30', '09:00'),
+      actor: adminAccount,
+      record: { type: 'account', id: own.accountId },
+    });
     const columns = await t.app.get(Transactions).run(
       [t.north],
       async (transaction) =>
         (
           await sql<Record<string, unknown>>`
-          select * from password_resets_of_branch(${t.north}::uuid, '-infinity', 'infinity') limit 1
+          select * from password_resets_of_branch(
+            ${t.north}::uuid,
+            ${iso(at('2026-10-30', '00:00'))}::timestamptz,
+            ${iso(at('2026-10-31', '00:00'))}::timestamptz
+          )
         `.execute(transaction)
-        ).rows[0],
+        ).rows,
     );
-    expect(Object.keys(columns ?? {}).sort()).toEqual([
+    expect(columns).toHaveLength(1);
+    expect(Object.keys(columns[0] ?? {}).sort()).toEqual([
       'account_id',
       'actor_id',
       'email_change_action',
