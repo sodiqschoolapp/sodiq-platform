@@ -19,10 +19,13 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
+import { markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
-import { RESTORE_REFUSALS } from './forced-deletes.service.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from '../journal/cells.js';
+import { RESTORE_REFUSALS, type LessonRows } from './forced-deletes.service.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -197,7 +200,25 @@ describe('the forced delete of a dated lesson and its restore', () => {
       t.database.migrator.selectFrom('notifications').select('id').orderBy('id').execute(),
       t.database.migrator.selectFrom('audit_log').select('id').orderBy('id').execute(),
       t.database.migrator.selectFrom('request_keys').selectAll().orderBy('key').execute(),
+      // Task 6.1b-2: the cells and works a forced delete and a restore write.
+      t.database.migrator.selectFrom('journal_cells').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_works').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_cell_history').selectAll().orderBy('id').execute(),
     ]);
+
+  /**
+   * Task 6.1b-2: a mark of a new member of the lesson's class on the lesson,
+   * saved through `saveCells`; answers the student.
+   */
+  const mark = async (s: Scene, lessonId: string, classId = s.classId) =>
+    (
+      await markedLesson(t.app, t.database.migrator, {
+        branchId: s.branch,
+        classId,
+        lessonId,
+        accountId: adminAccount,
+      })
+    ).studentId;
 
   /** A copy of a stored lesson in a block of its own dated `date`, written by the migrator. */
   async function lessonDated(s: Scene, date: string) {
@@ -480,6 +501,9 @@ describe('the forced delete of a dated lesson and its restore', () => {
     it('answers 404 for a lesson of another branch and an unknown one, and nothing changes', async () => {
       const other = await scene();
       const foreign = await lessonOf(other, NEXT_MONDAY);
+      // Marked lessons in both branches (task 6.1b-2).
+      await mark(other, foreign.id);
+      await mark(northScene, (await lessonOf(northScene, '2026-11-09')).id);
       const before = await everything();
       refusedWith(await forceDelete(t.north, foreign.id), 404, 'not_found');
       refusedWith(await forceDelete(t.north, UNKNOWN), 404, 'not_found');
@@ -491,6 +515,8 @@ describe('the forced delete of a dated lesson and its restore', () => {
       const other = await scene();
       const foreign = await lessonOf(other, NEXT_MONDAY);
       const lesson = await lessonOf(s, '2026-11-16');
+      await mark(other, foreign.id);
+      await mark(s, lesson.id);
       const key = randomUUID();
       done(await forceDelete(s.branch, lesson.id, 'Rain', t.admin, key));
       const after = await everything();
@@ -1026,11 +1052,12 @@ describe('the forced delete of a dated lesson and its restore', () => {
     it('is refused to the Academic Vice Principal, the Principal and a Teacher (the harness tries every role), and answers 404 for another branch’s and an unknown id', async () => {
       const s = northScene;
       const lesson = await lessonOf(s, '2026-12-07');
+      await mark(s, lesson.id);
       const store = storeOf(await forceDelete(s.branch, lesson.id));
       const other = await scene();
-      const foreign = storeOf(
-        await forceDelete(other.branch, (await lessonOf(other, NEXT_MONDAY)).id),
-      );
+      const foreignLesson = (await lessonOf(other, NEXT_MONDAY)).id;
+      await mark(other, foreignLesson);
+      const foreign = storeOf(await forceDelete(other.branch, foreignLesson));
       const before = await everything();
       for (const cookie of [t.vicePrincipal, t.principal, t.teacher]) {
         refusedWith(await restore(s.branch, store, cookie), 403, 'permission_denied');
@@ -1048,11 +1075,12 @@ describe('the forced delete of a dated lesson and its restore', () => {
     it('keeps a used key to its account, its branch and its role (request keys)', async () => {
       const s = northScene;
       const lesson = await lessonOf(s, '2026-12-14');
+      await mark(s, lesson.id);
       const store = storeOf(await forceDelete(s.branch, lesson.id));
       const other = await scene();
-      const foreign = storeOf(
-        await forceDelete(other.branch, (await lessonOf(other, NEXT_MONDAY)).id),
-      );
+      const foreignLesson = (await lessonOf(other, NEXT_MONDAY)).id;
+      await mark(other, foreignLesson);
+      const foreign = storeOf(await forceDelete(other.branch, foreignLesson));
       const key = randomUUID();
       done(await restore(s.branch, store, t.admin, key));
       const after = await everything();
@@ -1063,6 +1091,258 @@ describe('the forced delete of a dated lesson and its restore', () => {
       refusedWith(await restore(s.branch, UNKNOWN, t.admin, key), 404, 'not_found');
       refusedWith(await restore(s.branch, store, t.vicePrincipal, key), 403, 'permission_denied');
       expect(await everything()).toEqual(after);
+    });
+  });
+
+  // Task 6.1b-2 (decisions 1, 6, 7 and 9; the From line of 5.8b): the forced
+  // delete takes the lesson's cells and works into its store row and its
+  // restore puts them back (06, Protection: "The attendance and marks are kept
+  // for 30 days and can be restored.").
+  describe('a lesson that holds data', () => {
+    /** The cells of a lesson, by id, as the database holds them. */
+    const cellsOf = (lessonId: string) =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .selectAll()
+        .where('lesson_id', '=', lessonId)
+        .orderBy('id')
+        .execute();
+
+    const worksOf = (lessonId: string) =>
+      t.database.migrator
+        .selectFrom('journal_works')
+        .select(['id', 'kind', 'total', 'not_held'])
+        .where('lesson_id', '=', lessonId)
+        .orderBy('id')
+        .execute();
+
+    const holdsData = async (lessonId: string) =>
+      (
+        await sql<{ holds: boolean }>`select lesson_holds_data(${lessonId}::uuid) as holds`.execute(
+          t.database.migrator,
+        )
+      ).rows[0]?.holds;
+
+    /**
+     * A past lesson with a mark, a work with a total and a number on it, and
+     * an empty cell of a second member.
+     */
+    async function dataLesson(s: Scene) {
+      // A lesson of the version in force, so a restore finds it in force; the
+      // database takes data on any lesson.
+      const id = (await lessonOf(s, NEXT_MONDAY)).id;
+      const student = await mark(s, id);
+      const other = await mark(s, id);
+      const work = await workWithTotal(t.database.migrator, { branchId: s.branch, lessonId: id });
+      await t.app.get(Transactions).run([s.branch], (transaction) =>
+        saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+          { lessonId: id, studentId: student, workId: work, value: 24, version: null },
+          // The second member's mark cleared: an empty cell with a line.
+          { lessonId: id, studentId: other, workId: null, value: null, version: 1 },
+        ]),
+      );
+      return { id, student, other, work };
+    }
+
+    it('keeps every cell and work in the store and its entry, removes them with the lesson, and keeps their history', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const cells = await cellsOf(lesson.id);
+      const works = await worksOf(lesson.id);
+      expect(cells).toHaveLength(3);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      expect(await rowOf(lesson.id)).toBeUndefined();
+      expect(await cellsOf(lesson.id)).toEqual([]);
+      expect(await worksOf(lesson.id)).toEqual([]);
+      const row = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select('rows')
+        .where('id', '=', store)
+        .executeTakeFirstOrThrow();
+      const kept = row.rows as unknown as LessonRows;
+      expect(kept.works).toEqual(works);
+      expect(kept.cells?.map((one) => [one.id, one.mark, one.score, one.version])).toEqual(
+        cells.map((one) => [one.id, one.mark, one.score, one.version]),
+      );
+      const [entry] = await t.entries('lesson.forced_delete', lesson.id);
+      expect((entry?.old_value as { cells?: unknown[] } | null)?.cells).toHaveLength(3);
+      // Every line stays, and each cell with a value gets the delete's line.
+      const lines = await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .select(['cell_id', 'changed_how'])
+        .where('lesson_id', '=', lesson.id)
+        .orderBy('changed_at')
+        .orderBy('version')
+        .execute();
+      for (const cell of cells) {
+        const own = lines.filter((one) => one.cell_id === cell.id).map((one) => one.changed_how);
+        expect(own.at(-1)).toBe(
+          cell.mark === null && cell.score === null ? 'entry' : 'forced_delete',
+        );
+      }
+    });
+
+    it('puts back the same cells and works with their next versions on a restore, and a save on the version it answers goes through', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const cells = await cellsOf(lesson.id);
+      const works = await worksOf(lesson.id);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      done(await restore(s.branch, store));
+      expect(await worksOf(lesson.id)).toEqual(works);
+      const back = await cellsOf(lesson.id);
+      expect(back.map((one) => [one.id, one.student_id, one.work_id, one.mark, one.score])).toEqual(
+        cells.map((one) => [one.id, one.student_id, one.work_id, one.mark, one.score]),
+      );
+      for (const cell of back) {
+        const before = cells.find((one) => one.id === cell.id);
+        const empty = cell.mark === null && cell.score === null;
+        expect(cell).toMatchObject({
+          version: (before?.version ?? 0) + (empty ? 1 : 2),
+          changed_how: 'restored',
+          changed_by: adminAccount,
+        });
+      }
+      expect(await holdsData(lesson.id)).toBe(true);
+      const attendance = back.find(
+        (one) => one.student_id === lesson.student && one.work_id === null,
+      );
+      const saved = await t.app.get(Transactions).run([s.branch], (transaction) =>
+        saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+          {
+            lessonId: lesson.id,
+            studentId: lesson.student,
+            workId: null,
+            value: 2,
+            version: attendance?.version ?? null,
+          },
+        ]),
+      );
+      expect(saved[0]).toMatchObject({ value: 2, version: (attendance?.version ?? 0) + 1 });
+    });
+
+    it('restores a store row written before 6.1b-2, with no cells and no works', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, '2026-12-21');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({ rows: sql`rows - 'cells' - 'works'` })
+        .where('id', '=', store)
+        .execute();
+      done(await restore(s.branch, store));
+      expect(await rowOf(lesson.id)).toBeDefined();
+    });
+
+    it('brings back a student’s cells after the student moved to another branch', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      const elsewhere = await scene();
+      // The release and the accept through their routes, as the Super Admin.
+      const detail = await t.get(`/api/people/students/${lesson.student}`, s.branch);
+      const released = await t.post(
+        `/api/people/students/${lesson.student}/branch-move`,
+        s.branch,
+        {
+          toBranchId: elsewhere.branch,
+          from: '2026-10-10',
+          version: (detail.body as { version: number }).version,
+        },
+      );
+      expect(released.status, JSON.stringify(released.body)).toBe(200);
+      const moveId = (released.body as { branchMove: { id: string } }).branchMove.id;
+      const taken = await t.post(`/api/people/branch-moves/${moveId}/accept`, elsewhere.branch, {
+        classId: elsewhere.classId,
+        groups: [],
+      });
+      expect(taken.status, JSON.stringify(taken.body)).toBe(200);
+      done(await restore(s.branch, store));
+      expect(
+        (await cellsOf(lesson.id)).filter((one) => one.student_id === lesson.student),
+      ).toHaveLength(2);
+    });
+
+    it('is refused when a student of a kept cell is gone, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      // A student gone: the fixture names one with no record in the store row,
+      // since every route refuses the delete of the student it holds.
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({
+          rows: sql`jsonb_set(rows, '{cells}', (
+            select jsonb_agg(case when c ->> 'student_id' = ${lesson.student}
+              then jsonb_set(c, '{student_id}', to_jsonb(${UNKNOWN}::text)) else c end)
+            from jsonb_array_elements(rows -> 'cells') c
+          ))`,
+        })
+        .where('id', '=', store)
+        .execute();
+      const before = await everything();
+      const refused = await restore(s.branch, store);
+      refusedWith(refused, 409, 'forced_delete_parent_changed');
+      expect(detailsOf(refused).map((one) => one.path)).toEqual(['students']);
+      expect(await everything()).toEqual(before);
+    });
+
+    it('a save of a cell held open and a forced delete: the save first is stored; the delete first leaves the save no lesson', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const third = await mark(s, (await lessonOf(s, '2026-10-26')).id);
+      // The third student is a member of the class; the held save gives the
+      // first value of that student on the lesson.
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app
+        .get(Transactions)
+        .run([s.branch], async (transaction) => {
+          await saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+            { lessonId: lesson.id, studentId: third, workId: null, value: 0, version: null },
+          ]);
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const deleting = forceDelete(s.branch, lesson.id).then((response) => response);
+      await expect.poll(() => waiting(), { timeout: 20_000, interval: 25 }).toBe(1);
+      release();
+      expect(await held).toBeUndefined();
+      const store = storeOf(await deleting);
+      const row = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select('rows')
+        .where('id', '=', store)
+        .executeTakeFirstOrThrow();
+      expect(
+        (row.rows as unknown as LessonRows).cells?.some(
+          (one) => one.student_id === third && one.mark === 0,
+        ),
+      ).toBe(true);
+      // The delete first: the save that comes after it finds no lesson.
+      const late = await t.app
+        .get(Transactions)
+        .run([s.branch], (transaction) =>
+          saveCells(transaction, t.app.get(Audit), { accountId: adminAccount }, [
+            {
+              lessonId: lesson.id,
+              studentId: lesson.student,
+              workId: null,
+              value: 1,
+              version: null,
+            },
+          ]),
+        )
+        .catch((error: unknown) => error);
+      expect(late).toMatchObject({ code: 'cell_closed' });
     });
   });
 
