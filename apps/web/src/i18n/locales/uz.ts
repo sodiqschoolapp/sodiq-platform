@@ -381,6 +381,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻquvchi shu sanada yoki undan keyin bu fan guruhida bor. Guruhlar orasida koʻchirish — bu oʻtkazish.',
     student_not_in_group_class:
       'Bu sanada oʻquvchi guruh olinadigan sinflarning birortasida emas. Oʻquvchi ulardan birida boʻlgan sanani tanlang.',
+    membership_lesson_clash: 'Oʻquvchining bu vaqtda boshqa darsi bor. Boshqa sanani tanlang.',
     group_full:
       'Shu sanadan boshlab qaysidir kunda guruhda boʻsh oʻrin yetmaydi. Uning eng koʻp sonini oshiring yoki kamroq oʻquvchi tanlang.',
     group_membership_outside_year:

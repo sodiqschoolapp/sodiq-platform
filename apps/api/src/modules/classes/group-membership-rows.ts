@@ -19,6 +19,9 @@ export const GROUP_MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_memberships_group_archived: 'group_archived',
   group_memberships_outside_year: 'group_membership_outside_year',
   group_memberships_in_class: 'student_not_in_group_class',
+  // Task 5.12a, decision 7: a group row that puts a student into two lessons
+  // of one published block (0060, `group_memberships_block_students`).
+  lesson_block_student_twice: 'membership_lesson_clash',
   group_memberships_withdraw_planned: 'group_membership_in_force',
   class_year_closed: 'group_year_closed',
   group_class_has_members: 'group_class_has_members',

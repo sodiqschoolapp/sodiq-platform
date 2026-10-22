@@ -25,6 +25,9 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   classes_size_below_members: 'class_size_below_members',
   students_grade_class: 'student_grade_class',
   academic_years_cut_holds: 'year_cut_holds',
+  // Task 5.12a, decision 7: a class row that puts a student into two lessons
+  // of one published block (0060, `class_memberships_block_students`).
+  lesson_block_student_twice: 'membership_lesson_clash',
   // The service checks these first; a fault answers the general refusal.
   class_memberships_student_branch: 'request_refused',
   class_memberships_only_shrink: 'request_refused',

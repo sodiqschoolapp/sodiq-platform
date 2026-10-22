@@ -351,6 +351,7 @@ export function claimsHarness() {
   return {
     state,
     yearOf,
+    quarterOf,
     inBranch,
     writeBlock,
     cancelForExam,

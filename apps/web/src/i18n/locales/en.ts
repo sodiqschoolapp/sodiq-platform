@@ -370,6 +370,7 @@ export const en = {
       'The student is already in a group of this subject on or after that date. A move between groups is a transfer.',
     student_not_in_group_class:
       'On that date the student is in none of the classes this group draws from. Choose a date when the student is in one of them.',
+    membership_lesson_clash: 'This student already has a lesson at this time. Choose another date.',
     group_full:
       'The group does not have enough free seats on some day from that date. Raise its maximum size or choose fewer students.',
     group_membership_outside_year:

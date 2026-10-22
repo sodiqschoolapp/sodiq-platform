@@ -276,6 +276,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   group_restore_subject: 'The subject of the group is archived or not taught in its grades.',
   student_has_group: 'The student is in a group of the subject on or after that date.',
   student_not_in_group_class: 'The student is in no class of the group on that date.',
+  membership_lesson_clash: 'The student would have two lessons at the same time.',
   group_full: 'The group would hold more students than its maximum size on some date.',
   group_membership_outside_year: 'The date is outside the academic year of the group.',
   group_membership_in_force: 'The group placement is in force.',

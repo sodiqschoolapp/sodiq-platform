@@ -189,6 +189,9 @@ export const MERGE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_memberships_no_overlap: 'student_merge_overlap',
   class_memberships_active: 'student_merge_overlap',
   group_memberships_in_class: 'student_merge_overlap',
+  // Task 5.12a, decision 7 (review correction 3): the merged rows put the
+  // student into two lessons of one published block (0060).
+  lesson_block_student_twice: 'membership_lesson_clash',
   students_grade_class: 'student_merge_grade',
   student_branch_moves_open_idx: 'student_merge_release_open',
   students_merge_archive: 'request_refused',

@@ -473,6 +473,8 @@ export const ERROR_CODES = [
   'student_has_group',
   /** No class row of the student in a class of the group holds the date (task 3.2b, decision 7). */
   'student_not_in_group_class',
+  /** The membership would put the student into two lessons of one block at once (`06`, Rules: no student in two lessons at once; the trigger `lesson_block_student_twice`, 0060; task 5.12a, decision 7). */
+  'membership_lesson_clash',
   /** The group would hold more students than its maximum size on some date, scheduled joins and leaves counted (`edge/students-classes-groups`: "Groups work the same way"; task 3.2b). `details` names the fewest free seats. */
   'group_full',
   /** The date lies outside the academic year of the group (task 3.2b). */
