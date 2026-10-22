@@ -38,8 +38,19 @@ describe('the correction of a past lesson', () => {
     );
   });
 
-  it('refuses an unknown kind and a tick on a cancel, which has no warnings', () => {
+  it('refuses an unknown kind', () => {
     expect(parse({ kind: 'move', reason: 'x' }).success).toBe(false);
-    expect(parse({ kind: 'cancel', reason: 'x', confirm: true }).success).toBe(false);
+  });
+
+  // Task 6.1b-2 (decision 2, Look first): a cancel takes the tick under the
+  // list of what a lesson with data holds (`cancel_holds_data`); before, a
+  // cancel had no warnings and refused it.
+  it('takes a tick on a cancel, the tick under what a lesson with data holds', () => {
+    expect(parse({ kind: 'cancel', reason: 'x', confirm: true }).data).toEqual({
+      kind: 'cancel',
+      reason: 'x',
+      confirm: true,
+    });
+    expect(parse({ kind: 'cancel', reason: 'x', confirm: 'yes' }).success).toBe(false);
   });
 });
