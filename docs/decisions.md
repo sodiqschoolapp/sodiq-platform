@@ -297,7 +297,8 @@ Plan approved on pull request #200 with corrections 1 to 4; decisions 1 to 11 co
 | The four kinds of the views, weekly; a class print holds its groups' lessons; a record with no lesson is an empty week; another branch's or an unknown id is 404 before the read | Decisions 5, 6 |
 | The print time is the moment of the request in branch time, taken before the read; the pattern is read with `stateOf` in one transaction, no lock; lessons to place and left blocks are not printed; the audit entry is written after the render | Decisions 7 to 10 |
 | The print sits in Version history only | Decision 11 |
-| **Build decision.** A lesson is numbered in the template of the lowest grade of its classes (the class print: the class's own grade); the 5.9a views now do the same, where they took the first class in the order the database gave | Correction 3: the pattern print and the week print number a lesson alike; the block's minutes come from the lowest grade's template (`blockPlacements`) |
+| **Look first** (a merged reader changed; build decision, code review must-fix 1). A lesson is numbered in the template of the lowest grade of its classes (the class print: the class's own grade); the 5.9a views now do the same, where they took the first class in the order the database gave | Correction 3: the pattern print and the week print number a lesson alike; the block's minutes come from the lowest grade's template (`blockPlacements`) |
+| **Build decision.** The Print part shows for every role that opens Version history, with no gate of its own | Every such role holds `export` (`permissions.test.ts`); the server decides (code review should-fix 4) |
 | **Build decision.** `printHtml` (views-file.ts) and `TimetableFileButtons` are shared by the view and the version files, not copied | Plan, build decisions confirmed by the review |
 
 ## 22 October 2026: print, PDF and Excel of the timetable views (task 5.9c-1)
