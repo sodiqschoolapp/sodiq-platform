@@ -679,7 +679,9 @@ describe('the protection of dated lessons in the database', () => {
             .executeTakeFirstOrThrow()
         ).block_id;
       expect(await linkOf()).toBeNull();
-      const { created_at: _block, ...blockValues } = kept;
+      // created_xact is written by the insert itself (0107); the application has no right on it.
+      const { created_at: _block, created_xact: _blockXact, ...blockValues } = kept;
+      void _blockXact;
       const { created_at: _lesson, ...lessonValues } = keptLesson;
       void _block;
       void _lesson;

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.12d The publish at the real size
+
+- 0107: the commit check of Class in one block takes no lock of its own for a block the current transaction inserted (`lesson_blocks.created_xact`, written by a trigger, never updated); the class and group locks stay. A publish of a branch's year went from about 9,500 advisory locks and "out of shared memory" to under 200, at the default `max_locks_per_transaction` 64.
+- The full run (`REAL_SIZE=full`) passes: 3 branches, 80 classes, 2,000 students, 221 teachers (20 in two branches), 81,394 dated lessons published, every board with no blocked result, travel time kept. A publish takes about 22 s.
+- Two fixes to the run itself, which had never reached a second branch: the travel probe checks only teachers shared with a branch already published, and each shared row goes to a different class of grade 5 or above (the first class, grade 1, ends its day before a shared teacher arrives at 11:45).
+- Left out: the dated double pair's lock (one per pair; From line on 10.1); the missed targets (drag check of every slot 413 to 458 ms against 0.2 s, publish check 1.16 to 1.23 s against 1 s; 10.1); a journal page (6.2); the solver's time (5.11).
+
+The next sessions must know:
+
+- A full run takes about 15 minutes on 4 CPUs; run nothing else on the database meanwhile (the lock table is shared by the whole server).
+- Every route runs its work under the request key's savepoint: "inserted by this transaction" is never `xmin`; use a `created_xact` column.
+- Tests that copy a whole `lesson_blocks` row (`selectAll`) leave `created_xact` out, as they leave `created_at`.
+
 ## 22 October 2026: task 5.12c The real-size run
 
 - `real-size.database.test.ts` builds an invented school (`apps/api/src/testing/real-size.ts`), places each branch's pattern with a seed placer that the rule engine decides, confirms the five builder steps, and publishes branch by branch through the routes, timing the board, the drag check, a saved move, the publish check, the publish and the published weeks; small in CI, the school's size with `REAL_SIZE=full` (report `apps/api/real-size-report-<size>.md`).

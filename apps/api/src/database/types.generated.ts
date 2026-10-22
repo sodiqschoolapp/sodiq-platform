@@ -531,6 +531,10 @@ export interface LessonBlocks {
   branch_id: string;
   created_at: Generated<Timestamp>;
   /**
+   * The top-level transaction that inserted the block (0107): timetable_lock_block takes no lock of its own for a block of the current transaction. Written by lesson_blocks_created_xact on insert, never updated.
+   */
+  created_xact: string | null;
+  /**
    * The two blocks of a double lesson share it; made by the API, one branch only.
    */
   double_pair_id: string | null;
