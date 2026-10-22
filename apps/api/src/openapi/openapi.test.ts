@@ -308,6 +308,7 @@ describe('OpenAPI document', () => {
         '/api/timetable/views/branch',
         '/api/timetable/views/choices',
         '/api/timetable/views/class',
+        '/api/timetable/views/export',
         '/api/timetable/views/room',
         '/api/timetable/views/teacher',
       ]);

@@ -106,6 +106,16 @@ export function dayLines(day: ViewDay, texts: ViewExportTexts): string[] {
   ];
 }
 
+/** The lines of a day other than its version: why it is not an ordinary day. */
+function dayNotes(day: ViewDay, texts: ViewExportTexts): string[] {
+  return [
+    ...(day.outsideYear ? [texts.outsideYear] : []),
+    ...(!day.outsideYear && day.version === null ? [texts.noVersion] : []),
+    ...(day.dayOff === null ? [] : [fillText(texts.dayOff, { name: day.dayOff })]),
+    ...(day.fromPattern ? [texts.fromPattern] : []),
+  ];
+}
+
 /** The title of the file: the kind, the class, teacher or room, the span and its dates. */
 function titleOf(view: TimetableView, texts: ViewExportTexts): string {
   const first = view.days[0]?.date ?? view.today;
@@ -168,7 +178,9 @@ export function viewSheet(
     const version: Cell[] =
       day.version === null ? [null, null] : [day.version.number, { date: day.version.startsOn }];
     const base = (): Cell[] => [{ date: day.date }, texts.weekdays[weekdayOf(day.date)]];
-    const pattern = day.fromPattern ? texts.fromPattern : null;
+    // What the day says of itself, on each of its rows: outside the year, no
+    // version, a day off, read from its pattern (spec review must-fix 1).
+    const notes = dayNotes(day, texts);
     const items = itemsOf(view, day.date);
     for (const item of items) {
       if (item.kind === 'lesson') {
@@ -183,7 +195,7 @@ export function viewSheet(
           teacherOf(lesson),
           lesson.room?.name ?? '',
           texts.kinds.lesson,
-          [...lessonMarks(lesson, texts), ...(pattern === null ? [] : [pattern])].join('; '),
+          [...lessonMarks(lesson, texts), ...notes].join('; '),
           ...version,
         ]);
       } else if (item.kind === 'exam') {
@@ -200,7 +212,7 @@ export function viewSheet(
           exam.rooms.flatMap((room) => room.invigilators).join(', '),
           exam.rooms.map((room) => room.room.name).join(', '),
           texts.kinds.exam,
-          pattern ?? '',
+          notes.join('; '),
           ...version,
         ]);
       } else {
@@ -214,7 +226,7 @@ export function viewSheet(
           '',
           '',
           texts.kinds.busy,
-          fillText(texts.busyIn, { branch: item.busy.branch.name }),
+          [fillText(texts.busyIn, { branch: item.busy.branch.name }), ...notes].join('; '),
           ...version,
         ]);
       }
@@ -230,7 +242,7 @@ export function viewSheet(
         '',
         '',
         texts.kinds.day,
-        dayLines(day, texts).join('; '),
+        notes.join('; '),
         ...version,
       ]);
     }

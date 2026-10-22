@@ -76,9 +76,13 @@ async function teacherOf(
   branch: string,
   subject: string,
   accountId?: string,
+  second?: string,
 ) {
   const teacher = await load.teacher(branch, {
-    subjects: [{ subject, grades: [7] }],
+    subjects: [
+      { subject, grades: [7] },
+      ...(second === undefined ? [] : [{ subject: second, grades: [7] }]),
+    ],
     ...(accountId === undefined ? {} : { accountId }),
   });
   await hoursOf(t, branch, teacher.staffId);
@@ -94,7 +98,9 @@ async function teacherOf(
  * second slots. `accounts` links the teacher or the spare teacher to a
  * signed-in account (task 5.9a: a teacher reading their own timetable).
  * `startTime` starts the day elsewhere than 08:00 (task 5.9b: two branches
- * whose lesson numbers and clock times do not agree).
+ * whose lesson numbers and clock times do not agree). `secondSubject` gives
+ * the teacher a second subject, taught to the other class on Monday in the
+ * second slot (task 5.9c-1: a Head Teacher of one of the two).
  */
 export async function publishedScene(
   t: DayTemplatesKit,
@@ -104,6 +110,7 @@ export async function publishedScene(
     double?: boolean;
     accounts?: { readonly teacher?: string; readonly spare?: string };
     startTime?: string;
+    secondSubject?: boolean;
   } = {},
 ) {
   const branch = input.branch ?? (await t.newBranch());
@@ -130,7 +137,18 @@ export async function publishedScene(
   const otherRoom = await load.classes.room(branch);
   const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
   const otherClass = await load.classes.schoolClass(branch, year, { grade: 7, room: otherRoom });
-  const teacher = await teacherOf(t, load, branch, subject, input.accounts?.teacher);
+  const secondSubject =
+    input.secondSubject === true
+      ? await load.classes.subject({ grades: [7], journalType: 'attendance_only' })
+      : null;
+  const teacher = await teacherOf(
+    t,
+    load,
+    branch,
+    subject,
+    input.accounts?.teacher,
+    secondSubject ?? undefined,
+  );
   const otherTeacher = await teacherOf(t, load, branch, subject);
   const spareTeacher = await teacherOf(t, load, branch, subject, input.accounts?.spare);
   const created = await t.post('/api/timetable/versions', branch, {
@@ -160,6 +178,17 @@ export async function publishedScene(
     lessons_per_week: 1,
   });
   await placeAt(t, branch, version, otherRow, 1);
+  if (secondSubject !== null) {
+    const secondRow = await load.row({
+      branch_id: branch,
+      version_id: version,
+      class_id: otherClass,
+      subject_id: secondSubject,
+      teacher_id: teacher.staffId,
+      lessons_per_week: 1,
+    });
+    await placeAt(t, branch, version, secondRow, 1, 3);
+  }
   const confirmed = await t.post(`/api/timetable/versions/${version}/templates/confirm`, branch);
   expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
   await load.freeEditLock(version);
@@ -178,6 +207,7 @@ export async function publishedScene(
     spareTeacher,
     version,
     rowId,
+    secondSubject,
   };
 }
 

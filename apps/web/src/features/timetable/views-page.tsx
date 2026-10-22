@@ -29,6 +29,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { timetableViewQuery, viewChoicesQuery } from './timetable-api';
+import { ViewFiles } from './view-files';
 import type { ViewsSearch } from './views-search';
 
 type Language = 'uz' | 'ru' | 'en';
@@ -78,6 +79,8 @@ export function ViewsPage(): React.JSX.Element {
   const { role, branchId } = useView();
   const language = languageOf(i18n.language);
   const drafts = role !== null && permits(PERMISSIONS, role, 'timetable', 'view');
+  // Task 5.9c-1: the server decides again for every file.
+  const files = role !== null && permits(PERMISSIONS, role, 'timetable_views', 'export');
   // Without a date in the address, the server answers for today in the branch and names it.
   const choices = useQuery(viewChoicesQuery(branchId, search.date ?? null));
   const date = search.date ?? choices.data?.today ?? null;
@@ -219,6 +222,9 @@ export function ViewsPage(): React.JSX.Element {
               go({ span: value });
             }}
           />
+          {files && (kind === 'branch' || id !== null) && (
+            <ViewFiles view={{ kind, id, date, span }} />
+          )}
         </div>
         <div className={PANEL}>
           {view.isError ? (

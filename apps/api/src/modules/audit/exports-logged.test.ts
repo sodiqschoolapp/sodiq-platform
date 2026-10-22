@@ -321,6 +321,14 @@ describe('every export is logged', () => {
     },
   };
 
+  /**
+   * The files of a timetable view (task 5.9c-1, pull request #199): Print,
+   * PDF and Excel, logged as one entry with the request and the counts.
+   */
+  const VIEW_FILES: Record<string, { action: string }> = {
+    'POST /api/timetable/views/export': { action: 'timetable_view.export' },
+  };
+
   /** The entries of an action in both logs. */
   const countOf = async (action: string): Promise<number> => {
     const found = await sql<{ count: number }>`
@@ -387,8 +395,46 @@ describe('every export is logged', () => {
       )
       .map((route) => route.name)
       .sort();
-    expect(exports).toEqual([...Object.keys(EXPORTS), ...Object.keys(REPORTS)].sort());
+    expect(exports).toEqual(
+      [...Object.keys(EXPORTS), ...Object.keys(REPORTS), ...Object.keys(VIEW_FILES)].sort(),
+    );
   });
+
+  it.each(Object.entries(VIEW_FILES))(
+    '%s writes one entry with the view and the counts',
+    async (route, spec) => {
+      const path = route.replace('POST ', '');
+      const before = await countOf(spec.action);
+      const response = await exportOf(path, {
+        kind: 'branch',
+        date: '2026-10-19',
+        span: 'day',
+        format: 'xlsx',
+      });
+      expect(response.status).toBe(200);
+      expect(await countOf(spec.action)).toBe(before + 1);
+      const [entry] = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['details', 'branch_id'])
+        .where('action', '=', spec.action)
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .execute();
+      expect(entry?.branch_id).toBe(t.north);
+      expect(entry?.details).toMatchObject({ kind: 'branch', format: 'xlsx', lessons: 0 });
+
+      const refused = await exportOf(path, {
+        kind: 'class',
+        classId: UNKNOWN,
+        date: '2026-10-19',
+        span: 'day',
+        format: 'xlsx',
+      });
+      expect(refused.status).toBe(404);
+      expect(await countOf(spec.action)).toBe(before + 1);
+    },
+  );
 
   it.each(Object.entries(REPORTS))(
     '%s writes one entry with the person and the counts',

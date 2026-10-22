@@ -612,6 +612,8 @@ export const en = {
       'The other lessons this lesson was taught with are gone since it was deleted, so it cannot come back. Restore them first, if they were deleted for good too.',
     forced_delete_restore_blocked:
       'The lesson cannot come back: it would break a timetable rule, listed below. Change the lesson that took its place first.',
+    pdf_unavailable:
+      'A PDF cannot be made on the server right now. Try again in a few minutes, or download the Excel file.',
     timetable_view_scope:
       'The timetable of this class, teacher or room is not among those your role can see. Choose one from the list.',
     place_referenced:
@@ -3058,6 +3060,9 @@ export const en = {
         restore: 'Group restored',
         export: 'Groups exported',
       },
+      timetable_view: {
+        export: 'Timetable printed or exported',
+      },
       timetable_version: {
         create: 'Draft timetable version created',
         edit: 'Draft timetable version changed',
@@ -3552,6 +3557,9 @@ export const en = {
     viewsLink: 'Timetable views',
     views: {
       title: 'Timetable views',
+      print: 'Print',
+      pdf: 'PDF',
+      excel: 'Excel',
       nothing: 'Your role has no timetable to view in this branch.',
       empty: 'No school days in this period.',
       kind: 'View',
