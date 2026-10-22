@@ -939,7 +939,7 @@ How to read the task lines:
   - Build: print, PDF and Excel of one class, one teacher, one room or the whole school by day or by week, in the scope of 5.9a; a printed day or week includes the one-day changes with an "as of" time, each day's version and "valid from", and "one-day changes not included" on a day read from its pattern; exams marked "exam"; every file logged and following the role; PDFs made on the server by headless Chromium with the Golos Text files embedded. Only the PDF library is a new dependency (Look first).
   - Done when: exported PDFs show Uzbek Latin and Cyrillic correctly.
 
-- [ ] **5.9c-2 Print of a timetable version** (5.9c split in two, pull request #199, decision 1, Look first)
+- [x] **5.9c-2 Print of a timetable version** (5.9c split in two, pull request #199, decision 1, Look first)
   - Read: `edge/timetable` ("The wall timetable is out of date"), `06` (How surprises are prevented: One source), `docs/design-system.md` (Printouts and PDFs).
   - Build: the PDF and Excel of a version's weekly pattern from the versions page under the area `timetable`, on the renderer of 5.9c-1: a published version carries its number, "valid from", the print time and "one-day changes not included"; a draft is marked DRAFT; every file logged. The `export` action on `timetable` for the roles that view drafts is this task's own Look first decision.
   - Done when: a draft print reads DRAFT and the PDFs show Uzbek Latin and Cyrillic correctly.
