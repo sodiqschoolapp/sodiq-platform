@@ -1,5 +1,6 @@
 import { PLAN_FILE_TYPES, type Plan, type PlanItem, type PlanRow } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -37,7 +38,7 @@ import {
 function storedNotes(
   failure: unknown,
   item: PlanItem | null,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ): Partial<Record<PlanField, string>> {
   if (!(failure instanceof ApiFailure) || failure.code !== 'plan_item_stale') return {};
   const notes: Partial<Record<PlanField, string>> = {};

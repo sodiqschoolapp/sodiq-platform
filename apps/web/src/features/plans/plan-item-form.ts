@@ -21,8 +21,7 @@ export const WORK_KINDS: readonly WorkKind[] = ['classwork', 'homework'];
 
 const listOf = (kind: WorkKind) => (kind === 'classwork' ? 'classworks' : 'homeworks');
 
-export type PlanField =
-  'topic' | 'objectives' | 'links' | `${WorkKind}${number}` | `${WorkKind}Note${number}`;
+export type PlanField = 'topic' | 'objectives' | 'links' | `${WorkKind}${string}`;
 
 export const titleField = (kind: WorkKind, slot: number): PlanField => `${kind}${String(slot)}`;
 export const noteField = (kind: WorkKind, slot: number): PlanField => `${kind}Note${String(slot)}`;
