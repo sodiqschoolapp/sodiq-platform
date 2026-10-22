@@ -862,6 +862,8 @@ describe('the forced delete of a building, floor or room and its restore', () =>
       readonly status: number;
       /** What the writer writes: its rows and its entries, as a count. */
       readonly written: () => Promise<number>;
+      /** What a refused writer leaves as it was (the lessons' room, the home room). */
+      readonly kept?: () => Promise<unknown>;
     }
 
     const WRITERS: Readonly<Record<string, (s: PublishedScene, room: string) => Promise<Writer>>> =
@@ -895,7 +897,8 @@ describe('the forced delete of a building, floor or room and its restore', () =>
           });
           expect(closed.status, JSON.stringify(closed.body)).toBe(201);
           const closure = (closed.body as { id: string }).id;
-          expect(await lessonsIn(s.branch, s.room)).toBeGreaterThan(0);
+          const inRoom = await lessonsIn(s.branch, s.room);
+          expect(inRoom).toBeGreaterThan(0);
           return {
             send: () =>
               t.post(`/api/timetable/room-closures/${closure}/move`, s.branch, {
@@ -907,6 +910,9 @@ describe('the forced delete of a building, floor or room and its restore', () =>
               (await lessonsIn(s.branch, room)) +
               (await entriesOf(s.branch, 'room_closure.move')) +
               (await entriesOf(s.branch, 'lesson.room_change')),
+            kept: async () => {
+              expect(await lessonsIn(s.branch, s.room)).toBe(inRoom);
+            },
           };
         },
         'an exam room': (s, room) =>
@@ -997,6 +1003,14 @@ describe('the forced delete of a building, floor or room and its restore', () =>
                   .where('main_room_id', '=', room)
                   .execute()
               ).length + (await entriesOf(s.branch, 'class.edit')),
+            kept: async () => {
+              const after = await t.database.migrator
+                .selectFrom('classes')
+                .select(['main_room_id', 'version'])
+                .where('id', '=', s.classId)
+                .executeTakeFirstOrThrow();
+              expect(after).toEqual({ main_room_id: s.room, version: before.version });
+            },
           };
         },
         'a pattern entry': async (s, room) => {
@@ -1051,6 +1065,7 @@ describe('the forced delete of a building, floor or room and its restore', () =>
             done(deleted);
             refusedWith(written, 404, 'not_found');
             expect(await writer.written()).toBe(before);
+            await writer.kept?.();
             expect(await rowOf('room', room)).toBeUndefined();
           } else {
             expect(written.status, JSON.stringify(written.body)).toBe(writer.status);

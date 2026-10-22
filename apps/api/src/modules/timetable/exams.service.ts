@@ -1094,7 +1094,6 @@ async function yearOfDate(
   return found?.id ?? null;
 }
 
-/** The ids of a body and path that must be of the branch: 404 otherwise. */
 /**
  * The exam rooms of the body read again behind the publish lock and held: a
  * room's forced delete (task 5.8c), which takes the same lock first, may have
@@ -1117,6 +1116,7 @@ async function holdRooms(
   if (held.length !== wanted.length) throw notFound();
 }
 
+/** The ids of a body and path that must be of the branch: 404 otherwise. */
 async function refuseForeignIds(
   transaction: Transaction,
   branchId: string,

@@ -120,5 +120,6 @@ test('an Academic Vice Principal builds a timetable from nothing, publishes it a
   const first = page.locator('tbody tr').first().locator('td');
   await expect(first.nth(2)).toContainText('Geometry');
   await expect(first.nth(2)).toContainText('Room 31');
+  await expect(first.nth(2)).toContainText('Aliyeva Zarina');
   await expect(first.nth(1)).not.toContainText('Geometry');
 });
