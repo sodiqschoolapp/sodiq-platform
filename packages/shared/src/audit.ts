@@ -271,6 +271,8 @@ export const AUDIT_ACTION_GROUPS = {
     'group.export',
     // Task 5.9c-1: Print, PDF and Excel of a timetable view.
     'timetable_view.export',
+    // Task 5.9c-2: Print, PDF and Excel of a version's weekly pattern.
+    'timetable_version.export',
     'student.personal_data_report',
     'staff.personal_data_report',
     'relative.personal_data_report',

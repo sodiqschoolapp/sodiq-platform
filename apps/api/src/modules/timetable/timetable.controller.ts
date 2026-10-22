@@ -78,11 +78,16 @@ import {
   type TimetableVersionEdit,
   type TimetableVersionList,
   type TimetableVersionParams,
+  versionExportRequestSchema,
+  type VersionExportRequest,
 } from '@sodiq/shared';
+import type { PdfFile } from '../../http/pdf.js';
 import { RequestId } from '../../http/request-id.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import {
   RequestKey,
   Returns,
+  ReturnsFile,
   ReturnsNothing,
   ValidBody,
   ValidParams,
@@ -94,6 +99,7 @@ import { TimetablePattern } from './pattern.service.js';
 import { TimetablePublish } from './publish.service.js';
 import { TimetableWithdraw } from './withdraw.service.js';
 import { TimetableUpToDate } from './up-to-date.service.js';
+import { TimetableVersionExports } from './version-export.service.js';
 import { Timetable } from './timetable.service.js';
 
 /**
@@ -110,6 +116,7 @@ export class TimetableController {
     private readonly publisher: TimetablePublish,
     private readonly upToDate: TimetableUpToDate,
     private readonly withdrawer: TimetableWithdraw,
+    private readonly exports: TimetableVersionExports,
   ) {}
 
   @Get('versions')
@@ -128,6 +135,24 @@ export class TimetableController {
     @ValidQuery(timetableHistoryQuerySchema) query: TimetableHistoryQuery,
   ): Promise<TimetableHistory> {
     return this.timetable.history(access, query);
+  }
+
+  /**
+   * Print, PDF and Excel of a version's weekly pattern, a draft included
+   * (task 5.9c-2, pull request #200, decision 1): the school, a class, a
+   * teacher or a room, stamped and logged. POST: the export writes an audit
+   * entry.
+   */
+  @Post('versions/:id/export')
+  @Requires('timetable', 'export')
+  @ReturnsFile({ pdf: true })
+  exportVersion(
+    @CurrentAccess() access: Access,
+    @ValidParams(timetableVersionParamsSchema) params: TimetableVersionParams,
+    @ValidBody(versionExportRequestSchema) request: VersionExportRequest,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile | PdfFile> {
+    return this.exports.export(access, params.id, request, requestId);
   }
 
   /** Two versions of one year compared (task 5.8a). */

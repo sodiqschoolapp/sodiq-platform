@@ -324,17 +324,26 @@ describe('a frozen permission table', () => {
 
   // Task 3.4a, decision 4 of pull request #99: 02, the Academic Vice
   // Principal has "Full edit of ... timetable", the Principal "views
-  // everything ... changes nothing"; no other role reads the load.
-  it('gives the draft versions and their load to the Super Admin and the Academic Vice Principal, view to the Principal', () => {
+  // everything ... changes nothing"; no other role reads the load. Task
+  // 5.9c-2, decision 1 of pull request #200: 06, step 8 "Print and export";
+  // the print of a version goes to the roles that view drafts, and no other.
+  it('gives the draft versions and their load to the Super Admin and the Academic Vice Principal, view and export to the Principal', () => {
     const editors = ['super_admin', 'academic_vice_principal'];
     for (const role of ROLES) {
       expect(PERMISSIONS.timetable[role], role).toEqual(
         editors.includes(role)
-          ? ['view', 'create', 'edit', 'archive']
+          ? ['view', 'create', 'edit', 'archive', 'export']
           : role === 'principal'
-            ? ['view']
+            ? ['view', 'export']
             : [],
       );
+    }
+  });
+
+  it('lets every role that views the versions print them, and no other (task 5.9c-2, decision 1)', () => {
+    for (const role of ROLES) {
+      const actions = PERMISSIONS.timetable[role];
+      expect(actions.includes('export'), role).toBe(actions.includes('view'));
     }
   });
 

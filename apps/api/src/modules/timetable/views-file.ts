@@ -288,7 +288,7 @@ export function escapeHtml(text: string): string {
 }
 
 /** A CSS string for `content:` in a margin box. */
-const cssString = (text: string): string =>
+export const cssString = (text: string): string =>
   `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
 
 const time = (item: { start: number; end: number }) =>
@@ -494,19 +494,57 @@ export function viewHtml(
         ? view.days.map((day) => dayList(view, day, texts, language)).join('')
         : weekGrid(view, texts, language);
   const asOf = fillText(texts.asOf, { moment: stamp.asOf });
-  const page = texts.page.split('{{page}}');
+  return printHtml({
+    language,
+    title: titleOf(view, texts),
+    landscape,
+    stamp: [asOf],
+    bottomLeft: asOf,
+    page: texts.page,
+    body,
+  });
+}
+
+/**
+ * One printed document (task 5.9c-1; shared with the pattern print of task
+ * 5.9c-2, pull request #200): A4, white, the letterhead strip on every page,
+ * Golos Text with the Uzbek mark face, navy text; the stamp under the title
+ * and in the bottom-left margin box of every page, the page number at the
+ * bottom right, and `topRight` (a draft's grey DRAFT) at the top right.
+ */
+export function printHtml(input: {
+  language: Language;
+  title: string;
+  landscape: boolean;
+  /** The lines under the title. */
+  stamp: readonly string[];
+  /** The text of the bottom-left margin box of every page. */
+  bottomLeft: string;
+  /** A grey word at the top right of every page, or none. */
+  topRight?: string;
+  /** "Page {{page}}" in the language of the file. */
+  page: string;
+  body: string;
+}): string {
+  const { language, landscape, body } = input;
+  const page = input.page.split('{{page}}');
+  const font = `font-family: '${PDF_FONT_FAMILY}', '${UZBEK_MARK_FAMILY}';`;
+  const topRight =
+    input.topRight === undefined
+      ? ''
+      : `\n  @top-right { content: ${cssString(input.topRight)}; ${font} font-size: 14pt; font-weight: 700; color: #4A5270; }`;
   return `<!doctype html>
 <html lang="${language}">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(titleOf(view, texts))}</title>
+<title>${escapeHtml(input.title)}</title>
 <style>
 ${pdfFontFaces()}
 @page {
   size: A4 ${landscape ? 'landscape' : 'portrait'};
   margin: 28mm 10mm 14mm;
-  @bottom-left { content: ${cssString(asOf)}; font-family: '${PDF_FONT_FAMILY}', '${UZBEK_MARK_FAMILY}'; font-size: 8pt; color: #06113C; }
-  @bottom-right { content: ${cssString(page[0] ?? '')} counter(page) ${cssString(page[1] ?? '')}; font-family: '${PDF_FONT_FAMILY}', '${UZBEK_MARK_FAMILY}'; font-size: 8pt; color: #06113C; }
+  @bottom-left { content: ${cssString(input.bottomLeft)}; ${font} font-size: 8pt; color: #06113C; }
+  @bottom-right { content: ${cssString(page[0] ?? '')} counter(page) ${cssString(page[1] ?? '')}; ${font} font-size: 8pt; color: #06113C; }${topRight}
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #FFFFFF; color: #06113C; font-family: '${PDF_FONT_FAMILY}', '${UZBEK_MARK_FAMILY}'; font-size: 8.5pt; font-variant-numeric: tabular-nums; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -516,6 +554,7 @@ html, body { margin: 0; background: #FFFFFF; color: #06113C; font-family: '${PDF
 .letterhead .band { height: 2mm; background: #FF8A32; }
 h1 { font-size: 13pt; margin: 0 0 1mm; }
 .stamp { margin: 0 0 3mm; }
+.stamp p { margin: 0; }
 h2 { font-size: 9.5pt; margin: 0; }
 .day p { margin: 0; font-weight: 400; }
 section { break-inside: avoid-page; margin-bottom: 4mm; }
@@ -535,8 +574,8 @@ th { font-weight: 600; }
 </head>
 <body>
 <div class="letterhead"><div class="tab">${letterheadLogo()}</div><div class="band"></div></div>
-<h1>${escapeHtml(titleOf(view, texts))}</h1>
-<p class="stamp">${escapeHtml(asOf)}</p>
+<h1>${escapeHtml(input.title)}</h1>
+<div class="stamp">${input.stamp.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}</div>
 ${body}
 </body>
 </html>`;

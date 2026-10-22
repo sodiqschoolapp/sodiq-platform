@@ -3065,6 +3065,7 @@ export const en = {
       },
       timetable_version: {
         create: 'Draft timetable version created',
+        export: 'Timetable version printed or exported',
         edit: 'Draft timetable version changed',
         templates_confirm: 'Day templates of a draft confirmed',
         preferences: 'Preference weights of a draft changed',
@@ -3606,6 +3607,14 @@ export const en = {
       nothingToCompare: 'The year has no other version.',
       changesFrom: 'Changes from {{before}} to {{after}}',
       noDifferences: 'The two versions have the same load and the same lessons.',
+      printTitle: 'Print',
+      printWhat: 'What to print',
+      printOptions: {
+        branch: 'The whole school',
+        class: 'Class {{name}}',
+        teacher: 'Teacher {{name}}',
+        room: 'Room {{name}}',
+      },
       restoreTitle: 'Restore',
       restore: 'Restore as a new draft',
       noRoom: 'no room',

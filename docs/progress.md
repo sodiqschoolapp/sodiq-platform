@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 October 2026: task 5.9c-2 Print of a timetable version
+
+- Version history: the side panel of a version prints its weekly pattern for the school, a class, a teacher (or vacancy) or a room as Print, PDF and Excel (`POST /api/timetable/versions/:id/export`, `timetable` `export` for the Super Admin, the Principal and the Academic Vice Principal). Each file stamps the version, "valid from" ("planned from" for a draft), the print time and "one-day changes not included"; a draft is marked DRAFT (grey, every page), an archived version "Archived". One `timetable_version.export` entry per file.
+- Lesson numbers count lesson slots only, in the template of the lowest grade of the lesson's classes (the class print: the class's own); 5.9a now numbers a dated lesson the same way.
+- Left out: a print from the builder's step 8 (decision 11); busy blocks of other branches on a teacher's pattern print; Chromium on the test environment (issue #42).
+
+The next sessions must know:
+
+- `printHtml` of `views-file.ts` is the one printed document (letterhead, fonts, margin boxes); `pattern-file.ts` builds the pattern print on it.
+- `TimetableFileButtons` (`timetable-file-buttons.tsx`) holds Print, PDF and Excel for any file route; `RecordingPdf`, `refusedFile` and `linesOf` live in `apps/api/src/testing/pdf-kit.ts`.
+- `staffOfBranch` and `lowestGrade` are exported from `views.service.ts`.
+- The next task is 5.12.
+
 ## 22 October 2026: task 5.9c-1 Print, PDF and Excel of the timetable views
 
 - Timetable views (`/timetable/views`) has Print, PDF and Excel for the school, a class, a teacher or a room, by day or by week, in the 5.9a scope of the role (`POST /api/timetable/views/export`, area `timetable_views`, action `export`). Each file stamps "as of", the version and "valid from" of each day, "one-day changes not included" on a day read from its pattern, and logs one `timetable_view.export` entry.

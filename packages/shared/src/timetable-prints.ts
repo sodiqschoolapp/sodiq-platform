@@ -281,3 +281,83 @@ export const VIEW_EXPORT_TEXTS: Readonly<Record<Language, ViewExportTexts>> = { 
 export function fillText(text: string, values: Readonly<Record<string, string>>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (whole, key: string) => values[key] ?? whole);
 }
+
+/**
+ * Print, PDF and Excel of a version's weekly pattern (task 5.9c-2, pull
+ * request #200; `edge/timetable`, "The wall timetable is out of date": "A
+ * printed pattern carries the version, 'valid from', the print time and
+ * 'one-day changes not included'. ... A draft print is marked DRAFT"). The
+ * four kinds of the views (decision 5), weekly only: a pattern has no dates.
+ */
+export const versionExportRequestSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('branch'), format: z.enum(VIEW_EXPORT_FORMATS) }),
+  z.strictObject({
+    kind: z.literal('class'),
+    classId: z.uuid(),
+    format: z.enum(VIEW_EXPORT_FORMATS),
+  }),
+  z.strictObject({
+    kind: z.literal('teacher'),
+    staffId: z.uuid(),
+    format: z.enum(VIEW_EXPORT_FORMATS),
+  }),
+  z.strictObject({
+    kind: z.literal('room'),
+    roomId: z.uuid(),
+    format: z.enum(VIEW_EXPORT_FORMATS),
+  }),
+]);
+
+export type VersionExportRequest = z.infer<typeof versionExportRequestSchema>;
+
+/**
+ * The texts of a pattern file that the view files do not have; the titles,
+ * weekdays, columns and the version line are those of `VIEW_EXPORT_TEXTS`.
+ */
+export interface PatternExportTexts {
+  /** The word on every page of a draft's file (decision 4): grey, in the account's language. */
+  draft: string;
+  /** The word on every page of an archived version's file (decision 2). */
+  archived: string;
+  /** "Weekly pattern", after the title. */
+  weekly: string;
+  /** A draft's start date (decision 3, approval correction 1): it is not in force. */
+  plannedFrom: string;
+  /** "Printed {{moment}}", the print time in branch time (decision 7). */
+  printed: string;
+  /** "One-day changes not included". */
+  noDayChanges: string;
+  /** The first word of the file name. */
+  fileName: string;
+}
+
+/** The texts of a pattern file in the three languages; a missing one fails the type-check. */
+export const PATTERN_EXPORT_TEXTS: Readonly<Record<Language, PatternExportTexts>> = {
+  uz: {
+    draft: 'QORALAMA',
+    archived: 'Arxivlangan',
+    weekly: 'Haftalik shablon',
+    plannedFrom: '{{date}} dan boshlash rejalashtirilgan',
+    printed: 'Chop etilgan: {{moment}}',
+    noDayChanges: 'Bir kunlik oʻzgarishlar kiritilmagan',
+    fileName: 'versiya',
+  },
+  ru: {
+    draft: 'ЧЕРНОВИК',
+    archived: 'В архиве',
+    weekly: 'Недельный шаблон',
+    plannedFrom: 'планируется с {{date}}',
+    printed: 'Напечатано {{moment}}',
+    noDayChanges: 'Изменения на один день не учтены',
+    fileName: 'версия',
+  },
+  en: {
+    draft: 'DRAFT',
+    archived: 'Archived',
+    weekly: 'Weekly pattern',
+    plannedFrom: 'planned from {{date}}',
+    printed: 'Printed {{moment}}',
+    noDayChanges: 'One-day changes not included',
+    fileName: 'version',
+  },
+};

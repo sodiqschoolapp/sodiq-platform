@@ -21,6 +21,7 @@ import { useView } from '@/features/access/use-view';
 import { yearsQuery } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { comparisonQuery, createVersion, historyQuery, invalidateTimetable } from './timetable-api';
+import { VersionFiles } from './version-files';
 import { NewDraftForm } from './version-form';
 import { VersionsCompare } from './versions-compare';
 
@@ -167,7 +168,7 @@ export function VersionsPage() {
   );
 }
 
-/** A version of the history: where it stands, a comparison with another version, and its restore. */
+/** A version of the history: where it stands, a comparison with another version, its print (5.9c-2) and its restore. */
 function VersionPanel({
   version,
   history,
@@ -274,6 +275,9 @@ function VersionPanel({
           </>
         )}
       </section>
+
+      {/* Every role that opens the page holds `timetable` `export` (permissions.test.ts keeps it with `view`). */}
+      <VersionFiles version={version} />
 
       {canCreate && year !== undefined && year.status !== 'closed' && (
         <section aria-labelledby={`restore-${version.id}`} className="grid gap-3">

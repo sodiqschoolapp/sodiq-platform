@@ -323,6 +323,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/vacancy-fills/check',
       'POST /api/timetable/versions',
       'POST /api/timetable/versions/:id/edit-lock',
+      'POST /api/timetable/versions/:id/export',
       'POST /api/timetable/versions/:id/load',
       'POST /api/timetable/versions/:id/locks',
       'POST /api/timetable/versions/:id/pattern',

@@ -3096,6 +3096,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       timetable_version: {
         create: 'Dars jadvali qoralamasi yaratildi',
+        export: 'Dars jadvali versiyasi chop etildi yoki yuklab olindi',
         edit: 'Dars jadvali qoralamasi oʻzgartirildi',
         templates_confirm: 'Qoralamaning kun shablonlari tasdiqlandi',
         preferences: 'Qoralamaning afzalliklar vaznlari oʻzgartirildi',
@@ -3644,6 +3645,14 @@ export const uz: Texts<'one' | 'other'> = {
       nothingToCompare: 'Yilda boshqa versiya yoʻq.',
       changesFrom: '{{before}} dan {{after}} ga oʻzgarishlar',
       noDifferences: 'Ikki versiyaning yuklamasi va darslari bir xil.',
+      printTitle: 'Chop etish',
+      printWhat: 'Nimani chop etish',
+      printOptions: {
+        branch: 'Butun maktab',
+        class: '{{name}} sinf',
+        teacher: 'Oʻqituvchi {{name}}',
+        room: '{{name}} xona',
+      },
       restoreTitle: 'Tiklash',
       restore: 'Yangi qoralama sifatida tiklash',
       noRoom: 'xonasiz',
