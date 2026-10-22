@@ -98,6 +98,7 @@ describe('OpenAPI document', () => {
         '/api/notifications/read-all',
         '/api/notifications/{id}/read',
         '/api/people/accounts/never-used',
+        '/api/people/accounts/reset-entries',
         '/api/people/branch-moves/incoming',
         '/api/people/branch-moves/targets',
         '/api/people/branch-moves/{id}/accept',
