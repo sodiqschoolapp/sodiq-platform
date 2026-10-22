@@ -98967,7 +98967,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
-                                colour: string;
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
                         }[];
                     };
@@ -99212,7 +99213,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
-                                colour: string;
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
                             year: {
                                 /** Format: uuid */
@@ -99226,6 +99228,15 @@ export interface operations {
                             attendanceOnly: boolean;
                             ratingExam: boolean;
                         };
+                        years: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            closed: boolean;
+                        }[];
                         others: {
                             /** Format: uuid */
                             id: string;
@@ -99244,7 +99255,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
-                                colour: string;
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
                         }[];
                         quarters: {
