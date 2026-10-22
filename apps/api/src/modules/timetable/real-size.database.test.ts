@@ -124,7 +124,14 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
           // to them (review correction 2; `06`, Busy elsewhere, Travel time).
           if (index > 0) {
             const empty = await gridOf(t, branch);
+            // Only the teachers shared with a branch already published: one
+            // shared with a later branch has no lesson elsewhere yet (5.12d,
+            // the first full run to reach a second branch).
+            const published = new Set(
+              school.branches.slice(0, index).flatMap((earlier) => earlier.teachers),
+            );
             for (const teacher of new Set(school.sharedTeachers)) {
+              if (!published.has(teacher)) continue;
               const probe = travelProbe(empty, teacher);
               if (probe === null) continue;
               probes.push({ branch: branch.name, ...probe });
@@ -137,6 +144,10 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
                 `${branch.name}: the lesson right after one in another branch`,
               ).toContain('travel_time');
             }
+            expect(
+              probes.filter((one) => one.branch === branch.name).length,
+              `${branch.name}: a shared teacher probed`,
+            ).toBeGreaterThan(0);
           }
           const placed = await placeDraft(t, branch);
           placedOf.set(branch.id, placed);
