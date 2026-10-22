@@ -515,6 +515,9 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
     const assigned = new Map<PlannedRow, string>();
     const previous = poolsOf[branchIndex - 1];
     let sharedHere = 0;
+    /** The classes that already hold a shared teacher's row. */
+    const sharedClasses = new Set<string>();
+    const gradeOf = new Map(classes.map((one) => [one.id, one.grade]));
     for (const subject of SUBJECTS) {
       const rows = planned.filter((row) => row.subject === subject);
       if (rows.length === 0) continue;
@@ -546,7 +549,16 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
       teacherCount += pool.length;
       pools.set(subject, pool);
       const sharedFrom = previous?.get(subject)?.[0];
-      const firstWhole = rows.find((row) => row.classId !== null);
+      // One shared row per class, in a class whose day runs past 11:45 (grade
+      // 5 and above): a teacher of two branches is here only from 11:45, and
+      // ten shared subjects on the rows of one class of grade 1 left lessons
+      // with no place (5.12d, the first full run to reach a second branch).
+      const firstWhole = rows.find(
+        (row) =>
+          row.classId !== null &&
+          (gradeOf.get(row.classId) ?? 0) >= 5 &&
+          !sharedClasses.has(row.classId),
+      );
       if (
         sharedFrom !== undefined &&
         sharedHere < size.sharedSubjects &&
@@ -559,6 +571,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
           .execute();
         sharedTeachers.push(sharedFrom);
         assigned.set(firstWhole, sharedFrom);
+        if (firstWhole.classId !== null) sharedClasses.add(firstWhole.classId);
       }
       // Busiest first; each row to the least loaded teacher its block does not hold yet.
       const order = rows
