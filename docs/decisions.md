@@ -289,6 +289,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 23 October 2026: master plans (task 7.3)
+
+Plan approved on pull request #216 with corrections 1 and 2; decisions 1 to 16 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new kind of row filter; a pinned list widened). The three master tables carry a `branch_id` that may be empty (a master of all branches) and one policy `branch_or_school` (`branch_id is null or branch_id = any(app_branch_ids())`); `catalog.test.ts` has a list `BRANCH_OR_SCHOOL_TABLES` with the exact policy text and self-tests; a child names its parent by `scope_key` (the branch or the nil id), because a key with an empty column is not checked | Decision 1; `02`, the Senior Head Teacher "Can keep a master plan for all branches"; spec review of the plan, must-fix 1 |
+| **Look first** (a new permission area). `plan_masters`: view for the six readers of plans; create and edit for the Super Admin, the Academic Vice Principal, the Senior Head Teacher and the Head Teacher; the keeper is decided in the route | Decision 2; `02`, `09`, Master plans |
+| A master is kept by the posts in force: a branch master by the Head Teacher of its subject in the branch, the Senior Head Teacher of the subject, the Academic Vice Principal while the subject has no Head Teacher in the branch, the Super Admin; a master of all branches by the Senior Head Teacher of the subject and the Super Admin | Decision 3; `edge/people-roles-accounts`, row 16 |
+| A master belongs to a year by its start year and to a quarter by its number; a copy needs both to match; copying into a new year is 9.5b's | Decision 4 |
+| The comparison matches items by identity: changed (newer and with other content), added, removed; an order change alone shows nothing; a row whose plan item is on a started row in any journal is shown and not taken | Decision 5; spec review of the plan, must-fix 4 |
+| "Take the changes" takes every takeable row; "Keep my plan" sets the revision and changes no item; both pass the gate after `lockPlanOf` (Text for changed rows, Re-plan from the first row an added or removed item moves) | Decision 6; `.claude/rules/lesson-plans.md` |
+| A master holds topics, works, objectives and links, no files; its history is the audit entries and removed items kept with `removed_revision` | Decisions 7 and 8 |
+| Every write of a master carries its `revision` and is refused `plan_master_stale` when it moved; copy and take read the master `for share` before its items | Decision 9; spec review of the plan, should-fix 7 |
+| A copy from a master keeps 7.1c's copy rules (empty plan, laid from the first row not started, leftovers not covered) and stores `master_id` and `master_revision`; a copy of a plan keeps the master link only when the master's grade and language fit the target; a separation keeps it | Decisions 10 and 11 |
+| "Master updated" is a mark on the plans list and the plan page, no notification | Decision 12 |
+| The parallel classes: per subject, grade and quarter, each class or group (a group of two grades under both) with the last row started and the next; for the whole-branch roles and the Head Teachers of the subject | Decision 13, correction 1 |
+| A master's name is one text of 1 to 60 characters, unique among the live masters of one scope, subject, grade, language, year and quarter; a copy from an archived master is refused `plan_master_archived`; a restore under a taken name is `already_exists` on `name` | Decisions 14 and 15 (the plan's 15 numbered 16 at the approval) |
+| **Build decision.** The keepers' subjects (`keeps`) come with their names, grades and scopes in the masters answer | A Head Teacher reads no subject list of the setup |
+| **Build decision.** The works of a master item are replaced as a whole on a save (deleted and written again, the values in the audit entry); the save takes no work ids | Nothing refers to a master work by id |
+| **Build decision.** A teacher reads a master through the profile, or through a plan they own of its subject and grade (the copy and the masters that fit a plan) | Spec review of the plan, note 13 |
+
 ## 23 October 2026: the plan window and edit requests (task 7.2)
 
 Plan approved on pull request #215 with corrections 1 to 5; decisions 1 to 23 confirmed or added there. Flagged on issue #42.
