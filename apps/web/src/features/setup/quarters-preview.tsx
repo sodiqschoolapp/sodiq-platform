@@ -97,9 +97,9 @@ export function QuarterItemsList({
     unit.grade === null ? unit.name : classDisplayName(unit.grade, unit.name);
   const lineOf = (item: QuarterItem): string => {
     switch (item.kind) {
+      // Task 8.2: a hand-set rating exam date is drawn as a lesson line.
       case 'past_lesson':
       case 'data_lesson':
-      // Task 8.2: a hand-set rating exam date, drawn as a lesson line.
       case 'rating_date':
         return t('setup.years.preview.lessonLine', {
           date: schoolDateText(item.date, language),

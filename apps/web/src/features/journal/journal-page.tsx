@@ -25,6 +25,8 @@ import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
 import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
+import { useComments } from './comment-dialog';
+import { useRatingEntry } from './rating-entry';
 import { useWorksEntry } from './works-entry';
 import { journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
@@ -153,6 +155,9 @@ function JournalLoaded({
   const { entry, notices } = useAttendanceEntry(data);
   // Task 8.1: works and numbers.
   const { works, dialogs } = useWorksEntry(data);
+  // Task 8.2: the rating exam and comments.
+  const { rating, dialogs: ratingDialogs } = useRatingEntry(data);
+  const { comments, dialogs: commentDialogs } = useComments(data);
   const [refusedNumber, setRefusedNumber] = useState<number | null>(null);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;
@@ -317,6 +322,8 @@ function JournalLoaded({
         </div>
         {notices}
         {dialogs}
+        {ratingDialogs}
+        {commentDialogs}
         {refusedNumber !== null && (
           <p role="alert" className="text-sm text-destructive" data-refused-number="true">
             {t('journal.works.wholeNumber', { total: refusedNumber })}
@@ -348,6 +355,8 @@ function JournalLoaded({
               scrollTo={nearest?.id ?? null}
               entry={entry}
               works={works}
+              rating={rating}
+              comments={comments}
               onRefusedNumber={setRefusedNumber}
             />
           </div>

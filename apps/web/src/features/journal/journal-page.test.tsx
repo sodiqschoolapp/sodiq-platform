@@ -56,6 +56,7 @@ const student = (
   cells: [cell(1, [{ score: 12, percent: 40 }], 60), cell(2, [], null), cell(1)],
   quarter: figures(59, 3),
   months: { '2026-10': figures(59, 3) },
+  comments: [],
   ...rest,
 });
 
@@ -68,6 +69,7 @@ const GRID: JournalGrid = {
     attendanceOnly: false,
     ratingExam: false,
   },
+  rating: null,
   years: [
     { id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false },
     { id: uid(41), startDate: '2025-09-01', endDate: '2026-05-31', closed: true },

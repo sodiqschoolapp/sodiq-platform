@@ -47,7 +47,8 @@ type SubjectField =
   | 'dailyhomework'
   | 'dailyratingExam'
   | 'dailytotal'
-  | 'departmentStartsOn';
+  | 'departmentStartsOn'
+  | 'switchesFrom';
 
 /** The field of the form an issue of the record names: `names.uz` is `nameUz`, `daily.total` is `dailytotal`. */
 function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
@@ -144,6 +145,9 @@ export function SubjectForm({
           startsOn === '' ? null : startsOn,
         );
   const planned = subject?.departmentMove ?? null;
+  /** Whether the journal type or the rating exam of a stored subject changes (task 8.2). */
+  const switchesChange = (journalType: string, ratingExam: boolean): boolean =>
+    subject !== null && (journalType !== subject.journalType || ratingExam !== subject.ratingExam);
   const form = useRecordForm<SubjectField, SubjectRecord>({
     schema: formSchema(subject === null),
     // Keyed by the subject alone: its own save keeps "Saved." (finding 18).
@@ -166,10 +170,15 @@ export function SubjectForm({
       dailyratingExam: '',
       dailytotal: '',
       departmentStartsOn: subject?.departmentMove?.startsOn ?? '',
+      switchesFrom: '1',
     },
     read: (typed) => {
       const graded = typed.journalType === 'graded';
       return {
+        // Task 8.2 (decision 16): a change of the switches names the quarter it takes effect from.
+        ...(switchesChange(typed.journalType, graded && typed.ratingExam === CHECKED)
+          ? { switchesFrom: Number(typed.switchesFrom) }
+          : {}),
         // A move to another department carries a start date (task 3.4c).
         ...(change(typed.departmentId, typed.departmentStartsOn) === 'move'
           ? {
@@ -201,6 +210,10 @@ export function SubjectForm({
     save: onSave,
   });
   const taken = takenNameOf(form.failure);
+  const switchesChanged = switchesChange(
+    form.bind('journalType').value,
+    form.bind('journalType').value === 'graded' && form.bind('ratingExam').value === CHECKED,
+  );
   const graded = form.bind('journalType').value === 'graded';
   const colour = form.bind('colour');
   const nameField = (field: 'nameUz' | 'nameRu' | 'nameEn', language: 'uz' | 'ru' | 'en') => {
@@ -278,6 +291,17 @@ export function SubjectForm({
       />
       {graded && (
         <CheckboxField label={t('setup.subjects.ratingExam')} {...form.bind('ratingExam')} />
+      )}
+      {switchesChanged && (
+        <SelectField
+          label={t('setup.subjects.switchesFrom')}
+          options={[1, 2, 3, 4].map((number) => ({
+            value: String(number),
+            label: t('setup.subjects.fromQuarter', { number }),
+          }))}
+          note={t('setup.subjects.switchesFromNote')}
+          {...form.bind('switchesFrom')}
+        />
       )}
       <CheckboxField label={t('setup.subjects.groupSubject')} {...form.bind('groupSubject')} />
       <CheckboxField label={t('setup.subjects.languageRule')} {...form.bind('languageRule')} />

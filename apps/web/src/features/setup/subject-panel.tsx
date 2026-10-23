@@ -406,7 +406,6 @@ function QuarterWeights({
   // A choice no longer offered falls back to the first year offered.
   const yearId = open.some((year) => year.id === chosen) ? chosen : (open[0]?.id ?? null);
   const quarters = useQuery(quarterWeightsQuery(branchId, subject.id, yearId));
-  const parts = subject.ratingExam ? FOUR : THREE;
   const title = t('setup.subjects.quarterly');
   const refresh = () => invalidateSubjects(queryClient);
 
@@ -512,9 +511,10 @@ function QuarterWeights({
               </h4>
               {canEdit && !frozen && panel.editing === `weights:${row.quarterId}` ? (
                 <WeightsForm
-                  key={`${row.quarterId}-${String(subject.ratingExam)}-${row.number === 1 ? '' : String(copies)}`}
+                  key={`${row.quarterId}-${String(row.ratingExam)}-${row.number === 1 ? '' : String(copies)}`}
                   kind="quarter"
-                  parts={parts}
+                  // Task 8.2: the shape of the quarter's own rating exam switch.
+                  parts={row.ratingExam ? FOUR : THREE}
                   weights={row.fits ? row.weights : null}
                   label={label}
                   onSave={async (weights) => {

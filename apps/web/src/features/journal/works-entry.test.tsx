@@ -73,6 +73,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
   ],
   quarter: null,
   months: null,
+  comments: [],
 });
 
 const GRID: JournalGrid = {
@@ -84,6 +85,7 @@ const GRID: JournalGrid = {
     attendanceOnly: false,
     ratingExam: false,
   },
+  rating: null,
   years: [{ id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false }],
   others: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
   quarters: [QUARTER],

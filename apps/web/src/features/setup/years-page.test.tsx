@@ -75,6 +75,7 @@ const NOTHING: QuartersPreview = {
   exams: { items: [], more: 0 },
   splitMoves: { items: [], more: 0 },
   ratingExams: { items: [], more: 0 },
+  ratingDates: { items: [], more: 0 },
   dataLessons: { items: [], more: 0 },
 };
 

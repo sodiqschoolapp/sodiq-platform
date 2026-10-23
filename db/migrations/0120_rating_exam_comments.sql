@@ -59,13 +59,13 @@ create index subject_switches_subject_idx on subject_switches (subject_id, chang
 -- guard of 0058. No update, no delete.
 grant select, insert on subject_switches to sodiq_app;
 
-create trigger subject_switches_direct
-  before insert on subject_switches
-  for each row execute function timetable_trigger_only('subject_switches_direct');
-
 insert into subject_switches (subject_id, journal_type, rating_exam, weights_round, rating_round, changed_at)
   select id, journal_type, rating_exam, weights_round, rating_round, '-infinity'
   from subjects;
+
+create trigger subject_switches_direct
+  before insert on subject_switches
+  for each row execute function timetable_trigger_only('subject_switches_direct');
 
 -- A change of the switches names the quarter it takes effect from; the
 -- rounds alone (a weights round of a change back to graded) go with it.
@@ -108,7 +108,8 @@ begin
     raise exception 'journal_cell_moment'
       using errcode = 'check_violation', constraint = 'journal_cell_moment';
   end if;
-  if new.switches_from is null then
+  if new.switches_from is null
+    and (new.journal_type <> old.journal_type or new.rating_exam <> old.rating_exam) then
     raise exception 'subject_switches_from'
       using errcode = 'check_violation', constraint = 'subject_switches_from';
   end if;

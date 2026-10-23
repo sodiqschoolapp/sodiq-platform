@@ -3,6 +3,10 @@ import {
   allPresentSchema,
   attendanceSavedSchema,
   cellHistorySchema,
+  commentHistorySchema,
+  journalCommentSchema,
+  ratingExamSchema,
+  ratingHistorySchema,
   journalGridSchema,
   journalListSchema,
   scoresSavedSchema,
@@ -10,6 +14,11 @@ import {
   workSavedSchema,
   type AbsenceReasonRecord,
   type AttendanceSave,
+  type CommentHistoryQuery,
+  type CommentSave,
+  type RatingDate,
+  type RatingEntrySave,
+  type RatingNotHeld,
   type ScoresSave,
   type WorkAdd,
   type WorkCarry,
@@ -180,3 +189,74 @@ export const saveScores = (lessonId: string, body: ScoresSave) =>
       body,
     }),
   ).then((answer) => scoresSavedSchema.parse(answer));
+
+// ---------------------------------------------------------------------------
+// Task 8.2: the rating exam and comments.
+
+/** The hand-set date of the rating exam of a journal in a quarter. */
+export const setRatingDate = (journalId: string, quarterId: string, body: RatingDate) =>
+  answerOf(
+    api.PUT('/api/journal/journals/{journalId}/rating/{quarterId}/date', {
+      params: { header: branchHeader(), path: { journalId, quarterId } },
+      body,
+    }),
+  ).then((answer) => ratingExamSchema.parse(answer));
+
+/** "Not held" and its undo; `confirm` after a `rating_exam_entries`. */
+export const setRatingNotHeld = (journalId: string, quarterId: string, body: RatingNotHeld) =>
+  answerOf(
+    api.PUT('/api/journal/journals/{journalId}/rating/{quarterId}/not-held', {
+      params: { header: branchHeader(), path: { journalId, quarterId } },
+      body,
+    }),
+  ).then((answer) => ratingExamSchema.parse(answer));
+
+/** A student's entry; `entry: null` clears it. */
+export const saveRatingEntry = (journalId: string, quarterId: string, body: RatingEntrySave) =>
+  answerOf(
+    api.POST('/api/journal/journals/{journalId}/rating/{quarterId}/entries', {
+      params: { header: branchHeader(), path: { journalId, quarterId } },
+      body,
+    }),
+  ).then((answer) => ratingExamSchema.parse(answer));
+
+/** The history of a student's rating entry and of the exam's date and "not held". */
+export const ratingHistoryQuery = (
+  branchId: string | null,
+  journalId: string,
+  quarterId: string,
+  studentId: string,
+) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'rating-history', journalId, quarterId, studentId],
+    queryFn: async () =>
+      ratingHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/journal/journals/{journalId}/rating/{quarterId}/students/{studentId}/history', {
+            params: { header: branchHeader(), path: { journalId, quarterId, studentId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Writes or clears a comment. */
+export const saveComment = (body: CommentSave) =>
+  answerOf(
+    api.PUT('/api/journal/comments', { params: { header: branchHeader() }, body }),
+  ).then((answer) => journalCommentSchema.parse(answer));
+
+/** The history of a comment. */
+export const commentHistoryQuery = (branchId: string | null, query: CommentHistoryQuery) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'comment-history', query],
+    queryFn: async () =>
+      commentHistorySchema.parse(
+        await answerOf(
+          api.GET('/api/journal/comments/history', {
+            params: { header: branchHeader(), query },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
