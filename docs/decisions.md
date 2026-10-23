@@ -289,6 +289,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 23 October 2026: rating exam and comments (task 8.2)
+
+Plan approved on pull request #218 with corrections 1 to 4; decisions 1 to 18 confirmed or changed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of a journal calculation rule). The switches are stored per subject and quarter, as a dated log of the subject's changes (`subject_switches`) read on each quarter's last day by `subject_quarter_switches`; an ended quarter keeps its switches | Decision 1; `edge/calculation`: "These switches are stored per quarter"; `05` sets them on the subject |
+| **Look first** (a new school-wide table). `subject_switches` is school-wide: the log of the school-wide `subjects` row | Decision 17 |
+| **Look first** (personal data across branches, counts only). `subject_switch_blocked` is SECURITY DEFINER, answers counts of started quarters with scores or a linked rating exam in every branch | Decision 2; `edge/calculation`: "refused while scores exist" |
+| **Look first.** A change of the switches names the quarter it takes effect from (`switchesFrom`, `subjects.switches_from`), by quarter number in the year of the change day and every later year | Decision 16; correction 2 (the carrier is a column written in the same update) |
+| **Look first** (a refusal added). A quarter save that leaves a hand-set rating exam date outside its quarter is refused (`quarter_rating_dates`) | Decision 13 |
+| **Look first** (a trigger changed by a requirement). The quarterly weights guards compare with the rounds of the quarter's switches (`subject_quarter_weights_switch_rounds` in place of the two triggers of 0022 and 0023 on that table); a weights save of an open quarter is never refused for its switch row | Decision 14 changed by correction 1 |
+| "Scores" for the refusal: a rating entry or "not held"; for the journal type also a number, a total or a "not held" work; "started" from the quarter's first day in branch time | Decision 3 |
+| The rating exam row is written at its first write; entries from the date in force (a standing linked exam's, else the hand date) in branch time; no date, no entry | Decisions 4 and 5 |
+| "Not held" keeps the entries and passes `not_held`; turned off they count again; with entries it asks `confirm` | Decision 7 |
+| An entry for a member on any day from the date to the quarter's end; a reason on every write over an entry, a clear included, checked by the database | Decisions 8 and 9 |
+| One comment per target (mark, number, rating entry, note), cleared and never deleted, with history; whoever may enter the target writes it; the Spiritual VP and the Head Tutor read the comments of marks only | Decision 10 |
+| The comment key is `KeyC`, the rating entry key `KeyE`, in every keyboard layout; on a cell that takes a typed number they start no edit | Decision 11 |
+| The reset report and the student's personal data report list rating entries and comments | Decision 12 |
+| A date change after entries keeps them; the date in force governs only later entries | Decision 15 |
+| A journal is planned when any quarter of its year is graded | Decision 18 |
+| **Build decision.** A change of a subject's switches by the migrator outside a request (a fixture, a data fix) writes a log row at the moment of the subject's newest row, with no quarter number | The fixtures of earlier tasks change `journal_type` and `rating_exam` as the migrator, with no clock |
+| **Build decision.** The rating exam is read with the journal grid (`rating` of the answer); the routes answer it after each write, so there is no separate read route | One scope (`gridIn`) for the grid, the rating history and the comment history |
+
 ## 23 October 2026: classwork and homework (task 8.1)
 
 Plan approved on pull request #217 with correction 1; decisions 1 to 18 confirmed or changed there. Flagged on issue #42.

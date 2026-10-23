@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 8.2 Rating exam and comments
+
+- 0120: `subject_switches` (the log of a subject's switches and rounds, written by the trigger on `subjects` with `switches_from`), `subject_quarter_switches`, the quarterly weights guard on the quarter's rounds, `journal_rating_exams` and `journal_rating_entries` with their database checks, `journal_comments`, both histories partitioned by month, `subject_switch_blocked` (SECURITY DEFINER, counts only), `lesson_holds_data` and `year_cut_holds` with comments and rating entries.
+- Routes: `/api/journal/journals/:journalId/rating/:quarterId` (`date`, `not-held`, `entries`, history), `PUT /api/journal/comments` and its history; the subject edit takes `switchesFrom`; the grid answers the rating exam and the comments; the publish check, the exam save, the works and the plans read the quarter's switches; the reset report and the personal data report list the new lines.
+- Web: the rating exam column with its date, the entry and exam dialogs (key E), the comments dialog (key C in every layout) with a corner marker, "Takes effect from" on the subject form. Left out: the edit period, unlock and corrections of entries and comments (8.4), "exempt on exam day, pending" (8.5), the closing check of missing entries (9.2a). The browser test was not run locally (the cloud Chromium does not match the pinned Playwright); CI runs it.
+
+The next sessions must know:
+
+- A quarter's journal type, rating switch and rounds come from `switchesOf` / `switchesIn` (`subject-switches.ts`, `JournalRow.quarters`), never from `subjects`; a change by the application names `switches_from`.
+- Every writer of a score of a subject holds the subject row FOR SHARE first (`holdSubjectSwitches`).
+- A test fixture that changes a subject's switches as the migrator writes a log row in force for every quarter the newest row reached.
+
 ## 23 October 2026: task 8.1 Classwork and homework
 
 - 0119: `journal_works` gains its source lesson, plan link, place, carry and version; the database checks of a number and a total, the limit of 10, the move and the carry; `journal_work_history`; the forced delete keeps the new columns; `year_cut_holds` gains the entries.
