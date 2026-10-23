@@ -274,6 +274,11 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.work_carry',
     'journal.work_move',
     'journal.work_takeover',
+    // Task 8.2: the rating exam's date and "not held", a student's entry, a comment.
+    'journal.rating_date',
+    'journal.rating_not_held',
+    'journal.rating_entry',
+    'journal.comment',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).

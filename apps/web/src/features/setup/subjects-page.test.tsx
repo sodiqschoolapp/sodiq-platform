@@ -120,6 +120,8 @@ const quarter = (number: number, weights: SubjectQuarter['weights'] = null): Sub
   endDate: null,
   weights,
   fits: weights !== null,
+  graded: true,
+  ratingExam: weights?.ratingExam != null,
 });
 
 const RATED = { attendance: 10, classwork: 30, homework: 20, ratingExam: 40 };

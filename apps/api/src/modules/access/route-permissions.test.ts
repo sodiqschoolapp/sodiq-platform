@@ -734,6 +734,25 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   'POST /api/journal/lessons/:lessonId/works/carry': { branch: 'request', roles: JOURNAL_WRITERS },
   'POST /api/journal/lessons/:lessonId/scores': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.2: the rating exam and comments.
+  'PUT /api/journal/journals/:journalId/rating/:quarterId/date': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'PUT /api/journal/journals/:journalId/rating/:quarterId/not-held': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'POST /api/journal/journals/:journalId/rating/:quarterId/entries': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'GET /api/journal/journals/:journalId/rating/:quarterId/students/:studentId/history': {
+    branch: 'request',
+    roles: VIEW_READERS,
+  },
+  'PUT /api/journal/comments': { branch: 'request', roles: JOURNAL_WRITERS },
+  'GET /api/journal/comments/history': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',
     roles: VIEW_READERS,
@@ -1146,9 +1165,12 @@ describe('the sample routes, as every role', () => {
     expect(declarationProblems(app, SAMPLE_ROUTE_ACCESS)).toEqual([]);
   });
 
+  // Every route as 17 callers in two branches, as the walk above: over 120 s on a CI
+  // runner after task 8.2's routes (pull request #218), and a walk cut by its limit kept
+  // running into the next test; the limit is time only, the list it checks is the same.
   it('are allowed and refused as listed: by role, by branch and without a branch', async () => {
     expect(await accessProblems(app, SAMPLE_ROUTE_ACCESS, callers, handlerStop)).toEqual([]);
-  }, 120_000);
+  }, 240_000);
 
   // The harness is only worth something if it sees a difference.
   it('are reported when the list names a role the server refuses, or leaves out one it allows', async () => {
@@ -1178,7 +1200,7 @@ describe('the sample routes, as every role', () => {
       'GET /api/permission-sample/own: declared any_signed_in, listed as public',
       'GET /api/permission-sample/school: declared for the branch "none", listed for "request"',
     ]);
-  }, 120_000);
+  }, 240_000);
 });
 
 // Left open by task 0.7b: a route with `@All()` crashed the harness.

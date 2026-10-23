@@ -17,6 +17,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { holdSubjectSwitches } from '../setup/subject-switches.js';
 import { ownerOn } from '../timetable/journal-owners.js';
 import {
   enterableLesson,
@@ -25,7 +26,7 @@ import {
   type EntryLesson,
 } from './attendance-entry.js';
 import { saveCells } from './cells.js';
-import { journalRows, type JournalRow } from './journal-grid.query.js';
+import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
 import { refuseOtherStudents } from './students-of-branch.js';
@@ -162,9 +163,16 @@ export class WorksService {
       lessonId,
     );
     if (lesson.journalId === null) throw new ApiException('lesson_attendance_only', 409);
+    const [unlocked] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
+    if (unlocked === undefined) throw new ApiException('lesson_attendance_only', 409);
+    // Task 8.2 (item 8 of the plan): the subject row FOR SHARE before a write of
+    // a score, then the switches of the lesson's quarter read after it.
+    await holdSubjectSwitches(transaction, unlocked.subjectId);
     const [journal] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
     if (journal === undefined) throw new ApiException('lesson_attendance_only', 409);
-    if (journal.subject.attendanceOnly) throw new ApiException('lesson_attendance_only', 409);
+    if (attendanceOnlyOn(journal, lesson.date)) {
+      throw new ApiException('lesson_attendance_only', 409);
+    }
     const facts = await journalFactsOf(transaction, branchId, journal.id);
     const owner =
       facts === null

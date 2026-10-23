@@ -177,6 +177,7 @@ export class QuarterLessons {
       await this.splitMoves(transaction, branchId, yearId, input.before, after),
     );
     const ratingExams = itemsOf(await this.ratingExamsTwice(transaction, yearId, after));
+    const ratingDates = itemsOf(await this.ratingDatesOutside(transaction, yearId, after));
     const dataLessons = itemsOf(
       await this.pastLessons(
         transaction,
@@ -191,6 +192,7 @@ export class QuarterLessons {
       ['quarter_leaves_exam', exams],
       ['quarter_splits_move', splitMoves],
       ['quarter_rating_exams', ratingExams],
+      ['quarter_rating_dates', ratingDates],
     ] as const) {
       if (!input.preview && list.items.length > 0) throw refusalOf(code, list);
     }
@@ -227,9 +229,10 @@ export class QuarterLessons {
         exams,
         splitMoves,
         ratingExams,
+        ratingDates,
         dataLessons,
       },
-      refused: [pastLessons, exams, splitMoves, ratingExams, dataLessons].some(
+      refused: [pastLessons, exams, splitMoves, ratingExams, ratingDates, dataLessons].some(
         (list) => list.items.length > 0,
       ),
     };
@@ -455,6 +458,63 @@ export class QuarterLessons {
           exams: list.map((one) => ({ title: one.title, date: one.date })),
         };
       });
+  }
+
+  /**
+   * Task 8.2 (decision 13): each journal whose hand-set rating exam date the
+   * new dates leave outside the quarter it is stored for
+   * (`journal_rating_date_quarter`, 0120). The year row is held `for no key
+   * update` (`lock`); a write of the date reads its quarter FOR SHARE.
+   */
+  private async ratingDatesOutside(
+    transaction: Transaction,
+    yearId: string,
+    after: readonly Dated[],
+  ): Promise<QuarterItem[]> {
+    const rows = await transaction
+      .selectFrom('journal_rating_exams')
+      .innerJoin('quarters', 'quarters.id', 'journal_rating_exams.quarter_id')
+      .innerJoin('journals', 'journals.id', 'journal_rating_exams.journal_id')
+      .innerJoin('subjects', 'subjects.id', 'journals.subject_id')
+      .leftJoin('classes', 'classes.id', 'journals.class_id')
+      .leftJoin('groups', 'groups.id', 'journals.group_id')
+      .select([
+        'quarters.number',
+        sql<string>`journal_rating_exams.exam_date::text`.as('date'),
+        'journals.class_id',
+        'classes.name as class_name',
+        'classes.grade',
+        'groups.name as group_name',
+        'journals.subject_id',
+        'subjects.name_uz',
+        'subjects.name_ru',
+        'subjects.name_en',
+      ])
+      .where('quarters.academic_year_id', '=', yearId)
+      .where('journal_rating_exams.exam_date', 'is not', null)
+      .orderBy('journal_rating_exams.exam_date')
+      .orderBy('journal_rating_exams.id')
+      .execute();
+    return rows
+      .filter((row) => {
+        const quarter = after.find((one) => one.number === row.number);
+        return (
+          quarter === undefined ||
+          quarter.startDate === null ||
+          quarter.endDate === null ||
+          row.date < quarter.startDate ||
+          row.date > quarter.endDate
+        );
+      })
+      .map((row): QuarterItem => ({
+        kind: 'rating_date',
+        date: row.date,
+        unit:
+          row.class_id === null
+            ? { kind: 'group', name: row.group_name ?? '', grade: null }
+            : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
+        subject: subjectOf(row),
+      }));
   }
 
   /** Every block of the year on a date that goes to another quarter takes that quarter (decision 4). */

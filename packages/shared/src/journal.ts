@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { absenceCategorySchema } from './attendance.js';
+import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
 import { subjectColourSchema } from './subjects.js';
 
 /**
@@ -211,6 +212,12 @@ export const journalStudentSchema = z.object({
   quarter: figuresSchema.nullable(),
   /** By month (`YYYY-MM`) of `months`. */
   months: z.record(z.string(), figuresSchema).nullable(),
+  /**
+   * The comments on the student's cells and notes of the lessons shown and on
+   * the quarter's rating entry, those the reader may read (task 8.2, decision
+   * 10: attendance marks only for a reader who sees attendance).
+   */
+  comments: z.array(journalCommentSchema),
 });
 
 export type JournalStudent = z.infer<typeof journalStudentSchema>;
@@ -239,8 +246,14 @@ export const journalGridSchema = z.object({
     year: journalYearSchema,
     /** `edge/calculation`: attendance-only subjects have no weights, score, result or grade. */
     attendanceOnly: z.boolean(),
+    /** The subject has the rating exam in the quarter shown (task 8.2: the quarter's switches). */
     ratingExam: z.boolean(),
   }),
+  /**
+   * The rating exam of the quarter shown (task 8.2): `null` when the subject has
+   * none in the quarter, or for a reader who sees attendance or lessons only.
+   */
+  rating: ratingExamSchema.nullable(),
   /** The years of the branch, for the year selector (`07`, Opening a journal, Selectors). */
   years: z.array(journalYearSchema),
   /** The other journals of the reader in the year, for the class or group and subject selectors. */

@@ -8,6 +8,7 @@ import {
   namedAccounts,
   workKinds,
 } from './cell-lines.query.js';
+import { commentLines, ratingLines } from './rating-comment-lines.query.js';
 import { workLines } from './work-lines.query.js';
 
 /**
@@ -111,8 +112,13 @@ export async function studentJournal(
     // Every line: a student's works are few, and the report holds all of them (permission
     // review, should-fix 6), newest first.
     .reverse();
+  // Task 8.2 (From 6.1c; decision 12): every line of the student's rating entries and comments, newest first.
+  const ratingHistory = (await ratingLines(transaction, { studentId })).reverse();
+  const commentHistory = (await commentLines(transaction, { studentId })).reverse();
   return {
     workHistory,
+    ratingHistory,
+    commentHistory,
     cells: cells.map((cell) => {
       const lesson = lessons.get(cell.lesson_id);
       const work = cell.work_id === null ? undefined : works.get(cell.work_id);

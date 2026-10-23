@@ -11,6 +11,7 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Audit } from '../audit/audit.service.js';
 import {
   dayTemplatesKit,
   MONDAY,
@@ -628,6 +629,68 @@ describe('quarter and year dates after lessons exist', () => {
     const other = await scene();
     await insertExam(other, NOV09, other.seniorTeacher, 'cancelled');
     okay(await saveQuarters(other, dates));
+  });
+
+  // Task 8.2 (decision 13): a hand-set rating exam date stays inside its quarter.
+  it('dates that leave a hand-set rating exam date outside its quarter refuse the save, listed, and the preview lists it', async () => {
+    const s = await scene();
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ journal_type: 'graded', rating_exam: true })
+      .where('id', '=', s.history)
+      .execute();
+    const journal = (
+      await t.database.migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('class_id', '=', s.seniorId)
+        .where('subject_id', '=', s.history)
+        .executeTakeFirstOrThrow()
+    ).id;
+    const quarter = (
+      await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('branch_id', '=', s.branch)
+        .where('number', '=', 2)
+        .executeTakeFirstOrThrow()
+    ).id;
+    const author = await load.classes.account();
+    await t.app.get(Transactions).run([s.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: s.branch,
+        actorId: null,
+        action: 'journal.rating_date',
+      });
+      await transaction
+        .insertInto('journal_rating_exams')
+        .values({
+          branch_id: s.branch,
+          journal_id: journal,
+          quarter_id: quarter,
+          exam_date: '2026-12-24',
+          version: 1,
+          changed_by: author,
+          changed_at: new Date(0),
+        })
+        .execute();
+    });
+    const rows = await storedRowsOf(s.branch);
+    // Quarter 2 now ends on 20 December: the date of 24 December is in no quarter.
+    const dates = withQuarters({ 2: [NOV09, '2026-12-20'] });
+    const item = {
+      kind: 'rating_date',
+      date: '2026-12-24',
+      unit: { kind: 'class', name: expect.any(String) as string, grade: 10 },
+      subject: await subjectLine(s.history),
+    };
+    const refused = await saveQuarters(s, dates);
+    refusedWith(refused, 409, 'quarter_rating_dates');
+    expect(detailsOf(refused).map((one) => one.quarterItem)).toEqual([item]);
+    expect(await storedRowsOf(s.branch)).toEqual(rows);
+    expect((await shownFor(s, dates)).ratingDates).toEqual({ items: [item], more: 0 });
+    // A date that stays inside: the save goes through.
+    okay(await saveQuarters(s, withQuarters({ 2: [NOV09, '2026-12-25'] })));
   });
 
   // Task 5.6c-3b (decision 2; edge/calculation, "The rating exam": one

@@ -58,6 +58,8 @@ const BY_ADMIN: Reset = {
       changedBy: { accountId: uid(2), login: 'n.rahimova', name: 'Rahimova Nodira' },
     },
   ],
+  ratingEntries: [],
+  commentEntries: [],
 };
 
 const BY_EMAIL: Reset = {
@@ -74,6 +76,8 @@ const BY_EMAIL: Reset = {
   },
   entries: [],
   workEntries: [],
+  ratingEntries: [],
+  commentEntries: [],
 };
 
 const ROUTE = 'GET /api/people/accounts/reset-entries';

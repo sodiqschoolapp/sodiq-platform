@@ -656,6 +656,33 @@ export const uz: Texts<'one' | 'other'> = {
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
       'Bu darsda faqat davomat olinadi: fanda ishlar yoʻq yoki oʻsha kuni jurnalning oʻqituvchisi yoʻq.',
+    quarter_rating_dates:
+      'Bu sanalar bilan qoʻlda belgilangan reyting imtihoni sanasi oʻz choragidan tashqarida qoladi. Avval jurnalda imtihon sanasini oʻzgartiring.',
+    subject_switches_from:
+      'Oʻzgarish qaysi chorakdan kuchga kirishini tanlang. U faqat jurnal turi yoki reyting imtihoni oʻzgarganda tanlanadi.',
+    subject_switch_scores:
+      'Boshlangan chorakda bu fan boʻyicha ballar bor. Oʻzgarishni keyingi chorakdan qiling.',
+    subject_switch_exams:
+      'Jadvaldagi reyting imtihoni oʻsha chorakda bu fan jurnallariga bogʻlangan. Oʻzgarishni keyingi chorakdan qiling yoki avval bogʻlanishni olib tashlang.',
+    rating_exam_off: 'Bu fanda shu chorakda reyting imtihoni yoʻq.',
+    rating_exam_scope:
+      'Reyting imtihonida buni qila olmaysiz. Ballarni jurnal oʻqituvchisi kiritadi; «ozod» va «oʻtkazilmadi»ni oʻquv ishlari boʻyicha direktor oʻrinbosari belgilaydi.',
+    rating_exam_linked: 'Sana jadvaldagi imtihondan olinadi. Uni oʻsha yerda oʻzgartiring.',
+    rating_exam_no_date: 'Avval imtihon sanasini belgilang. Ballar shu sanadan kiritiladi.',
+    rating_exam_not_yet: 'Ballar imtihon sanasidan boshlab kiritiladi.',
+    rating_exam_not_held:
+      'Bu jurnal uchun reyting imtihoni «oʻtkazilmadi» deb belgilangan. Avval buni bekor qiling.',
+    rating_exam_entries:
+      'Oʻquvchilarda yozuvlar bor. Imtihonni oʻtkazilmagan deb belgilash uchun tasdiqlang; yozuvlar tarixda qoladi.',
+    rating_exam_reason: 'Oʻzgarish sababini yozing, masalan kech topshirish yoki qayta topshirish.',
+    rating_exam_not_member:
+      'Oʻquvchi imtihon sanasidan chorak oxirigacha bu sinf yoki guruhda emas.',
+    rating_exam_date_quarter: 'Imtihon sanasi chorak ichida boʻlishi kerak.',
+    rating_exam_stale:
+      'Bu yozuvni hozirgina kimdir oʻzgartirdi. Koʻrsatilgan qiymatni tekshirib, qayta saqlang.',
+    comment_scope: 'Faqat shu darsda kirita oladigan narsangizga izoh yozish mumkin.',
+    comment_no_value: 'Avval baho yoki sonni kiriting, keyin izoh qoʻshing.',
+    comment_stale: 'Bu izohni hozirgina kimdir oʻzgartirdi. Uni qayta oching.',
     work_not_in_lesson:
       'Bu ish endi bu darsning ustuni emas. Jurnalni yangilab, qayta urinib koʻring.',
     lesson_has_plan_item:
@@ -1422,6 +1449,9 @@ export const uz: Texts<'one' | 'other'> = {
       journalType: 'Jurnal turi',
       journalTypes: { graded: 'Baholanadi', attendance_only: 'Faqat davomat' },
       ratingExam: 'Reyting imtihoni',
+      switchesFrom: 'Kuchga kiradi',
+      fromQuarter: '{{number}}-chorakdan',
+      switchesFromNote: 'Oldingi choraklar oʻz jurnal turi va reyting imtihonini saqlaydi.',
       groupSubject: 'Guruhli fan',
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
@@ -1730,6 +1760,7 @@ export const uz: Texts<'one' | 'other'> = {
         cancelledExamLine: '{{date}} · {{title}} (bekor qilingan)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
         ratingExams: 'Bitta chorakda ikkita reyting imtihoni boʻlib qoladigan jurnallar',
+        ratingDates: 'Oʻz choragidan tashqarida qoladigan reyting imtihoni sanalari',
         ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'va yana {{count}} ta',
         more_other: 'va yana {{count}} ta',
@@ -1828,6 +1859,10 @@ export const uz: Texts<'one' | 'other'> = {
       journalTitle: 'Baholar va davomat',
       noCells: 'Baholar va davomat yoʻq.',
       workHistoryTitle: 'Jamilar va «oʻtkazilmadi» belgilari',
+      ratingHistoryTitle: 'Reyting imtihoni yozuvlari',
+      commentHistoryTitle: 'Izohlar',
+      ratingLine: '{{subject}}, {{unit}}, {{quarter}}-chorak: {{before}} → {{after}}',
+      commentLine: '{{target}}: {{body}} ({{visibility}})',
       historyTitle: 'Jurnal tarixi',
       noHistory: 'Jurnal tarixi yoʻq.',
       historyLeftOut: 'Koʻrsatilmagan eski qatorlar: {{count}}, eng eskisi {{moment}}.',
@@ -3324,6 +3359,10 @@ export const uz: Texts<'one' | 'other'> = {
         work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
         work_move: 'Ish tekshiriladigan darsga koʻchirildi',
         work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
+        rating_date: 'Reyting imtihoni sanasi belgilandi',
+        rating_not_held: 'Reyting imtihoni oʻtkazilmagan deb belgilandi',
+        rating_entry: 'Reyting imtihoni yozuvi',
+        comment: 'Jurnaldagi izoh',
       },
       plan: {
         create: 'Dars rejasi boshlandi',
@@ -5529,6 +5568,54 @@ export const uz: Texts<'one' | 'other'> = {
       historyHow: 'Qanday',
       close: 'Yopish',
       reason: 'Sabab: {{category}}',
+    },
+    rating: {
+      column: 'Reyting imtihoni',
+      examTitle: 'Reyting imtihoni',
+      date: 'Imtihon sanasi',
+      fromExam: 'Jadvaldagi imtihondan',
+      saveDate: 'Sanani saqlash',
+      noDate: 'Sanasiz',
+      notHeld: 'Oʻtkazilmadi',
+      notHeldShort: 'Oʻtkazilmadi',
+      undoNotHeld: '«Oʻtkazilmadi»ni bekor qilish',
+      notHeldTitle: 'Imtihon oʻtkazilmagan deb belgilansinmi?',
+      notHeldConfirm_one:
+        '{{count}} ta oʻquvchida yozuv bor. U natijadan chiqadi va tarixda qoladi.',
+      notHeldConfirm_other:
+        '{{count}} ta oʻquvchida yozuv bor. Ular natijalardan chiqadi va tarixda qoladi.',
+      entryTitle: 'Reyting imtihoni: {{student}}',
+      stored: 'Hozir',
+      score: 'Ball',
+      wholeNumber: '0 dan {{max}} gacha butun son.',
+      reason: 'Oʻzgarish sababi',
+      saveScore: 'Ballni saqlash',
+      clear: 'Tozalash',
+      history: 'Tarix',
+      noHistory: 'Hali oʻzgarish yoʻq.',
+      examLine: 'Imtihon sanasi: {{date}}',
+      change: '{{before}} → {{after}}',
+      line: '{{change}} · {{who}} · {{when}}',
+      lineWithReason: '{{change}} · {{reason}} · {{who}} · {{when}}',
+      kinds: { did_not_sit: 'Topshirmadi', exempt: 'Ozod' },
+    },
+    comments: {
+      title: 'Izohlar: {{student}}',
+      targets: {
+        mark: 'Davomat belgisiga izoh',
+        work: 'Songa izoh',
+        note: 'Dars uchun qayd',
+        rating: 'Reyting imtihoniga izoh',
+      },
+      body: 'Matn',
+      visibility: 'Kim koʻradi',
+      visibilities: { staff: 'Faqat xodimlar', parents: 'Ota-onalarga koʻrinadi' },
+      save: 'Saqlash',
+      clear: 'Tozalash',
+      history: 'Tarix',
+      noHistory: 'Hali oʻzgarish yoʻq.',
+      cleared: 'Tozalandi',
+      line: '{{text}} · {{who}} · {{when}}',
     },
     works: {
       noPlan: 'Reja yoʻq',

@@ -48,6 +48,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'One counter of staff IDs per year of first hire for the whole school (docs/spec/edge-cases/developer-rules.md, Identifiers: "one school-wide counter per year"); a row holds a year and a number, nothing personal (task 2.2a, confirmed at the review of pull request #53).',
   subjects:
     'One subject list for the whole school (owner, answer 3 of "Decided ahead for tasks 2.1 to 2.6"); its weights are per branch in subject_daily_weights and subject_quarter_weights. A row holds names, a department id, grades, a colour, switches and moments (task 2.1).',
+  subject_switches:
+    'The log of the school-wide subjects row: each change of its journal type, rating exam switch and rounds, with the quarter it takes effect from, so every quarter reads the switches it had (edge/calculation: "These switches are stored per quarter"; task 8.2, decisions 1 and 17 of pull request #218, Look first). A row holds ids, switches, rounds, a quarter number and moments, nothing personal.',
   password_reset_links:
     'A link of the password reset by email belongs to an account, which has no branch, and is asked for before any branch is known; a row holds ids, a token hash and moments (task 2.3c-2, pull request #66).',
 };
@@ -209,6 +211,8 @@ function auditSchoolPartitions(): Record<string, string> {
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'password_resets_of_branch(uuid,timestamp with time zone,timestamp with time zone)':
     'The password resets of the accounts of the staff of a branch, and of any account that wrote a cell line of the branch within 48 hours of its reset, read from every log whatever branch wrote the entry, ids, kinds and moments only, for the report of entries after a reset (edge/people-roles-accounts, Accounts and sign-in; task 6.1c, decision 1 of pull request #209, Look first): one account serves every branch, so a reset made in one branch opens the account in all of them.',
+  'subject_switch_blocked(uuid,smallint,timestamp with time zone,boolean,boolean)':
+    'Counts of the started quarters, in every branch, that a change of a school-wide subject\'s switches would reach while they hold its scores or a linked rating exam: the edit by a branch\'s Academic Vice Principal must see every branch, which the branch filter would hide (edge/calculation: "In a started quarter the change is refused while scores exist"; task 8.2, decision 2 of pull request #218, Look first). It answers counts only, no rows and no names.',
   'student_in_forced_store(uuid)':
     'Whether a store row of a forced delete that can still be restored keeps a mark of the student, a yes or no asked by the trigger that refuses the delete of that student, whatever branch holds the row, as the cell key refused it before the delete (06, Protection: "The attendance and marks are kept for 30 days and can be restored"; task 6.1b-2, decision 7 of pull request #208, Look first).',
   'lesson_history_unaudited(xid8)':

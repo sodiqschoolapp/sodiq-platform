@@ -35,6 +35,8 @@ import {
   cellKindText,
   cellLessonText,
   cellValueText,
+  commentLineText,
+  ratingLineText,
   workLineText,
 } from './cell-lines';
 import { mergeValueText } from './student-merge';
@@ -383,6 +385,50 @@ function StudentJournal({ report, words }: { report: StudentReport; words: Words
                 <p>
                   {[line.branch, lessonText(line.lesson)].join(' · ')}: {workLineText(t, line)}
                 </p>
+                <p className="text-muted-foreground print:text-current">
+                  {t('people.report.lineBy', {
+                    name:
+                      line.changedBy === null
+                        ? words.empty
+                        : accountText(line.changedBy, words.empty),
+                  })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {/* Task 8.2: the student's rating entries and the comments on the student. */}
+      {journal.ratingHistory.length > 0 && (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('people.report.ratingHistoryTitle')}</h3>
+          <ol className="grid gap-2 text-sm" data-journal="rating-history">
+            {journal.ratingHistory.map((line) => (
+              <li key={line.id} className="grid gap-0.5 break-inside-avoid">
+                <p className="font-semibold">
+                  {words.moment(line.changedAt)} · {line.branch}
+                </p>
+                <p>{ratingLineText(t, words.language, line)}</p>
+                <p className="text-muted-foreground print:text-current">
+                  {t('people.report.lineBy', { name: accountText(line.changedBy, words.empty) })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {journal.commentHistory.length > 0 && (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('people.report.commentHistoryTitle')}</h3>
+          <ol className="grid gap-2 text-sm" data-journal="comment-history">
+            {journal.commentHistory.map((line) => (
+              <li key={line.id} className="grid gap-0.5 break-inside-avoid">
+                <p className="font-semibold">
+                  {[words.moment(line.changedAt), line.branch]
+                    .concat(line.lesson === null ? [] : [lessonText(line.lesson)])
+                    .join(' · ')}
+                </p>
+                <p>{commentLineText(t, line)}</p>
                 <p className="text-muted-foreground print:text-current">
                   {t('people.report.lineBy', {
                     name:

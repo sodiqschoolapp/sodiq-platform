@@ -6,6 +6,7 @@ import type {
   JournalLesson,
   JournalStudent,
 } from '@sodiq/shared';
+import { RATING_SCORE_MAX } from '@sodiq/shared';
 import {
   AllCommunityModule,
   themeQuartz,
@@ -14,6 +15,7 @@ import {
   type GridApi,
   type CellKeyDownEvent,
   type ICellRendererParams,
+  type SuppressKeyboardEventParams,
   type IHeaderParams,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
@@ -24,6 +26,8 @@ import { CheckCircleIcon, CheckIcon, InfoIcon, MoreHorizIcon } from '@/component
 import { Button } from '@/components/ui/button';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { cellKey, type AttendanceEntry } from './attendance-entry';
+import type { CommentCell, CommentsInput } from './comment-dialog';
+import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
 import { workKey, type WorksEntry } from './works-entry';
 
 /**
@@ -168,7 +172,22 @@ interface GridProps {
   readonly works?: WorksEntry | undefined;
   /** A number refused in the cell (a letter, a decimal, above the total). */
   readonly onRefusedNumber?: (total: number) => void;
+  /** The rating exam of the quarter (task 8.2): the column takes scores when `canEnter`. */
+  readonly rating?: RatingInput | undefined;
+  /** Comments (task 8.2): a marker on a cell with one, and the dialog at `KeyC`. */
+  readonly comments?: CommentsInput | undefined;
 }
+
+/**
+ * The keys that open a dialog (task 8.2, decision 11): C the comment, E a rating entry. On a
+ * cell that takes a typed number they must not start an edit with the letter.
+ */
+const dialogKey = (params: SuppressKeyboardEventParams<GridRow>): boolean =>
+  !params.editing && (params.event.code === 'KeyC' || params.event.code === 'KeyE');
+
+/** The corner marker of a cell with a comment (task 8.2). */
+const COMMENTED =
+  "relative after:absolute after:right-0 after:top-0 after:size-0 after:border-4 after:border-transparent after:border-t-info after:border-r-info after:content-['']";
 
 export function JournalGridView({
   grid,
@@ -182,10 +201,21 @@ export function JournalGridView({
   entry,
   works,
   onRefusedNumber,
+  rating,
+  comments,
 }: GridProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
+  const entryText = useEntryText();
   const api = useRef<GridApi<GridRow> | null>(null);
+  /** The marker class of a cell with a comment, for a student row. */
+  const marked = useCallback(
+    (row: GridRow | undefined, cell: (studentId: string) => CommentCell): string | undefined =>
+      row?.kind === 'student' && (comments?.commentOn(cell(row.student.id))?.body ?? null) !== null
+        ? COMMENTED
+        : undefined,
+    [comments],
+  );
   const whole = grid.shape === 'whole';
   const figuresShown = grid.shape !== 'lessons';
   const graded = !grid.journal.attendanceOnly && grid.shape !== 'attendance';
@@ -303,14 +333,73 @@ export function JournalGridView({
           ),
         );
         if (grid.journal.ratingExam && month === null) {
-          figures.push(
-            figure(
+          // Task 8.2: the exam's column: its date under the title, the entries typed here.
+          const exam = grid.rating;
+          figures.push({
+            ...figure(
               'ratingExam',
               t('journal.grid.ratingExam'),
               (f) => f.ratingExam,
               (b) => b.ratingExam,
             ),
-          );
+            width: 110,
+            headerComponent: TwoLineHeader,
+            headerComponentParams: {
+              label: t('journal.rating.column'),
+              second:
+                exam === null
+                  ? undefined
+                  : exam.notHeld
+                    ? t('journal.rating.notHeldShort')
+                    : exam.date === null
+                      ? t('journal.rating.noDate')
+                      : schoolDateText(exam.date, language, false),
+              ...(rating !== undefined
+                ? {
+                    more: {
+                      label: t('journal.rating.examTitle'),
+                      icon: 'more',
+                      disabled: rating.busy,
+                      run: () => {
+                        rating.openExam();
+                      },
+                    },
+                  }
+                : {}),
+            },
+            suppressKeyboardEvent: dialogKey,
+            editable: (params) =>
+              rating?.exam.canEnter === true &&
+              params.data?.kind === 'student' &&
+              ratingEntryOf(rating.exam, params.data.student.id)?.entry?.kind !== 'exempt',
+            valueGetter: (params) => {
+              const row = params.data;
+              if (row?.kind === 'bottom') return row.bottom.ratingExam;
+              if (row?.kind !== 'student' || exam === null) return null;
+              const stored = ratingEntryOf(exam, row.student.id)?.entry ?? null;
+              if (stored === null) return null;
+              return stored.kind === 'score' ? stored.score : entryText(stored);
+            },
+            // A score is saved when the cell is left; over an entry the dialog asks the reason.
+            valueSetter: (params) => {
+              const row = params.data;
+              if (rating === undefined || row?.kind !== 'student') return false;
+              const value = typedScore(params.newValue, RATING_SCORE_MAX);
+              if (value === undefined) {
+                onRefusedNumber?.(RATING_SCORE_MAX);
+                return false;
+              }
+              const before = ratingEntryOf(rating.exam, row.student.id)?.entry ?? null;
+              const same =
+                before?.kind === 'score'
+                  ? before.score === value
+                  : value === null && before === null;
+              if (!same) rating.score(row.student, value);
+              return false;
+            },
+            cellClass: (params) =>
+              marked(params.data, (studentId) => ({ target: 'rating', studentId })),
+          });
         }
         figures.push({
           colId: 'result',
@@ -430,10 +519,24 @@ export function JournalGridView({
           },
           width: lesson.canEnter ? 64 : 52,
           cellClass: (params) =>
-            cancelled ||
-            (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
-              ? 'bg-muted'
-              : undefined,
+            cn(
+              cancelled ||
+                (params.data?.kind === 'student' &&
+                  params.data.student.cells[index]?.closed === true)
+                ? 'bg-muted'
+                : undefined,
+              // Task 8.2: a comment on the mark, or the student's note of the lesson.
+              marked(params.data, (studentId) => ({
+                target: 'mark',
+                lessonId: lesson.id,
+                studentId,
+              })) ??
+                marked(params.data, (studentId) => ({
+                  target: 'note',
+                  lessonId: lesson.id,
+                  studentId,
+                })),
+            ),
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
             if (row?.kind !== 'student') return null;
@@ -531,6 +634,7 @@ export function JournalGridView({
                 }),
           },
           width: 112,
+          suppressKeyboardEvent: dialogKey,
           editable: (params) =>
             enterable &&
             params.data?.kind === 'student' &&
@@ -554,10 +658,21 @@ export function JournalGridView({
             return false;
           },
           cellClass: (params) =>
-            cancelled ||
-            (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
-              ? 'bg-muted'
-              : undefined,
+            cn(
+              cancelled ||
+                (params.data?.kind === 'student' &&
+                  params.data.student.cells[index]?.closed === true)
+                ? 'bg-muted'
+                : undefined,
+              work.id === null
+                ? undefined
+                : marked(params.data, (studentId) => ({
+                    target: 'work',
+                    lessonId: lesson.id,
+                    workId: work.id ?? '',
+                    studentId,
+                  })),
+            ),
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
             if (row?.kind !== 'student') return null;
@@ -655,7 +770,27 @@ export function JournalGridView({
     entry,
     works,
     onRefusedNumber,
+    rating,
+    marked,
+    entryText,
   ]);
+
+  /** The comment target of a column for a student: an A cell, a stored work's cell or the rating column. */
+  const commentCellOf = useCallback(
+    (colId: string, studentId: string): CommentCell | null => {
+      if (colId === 'ratingExam')
+        return grid.rating === null ? null : { target: 'rating', studentId };
+      const lesson = grid.lessons.find((one) => colId.startsWith(`${one.id}:`));
+      if (lesson === undefined) return null;
+      const rest = colId.slice(lesson.id.length + 1);
+      if (rest === 'a') return { target: 'mark', lessonId: lesson.id, studentId };
+      const work = lesson.works.find((one) => one.id !== null && workKey(one) === rest);
+      return work?.id == null
+        ? null
+        : { target: 'work', lessonId: lesson.id, workId: work.id, studentId };
+    },
+    [grid.lessons, grid.rating],
+  );
 
   /**
    * The keyboard of an A cell (`07`, Keyboard: "digits type"; `edge/journal`: "An attendance
@@ -668,6 +803,20 @@ export function JournalGridView({
       const key = event.event instanceof KeyboardEvent ? event.event.key : null;
       const colId = event.column.getColId();
       const row = event.data;
+      const code = event.event instanceof KeyboardEvent ? event.event.code : null;
+      // Task 8.2 (decision 11): the key at C opens the comment of the cell in every layout,
+      // the key at E the rating entry's dialog.
+      if (row?.kind === 'student' && code !== null) {
+        const cellOf = commentCellOf(colId, row.student.id);
+        if (code === 'KeyC' && cellOf !== null && comments !== undefined) {
+          comments.open(cellOf);
+          return;
+        }
+        if (code === 'KeyE' && colId === 'ratingExam' && rating !== undefined) {
+          rating.openEntry(row.student);
+          return;
+        }
+      }
       if (current === undefined || key === null || row?.kind !== 'student' || !colId.endsWith(':a'))
         return;
       const lessonId = colId.slice(0, -2);
@@ -688,7 +837,7 @@ export function JournalGridView({
         }
       }
     },
-    [grid.lessons, entry],
+    [grid.lessons, entry, comments, rating, commentCellOf],
   );
 
   /** Whether the works button of a lesson has anything to show. */

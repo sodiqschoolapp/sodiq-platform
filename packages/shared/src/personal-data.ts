@@ -10,6 +10,8 @@ import {
   cellLineSchema,
   cellWorkKindSchema,
   workLineSchema,
+  ratingLineSchema,
+  commentLineSchema,
 } from './reset-entries.js';
 import { roleSchema } from './roles.js';
 import { instructionLanguageSchema } from './settings.js';
@@ -165,6 +167,10 @@ export const studentReportSchema = z.strictObject({
      * works in which the student has a cell, newest first, every one.
      */
     workHistory: z.array(workLineSchema.extend({ branch: z.string() })),
+    /** Task 8.2 (From 6.1c; decision 12): the lines of the student's rating entries, newest first, every one. */
+    ratingHistory: z.array(ratingLineSchema.extend({ branch: z.string() })),
+    /** Task 8.2 (From 6.1c): the lines of the comments on the student, newest first, every one. */
+    commentHistory: z.array(commentLineSchema.extend({ branch: z.string() })),
     /** The lines beyond the limit: how many, and the moment of the oldest. */
     historyLeftOut: z
       .strictObject({ count: z.int().min(1), oldestAt: z.iso.datetime() })

@@ -141,7 +141,8 @@ export async function refuseCutHolds(
       },
       firstDay: row.first_day,
       lastDay: row.last_day,
-      // Task 8.1 (decision 16): a mark or a number of the student that day.
+      // Task 8.1 (decision 16): a mark or a number of the student that day; task
+      // 8.2: or a comment, or a rating entry whose date in force is that day.
       ...(row.kind === 'entry' ? { entry: true } : {}),
     },
   }));

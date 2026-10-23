@@ -2,6 +2,11 @@ import { classDisplayName, type ErrorDetail, type ExamRating } from '@sodiq/shar
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import {
+  holdSubjectSwitches,
+  quarterOnDate,
+  quarterSwitchesOf,
+} from '../setup/subject-switches.js';
 
 /**
  * The rating-exam link of an exam (task 5.6c-3b, pull request #184;
@@ -86,20 +91,27 @@ export async function ratingJournalsOf(
 }
 
 /**
- * Refuses a rating exam of a subject without one (`exam_rating_subject`,
- * decision 5), read from the school-wide switch until 8.2 stores it per
- * quarter (From line there).
+ * Refuses a rating exam of a subject without one in the quarter of its date
+ * (`exam_rating_subject`, decision 5): the switches of that quarter (task
+ * 8.2, From 5.6c-3b; `edge/calculation`: "These switches are stored per
+ * quarter"). A date in no quarter has no lessons, and the save refuses it
+ * first; here it is refused as a subject without the exam.
  */
 export async function refuseRatingSubject(
   transaction: Transaction,
-  subjectId: string,
+  input: { readonly subjectId: string; readonly yearId: string; readonly date: string },
 ): Promise<void> {
-  const subject = await transaction
-    .selectFrom('subjects')
-    .select('rating_exam')
-    .where('id', '=', subjectId)
-    .executeTakeFirst();
-  if (subject?.rating_exam !== true) throw new ApiException('exam_rating_subject', 409);
+  // The subject row FOR SHARE (task 8.2, spec review of the code, must-fix 2): a
+  // change of its switches waits for this save, or this save for it.
+  await holdSubjectSwitches(transaction, input.subjectId);
+  const quarter = await quarterOnDate(transaction, input.yearId, input.date);
+  const switches =
+    quarter === undefined
+      ? undefined
+      : await quarterSwitchesOf(transaction, input.subjectId, quarter.id);
+  if (switches?.journal_type !== 'graded' || !switches.rating_exam) {
+    throw new ApiException('exam_rating_subject', 409);
+  }
 }
 
 /**

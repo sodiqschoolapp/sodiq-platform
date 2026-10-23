@@ -9,6 +9,7 @@ import {
   type AttendanceMark,
   type QuarterLesson,
   type QuarterResult,
+  type RatingExamEntry,
   type Work,
 } from '@sodiq/calc';
 import {
@@ -57,7 +58,11 @@ import {
   type GridWorkRow,
   type JournalRow,
   type MembershipRow,
+  switchesIn,
+  attendanceOnlyOn,
 } from './journal-grid.query.js';
+import { gridComments } from './comments.query.js';
+import { ratingExamOf, ratingRightsOf } from './rating.js';
 import { roleReadingOf, shapeOf, teaches, type JournalScopeKey } from './journal-scope.js';
 
 /**
@@ -222,6 +227,34 @@ export class JournalGridReader {
       grid.lessons.some((one) => one.id === lessonId) &&
       grid.students.some((one) => one.id === studentId);
     return shows ? grid.shape : null;
+  }
+
+  /**
+   * Whether the reader sees the rating exam of a journal in a quarter with the
+   * student's row (task 8.2): the history of a rating entry and of its comment
+   * is read with the grid's scope, as `cellShapeIn` reads a cell's.
+   */
+  async ratingShownIn(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    journalId: string,
+    quarterId: string,
+    studentId: string,
+  ): Promise<boolean> {
+    let grid: JournalGrid;
+    try {
+      grid = await this.gridIn(transaction, access, branchId, journalId, { quarterId });
+    } catch (error) {
+      if (
+        error instanceof ApiException &&
+        (error.code === 'journal_scope' || error.code === 'journal_no_quarter')
+      ) {
+        return false;
+      }
+      throw error;
+    }
+    return grid.rating !== null && grid.students.some((one) => one.id === studentId);
   }
 
   /** One journal for one quarter. */
@@ -437,10 +470,43 @@ export class JournalGridReader {
     // The database keeps the quarterly weights at a total of 100 (0020).
     const quarterly = weights.quarterly;
     const daily = weights.daily;
-    const ratingShown =
-      !journal.subject.attendanceOnly &&
-      journal.subject.ratingExam &&
-      (quarterly?.ratingExam ?? null) !== null;
+    // Task 8.2 (From 2.1 and 5.5c): the switches of the quarter shown.
+    const quarterSwitches = switchesIn(journal, quarter.id);
+    const attendanceOnly = quarterSwitches?.attendanceOnly ?? true;
+    const ratingOn = !attendanceOnly && quarterSwitches?.ratingExam === true;
+    const ratingShown = ratingOn && (quarterly?.ratingExam ?? null) !== null;
+    // The rating exam of the quarter (task 8.2) for a reader of the whole journal.
+    const ratingStaffId = await ownStaffOf(transaction, access.accountId);
+    const rating =
+      shape !== 'whole'
+        ? null
+        : await ratingExamOf(transaction, {
+            journal,
+            quarterId: quarter.id,
+            rights: ratingRightsOf(access, branchId, {
+              journal,
+              facts,
+              staffId: ratingStaffId,
+              today,
+            }),
+            today,
+            studentIds: students.map((student) => student.id),
+          });
+    /** The student's rating entry as `packages/calc` takes it (`null` while empty). */
+    const ratingEntryOf = (studentId: string): RatingExamEntry | null => {
+      if (rating === null || !ratingShown) return null;
+      if (rating.notHeld) return { kind: 'not_held' };
+      return rating.entries.find((one) => one.studentId === studentId)?.entry ?? null;
+    };
+    const comments = await gridComments(transaction, {
+      studentIds: students.map((student) => student.id),
+      lessonIds: lessons.map((lesson) => lesson.id),
+      ratingExamId:
+        rating === null
+          ? null
+          : ((await this.ratingIdOf(transaction, journal.id, quarter.id)) ?? null),
+      shape,
+    });
     const months = [...new Set(lessons.map((one) => one.date.slice(0, 7)))];
 
     const exactOf = new Map<string, { quarter: Exact; months: Map<string, Exact> }>();
@@ -475,7 +541,7 @@ export class JournalGridReader {
         let score: number | null = null;
         if (
           shape !== 'attendance' &&
-          !journal.subject.attendanceOnly &&
+          !attendanceOnly &&
           daily !== null &&
           lesson.cancelCause === null &&
           isExpected
@@ -531,7 +597,7 @@ export class JournalGridReader {
 
       const figuresOf = (inMonth: string | null): { figures: JournalFigures; exact: Exact } => {
         const counted = countedLessons(inMonth);
-        if (journal.subject.attendanceOnly || quarterly === null || shape === 'attendance') {
+        if (attendanceOnly || quarterly === null || shape === 'attendance') {
           const attendance = quarterAttendanceAverage({ attendanceValues, lessons: counted });
           return {
             figures: {
@@ -548,8 +614,8 @@ export class JournalGridReader {
           weights: quarterly,
           attendanceValues,
           lessons: counted,
-          // The rating exam is stored from 8.2 on (decision 9); a month leaves it out (From 4.3).
-          ratingExam: null,
+          // Task 8.2: the student's entry; a month leaves it out (From 4.3).
+          ratingExam: inMonth === null ? ratingEntryOf(student.id) : null,
           quarterClosed: false,
         });
         const { averages } = result;
@@ -613,6 +679,7 @@ export class JournalGridReader {
         cells: gridCells,
         quarter: quarterFigures,
         months: monthFigures,
+        comments: comments.filter((one) => one.studentId === student.id),
       };
     });
 
@@ -663,7 +730,7 @@ export class JournalGridReader {
     const staffId = entering ? await ownStaffOf(transaction, access.accountId) : null;
     // Task 8.1: works and numbers on a graded subject with a journal teacher that day (From 5.7a-3c).
     const worksTaken = (lesson: GridLessonRow): boolean => {
-      if (journal.subject.attendanceOnly) return false;
+      if (attendanceOnlyOn(journal, lesson.date)) return false;
       const found = ownerOn(runs, periods, facts.out, lesson.date);
       return found === null || found.kind !== 'none';
     };
@@ -700,9 +767,12 @@ export class JournalGridReader {
         unit: unitOf(journal),
         subject: subjectOf(journal),
         year,
-        attendanceOnly: journal.subject.attendanceOnly,
-        ratingExam: ratingShown,
+        attendanceOnly,
+        // The column shows while the quarter's switch is on (spec review of the code,
+        // should-fix 3): entries are taken then, with or without the rating weight.
+        ratingExam: ratingOn,
       },
+      rating,
       others,
       years,
       quarters: quarters.map((one) => ({
@@ -752,14 +822,27 @@ export class JournalGridReader {
       legend: {
         lateValue: weights.lateValue,
         skippedValue: weights.skippedValue,
-        daily: journal.subject.attendanceOnly ? null : weights.daily,
-        quarterly: journal.subject.attendanceOnly ? null : weights.quarterly,
+        daily: attendanceOnly ? null : weights.daily,
+        quarterly: attendanceOnly ? null : weights.quarterly,
         weightsChangedOn:
-          changedAt !== null && changedAt > quarter.startDate && !journal.subject.attendanceOnly
-            ? changedAt
-            : null,
+          changedAt !== null && changedAt > quarter.startDate && !attendanceOnly ? changedAt : null,
       },
     });
+  }
+
+  /** The id of the stored rating exam row of the journal and quarter, if any. */
+  private async ratingIdOf(
+    transaction: Transaction,
+    journalId: string,
+    quarterId: string,
+  ): Promise<string | undefined> {
+    const row = await transaction
+      .selectFrom('journal_rating_exams')
+      .select('id')
+      .where('journal_id', '=', journalId)
+      .where('quarter_id', '=', quarterId)
+      .executeTakeFirst();
+    return row?.id;
   }
 
   /** Whether the reader taught or owned a lesson of the journal in its year. */

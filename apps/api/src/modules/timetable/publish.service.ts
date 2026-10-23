@@ -43,6 +43,7 @@ import { Audit } from '../audit/audit.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { refusingConstraints } from '../setup/setup-refusals.js';
+import { switchKey, switchesOf } from '../setup/subject-switches.js';
 import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
 import {
@@ -123,6 +124,7 @@ export const PUBLISH_LOCK = 550_001;
 
 /** The quarters of the year, dated or not, by number. */
 interface QuarterRow {
+  readonly id: string;
   readonly number: number;
   readonly start_date: string | null;
   readonly end_date: string | null;
@@ -1909,17 +1911,29 @@ export class TimetablePublish {
     const touched = dated.filter(
       (quarter) => quarter.end_date !== null && quarter.end_date >= startsOn,
     );
+    // Task 8.2 (From 2.1 and 5.5c): the journal type and the rating switch of
+    // each touched quarter, with the rounds its distribution is compared with.
+    const switches = await switchesOf(
+      transaction,
+      subjectIds,
+      touched.map((quarter) => quarter.id),
+    );
     for (const subject of subjects) {
-      if (subject.journal_type !== 'graded') continue;
+      const graded = touched.filter(
+        (quarter) => switches.get(switchKey(subject.id, quarter.id))?.journal_type === 'graded',
+      );
+      if (graded.length === 0) continue;
       if (!daily.some((one) => one.subject_id === subject.id && dailyWeightsFit(subject, one))) {
         refusals.push({ code: 'subject_daily_weights', subjectId: subject.id });
       }
-      for (const quarter of touched) {
+      for (const quarter of graded) {
+        const own = switches.get(switchKey(subject.id, quarter.id));
         const fits = weights.some(
           (one) =>
+            own !== undefined &&
             one.subject_id === subject.id &&
             one.number === quarter.number &&
-            quarterWeightsFit(subject, one),
+            quarterWeightsFit(own, one),
         );
         if (!fits) {
           refusals.push({
@@ -1936,7 +1950,7 @@ export class TimetablePublish {
   private quartersOf(transaction: Transaction, version: VersionRow): Promise<QuarterRow[]> {
     return transaction
       .selectFrom('quarters')
-      .select(['number', 'start_date', 'end_date'])
+      .select(['id', 'number', 'start_date', 'end_date'])
       .where('academic_year_id', '=', version.academic_year_id)
       .where('branch_id', '=', version.branch_id)
       .orderBy('number')

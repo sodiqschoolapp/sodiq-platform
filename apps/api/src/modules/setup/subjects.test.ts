@@ -92,19 +92,27 @@ describe('subjects', () => {
   }
 
   /** What an edit sends: the fields of the answer, without the branch's weights. */
-  const editBody = (subject: Subject, overrides: Record<string, unknown> = {}) => ({
-    names: subject.names,
-    departmentId: subject.departmentId,
-    grades: subject.grades,
-    colour: subject.colour,
-    journalType: subject.journalType,
-    ratingExam: subject.ratingExam,
-    groupSubject: subject.groupSubject,
-    languageRule: subject.languageRule,
-    demanding: subject.demanding,
-    daily: null,
-    ...overrides,
-  });
+  // Task 8.2 (decision 16): a change of the switches names the quarter it takes effect
+  // from; quarter 1 unless the test names another, so it reaches every quarter of the year.
+  const editBody = (subject: Subject, overrides: Record<string, unknown> = {}) => {
+    const switches =
+      ('journalType' in overrides && overrides.journalType !== subject.journalType) ||
+      ('ratingExam' in overrides && overrides.ratingExam !== subject.ratingExam);
+    return {
+      names: subject.names,
+      departmentId: subject.departmentId,
+      grades: subject.grades,
+      colour: subject.colour,
+      journalType: subject.journalType,
+      ratingExam: subject.ratingExam,
+      groupSubject: subject.groupSubject,
+      languageRule: subject.languageRule,
+      demanding: subject.demanding,
+      daily: null,
+      ...(switches ? { switchesFrom: 1 } : {}),
+      ...overrides,
+    };
+  };
 
   async function create(
     overrides: Record<string, unknown> = {},
@@ -1005,6 +1013,7 @@ describe('subjects', () => {
       );
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
         ratingRound: { from: 1, to: 2 },
+        switchesFrom: 1,
       });
       expect((await put(path(2), branch, UNRATED)).status).toBe(200);
       const entries = (await t.entries('subject_quarter_weights.set', subject.id)).length;
@@ -1023,6 +1032,7 @@ describe('subjects', () => {
       });
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
         ratingRound: { from: 2, to: 3 },
+        switchesFrom: 1,
       });
       expect((await inList(subject.id, t.south)).daily).toEqual(southDaily);
       const read = subjectQuarterWeightsSchema.parse(
@@ -1084,6 +1094,7 @@ describe('subjects', () => {
       expect((await schoolEntries('subject.edit', subject.id)).at(-1)?.details).toEqual({
         weightsRound: { from: 1, to: 2 },
         ratingRound: { from: 2, to: 3 },
+        switchesFrom: 1,
       });
       // Another branch: its daily distribution of round 1 no longer counts.
       expect((await inList(subject.id, t.south)).daily).toBeNull();

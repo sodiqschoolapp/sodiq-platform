@@ -155,6 +155,8 @@ export const ERROR_CODES = [
   'quarter_splits_move',
   /** Task 5.6c-3b (decision 2): the new quarter dates would bring two standing rating exams linked to one journal into one quarter. */
   'quarter_rating_exams',
+  /** The new dates leave a hand-set rating exam date outside its quarter; the details list the journals (task 8.2, decision 13). */
+  'quarter_rating_dates',
   /** Task 5.6b-5a: a lesson would lie outside its quarter's dates (`quarters_lessons`, 0093). */
   'quarter_leaves_lesson',
   /** Task 5.6b-5a: an exam of the year would lie outside the year's new dates (the From line of 5.1b). */
@@ -994,6 +996,40 @@ export const ERROR_CODES = [
   'plan_work_has_data',
   /** A restored lesson's work added by hand finds every one of the 10 places of its lesson taken meanwhile (task 8.1, code review round 1). */
   'restore_works_full',
+  /** A change of the journal type or the rating exam switch names the quarter it takes effect from, and only such a change names one (task 8.2, decision 16). */
+  'subject_switches_from',
+  /** A started quarter the change reaches holds scores of the subject; the detail counts them, in every branch (edge/calculation: "In a started quarter the change is refused while scores exist"; task 8.2). */
+  'subject_switch_scores',
+  /** A standing rating exam links journals of the subject in a quarter the change reaches; the detail counts the quarters (task 8.2, review should-fix 1). */
+  'subject_switch_exams',
+  /** The subject has no rating exam in that quarter (07: "only in rating subjects"; task 8.2). */
+  'rating_exam_off',
+  /** The reader may not do this on the rating exam: scores and "did not sit" are the journal teacher's, "exempt" and "not held" the Academic Vice Principal's (edge/calculation, "The rating exam"; task 8.2). */
+  'rating_exam_scope',
+  /** A linked exam gives the rating exam date; it is changed on the exam (edge/timetable, Exams; task 8.2, decision 5). */
+  'rating_exam_linked',
+  /** The rating exam has no date yet: scores are entered from the date (task 8.2, decision 5). */
+  'rating_exam_no_date',
+  /** Scores are entered from the exam date, in branch time (edge/calculation: "enters scores from that date"; task 8.2). */
+  'rating_exam_not_yet',
+  /** The rating exam is marked "not held" for this journal and quarter (task 8.2). */
+  'rating_exam_not_held',
+  /** Entries exist: the detail names their count, and the mark is sent again with `confirm` (task 8.2, decision 7). */
+  'rating_exam_entries',
+  /** An entry that replaces or clears another needs a reason (edge/calculation: "A late sitting or a retake replaces the score with a required reason"; task 8.2, decision 9). */
+  'rating_exam_reason',
+  /** The student is not in the journal on any day from the exam date to the quarter's end (task 8.2, decision 8). */
+  'rating_exam_not_member',
+  /** The rating exam date lies outside its quarter (task 8.2). */
+  'rating_exam_date_quarter',
+  /** The entry was changed since it was read; the detail holds the stored one (task 8.2). */
+  'rating_exam_stale',
+  /** The reader may not comment on that cell: whoever may enter it may comment on it (task 8.2, decision 10). */
+  'comment_scope',
+  /** A comment is on an attendance mark or a number that exists (07: "attached to any attendance mark or score"; task 8.2). */
+  'comment_no_value',
+  /** The comment was changed since it was read (task 8.2). */
+  'comment_stale',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -1171,6 +1207,19 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** The numbers a "not held" mark takes out of the averages, on a `not_held_confirm` (task 8.1). */
   count: z.int().min(0).optional(),
+  /** The stored entry, on a `rating_exam_stale` (task 8.2): its value (`null` when cleared) and version. `recordId` is the student. */
+  storedRating: z
+    .object({
+      entry: z
+        .discriminatedUnion('kind', [
+          z.object({ kind: z.literal('score'), score: z.int().min(0).max(100) }),
+          z.object({ kind: z.literal('did_not_sit') }),
+          z.object({ kind: z.literal('exempt') }),
+        ])
+        .nullable(),
+      version: z.int().min(1),
+    })
+    .optional(),
   /** The stored work, on a `work_stale` (task 8.1): its total, "not held" mark and version. `recordId` is the work. */
   storedWork: z
     .object({ total: z.int().nullable(), notHeld: z.boolean(), version: z.int().min(1) })

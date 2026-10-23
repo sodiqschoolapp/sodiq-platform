@@ -109,6 +109,8 @@ const REPORT: StudentReport = {
     ],
     historyLeftOut: { count: 3, oldestAt: '2026-09-02T05:00:00.000Z' },
     workHistory: [],
+    ratingHistory: [],
+    commentHistory: [],
   },
   relatives: [
     {

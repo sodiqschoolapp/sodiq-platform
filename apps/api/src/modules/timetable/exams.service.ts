@@ -1546,7 +1546,11 @@ async function ratingFor(
   const body = input.input;
   // The schema refuses a rating exam with no subject.
   if (!body.ratingExam || body.subjectId === null) return null;
-  await refuseRatingSubject(transaction, body.subjectId);
+  await refuseRatingSubject(transaction, {
+    subjectId: body.subjectId,
+    yearId: input.yearId,
+    date: body.date,
+  });
   const rating = await ratingJournalsOf(transaction, {
     branchId: input.branchId,
     yearId: input.yearId,

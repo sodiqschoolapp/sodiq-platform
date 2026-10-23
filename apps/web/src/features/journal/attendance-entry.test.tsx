@@ -39,6 +39,7 @@ const student = (n: number, lastName: string, rest: Partial<JournalStudent> = {}
   cells: [cell(null), cell(0)],
   quarter: null,
   months: null,
+  comments: [],
   ...rest,
 });
 
@@ -69,6 +70,7 @@ const GRID: JournalGrid = {
     attendanceOnly: true,
     ratingExam: false,
   },
+  rating: null,
   years: [{ id: uid(40), startDate: '2026-09-01', endDate: '2027-05-31', closed: false }],
   others: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
   quarters: [QUARTER],

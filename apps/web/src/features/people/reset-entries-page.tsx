@@ -23,6 +23,8 @@ import {
   cellChangeText,
   cellKindText,
   cellLessonText,
+  commentLineText,
+  ratingLineText,
   workLineText,
 } from './cell-lines';
 import { resetEntriesQuery } from './people-api';
@@ -141,6 +143,33 @@ function ResetCard({ reset }: { reset: Reset }) {
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* Task 8.2: the rating entries and comments the account wrote in the 48 hours. */}
+      {(reset.ratingEntries.length > 0 || reset.commentEntries.length > 0) && (
+        <ul className="grid gap-1 text-sm" data-rating-comment-entries="true">
+          {reset.ratingEntries.map((line) => (
+            <li key={line.id}>
+              {[formatMoment(language, line.changedAt), ratingLineText(t, language, line)].join(
+                ' · ',
+              )}
+            </li>
+          ))}
+          {reset.commentEntries.map((line) => (
+            <li key={line.id}>
+              {[
+                formatMoment(language, line.changedAt),
+                line.lesson === null
+                  ? null
+                  : cellLessonText(t, language, line.lesson, (date) =>
+                      schoolDateText(date, language),
+                    ),
+                commentLineText(t, line),
+              ]
+                .filter((part) => part !== null)
+                .join(' · ')}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
