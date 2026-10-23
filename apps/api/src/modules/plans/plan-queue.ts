@@ -186,11 +186,13 @@ export function followQueue(input: FollowInput): FollowResult {
   );
   const kept: Absorbed[] = [];
   const inserts: number[] = [];
+  const putBack = new Set<string>();
   for (const record of input.absorbed) {
     const back =
       queueIndex.has(record.removedLessonId) && !inSnapshotQueue.has(record.removedLessonId);
     const at = queueIndex.get(record.absorbingLessonId);
     if (back) {
+      putBack.add(record.removedLessonId);
       if (at !== undefined) inserts.push(at);
       continue;
     }
@@ -223,8 +225,13 @@ export function followQueue(input: FollowInput): FollowResult {
     }
     if (fromLesson !== null && toLesson === null) newlyNotCovered.push(item.id);
   }
+  // A row counts as added only when it is neither a row of the snapshot nor
+  // a lesson put back from an absorbed shift: the undo of a shift adds no
+  // lesson (code review of #213, must-fix 1).
+  const known = new Set(before.map((row) => row.lessonId));
+  const added = queueAfter.some((row) => !known.has(row.lessonId) && !putBack.has(row.lessonId));
   const rowsAddedAtEnd =
-    after.length > before.length &&
+    added &&
     emptyTail(after.length, positions.values()) >
       emptyTail(
         before.length,

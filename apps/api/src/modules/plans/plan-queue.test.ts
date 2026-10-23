@@ -92,6 +92,24 @@ describe('followQueue', () => {
     expect(restored.result.absorbed).toEqual([]);
   });
 
+  it('adds no row when a shift an empty row absorbed is undone (code review of #213, must-fix 1)', () => {
+    const start = rows(2, 3, 4, 5, 6);
+    const items = itemsAt(1, 2, 3);
+    const cancelled = laid(start, rows(3, 4, 5, 6), items, noonOf(1));
+    expect(cancelled.result.rowsAddedAtEnd).toBe(false);
+    const moved = items.map((item) => ({
+      id: item.id,
+      position: cancelled.result.positions.get(item.id) ?? 0,
+    }));
+    const restored = laid(rows(3, 4, 5, 6), start, moved, noonOf(1), cancelled.result.absorbed);
+    expect(restored.where).toEqual({ I1: 'L2', I2: 'L3', I3: 'L4' });
+    expect(restored.result.rowsAddedAtEnd).toBe(false);
+    // An empty row cancelled and restored too.
+    const emptyCancelled = laid(start, rows(2, 3, 4, 5), items, noonOf(1));
+    const back = laid(rows(2, 3, 4, 5), start, items, noonOf(1), emptyCancelled.result.absorbed);
+    expect(back.result.rowsAddedAtEnd).toBe(false);
+  });
+
   it('a day off removed: items sent to "not covered" return by themselves (edge)', () => {
     const items = itemsAt(1, 2, 3);
     const cancelled = laid(rows(2, 3, 4), rows(3, 4), items, noonOf(1));

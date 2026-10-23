@@ -394,6 +394,32 @@ describe('plan items follow the timetable', () => {
       expect(back.rows['2026-12-28']).toBe('Topic 8');
     });
 
+    it('prepares no request when an absorbed shift is undone in a plan whose last rows are empty (code review must-fix 1)', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3]);
+      await cancel(x, '2026-11-09');
+      ok(
+        await keyed(
+          `/api/timetable/lessons/${(await lessonOn(x.s, '2026-11-09')).id}/restore`,
+          x.s.branch,
+          {},
+        ),
+      );
+      const plan = await planOf(x);
+      expect(laid(plan).rows).toMatchObject({
+        '2026-11-09': 'Topic 1',
+        '2026-11-16': 'Topic 2',
+        '2026-11-23': 'Topic 3',
+        '2026-11-30': '-',
+      });
+      expect(plan.request).toBeNull();
+      const unit = await unitOf(x);
+      expect(await noticesOf(x.owner.account.id, 'plans.followed')).toEqual([
+        { requested: '—', moved: unit },
+        { requested: '—', moved: unit },
+      ]);
+    });
+
     it('follows a bulk cancel', async () => {
       const x = await scene();
       await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
@@ -685,6 +711,34 @@ describe('plan items follow the timetable', () => {
       );
       expect(taken.canEdit).toBe(true);
       // Review correction 1: the new owner is told.
+      expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
+        { requested: await unitOf(x), moved: '—' },
+      ]);
+    });
+
+    it('prepares the request for the new teacher when the publish also moves the lessons to another time (code review must-fix 2)', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3]);
+      await publishWith(x, '2026-11-16', async (draft, rows) => {
+        for (const row of rows) {
+          if (row.class_id === x.s.classId) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: x.s.spareTeacher.staffId })
+              .where('id', '=', row.id)
+              .execute();
+            // The second slot of Monday: no stored lesson pairs with it.
+            await placeAt(x, draft, row.id, 1, 3);
+          } else {
+            await placeAt(x, draft, row.id, 1);
+          }
+        }
+      });
+      const plan = await planOf(x);
+      expect(plan.rows[1]?.start).not.toBe(plan.rows[0]?.start);
+      expect(plan.request?.causes.map((cause) => [cause.kind, cause.onDate])).toEqual([
+        ['owner_changed', '2026-11-16'],
+      ]);
       expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
         { requested: await unitOf(x), moved: '—' },
       ]);

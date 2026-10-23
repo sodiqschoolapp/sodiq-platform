@@ -844,13 +844,24 @@ function causesOf(
       staffId: null,
     });
   }
-  if (plan.before !== null) {
-    const ownerBefore = new Map(plan.before.map((row) => [row.lessonId, row.ownerId]));
+  const before = plan.before;
+  if (before !== null && before.length > 0) {
+    // By date, not by lesson: a writer that removes and creates the lessons
+    // again (a publish at another time of the day) keeps no id (code review of
+    // #213, must-fix 2). The owner a date had is the snapshot's on its latest
+    // row on or before that date, else on its first row.
+    const ownerBeforeOn = (date: string): string | null => {
+      let found = before[0]?.ownerId ?? null;
+      for (const row of before) {
+        if (row.date > date) break;
+        found = row.ownerId;
+      }
+      return found;
+    };
     for (const [index, row] of after.entries()) {
       if (row.startsAt.getTime() <= now.getTime()) continue;
-      if (!ownerBefore.has(row.lessonId)) continue;
       const owner = owners[index] ?? null;
-      if (owner !== null && owner !== ownerBefore.get(row.lessonId)) {
+      if (owner !== null && owner !== ownerBeforeOn(row.date)) {
         causes.push({ kind: 'owner_changed', onDate: row.date, items: 0, staffId: owner });
         break;
       }
