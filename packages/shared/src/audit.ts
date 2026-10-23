@@ -280,6 +280,18 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.shared',
     'plan.separated',
     'plan.copied',
+    // Task 7.2: the window opened, its dates changed, extended for one teacher; a request made,
+    // sent, approved, refused, finished early or made void; the queue edited.
+    'plan.window_open',
+    'plan.window_change',
+    'plan.window_extend',
+    'plan.request_create',
+    'plan.request_send',
+    'plan.request_approve',
+    'plan.request_refuse',
+    'plan.request_finish',
+    'plan.request_void',
+    'plan.queue_edit',
   ],
   exports: [
     'building.export',

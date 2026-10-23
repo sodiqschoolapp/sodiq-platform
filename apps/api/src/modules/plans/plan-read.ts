@@ -264,6 +264,7 @@ export async function planItems(
       'lesson_plan_items.links',
       'lesson_plan_items.copied_from',
       sql<string | null>`lesson_plan_places.moved_from::text`.as('moved_from'),
+      'lesson_plan_places.edited_after_lesson',
     ])
     .where('lesson_plan_items.plan_id', '=', planId)
     .where('lesson_plan_places.plan_id', '=', planId)
@@ -324,6 +325,7 @@ export async function planItems(
       })),
     movedFrom: item.moved_from,
     copiedFrom: item.copied_from === null ? null : (sources.get(item.copied_from) ?? null),
+    editedAfterLesson: item.edited_after_lesson,
   }));
 }
 
@@ -336,12 +338,14 @@ export async function preparedRequestOf(
   planId: string,
   journalId: string,
 ): Promise<{
-  fromDate: string;
+  id: string;
+  fromDate: string | null;
+  lessons: { lessonId: string; date: string }[];
   causes: { kind: PlanRequestCause; onDate: string; items: number }[];
 } | null> {
   const request = await transaction
     .selectFrom('lesson_plan_requests')
-    .select(['id', sql<string>`from_date::text`.as('from_date')])
+    .select(['id', sql<string | null>`from_date::text`.as('from_date')])
     .where('plan_id', '=', planId)
     .where('journal_id', '=', journalId)
     .where('status', '=', 'prepared')
@@ -354,8 +358,18 @@ export async function preparedRequestOf(
     .orderBy('at')
     .orderBy('id')
     .execute();
+  // Task 7.2 (review correction 2): the Text part added at the window's end.
+  const lessons = await transaction
+    .selectFrom('lesson_plan_request_lessons')
+    .select(['lesson_id', sql<string>`lesson_date::text`.as('lesson_date')])
+    .where('request_id', '=', request.id)
+    .orderBy('lesson_date')
+    .orderBy('lesson_id')
+    .execute();
   return {
+    id: request.id,
     fromDate: request.from_date,
+    lessons: lessons.map((one) => ({ lessonId: one.lesson_id, date: one.lesson_date })),
     causes: causes.map((cause) => ({
       kind: planRequestCauseSchema.parse(cause.kind),
       onDate: cause.on_date,

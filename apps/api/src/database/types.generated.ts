@@ -708,6 +708,7 @@ export interface LessonPlanJournals {
 
 export interface LessonPlanPlaces {
   branch_id: string;
+  edited_after_lesson: Generated<boolean>;
   item_id: string;
   journal_id: string;
   moved_from: string | null;
@@ -718,6 +719,7 @@ export interface LessonPlanPlaces {
 export interface LessonPlanRequestCauses {
   at: Timestamp;
   branch_id: string;
+  event_id: string;
   id: Generated<string>;
   items: number;
   kind: string;
@@ -726,15 +728,33 @@ export interface LessonPlanRequestCauses {
   staff_id: string | null;
 }
 
+export interface LessonPlanRequestLessons {
+  approved: Generated<boolean>;
+  branch_id: string;
+  lesson_date: string;
+  lesson_id: string;
+  request_id: string;
+  untick_reason: Generated<string>;
+}
+
 export interface LessonPlanRequests {
   branch_id: string;
-  from_date: string;
+  days: number | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_reason: Generated<string>;
+  finished_at: Timestamp | null;
+  from_date: string | null;
   id: Generated<string>;
   journal_id: string;
   kind: string;
+  open_until: Timestamp | null;
   plan_id: string;
   prepared_at: Timestamp;
   quarter_id: string;
+  reason: Generated<string>;
+  requested_by: string | null;
+  sent_at: Timestamp | null;
   status: string;
   updated_at: Timestamp;
 }
@@ -757,6 +777,29 @@ export interface LessonPlans {
   quarter_id: string;
   shared_unit: string | null;
   subject_id: string;
+}
+
+export interface LessonPlanWindowExtensions {
+  branch_id: string;
+  end_date: string;
+  ends_at: Timestamp;
+  granted_at: Timestamp;
+  granted_by: string;
+  id: Generated<string>;
+  staff_id: string;
+  window_id: string;
+}
+
+export interface LessonPlanWindows {
+  branch_id: string;
+  end_date: string;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  opened_at: Timestamp;
+  opened_by: string;
+  quarter_id: string;
+  start_date: string;
+  starts_at: Timestamp;
 }
 
 export interface LessonPlanWorks {
@@ -1498,8 +1541,11 @@ export interface DB {
   lesson_plan_journals: LessonPlanJournals;
   lesson_plan_places: LessonPlanPlaces;
   lesson_plan_request_causes: LessonPlanRequestCauses;
+  lesson_plan_request_lessons: LessonPlanRequestLessons;
   lesson_plan_requests: LessonPlanRequests;
   lesson_plan_rows: LessonPlanRows;
+  lesson_plan_window_extensions: LessonPlanWindowExtensions;
+  lesson_plan_windows: LessonPlanWindows;
   lesson_plan_works: LessonPlanWorks;
   lesson_plans: LessonPlans;
   lessons: Lessons;

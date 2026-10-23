@@ -355,6 +355,44 @@ export const NOTIFICATION_KINDS = {
     plans: z.int().min(1),
     requests: z.int().min(0),
   }),
+  /**
+   * Task 7.2: `09`, The plan window: "Teachers are reminded when the window
+   * opens"; sent once at the opening to each owner of a plan of the quarter,
+   * and when its dates move.
+   */
+  'plans.window_opened': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    startDate: schoolDateSchema,
+    endDate: schoolDateSchema,
+  }),
+  'plans.window_changed': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    startDate: schoolDateSchema,
+    endDate: schoolDateSchema,
+  }),
+  /** `09`: "extend the window for one teacher". */
+  'plans.window_extended': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    endDate: schoolDateSchema,
+  }),
+  /** A request sent, to the first tier of its deciders (review correction 5). */
+  'plans.request_sent': z.strictObject({
+    name: z.string().min(1).max(200),
+    unit: z.string().min(1).max(120),
+    quarter: z.int().min(1).max(4),
+  }),
+  /** The decision, to the plan's owner. */
+  'plans.request_approved': z.strictObject({
+    /** The classes and groups, joined with commas (one notice per teacher per event). */
+    unit: z.string().min(1).max(4000),
+    quarter: z.int().min(1).max(4),
+    until: schoolDateSchema,
+  }),
+  'plans.request_refused': z.strictObject({
+    unit: z.string().min(1).max(120),
+    quarter: z.int().min(1).max(4),
+    reason: z.string().min(1).max(1000),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

@@ -11,7 +11,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { PHOTO_STORE, planFileKey, type PhotoStore } from '../people/photo-store.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { fileMatchesType } from './file-type.js';
-import { PlansService } from './plans.service.js';
+import { gateAudit, PlansService } from './plans.service.js';
 
 /**
  * The files of plan items (task 7.1a, pull request #212, decisions 1 and 3;
@@ -55,7 +55,7 @@ export class PlanFiles {
   ): Promise<PlanFile> {
     const branchId = branchOf(access);
     await this.transactions.run(access.branchIds, async (transaction) => {
-      await this.plans.itemWriteScene(transaction, access, itemId);
+      await this.plans.itemWriteScene(transaction, access, itemId, 'wording');
       if ((await this.activeFiles(transaction, itemId)) >= PLAN_FILES_MAX) throw fullRefusal();
     });
     if (!this.store.configured) throw new ApiException('files_not_configured', 503);
@@ -71,7 +71,7 @@ export class PlanFiles {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const scene = await this.plans.itemWriteScene(transaction, access, itemId);
+          const scene = await this.plans.itemWriteScene(transaction, access, itemId, 'wording');
           // Under the item's lock the trigger `lesson_plan_files_limit` refuses an 11th file.
           await this.plans.lockItem(transaction, itemId);
           await transaction
@@ -94,6 +94,7 @@ export class PlanFiles {
             record: { type: 'lesson_plan', id: scene.planId },
             oldValue: null,
             newValue: { itemId, ...added },
+            ...gateAudit(scene.pass),
             ...(requestId === undefined ? {} : { requestId }),
           });
           return planFileSchema.parse(added);
@@ -130,7 +131,12 @@ export class PlanFiles {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const row = await this.fileRow(transaction, fileId);
-      const scene = await this.plans.itemWriteScene(transaction, access, row.item_id);
+      const scene = await this.plans.itemWriteScene(
+        transaction,
+        access,
+        row.item_id,
+        'wording',
+      );
       await this.plans.lockItem(transaction, row.item_id);
       const still = await this.fileRow(transaction, fileId);
       await transaction
@@ -152,6 +158,7 @@ export class PlanFiles {
           bytes: still.bytes,
         },
         newValue: null,
+        ...gateAudit(scene.pass),
         ...(requestId === undefined ? {} : { requestId }),
       });
     });
