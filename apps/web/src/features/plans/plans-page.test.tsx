@@ -34,8 +34,15 @@ const LIST: PlanList = {
       unit: { kind: 'class', id: uid(6), name: '7 Oxford' },
       subject,
       quarters: [
-        { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2, flag: null },
-        { quarterId: Q2, state: 'not_started', rows: 8, empty: 8, flag: null },
+        { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2, flag: null, masterUpdated: false },
+        {
+          quarterId: Q2,
+          state: 'not_started',
+          rows: 8,
+          empty: 8,
+          flag: null,
+          masterUpdated: false,
+        },
       ],
     },
     {
@@ -43,8 +50,8 @@ const LIST: PlanList = {
       unit: { kind: 'group', id: uid(7), name: 'English A' },
       subject,
       quarters: [
-        { quarterId: Q1, state: 'complete', rows: 3, empty: 0, flag: null },
-        { quarterId: Q2, state: 'no_lessons', rows: 0, empty: 0, flag: null },
+        { quarterId: Q1, state: 'complete', rows: 3, empty: 0, flag: null, masterUpdated: false },
+        { quarterId: Q2, state: 'no_lessons', rows: 0, empty: 0, flag: null, masterUpdated: false },
       ],
     },
   ],
@@ -119,6 +126,7 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
   requests: [],
   sharedWith: [],
   shareCandidates: [],
+  master: null,
 });
 
 function open(
@@ -712,13 +720,21 @@ describe('the plan window and edit requests', () => {
               {
                 ...first,
                 quarters: [
-                  { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2, flag: 'vacancy' },
+                  {
+                    quarterId: Q1,
+                    state: 'incomplete',
+                    rows: 3,
+                    empty: 2,
+                    flag: 'vacancy',
+                    masterUpdated: false,
+                  },
                   {
                     quarterId: Q2,
                     state: 'not_started',
                     rows: 8,
                     empty: 8,
                     flag: 'window_not_opened',
+                    masterUpdated: false,
                   },
                 ],
               },
