@@ -792,7 +792,9 @@ export const planMasterSummarySchema = z.object({
 export type PlanMasterSummary = z.infer<typeof planMasterSummarySchema>;
 
 export const planMastersSchema = z.object({
-  years: z.array(z.object({ id: z.uuid(), startDate: schoolDateSchema, endDate: schoolDateSchema })),
+  years: z.array(
+    z.object({ id: z.uuid(), startDate: schoolDateSchema, endDate: schoolDateSchema }),
+  ),
   yearId: z.uuid().nullable(),
   masters: z.array(planMasterSummarySchema),
   /** The subjects whose masters the reader may create, with their grades and the scopes (decision 3). */

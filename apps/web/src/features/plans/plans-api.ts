@@ -278,7 +278,9 @@ export const planMastersQuery = (
     queryKey: [...plansKey(branchId), 'masters', query],
     queryFn: async () =>
       planMastersSchema.parse(
-        await answerOf(api.GET('/api/plans/masters', { params: { header: branchHeader(), query } })),
+        await answerOf(
+          api.GET('/api/plans/masters', { params: { header: branchHeader(), query } }),
+        ),
       ),
     enabled: branchId !== null,
   });

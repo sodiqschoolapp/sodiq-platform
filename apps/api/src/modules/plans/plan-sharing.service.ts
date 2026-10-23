@@ -393,7 +393,11 @@ export class PlanSharing {
       }
       const members = await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
       await this.ownAll(transaction, access, scene, members);
-      const sourcePlan = await planIdOf(transaction, sourceScene.journal.id, sourceScene.quarter.id);
+      const sourcePlan = await planIdOf(
+        transaction,
+        sourceScene.journal.id,
+        sourceScene.quarter.id,
+      );
       const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
       if (sourcePlan !== null && sourcePlan === planNow) {
         throw new ApiException('plan_copy_same', 409);
@@ -540,7 +544,8 @@ export class PlanSharing {
       if (seen.subject_id !== scene.journal.subjectId) {
         throw new ApiException('plan_copy_subject', 409);
       }
-      if (!scene.journal.grades.includes(seen.grade)) throw new ApiException('plan_copy_grade', 409);
+      if (!scene.journal.grades.includes(seen.grade))
+        throw new ApiException('plan_copy_grade', 409);
       const keys = await unitKeysOf(transaction, [scene.journal]);
       if ((keys.get(scene.journal.id) ?? '').split('|')[2] !== seen.language) {
         throw new ApiException('plan_copy_language', 409);

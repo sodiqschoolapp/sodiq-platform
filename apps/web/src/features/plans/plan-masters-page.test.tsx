@@ -128,7 +128,7 @@ function open(input: {
           assignments: [
             input.role === 'teacher'
               ? { role: 'teacher', branchId: NORTH.id }
-              : { role: 'head_teacher', branchId: NORTH.id, subjectIds: [subject.id] },
+              : { role: 'head_teacher', branchId: NORTH.id },
           ],
         }),
       ),

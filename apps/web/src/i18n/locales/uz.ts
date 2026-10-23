@@ -727,7 +727,8 @@ export const uz: Texts<'one' | 'other'> = {
     plan_copy_same: 'Nusxalash uchun boshqa rejani tanlang: bu oʻsha reja.',
     plan_copy_language: 'Sinfning taʼlim tilidagi master-rejani tanlang.',
     plan_copy_quarter: 'Shu yil va chorakning master-rejasini tanlang.',
-    plan_master_stale: 'Master-reja shu orada oʻzgartirildi. Uni qayta oching va oʻzgarishni takrorlang.',
+    plan_master_stale:
+      'Master-reja shu orada oʻzgartirildi. Uni qayta oching va oʻzgarishni takrorlang.',
     plan_master_archived: 'Master-reja arxivda. Avval uni tiklang.',
     plan_master_scope: 'Siz bu yerda bu fanning master-rejalarini yuritmaysiz.',
     plan_master_subject: 'Bu fanning shu sinfda rejasi yoʻq. Boshqa sinfni tanlang.',

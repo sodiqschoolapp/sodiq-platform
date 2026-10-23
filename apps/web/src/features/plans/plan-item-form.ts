@@ -27,7 +27,10 @@ export const titleField = (kind: WorkKind, slot: number): PlanField => `${kind}$
 export const noteField = (kind: WorkKind, slot: number): PlanField => `${kind}Note${String(slot)}`;
 
 /** The content of an item a form shows: a plan item, or a master item (task 7.3). */
-export type ItemContent = Pick<PlanItem, 'topic' | 'objectives' | 'links' | 'classworks' | 'homeworks'>;
+export type ItemContent = Pick<
+  PlanItem,
+  'topic' | 'objectives' | 'links' | 'classworks' | 'homeworks'
+>;
 
 const SLOTS = Array.from({ length: PLAN_WORKS_MAX }, (_, slot) => slot);
 
