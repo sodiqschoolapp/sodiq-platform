@@ -124,7 +124,6 @@ export function RequestsSection({ plan }: { plan: Plan }) {
                 })}
               </li>
             ))}
-            {request.id === null && <li>{t('plans.requests.windowEnd')}</li>}
           </ul>
           <div className="flex flex-wrap gap-2">
             {plan.canEdit && (

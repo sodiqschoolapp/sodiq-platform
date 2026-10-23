@@ -158,7 +158,7 @@ alter table lesson_plan_requests add constraint lesson_plan_requests_state_check
 
 grant insert (reason, requested_by, sent_at, decided_by, decided_at, decision_reason, days,
   open_until, finished_at) on lesson_plan_requests to sodiq_app;
-grant update (status, kind, reason, requested_by, sent_at, decided_by, decided_at,
+grant update (status, reason, requested_by, sent_at, decided_by, decided_at,
   decision_reason, days, open_until, finished_at) on lesson_plan_requests to sodiq_app;
 
 -- The lessons a request names for Text (`09`: "which lessons"; `edge`:
@@ -175,7 +175,7 @@ create table lesson_plan_request_lessons (
     constraint lesson_plan_request_lessons_reason_check check (length(untick_reason) <= 1000),
   constraint lesson_plan_request_lessons_request_fkey foreign key (request_id, branch_id)
     references lesson_plan_requests (id, branch_id),
-  primary key (request_id, lesson_id)
+  primary key (branch_id, request_id, lesson_id)
 );
 
 alter table lesson_plan_request_lessons enable row level security;
@@ -203,10 +203,13 @@ create index lesson_plan_request_causes_event_idx on lesson_plan_request_causes 
 grant insert (event_id) on lesson_plan_request_causes to sodiq_app;
 
 -- A journal made after its quarter's window ended (`edge`: "A teacher is
--- hired in week 5, or a subject is added mid-quarter").
+-- hired in week 5, or a subject is added mid-quarter"), and the request of
+-- the window's end (`edge`: "When the window ends, a request is prepared
+-- for every incomplete plan"), stored when it is sent or decided.
 alter table lesson_plan_request_causes drop constraint lesson_plan_request_causes_kind_check;
 alter table lesson_plan_request_causes add constraint lesson_plan_request_causes_kind_check check (
-  kind in ('not_covered', 'rows_added', 'moved_back', 'owner_changed', 'journal_added')
+  kind in ('not_covered', 'rows_added', 'moved_back', 'owner_changed', 'journal_added',
+    'window_end')
 );
 
 -- ---------------------------------------------------------------------------

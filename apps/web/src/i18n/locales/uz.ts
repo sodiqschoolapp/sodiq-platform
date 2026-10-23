@@ -5098,6 +5098,7 @@ export const uz: Texts<'one' | 'other'> = {
       empty: 'Jadval chorakka dars berganda qatorlar chiqadi.',
       notCovered: 'Qamrab olinmagan',
       movedFrom: '{{date}} dan koʻchirilgan',
+      editedAfterLesson: 'Darsdan keyin tahrirlangan',
       request: {
         title: 'Oʻzgartirish soʻrovi tayyorlandi',
         text: 'Tizim {{date}} dan boshlab darslar uchun oʻzgartirish soʻrovini tayyorladi.',
@@ -5108,6 +5109,7 @@ export const uz: Texts<'one' | 'other'> = {
         moved_back_other: '{{count}} ta yozuv oʻtmagan darslardan qaytarildi ({{date}} dan)',
         owner_changed: 'Reja yangi oʻqituvchiga oʻtadi ({{date}} dan)',
         journal_added: 'Fan oyna tugagach qoʻshildi ({{date}} dan)',
+        window_end: 'Oyna tugaganda reja toʻliq emas edi ({{date}} dan)',
       },
     },
     impact: {
@@ -5163,7 +5165,6 @@ export const uz: Texts<'one' | 'other'> = {
       decide: 'Qaror qilish',
       decideTitle: 'Soʻrov boʻyicha qaror',
       finish: 'Tugatildi',
-      windowEnd: 'Oyna tugagan va reja toʻliq emas.',
       textLessons: 'Matni: {{dates}}',
       from: '{{date}} dan qayta rejalash',
       unticked: '{{date}} (ruxsat berilmagan)',

@@ -236,6 +236,8 @@ export const PLAN_REQUEST_CAUSES = [
   'owner_changed',
   /** Task 7.2: a journal made after its quarter's window ended (`edge`: "a subject is added mid-quarter"). */
   'journal_added',
+  /** Task 7.2: the plan was incomplete when the window ended (`edge`: "a request is prepared for every incomplete plan"). */
+  'window_end',
 ] as const;
 
 export const planRequestCauseSchema = z.enum(PLAN_REQUEST_CAUSES);

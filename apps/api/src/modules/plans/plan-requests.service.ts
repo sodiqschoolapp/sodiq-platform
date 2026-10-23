@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   nextDay,
@@ -216,7 +217,8 @@ export class PlanRequestsService {
         );
         shown.push(answer);
         if (canDecide) {
-          for (const cause of answer.causes) {
+          // A window's end cause is an event of one request: no approving together.
+          for (const cause of answer.causes.filter((one) => one.kind !== 'window_end')) {
             const event = events.get(cause.eventId) ?? {
               at: new Date(0),
               requests: new Set<string>(),
@@ -609,14 +611,31 @@ export class PlanRequestsService {
       await this.addWindowEndPart(transaction, existing, part, scene.now);
       return existing;
     }
-    // A request already sent waits: a second store (two at once) answers it.
+    // The window's end request already sent (its cause `window_end`) waits: a
+    // second store (two at once) answers it. A request the teacher wrote is
+    // another request (spec review of the code, should-fix 6).
     const others = await requestRows(transaction, (query) =>
       query
         .where('plan_id', '=', planId)
         .where('journal_id', '=', scene.journal.id)
         .where('status', 'in', ['sent', 'approved']),
     );
-    const sent = others.find((one) => one.status === 'sent');
+    const windowEnd = new Set(
+      (others.length === 0
+        ? []
+        : await transaction
+            .selectFrom('lesson_plan_request_causes')
+            .select('request_id')
+            .where(
+              'request_id',
+              'in',
+              others.map((one) => one.id),
+            )
+            .where('kind', '=', 'window_end')
+            .execute()
+      ).map((one) => one.request_id),
+    );
+    const sent = others.find((one) => one.status === 'sent' && windowEnd.has(one.id));
     if (sent !== undefined) return sent;
     // An open period covers it already.
     if (
@@ -660,6 +679,20 @@ export class PlanRequestsService {
         )
         .execute();
     }
+    // The cause names the request as the window's end one; an event of its own.
+    await transaction
+      .insertInto('lesson_plan_request_causes')
+      .values({
+        branch_id: scene.branchId,
+        request_id: made.id,
+        kind: 'window_end',
+        on_date: part.fromDate ?? part.lessons[0]?.date ?? scene.quarter.endDate,
+        items: 0,
+        staff_id: null,
+        at: scene.now,
+        event_id: randomUUID(),
+      })
+      .execute();
     return this.lockRequest(transaction, made.id);
   }
 

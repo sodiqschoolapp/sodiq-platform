@@ -594,6 +594,45 @@ describe('the plan window and edit requests', () => {
     });
   });
 
+  it('keeps the typed text in the form when a save arrives after the window, and says to ask', async () => {
+    open({
+      path: `/plans/${JOURNAL}`,
+      save: () =>
+        json(
+          {
+            error: { code: 'plan_window_closed', message: 'x', requestId: uid(97) },
+          },
+          409,
+        ),
+    });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /12 October · lesson 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: en.form.edit }));
+    const form = await screen.findByRole('form', { name: 'Row 1' });
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.plan.topic }), {
+      target: { value: 'Fractions late' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(within(form).getByRole('alert').textContent).toContain(en.errors.plan_window_closed);
+    });
+    expect(within(form).getByRole('textbox', { name: en.plans.plan.topic })).toHaveProperty(
+      'value',
+      'Fractions late',
+    );
+  });
+
+  it('marks an item edited after its lesson', async () => {
+    const plan = planOf(false, { ...ITEM, editedAfterLesson: true });
+    open({ path: `/plans/${JOURNAL}`, plan });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    expect(rows()[0]?.textContent).toContain(en.plans.plan.editedAfterLesson);
+  });
+
   it('lists the requests to decide, marks a late one, and approves with the days chosen, a lesson unticked', async () => {
     const calls = open({
       role: 'head_teacher',

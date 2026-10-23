@@ -5347,6 +5347,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       empty: 'Строки появятся, когда расписание даст четверти уроки.',
       notCovered: 'Не охвачено',
       movedFrom: 'Перенесено с {{date}}',
+      editedAfterLesson: 'Изменено после урока',
       request: {
         title: 'Подготовлен запрос на изменение',
         text: 'Система подготовила запрос на изменение уроков с {{date}}.',
@@ -5363,6 +5364,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           '{{count}} записи возвращены с уроков, которые не состоялись (с {{date}})',
         owner_changed: 'План переходит к новому учителю (с {{date}})',
         journal_added: 'Предмет добавлен после окна (с {{date}})',
+        window_end: 'План не был заполнен к концу окна (с {{date}})',
       },
     },
     impact: {
@@ -5424,7 +5426,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       decide: 'Решить',
       decideTitle: 'Решение по запросу',
       finish: 'Готово',
-      windowEnd: 'Окно закончилось, а план не заполнен.',
       textLessons: 'Текст: {{dates}}',
       from: 'Перепланирование с {{date}}',
       unticked: '{{date}} (не разрешено)',

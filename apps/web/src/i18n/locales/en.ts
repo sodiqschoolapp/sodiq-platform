@@ -5052,6 +5052,7 @@ export const en = {
       empty: 'The rows appear when the timetable gives the quarter its lessons.',
       notCovered: 'Not covered',
       movedFrom: 'Moved from {{date}}',
+      editedAfterLesson: 'Edited after the lesson',
       request: {
         title: 'Edit request prepared',
         text: 'The system prepared an edit request for the lessons from {{date}}.',
@@ -5064,6 +5065,7 @@ export const en = {
           '{{count}} items moved back from lessons that did not take place (from {{date}})',
         owner_changed: 'A new teacher takes over (from {{date}})',
         journal_added: 'The subject was added after the window (from {{date}})',
+        window_end: 'The plan was not complete when the window ended (from {{date}})',
       },
     },
     impact: {
@@ -5119,7 +5121,6 @@ export const en = {
       decide: 'Decide',
       decideTitle: 'Decide the request',
       finish: 'Finished',
-      windowEnd: 'The window has ended and the plan is not complete.',
       textLessons: 'Wording of: {{dates}}',
       from: 'Re-plan from {{date}}',
       unticked: '{{date}} (not allowed)',

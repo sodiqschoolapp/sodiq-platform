@@ -69,6 +69,14 @@ export function PlanPage(): React.JSX.Element {
         cell: (row) =>
           row.item === null ? (
             <span className="text-muted-foreground">{t('plans.plan.emptyRow')}</span>
+          ) : row.item.editedAfterLesson ? (
+            // Task 7.2 (`09`: "it carries an \"edited after the lesson\" mark").
+            <span className="grid">
+              <span>{row.item.topic}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('plans.plan.editedAfterLesson')}
+              </span>
+            </span>
           ) : row.item.movedFrom === null ? (
             row.item.topic
           ) : (

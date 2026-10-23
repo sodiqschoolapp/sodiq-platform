@@ -494,7 +494,13 @@ export class PlansService {
           lessons: empty
             .filter((row) => row.started)
             .map((row) => ({ lessonId: row.lessonId, date: row.date })),
-          causes: [],
+          causes: [
+            {
+              kind: 'window_end',
+              onDate: (empty.find((row) => !row.started) ?? empty[0])?.date ?? scene.quarter.endDate,
+              items: 0,
+            },
+          ],
         };
       }
     }

@@ -424,6 +424,9 @@ export class PlanFollow implements OnModuleInit {
         'quarters.id as quarter_id',
         'quarters.number',
         'lesson_plan_journals.laid_at',
+        // Task 7.2: the link was made by this transaction (its journal is new;
+        // `database.md`: the bookkeeping column compared with `now()`).
+        sql<boolean>`lesson_plan_journals.created_at = now()`.as('made_now'),
         sql<string | null>`quarters.start_date::text`.as('start_date'),
         sql<string | null>`quarters.end_date::text`.as('end_date'),
       ])
@@ -569,7 +572,9 @@ export class PlanFollow implements OnModuleInit {
       // Task 7.2: a plan laid for the first time after its quarter's window
       // ended for its owner (`edge`: "a subject is added mid-quarter"; "The
       // system prepares a request covering the lessons not yet held").
-      if (before === null && rewrite === undefined) {
+      // Spec review of the code, should-fix 7: only a journal made in this
+      // transaction, never a plan record laid late for the first time.
+      if (before === null && rewrite === undefined && plan.made_now) {
         const first = after.findIndex((row) => row.startsAt.getTime() > now.getTime());
         const owner = owners[first] ?? null;
         const row = after[first];

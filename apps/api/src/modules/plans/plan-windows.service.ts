@@ -18,7 +18,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
-import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
 import { accountOfStaff } from './plan-posts.js';
@@ -26,6 +26,8 @@ import {
   clockOf,
   datedQuarters,
   lockJournals,
+  planItems,
+  planRows,
   referenceDateOf,
   type PlanQuarter,
 } from './plan-read.js';
@@ -43,7 +45,6 @@ import { windowStateOf } from './plan-window.js';
 /** The roles that open and extend a window (`02`): the route checks them from every assignment. */
 const WINDOW_ROLES = ['academic_vice_principal', 'super_admin'] as const;
 
-const WINDOW_REFUSALS = { lesson_plan_window_quarter: 'plan_window_after_quarter' } as const;
 
 interface QuarterRow extends PlanQuarter {
   readonly yearId: string;
@@ -248,28 +249,32 @@ export class PlanWindowsService {
     transaction: Transaction,
     branchId: string,
     quarter: QuarterRow,
-    endsAt: Date,
+    endDate: string,
   ): Promise<number> {
-    const { rows } = await sql<{ count: number }>`
-      with rows as (
-        select pj.plan_id, pj.journal_id, l.starts_at,
-          row_number() over (partition by pj.journal_id order by l.starts_at, l.id) as position
-        from lesson_plan_journals pj
-        join journals j on j.id = pj.journal_id
-        join lessons l on l.branch_id = j.branch_id and l.subject_id = j.subject_id
-          and (l.class_id = j.class_id or l.group_id = j.group_id)
-          and l.lesson_date between ${quarter.startDate}::date and ${quarter.endDate}::date
-          and l.cancel_cause is null
-        where pj.quarter_id = ${quarter.id} and j.branch_id = ${branchId}
-      )
-      select count(*)::int as count from rows r
-      where r.starts_at < ${endsAt}
-        and not exists (
-          select 1 from lesson_plan_places p
-          where p.plan_id = r.plan_id and p.journal_id = r.journal_id and p.position = r.position
-        )
-    `.execute(transaction);
-    return rows[0]?.count ?? 0;
+    // Spec review of the code, should-fix 9: the rows are `planRows`, the one
+    // definition of a plan's rows; a lesson on or before the window's last day
+    // starts before its end (23:59:59.999 of that day).
+    const links = await transaction
+      .selectFrom('lesson_plan_journals')
+      .select(['plan_id', 'journal_id'])
+      .where('quarter_id', '=', quarter.id)
+      .execute();
+    const planOf = new Map(links.map((link) => [link.journal_id, link.plan_id]));
+    const journals = (await journalRows(transaction, branchId, { yearId: quarter.yearId })).filter(
+      (journal) => planOf.has(journal.id),
+    );
+    const { timeZone, now } = await clockOf(transaction, branchId);
+    let count = 0;
+    for (const journal of journals) {
+      const rows = await planRows(transaction, branchId, journal, quarter, timeZone, now);
+      const filled = new Set(
+        (await planItems(transaction, planOf.get(journal.id) ?? '', journal.id)).map(
+          (item) => item.position,
+        ),
+      );
+      count += rows.filter((row) => row.date <= endDate && !filled.has(row.number)).length;
+    }
+    return count;
   }
 
   /** Opens the window of a quarter or moves its dates (`edge`: "The end can move to any date from today on"). */
@@ -280,7 +285,7 @@ export class PlanWindowsService {
     requestId: string | undefined,
   ): Promise<PlanWindows> {
     const branchId = branchOf(access);
-    return refusingConstraints(async () => {
+    return (async () => {
       const yearId = await this.transactions.run(access.branchIds, async (transaction) => {
         const quarter = await this.quarterOf(transaction, branchId, quarterId);
         // The quarter first, then the window: two openings wait on each other.
@@ -320,7 +325,7 @@ export class PlanWindowsService {
           throw new ApiException('plan_window_unpublished', 409);
         }
         const moments = await dayMoments(transaction, input.startDate, input.endDate, timeZone);
-        const without = await this.withoutPlan(transaction, branchId, quarter, moments.endsAt);
+        const without = await this.withoutPlan(transaction, branchId, quarter, input.endDate);
         if (without > 0 && input.confirm !== true) {
           throw new ApiException('plan_window_confirm', 409, undefined, [
             {
@@ -402,7 +407,7 @@ export class PlanWindowsService {
         return quarter.yearId;
       });
       return this.list(access, { yearId });
-    }, WINDOW_REFUSALS);
+    })();
   }
 
   /**
