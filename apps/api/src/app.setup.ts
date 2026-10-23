@@ -8,6 +8,7 @@ import {
   errorFallback,
   notFoundFallback,
 } from './http/api-exception.filter.js';
+import { appVersionMiddleware } from './http/app-version.js';
 import { fileBodyMiddleware } from './http/file-routes.js';
 import { jsonOnlyMiddleware } from './http/json-only.js';
 import { noStoreMiddleware } from './http/no-store.js';
@@ -46,6 +47,8 @@ export function configureApp(app: NestExpressApplication): void {
   app.use(sameSiteMiddleware(config.trustProxy));
   // Nor is a body that is not JSON.
   app.use(jsonOnlyMiddleware);
+  // Nor is a write from a page too old to know what the API takes (task 8.3a).
+  app.use(appVersionMiddleware);
   // The declared file routes read their body here, before the guards.
   app.use(fileBodyMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());

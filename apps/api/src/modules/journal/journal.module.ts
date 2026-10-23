@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AttendanceController } from './attendance.controller.js';
 import { AttendanceService } from './attendance.service.js';
+import { CellActionsService } from './cell-actions.service.js';
 import { CommentsController } from './comments.controller.js';
 import { CommentsService } from './comments.service.js';
 import { JournalGridReader } from './journal-grid.service.js';
@@ -28,6 +29,7 @@ import { WorksService } from './works.service.js';
     WorksService,
     RatingService,
     CommentsService,
+    CellActionsService,
   ],
 })
 export class JournalModule {}

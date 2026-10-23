@@ -62,6 +62,7 @@ import {
   attendanceOnlyOn,
 } from './journal-grid.query.js';
 import { gridComments } from './comments.query.js';
+import { firstsOfDoubles } from './doubles.query.js';
 import { ratingExamOf, ratingRightsOf } from './rating.js';
 import { roleReadingOf, shapeOf, teaches, type JournalScopeKey } from './journal-scope.js';
 
@@ -761,6 +762,11 @@ export class JournalGridReader {
     ).filter((one) => expectedOn.has(`${one.studentId}|${one.date}`));
 
     const others = (await readableJournals(transaction, access, branchId, year.id)).map(listed);
+    // Task 8.3a: the second lesson of a double names its first, for "copy attendance".
+    const copyFroms = await firstsOfDoubles(
+      transaction,
+      lessons.map((lesson) => lesson.id),
+    );
     return journalGridSchema.parse({
       journal: {
         id: journal.id,
@@ -801,6 +807,7 @@ export class JournalGridReader {
         month: lesson.date.slice(0, 7),
         canEnter: canEnter(lesson),
         canEnterWorks: canEnter(lesson) && worksTaken(lesson),
+        copyFrom: copyFroms.get(lesson.id) ?? null,
         planItem: columnsOf.get(lesson.id)?.planItem ?? false,
         works:
           shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),

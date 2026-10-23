@@ -406,6 +406,7 @@ export interface Exams {
 
 export interface FeedbackReports {
   account_id: string;
+  app_version: number | null;
   created_at: Timestamp;
   id: Generated<string>;
   page: string;

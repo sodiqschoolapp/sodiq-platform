@@ -88,6 +88,8 @@ const savedAttendanceSchema = z.object({
 
 export const attendanceSavedSchema = z.object({
   cells: z.array(savedAttendanceSchema),
+  /** The numbers a "clear" of keep-or-clear emptied, with their new versions, for the undo (task 8.3a). */
+  cleared: z.array(z.object({ studentId: z.uuid(), workId: z.uuid(), version: z.int().min(1) })),
   /**
    * The students saved with 0 who had a 1, 2 or 3 in a lesson of the branch
    * that started earlier the same day (`edge/journal`: "A hint is shown and

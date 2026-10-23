@@ -1,4 +1,5 @@
 import {
+  REQUEST_KEY_HEADER,
   allPresentSchema,
   attendanceSavedSchema,
   cellHistorySchema,
@@ -68,7 +69,8 @@ describe('attendance entry', () => {
         .execute();
       return await work({
         get: (branch, path) => t.get(path, branch, browser.cookie),
-        post: (branch, path, body) => t.post(path, branch, body ?? {}, browser.cookie),
+        post: (branch, path, body) =>
+          t.post(path, branch, body ?? {}, browser.cookie).set(REQUEST_KEY_HEADER, randomUUID()),
       });
     } finally {
       t.clock.set(START);

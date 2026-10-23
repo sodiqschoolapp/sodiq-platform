@@ -354,6 +354,12 @@ export const ERROR_CODES = [
   'student_changed',
   /** A journal cell was saved from an old version: someone saved it first; both values are shown (edge/journal, Saving and working together; task 6.1a). */
   'cell_stale',
+  /** The page is of an application version older than the oldest accepted: reload it (`edge/system-behaviour`; task 8.3a, decision 4). */
+  'app_outdated',
+  /** "Copy attendance" is for the second lesson of a double (`edge/timetable`, Double lessons; task 8.3a). */
+  'lesson_not_double',
+  /** The first lesson of the double is cancelled: there is no attendance to copy (task 8.3a). */
+  'lesson_copy_cancelled',
   /** The student is not expected in the lesson on its date, so the cell is closed (07, Editing rules and locks; task 6.1a). */
   'cell_closed',
   /** The lesson is cancelled: its cells take no new value (task 6.1a, decision 8). */
@@ -1166,6 +1172,9 @@ export const errorDetailSchema = z.object({
       value: z.int().min(0).nullable(),
       version: z.int().min(1),
       changedBy: z.uuid(),
+      /** Who saved it, by login and name, as the cell history names them (task 8.3a, decision 5). */
+      changedByLogin: z.string().nullable().optional(),
+      changedByName: z.string().nullable().optional(),
       changedAt: z.iso.datetime(),
     })
     .optional(),

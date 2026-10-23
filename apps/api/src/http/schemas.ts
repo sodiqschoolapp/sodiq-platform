@@ -18,7 +18,13 @@ import {
   ApiResponse,
   type OpenAPIObject,
 } from '@nestjs/swagger';
-import { PHOTO_TYPES, REQUEST_KEY_HEADER, requestKeySchema } from '@sodiq/shared';
+import {
+  APP_VERSION_HEADER,
+  PHOTO_TYPES,
+  REQUEST_KEY_HEADER,
+  appVersionSchema,
+  requestKeySchema,
+} from '@sodiq/shared';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { UploadedFile, type FileRoute } from './file-routes.js';
@@ -162,6 +168,29 @@ export function RequestKey(): ParameterDecorator {
         required: true,
         schema: toOpenApiSchema(requestKeySchema, 'input'),
       }),
+      target,
+      key,
+    );
+  };
+}
+
+/**
+ * The application version of the page that sent the request (task 8.3a): the
+ * header `X-App-Version`, a whole number, or `undefined` without it. The
+ * check of an outdated write is `appVersionMiddleware`; this reads the value
+ * for a route that records it (a feedback report).
+ */
+export function AppVersion(): ParameterDecorator {
+  return (target, key, index) => {
+    if (key === undefined) {
+      throw new Error('AppVersion belongs on a parameter of a route method.');
+    }
+    HeaderValue(
+      APP_VERSION_HEADER.toLowerCase(),
+      new HeaderPipe(APP_VERSION_HEADER, appVersionSchema.optional()),
+    )(target, key, index);
+    onMethod(
+      ApiHeader({ name: APP_VERSION_HEADER, required: false, schema: { type: 'string' } }),
       target,
       key,
     );

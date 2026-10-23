@@ -266,6 +266,8 @@ export const AUDIT_ACTION_GROUPS = {
   journal: [
     'journal.cells_save',
     'journal.all_present',
+    'journal.cells_undo',
+    'journal.attendance_copy',
     'absence_reason.set',
     'journal.work_add',
     'journal.work_delete',

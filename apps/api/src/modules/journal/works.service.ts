@@ -11,6 +11,7 @@ import {
   type WorkSaved,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
+import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -25,10 +26,11 @@ import {
   journalFactsOf,
   type EntryLesson,
 } from './attendance-entry.js';
-import { saveCells } from './cells.js';
+import { saveCells, type SavedCell } from './cells.js';
 import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
+import { cellsAsSaved, storedCells } from './saved-cells.js';
 import { refuseOtherStudents } from './students-of-branch.js';
 
 /**
@@ -142,6 +144,7 @@ export class WorksService {
   constructor(
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
+    @Inject(RequestKeys) private readonly requestKeys: RequestKeys,
   ) {}
 
   /**
@@ -186,6 +189,18 @@ export class WorksService {
     if (owner?.kind === 'none') throw new ApiException('lesson_attendance_only', 409);
     const columns = await journalColumns(transaction, journal, timeZone, now);
     return { access, branchId, lesson, journal, columns, requestId };
+  }
+
+  /**
+   * The entry check of a works write alone, for a write of numbers that is
+   * not a save (an undo, task 8.3a): the same refusals as `saveScores`.
+   */
+  async refuseWorksEntry(
+    transaction: Transaction,
+    access: Access,
+    lessonId: string,
+  ): Promise<void> {
+    await this.sceneOf(transaction, access, lessonId, undefined);
   }
 
   private actorOf(scene: Scene) {
@@ -621,11 +636,16 @@ export class WorksService {
     });
   }
 
-  /** The numbers of works of one lesson, through `saveCells` (6.1a). */
+  /**
+   * The numbers of works of one lesson, through `saveCells` (6.1a). Task
+   * 8.3a: repeat-safe as the attendance save; every check runs before the key,
+   * and a repeat answers the cells as saved and the works as they are now.
+   */
   saveScores(
     access: Access,
     lessonId: string,
     input: ScoresSave,
+    key: string,
     requestId?: string,
   ): Promise<ScoresSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
@@ -638,53 +658,41 @@ export class WorksService {
         transaction,
         input.saves.map((save) => save.column),
       );
-      const columns = input.saves.map((save) => this.columnOf(scene, save.column));
-      // Each column's row once, in the order of its key, so that two saves lock alike.
-      const keyOf = (column: Column) =>
-        column.workId ?? `~${column.planWorkId ?? ''}/${column.sourceLessonId ?? ''}`;
-      const distinct = [...new Map(columns.map((one) => [keyOf(one), one])).values()].sort((a, b) =>
-        keyOf(a).localeCompare(keyOf(b)),
-      );
-      const rows = new Map<string, WorkRow>();
-      // The rows a save moved to this lesson (decision 7), named in an entry of their own;
-      // a first row of a planned column writes no history line and needs none.
-      const written: WorkRow[] = [];
-      const firsts: WorkRow[] = [];
-      for (const column of distinct) {
-        const { row, moved } = await this.rowOf(transaction, scene, column, undefined);
-        rows.set(keyOf(column), row);
-        if (moved) written.push(row);
-        else if (column.workId === null) firsts.push(row);
-      }
-      const saved = await saveCells(
+      const once = await this.requestKeys.runOnce(
         transaction,
-        this.audit,
         {
+          key,
+          scope: 'journal.scores',
           accountId: access.accountId,
-          assignmentId: entryAssignment(access),
-          ...(requestId === undefined ? {} : { requestId }),
+          input: { lessonId: scene.lesson.id, ...input },
         },
-        input.saves.map((save, index) => {
-          const column = columns[index];
-          const row = column === undefined ? undefined : rows.get(keyOf(column));
-          return {
-            lessonId: scene.lesson.id,
-            studentId: save.studentId.toLowerCase(),
-            workId: row?.id ?? '',
-            value: save.score,
-            version: save.version,
-          };
-        }),
+        async () => {
+          const written = await this.writeScores(transaction, access, scene, input, requestId);
+          return { cells: storedCells(written.saved), works: written.works };
+        },
       );
-      if (written.length > 0) {
-        await this.audit.record(transaction, {
-          ...this.actorOf(scene),
-          action: 'journal.work_move',
-          record: { type: 'lesson', id: scene.lesson.id },
-          newValue: { works: written.map((one) => ({ id: one.id, version: one.version })) },
-        });
+      const saved = await cellsAsSaved(transaction, once.result.cells);
+      const rows =
+        once.result.works.length === 0
+          ? []
+          : await transaction
+              .selectFrom('journal_works')
+              .select(WORK_COLUMNS)
+              .where('id', 'in', once.result.works)
+              .execute();
+      // In the order the first request answered them.
+      const works = once.result.works.flatMap((id) => rows.filter((row) => row.id === id));
+      const totals = new Map(works.map((row) => [row.id, row.total]));
+      for (const cell of saved) {
+        if (cell.workId !== null && !totals.has(cell.workId)) {
+          const row = await transaction
+            .selectFrom('journal_works')
+            .select(['id', 'total'])
+            .where('id', '=', cell.workId)
+            .executeTakeFirst();
+          totals.set(cell.workId, row?.total ?? null);
+        }
       }
-      const totals = new Map([...rows.values()].map((row) => [row.id, row.total]));
       return {
         cells: saved.map((cell) => ({
           studentId: cell.studentId,
@@ -696,8 +704,65 @@ export class WorksService {
               : percentOf(cell.value, totals.get(cell.workId ?? '') ?? null),
           version: cell.version,
         })),
-        works: [...firsts, ...written].map(savedOf),
+        works: works.map(savedOf),
       };
     });
+  }
+
+  /** The write of `saveScores`: the rows of the columns, then the cells. */
+  private async writeScores(
+    transaction: Transaction,
+    access: Access,
+    scene: Awaited<ReturnType<WorksService['sceneOf']>>,
+    input: ScoresSave,
+    requestId: string | undefined,
+  ): Promise<{ saved: SavedCell[]; works: string[] }> {
+    const columns = input.saves.map((save) => this.columnOf(scene, save.column));
+    // Each column's row once, in the order of its key, so that two saves lock alike.
+    const keyOf = (column: Column) =>
+      column.workId ?? `~${column.planWorkId ?? ''}/${column.sourceLessonId ?? ''}`;
+    const distinct = [...new Map(columns.map((one) => [keyOf(one), one])).values()].sort((a, b) =>
+      keyOf(a).localeCompare(keyOf(b)),
+    );
+    const rows = new Map<string, WorkRow>();
+    // The rows a save moved to this lesson (decision 7), named in an entry of their own;
+    // a first row of a planned column writes no history line and needs none.
+    const written: WorkRow[] = [];
+    const firsts: WorkRow[] = [];
+    for (const column of distinct) {
+      const { row, moved } = await this.rowOf(transaction, scene, column, undefined);
+      rows.set(keyOf(column), row);
+      if (moved) written.push(row);
+      else if (column.workId === null) firsts.push(row);
+    }
+    const saved = await saveCells(
+      transaction,
+      this.audit,
+      {
+        accountId: access.accountId,
+        assignmentId: entryAssignment(access),
+        ...(requestId === undefined ? {} : { requestId }),
+      },
+      input.saves.map((save, index) => {
+        const column = columns[index];
+        const row = column === undefined ? undefined : rows.get(keyOf(column));
+        return {
+          lessonId: scene.lesson.id,
+          studentId: save.studentId.toLowerCase(),
+          workId: row?.id ?? '',
+          value: save.score,
+          version: save.version,
+        };
+      }),
+    );
+    if (written.length > 0) {
+      await this.audit.record(transaction, {
+        ...this.actorOf(scene),
+        action: 'journal.work_move',
+        record: { type: 'lesson', id: scene.lesson.id },
+        newValue: { works: written.map((one) => ({ id: one.id, version: one.version })) },
+      });
+    }
+    return { saved, works: [...firsts, ...written].map((row) => row.id) };
   }
 }

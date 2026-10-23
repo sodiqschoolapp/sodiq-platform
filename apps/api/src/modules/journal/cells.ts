@@ -2,11 +2,12 @@ import type { ErrorCode, ErrorDetail } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
+import { namedAccounts } from './cell-lines.query.js';
 
 const CHECK_VIOLATION = '23514';
 
 /** The refusals of `journal_cells_write` (0108), as error codes. */
-const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+export const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   journal_cell_not_member: 'cell_closed',
   journal_cell_cancelled: 'lesson_cancelled_cell',
   // Task 8.1 (0119): the rules of a number.
@@ -32,6 +33,21 @@ export interface CellActor {
   assignmentId?: string;
   requestId?: string;
 }
+
+/**
+ * How a call writes (task 8.3a): the `changed_how` of its cells and the
+ * action of its one audit entry. An undo writes `undo` under
+ * `journal.cells_undo`, "copy attendance" `entry` under
+ * `journal.attendance_copy`, in place of `journal.cells_save`.
+ */
+export interface CellWrite {
+  how: 'entry' | 'undo';
+  action: 'journal.cells_save' | 'journal.cells_undo' | 'journal.attendance_copy';
+  /** The lesson the audit entry names, for an action on one lesson. */
+  lessonId?: string;
+}
+
+const SAVE: CellWrite = { how: 'entry', action: 'journal.cells_save' };
 
 export interface SavedCell {
   id: string;
@@ -78,6 +94,7 @@ export async function saveCells(
   audit: Audit,
   actor: CellActor,
   saves: readonly CellSave[],
+  write: CellWrite = SAVE,
 ): Promise<SavedCell[]> {
   if (saves.length === 0) return [];
   const keys = new Set(saves.map(keyOf));
@@ -119,7 +136,7 @@ export async function saveCells(
         mark: save.workId === null ? save.value : null,
         score: save.workId === null ? null : save.value,
         changed_by: actor.accountId,
-        changed_how: 'entry',
+        changed_how: write.how,
       };
       const returning = [
         'id',
@@ -207,7 +224,8 @@ export async function saveCells(
       branchId,
       actorId: actor.accountId,
       ...(actor.assignmentId === undefined ? {} : { assignmentId: actor.assignmentId }),
-      action: 'journal.cells_save',
+      action: write.action,
+      ...(write.lessonId === undefined ? {} : { record: { type: 'lesson', id: write.lessonId } }),
       newValue: { cells: cells.map((cell) => ({ id: cell.id, version: cell.version })) },
       details: { count: cells.length },
       ...(actor.requestId === undefined ? {} : { requestId: actor.requestId }),
@@ -249,6 +267,10 @@ async function staleDetails(
   const byKey = new Map(
     stored.map((row) => [`${row.lesson_id}/${row.student_id}/${row.work_id ?? ''}`, row]),
   );
+  const named = await namedAccounts(
+    transaction,
+    stored.map((row) => row.changed_by),
+  );
   const staleKeys = new Set(stale.map(keyOf));
   const details: ErrorDetail[] = [];
   saves.forEach((save, index) => {
@@ -266,6 +288,8 @@ async function staleDetails(
               value: valueOf(row),
               version: row.version,
               changedBy: row.changed_by,
+              changedByLogin: named.get(row.changed_by)?.login ?? null,
+              changedByName: named.get(row.changed_by)?.name ?? null,
               changedAt: new Date(row.changed_at).toISOString(),
             },
           }),
