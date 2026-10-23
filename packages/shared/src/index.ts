@@ -1967,6 +1967,7 @@ export {
   UNDO_SKIPS,
   appVersionSchema,
   attendanceCopySchema,
+  undoCellsOf,
   undoSchema,
   undoneSchema,
   type AttendanceCopy,

@@ -36,33 +36,62 @@ export const appVersionSchema = z
  */
 export const UNDO_CELLS_MAX = ATTENDANCE_SAVES_MAX * (1 + 2 * LESSON_WORKS_MAX);
 
-const cellRefSchema = z.strictObject({
+/** The cells of one student in an undo: the attendance cell and the works' cells. */
+const studentCellsSchema = z.strictObject({
   studentId: z.uuid(),
-  /** `null`: the attendance cell. */
-  workId: z.uuid().nullable(),
-  /** The version the person's own action gave the cell. */
-  version: z.int().min(1),
+  cells: z
+    .array(
+      z.strictObject({
+        /** `null`: the attendance cell. */
+        workId: z.uuid().nullable(),
+        /** The version the person's own action gave the cell. */
+        version: z.int().min(1),
+      }),
+    )
+    .min(1)
+    .max(1 + 2 * LESSON_WORKS_MAX),
 });
 
-/** Undo of the person's own last action on the page: its cells (`edge/journal`, Undo). */
+/**
+ * Undo of the person's own last action on the page: its cells, grouped by
+ * student (`edge/journal`, Undo). Grouped, the largest action stays well
+ * inside the body limit of a request (100 kB).
+ */
 export const undoSchema = z
   .strictObject({
-    cells: z.array(cellRefSchema).min(1).max(UNDO_CELLS_MAX),
+    students: z.array(studentCellsSchema).min(1).max(ATTENDANCE_SAVES_MAX),
   })
   .superRefine((value, context) => {
     const seen = new Set<string>();
-    value.cells.forEach((cell, index) => {
-      const key = `${cell.studentId.toLowerCase()}/${cell.workId?.toLowerCase() ?? ''}`;
-      if (seen.has(key)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['cells', index],
-          message: 'Each cell once.',
-        });
-      }
-      seen.add(key);
+    let count = 0;
+    value.students.forEach((student, index) => {
+      student.cells.forEach((cell, at) => {
+        count += 1;
+        const key = `${student.studentId.toLowerCase()}/${cell.workId?.toLowerCase() ?? ''}`;
+        if (seen.has(key)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['students', index, 'cells', at],
+            message: 'Each cell once.',
+          });
+        }
+        seen.add(key);
+      });
     });
+    if (count > UNDO_CELLS_MAX) {
+      context.addIssue({
+        code: 'custom',
+        path: ['students'],
+        message: `At most ${String(UNDO_CELLS_MAX)} cells.`,
+      });
+    }
   });
+
+/** The cells of an undo, one by one. */
+export const undoCellsOf = (input: Undo) =>
+  input.students.flatMap((student) =>
+    student.cells.map((cell) => ({ studentId: student.studentId, ...cell })),
+  );
 
 export type Undo = z.infer<typeof undoSchema>;
 

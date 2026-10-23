@@ -131609,12 +131609,14 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    cells: {
+                    students: {
                         /** Format: uuid */
                         studentId: string;
-                        /** Format: uuid */
-                        workId: string | null;
-                        version: number;
+                        cells: {
+                            /** Format: uuid */
+                            workId: string | null;
+                            version: number;
+                        }[];
                     }[];
                 };
             };

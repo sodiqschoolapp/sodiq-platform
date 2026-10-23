@@ -5,6 +5,7 @@ import {
   type ErrorCode,
   type Undo,
   type Undone,
+  undoCellsOf,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions } from '../../database/transactions.js';
@@ -65,15 +66,16 @@ export class CellActionsService {
     requestId: string | undefined,
   ): Promise<Undone> {
     const branchId = branchOf(access);
+    const cells = undoCellsOf(input);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const { lesson } = await enterableLesson(transaction, access, branchId, lessonId);
       await refuseOtherStudents(
         transaction,
-        input.cells.map((cell) => cell.studentId),
+        cells.map((cell) => cell.studentId),
       );
       const workIds = [
         ...new Set(
-          input.cells.flatMap((cell) => (cell.workId === null ? [] : [cell.workId.toLowerCase()])),
+          cells.flatMap((cell) => (cell.workId === null ? [] : [cell.workId.toLowerCase()])),
         ),
       ];
       if (workIds.length > 0) {
@@ -96,13 +98,13 @@ export class CellActionsService {
         .where(
           'student_id',
           'in',
-          input.cells.map((cell) => cell.studentId.toLowerCase()),
+          cells.map((cell) => cell.studentId.toLowerCase()),
         )
         .orderBy('id')
         .forUpdate()
         .execute();
       const rowOf = new Map(rows.map((row) => [keyOf(row.student_id, row.work_id), row]));
-      const candidates = input.cells.flatMap((cell) => {
+      const candidates = cells.flatMap((cell) => {
         const row = rowOf.get(keyOf(cell.studentId, cell.workId));
         return row !== undefined && row.version === cell.version ? [{ cell, row }] : [];
       });
@@ -167,7 +169,7 @@ export class CellActionsService {
           }
         }
       }
-      for (const cell of input.cells) {
+      for (const cell of cells) {
         if (!undoable.has(keyOf(cell.studentId, cell.workId))) {
           skipped.push({
             studentId: cell.studentId.toLowerCase(),

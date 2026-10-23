@@ -41,7 +41,7 @@ async function keepOrClear(
   const ids = input.saves.map((save) => save.studentId.toLowerCase());
   const marks = await transaction
     .selectFrom('journal_cells')
-    .select(['student_id', 'mark'])
+    .select(['student_id', 'mark', 'version'])
     .where('lesson_id', '=', lessonId)
     .where('work_id', 'is', null)
     .where('student_id', 'in', ids)
@@ -55,17 +55,25 @@ async function keepOrClear(
     .where('student_id', 'in', ids)
     .orderBy('work_id')
     .execute();
-  const markOf = new Map(marks.map((row) => [row.student_id, row.mark]));
+  const markOf = new Map(marks.map((row) => [row.student_id, row]));
   const missing: ErrorDetail[] = [];
   const clears: CellSave[] = [];
   input.saves.forEach((save, index) => {
     const studentId = save.studentId.toLowerCase();
-    const before = markOf.get(studentId) ?? null;
+    const stored = markOf.get(studentId);
+    const before = stored?.mark ?? null;
     const own = numbers.filter((row) => row.student_id === studentId);
+    // Task 8.3a: a save on an old version is stale whatever it changes; `saveCells`
+    // refuses it with both values, and the question comes after the choice.
+    const current = (stored?.version ?? null) === save.version;
     const asks =
-      (before === 1 || before === 2) && (save.mark === 0 || save.mark === 3) && own.length > 0;
+      current &&
+      (before === 1 || before === 2) &&
+      (save.mark === 0 || save.mark === 3) &&
+      own.length > 0;
     if (!asks) {
-      if (save.numbers !== undefined) {
+      // A stale save is left to `saveCells`, which refuses it with both values.
+      if (save.numbers !== undefined && current) {
         throw new ApiException('validation_failed', 400, undefined, [
           {
             path: `saves.${String(index)}.numbers`,

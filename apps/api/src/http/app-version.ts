@@ -19,25 +19,34 @@ const AUTH_PATH = /^\/api\/auth(\/|$)/;
  * request without the header (the health check, a script) passes; the web app
  * always sends it.
  */
-export function appVersionMiddleware(request: Request, response: Response, next: NextFunction) {
-  const header = request.headers[APP_VERSION_HEADER.toLowerCase()];
-  if (header === undefined || READING_METHODS.has(request.method) || AUTH_PATH.test(request.path)) {
+export function appVersionCheck(oldest: number) {
+  return (request: Request, response: Response, next: NextFunction): void => {
+    const header = request.headers[APP_VERSION_HEADER.toLowerCase()];
+    if (
+      header === undefined ||
+      READING_METHODS.has(request.method) ||
+      AUTH_PATH.test(request.path)
+    ) {
+      next();
+      return;
+    }
+    const parsed = appVersionSchema.safeParse(header);
+    if (!parsed.success) {
+      sendError(
+        response,
+        new ApiException('validation_failed', 400, undefined, [
+          { path: APP_VERSION_HEADER, code: 'invalid', message: 'The version is a whole number.' },
+        ]),
+      );
+      return;
+    }
+    if (parsed.data < oldest) {
+      sendError(response, new ApiException('app_outdated', 409));
+      return;
+    }
     next();
-    return;
-  }
-  const parsed = appVersionSchema.safeParse(header);
-  if (!parsed.success) {
-    sendError(
-      response,
-      new ApiException('validation_failed', 400, undefined, [
-        { path: APP_VERSION_HEADER, code: 'invalid', message: 'The version is a whole number.' },
-      ]),
-    );
-    return;
-  }
-  if (parsed.data < OLDEST_APP_VERSION) {
-    sendError(response, new ApiException('app_outdated', 409));
-    return;
-  }
-  next();
+  };
 }
+
+/** The check with the oldest version this release accepts. */
+export const appVersionMiddleware = appVersionCheck(OLDEST_APP_VERSION);
