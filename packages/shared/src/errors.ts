@@ -992,6 +992,8 @@ export const ERROR_CODES = [
   'numbers_keep_or_clear',
   /** A plan work that a journal work names is not removed: mark it "not held" in the journal (edge/lesson-plans, Plans and the journal; task 8.1, decision 11). */
   'plan_work_has_data',
+  /** A restored lesson's work added by hand finds every one of the 10 places of its lesson taken meanwhile (task 8.1, code review round 1). */
+  'restore_works_full',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

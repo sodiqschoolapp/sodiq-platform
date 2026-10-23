@@ -223,6 +223,54 @@ describe('classwork and homework in the grid', () => {
     expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([]);
   });
 
+  // Code review round 1, finding 1: a homework given by hand is a column of its check lesson.
+  it('removes an empty homework given by hand from the lesson that shows it', async () => {
+    const given: JournalWork = {
+      ...TEST,
+      id: uid(81),
+      planWorkId: null,
+      sourceLessonId: PLANNED,
+      kind: 'homework',
+      title: null,
+      unplanned: true,
+    };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        GRID.lessons[0] as JournalLesson,
+        { ...(GRID.lessons[1] as JournalLesson), works: [given] },
+      ],
+      students: GRID.students.map((one) => ({
+        ...one,
+        cells: [
+          one.cells[0] as JournalStudent['cells'][number],
+          {
+            ...(one.cells[1] as JournalStudent['cells'][number]),
+            works: [{ score: null, percent: null, version: null, onAbsent: false }],
+          },
+        ],
+      })),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [`DELETE /api/journal/lessons/${NO_PLAN}/works/${uid(81)}`]: () =>
+        new Response(null, { status: 204 }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Work: HW 1' });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.remove }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `DELETE /api/journal/lessons/${NO_PLAN}/works/${uid(81)}`,
+        ),
+      ).toBe(true);
+    });
+  });
+
   it('says "No plan" and adds a classwork by hand at a lesson with no plan item', async () => {
     const calls = open({
       [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>

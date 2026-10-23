@@ -915,30 +915,78 @@ async function restoreCells(
     );
     const there = (id: string | null | undefined, set: Set<string>) =>
       id != null && set.has(id) ? id : null;
-    await transaction
-      .insertInto('journal_works')
-      .values(
-        works.map((one) => ({
-          id: one.id,
-          kind: one.kind,
-          total: one.total,
-          not_held: one.not_held,
-          branch_id: branchId,
-          lesson_id: lessonId,
-          source_lesson_id:
-            one.source_lesson_id === undefined
-              ? lessonId
-              : there(one.source_lesson_id, lessonsThere),
-          plan_work_id: there(one.plan_work_id, plansThere),
-          position: one.position ?? 1,
-          carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),
-          version: one.version ?? 1,
-          changed_by: one.changed_by ?? null,
-          changed_how: 'restored',
-          changed_at: one.changed_at ?? null,
-        })),
-      )
-      .execute();
+    // Code review round 1, finding 2: while the lesson was gone, a first write at the next
+    // check lesson may have taken the work's plan link, or an add by hand its place. The
+    // restored row then comes back with no plan link at a free place, a column of its own;
+    // with no place left the restore is refused. The lock of an add (`journal_works_limit`)
+    // is taken for each source lesson first.
+    const rows = works.map((one) => ({
+      id: one.id,
+      kind: one.kind,
+      total: one.total,
+      not_held: one.not_held,
+      branch_id: branchId,
+      lesson_id: lessonId,
+      source_lesson_id:
+        one.source_lesson_id === undefined ? lessonId : there(one.source_lesson_id, lessonsThere),
+      plan_work_id: there(one.plan_work_id, plansThere),
+      position: one.position ?? 1,
+      carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),
+      version: one.version ?? 1,
+      changed_by: one.changed_by ?? null,
+      changed_how: 'restored',
+      changed_at: one.changed_at ?? null,
+    }));
+    const sources = [
+      ...new Set(
+        rows.flatMap((one) => (one.source_lesson_id === null ? [] : [one.source_lesson_id])),
+      ),
+    ].sort();
+    for (const source of sources) {
+      await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${source}`}, 0))`.execute(
+        transaction,
+      );
+    }
+    const standing =
+      sources.length === 0
+        ? []
+        : await transaction
+            .selectFrom('journal_works')
+            .select(['source_lesson_id', 'kind', 'plan_work_id', 'position'])
+            .where('source_lesson_id', 'in', sources)
+            .execute();
+    const linked = new Set(
+      standing.flatMap((one) =>
+        one.plan_work_id === null ? [] : [`${one.source_lesson_id ?? ''}/${one.plan_work_id}`],
+      ),
+    );
+    const places = new Set(
+      standing.flatMap((one) =>
+        one.plan_work_id === null
+          ? [`${one.source_lesson_id ?? ''}/${one.kind}/${String(one.position)}`]
+          : [],
+      ),
+    );
+    for (const row of rows) {
+      if (row.source_lesson_id === null) continue;
+      if (row.plan_work_id !== null && linked.has(`${row.source_lesson_id}/${row.plan_work_id}`)) {
+        row.plan_work_id = null;
+      }
+      if (row.plan_work_id !== null) continue;
+      const placeOf = (position: number) =>
+        `${row.source_lesson_id ?? ''}/${row.kind}/${String(position)}`;
+      if (places.has(placeOf(row.position))) {
+        const free = Array.from({ length: 10 }, (_, at) => at + 1).find(
+          (one) => !places.has(placeOf(one)),
+        );
+        if (free === undefined) {
+          throw new ApiException('restore_works_full', 409);
+        }
+        row.position = free;
+      }
+      places.add(placeOf(row.position));
+    }
+    await transaction.insertInto('journal_works').values(rows).execute();
   }
   if (cells.length === 0) return;
   try {

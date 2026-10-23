@@ -674,6 +674,22 @@ describe('classwork and homework', () => {
       expect((await t.entries('journal.work_delete', s.second)).length).toBe(1);
     });
 
+    // Code review round 1, finding 1: the homework is a column of its check lesson.
+    it('removes an empty homework given by hand from the lesson that shows it', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const given = workSavedSchema.parse(
+          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+        );
+        ok(await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`), 204);
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).works).toEqual([]);
+        expect(lessonIn(grid, s.second).given).toEqual([]);
+      });
+      expect((await t.entries('journal.work_delete', s.third)).length).toBe(1);
+    });
+
     it('moves a homework given by hand to its check lesson at the first write there', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });

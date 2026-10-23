@@ -422,7 +422,10 @@ export class WorksService {
         .forUpdate()
         .executeTakeFirst();
       if (row === undefined) throw notFound();
-      if (row.lesson_id !== scene.lesson.id && row.source_lesson_id !== scene.lesson.id) {
+      // The lesson it is stored at, its source, or the lesson that shows it (a homework given
+      // by hand is a column of its check lesson; code review round 1, finding 1).
+      const shown = columnAt(scene.columns.columns, scene.lesson.id, { workId: row.id }) !== null;
+      if (!shown && row.lesson_id !== scene.lesson.id && row.source_lesson_id !== scene.lesson.id) {
         throw new ApiException('work_not_in_lesson', 409);
       }
       const numbers = await numbersOf(transaction, row.id);

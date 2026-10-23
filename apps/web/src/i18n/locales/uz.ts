@@ -681,6 +681,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu ish «oʻtkazilmadi» deb belgilangan. Son kiritish uchun belgini bekor qiling.',
     numbers_keep_or_clear:
       'Bu oʻquvchining shu darsda sonlari bor. Ularni qoldirish yoki tozalashni tanlang.',
+    restore_works_full:
+      'Dars qaytmaydi: uning ishlari bogʻlangan darsda qoʻlda qoʻshilgan shu turdagi 10 ta ish bor. Avval ulardan birini olib tashlang.',
     plan_work_has_data:
       'Bu ishning jurnalda jami yoki sonlari bor, shuning uchun uni rejadan olib tashlab boʻlmaydi. Uning oʻrniga jurnalda «oʻtkazilmadi» deb belgilang.',
     entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',

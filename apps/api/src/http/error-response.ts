@@ -469,6 +469,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   work_not_held: 'The work is marked not held.',
   numbers_keep_or_clear: 'Keep or clear the numbers of these students.',
   plan_work_has_data: 'The work has data in the journal.',
+  restore_works_full: 'The lesson of a restored work has 10 works of its kind added by hand.',
   entry_not_started: 'The lesson has not started.',
   lesson_not_held: 'The lesson needs a teacher or is unresolved.',
   absence_scope: "The class is outside the Tutor's own classes.",

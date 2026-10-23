@@ -662,6 +662,8 @@ export const en = {
       'The number is above the total of the work. Type a number from 0 to the total.',
     work_not_held: 'This work is marked "not held". Undo the mark to type numbers.',
     numbers_keep_or_clear: 'This student has numbers in this lesson. Choose to keep or clear them.',
+    restore_works_full:
+      'The lesson cannot come back: a lesson of its works already has 10 works of that kind added by hand. Remove one of them first.',
     plan_work_has_data:
       'This work has a total or numbers in the journal, so it cannot be removed from the plan. Mark it "not held" in the journal instead.',
     entry_not_started:
