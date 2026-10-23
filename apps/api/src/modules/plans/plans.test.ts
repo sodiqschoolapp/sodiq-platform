@@ -1588,4 +1588,39 @@ describe('lesson plans and their items', () => {
       expect(files).toHaveLength(10);
     });
   });
+
+  // Task 7.1c, decision 10: a copy names the file whose bytes it shows; no
+  // bytes are copied and removing the copy leaves the source as it is.
+  it('copies the files of a plan: the copy reads the bytes of the file it names', async () => {
+    const s = await plannedScene();
+    const [source] = await fill(s, s.q2, [1]);
+    const id = source?.id ?? '';
+    await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+      const added = planFileSchema.parse(
+        (await api.upload(`/api/plans/items/${id}/files?name=Sheet.pdf`, 'application/pdf', PDF))
+          .body,
+      );
+      // Into the first quarter of the same journal: another plan of the owner.
+      const copied = planOf(
+        await api.post(`/api/plans/journals/${s.journal}/copy`, {
+          quarterId: s.q1,
+          source: { journalId: s.journal, quarterId: s.q2 },
+          part: 'all',
+        }),
+      );
+      const item = [...copied.rows.map((row) => row.item), ...copied.notCovered].find(
+        (one) => one?.topic === 'Topic 1',
+      );
+      const copy = item?.files[0];
+      expect(copy?.name).toBe('Sheet.pdf');
+      expect(copy?.id).not.toBe(added.id);
+      expect(item?.copiedFrom).toEqual({ journalId: s.journal, quarterId: s.q2 });
+      const read = await api.get(`/api/plans/files/${copy?.id ?? ''}`).buffer(true);
+      expect(read.status).toBe(200);
+      expect(Buffer.compare(read.body as Buffer, PDF)).toBe(0);
+      expect((await api.del(`/api/plans/files/${copy?.id ?? ''}`)).status).toBe(204);
+      const kept = await api.get(`/api/plans/files/${added.id}`).buffer(true);
+      expect(Buffer.compare(kept.body as Buffer, PDF)).toBe(0);
+    });
+  });
 });

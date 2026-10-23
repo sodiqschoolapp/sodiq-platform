@@ -52,6 +52,7 @@ const LIST: PlanList = {
 
 const ITEM: PlanItem = {
   movedFrom: null,
+  copiedFrom: null,
   id: uid(40),
   position: 1,
   topic: 'Fractions',
@@ -105,6 +106,8 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
   ],
   notCovered: [],
   request: null,
+  sharedWith: [],
+  shareCandidates: [],
 });
 
 function open(
@@ -114,6 +117,7 @@ function open(
     plan?: Plan;
     path?: string;
     save?: () => Response;
+    routes?: Record<string, () => Response>;
   } = {},
 ) {
   const language = input.language ?? 'en';
@@ -130,6 +134,7 @@ function open(
     [`POST /api/plans/journals/${JOURNAL}/items`]: () =>
       json({ ...ITEM, id: uid(50), position: 2, topic: 'Decimals', classworks: [] }, 201),
     [`PUT /api/plans/items/${ITEM.id}`]: input.save ?? (() => json(ITEM)),
+    ...input.routes,
   });
   renderApp(input.path ?? '/plans', language);
   return calls;
@@ -333,5 +338,146 @@ describe('Lesson plans', () => {
     expect(screen.queryByRole('button', { name: en.form.edit })).toBeNull();
     expect(screen.queryByRole('button', { name: en.plans.panel.clear })).toBeNull();
     expect(screen.queryByRole('button', { name: en.plans.panel.addFile })).toBeNull();
+  });
+
+  // Task 7.1c, pull request #214: 09, What a plan contains ("can share one plan
+  // between them ... A shared plan can be separated later"; "A plan can be
+  // copied"); When something else changes ("The plan screen shows where each
+  // class is").
+  describe('shared plans', () => {
+    const OTHER = uid(2);
+    const shared = (canEdit: boolean): Plan => ({
+      ...planOf(canEdit),
+      sharedWith: [
+        {
+          journalId: OTHER,
+          unit: { kind: 'class', id: uid(8), name: '7 Princeton' },
+          next: { number: 2, date: '2026-10-19', topic: 'Ratios' },
+          notCovered: 1,
+        },
+      ],
+    });
+
+    it('shows where each class of a shared plan stands, and separates after a confirm', async () => {
+      const calls = open({
+        path: `/plans/${JOURNAL}`,
+        plan: shared(true),
+        routes: { [`POST /api/plans/journals/${JOURNAL}/separate`]: () => json(planOf(true)) },
+      });
+      const section = await screen.findByRole('region', { name: en.plans.share.sharedTitle });
+      const line = section.querySelector(`[data-shared-journal="${OTHER}"]`);
+      expect(line?.textContent).toContain('7 Princeton');
+      expect(line?.textContent).toContain('Lesson 2, 19 October: Ratios');
+      expect(line?.textContent).toContain('1 item not covered');
+      fireEvent.click(within(section).getByRole('button', { name: en.plans.share.separate }));
+      const dialog = await screen.findByRole('alertdialog');
+      expect(dialog.textContent).toContain('Separate 7 Oxford from the shared plan?');
+      fireEvent.click(within(dialog).getByRole('button', { name: en.plans.share.separate }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route.endsWith('/separate'))?.body).toEqual({
+          quarterId: Q1,
+        });
+      });
+    });
+
+    it('gives a reader who does not own the plan no share, separate or copy', async () => {
+      open({ path: `/plans/${JOURNAL}`, role: 'head_teacher', plan: shared(false) });
+      const section = await screen.findByRole('region', { name: en.plans.share.sharedTitle });
+      expect(within(section).queryByRole('button')).toBeNull();
+      expect(screen.queryByRole('button', { name: en.plans.share.copy })).toBeNull();
+      expect(screen.queryByRole('button', { name: en.plans.share.share })).toBeNull();
+    });
+
+    it('shares with a class the server offers, and shows a refusal in the dialog', async () => {
+      const calls = open({
+        path: `/plans/${JOURNAL}`,
+        plan: {
+          ...planOf(true),
+          shareCandidates: [
+            { journalId: OTHER, unit: { kind: 'class', id: uid(8), name: '7 Princeton' } },
+          ],
+        },
+        routes: {
+          [`POST /api/plans/journals/${JOURNAL}/share`]: () =>
+            json(
+              {
+                error: {
+                  code: 'plan_share_language',
+                  message: 'Their languages of instruction differ.',
+                  requestId: uid(99),
+                },
+              },
+              409,
+            ),
+        },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.plans.share.share }));
+      const form = await screen.findByRole('form', { name: en.plans.share.shareTitle });
+      fireEvent.click(within(form).getByRole('button', { name: en.plans.share.shareSend }));
+      expect(await within(form).findByText(en.plans.share.choose)).toBeDefined();
+      expect(calls.some((call) => call.route.endsWith('/share'))).toBe(false);
+      fireEvent.change(within(form).getByRole('combobox', { name: en.plans.share.shareWith }), {
+        target: { value: OTHER },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: en.plans.share.shareSend }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route.endsWith('/share'))?.body).toEqual({
+          quarterId: Q1,
+          journalId: OTHER,
+        });
+      });
+      await waitFor(() => {
+        expect(within(form).getByRole('alert').textContent).toContain(
+          en.errors.plan_share_language,
+        );
+      });
+    });
+
+    it('copies the remaining items of a plan of the same subject from the year chosen', async () => {
+      const calls = open({
+        path: `/plans/${JOURNAL}`,
+        routes: { [`POST /api/plans/journals/${JOURNAL}/copy`]: () => json(planOf(true)) },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: en.plans.share.copy }));
+      const form = await screen.findByRole('form', { name: en.plans.share.copyTitle });
+      const source = await within(form).findByRole('combobox', { name: en.plans.share.copySource });
+      expect([...source.querySelectorAll('option')].map((option) => option.textContent)).toEqual([
+        en.plans.share.chooseOption,
+        '7 Oxford',
+        'English A',
+      ]);
+      fireEvent.change(source, { target: { value: uid(2) } });
+      fireEvent.change(within(form).getByRole('combobox', { name: en.plans.share.copyQuarter }), {
+        target: { value: Q2 },
+      });
+      fireEvent.change(within(form).getByRole('combobox', { name: en.plans.share.copyPart }), {
+        target: { value: 'remaining' },
+      });
+      fireEvent.click(within(form).getByRole('button', { name: en.plans.share.copySend }));
+      await waitFor(() => {
+        expect(calls.find((call) => call.route.endsWith('/copy'))?.body).toEqual({
+          quarterId: Q1,
+          source: { journalId: uid(2), quarterId: Q2 },
+          part: 'remaining',
+        });
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: en.plans.share.copyTitle })).toBeNull();
+      });
+    });
+
+    it('links the plan a copied item came from', async () => {
+      const plan = planOf(true);
+      const first = plan.rows[0];
+      if (first?.item != null)
+        first.item = { ...first.item, copiedFrom: { journalId: OTHER, quarterId: Q2 } };
+      open({ path: `/plans/${JOURNAL}`, plan });
+      await waitFor(() => {
+        expect(rows()).toHaveLength(3);
+      });
+      fireEvent.click(screen.getByRole('button', { name: /12 October · lesson 1/ }));
+      const link = await screen.findByRole('link', { name: en.plans.share.openSource });
+      expect(link.getAttribute('href')).toBe(`/plans/${OTHER}?quarter=${Q2}`);
+    });
   });
 });

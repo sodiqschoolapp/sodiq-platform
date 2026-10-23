@@ -13,6 +13,7 @@ import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { rowDateText } from './plan-page';
+import { CopiedFrom } from './plan-sharing';
 import {
   baseOf,
   filledSlots,
@@ -167,6 +168,7 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">{rowDateText(row, i18n.language, slotText)}</p>
+      {item?.copiedFrom != null && <CopiedFrom from={item.copiedFrom} />}
       {panel.editing === 'item' ? (
         <RecordForm
           form={form}
