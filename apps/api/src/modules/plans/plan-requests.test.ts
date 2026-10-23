@@ -1640,7 +1640,7 @@ describe('the plan window and edit requests', () => {
 
       it("ends the earlier teacher's open periods when the other class gets another teacher (edge, a shared plan loses one class)", async () => {
         const x = await sharedScene();
-        await fill(x, [1, 2]);
+        const items = await fill(x, [1, 2]);
         const other = await at(THURSDAY, async () =>
           planSchema.parse(
             ok(
@@ -1671,6 +1671,20 @@ describe('the plan window and edit requests', () => {
           201,
         );
         ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 5 })));
+        // Both classes open row 2 for Text; its item, held in both, is saved: the mark is set.
+        const own = await planOf(x, THURSDAY);
+        const first = requestOf(
+          await at(THURSDAY, async () =>
+            ask(x, { kind: 'text', lessonIds: [own.rows[1]?.lessonId ?? ''], reason: 'Typo' }),
+          ),
+          201,
+        );
+        ok(await at(THURSDAY, async () => decide(x, first.id, { decision: 'approve', days: 5 })));
+        const marked = planItemSchema.parse(
+          ok(await at(THURSDAY, async () => save(x, items[1] ?? (items[0] as PlanItem), 'Fixed')))
+            .body,
+        );
+        expect(marked.editedAfterLesson).toBe(true);
         await at(THURSDAY, async () =>
           republish(x, '2026-11-30', async (_draft, rows) => {
             for (const row of rows) {
@@ -1700,6 +1714,16 @@ describe('the plan window and edit requests', () => {
           .where('action', '=', 'plan.separated')
           .execute();
         expect(JSON.stringify(separated)).toContain(x.otherJournal);
+        // The separated class keeps the mark in its new plan (the request followed its link).
+        const kept = await t.database.migrator
+          .selectFrom('lesson_plan_places')
+          .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+          .select('lesson_plan_places.edited_after_lesson')
+          .where('lesson_plan_places.journal_id', '=', x.otherJournal)
+          .where('lesson_plan_items.topic', '=', 'Fixed')
+          .where('lesson_plan_places.plan_id', '=', stored.plan_id)
+          .execute();
+        expect(kept.map((one) => one.edited_after_lesson)).toEqual([true]);
       });
     });
   });
