@@ -5576,6 +5576,10 @@ export const uz: Texts<'one' | 'other'> = {
       undone_other: '{{count}} ta katakcha bekor qilindi.',
       undoSkipped_one: '{{count}} tasi keyin oʻzgargan, oʻz holicha qoldi.',
       undoSkipped_other: '{{count}} tasi keyin oʻzgargan, oʻz holicha qoldi.',
+      undoRefused_one:
+        '{{count}} tasi oldingi qiymatini endi qabul qila olmaydi (ishi oʻzgargan), oʻz holicha qoldi.',
+      undoRefused_other:
+        '{{count}} tasi oldingi qiymatini endi qabul qila olmaydi (ishi oʻzgargan), oʻz holicha qoldi.',
       copy: 'Davomatni birinchi darsdan nusxalash',
       copied_one: 'Birinchi darsdan {{count}} ta belgi nusxalandi.',
       copied_other: 'Birinchi darsdan {{count}} ta belgi nusxalandi.',

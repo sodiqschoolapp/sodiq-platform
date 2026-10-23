@@ -311,6 +311,10 @@ Plan approved on pull request #220 with corrections 1 to 5; decisions 1 to 10 co
 | **Build decision.** The undo body is grouped by student (`students: [{ studentId, cells }]`): a flat list of 1260 cells passed the request body limit of 100 kB | Spec review of the plan, must-fix 2 |
 | **Build decision.** A save on an old version is refused stale before keep-or-clear is asked: the question belongs to a save on the current version | `edge/journal`: "A save based on an old version is refused" |
 | **Build decision.** The feedback report stores the page's version (0121, `feedback_reports.app_version`, null without the header) | Correction 5; `docs/progress.md`, task 0.8b-3 |
+| **Build decision.** "Copy attendance" writes as "all present" does (insert on conflict nothing, update where empty) and reports a cell typed meanwhile as skipped; its audit entry counts filled and skipped | Spec review of the code, must-fix 3; From 6.3, correction 4 |
+| **Build decision.** An undo locks its cells one by one in the order `saveCells` writes them, and writes on the version it read | Spec review of the code, must-fix 2 |
+| **Build decision.** An entry refused `app_outdated` stays "not saved" in the page and the unsent store, as one with no answer | Spec review of the code, must-fix 1; `edge/system-behaviour` |
+| **Build decision.** The route walk of `route-permissions.test.ts` sends the 34 calls of a route at the same time (`route-harness.ts`); the same calls and checks | CI part api 3/3 passed its time limit on this pull request |
 
 ## 23 October 2026: rating exam and comments (task 8.2)
 

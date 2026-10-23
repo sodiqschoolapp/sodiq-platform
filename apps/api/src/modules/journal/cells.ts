@@ -34,21 +34,6 @@ export interface CellActor {
   requestId?: string;
 }
 
-/**
- * How a call writes (task 8.3a): the `changed_how` of its cells and the
- * action of its one audit entry. An undo writes `undo` under
- * `journal.cells_undo`, "copy attendance" `entry` under
- * `journal.attendance_copy`, in place of `journal.cells_save`.
- */
-export interface CellWrite {
-  how: 'entry' | 'undo';
-  action: 'journal.cells_save' | 'journal.cells_undo' | 'journal.attendance_copy';
-  /** The lesson the audit entry names, for an action on one lesson. */
-  lessonId?: string;
-}
-
-const SAVE: CellWrite = { how: 'entry', action: 'journal.cells_save' };
-
 export interface SavedCell {
   id: string;
   lessonId: string;
@@ -94,7 +79,6 @@ export async function saveCells(
   audit: Audit,
   actor: CellActor,
   saves: readonly CellSave[],
-  write: CellWrite = SAVE,
 ): Promise<SavedCell[]> {
   if (saves.length === 0) return [];
   const keys = new Set(saves.map(keyOf));
@@ -136,7 +120,7 @@ export async function saveCells(
         mark: save.workId === null ? save.value : null,
         score: save.workId === null ? null : save.value,
         changed_by: actor.accountId,
-        changed_how: write.how,
+        changed_how: 'entry',
       };
       const returning = [
         'id',
@@ -224,8 +208,7 @@ export async function saveCells(
       branchId,
       actorId: actor.accountId,
       ...(actor.assignmentId === undefined ? {} : { assignmentId: actor.assignmentId }),
-      action: write.action,
-      ...(write.lessonId === undefined ? {} : { record: { type: 'lesson', id: write.lessonId } }),
+      action: 'journal.cells_save',
       newValue: { cells: cells.map((cell) => ({ id: cell.id, version: cell.version })) },
       details: { count: cells.length },
       ...(actor.requestId === undefined ? {} : { requestId: actor.requestId }),

@@ -225,8 +225,11 @@ describe('saving journal cells', () => {
     });
     await typeMark(uid(102), FIRST, '2');
     await waitFor(() => {
-      expect(keysOf(headers, ATTENDANCE)).toHaveLength(2);
+      expect(cellOf(uid(102), `${FIRST}:a`)?.querySelector('[data-save-state="saved"]')).not.toBe(
+        null,
+      );
     });
+    expect(keysOf(headers, ATTENDANCE)).toHaveLength(2);
     const [one, two] = keysOf(headers, ATTENDANCE);
     expect(one).toMatch(/^[0-9a-f-]{36}$/);
     expect(two).not.toBe(one);
@@ -438,22 +441,17 @@ describe('saving journal cells', () => {
   describe('an outdated page', () => {
     it('asks to reload after a write refused app_outdated, and asks first while an entry is not saved', async () => {
       const reload = vi.spyOn(reloadPage, 'run').mockImplementation(() => undefined);
-      let calls = 0;
-      open({
-        [ATTENDANCE]: () => {
-          calls += 1;
-          if (calls === 1) throw new TypeError('Failed to fetch');
-          return refusal('app_outdated', 409);
-        },
-      });
-      await typeMark(uid(101), FIRST, '1');
-      await waitFor(() => {
-        expect(document.querySelector('[data-unsent-cells]')).not.toBeNull();
-      });
+      open({ [ATTENDANCE]: () => refusal('app_outdated', 409) });
+      // The refused entry is the only one: it is kept "not saved", so Reload asks (decision 9).
       await typeMark(uid(102), FIRST, '0');
+      await waitFor(() => {
+        expect(
+          cellOf(uid(102), `${FIRST}:a`)?.querySelector('[data-save-state="failed"]'),
+        ).not.toBe(null);
+      });
+      expect(cellOf(uid(102), `${FIRST}:a`)?.querySelector('[data-mark="0"]')).not.toBeNull();
       const alert = await waitFor(() => {
         const found = document.querySelector<HTMLElement>('[data-outdated]');
-        expect(calls).toBe(2);
         expect(found).not.toBeNull();
         return found as HTMLElement;
       });

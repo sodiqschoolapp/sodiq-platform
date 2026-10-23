@@ -289,15 +289,17 @@ export function useUndo(): UndoControl {
     setLast(null);
     mutate(last);
   }, [last, mutate]);
+  // Changed since, or a restore the cell no longer takes (a lower total, "not held").
+  const changed = answer?.skipped.filter((one) => one.code === 'changed').length ?? 0;
+  const refused = (answer?.skipped.length ?? 0) - changed;
   const notice = (
     <>
       <div role="status" aria-live="polite" className="text-sm" data-undo-notice="true">
         {answer !== null && (
           <p className="flex flex-wrap gap-x-1">
             <span>{t('journal.saving.undone', { count: answer.undone.length })}</span>
-            {answer.skipped.length > 0 && (
-              <span>{t('journal.saving.undoSkipped', { count: answer.skipped.length })}</span>
-            )}
+            {changed > 0 && <span>{t('journal.saving.undoSkipped', { count: changed })}</span>}
+            {refused > 0 && <span>{t('journal.saving.undoRefused', { count: refused })}</span>}
           </p>
         )}
       </div>

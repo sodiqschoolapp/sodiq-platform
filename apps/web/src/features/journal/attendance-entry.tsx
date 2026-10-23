@@ -82,6 +82,8 @@ interface TypedMark {
   mark: AttendanceMark | null;
   version: number | null;
   key: string;
+  /** The keep-or-clear answer once given: a retry sends the body last sent (spec review should-fix 6). */
+  numbers?: 'keep' | 'clear';
 }
 
 export function useAttendanceEntry(
@@ -123,6 +125,7 @@ export function useAttendanceEntry(
           },
           input.key,
         );
+      if (input.numbers !== undefined) return send(input.numbers);
       try {
         return await send();
       } catch (error) {
@@ -136,7 +139,8 @@ export function useAttendanceEntry(
           cancel: t('journal.works.keep'),
           destructive: true,
         });
-        return send(clear ? 'clear' : 'keep');
+        input.numbers = clear ? 'clear' : 'keep';
+        return send(input.numbers);
       }
     },
     onMutate: (input) => {
@@ -167,7 +171,12 @@ export function useAttendanceEntry(
     },
     onError: async (error, input) => {
       const key = cellKey(input.lessonId, input.studentId);
-      if (error instanceof ApiFailure && error.code === 'no_answer') {
+      // No answer, or a page too old for the server (edge/system-behaviour: "the page asks
+      // to reload and keeps the unsent entries"): the typed value stays, "not saved".
+      if (
+        error instanceof ApiFailure &&
+        (error.code === 'no_answer' || error.code === 'app_outdated')
+      ) {
         // No answer: the typed value stays, "not saved", until the retry with the same key.
         saves.set(key, 'failed');
         saves.keepUnsent(key, { retry: () => save.mutate(input) });

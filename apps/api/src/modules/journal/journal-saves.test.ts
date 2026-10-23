@@ -15,7 +15,7 @@ import { randomUUID } from 'node:crypto';
 import type { Response } from 'supertest';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { workWithTotal } from '../../testing/cells-kit.js';
+import { inOrderOnLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -329,11 +329,20 @@ describe('saving journal cells', () => {
         .set({ teacher_id: s.spareTeacher.staffId })
         .where('id', '=', s.second)
         .execute();
+      const work = await workWithTotal(t.database.migrator, {
+        branchId: s.branch,
+        lessonId: s.second,
+        total: 10,
+      });
       await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
         const saved = await post(s.branch, `/api/journal/lessons/${s.second}/attendance`, {
           saves: [{ studentId: s.boboyev, mark: 2, version: null }],
         });
         expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+        const number = await post(s.branch, `/api/journal/lessons/${s.second}/scores`, {
+          saves: [{ studentId: s.boboyev, column: { workId: work }, score: 6, version: null }],
+        });
+        expect(number.status, JSON.stringify(number.body)).toBe(200);
       });
       await as(substitute, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
         const stale = await post(s.branch, `/api/journal/lessons/${s.second}/attendance`, {
@@ -345,9 +354,20 @@ describe('saving journal cells', () => {
           version: 1,
           changedBy: owner.account.id,
         });
+        const staleNumber = await post(s.branch, `/api/journal/lessons/${s.second}/scores`, {
+          saves: [{ studentId: s.boboyev, column: { workId: work }, score: 9, version: null }],
+        });
+        expect(codeOf(staleNumber)).toBe('cell_stale');
+        expect(apiErrorSchema.parse(staleNumber.body).error.details?.[0]?.storedCell).toMatchObject(
+          { value: 6, version: 1, changedBy: owner.account.id },
+        );
       });
       expect(await cellOf(s.second, s.boboyev)).toMatchObject({
         mark: 2,
+        changed_by: owner.account.id,
+      });
+      expect(await cellOf(s.second, s.boboyev, work)).toMatchObject({
+        score: 6,
         changed_by: owner.account.id,
       });
     });
@@ -404,6 +424,7 @@ describe('saving journal cells', () => {
         );
         expect(typed.status, JSON.stringify(typed.body)).toBe(200);
         const scoreLines = (await linesOf(s.first)).length;
+        const scoreEntries = (await journalEntries()).length;
         const repeated = await post(
           s.branch,
           `/api/journal/lessons/${s.first}/scores`,
@@ -416,6 +437,13 @@ describe('saving journal cells', () => {
           expect.objectContaining({ studentId: s.boboyev, workId: work, score: 15, percent: 75 }),
         ]);
         expect((await linesOf(s.first)).length).toBe(scoreLines);
+        expect((await journalEntries()).length).toBe(scoreEntries);
+        const storedScores = await t.database.migrator
+          .selectFrom('request_keys')
+          .select('result')
+          .where('key', '=', scoreKey)
+          .executeTakeFirstOrThrow();
+        expect(JSON.stringify(storedScores.result)).not.toMatch(/mark|score|value|total|percent/);
       });
     });
 
@@ -468,6 +496,13 @@ describe('saving journal cells', () => {
           key,
         );
         expect(codeOf(other)).toBe('request_key_reused');
+        const otherNumber = await post(
+          s.branch,
+          `/api/journal/lessons/${s.first}/scores`,
+          { saves: [{ ...scores.saves[0], score: 4 }] },
+          scoreKey,
+        );
+        expect(codeOf(otherNumber)).toBe('request_key_reused');
         for (const lesson of [elsewhere.first, randomUUID()]) {
           const attendance = await post(
             s.branch,
@@ -883,6 +918,72 @@ describe('saving journal cells', () => {
     });
   });
 
+  describe('at the same moment', () => {
+    it('an undo and a save of the same cells, the cells sent in opposite orders, never deadlock: the one that waits finds the other\u2019s change', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const phone = await secondDevice(owner);
+      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        await post(s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+          saves: [
+            { studentId: s.ahmedov, mark: 1, version: null },
+            { studentId: s.boboyev, mark: 1, version: null },
+          ],
+        });
+      });
+      t.clock.set(MOMENT);
+      try {
+        const [undone, saved] = await inOrderOnLesson({
+          app: t.app,
+          migrator: t.database.migrator,
+          branchId: s.branch,
+          lessonId: s.first,
+          first: () =>
+            t
+              .post(
+                `/api/journal/lessons/${s.first}/undo`,
+                s.branch,
+                undoBody([
+                  { studentId: s.boboyev, workId: null, version: 1 },
+                  { studentId: s.ahmedov, workId: null, version: 1 },
+                ]),
+                owner.cookie,
+              )
+              .then((response) => response),
+          second: () =>
+            t
+              .post(
+                `/api/journal/lessons/${s.first}/attendance`,
+                s.branch,
+                {
+                  saves: [
+                    { studentId: s.ahmedov, mark: 2, version: 1 },
+                    { studentId: s.boboyev, mark: 2, version: 1 },
+                  ],
+                },
+                phone.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID())
+              .then((response) => response),
+        });
+        const undo = undone as Response;
+        const save = saved as Response;
+        expect(undo.status, JSON.stringify(undo.body)).toBe(200);
+        // Whichever went first, the other finds its change: never a 500 or a deadlock.
+        if (undoneSchema.parse(undo.body).undone.length === 2) {
+          expect(codeOf(save)).toBe('cell_stale');
+          expect((await cellOf(s.first, s.ahmedov))?.mark).toBeNull();
+        } else {
+          expect(save.status, JSON.stringify(save.body)).toBe(200);
+          expect(undoneSchema.parse(undo.body).skipped).toHaveLength(2);
+          expect((await cellOf(s.first, s.ahmedov))?.mark).toBe(2);
+        }
+      } finally {
+        t.clock.set(START);
+      }
+    });
+  });
+
   describe('copy attendance', () => {
     /** The lessons of the 19th made a double: the 08:00 lesson and the third slot. */
     async function doubleScene(accounts: { teacher?: string; spare?: string }) {
@@ -958,7 +1059,11 @@ describe('saving journal cells', () => {
         );
         expect(await cellOf(s.second, s.ahmedov)).toMatchObject({ mark: 2, changed_how: 'entry' });
         expect((await journalEntries()).slice(entries)).toEqual([
-          { action: 'journal.attendance_copy', record: s.second, details: { count: 1 } },
+          {
+            action: 'journal.attendance_copy',
+            record: s.second,
+            details: { filled: 1, skipped: 2 },
+          },
         ]);
         // A second press fills nothing.
         const again = attendanceCopySchema.parse(

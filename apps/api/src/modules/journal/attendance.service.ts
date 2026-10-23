@@ -111,7 +111,7 @@ async function keepOrClear(
 }
 
 /** The students in the order of the grid (`compareStudentNames`, 6.2 decision 15). */
-async function inGridOrder<T extends { studentId: string }>(
+export async function inGridOrder<T extends { studentId: string }>(
   transaction: Transaction,
   rows: readonly T[],
 ): Promise<T[]> {

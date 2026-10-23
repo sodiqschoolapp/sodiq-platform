@@ -178,7 +178,10 @@ export function useWorksEntry(
     },
     onError: async (error, input) => {
       const key = signKey(input.lessonId, input.studentId, input.cell);
-      if (error instanceof ApiFailure && error.code === 'no_answer') {
+      if (
+        error instanceof ApiFailure &&
+        (error.code === 'no_answer' || error.code === 'app_outdated')
+      ) {
         saves.set(key, 'failed');
         saves.keepUnsent(key, { retry: () => score.mutate(input) });
         return;

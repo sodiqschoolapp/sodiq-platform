@@ -15,7 +15,8 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { enterableLesson, entryAssignment } from './attendance-entry.js';
-import { CELL_REFUSALS, saveCells } from './cells.js';
+import { inGridOrder } from './attendance.service.js';
+import { CELL_REFUSALS } from './cells.js';
 import { firstsOfDoubles } from './doubles.query.js';
 import { refuseOtherStudents } from './students-of-branch.js';
 import { WorksService } from './works.service.js';
@@ -89,20 +90,40 @@ export class CellActionsService {
       }
       const keyOf = (studentId: string, workId: string | null) =>
         `${studentId.toLowerCase()}/${workId?.toLowerCase() ?? ''}`;
-      // The cells FOR UPDATE in the order of their id, then checked: a save
-      // made meanwhile waits for the undo or the undo for it (review must-fix 3).
-      const rows = await transaction
+      // The cells FOR UPDATE, then checked: a save made meanwhile waits for the
+      // undo or the undo for it (review must-fix 3). They are locked one by one
+      // in the order `saveCells` writes them (student, then work, the attendance
+      // cell first), so an undo and a save of several cells never deadlock
+      // (spec review of the code, must-fix 2).
+      const found = await transaction
         .selectFrom('journal_cells')
-        .select(['id', 'student_id', 'work_id', 'version', 'mark', 'score'])
+        .select(['id', 'student_id', 'work_id'])
         .where('lesson_id', '=', lesson.id)
         .where(
           'student_id',
           'in',
           cells.map((cell) => cell.studentId.toLowerCase()),
         )
-        .orderBy('id')
-        .forUpdate()
         .execute();
+      const wanted = new Set(cells.map((cell) => keyOf(cell.studentId, cell.workId)));
+      const ordered = found
+        .filter((row) => wanted.has(keyOf(row.student_id, row.work_id)))
+        .sort(
+          (one, other) =>
+            one.student_id.localeCompare(other.student_id) ||
+            (one.work_id ?? '').localeCompare(other.work_id ?? ''),
+        );
+      const rows = [];
+      for (const row of ordered) {
+        rows.push(
+          await transaction
+            .selectFrom('journal_cells')
+            .select(['id', 'student_id', 'work_id', 'version', 'mark', 'score'])
+            .where('id', '=', row.id)
+            .forUpdate()
+            .executeTakeFirstOrThrow(),
+        );
+      }
       const rowOf = new Map(rows.map((row) => [keyOf(row.student_id, row.work_id), row]));
       const candidates = cells.flatMap((cell) => {
         const row = rowOf.get(keyOf(cell.studentId, cell.workId));
@@ -148,9 +169,16 @@ export class CellActionsService {
                 changed_how: 'undo',
               })
               .where('id', '=', row.id)
+              // The version read under the lock: never over a change it did not see.
+              .where('version', '=', row.version)
               .returning(['id', 'version'])
-              .executeTakeFirstOrThrow();
+              .executeTakeFirst();
             await sql`release savepoint cell_undo`.execute(transaction);
+            if (written === undefined) {
+              // Reported as changed below.
+              undoable.delete(keyOf(cell.studentId, cell.workId));
+              continue;
+            }
             undone.push({
               studentId: row.student_id,
               workId: row.work_id,
@@ -231,60 +259,104 @@ export class CellActionsService {
       `.execute(transaction);
       const students = expected.rows.map((row) => row.student_id);
       if (students.length === 0) return { filled: [], skipped: [] };
-      const cells = await transaction
+      const marks = await transaction
         .selectFrom('journal_cells')
-        .select(['lesson_id', 'student_id', 'mark', 'version'])
-        .where('lesson_id', 'in', [first, lesson.id])
+        .select(['student_id', 'mark'])
+        .where('lesson_id', '=', first)
+        .where('work_id', 'is', null)
+        .where('mark', 'is not', null)
+        .where('student_id', 'in', students)
+        .execute();
+      const fromFirst = new Map(marks.map((cell) => [cell.student_id, cell.mark]));
+      const copied = students.filter((studentId) => fromFirst.has(studentId));
+      const filled: { studentId: string; version: number; cellId: string }[] = [];
+      // As "all present" does (From 6.3, review correction 4): a cell never saved is
+      // inserted, a cleared one updated, and one typed meanwhile is left as it is.
+      if (copied.length > 0) {
+        const inserted = await transaction
+          .insertInto('journal_cells')
+          .values(
+            copied.map((studentId) => ({
+              branch_id: branchId,
+              lesson_id: lesson.id,
+              student_id: studentId,
+              work_id: null,
+              mark: fromFirst.get(studentId) ?? null,
+              changed_by: access.accountId,
+              changed_how: 'entry',
+              // Overwritten by journal_cells_write.
+              version: 1,
+              changed_at: new Date(0),
+            })),
+          )
+          .onConflict((conflict) =>
+            conflict.columns(['branch_id', 'lesson_id', 'student_id', 'work_id']).doNothing(),
+          )
+          .returning(['id', 'student_id', 'version'])
+          .execute();
+        const done = new Set(inserted.map((row) => row.student_id));
+        for (const row of inserted) {
+          filled.push({ studentId: row.student_id, version: row.version, cellId: row.id });
+        }
+        for (const studentId of copied) {
+          if (done.has(studentId)) continue;
+          const updated = await transaction
+            .updateTable('journal_cells')
+            .set({
+              mark: fromFirst.get(studentId) ?? null,
+              changed_by: access.accountId,
+              changed_how: 'entry',
+            })
+            .where('lesson_id', '=', lesson.id)
+            .where('student_id', '=', studentId)
+            .where('work_id', 'is', null)
+            .where('mark', 'is', null)
+            .returning(['id', 'student_id', 'version'])
+            .executeTakeFirst();
+          if (updated !== undefined) {
+            filled.push({
+              studentId: updated.student_id,
+              version: updated.version,
+              cellId: updated.id,
+            });
+          }
+        }
+      }
+      const filledIds = new Set(filled.map((one) => one.studentId));
+      const now = await transaction
+        .selectFrom('journal_cells')
+        .select(['student_id', 'mark'])
+        .where('lesson_id', '=', lesson.id)
         .where('work_id', 'is', null)
         .where('student_id', 'in', students)
         .execute();
-      const fromFirst = new Map(
-        cells
-          .filter((cell) => cell.lesson_id === first && cell.mark !== null)
-          .map((cell) => [cell.student_id, cell.mark]),
-      );
-      const own = new Map(
-        cells.filter((cell) => cell.lesson_id === lesson.id).map((cell) => [cell.student_id, cell]),
-      );
-      const skipped: AttendanceCopy['skipped'] = [];
-      const saves = students.flatMap((studentId) => {
-        const mine = own.get(studentId);
-        const mark = fromFirst.get(studentId) ?? null;
-        if ((mine?.mark ?? null) !== null) {
-          skipped.push({
-            studentId,
-            mark: mine?.mark === undefined ? null : attendanceMarkSchema.parse(mine.mark),
-          });
-          return [];
-        }
-        if (mark === null) {
-          skipped.push({ studentId, mark: null });
-          return [];
-        }
-        return [
-          {
-            lessonId: lesson.id,
-            studentId,
-            workId: null,
-            value: mark,
-            version: mine?.version ?? null,
-          },
-        ];
-      });
-      const saved = await saveCells(
-        transaction,
-        this.audit,
-        {
-          accountId: access.accountId,
-          assignmentId: entryAssignment(access),
-          ...(requestId === undefined ? {} : { requestId }),
+      const markOf = new Map(now.map((row) => [row.student_id, row.mark]));
+      const skipped = students
+        .filter((studentId) => !filledIds.has(studentId))
+        .map((studentId) => {
+          const mark = markOf.get(studentId) ?? null;
+          return { studentId, mark: mark === null ? null : attendanceMarkSchema.parse(mark) };
+        });
+      // Never in the order of `returning` (`.claude/rules/database.md`): the grid's.
+      const filledSorted = await inGridOrder(transaction, filled);
+      const skippedSorted = await inGridOrder(transaction, skipped);
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: entryAssignment(access),
+        action: 'journal.attendance_copy',
+        record: { type: 'lesson', id: lesson.id },
+        newValue: {
+          from: first,
+          filled: filledSorted.map((one) => ({ id: one.cellId, version: one.version })),
+          skipped: skippedSorted.map((one) => one.studentId),
         },
-        saves,
-        { how: 'entry', action: 'journal.attendance_copy', lessonId: lesson.id },
-      );
+        details: { filled: filledSorted.length, skipped: skippedSorted.length },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
       return {
-        filled: saved.map((cell) => ({ studentId: cell.studentId, version: cell.version })),
-        skipped,
+        filled: filledSorted.map((one) => ({ studentId: one.studentId, version: one.version })),
+        skipped: skippedSorted,
       };
     });
   }

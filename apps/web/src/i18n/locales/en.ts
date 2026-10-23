@@ -5525,6 +5525,10 @@ export const en = {
       undone_other: '{{count}} cells undone.',
       undoSkipped_one: '{{count}} changed since and left as it is.',
       undoSkipped_other: '{{count}} changed since and left as they are.',
+      undoRefused_one:
+        '{{count}} cannot take its earlier value now (its work changed) and was left as it is.',
+      undoRefused_other:
+        '{{count}} cannot take their earlier values now (their works changed) and were left as they are.',
       copy: 'Copy attendance from the first lesson',
       copied_one: '{{count}} mark copied from the first lesson.',
       copied_other: '{{count}} marks copied from the first lesson.',
