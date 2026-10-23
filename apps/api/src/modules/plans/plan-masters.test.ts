@@ -293,7 +293,15 @@ describe('master plans', () => {
     (
       await t.database.migrator
         .selectFrom('audit_log')
-        .select(['record_id', 'actor_id', 'assignment_id', 'request_id', 'old_value', 'new_value', 'details'])
+        .select([
+          'record_id',
+          'actor_id',
+          'assignment_id',
+          'request_id',
+          'old_value',
+          'new_value',
+          'details',
+        ])
         .where('action', '=', action)
         .orderBy('id')
         .execute()
@@ -575,7 +583,7 @@ describe('master plans', () => {
         subjectIds: [x.s.subject],
         validFrom: new Date('2026-10-30T00:00:00+05:00'),
       });
-      expect(codeOf(await saveMasterItem(x, master, 1, 'By the earlier one'))).not.toBe('ok');
+      expect((await saveMasterItem(x, master, 1, 'By the earlier one')).status).toBe(403);
       const saved = masterOf(await saveMasterItem(x, master, 1, 'By the new one', next));
       expect(saved.masterItems[0]?.topic).toBe('By the new one');
     });
@@ -1150,6 +1158,44 @@ describe('master plans', () => {
       );
     });
 
+    it('takes an added item into every class of a shared plan, each from its own place (review should-fix 8)', async () => {
+      const x = await scene({ shared: true });
+      const master = await masterWith(x, 3);
+      ok(await copyMaster(x, master.id));
+      ok(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/journals/${x.journal}/share`, x.s.branch, x.owner.cookie, {
+            quarterId: x.q2,
+            journalId: x.otherJournal,
+          }),
+        ),
+      );
+      const added = masterOf(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/masters/${master.id}/items`, x.s.branch, x.head.cookie, {
+            revision: master.revision,
+            position: 2,
+            values: values('M4'),
+          }),
+        ),
+      );
+      ok(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/journals/${x.journal}/master-take`, x.s.branch, x.owner.cookie, {
+            quarterId: x.q2,
+            revision: added.revision,
+          }),
+        ),
+      );
+      expect(topics(await planOf(x, NOV02)).slice(0, 4)).toEqual(['M1', 'M4', 'M2', 'M3']);
+      expect(topics(await planOf(x, NOV02, x.owner, x.otherJournal)).slice(0, 4)).toEqual([
+        'M1',
+        'M4',
+        'M2',
+        'M3',
+      ]);
+    });
+
     it('shows nothing for a change of the master saved back to the text the plan has (review must-fix 4)', async () => {
       const x = await copiedScene();
       ok(await saveMasterItem(x, x.master, 2, 'M2 changed'));
@@ -1215,6 +1261,217 @@ describe('master plans', () => {
       expect(topics(taken).slice(0, 4)).toEqual(['M1', 'M2', 'M3', 'M4 changed']);
       const [entry] = await entries('plan.master_taken', x.master.id);
       expect(JSON.stringify(entry?.details)).toContain(requestId);
+    });
+  });
+
+  describe('at the same moment', () => {
+    /** Holds a row lock in a transaction of the migrator; answers its pid and a release. */
+    async function holdRow(lock: ReturnType<typeof sql>) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: (pid: number) => void = () => undefined;
+      const holding = new Promise<number>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.database.migrator.transaction().execute(async (transaction) => {
+        await lock.execute(transaction);
+        const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction);
+        ready(pid.rows[0]?.pid ?? 0);
+        await released;
+      });
+      const pid = await holding;
+      return {
+        pid,
+        release: async () => {
+          release();
+          await done;
+        },
+      };
+    }
+
+    /** Waits until `count` backends of this database wait, directly or behind another, on `pid`. */
+    async function waitingOn(pid: number, count = 1): Promise<void> {
+      for (let tries = 0; tries < 400; tries += 1) {
+        const found = await sql<{ count: number }>`
+          select count(*)::int as count from pg_stat_activity a
+          where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+            and (${pid} = any(pg_blocking_pids(a.pid)) or exists (
+              select 1 from pg_stat_activity b
+              where b.pid = any(pg_blocking_pids(a.pid)) and ${pid} = any(pg_blocking_pids(b.pid))
+            ))
+        `.execute(t.database.migrator);
+        if ((found.rows[0]?.count ?? 0) >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error(`Fewer than ${String(count)} requests waited on the held row.`);
+    }
+
+    /** Starts a request at once (a supertest request is sent only once awaited, `api.md`). */
+    const started = (run: () => PromiseLike<Response>) =>
+      new Promise<Response>((resolve, reject) => {
+        run().then(resolve, reject);
+      });
+
+    const storedLink = async (journal: string, quarter: string) =>
+      t.database.migrator
+        .selectFrom('lesson_plans')
+        .innerJoin('lesson_plan_journals', 'lesson_plan_journals.plan_id', 'lesson_plans.id')
+        .select(['lesson_plans.master_id', 'lesson_plans.master_revision'])
+        .where('lesson_plan_journals.journal_id', '=', journal)
+        .where('lesson_plan_journals.quarter_id', '=', quarter)
+        .executeTakeFirstOrThrow();
+
+    /**
+     * Runs a request at NOV02 with the clock held there until it ends (the
+     * held side keeps it waiting); the sessions are fresh for that moment.
+     */
+    async function inMoment<T>(work: () => Promise<T>): Promise<T> {
+      t.clock.set(NOV02);
+      await freshAt(NOV02);
+      try {
+        return await work();
+      } finally {
+        t.clock.set(START);
+        await freshAt(START);
+      }
+    }
+
+    const saveCall = (x: Scene, master: PlanMaster, topic: string) => () =>
+      send(
+        'put',
+        `/api/plans/masters/${master.id}/items/${masterItem(master, 1).id}`,
+        x.s.branch,
+        x.head.cookie,
+        { revision: master.revision, values: values(topic) },
+      );
+
+    const copyCall = (x: Scene, masterId: string) => () =>
+      send('post', `/api/plans/journals/${x.journal}/copy`, x.s.branch, x.owner.cookie, {
+        quarterId: x.q2,
+        source: { masterId },
+      });
+
+    it('copies the master as a save left it when the save holds the master first (review should-fix 7)', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 2);
+      await inMoment(async () => {
+        // The copy waits on the journal; the save runs and commits meanwhile.
+        const held = await holdRow(
+          sql`select id from journals where id = ${x.journal} for no key update`,
+        );
+        const copy = started(copyCall(x, master.id));
+        await waitingOn(held.pid);
+        ok(await saveCall(x, master, 'M1 saved')());
+        await held.release();
+        ok(await copy);
+      });
+      const plan = await planOf(x, NOV02);
+      expect(topics(plan).slice(0, 2)).toEqual(['M1 saved', 'M2']);
+      expect((await storedLink(x.journal, x.q2)).master_revision).toBe(master.revision + 1);
+      expect(plan.master?.updated).toBe(false);
+    });
+
+    it('keeps the revision it copied when the copy holds the master first: the save that waited shows as master updated', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 2);
+      await inMoment(async () => {
+        // The save waits on the master the copy reads `for share`; the copy commits first.
+        const held = await holdRow(
+          sql`select id from lesson_plan_masters where id = ${master.id} for share`,
+        );
+        const save = started(saveCall(x, master, 'M1 saved'));
+        await waitingOn(held.pid);
+        ok(await copyCall(x, master.id)());
+        await held.release();
+        ok(await save);
+      });
+      expect((await storedLink(x.journal, x.q2)).master_revision).toBe(master.revision);
+      const plan = await planOf(x, NOV02);
+      expect(topics(plan).slice(0, 2)).toEqual(['M1', 'M2']);
+      expect(plan.master?.updated).toBe(true);
+    });
+
+    it('takes the changes a save made first, and leaves a later save as master updated', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 2);
+      ok(await copyMaster(x, master.id));
+      const changed = masterOf(await saveMasterItem(x, master, 2, 'M2 changed'));
+      const takeCall = () =>
+        send('post', `/api/plans/journals/${x.journal}/master-take`, x.s.branch, x.owner.cookie, {
+          quarterId: x.q2,
+          revision: changed.revision,
+        });
+      // The take holds the master `for share` first: the save waits and comes after it.
+      await inMoment(async () => {
+        const held = await holdRow(
+          sql`select id from lesson_plan_masters where id = ${master.id} for share`,
+        );
+        const save = started(saveCall(x, changed, 'M1 later'));
+        await waitingOn(held.pid);
+        ok(await takeCall());
+        await held.release();
+        ok(await save);
+      });
+      const plan = await planOf(x, NOV02);
+      expect(topics(plan).slice(0, 2)).toEqual(['M1', 'M2 changed']);
+      expect((await storedLink(x.journal, x.q2)).master_revision).toBe(changed.revision);
+      expect(plan.master?.updated).toBe(true);
+      // The save holds the master first: the take waits on the journal and is refused as stale.
+      const now = masterOf(
+        await at(NOV02, async () =>
+          send('get', `/api/plans/masters/${master.id}`, x.s.branch, x.head.cookie),
+        ),
+      );
+      await inMoment(async () => {
+        const held = await holdRow(
+          sql`select id from journals where id = ${x.journal} for no key update`,
+        );
+        const take = started(() =>
+          send('post', `/api/plans/journals/${x.journal}/master-take`, x.s.branch, x.owner.cookie, {
+            quarterId: x.q2,
+            revision: now.revision,
+          }),
+        );
+        await waitingOn(held.pid);
+        ok(await saveCall(x, now, 'M1 last')());
+        await held.release();
+        expect(codeOf(await take)).toBe('plan_master_stale');
+      });
+    });
+
+    it('lets one of two item creates on one revision through and refuses the other as stale', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 1);
+      const create = (topic: string) => () =>
+        send('post', `/api/plans/masters/${master.id}/items`, x.s.branch, x.head.cookie, {
+          revision: master.revision,
+          position: 1,
+          values: values(topic),
+        });
+      const answers = await inMoment(async () => {
+        const held = await holdRow(
+          sql`select id from lesson_plan_masters where id = ${master.id} for share`,
+        );
+        const first = started(create('First'));
+        await waitingOn(held.pid, 1);
+        const second = started(create('Second'));
+        await waitingOn(held.pid, 2);
+        await held.release();
+        return [await first, await second];
+      });
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
+      const refused = answers.find((answer) => answer.status === 409);
+      if (refused === undefined) throw new Error('none refused');
+      expect(codeOf(refused)).toBe('plan_master_stale');
+      const items = await t.database.migrator
+        .selectFrom('lesson_plan_master_items')
+        .select('topic')
+        .where('master_id', '=', master.id)
+        .orderBy('position')
+        .execute();
+      expect(items).toHaveLength(2);
     });
   });
 
