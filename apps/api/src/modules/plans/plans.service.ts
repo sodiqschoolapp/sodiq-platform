@@ -50,6 +50,7 @@ import {
 } from './plan-read.js';
 import {
   ownerIdOn,
+  vacancyOn,
   planReachOf,
   planReaderOf,
   seesRequests,
@@ -280,7 +281,7 @@ export class PlansService {
             planFlagOf({
               rows,
               complete: (filled.get(key)?.topics ?? 0) >= rows,
-              ownerId,
+              vacancy: owner?.kind === 'none',
               window: await stateOf(quarter, ownerId),
               ownerPeriod: ownerPeriods.has(`${planOf.get(key) ?? ''}|${journal.id}`),
             }),
@@ -460,7 +461,12 @@ export class PlansService {
     const flag = planFlagOf({
       rows: rows.length,
       complete,
-      ownerId: scene.ownerId,
+      vacancy: await vacancyOn(
+        transaction,
+        scene.branchId,
+        scene.journal,
+        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+      ),
       window: state,
       ownerPeriod: ownerPeriods.has(`${planId ?? ''}|${scene.journal.id}`),
     });
@@ -497,7 +503,8 @@ export class PlansService {
           causes: [
             {
               kind: 'window_end',
-              onDate: (empty.find((row) => !row.started) ?? empty[0])?.date ?? scene.quarter.endDate,
+              onDate:
+                (empty.find((row) => !row.started) ?? empty[0])?.date ?? scene.quarter.endDate,
               items: 0,
             },
           ],

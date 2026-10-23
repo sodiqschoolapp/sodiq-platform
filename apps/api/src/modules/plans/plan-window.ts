@@ -145,12 +145,13 @@ export const PLAN_REQUEST_LATE_DAYS = 2;
 export function planFlagOf(input: {
   readonly rows: number;
   readonly complete: boolean;
-  readonly ownerId: string | null;
+  /** Under a vacancy with nobody acting on the reference date (`ownerOn` gives `none`). */
+  readonly vacancy: boolean;
   readonly window: PlanWindowState;
   readonly ownerPeriod: boolean;
 }): PlanFlag | null {
   if (input.rows === 0) return null;
-  if (input.ownerId === null) return 'vacancy';
+  if (input.vacancy) return 'vacancy';
   if (input.complete) return null;
   if (input.window === 'not_opened') return 'window_not_opened';
   if (input.window === 'ended' && !input.ownerPeriod) return 'overdue';

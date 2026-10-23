@@ -62,6 +62,34 @@ export async function ownerIdOn(
   return owner === null || owner.kind === 'none' ? null : owner.staffId;
 }
 
+/**
+ * Task 7.2: the journal is under a vacancy with nobody acting on a day
+ * (`ownerOn` gives `none`); a day the journal does not run is no vacancy.
+ */
+export async function vacancyOn(
+  transaction: Transaction,
+  branchId: string,
+  journal: JournalRow,
+  day: string,
+): Promise<boolean> {
+  const facts = await ownerFactsOf(transaction, branchId, [
+    {
+      id: journal.id,
+      academic_year_id: journal.academicYearId,
+      class_id: journal.classId,
+      group_id: journal.groupId,
+      subject_id: journal.subjectId,
+    },
+  ]);
+  const owner = ownerOn(
+    facts.runs.get(journal.id) ?? [],
+    facts.periods.get(journal.id) ?? [],
+    facts.out,
+    day,
+  );
+  return owner?.kind === 'none';
+}
+
 /** The reader as the scope reads it, loaded once per request. */
 export interface PlanReader {
   readonly access: Access;

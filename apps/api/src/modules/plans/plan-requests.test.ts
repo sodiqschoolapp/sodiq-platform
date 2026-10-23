@@ -124,7 +124,7 @@ describe('the plan window and edit requests', () => {
    * A graded scene: its owner and a spare teacher, the Head Teacher, the
    * Senior Head Teacher and the Academic Vice Principal of the subject.
    */
-  async function scene() {
+  async function scene(input: { shared?: boolean } = {}) {
     const owner = await account();
     const spare = await account();
     const head = await account();
@@ -132,6 +132,7 @@ describe('the plan window and edit requests', () => {
     const vice = await account();
     const s = await publishedScene(t, load, {
       graded: true,
+      ...(input.shared === true ? { shared: true } : {}),
       accounts: { teacher: owner.account.id, spare: spare.account.id },
     });
     for (const browser of [owner, spare]) {
@@ -1053,7 +1054,7 @@ describe('the plan window and edit requests', () => {
           { lessonId: plan.rows[1]?.lessonId, date: '2026-11-16' },
           { lessonId: plan.rows[2]?.lessonId, date: '2026-11-23' },
         ],
-        causes: [],
+        causes: [{ kind: 'window_end', onDate: '2026-11-30', items: 0 }],
       });
       const sent = requestOf(
         await at(THURSDAY, async () =>
@@ -1331,6 +1332,375 @@ describe('the plan window and edit requests', () => {
         );
       expect(codeOf(await share(THURSDAY))).toBe('plan_window_closed');
       ok(await share(NOV02));
+    });
+  });
+
+  /**
+   * A version copied from the scene's from `startsOn` and published: `edit`
+   * changes the draft's load rows and gives the slot of each row to place.
+   */
+  async function republish(
+    x: Scene,
+    startsOn: string,
+    edit: (
+      draft: string,
+      rows: { id: string; class_id: string | null }[],
+    ) => Promise<{ id: string; slot: number }[]>,
+  ) {
+    const created = ok(
+      await t.post('/api/timetable/versions', x.s.branch, {
+        academicYearId: x.s.year,
+        startsOn,
+        copyFrom: x.s.version,
+      }),
+      201,
+    );
+    const draft = (created.body as { id: string }).id;
+    await t.database.migrator
+      .deleteFrom('pattern_blocks')
+      .where('version_id', '=', draft)
+      .execute();
+    const rows = await t.database.migrator
+      .selectFrom('teaching_load_rows')
+      .select(['id', 'class_id'])
+      .where('version_id', '=', draft)
+      .execute();
+    for (const placed of await edit(draft, rows)) {
+      ok(
+        await t.post(`/api/timetable/versions/${draft}/pattern`, x.s.branch, {
+          loadRowId: placed.id,
+          weekday: 1,
+          slotPosition: placed.slot,
+        }),
+        201,
+      );
+    }
+    ok(await t.post(`/api/timetable/versions/${draft}/templates/confirm`, x.s.branch));
+    await load.freeEditLock(draft);
+    ok(await publishOf(t)(x.s.branch, draft, startsOn));
+  }
+
+  const keyedCancel = async (branch: string, lessonId: string) =>
+    ok(
+      await request(t.kit.server)
+        .post(`/api/timetable/lessons/${lessonId}/cancel`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ reason: 'Excursion' }),
+    );
+
+  const lessonOf = (classId: string, subject: string, date: string) =>
+    t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', classId)
+      .where('subject_id', '=', subject)
+      .where('lesson_date', '=', date)
+      .executeTakeFirstOrThrow();
+
+  // Spec review of the code: the planned route tests it found missing.
+  describe('more of the plan', () => {
+    it('lets the owner ask before any window and before the window starts', async () => {
+      const x = await scene();
+      const plan = await planOf(x, OCT27);
+      const lesson = plan.rows[0]?.lessonId ?? '';
+      ok(
+        await at(OCT27, async () => ask(x, { kind: 'text', lessonIds: [lesson], reason: 'Early' })),
+        201,
+      );
+      ok(await openWindow(x, { startDate: '2026-11-03', endDate: '2026-11-10', confirm: true }));
+      expect((await planOf(x, OCT27)).window.state).toBe('before');
+      ok(
+        await at(OCT27, async () =>
+          ask(x, { kind: 'replan', fromLessonId: lesson, reason: 'Early' }),
+        ),
+        201,
+      );
+    });
+
+    it('refuses a file delete and a copy outside the window', async () => {
+      const x = await scene();
+      ok(await openWindow(x));
+      const [item] = await fill(x, [1, 2]);
+      const file = await t.database.migrator
+        .insertInto('lesson_plan_files')
+        .values({
+          branch_id: x.s.branch,
+          item_id: item?.id ?? '',
+          name: 'notes.pdf',
+          type: 'application/pdf',
+          bytes: 64,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await at(AFTER_END, async () => {
+        expect(
+          codeOf(await send('delete', `/api/plans/files/${file.id}`, x.s.branch, x.owner.cookie)),
+        ).toBe('plan_window_closed');
+        // Quarter 3 has no window: a copy into it is not open either.
+        const copied = await send(
+          'post',
+          `/api/plans/journals/${x.journal}/copy`,
+          x.s.branch,
+          x.owner.cookie,
+          {
+            quarterId: x.q3,
+            source: { journalId: x.journal, quarterId: x.q2 },
+            part: 'all',
+          },
+        );
+        expect(codeOf(copied)).toBe('plan_window_not_open');
+      });
+    });
+
+    it('adds the held empty rows to a prepared request an approver decides directly (review correction 2)', async () => {
+      const x = await scene();
+      ok(await openWindow(x));
+      await fill(x, [1, 3, 4, 5, 6, 7, 8]);
+      await at(THURSDAY, async () =>
+        keyedCancel(x.s.branch, (await lessonOf(x.s.classId, x.s.subject, '2026-11-30')).id),
+      );
+      const prepared = (await planOf(x, THURSDAY)).request;
+      const decided = requestOf(
+        await at(THURSDAY, async () =>
+          decide(x, prepared?.id ?? '', { decision: 'approve', days: 1 }),
+        ),
+      );
+      expect(decided.status).toBe('approved');
+      expect(decided.lessons.map((one) => one.date)).toEqual(['2026-11-16']);
+    });
+
+    it('prepares a request for a subject added after the window, and counts the plan overdue only after its period', async () => {
+      const x = await scene();
+      ok(await openWindow(x));
+      const added = await load.classes.subject({ grades: [7], journalType: 'graded' });
+      await t.database.migrator
+        .insertInto('staff_subjects')
+        .values({ staff_id: x.s.teacher.staffId, subject_id: added, grades: [7] })
+        .execute();
+      // The weights a graded subject needs to be published (as the scene's own).
+      const weights = { attendance: 20, classwork: 40, homework: 40 };
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({ branch_id: x.s.branch, subject_id: added, ...weights })
+        .execute();
+      const quarters = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', x.s.year)
+        .execute();
+      await t.database.migrator
+        .insertInto('subject_quarter_weights')
+        .values(
+          quarters.map((quarter) => ({
+            branch_id: x.s.branch,
+            subject_id: added,
+            quarter_id: quarter.id,
+            ...weights,
+          })),
+        )
+        .execute();
+      await at(THURSDAY, async () =>
+        republish(x, '2026-11-30', async (draft, rows) => {
+          const row = await load.row({
+            branch_id: x.s.branch,
+            version_id: draft,
+            class_id: x.s.classId,
+            subject_id: added,
+            teacher_id: x.s.teacher.staffId,
+            lessons_per_week: 1,
+          });
+          return [...rows.map((one) => ({ id: one.id, slot: 1 })), { id: row, slot: 3 }];
+        }),
+      );
+      const journal = (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', x.s.classId)
+          .where('subject_id', '=', added)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const read = (moment: string) =>
+        at(moment, async () =>
+          planSchema.parse(
+            ok(
+              await send(
+                'get',
+                `/api/plans/journals/${journal}?quarterId=${x.q2}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            ).body,
+          ),
+        );
+      const plan = await read(THURSDAY);
+      expect(plan.request?.causes.map((one) => one.kind)).toEqual(['journal_added']);
+      expect(plan.flag).toBeNull();
+      ok(
+        await at(THURSDAY, async () =>
+          send(
+            'post',
+            `/api/plans/requests/${plan.request?.id ?? ''}/decide`,
+            x.s.branch,
+            x.vice.cookie,
+            {
+              decision: 'approve',
+              days: 1,
+            },
+          ),
+        ),
+      );
+      expect((await read(THURSDAY)).flag).toBeNull();
+      expect((await read(SATURDAY)).flag).toBe('overdue');
+    });
+
+    describe('a shared plan', () => {
+      async function sharedScene() {
+        const x = await scene({ shared: true });
+        ok(await openWindow(x));
+        ok(
+          await at(NOV02, async () =>
+            send('post', `/api/plans/journals/${x.journal}/share`, x.s.branch, x.owner.cookie, {
+              quarterId: x.q2,
+              journalId: x.otherJournal,
+            }),
+          ),
+        );
+        return x;
+      }
+
+      it('refuses a Re-plan of one class for an item on a started row of the other', async () => {
+        const x = await sharedScene();
+        // The other class loses 23 November before it: the two classes stand at different items.
+        await at(NOV02, async () =>
+          keyedCancel(x.s.branch, (await lessonOf(x.s.otherClass, x.s.subject, '2026-11-23')).id),
+        );
+        const items = await fill(x, [1, 2, 3, 4]);
+        const other = await at(THURSDAY, async () =>
+          planSchema.parse(
+            ok(
+              await send(
+                'get',
+                `/api/plans/journals/${x.otherJournal}?quarterId=${x.q2}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            ).body,
+          ),
+        );
+        const third = other.rows.find((row) => row.item?.id === items[2]?.id);
+        expect(third?.date).toBe('2026-11-30');
+        const asked = requestOf(
+          await at(THURSDAY, async () =>
+            send(
+              'post',
+              `/api/plans/journals/${x.otherJournal}/requests`,
+              x.s.branch,
+              x.owner.cookie,
+              {
+                quarterId: x.q2,
+                kind: 'replan',
+                fromLessonId: third?.lessonId ?? '',
+                reason: 'Re-plan',
+              },
+            ),
+          ),
+          201,
+        );
+        ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 2 })));
+        // In the first class its row (23 November) has started: Text only there, and no period.
+        expect(
+          codeOf(
+            await at(THURSDAY, async () => save(x, items[2] ?? (items[0] as PlanItem), 'Moved')),
+          ),
+        ).toBe('plan_window_closed');
+        // With a Re-plan of the first class from 30 November too, the item ahead passes;
+        // the item on the started row stays refused.
+        const own = await planOf(x, THURSDAY);
+        const first = requestOf(
+          await at(THURSDAY, async () =>
+            ask(x, {
+              kind: 'replan',
+              fromLessonId: own.rows[3]?.lessonId ?? '',
+              reason: 'Re-plan',
+            }),
+          ),
+          201,
+        );
+        ok(await at(THURSDAY, async () => decide(x, first.id, { decision: 'approve', days: 2 })));
+        ok(await at(THURSDAY, async () => save(x, items[3] ?? (items[0] as PlanItem), 'Ahead')));
+        expect(
+          codeOf(
+            await at(THURSDAY, async () => save(x, items[2] ?? (items[0] as PlanItem), 'Moved')),
+          ),
+        ).toBe('plan_window_closed');
+      });
+
+      it("ends the earlier teacher's open periods when the other class gets another teacher (edge, a shared plan loses one class)", async () => {
+        const x = await sharedScene();
+        await fill(x, [1, 2]);
+        const other = await at(THURSDAY, async () =>
+          planSchema.parse(
+            ok(
+              await send(
+                'get',
+                `/api/plans/journals/${x.otherJournal}?quarterId=${x.q2}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            ).body,
+          ),
+        );
+        const asked = requestOf(
+          await at(THURSDAY, async () =>
+            send(
+              'post',
+              `/api/plans/journals/${x.otherJournal}/requests`,
+              x.s.branch,
+              x.owner.cookie,
+              {
+                quarterId: x.q2,
+                kind: 'text',
+                lessonIds: [other.rows[1]?.lessonId ?? ''],
+                reason: 'Typo',
+              },
+            ),
+          ),
+          201,
+        );
+        ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 5 })));
+        await at(THURSDAY, async () =>
+          republish(x, '2026-11-30', async (_draft, rows) => {
+            for (const row of rows) {
+              if (row.class_id === x.s.otherClass) {
+                await t.database.migrator
+                  .updateTable('teaching_load_rows')
+                  .set({ teacher_id: x.s.spareTeacher.staffId })
+                  .where('id', '=', row.id)
+                  .execute();
+              }
+            }
+            return rows.map((row) => ({
+              id: row.id,
+              slot: row.class_id === x.s.otherClass ? 3 : 1,
+            }));
+          }),
+        );
+        const stored = await t.database.migrator
+          .selectFrom('lesson_plan_requests')
+          .select(['finished_at', 'plan_id'])
+          .where('id', '=', asked.id)
+          .executeTakeFirstOrThrow();
+        expect(stored.finished_at).not.toBeNull();
+        const separated = await t.database.migrator
+          .selectFrom('audit_log')
+          .select('new_value')
+          .where('action', '=', 'plan.separated')
+          .execute();
+        expect(JSON.stringify(separated)).toContain(x.otherJournal);
+      });
     });
   });
 
@@ -1758,6 +2128,191 @@ describe('the plan window and edit requests', () => {
         ),
       );
       ok(await at(THURSDAY, async () => save(fresh.x, fresh.items[1] ?? item, 'In time')));
+    });
+
+    /** A plan full after the window, then a cancel of 30 November: a prepared request with its event. */
+    async function preparedScene() {
+      const x = await scene();
+      ok(await openWindow(x));
+      const items = await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      await at(THURSDAY, async () =>
+        keyedCancel(x.s.branch, (await lessonOf(x.s.classId, x.s.subject, '2026-11-30')).id),
+      );
+      const id = (await planOf(x, THURSDAY)).request?.id ?? '';
+      const cause = await t.database.migrator
+        .selectFrom('lesson_plan_request_causes')
+        .select('event_id')
+        .where('request_id', '=', id)
+        .executeTakeFirstOrThrow();
+      return { x, id, eventId: cause.event_id, items };
+    }
+
+    const approveHeld = (x: Scene, id: string) => async (transaction: Transaction) => {
+      await lockJournal(transaction, x.journal);
+      await transaction
+        .updateTable('lesson_plan_requests')
+        .set({
+          status: 'approved',
+          decided_by: x.vice.account.id,
+          decided_at: new Date(THURSDAY),
+          days: 1,
+          open_until: new Date('2026-11-26T23:59:59.999+05:00'),
+        })
+        .where('id', '=', id)
+        .execute();
+    };
+
+    const sendHeld = (x: Scene, id: string) => async (transaction: Transaction) => {
+      await lockJournal(transaction, x.journal);
+      await transaction
+        .updateTable('lesson_plan_requests')
+        .set({ status: 'sent', requested_by: x.owner.account.id, sent_at: new Date(THURSDAY) })
+        .where('id', '=', id)
+        .execute();
+    };
+
+    it('an approval held first: a decision by event waits on the journal and approves nothing', async () => {
+      const { x, id, eventId } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, approveHeld(x, id), () =>
+          send('post', '/api/plans/requests/decide-event', x.s.branch, x.head.cookie, {
+            eventId,
+            days: 2,
+          }),
+        ),
+      );
+      expect(planEventDecidedSchema.parse(ok(answer).body)).toEqual({ approved: [], skipped: [] });
+      const stored = await t.database.migrator
+        .selectFrom('lesson_plan_requests')
+        .select('days')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored.days).toBe(1);
+    });
+
+    it('a decision by event held first: a decision of the request waits on the journal and finds it decided', async () => {
+      const { x, id } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, approveHeld(x, id), () =>
+          decide(x, id, { decision: 'approve', days: 3 }),
+        ),
+      );
+      expect(codeOf(answer)).toBe('plan_request_decided');
+    });
+
+    it('two sends of one prepared request: the second waits on the journal and finds it sent', async () => {
+      const { x, id } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, sendHeld(x, id), () =>
+          send('post', `/api/plans/requests/${id}/send`, x.s.branch, x.owner.cookie, {}),
+        ),
+      );
+      expect(codeOf(answer)).toBe('plan_request_decided');
+    });
+
+    it('an approval held first: a send of the prepared request waits on the journal and finds it decided', async () => {
+      const { x, id } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, approveHeld(x, id), () =>
+          send('post', `/api/plans/requests/${id}/send`, x.s.branch, x.owner.cookie, {}),
+        ),
+      );
+      expect(codeOf(answer)).toBe('plan_request_decided');
+    });
+
+    it('a send held first: the approval waits on the journal and approves the sent request', async () => {
+      const { x, id } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, sendHeld(x, id), () =>
+          decide(x, id, { decision: 'approve', days: 2 }),
+        ),
+      );
+      expect(requestOf(answer).status).toBe('approved');
+      const stored = await t.database.migrator
+        .selectFrom('lesson_plan_requests')
+        .select('requested_by')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored.requested_by).toBe(x.owner.account.id);
+    });
+
+    it('a cause added by the follow held first: the approval waits and approves the request with both causes', async () => {
+      const { x, id } = await preparedScene();
+      const answer = await at(THURSDAY, async () =>
+        heldThen(
+          x.s.branch,
+          async (transaction) => {
+            await lockJournal(transaction, x.journal);
+            await transaction
+              .insertInto('lesson_plan_request_causes')
+              .values({
+                branch_id: x.s.branch,
+                request_id: id,
+                kind: 'not_covered',
+                on_date: '2026-12-07',
+                items: 1,
+                staff_id: null,
+                at: new Date(THURSDAY),
+                event_id: randomUUID(),
+              })
+              .execute();
+          },
+          () => decide(x, id, { decision: 'approve', days: 2 }),
+        ),
+      );
+      const approved = requestOf(answer);
+      expect(approved.status).toBe('approved');
+      expect(approved.causes.map((one) => one.onDate)).toEqual(['2026-11-30', '2026-12-07']);
+    });
+
+    it('an approval held first: the follow of a later cancel waits on the journal and prepares a new request', async () => {
+      const { x, id } = await preparedScene();
+      const lesson = await lessonOf(x.s.classId, x.s.subject, '2026-12-07');
+      const answer = await at(THURSDAY, async () =>
+        heldThen(x.s.branch, approveHeld(x, id), () =>
+          request(t.kit.server)
+            .post(`/api/timetable/lessons/${lesson.id}/cancel`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, x.s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send({ reason: 'Excursion' }),
+        ),
+      );
+      ok(answer);
+      const requests = await t.database.migrator
+        .selectFrom('lesson_plan_requests')
+        .select(['id', 'status'])
+        .where('journal_id', '=', x.journal)
+        .orderBy('id')
+        .execute();
+      expect(requests.map((one) => one.status)).toEqual(['approved', 'prepared']);
+      expect(requests[0]?.id).toBe(id);
+    });
+
+    it('a save held first: "finished" waits on the journal and then locks the period', async () => {
+      const { x, asked, items } = await waitingRequest();
+      ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 2 })));
+      const answer = await at(THURSDAY, async () =>
+        heldThen(
+          x.s.branch,
+          async (transaction) => {
+            await lockJournal(transaction, x.journal);
+            await transaction
+              .updateTable('lesson_plan_items')
+              .set({ topic: 'Saved first' })
+              .where('id', '=', items[1]?.id ?? '')
+              .execute();
+          },
+          () => send('post', `/api/plans/requests/${asked.id}/finish`, x.s.branch, x.owner.cookie),
+        ),
+      );
+      expect(requestOf(answer).finishedAt).not.toBeNull();
+      const item = await t.database.migrator
+        .selectFrom('lesson_plan_items')
+        .select('topic')
+        .where('id', '=', items[1]?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(item.topic).toBe('Saved first');
     });
 
     it("two stores of the request of the window's end make one: the second waits on the journal and answers it", async () => {

@@ -316986,7 +316986,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {
@@ -318770,7 +318771,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -320405,7 +320407,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -322124,7 +322127,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -323751,7 +323755,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -325455,7 +325460,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -328439,7 +328445,8 @@
                               "rows_added",
                               "moved_back",
                               "owner_changed",
-                              "journal_added"
+                              "journal_added",
+                              "window_end"
                             ]
                           },
                           "onDate": {
@@ -332031,7 +332038,8 @@
                                   "rows_added",
                                   "moved_back",
                                   "owner_changed",
-                                  "journal_added"
+                                  "journal_added",
+                                  "window_end"
                                 ]
                               },
                               "onDate": {
@@ -332281,7 +332289,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {
@@ -337674,7 +337683,8 @@
                                   "rows_added",
                                   "moved_back",
                                   "owner_changed",
-                                  "journal_added"
+                                  "journal_added",
+                                  "window_end"
                                 ]
                               },
                               "onDate": {
@@ -337924,7 +337934,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {
@@ -340111,7 +340122,8 @@
                                   "rows_added",
                                   "moved_back",
                                   "owner_changed",
-                                  "journal_added"
+                                  "journal_added",
+                                  "window_end"
                                 ]
                               },
                               "onDate": {
@@ -340361,7 +340373,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {
@@ -342577,7 +342590,8 @@
                                   "rows_added",
                                   "moved_back",
                                   "owner_changed",
-                                  "journal_added"
+                                  "journal_added",
+                                  "window_end"
                                 ]
                               },
                               "onDate": {
@@ -342827,7 +342841,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {
@@ -345036,7 +345051,8 @@
                                   "rows_added",
                                   "moved_back",
                                   "owner_changed",
-                                  "journal_added"
+                                  "journal_added",
+                                  "window_end"
                                 ]
                               },
                               "onDate": {
@@ -345286,7 +345302,8 @@
                                     "rows_added",
                                     "moved_back",
                                     "owner_changed",
-                                    "journal_added"
+                                    "journal_added",
+                                    "window_end"
                                   ]
                                 },
                                 "onDate": {

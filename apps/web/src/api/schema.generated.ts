@@ -62358,7 +62358,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -62688,7 +62688,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -62988,7 +62988,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -63306,7 +63306,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -63604,7 +63604,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -63918,7 +63918,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -64447,7 +64447,7 @@ export interface operations {
                         reason: string;
                         causes: {
                             /** @enum {string} */
-                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                            kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                             /** Format: date */
                             onDate: string;
                             items: number;
@@ -65114,7 +65114,7 @@ export interface operations {
                             }[];
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -65174,7 +65174,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -66173,7 +66173,7 @@ export interface operations {
                             }[];
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -66233,7 +66233,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -66656,7 +66656,7 @@ export interface operations {
                             }[];
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -66716,7 +66716,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -67147,7 +67147,7 @@ export interface operations {
                             }[];
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -67207,7 +67207,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -67632,7 +67632,7 @@ export interface operations {
                             }[];
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;
@@ -67692,7 +67692,7 @@ export interface operations {
                             reason: string;
                             causes: {
                                 /** @enum {string} */
-                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added";
+                                kind: "not_covered" | "rows_added" | "moved_back" | "owner_changed" | "journal_added" | "window_end";
                                 /** Format: date */
                                 onDate: string;
                                 items: number;

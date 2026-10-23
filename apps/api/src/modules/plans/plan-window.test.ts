@@ -144,7 +144,7 @@ describe('the flag of a plan', () => {
   const base = {
     rows: 10,
     complete: false,
-    ownerId: 's',
+    vacancy: false,
     window: 'ended' as const,
     ownerPeriod: false,
   };
@@ -158,7 +158,7 @@ describe('the flag of a plan', () => {
 
   it('shows "window not opened" before any window, and "vacancy" with nobody to own it', () => {
     expect(planFlagOf({ ...base, window: 'not_opened' })).toBe('window_not_opened');
-    expect(planFlagOf({ ...base, ownerId: null })).toBe('vacancy');
+    expect(planFlagOf({ ...base, vacancy: true })).toBe('vacancy');
     expect(planFlagOf({ ...base, rows: 0 })).toBeNull();
   });
 });

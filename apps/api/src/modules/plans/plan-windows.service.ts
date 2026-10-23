@@ -45,7 +45,6 @@ import { windowStateOf } from './plan-window.js';
 /** The roles that open and extend a window (`02`): the route checks them from every assignment. */
 const WINDOW_ROLES = ['academic_vice_principal', 'super_admin'] as const;
 
-
 interface QuarterRow extends PlanQuarter {
   readonly yearId: string;
   readonly yearClosed: boolean;
