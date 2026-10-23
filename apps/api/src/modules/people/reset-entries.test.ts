@@ -496,6 +496,18 @@ describe('the report of entries after a reset', () => {
       at: at('2026-10-22', '10:00'),
       examDate: '2026-10-12',
     });
+    // The same account writes in another branch within the 48 hours: not this branch's.
+    const south = await scene(t.south);
+    await ratingEntryAndNote(t, cells.lessons.load, {
+      branch: t.south,
+      year: south.year,
+      classId: south.classId,
+      lessonId: await lesson(t.south, '2026-10-14'),
+      studentId: south.students[0] ?? '',
+      accountId: person.accountId,
+      at: at('2026-10-22', '11:00'),
+      examDate: '2026-10-12',
+    });
     t.clock.set(NOW);
     const answer = ok(await report(t.north, '2026-10-22', '2026-10-22'));
     const [reset] = resetOf(answer, person.accountId);

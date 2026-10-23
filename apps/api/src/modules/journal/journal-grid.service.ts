@@ -501,8 +501,9 @@ export class JournalGridReader {
     const comments = await gridComments(transaction, {
       studentIds: students.map((student) => student.id),
       lessonIds: lessons.map((lesson) => lesson.id),
+      // The rating comments only while the grid shows the rating exam.
       ratingExamId:
-        rating === null
+        rating === null || !ratingShown
           ? null
           : ((await this.ratingIdOf(transaction, journal.id, quarter.id)) ?? null),
       shape,

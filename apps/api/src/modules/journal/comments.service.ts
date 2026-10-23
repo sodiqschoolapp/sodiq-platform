@@ -178,10 +178,12 @@ export class CommentsService {
         if (lesson === undefined) throw notFound();
         if (query.target === 'work') {
           if (query.workId === undefined) throw notFound();
+          // A work of that lesson only, as the save refuses another.
           const work = await transaction
             .selectFrom('journal_works')
             .select('id')
             .where('id', '=', query.workId)
+            .where('lesson_id', '=', lesson.id)
             .executeTakeFirst();
           if (work === undefined) throw notFound();
         }
@@ -286,12 +288,14 @@ export class CommentsService {
               .where('rating_exam_id', '=', row.id)
               .where('student_id', '=', on.studentId)
               .executeTakeFirst();
+      // Whoever may enter the entry (decision 10): "exempt" is the Academic Vice
+      // Principal's, a score and "did not sit" the journal teacher's.
       const assignmentId =
         entry?.kind === 'exempt'
           ? rights.vicePrincipal
           : rights.teacher
             ? entryAssignment(access)
-            : rights.vicePrincipal;
+            : null;
       if (assignmentId === null) throw new ApiException('comment_scope', 403);
       if (row === null || entry?.kind == null) throw new ApiException('comment_no_value', 409);
       return {
@@ -305,6 +309,17 @@ export class CommentsService {
         assignmentId,
       };
     }
+    // The work named is checked against the branch before any refusal of scope
+    // (`.claude/rules/api.md`).
+    const work =
+      on.target === 'work'
+        ? await transaction
+            .selectFrom('journal_works')
+            .select(['id', 'lesson_id'])
+            .where('id', '=', on.workId)
+            .executeTakeFirst()
+        : undefined;
+    if (on.target === 'work' && work === undefined) throw notFound();
     try {
       await enterableLesson(transaction, access, branchId, on.lessonId);
     } catch (error) {
@@ -313,14 +328,8 @@ export class CommentsService {
       }
       throw error;
     }
-    if (on.target === 'work') {
-      const work = await transaction
-        .selectFrom('journal_works')
-        .select(['id', 'lesson_id'])
-        .where('id', '=', on.workId)
-        .executeTakeFirst();
-      if (work === undefined) throw notFound();
-      if (work.lesson_id !== on.lessonId) throw new ApiException('work_not_in_lesson', 409);
+    if (work !== undefined && work.lesson_id !== on.lessonId) {
+      throw new ApiException('work_not_in_lesson', 409);
     }
     if (on.target !== 'note') {
       const cell = await transaction
