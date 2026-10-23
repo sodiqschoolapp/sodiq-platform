@@ -3658,6 +3658,32 @@ describe('exams in the timetable', () => {
       );
     });
 
+    // Task 8.2 (review should-fix 1 of the plan, must-fix 2 of the code): a linked exam stands.
+    it('refuses turning the rating exam off from a quarter where a linked exam stands, started or not (task 8.2)', async () => {
+      const s = await ratingScene();
+      // 9 November is in quarter 2, which has not started on the kit's day.
+      saved(await create(s.branch, ratingOf(s, { date: '2026-11-09' })));
+      const listed = subjectListSchema.parse((await t.get('/api/setup/subjects', s.branch)).body);
+      const subject = listed.subjects.find((one) => one.id === s.maths) as Subject;
+      const edit = (switchesFrom: number) =>
+        t.put(`/api/setup/subjects/${s.maths}`, s.branch, {
+          names: subject.names,
+          departmentId: subject.departmentId,
+          grades: subject.grades,
+          colour: subject.colour,
+          journalType: subject.journalType,
+          ratingExam: false,
+          groupSubject: subject.groupSubject,
+          languageRule: subject.languageRule,
+          demanding: subject.demanding,
+          daily: subject.daily === null ? { attendance: 20, classwork: 40, homework: 40 } : null,
+          switchesFrom,
+        });
+      refusedWith(await edit(2), 409, 'subject_switch_exams');
+      // From quarter 3 the exam's quarter keeps the rating exam.
+      expect((await edit(3)).status).toBe(200);
+    });
+
     // Task 8.2 (From 5.6c-1, decision 5): a linked exam gives the journal's date.
     it("gives a linked journal the exam's date, refuses a hand date while it stands, and lets one after its cancel (task 8.2)", async () => {
       const s = await ratingScene();

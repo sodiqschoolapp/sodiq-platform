@@ -187,7 +187,7 @@ const dialogKey = (params: SuppressKeyboardEventParams<GridRow>): boolean =>
 
 /** The corner marker of a cell with a comment (task 8.2). */
 const COMMENTED =
-  "relative after:absolute after:right-0 after:top-0 after:size-0 after:border-4 after:border-transparent after:border-t-primary after:border-r-primary after:content-['']";
+  "relative after:absolute after:right-0 after:top-0 after:size-0 after:border-4 after:border-transparent after:border-t-info after:border-r-info after:content-['']";
 
 export function JournalGridView({
   grid,

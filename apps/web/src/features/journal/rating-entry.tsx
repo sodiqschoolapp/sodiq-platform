@@ -15,6 +15,7 @@ import { DateField, NumberField, TextAreaField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { ErrorState, EmptyState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { SUBSECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -341,7 +342,7 @@ function EntryDialog({
               )}
           </div>
           <section className="grid gap-1">
-            <h3 className="font-semibold">{t('journal.rating.history')}</h3>
+            <h4 className={SUBSECTION_TITLE}>{t('journal.rating.history')}</h4>
             {history.isError ? (
               <ErrorState error={history.error} onRetry={() => void history.refetch()} />
             ) : history.data === undefined ? (

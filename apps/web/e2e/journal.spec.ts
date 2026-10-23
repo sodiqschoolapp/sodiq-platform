@@ -111,7 +111,7 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
     'Helped a classmate',
   );
   await comments.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
-  await expect(attendance).toHaveClass(/after:border-t-primary/);
+  await expect(attendance).toHaveClass(/after:border-t-info/);
 
   // Lesson mode for today's lesson.
   await page

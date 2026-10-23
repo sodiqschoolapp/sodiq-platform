@@ -266,6 +266,10 @@ export class CommentsService {
       if (journal === undefined || switchesIn(journal, on.quarterId) === undefined) {
         throw notFound();
       }
+      // The subject has the rating exam in the quarter (spec review of the code, should-fix 4).
+      if (switchesIn(journal, on.quarterId)?.ratingExam !== true) {
+        throw new ApiException('rating_exam_off', 409);
+      }
       const { today } = await clockOf(transaction, branchId);
       const facts = await ownerFactsOf(transaction, branchId, [
         {

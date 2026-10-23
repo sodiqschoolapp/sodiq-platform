@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { typedScore } from './journal-grid';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -147,6 +148,15 @@ const sent = (calls: ReturnType<typeof fakeApi>, route: string) =>
 // docs/spec/edge-cases/calculation.md, "The rating exam"; docs/spec/07-journal.md, Entering
 // data, Comments and Keyboard; task 8.2.
 describe('the rating exam and comments in the grid', () => {
+  it('takes a whole score from 0 to 100 in a cell and refuses the rest (edge/calculation: "Whole numbers from 0 to 100")', () => {
+    expect(typedScore('0', 100)).toBe(0);
+    expect(typedScore('100', 100)).toBe(100);
+    expect(typedScore('101', 100)).toBeUndefined();
+    expect(typedScore('49.5', 100)).toBeUndefined();
+    expect(typedScore('a', 100)).toBeUndefined();
+    expect(typedScore('', 100)).toBeNull();
+  });
+
   it('shows the exam date under the column and the stored entries', async () => {
     open();
     const cell = await cellOf(uid(101), 'ratingExam');
@@ -250,8 +260,8 @@ describe('the rating exam and comments in the grid', () => {
       ],
     });
     const marked = await cellOf(uid(101), 'ratingExam');
-    expect(marked.className).toContain('after:border-t-primary');
+    expect(marked.className).toContain('after:border-t-info');
     const plain = await cellOf(uid(102), 'ratingExam');
-    expect(plain.className).not.toContain('after:border-t-primary');
+    expect(plain.className).not.toContain('after:border-t-info');
   });
 });

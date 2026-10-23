@@ -2,7 +2,11 @@ import { classDisplayName, type ErrorDetail, type ExamRating } from '@sodiq/shar
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
-import { quarterOnDate, quarterSwitchesOf } from '../setup/subject-switches.js';
+import {
+  holdSubjectSwitches,
+  quarterOnDate,
+  quarterSwitchesOf,
+} from '../setup/subject-switches.js';
 
 /**
  * The rating-exam link of an exam (task 5.6c-3b, pull request #184;
@@ -97,6 +101,9 @@ export async function refuseRatingSubject(
   transaction: Transaction,
   input: { readonly subjectId: string; readonly yearId: string; readonly date: string },
 ): Promise<void> {
+  // The subject row FOR SHARE (task 8.2, spec review of the code, must-fix 2): a
+  // change of its switches waits for this save, or this save for it.
+  await holdSubjectSwitches(transaction, input.subjectId);
   const quarter = await quarterOnDate(transaction, input.yearId, input.date);
   const switches =
     quarter === undefined

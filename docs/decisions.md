@@ -311,6 +311,10 @@ Plan approved on pull request #218 with corrections 1 to 4; decisions 1 to 18 co
 | A date change after entries keeps them; the date in force governs only later entries | Decision 15 |
 | A journal is planned when any quarter of its year is graded | Decision 18 |
 | **Build decision.** A change of a subject's switches by the migrator outside a request (a fixture, a data fix) writes a log row at the moment of the subject's newest row, with no quarter number | The fixtures of earlier tasks change `journal_type` and `rating_exam` as the migrator, with no clock |
+| **Build decision** (spec review of the code, must-fix 2). Turning the rating exam off is refused while a standing linked exam stands in any quarter the change reaches, started or not; the exam save holds the subject row FOR SHARE as every other writer | `subject_switch_exams` would otherwise let an exam stay linked in a quarter with no rating exam |
+| **Build decision** (spec review of the code, should-fix 2). The reason of a rating entry and the quarter of a switch change count for their write only: a BEFORE trigger moves each into a setting of the transaction and clears the column | A later write that leaves them out would pass on an old value |
+| **Build decision** (spec review of the code, should-fix 3). The rating exam column, its entries and comments show while the quarter's switch is on; its figures need the rating weight | The writer of an entry could otherwise not read its history |
+| **Build decision** (permission review, should-fix 3). A comment on a rating entry is written by whoever may write the entry: "exempt" by the Academic Vice Principal, a score or "did not sit" by the journal's teacher | Decision 10 |
 | **Build decision.** The rating exam is read with the journal grid (`rating` of the answer); the routes answer it after each write, so there is no separate read route | One scope (`gridIn`) for the grid, the rating history and the comment history |
 
 ## 23 October 2026: classwork and homework (task 8.1)

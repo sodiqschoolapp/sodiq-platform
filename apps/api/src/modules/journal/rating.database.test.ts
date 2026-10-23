@@ -261,6 +261,101 @@ describe('the rating exam and comments in the database', () => {
       expect((await switchesIn(fromOne, quarterOf(north, 1)))?.rating_exam).toBe(false);
     });
 
+    it('keeps the quarter number of a change for that update only (spec review of the code, should-fix 2)', async () => {
+      const id = await subject(false);
+      await switchRating(id, true, 2);
+      const stored = await database.migrator
+        .selectFrom('subjects')
+        .select('switches_from')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored.switches_from).toBeNull();
+      expect((await refusal(switchRating(id, false, null))).constraint).toBe(
+        'subject_switches_from',
+      );
+    });
+
+    it("lets a change through before the quarter's first day, whatever the quarter holds (decision 3)", async () => {
+      const id = await subject();
+      const { journal, student } = await journalOf(north, id);
+      await entry(north, await examRow(north, journal), student);
+      const { rows } = await sql<{ scores: number }>`
+        select scores from subject_switch_blocked(
+          ${id}::uuid, 1::smallint, '2026-08-20T10:00:00+05:00'::timestamptz, false, true
+        )
+      `.execute(database.migrator);
+      expect(rows[0]?.scores).toBe(0);
+    });
+
+    // Correction 1: the quarterly weights take the rounds of their quarter's switches.
+    describe('the quarterly weights in the rounds of their quarter (correction 1)', () => {
+      /** A quarterly distribution written as the application, at `when`. */
+      const weights = (
+        subjectId: string,
+        quarter: string,
+        rounds: { rating_round: number; rating: boolean },
+        when: Transactions = later,
+      ) =>
+        when.run([north], (transaction) =>
+          transaction
+            .insertInto('subject_quarter_weights')
+            .values({
+              branch_id: north,
+              subject_id: subjectId,
+              quarter_id: quarter,
+              attendance: rounds.rating ? 20 : 30,
+              classwork: rounds.rating ? 20 : 30,
+              homework: rounds.rating ? 20 : 40,
+              rating_exam: rounds.rating ? 40 : null,
+              weights_round: 1,
+              rating_round: rounds.rating_round,
+            })
+            .execute(),
+        );
+
+      it("saves a quarter that a change from a later quarter does not reach in its own rounds, and refuses the subject's current ones there", async () => {
+        const id = await subject(false);
+        // On 20 November, in quarter 2: the rating exam from quarter 3 (rating round 2).
+        await switchRating(id, true, 3, later);
+        await weights(id, quarterOf(north, 2), { rating_round: 1, rating: false });
+        expect((await switchesIn(id, quarterOf(north, 2)))?.rating_round).toBe(1);
+        const current = await refusal(
+          weights(id, quarterOf(north, 3), { rating_round: 1, rating: true }),
+        );
+        expect(current.constraint).toBe('subject_quarter_weights_current_rating_round');
+        await weights(id, quarterOf(north, 3), { rating_round: 2, rating: true });
+        const wrong = await refusal(
+          inBranch(north, (transaction) =>
+            transaction
+              .updateTable('subject_quarter_weights')
+              .set({ rating_round: 2 })
+              .where('subject_id', '=', id)
+              .where('quarter_id', '=', quarterOf(north, 2))
+              .execute(),
+          ),
+        );
+        expect(wrong.constraint).toBe('subject_quarter_weights_current_rating_round');
+      });
+
+      it('keeps a quarter ended before a later change in its rounds, written after it', async () => {
+        const id = await subject(false);
+        await switchRating(id, true, 1, later);
+        // Quarter 1 ended on 31 October: the change of 20 November leaves it.
+        expect(await switchesIn(id, quarterOf(north, 1))).toMatchObject({
+          rating_exam: false,
+          rating_round: 1,
+        });
+        await weights(id, quarterOf(north, 1), { rating_round: 1, rating: false });
+        const counted = await database.migrator
+          .selectFrom('subject_quarter_weights')
+          .select(['rating_round', 'rating_exam'])
+          .where('subject_id', '=', id)
+          .where('quarter_id', '=', quarterOf(north, 1))
+          .executeTakeFirstOrThrow();
+        expect(counted).toEqual({ rating_round: 1, rating_exam: null });
+      });
+    });
+
     it('counts the started quarters with scores in every branch, and none for a change from a later quarter', async () => {
       const id = await subject();
       const { journal, student } = await journalOf(south, id);
@@ -279,7 +374,11 @@ describe('the rating exam and comments in the database', () => {
       expect(await blocked(2)).toEqual({ scores: 0, exams: 0 });
       // The branch filter alone would hide the other branch's row.
       const seen = await inBranch(north, (transaction) =>
-        transaction.selectFrom('journal_rating_entries').select('id').execute(),
+        transaction
+          .selectFrom('journal_rating_entries')
+          .select('id')
+          .where('student_id', '=', student)
+          .execute(),
       );
       expect(seen).toEqual([]);
     });
@@ -392,6 +491,29 @@ describe('the rating exam and comments in the database', () => {
       expect(
         await changeEntry(north, written.id, { kind: 'score', score: 90, reason: 'Late sitting' }),
       ).toEqual({ version: 3 });
+    });
+
+    it('keeps no score on a cleared row (spec review of the code, should-fix 1)', async () => {
+      const scene = await journalOf(north, await subject());
+      const exam = await examRow(north, scene.journal);
+      const kept = await refusal(entry(north, exam, scene.student, { kind: null, score: 40 }));
+      expect(kept.constraint).toBe('journal_rating_entries_score_kind_check');
+    });
+
+    it('takes a reason for one write only: the row keeps none, so the next write needs its own', async () => {
+      const scene = await journalOf(north, await subject());
+      const exam = await examRow(north, scene.journal);
+      const written = await entry(north, exam, scene.student, { score: 40 });
+      await changeEntry(north, written.id, { score: 60, reason: 'Retake' });
+      const row = await database.migrator
+        .selectFrom('journal_rating_entries')
+        .select('reason')
+        .where('id', '=', written.id)
+        .executeTakeFirstOrThrow();
+      expect(row.reason).toBeNull();
+      expect((await refusal(changeEntry(north, written.id, { score: 70 }))).constraint).toBe(
+        'journal_rating_reason',
+      );
     });
 
     it('keeps the histories append-only for the application', async () => {

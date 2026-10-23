@@ -263,6 +263,8 @@ describe('the readers of the rating exam and comments', () => {
         (await calls.get(`/api/journal/journals/${s.journal}`)).body,
       );
       expect(grid.students.map((one) => one.id)).toEqual([s.nurova]);
+      // A group that mixes classes: no averages for the Tutor, the rating exam's neither (edge/journal).
+      expect(grid.bottom).toBeNull();
       expect(grid.rating?.entries.map((one) => one.studentId)).toEqual([s.nurova]);
       expect(grid.students[0]?.comments.map((one) => one.target).sort()).toEqual([
         'note',

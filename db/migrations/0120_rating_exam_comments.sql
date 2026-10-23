@@ -75,6 +75,7 @@ set search_path = pg_catalog, public
 as $$
 declare
   moment timestamptz;
+  from_number smallint;
 begin
   if tg_op = 'INSERT' then
     insert into subject_switches (
@@ -108,7 +109,9 @@ begin
     raise exception 'journal_cell_moment'
       using errcode = 'check_violation', constraint = 'journal_cell_moment';
   end if;
-  if new.switches_from is null
+  -- The quarter this update named, kept by subjects_switches_from (below).
+  from_number := nullif(current_setting('app.switches_from', true), '')::smallint;
+  if from_number is null
     and (new.journal_type <> old.journal_type or new.rating_exam <> old.rating_exam) then
     raise exception 'subject_switches_from'
       using errcode = 'check_violation', constraint = 'subject_switches_from';
@@ -117,7 +120,7 @@ begin
     subject_id, journal_type, rating_exam, weights_round, rating_round, from_quarter, changed_at
   ) values (
     new.id, new.journal_type, new.rating_exam, new.weights_round, new.rating_round,
-    new.switches_from, moment
+    from_number, moment
   );
   return null;
 end;
@@ -126,6 +129,25 @@ $$;
 create trigger subjects_switches_log
   after insert or update of journal_type, rating_exam, weights_round, rating_round on subjects
   for each row execute function subjects_switches_log();
+
+-- The quarter a change names counts for that update only (spec review of the
+-- code, should-fix 2): it moves from the column into a setting of the
+-- transaction and the column is cleared, so a later update that names none
+-- is not logged with an earlier quarter number.
+create function subjects_switches_from() returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+begin
+  perform set_config('app.switches_from', coalesce(new.switches_from::text, ''), true);
+  new.switches_from := null;
+  return new;
+end;
+$$;
+
+create trigger subjects_switches_from
+  before update on subjects
+  for each row execute function subjects_switches_from();
 
 -- The switches in force in a quarter: the newest change whose day (in the
 -- quarter's branch time) is on or before the quarter's last day, and that
@@ -372,8 +394,10 @@ create table journal_rating_entries (
   changed_at timestamptz not null,
   -- Bookkeeping only; no rule reads it.
   created_at timestamptz not null default now(),
-  constraint journal_rating_entries_score_kind_check check ((kind = 'score') = (score is not null)
-    or (kind is null and score is null)),
+  -- A score exactly with the kind "score"; a cleared row holds none.
+  constraint journal_rating_entries_score_kind_check check (
+    (kind is not distinct from 'score') = (score is not null)
+  ),
   constraint journal_rating_entries_exam_fkey foreign key (rating_exam_id, branch_id)
     references journal_rating_exams (id, branch_id),
   constraint journal_rating_entries_student_fkey foreign key (student_id) references students (id),
@@ -419,6 +443,11 @@ begin
         using errcode = 'check_violation', constraint = 'journal_rating_reason';
     end if;
   end if;
+  -- The reason belongs to this write only (spec review of the code, should-fix
+  -- 2): the history takes it from a setting of the transaction, and the row
+  -- keeps none, so the next write over the entry needs its own.
+  perform set_config('app.rating_reason', coalesce(new.reason, ''), true);
+  new.reason := null;
   new.changed_at := moment;
   if new.kind is null then
     return new;
@@ -801,7 +830,8 @@ begin
     new.id, new.version,
     case when tg_op = 'UPDATE' then old.kind end, new.kind,
     case when tg_op = 'UPDATE' then old.score end, new.score,
-    new.reason, new.changed_by, new.changed_how, new.changed_at
+    nullif(current_setting('app.rating_reason', true), ''), new.changed_by, new.changed_how,
+    new.changed_at
   );
   return null;
 end;
@@ -914,9 +944,25 @@ as $$
     join journal_works w on w.lesson_id = l.id
     where w.total is not null or w.not_held
       or exists (select 1 from journal_cells c where c.work_id = w.id and c.score is not null)
+  ), ahead as (
+    -- Every quarter the change reaches, started or not (spec review of the code,
+    -- must-fix 2): a linked exam of a later quarter stands too.
+    select q.id, q.branch_id, q.start_date, q.end_date
+    from quarters q
+    join academic_years y on y.id = q.academic_year_id
+    join branches b on b.id = q.branch_id
+    where q.start_date is not null
+      and q.end_date >= (moment at time zone b.time_zone)::date
+      and (q.number >= from_quarter or y.start_date > (moment at time zone b.time_zone)::date)
+  ), journals_ahead as (
+    select j.id as journal_id, r.id as quarter_id, r.start_date, r.end_date
+    from ahead r
+    join journals j on j.academic_year_id = (select q.academic_year_id from quarters q where q.id = r.id)
+      and j.branch_id = r.branch_id
+    where j.subject_id = subject_ref
   ), linked as (
     select distinct jr.quarter_id
-    from journals_reached jr
+    from journals_ahead jr
     join exam_rating_journals rj on rj.journal_id = jr.journal_id
     join exams e on e.id = rj.exam_id
     where e.rating_exam and e.cancel_cause is null

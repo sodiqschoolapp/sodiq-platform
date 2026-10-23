@@ -13,6 +13,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import { SelectField, TextAreaField } from '@/components/field';
 import { ErrorState, EmptyState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { SUBSECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -212,7 +213,7 @@ function CommentSection({
   const heading = t(`journal.comments.targets.${cell.target}`);
   return (
     <section className="grid gap-2 text-sm" aria-label={heading}>
-      <h3 className="font-semibold">{heading}</h3>
+      <h4 className={SUBSECTION_TITLE}>{heading}</h4>
       <TextAreaField
         label={t('journal.comments.body')}
         value={body}

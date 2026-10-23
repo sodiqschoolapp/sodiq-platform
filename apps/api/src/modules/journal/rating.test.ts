@@ -537,6 +537,158 @@ describe('the rating exam and comments', () => {
         );
       });
     });
+    it('gives the worked example of 07: 20 · 20 · 20 · 40 with 100, 50, 30 and 49 is 55.6, shown 56, grade 3', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const [first = '', second = ''] = s.lessons;
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        for (const lesson of [first, second]) {
+          ok(await present(calls, lesson, s.ahmedov));
+          ok(await present(calls, lesson, s.boboyev));
+        }
+        // A classwork of the first lesson, 5 of 10; a homework given there, checked at the second, 3 of 10.
+        const classwork = workSavedSchema.parse(
+          ok(await calls.post(`/api/journal/lessons/${first}/works`, { kind: 'classwork' })),
+        );
+        const homework = workSavedSchema.parse(
+          ok(await calls.post(`/api/journal/lessons/${first}/works`, { kind: 'homework' })),
+        );
+        for (const [lesson, work] of [
+          [first, classwork],
+          [second, homework],
+        ] as const) {
+          ok(
+            await calls.put(`/api/journal/lessons/${lesson}/works/total`, {
+              column: { workId: work.id },
+              total: 10,
+              version: work.version,
+            }),
+          );
+        }
+        ok(
+          await calls.post(`/api/journal/lessons/${first}/scores`, {
+            saves: [
+              { studentId: s.ahmedov, column: { workId: classwork.id }, score: 5, version: null },
+            ],
+          }),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${second}/scores`, {
+            saves: [
+              { studentId: s.ahmedov, column: { workId: homework.id }, score: 3, version: null },
+            ],
+          }),
+        );
+        ok(await calls.put(`${base(s)}/date`, { date: '2026-10-26', version: null }));
+        for (const [studentId, score] of [
+          [s.ahmedov, 49],
+          [s.boboyev, 51],
+        ] as const) {
+          ok(
+            await calls.post(`${base(s)}/entries`, {
+              studentId,
+              entry: { kind: 'score', score },
+              reason: null,
+              version: null,
+            }),
+          );
+        }
+        const grid = await gridOf(calls, s);
+        expect(grid.students.find((one) => one.id === s.ahmedov)?.quarter).toMatchObject({
+          attendance: 100,
+          classwork: 50,
+          homework: 30,
+          ratingExam: 49,
+          result: { kind: 'number', shown: 56, grade: 3, provisional: false, leftOut: [] },
+        });
+        // The bottom row: the mean of the two entries, from packages/calc.
+        expect(grid.bottom?.quarter.ratingExam).toBe(50);
+      });
+    });
+
+    it('keeps the entries when the date moves or is cleared; with no date no new entry (decision 15)', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const dated = ratingExamSchema.parse(
+          ok(await calls.put(`${base(s)}/date`, { date: '2026-10-26', version: null })),
+        );
+        ok(
+          await calls.post(`${base(s)}/entries`, {
+            studentId: s.ahmedov,
+            entry: { kind: 'score', score: 60 },
+            reason: null,
+            version: null,
+          }),
+        );
+        const moved = ratingExamSchema.parse(
+          ok(await calls.put(`${base(s)}/date`, { date: '2026-10-27', version: dated.version })),
+        );
+        expect(entryOf(moved, s.ahmedov)?.entry).toEqual({ kind: 'score', score: 60 });
+        const cleared = ratingExamSchema.parse(
+          ok(await calls.put(`${base(s)}/date`, { date: null, version: moved.version })),
+        );
+        expect(cleared.date).toBeNull();
+        expect(entryOf(cleared, s.ahmedov)?.entry).toEqual({ kind: 'score', score: 60 });
+        const refused = await calls.post(`${base(s)}/entries`, {
+          studentId: s.boboyev,
+          entry: { kind: 'score', score: 70 },
+          reason: null,
+          version: null,
+        });
+        expect(codeOf(refused)).toBe('rating_exam_no_date');
+      });
+    });
+
+    it('makes a second save of one entry wait for the first and refuses it as stale', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(await calls.put(`${base(s)}/date`, { date: '2026-10-26', version: null }));
+        ok(
+          await calls.post(`${base(s)}/entries`, {
+            studentId: s.ahmedov,
+            entry: { kind: 'score', score: 40 },
+            reason: null,
+            version: null,
+          }),
+        );
+        const answer = await whileHeld(
+          s.branch,
+          async (transaction) => {
+            // What the first save writes: the exam row FOR UPDATE, then the entry.
+            await transaction
+              .selectFrom('journal_rating_exams')
+              .select('id')
+              .where('journal_id', '=', s.journal)
+              .forUpdate()
+              .execute();
+            await t.app.get(Audit).record(transaction, {
+              branchId: s.branch,
+              actorId: owner.account.id,
+              action: 'journal.rating_entry',
+            });
+            await transaction
+              .updateTable('journal_rating_entries')
+              .set({ score: 45, reason: 'Late sitting', changed_by: owner.account.id })
+              .where('student_id', '=', s.ahmedov)
+              .execute();
+          },
+          () =>
+            calls.post(`${base(s)}/entries`, {
+              studentId: s.ahmedov,
+              entry: { kind: 'score', score: 50 },
+              reason: 'Retake',
+              version: 1,
+            }),
+        );
+        expect(codeOf(answer)).toBe('rating_exam_stale');
+        expect(
+          (answer.body as { error: { details: { storedRating?: unknown }[] } }).error.details[0]
+            ?.storedRating,
+        ).toEqual({ entry: { kind: 'score', score: 45 }, version: 2 });
+      });
+    });
   });
 
   describe('who may', () => {

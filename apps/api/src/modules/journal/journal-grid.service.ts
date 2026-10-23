@@ -501,9 +501,8 @@ export class JournalGridReader {
     const comments = await gridComments(transaction, {
       studentIds: students.map((student) => student.id),
       lessonIds: lessons.map((lesson) => lesson.id),
-      // The rating comments only while the grid shows the rating exam.
       ratingExamId:
-        rating === null || !ratingShown
+        rating === null
           ? null
           : ((await this.ratingIdOf(transaction, journal.id, quarter.id)) ?? null),
       shape,
@@ -769,9 +768,11 @@ export class JournalGridReader {
         subject: subjectOf(journal),
         year,
         attendanceOnly,
-        ratingExam: ratingShown,
+        // The column shows while the quarter's switch is on (spec review of the code,
+        // should-fix 3): entries are taken then, with or without the rating weight.
+        ratingExam: ratingOn,
       },
-      rating: ratingShown ? rating : null,
+      rating,
       others,
       years,
       quarters: quarters.map((one) => ({
