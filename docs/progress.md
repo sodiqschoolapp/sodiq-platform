@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 7.3 Master plans
+
+- 0118: `lesson_plan_masters`, `_items`, `_works` (a branch, or none for all branches, under the policy `branch_or_school`; children keyed by `scope_key`), `lesson_plans.master_id`/`master_revision`, `lesson_plan_items.master_item_id`.
+- Routes under `/api/plans/masters` (area `plan_masters`, keepers by the posts in force), the copy from a master (`/copy` with `source.masterId`), `master-compare`, `master-take`, `master-keep` and `/api/plans/parallel`; the comparison and the take are pure (`plan-master-compare.ts`).
+- Pages: Master plans, a master with its rows, "Copy from a master" and "Master updated" on the plan page, Parallel classes.
+- Left out: copying masters into a new year (9.5b); files on masters (decision 7). The browser test was not run locally (the cloud Chromium does not match the pinned Playwright); CI runs it.
+
+The next sessions must know:
+
+- A copy of plan items carries `master_item_id` (`copyItems`, `keepMaster`); a new copy of items does too.
+- Every write of a master goes through `writeOf` (`plan-masters.service.ts`): keeper, lock, revision.
+
 ## 23 October 2026: task 7.2 The plan window and edit requests
 
 - 0117: `lesson_plan_windows` (one per quarter and branch, stored as moments) and `lesson_plan_window_extensions`; requests widened (Text, Re-plan, extension; prepared, sent, approved, refused, void; `open_until` from school days), `lesson_plan_request_lessons`, the event of each cause, `edited_after_lesson` on places, and a plan record for every journal of a graded subject and quarter (trigger on `journals`, backfill).

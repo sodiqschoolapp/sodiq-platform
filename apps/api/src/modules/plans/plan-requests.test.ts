@@ -296,7 +296,10 @@ describe('the plan window and edit requests', () => {
         .select('id')
         .where('branch_id', '=', branch)
         .execute()
-    ).map((row) => row.id);
+    )
+      .map((row) => row.id)
+      // In a fixed order: a partitioned log gives its rows in no set order.
+      .sort();
     return found;
   };
 

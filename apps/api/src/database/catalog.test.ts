@@ -69,6 +69,27 @@ const SCHOOL_WIDE_WITH_BRANCH: Record<string, string> = {
 };
 
 /**
+ * Tables of a branch or of the whole school: a row with a branch is filtered
+ * to it, a row with none is read by every branch. Each has a `branch_id` that
+ * may be empty and references `branches (id)`, row security on and exactly
+ * the policy `branch_or_school` (`BRANCH_OR_SCHOOL_EXPRESSION`). Adding a
+ * name here is a decision for the owner, like the lists above (task 7.3,
+ * decision 1 of pull request #216, Look first).
+ */
+const BRANCH_OR_SCHOOL_TABLES: Record<string, string> = {
+  lesson_plan_masters:
+    'A master plan of a branch, or of all branches when a Senior Head Teacher keeps it (docs/spec/02, Senior Head Teacher: "Can keep a master plan for all branches"); a row holds a subject, a grade, a language, a year, a quarter, a name and revisions, nothing personal.',
+  lesson_plan_master_items:
+    'The items of a master plan, with the branch of their master; a row holds a topic, objectives, links and revisions.',
+  lesson_plan_master_works:
+    'The classworks and homeworks of a master item, with the branch of their master; a row holds a kind, a title and a description.',
+};
+
+/** The policy of a branch-or-school table, as PostgreSQL writes it back. */
+const BRANCH_OR_SCHOOL_EXPRESSION =
+  '((branch_id IS NULL) OR (branch_id = ANY (( SELECT app_branch_ids() AS app_branch_ids)::uuid[])))';
+
+/**
  * The membership filters, each a policy that reads a link table which is
  * itself a branch table, as PostgreSQL writes it back: `staff_membership`
  * through `staff_branches` (owner's answer 2 on pull request #53), and
@@ -319,6 +340,9 @@ interface TableRow {
   policies: number;
   filter_policies: number;
   membership_policy: string | null;
+  either_policies: number;
+  either_using: string | null;
+  either_check: string | null;
   membership_using: string | null;
   membership_check: string | null;
   filter_using: string | null;
@@ -331,6 +355,7 @@ async function tableProblems(
   schoolWide: Record<string, string> = SCHOOL_WIDE_TABLES,
   schoolWideWithBranch: Record<string, string> = SCHOOL_WIDE_WITH_BRANCH,
   membership: typeof MEMBERSHIP_FILTERED_TABLES = MEMBERSHIP_FILTERED_TABLES,
+  branchOrSchool: Record<string, string> = BRANCH_OR_SCHOOL_TABLES,
 ): Promise<string[]> {
   const found = await sql<TableRow>`
     select
@@ -358,6 +383,20 @@ async function tableProblems(
         select pg_get_expr(p.polwithcheck, p.polrelid) from pg_policy p
         where p.polrelid = c.oid and p.polname = 'branch_filter'
       ) as filter_check,
+      (
+        select count(*)::int from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'branch_or_school' and p.polcmd = '*'
+          and p.polpermissive
+          and p.polroles = array[(select oid from pg_roles where rolname = 'sodiq_app')]
+      ) as either_policies,
+      (
+        select pg_get_expr(p.polqual, p.polrelid) from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'branch_or_school'
+      ) as either_using,
+      (
+        select pg_get_expr(p.polwithcheck, p.polrelid) from pg_policy p
+        where p.polrelid = c.oid and p.polname = 'branch_or_school'
+      ) as either_check,
       (
         select p.polname from pg_policy p
         where p.polrelid = c.oid and p.polname <> 'branch_filter' and p.polcmd = '*'
@@ -392,6 +431,32 @@ async function tableProblems(
     const listed = table.name in schoolWide;
     const withBranch = table.name in schoolWideWithBranch;
     const member = membership[table.name];
+    if (table.name in branchOrSchool) {
+      if (listed || withBranch || member !== undefined) {
+        problems.push(`${table.name}: a branch-or-school table is in another list too`);
+      }
+      if (!table.has_branch_id) {
+        problems.push(`${table.name}: a branch-or-school table has no branch_id`);
+        continue;
+      }
+      if (!table.references_branches) {
+        problems.push(`${table.name}: branch_id does not reference branches (id)`);
+      }
+      if (!table.row_security) {
+        problems.push(`${table.name}: row security is off`);
+      }
+      if (
+        table.either_policies !== 1 ||
+        table.policies !== 1 ||
+        squeeze(table.either_using) !== BRANCH_OR_SCHOOL_EXPRESSION ||
+        squeeze(table.either_check) !== BRANCH_OR_SCHOOL_EXPRESSION
+      ) {
+        problems.push(
+          `${table.name}: the branch_or_school policy is missing, not the standard one, or not alone`,
+        );
+      }
+      continue;
+    }
     if (member !== undefined) {
       if (table.has_branch_id) {
         problems.push(`${table.name}: filtered by membership but has branch_id`);
@@ -475,6 +540,11 @@ async function tableProblems(
   for (const name of Object.keys(membership)) {
     if (!names.has(name)) {
       problems.push(`${name}: filtered by membership but does not exist`);
+    }
+  }
+  for (const name of Object.keys(branchOrSchool)) {
+    if (!names.has(name)) {
+      problems.push(`${name}: a branch-or-school table that does not exist`);
     }
   }
   return problems;
@@ -1104,6 +1174,115 @@ describe('the catalog checks', () => {
         ).toEqual([
           'scratch_named: named as school-wide with a branch but has no branch_id',
           'scratch_gone: named as school-wide with a branch but does not exist',
+        ]);
+      });
+    });
+
+    // Task 7.3, decision 1 of pull request #216 (Look first): the master plans.
+    describe('with the list of branch-or-school tables', () => {
+      const eitherAs = (...names: string[]) => ({
+        ...BRANCH_OR_SCHOOL_TABLES,
+        ...Object.fromEntries(names.map((name) => [name, 'Named for this test.'])),
+      });
+      const problemsWith = (...names: string[]) =>
+        tableProblems(
+          database.migrator,
+          SCHOOL_WIDE_TABLES,
+          SCHOOL_WIDE_WITH_BRANCH,
+          MEMBERSHIP_FILTERED_TABLES,
+          eitherAs(...names),
+        );
+      async function eitherPolicy(name: string, expression: string): Promise<void> {
+        await sql
+          .raw(
+            `alter table ${name} enable row level security; ` +
+              `create policy branch_or_school on ${name} for all to sodiq_app ` +
+              `using (${expression}) with check (${expression})`,
+          )
+          .execute(database.migrator);
+      }
+      const STANDARD = 'branch_id is null or branch_id = any ((select app_branch_ids())::uuid[])';
+
+      it('hold exactly the three tables of the master plans', () => {
+        expect(Object.keys(BRANCH_OR_SCHOOL_TABLES)).toEqual([
+          'lesson_plan_masters',
+          'lesson_plan_master_items',
+          'lesson_plan_master_works',
+        ]);
+      });
+
+      it('accept a named table with the standard policy and a branch_id that may be empty', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+        await eitherPolicy('scratch_either', STANDARD);
+
+        expect(await problemsWith('scratch_either')).toEqual([]);
+      });
+
+      it('still name a table whose branch_id may be empty when it is not named', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+        await eitherPolicy('scratch_either', STANDARD);
+
+        expect(await tableProblems(database.migrator)).toContain(
+          'scratch_either: branch_id may be empty',
+        );
+      });
+
+      it('name a named table without the policy, or with row security off', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+
+        expect(await problemsWith('scratch_either')).toEqual([
+          'scratch_either: row security is off',
+          'scratch_either: the branch_or_school policy is missing, not the standard one, or not alone',
+        ]);
+      });
+
+      it('name a named table whose policy lets more through', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+        await eitherPolicy('scratch_either', 'true');
+
+        expect(await problemsWith('scratch_either')).toEqual([
+          'scratch_either: the branch_or_school policy is missing, not the standard one, or not alone',
+        ]);
+      });
+
+      it('name a named table with a second policy', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+        await eitherPolicy('scratch_either', STANDARD);
+        await sql
+          .raw('create policy wide on scratch_either for select to sodiq_app using (true)')
+          .execute(database.migrator);
+
+        expect(await problemsWith('scratch_either')).toEqual([
+          'scratch_either: the branch_or_school policy is missing, not the standard one, or not alone',
+        ]);
+      });
+
+      it('name a named table whose branch_id does not point at a branch, or that has none', async () => {
+        await scratchTable('scratch_either', 'uuid');
+        await eitherPolicy('scratch_either', STANDARD);
+        await scratchTable('scratch_bare', null);
+
+        expect(await problemsWith('scratch_either', 'scratch_bare')).toEqual([
+          'scratch_bare: a branch-or-school table has no branch_id',
+          'scratch_either: branch_id does not reference branches (id)',
+        ]);
+      });
+
+      it('name a named table that is in another list too, and one that does not exist', async () => {
+        await scratchTable('scratch_either', 'uuid references branches (id)');
+        await eitherPolicy('scratch_either', STANDARD);
+
+        expect(
+          await tableProblems(
+            database.migrator,
+            { ...SCHOOL_WIDE_TABLES, scratch_either: 'Listed for this test.' },
+            SCHOOL_WIDE_WITH_BRANCH,
+            MEMBERSHIP_FILTERED_TABLES,
+            eitherAs('scratch_either', 'scratch_gone'),
+          ),
+        ).toEqual([
+          'scratch_either: a branch-or-school table is in another list too',
+          'scratch_gone: a branch-or-school table that does not exist',
         ]);
       });
     });

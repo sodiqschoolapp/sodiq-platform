@@ -692,6 +692,7 @@ export interface LessonPlanItems {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   links: Generated<string[]>;
+  master_item_id: string | null;
   objectives: Generated<string>;
   plan_id: string;
   topic: string;
@@ -704,6 +705,48 @@ export interface LessonPlanJournals {
   laid_at: Timestamp | null;
   plan_id: string;
   quarter_id: string;
+}
+
+export interface LessonPlanMasterItems {
+  added_revision: number;
+  branch_id: string | null;
+  changed_revision: number;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  links: Generated<string[]>;
+  master_id: string;
+  objectives: Generated<string>;
+  position: number;
+  removed_revision: number | null;
+  scope_key: Generated<string>;
+  topic: string;
+}
+
+export interface LessonPlanMasters {
+  archived_at: Timestamp | null;
+  branch_id: string | null;
+  created_at: Generated<Timestamp>;
+  grade: number;
+  id: Generated<string>;
+  language: string;
+  name: string;
+  quarter: number;
+  revision: Generated<number>;
+  scope_key: Generated<string>;
+  start_year: number;
+  subject_id: string;
+}
+
+export interface LessonPlanMasterWorks {
+  branch_id: string | null;
+  created_at: Generated<Timestamp>;
+  description: Generated<string>;
+  id: Generated<string>;
+  item_id: string;
+  kind: string;
+  position: number;
+  scope_key: Generated<string>;
+  title: string;
 }
 
 export interface LessonPlanPlaces {
@@ -774,6 +817,8 @@ export interface LessonPlans {
   branch_id: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  master_id: string | null;
+  master_revision: number | null;
   quarter_id: string;
   shared_unit: string | null;
   subject_id: string;
@@ -1539,6 +1584,9 @@ export interface DB {
   lesson_plan_follow_marks: LessonPlanFollowMarks;
   lesson_plan_items: LessonPlanItems;
   lesson_plan_journals: LessonPlanJournals;
+  lesson_plan_master_items: LessonPlanMasterItems;
+  lesson_plan_master_works: LessonPlanMasterWorks;
+  lesson_plan_masters: LessonPlanMasters;
   lesson_plan_places: LessonPlanPlaces;
   lesson_plan_request_causes: LessonPlanRequestCauses;
   lesson_plan_request_lessons: LessonPlanRequestLessons;

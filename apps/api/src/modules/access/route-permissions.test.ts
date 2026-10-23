@@ -167,6 +167,14 @@ const PLAN_READERS: readonly Role[] = [
 /** The writers of `plans` (task 7.1a, decision 2): the owner in the route; the Super Admin owns none. */
 const PLAN_WRITERS: readonly Role[] = ['super_admin', 'teacher'];
 
+/** Task 7.3, decision 2: who keeps master plans (the keeper of the subject in the route). */
+const PLAN_MASTER_KEEPERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
+
 /** Task 7.2, decision 1: who opens, moves and extends a plan window. */
 const PLAN_WINDOW_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
@@ -768,6 +776,27 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: PLAN_REQUEST_SENDERS,
   },
+  // Task 7.3: master plans, the comparison, take and keep of a plan's master, the parallel classes.
+  'GET /api/plans/masters': { branch: 'request', roles: PLAN_READERS },
+  'POST /api/plans/masters': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'GET /api/plans/masters/:masterId': { branch: 'request', roles: PLAN_READERS },
+  'PATCH /api/plans/masters/:masterId': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'POST /api/plans/masters/:masterId/archive': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'POST /api/plans/masters/:masterId/restore': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'POST /api/plans/masters/:masterId/items': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'PUT /api/plans/masters/:masterId/items/:itemId': {
+    branch: 'request',
+    roles: PLAN_MASTER_KEEPERS,
+  },
+  'POST /api/plans/masters/:masterId/items/:itemId/remove': {
+    branch: 'request',
+    roles: PLAN_MASTER_KEEPERS,
+  },
+  'PUT /api/plans/masters/:masterId/order': { branch: 'request', roles: PLAN_MASTER_KEEPERS },
+  'GET /api/plans/journals/:journalId/master-compare': { branch: 'request', roles: PLAN_READERS },
+  'POST /api/plans/journals/:journalId/master-take': { branch: 'request', roles: PLAN_WRITERS },
+  'POST /api/plans/journals/:journalId/master-keep': { branch: 'request', roles: PLAN_WRITERS },
+  'GET /api/plans/parallel': { branch: 'request', roles: PLAN_READERS },
   // Task 5.9b: the teaching home page, own lessons only (teaching-home.test.ts).
   'GET /api/timetable/home': { branch: 'request', roles: VIEW_READERS },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.

@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/lib/dates';
+import { CopyMasterDialog } from './plan-master-updated';
 import { copyPlan, invalidatePlans, plansQuery, separatePlan, sharePlan } from './plans-api';
 
 /**
@@ -40,7 +41,7 @@ import { copyPlan, invalidatePlans, plansQuery, separatePlan, sharePlan } from '
 /** The actions of the owner on the plan: share, copy. */
 export function SharingActions({ plan }: { plan: Plan }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState<'share' | 'copy' | null>(null);
+  const [open, setOpen] = useState<'share' | 'copy' | 'master' | null>(null);
   if (!plan.canEdit) return null;
   return (
     <div className="flex flex-wrap gap-2">
@@ -62,8 +63,25 @@ export function SharingActions({ plan }: { plan: Plan }) {
       >
         {t('plans.share.copy')}
       </Button>
+      {/* Task 7.3: a copy of a master (`09`: "A teacher creates a plan as a copy of the master"). */}
+      <Button
+        variant="secondary"
+        onClick={() => {
+          setOpen('master');
+        }}
+      >
+        {t('plans.masterCopy.open')}
+      </Button>
       {open === 'share' && (
         <ShareDialog
+          plan={plan}
+          onClose={() => {
+            setOpen(null);
+          }}
+        />
+      )}
+      {open === 'master' && (
+        <CopyMasterDialog
           plan={plan}
           onClose={() => {
             setOpen(null);

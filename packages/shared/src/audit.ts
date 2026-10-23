@@ -292,6 +292,19 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.request_finish',
     'plan.request_void',
     'plan.queue_edit',
+    // Task 7.3: a master plan created, renamed, archived, restored; an item of it created,
+    // changed or removed, its order changed (the master's history); a plan took the changes of
+    // its master or kept itself as it is.
+    'plan_master.create',
+    'plan_master.rename',
+    'plan_master.archive',
+    'plan_master.restore',
+    'plan_master.item_create',
+    'plan_master.item_edit',
+    'plan_master.item_remove',
+    'plan_master.order',
+    'plan.master_taken',
+    'plan.master_kept',
   ],
   exports: [
     'building.export',

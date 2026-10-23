@@ -54,19 +54,22 @@ export async function unitKeysOf(
  * Copies items into a plan (decisions 10 and 16): topic, objectives, links,
  * works and the files not removed, each copy naming what it was made from (a
  * file names the first file whose bytes it shows). Gives the new item of each
- * source item, in the order given.
+ * source item, in the order given. Task 7.3 (decision 11): the master item an
+ * item was copied from goes with it, unless `keepMaster` is false (the
+ * target plan does not keep the master link).
  */
 export async function copyItems(
   transaction: Transaction,
   branchId: string,
   planId: string,
   itemIds: readonly string[],
+  keepMaster = true,
 ): Promise<Map<string, string>> {
   const made = new Map<string, string>();
   if (itemIds.length === 0) return made;
   const items = await transaction
     .selectFrom('lesson_plan_items')
-    .select(['id', 'topic', 'objectives', 'links'])
+    .select(['id', 'topic', 'objectives', 'links', 'master_item_id'])
     .where('id', 'in', [...itemIds])
     .execute();
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -82,6 +85,7 @@ export async function copyItems(
         objectives: source.objectives,
         links: source.links,
         copied_from: source.id,
+        master_item_id: keepMaster ? source.master_item_id : null,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -151,12 +155,19 @@ export async function separateJournal(
 ): Promise<{ planId: string; items: number }> {
   const plan = await transaction
     .selectFrom('lesson_plans')
-    .select(['quarter_id', 'subject_id'])
+    .select(['quarter_id', 'subject_id', 'master_id', 'master_revision'])
     .where('id', '=', planId)
     .executeTakeFirstOrThrow();
+  // Task 7.3, decision 11: the separated plan keeps the master link.
   const created = await transaction
     .insertInto('lesson_plans')
-    .values({ branch_id: branchId, quarter_id: plan.quarter_id, subject_id: plan.subject_id })
+    .values({
+      branch_id: branchId,
+      quarter_id: plan.quarter_id,
+      subject_id: plan.subject_id,
+      master_id: plan.master_id,
+      master_revision: plan.master_revision,
+    })
     .returning('id')
     .executeTakeFirstOrThrow();
   const places = await transaction
@@ -208,4 +219,86 @@ export async function separateJournal(
       .execute();
   }
   return { planId: created.id, items: places.length };
+}
+
+/** A master item's content as a plan item takes it (task 7.3). */
+export interface MasterContentRow {
+  readonly id: string;
+  readonly topic: string;
+  readonly objectives: string;
+  readonly links: readonly string[];
+  readonly classworks: readonly { title: string; description: string }[];
+  readonly homeworks: readonly { title: string; description: string }[];
+}
+
+async function insertWorksFrom(
+  transaction: Transaction,
+  branchId: string,
+  itemId: string,
+  source: MasterContentRow,
+): Promise<void> {
+  const works = [
+    ...source.classworks.map((work, index) => ({ kind: 'classwork', work, index })),
+    ...source.homeworks.map((work, index) => ({ kind: 'homework', work, index })),
+  ];
+  if (works.length === 0) return;
+  await transaction
+    .insertInto('lesson_plan_works')
+    .values(
+      works.map(({ kind, work, index }) => ({
+        branch_id: branchId,
+        item_id: itemId,
+        kind,
+        position: index + 1,
+        title: work.title,
+        description: work.description,
+      })),
+    )
+    .execute();
+}
+
+/**
+ * Task 7.3 (decision 10): a plan item made from a master item, naming it
+ * (`master_item_id`), with its works; the caller places it. Gives its id.
+ */
+export async function insertFromMaster(
+  transaction: Transaction,
+  branchId: string,
+  planId: string,
+  source: MasterContentRow,
+): Promise<string> {
+  const item = await transaction
+    .insertInto('lesson_plan_items')
+    .values({
+      branch_id: branchId,
+      plan_id: planId,
+      topic: source.topic,
+      objectives: source.objectives,
+      links: [...source.links],
+      master_item_id: source.id,
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  await insertWorksFrom(transaction, branchId, item.id, source);
+  return item.id;
+}
+
+/**
+ * Task 7.3 (decision 6): a plan item takes the content of its master item:
+ * topic, objectives, links and its works, replaced as a whole (a row not
+ * started has no numbers).
+ */
+export async function takeFromMaster(
+  transaction: Transaction,
+  branchId: string,
+  itemId: string,
+  source: MasterContentRow,
+): Promise<void> {
+  await transaction
+    .updateTable('lesson_plan_items')
+    .set({ topic: source.topic, objectives: source.objectives, links: [...source.links] })
+    .where('id', '=', itemId)
+    .execute();
+  await transaction.deleteFrom('lesson_plan_works').where('item_id', '=', itemId).execute();
+  await insertWorksFrom(transaction, branchId, itemId, source);
 }

@@ -1051,7 +1051,7 @@ How to read the task lines:
   - From 7.1b (pull request #213, decisions 2, 4 and 10): the requests the system prepares are stored (`lesson_plan_requests`, status `prepared`, kind `replan`, their causes in `lesson_plan_request_causes`, 0115; `PlanFollow`, `apps/api/src/modules/plans/plan-follow.ts`); this task sends, routes and approves them, approves together by event (`09`, "Approving together"), and decides what a prepared request whose cause went away (a day off removed) becomes at the window's end (decision 10: it stays with its causes until then).
   - From 7.1c (pull request #214, decisions 4 and 7): `edge/lesson-plans`, How items stay attached: "Joining is allowed only inside the window" (the share, `POST /api/plans/journals/:journalId/share`, `plan-sharing.service.ts`, refuses outside it) and "A teacher who shares a plan between two classes loses one of them": "The earlier teacher's open periods on it end" (the separation in the follow, `PlanFollow.separateShared`, ends them).
 
-- [ ] **7.3 Master plans**
+- [x] **7.3 Master plans** (pull request #216)
   - Read: `09` (Master plans), `edge/lesson-plans`.
   - Build: masters per subject, grade, language and quarter; copy to a class; the "master updated" comparison; a Senior Head Teacher's master for all branches.
   - Done when: a copied plan is independent of its master.
@@ -1323,6 +1323,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - Done when: a second run of rollover only shows the plan.
   - From 2.1 (pull request #52): `edge/academic-year`, "What does rollover copy?": "Copied as drafts to confirm: ... subject weights for the new quarters"; the quarterly distributions of the branch, in the subject's current round.
   - From 4.3 (pull request #104, row table): reads `edge/exemptions`, "A surgery exemption runs from May to September": the rollover lists exemptions still in force as "to renew".
+  - From 7.3 (pull request #216, decision 4): `09`, Master plans, "New year. Masters are copied into the new academic year." and `edge/academic-year`, "What does rollover copy?": "Copied as drafts to confirm: ... master plans". A master belongs to a year by its start year and to a quarter by its number (`lesson_plan_masters.start_year`, `quarter`, 0118); a master of all branches has no branch. A draft state of a master is this task's to add.
   - From 3.6b-2 (pull request #120, decision 12): a student may already sit in a class of the next year through a scheduled return or restore dated its first day (L170); the rollover plan reads those rows as placed and does not place the student again.
 
 - [ ] **9.5c Starting a year and the full-year simulation**

@@ -119,3 +119,64 @@ test('after the window the teacher asks to edit, the Head Teacher approves, and 
   await form.getByRole('button', { name: en.form.save }).click();
   await expect(rows.nth(0)).toContainText('Pie charts');
 });
+
+// docs/spec/09-lesson-plans.md, Master plans: "A Head Teacher can keep a master
+// plan for one of their subjects, a grade, a language of instruction and a
+// quarter ... A teacher creates a plan as a copy of the master. Its items fill
+// the rows of the class in order." (task 7.3). The "Masters browser test branch"
+// holds 7 Harvard with two lessons of Planning M and a Head Teacher of it. All
+// names are invented.
+test('the Head Teacher writes a master, and the teacher copies it into the plan', async ({
+  page,
+  browser,
+}) => {
+  const head = accountOf('mastersHead');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, head.login, head.password);
+  await changeFirstPassword(page, en, head);
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await page.goto('/plans/masters');
+  await expect(heading(page, en.plans.masters.title)).toBeVisible();
+  await page.getByRole('button', { name: en.plans.masters.add }).first().click();
+  const create = page.getByRole('form', { name: en.plans.masters.newTitle });
+  await create.getByRole('combobox', { name: en.plans.masters.quarter }).selectOption('1');
+  await create.getByRole('textbox', { name: en.plans.masters.name }).fill('Core');
+  await create.getByRole('button', { name: en.form.save }).click();
+  await expect(heading(page, 'Core')).toBeVisible();
+  for (const topic of ['Collecting data', 'Bar charts']) {
+    await page.getByRole('button', { name: en.plans.master.addItem }).first().click();
+    const form = page.getByRole('form', { name: en.plans.master.addItem });
+    await form.getByRole('textbox', { name: en.plans.plan.topic }).fill(topic);
+    await form.getByRole('button', { name: en.form.save }).click();
+    await expect(page.locator('tbody tr').filter({ hasText: topic })).toHaveCount(1);
+  }
+
+  const other = await browser.newContext();
+  const teacherPage = await other.newPage();
+  const teacher = accountOf('mastersTeacher');
+  await teacherPage.goto('/sign-in');
+  await languageChooser(teacherPage).selectOption('en');
+  await signIn(teacherPage, en, teacher.login, teacher.password);
+  await changeFirstPassword(teacherPage, en, teacher);
+  await teacherPage.goto('/plans');
+  await teacherPage
+    .locator('tbody tr')
+    .filter({ hasText: '7 Harvard' })
+    .getByRole('button')
+    .first()
+    .click();
+  await expect(heading(teacherPage, '7 Harvard · Planning M')).toBeVisible();
+  await teacherPage.getByRole('button', { name: en.plans.masterCopy.open }).click();
+  const copy = teacherPage.getByRole('form', { name: en.plans.masterCopy.title });
+  await copy.getByRole('combobox', { name: en.plans.masterCopy.master }).selectOption({ index: 1 });
+  await copy.getByRole('button', { name: en.plans.share.copySend }).click();
+  await expect(copy).toHaveCount(0);
+  const rows = teacherPage.locator('tbody tr');
+  await expect(rows.nth(0)).toContainText('Collecting data');
+  await expect(rows.nth(1)).toContainText('Bar charts');
+  await expect(
+    teacherPage.getByRole('region', { name: 'Copied from the master "Core"' }),
+  ).toBeVisible();
+  await other.close();
+});
