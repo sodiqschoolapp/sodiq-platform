@@ -667,15 +667,20 @@ export const en = {
     plan_file_type: 'Choose a PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4 file.',
     plan_attendance_only: 'This subject is attendance only and has no lesson plan.',
     plan_year_closed: 'This academic year is closed, so its plans cannot change.',
-    plan_share_language: 'A plan can be shared only by classes or groups with the same language of instruction.',
-    plan_share_grade: 'A plan can be shared only by classes of one grade, or by groups of the same grades.',
-    plan_share_kind: 'A class and a group cannot share a plan. Share classes with classes, groups with groups.',
+    plan_share_language:
+      'A plan can be shared only by classes or groups with the same language of instruction.',
+    plan_share_grade:
+      'A plan can be shared only by classes of one grade, or by groups of the same grades.',
+    plan_share_kind:
+      'A class and a group cannot share a plan. Share classes with classes, groups with groups.',
     plan_share_subject: 'Only plans of the same subject can be shared.',
     plan_share_year: 'Only plans of the same academic year can be shared.',
     plan_share_same: 'This class or group already shares this plan.',
-    plan_share_has_items: 'The plan of that class or group already has items. Clear its rows first, then share.',
+    plan_share_has_items:
+      'The plan of that class or group already has items. Clear its rows first, then share.',
     plan_not_shared: 'This plan is not shared with another class or group.',
-    plan_not_empty: 'This plan already has items on lessons not yet held. Clear those rows first, then copy.',
+    plan_not_empty:
+      'This plan already has items on lessons not yet held. Clear those rows first, then copy.',
     plan_copy_subject: 'A plan can be copied only from a plan of the same subject.',
     plan_copy_grade: 'A plan can be copied only from a plan of the same grade.',
     plan_copy_same: 'Choose another plan to copy from: this is the same plan.',

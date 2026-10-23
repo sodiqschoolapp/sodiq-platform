@@ -175,7 +175,8 @@ export class PlanFollow implements OnModuleInit {
       links = await linksOf();
     }
     const byPlan = new Map<string, string[]>();
-    for (const row of links) byPlan.set(row.plan_id, [...(byPlan.get(row.plan_id) ?? []), row.journal_id]);
+    for (const row of links)
+      byPlan.set(row.plan_id, [...(byPlan.get(row.plan_id) ?? []), row.journal_id]);
     const shared = [...byPlan].filter(([, members]) => members.length > 1);
     if (shared.length === 0) return [];
     const { timeZone, now } = await this.clockOf(transaction, branchId);

@@ -678,15 +678,20 @@ export const uz: Texts<'one' | 'other'> = {
     plan_file_type: 'PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 yoki MP4 fayl tanlang.',
     plan_attendance_only: 'Bu fanda faqat davomat yuritiladi, dars rejasi yoʻq.',
     plan_year_closed: 'Oʻquv yili yopilgan, uning rejalarini oʻzgartirib boʻlmaydi.',
-    plan_share_language: 'Reja faqat taʼlim tili bir xil boʻlgan sinflar yoki guruhlar orasida umumiy boʻlishi mumkin.',
-    plan_share_grade: 'Reja faqat bitta sinf darajasidagi sinflar yoki bir xil darajadagi guruhlar orasida umumiy boʻlishi mumkin.',
-    plan_share_kind: 'Sinf va guruh bitta rejani boʻlisha olmaydi. Sinflarni sinflar bilan, guruhlarni guruhlar bilan boʻlishing.',
+    plan_share_language:
+      'Reja faqat taʼlim tili bir xil boʻlgan sinflar yoki guruhlar orasida umumiy boʻlishi mumkin.',
+    plan_share_grade:
+      'Reja faqat bitta sinf darajasidagi sinflar yoki bir xil darajadagi guruhlar orasida umumiy boʻlishi mumkin.',
+    plan_share_kind:
+      'Sinf va guruh bitta rejani boʻlisha olmaydi. Sinflarni sinflar bilan, guruhlarni guruhlar bilan boʻlishing.',
     plan_share_subject: 'Faqat bir xil fan rejalarini boʻlishish mumkin.',
     plan_share_year: 'Faqat bir oʻquv yilidagi rejalarni boʻlishish mumkin.',
     plan_share_same: 'Bu sinf yoki guruh ushbu rejani allaqachon boʻlishgan.',
-    plan_share_has_items: 'Ushbu sinf yoki guruh rejasida allaqachon mavzular bor. Avval qatorlarni tozalang, keyin boʻlishing.',
+    plan_share_has_items:
+      'Ushbu sinf yoki guruh rejasida allaqachon mavzular bor. Avval qatorlarni tozalang, keyin boʻlishing.',
     plan_not_shared: 'Bu reja boshqa sinf yoki guruh bilan boʻlishilmagan.',
-    plan_not_empty: 'Bu rejada hali oʻtilmagan darslarda mavzular bor. Avval oʻsha qatorlarni tozalang, keyin nusxa oling.',
+    plan_not_empty:
+      'Bu rejada hali oʻtilmagan darslarda mavzular bor. Avval oʻsha qatorlarni tozalang, keyin nusxa oling.',
     plan_copy_subject: 'Rejani faqat shu fan rejasidan nusxalash mumkin.',
     plan_copy_grade: 'Rejani faqat shu sinf darajasidagi rejadan nusxalash mumkin.',
     plan_copy_same: 'Nusxalash uchun boshqa rejani tanlang: bu oʻsha reja.',

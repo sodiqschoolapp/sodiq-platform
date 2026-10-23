@@ -46,7 +46,7 @@ export function SharingActions({ plan }: { plan: Plan }) {
     <div className="flex flex-wrap gap-2">
       {plan.shareCandidates.length > 0 && (
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={() => {
             setOpen('share');
           }}
@@ -55,7 +55,7 @@ export function SharingActions({ plan }: { plan: Plan }) {
         </Button>
       )}
       <Button
-        variant="outline"
+        variant="secondary"
         onClick={() => {
           setOpen('copy');
         }}
@@ -124,7 +124,7 @@ export function SharedWith({ plan }: { plan: Plan }) {
       {plan.canEdit && (
         <div>
           <Button
-            variant="outline"
+            variant="secondary"
             disabled={separate.isPending}
             onClick={() => {
               void (async () => {
