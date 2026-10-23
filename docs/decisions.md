@@ -289,6 +289,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 23 October 2026: the plan window and edit requests (task 7.2)
+
+Plan approved on pull request #215 with corrections 1 to 5; decisions 1 to 23 confirmed or added there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new permission area). `plan_windows` (view: the six readers of plans; create and edit: the Academic Vice Principal, the Super Admin) and `plan_requests` (view: the six; create: the Teacher, the Super Admin by `checkTable`; edit: the Head Teacher, the Senior Head Teacher, the Academic Vice Principal, the Super Admin); the routing in the route (`plan-request-routing.ts`) | Decision 1; `02`, the roles table and "Who approves" |
+| **Look first** (tests changed because the requirement changed). The plan tests open a window first (`openPlanWindows`); "makes one plan on the first write" became "writes into the plan the journal has", the same-moment "two first writes make one plan" became "one item"; database and real-size fixtures read the plan records the journal trigger made instead of inserting plans | Decisions 2 and 21: "Inside the window teachers create and edit freely"; "A plan record exists for every journal and quarter ... from the moment the journal exists" |
+| **Look first** (constraints widened because the requirement changed). 0117 replaces `lesson_plan_requests_kind_check` and `_status_check` and the causes' kind check of 0115 (three kinds, five statuses, `journal_added`, `window_end`); `from_date` nullable | Review decision 3 |
+| **Look first** (a spec text that should change). The request of the window's end is Re-plan from the first row not started plus Text on every started row with no topic. Proposed `/spec-change` of `edge/lesson-plans`, "A request for two lessons turns into merging topics": "Requests prepared by the system are Re-plan; the one prepared at the window's end also lists, for Text, the lessons already held that have no topic." | Review decision 4 |
+| A late extension is one approved request of kind `extension` per plan the teacher owns, decided by the Academic Vice Principal, open until the given end; an extension must end later than the end in force | Review decision 5 |
+| The queue edit (insert, delete, merge, reorder) is one route over the order from the first row not started; in a shared plan laid per journal | Review decision 6 |
+| Days are school days from the approval day (counted when one); a period ends at 23:59:59.999 branch time of its last day; a window opens at 00:00 of its first day and ends at 23:59:59.999 of its last | Review decisions 7 and 8 |
+| The window opens only when a published version starts on or before the quarter's first school day; the confirmation counts the rows with no item dated on or before the window's last day (`planRows`) | Review decisions 9 and 10 |
+| A request names lessons by id with their date; Text covers wording and a create on its lessons, Re-plan covers create, clear and the queue from its first lesson on rows not started; a request is asked whenever the owner's window is not open | Review decisions 11 to 13 |
+| The window's end request is worked out on read and stored when sent or decided, named by a cause `window_end`; an approver may decide it without its being sent | Review decisions 14 and 15; correction 2 |
+| Approve by event approves each waiting request with a cause of the event, whole; "late" is 2 school days after the send; a separation or a change of owner ends the earlier owner's periods and voids their sent requests | Review decisions 16 to 18; correction 4 |
+| A prepared request whose causes went away stays prepared; the quarter's close makes waiting requests void (9.2b) | Review decision 22 |
+| **Build decision.** A window may start before its quarter's first day (only its end is held to the quarter) | `edge`: "The quarter 1 timetable is published two days before lessons start" |
+| **Build decision.** The plan records the journal trigger makes are covered by the audit entry of the change that made the journal; a write no longer writes `plan.create` | The records are part of the journal |
+| **Build decision.** `journal_added` is raised only for a plan link made in the transaction (its `created_at` = `now()`), when the window had ended for the owner of its first row not started | Spec review of the code, should-fix 7 |
+| **Build decision.** The flag "vacancy" is read from the owner's kind on the reference date (`none`); a journal that does not run yet that day is no vacancy | A subject added from a later date has no owner before its first lesson |
+| **Build decision.** The edit requests of a plan are shown to its owner, the whole-branch roles and the Head Teachers of its subject; the Principal sees the requests to decide read only | Permission review of the code, should-fixes 3 and 7 |
+| **Build decision.** An extension of one's own window is refused `own_request`, before and after the window's end | Permission review of the code, must-fix 1; `02`, "Own requests" |
+| **Build decision.** A lesson id in a request body that is not of the branch is 404; one of the branch that is no row of the plan is `plan_request_lesson_unknown` | Permission review of the code, should-fix 5 |
+
 ## 23 October 2026: shared plans (task 7.1c)
 
 Plan approved on pull request #214 with corrections 1 and 2; decisions 1 to 8 and 10 to 18 confirmed there, decision 9 changed. Flagged on issue #42.
