@@ -80,6 +80,14 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await page.keyboard.press('Enter');
   await expect(cell).toContainText('15');
   await expect(cell).toContainText('75%');
+  // The lesson has no plan item ("No plan"): a classwork is added by hand.
+  const before = await page.getByRole('button', { name: /^Work: / }).count();
+  await page.getByRole('button', { name: en.journal.works.button, exact: true }).last().click();
+  const works = page.getByRole('dialog');
+  await expect(works).toContainText(en.journal.works.noPlan);
+  await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();
+  await works.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Work: / })).toHaveCount(before + 1);
 
   // Lesson mode for today's lesson.
   await page

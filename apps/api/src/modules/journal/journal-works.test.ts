@@ -778,6 +778,118 @@ describe('classwork and homework', () => {
     });
   });
 
+  describe('the carry and the end of the journal (code review, must-fixes 1 and 2)', () => {
+    it('refuses a carry with numbers and one with no lesson left to check it, and keeps the homework', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const read = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+              column: planned(item.homeworks[0] ?? '', s.first),
+              total: 5,
+              version: null,
+            }),
+          ),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/scores`, {
+            saves: [{ studentId: s.ahmedov, column: { workId: read.id }, score: 4, version: null }],
+          }),
+        );
+        const scored = await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
+          column: { workId: read.id },
+          version: read.version,
+        });
+        expect(codeOf(scored)).toBe('work_holds_numbers');
+      });
+      // Every lesson after the 19th is cancelled: none is left to check "Write".
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Quarantine' })
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '>', '2026-10-19')
+        .execute();
+      await as(owner, s.branch, [], async (calls) => {
+        const write = planned(item.homeworks[1] ?? '', s.first);
+        const totalled = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+              column: write,
+              total: 3,
+              version: null,
+            }),
+          ),
+        );
+        const refused = await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
+          column: { workId: totalled.id },
+          version: totalled.version,
+        });
+        expect(codeOf(refused)).toBe('no_next_lesson');
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.second).works.map((one) => [one.title, one.total])).toEqual([
+          ['Read', 5],
+          ['Write', 3],
+        ]);
+      });
+    });
+
+    it('labels the homework of the last lesson "will not be graded", and of a closed journal "not checked, group closed"', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.third, { homeworks: ['Revise'] });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Quarantine' })
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '>', '2026-10-26')
+        .execute();
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).given).toEqual([
+          { title: 'Revise', checkAt: null, ungraded: 'year_end' },
+        ]);
+      });
+      // The journal runs no day after the 26th (7.1b decision 9).
+      await t.database.migrator
+        .updateTable('journals')
+        .set({ runs: '{[2026-09-01,2026-10-27)}' })
+        .where('id', '=', s.journal)
+        .execute();
+      await as(owner, s.branch, [], async (calls) => {
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).given[0]?.ungraded).toBe('group_closed');
+      });
+    });
+
+    it('keeps a homework given by hand when its future check lesson is removed by a version change', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const given = await as(owner, s.branch, teacherIn(s), async (calls) =>
+        workSavedSchema.parse(
+          ok(await calls.post(`/api/journal/lessons/${s.third}/works`, { kind: 'homework' })),
+        ),
+      );
+      // The 9 November lesson goes as a version change removes a lesson with no data.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+        await transaction.deleteFrom('lessons').where('id', '=', s.fourth).execute();
+      });
+      const row = await t.database.migrator
+        .selectFrom('journal_works')
+        .select(['lesson_id', 'source_lesson_id'])
+        .where('id', '=', given.id)
+        .executeTakeFirst();
+      expect(row).toEqual({ lesson_id: s.third, source_lesson_id: s.third });
+      await as(owner, s.branch, [], async (calls) => {
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).given.map((one) => one.checkAt)).not.toContain(s.fourth);
+        expect(lessonIn(grid, s.third).given).toHaveLength(1);
+      });
+    });
+  });
+
   describe('keep or clear (From 6.3, decision 14)', () => {
     it('asks keep or clear when present becomes absent with numbers, keeps or clears them, and refuses the field elsewhere', async () => {
       const owner = await account();

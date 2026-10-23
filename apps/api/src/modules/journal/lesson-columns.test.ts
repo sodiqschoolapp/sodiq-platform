@@ -232,6 +232,45 @@ describe('lessonColumns', () => {
     expect(run(input).get('L2')?.given[0]?.checkAt).toBeNull();
   });
 
+  // Code review, must-fix 1: a homework with a total and no check lesson left stays visible.
+  it('keeps a homework with a total at its own lesson when no lesson after it can check it, and lists an empty one as given only', () => {
+    const totalled = stored('w1', {
+      kind: 'homework',
+      lessonId: 'L2',
+      sourceLessonId: 'L1',
+      planWorkId: 'h1',
+      total: 5,
+    });
+    const carried = stored('w2', {
+      kind: 'homework',
+      lessonId: 'L3',
+      sourceLessonId: 'L1',
+      planWorkId: 'h2',
+      carriedFromLessonId: 'L3',
+      notHeld: false,
+      total: 3,
+    });
+    const empty = stored('w3', { kind: 'homework', lessonId: 'L3', sourceLessonId: 'L3' });
+    const columns = run({
+      lessons: [
+        lesson(1),
+        lesson(2, { cancelled: true }),
+        lesson(3),
+        lesson(4, { cancelled: true }),
+      ],
+      planned: new Map([['L1', [hw('h1'), hw('h2')]]]),
+      stored: [totalled, carried, empty],
+    });
+    // The check lesson of L1's homework is L3; the carry from L3 has no lesson after it.
+    expect(columns.get('L3')?.columns.map((one) => one.workId)).toEqual(['w1', 'w2']);
+    expect(columns.get('L2')?.columns).toEqual([]);
+    expect(columns.get('L3')?.given.map((one) => [one.workId, one.ungraded])).toEqual([
+      ['w3', 'year_end'],
+    ]);
+    expect(columns.get('L3')?.next).toBeNull();
+    expect(columns.get('L1')?.next).toBe('L3');
+  });
+
   it('shows a future lesson its columns', () => {
     const columns = run({
       lessons: [lesson(10), lesson(11)],

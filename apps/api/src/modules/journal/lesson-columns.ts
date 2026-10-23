@@ -104,6 +104,8 @@ export interface LessonColumns {
   readonly given: readonly GivenHomework[];
   /** The lesson whose homeworks are this lesson's homework columns. */
   readonly source: string | null;
+  /** The next lesson that checks homework given here: not cancelled, not "started but not held". */
+  readonly next: string | null;
 }
 
 export interface ColumnsInput {
@@ -152,14 +154,22 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
     return lesson !== undefined && eligible(lesson);
   };
 
-  /** Where a stored row is shown; `null` for a homework with no check lesson. */
+  /**
+   * Where a stored row is shown; `null` only for an empty homework with no check lesson,
+   * which is listed with "will not be graded" at the lesson where it was given. A row
+   * with a total or "not held" and no check lesson stays at its own lesson (code review,
+   * must-fix 1): nothing set ever leaves the grid.
+   */
   const shownAt = (row: StoredWork): string | null => {
     if (row.kind !== 'homework' || row.hasNumbers) return row.lessonId;
-    if (row.carriedFromLessonId !== null) return nextOf(row.carriedFromLessonId);
-    if (row.sourceLessonId !== null && isEligible(row.sourceLessonId)) {
-      return nextOf(row.sourceLessonId);
+    const held = row.total !== null || row.notHeld;
+    let check: string | null = row.lessonId;
+    if (row.carriedFromLessonId !== null) check = nextOf(row.carriedFromLessonId);
+    else if (row.sourceLessonId !== null && isEligible(row.sourceLessonId)) {
+      check = nextOf(row.sourceLessonId);
     }
-    return row.lessonId;
+    if (check !== null) return check;
+    return held ? row.lessonId : null;
   };
 
   const storedAt = new Map<string, StoredWork[]>();
@@ -287,6 +297,7 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       notHeld: numbered(all.filter((column) => column.notHeld)),
       given,
       source,
+      next: nextOf(lesson.id),
     });
   }
   return result;

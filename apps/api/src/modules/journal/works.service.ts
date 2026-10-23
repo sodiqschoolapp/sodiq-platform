@@ -11,7 +11,7 @@ import {
   type WorkSaved,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -122,6 +122,19 @@ async function numbersOf(
 
 const percentOf = (score: number, total: number | null): number | null =>
   total === null || score > total ? null : Number(shownPercent(score, total));
+
+/** The branch's time zone and the transaction's moment. */
+async function clockAt(
+  transaction: Transaction,
+  branchId: string,
+): Promise<{ timeZone: string; now: Date }> {
+  const branch = await transaction
+    .selectFrom('branches')
+    .select('time_zone')
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
+  return { timeZone: branch.time_zone, now: await transactionMoment(transaction) };
+}
 
 @Injectable()
 export class WorksService {
@@ -246,9 +259,9 @@ export class WorksService {
     scene: Scene,
     column: Column,
     version: number | null | undefined,
-  ): Promise<{ row: WorkRow; written: boolean }> {
+  ): Promise<{ row: WorkRow; moved: boolean }> {
     let row: WorkRow | undefined;
-    let written = false;
+    let moved = false;
     if (column.workId === null) {
       if (column.planWorkId === null || column.sourceLessonId === null) {
         throw new ApiException('work_not_in_lesson', 409);
@@ -271,7 +284,14 @@ export class WorksService {
             .doNothing(),
         )
         .returning(WORK_COLUMNS)
-        .executeTakeFirst();
+        .executeTakeFirst()
+        .catch((error: unknown) => {
+          const failure = error as { code?: unknown; constraint?: unknown };
+          if (failure.code === '23503' && failure.constraint === 'journal_works_plan_work_fkey') {
+            throw new ApiException('work_not_in_lesson', 409);
+          }
+          throw error;
+        });
       if (row === undefined) {
         const stored = await transaction
           .selectFrom('journal_works')
@@ -282,8 +302,6 @@ export class WorksService {
           .executeTakeFirst();
         if (version !== undefined || stored === undefined) throw this.stale(stored);
         row = stored;
-      } else {
-        written = true;
       }
     } else {
       row = await transaction
@@ -309,10 +327,10 @@ export class WorksService {
         } catch (error) {
           mapWorkRefusal(error);
         }
-        written = true;
+        moved = true;
       }
     }
-    return { row, written };
+    return { row, moved };
   }
 
   private stale(stored: WorkRow | undefined): ApiException {
@@ -342,12 +360,15 @@ export class WorksService {
   add(access: Access, lessonId: string, input: WorkAdd, requestId?: string): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const scene = await this.sceneOf(transaction, access, lessonId, requestId);
-      const own = scene.columns.columns.get(scene.lesson.id);
-      if (own?.planItem !== false) throw new ApiException('lesson_has_plan_item', 409);
-      // The lock of `journal_works_limit` (0119), taken before the free place is read.
+      // The lock of `journal_works_limit` (0119), which the takeover of a plan item takes too
+      // (code review, should-fix 3): the plan item and the free place are read after it.
       await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${scene.lesson.id}`}, 0))`.execute(
         transaction,
       );
+      const { timeZone, now } = await clockAt(transaction, scene.branchId);
+      const fresh = await journalColumns(transaction, scene.journal, timeZone, now);
+      const own = fresh.columns.get(scene.lesson.id);
+      if (own?.planItem !== false) throw new ApiException('lesson_has_plan_item', 409);
       const taken = await transaction
         .selectFrom('journal_works')
         .select('position')
@@ -552,10 +573,9 @@ export class WorksService {
       const column = this.columnOf(scene, input.column);
       if (column.kind !== 'homework') throw new ApiException('work_not_in_lesson', 409);
       if (column.carriedFrom !== null) throw new ApiException('work_carried', 409);
-      const next = [...scene.columns.columns].find(
-        ([, one]) => one.source === scene.lesson.id,
-      )?.[0];
-      if (next === undefined) throw new ApiException('no_next_lesson', 409);
+      // The next lesson that can check it (code review, must-fix 1): never a cancelled one.
+      const next = scene.columns.columns.get(scene.lesson.id)?.next ?? null;
+      if (next === null) throw new ApiException('no_next_lesson', 409);
       const { row } = await this.rowOf(transaction, scene, column, input.version);
       if ((await numbersOf(transaction, row.id)).length > 0) {
         throw new ApiException('work_holds_numbers', 409);
@@ -615,11 +635,15 @@ export class WorksService {
         keyOf(a).localeCompare(keyOf(b)),
       );
       const rows = new Map<string, WorkRow>();
+      // The rows a save moved to this lesson (decision 7), named in an entry of their own;
+      // a first row of a planned column writes no history line and needs none.
       const written: WorkRow[] = [];
+      const firsts: WorkRow[] = [];
       for (const column of distinct) {
-        const { row, written: first } = await this.rowOf(transaction, scene, column, undefined);
+        const { row, moved } = await this.rowOf(transaction, scene, column, undefined);
         rows.set(keyOf(column), row);
-        if (first) written.push(row);
+        if (moved) written.push(row);
+        else if (column.workId === null) firsts.push(row);
       }
       const saved = await saveCells(
         transaction,
@@ -661,7 +685,7 @@ export class WorksService {
               : percentOf(cell.value, totals.get(cell.workId ?? '') ?? null),
           version: cell.version,
         })),
-        works: written.map(savedOf),
+        works: [...firsts, ...written].map(savedOf),
       };
     });
   }

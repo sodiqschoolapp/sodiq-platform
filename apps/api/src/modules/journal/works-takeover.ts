@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
 
@@ -41,6 +42,11 @@ export async function takeOverUnplanned(
   if (planned.length === 0) return;
   const linked: { workId: string; planWorkId: string; lessonId: string }[] = [];
   for (const lessonId of [...new Set(lessonIds)].sort()) {
+    // The lock of an add by hand at the lesson (code review, should-fix 3): an add that read
+    // "no plan item" before this item commits first, and is taken over here.
+    await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${lessonId}`}, 0))`.execute(
+      transaction,
+    );
     const rows = await transaction
       .selectFrom('journal_works')
       .select(['id', 'kind', 'plan_work_id', 'position'])
