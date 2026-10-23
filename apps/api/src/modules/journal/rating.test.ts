@@ -1,5 +1,8 @@
 import {
   BRANCH_HEADER,
+  commentHistorySchema,
+  journalCommentSchema,
+  workSavedSchema,
   journalGridSchema,
   ratingExamSchema,
   ratingHistorySchema,
@@ -34,7 +37,7 @@ const ok = (response: Response, status = 200): unknown => {
 // in a quarter (docs/spec/edge-cases/calculation.md, "The rating exam", "The exam is
 // not held for one group this quarter", "'Rating exam' is switched off ... in week 5";
 // docs/spec/07-journal.md, Layout, Calculation rules 7 and 8).
-describe('the rating exam', () => {
+describe('the rating exam and comments', () => {
   let t: DayTemplatesKit;
   let load: LoadKit;
   let names = 0;
@@ -557,17 +560,12 @@ describe('the rating exam', () => {
         ).toBe('rating_exam_scope');
         expect(codeOf(await calls.post(`${base(s)}/entries`, body))).toBe('rating_exam_scope');
       });
-      await as(
-        tutor,
-        s.branch,
-        [{ role: 'tutor', branchId: s.branch }],
-        async (calls) => {
-          expect(codeOf(await calls.post(`${base(s)}/entries`, body))).toBe('rating_exam_scope');
-          expect(
-            codeOf(await calls.put(`${base(s)}/not-held`, { notHeld: true, version: null })),
-          ).toBe('rating_exam_scope');
-        },
-      );
+      await as(tutor, s.branch, [{ role: 'tutor', branchId: s.branch }], async (calls) => {
+        expect(codeOf(await calls.post(`${base(s)}/entries`, body))).toBe('rating_exam_scope');
+        expect(
+          codeOf(await calls.put(`${base(s)}/not-held`, { notHeld: true, version: null })),
+        ).toBe('rating_exam_scope');
+      });
       await as(principal, s.branch, [{ role: 'principal', branchId: s.branch }], async (calls) => {
         expect((await calls.post(`${base(s)}/entries`, body)).status).toBe(403);
       });
@@ -743,6 +741,347 @@ describe('the rating exam', () => {
         );
         expect(codeOf(answer)).toBe('subject_switch_scores');
       });
+    });
+  });
+
+  // Task 8.2: comments (07, Entering data, Comments; decision 10).
+  describe('comments', () => {
+    const commentOf = (body: unknown) => journalCommentSchema.parse(body);
+
+    it('puts a comment on a mark, a number and a rating entry and a note on a lesson, with history', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const lesson = s.lessons[0] ?? '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const onMark = { target: 'mark', lessonId: lesson, studentId: s.ahmedov };
+        expect(
+          codeOf(
+            await calls.put('/api/journal/comments', {
+              on: onMark,
+              body: 'Came late',
+              visibility: 'staff',
+              version: null,
+            }),
+          ),
+        ).toBe('comment_no_value');
+        ok(await present(calls, lesson, s.ahmedov));
+        const mark = commentOf(
+          ok(
+            await calls.put('/api/journal/comments', {
+              on: onMark,
+              body: 'Came late',
+              visibility: 'staff',
+              version: null,
+            }),
+          ),
+        );
+        expect(mark).toMatchObject({
+          target: 'mark',
+          body: 'Came late',
+          visibility: 'staff',
+          version: 1,
+        });
+        const note = commentOf(
+          ok(
+            await calls.put('/api/journal/comments', {
+              on: { target: 'note', lessonId: lesson, studentId: s.boboyev },
+              body: 'Helped a classmate',
+              visibility: 'parents',
+              version: null,
+            }),
+          ),
+        );
+        expect(note.visibility).toBe('parents');
+        const work = workSavedSchema.parse(
+          ok(await calls.post(`/api/journal/lessons/${lesson}/works`, { kind: 'classwork' })),
+        );
+        const total = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${lesson}/works/total`, {
+              column: { workId: work.id },
+              total: 10,
+              version: work.version,
+            }),
+          ),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${lesson}/scores`, {
+            saves: [
+              { studentId: s.ahmedov, column: { workId: total.id }, score: 7, version: null },
+            ],
+          }),
+        );
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'work', lessonId: lesson, workId: total.id, studentId: s.ahmedov },
+            body: 'Two answers copied',
+            visibility: 'staff',
+            version: null,
+          }),
+        );
+        ok(await calls.put(`${base(s)}/date`, { date: '2026-10-26', version: null }));
+        ok(
+          await calls.post(`${base(s)}/entries`, {
+            studentId: s.ahmedov,
+            entry: { kind: 'score', score: 80 },
+            reason: null,
+            version: null,
+          }),
+        );
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'rating', journalId: s.journal, quarterId: s.q1, studentId: s.ahmedov },
+            body: 'Strong exam',
+            visibility: 'parents',
+            version: null,
+          }),
+        );
+        // A stale version, then a clear: the row stays, the history keeps the text.
+        expect(
+          codeOf(
+            await calls.put('/api/journal/comments', {
+              on: onMark,
+              body: 'x',
+              visibility: 'staff',
+              version: null,
+            }),
+          ),
+        ).toBe('comment_stale');
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: onMark,
+            body: null,
+            visibility: 'staff',
+            version: 1,
+          }),
+        );
+        const grid = await gridOf(calls, s);
+        const ahmedov = grid.students.find((one) => one.id === s.ahmedov);
+        expect(ahmedov?.comments.map((one) => [one.target, one.body]).sort()).toEqual([
+          ['rating', 'Strong exam'],
+          ['work', 'Two answers copied'],
+        ]);
+        const boboyev = grid.students.find((one) => one.id === s.boboyev);
+        expect(boboyev?.comments.map((one) => [one.target, one.body])).toEqual([
+          ['note', 'Helped a classmate'],
+        ]);
+        const history = commentHistorySchema.parse(
+          ok(
+            await calls.get(
+              `/api/journal/comments/history?target=mark&studentId=${s.ahmedov}&lessonId=${lesson}`,
+            ),
+          ),
+        );
+        expect(history.lines.map((one) => [one.bodyBefore, one.bodyAfter])).toEqual([
+          [null, 'Came late'],
+          ['Came late', null],
+        ]);
+      });
+      expect((await t.entries('journal.comment')).length).toBeGreaterThanOrEqual(5);
+      // Data on a lesson (edge/00-definitions): a note alone is data.
+      const holds = await sql<{ holds: boolean }>`
+        select lesson_holds_data(${lesson}::uuid) as holds
+      `.execute(t.database.migrator);
+      expect(holds.rows[0]?.holds).toBe(true);
+    });
+
+    it('lets whoever may enter comment, and shows a reader of attendance the comments of marks only', async () => {
+      const owner = await account();
+      const stranger = await account();
+      const spiritual = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const lesson = s.lessons[0] ?? '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(await present(calls, lesson, s.ahmedov));
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'mark', lessonId: lesson, studentId: s.ahmedov },
+            body: 'Came late',
+            visibility: 'staff',
+            version: null,
+          }),
+        );
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'note', lessonId: lesson, studentId: s.ahmedov },
+            body: 'Quiet today',
+            visibility: 'staff',
+            version: null,
+          }),
+        );
+      });
+      const before = await t.database.migrator
+        .selectFrom('journal_comments')
+        .selectAll()
+        .orderBy('id')
+        .execute();
+      await as(stranger, s.branch, [{ role: 'teacher', branchId: s.branch }], async (calls) => {
+        expect(
+          codeOf(
+            await calls.put('/api/journal/comments', {
+              on: { target: 'note', lessonId: lesson, studentId: s.boboyev },
+              body: 'Not mine',
+              visibility: 'staff',
+              version: null,
+            }),
+          ),
+        ).toBe('comment_scope');
+        expect(
+          codeOf(
+            await calls.put('/api/journal/comments', {
+              on: { target: 'rating', journalId: s.journal, quarterId: s.q1, studentId: s.ahmedov },
+              body: 'Not mine',
+              visibility: 'staff',
+              version: null,
+            }),
+          ),
+        ).toBe('comment_scope');
+      });
+      expect(
+        await t.database.migrator
+          .selectFrom('journal_comments')
+          .selectAll()
+          .orderBy('id')
+          .execute(),
+      ).toEqual(before);
+      await as(
+        spiritual,
+        s.branch,
+        [{ role: 'spiritual_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          const grid = await gridOf(calls, s);
+          expect(grid.rating).toBeNull();
+          expect(
+            grid.students.find((one) => one.id === s.ahmedov)?.comments.map((one) => one.target),
+          ).toEqual(['mark']);
+          expect(
+            codeOf(
+              await calls.get(
+                `/api/journal/comments/history?target=note&studentId=${s.ahmedov}&lessonId=${lesson}`,
+              ),
+            ),
+          ).toBe('journal_scope');
+          ok(
+            await calls.get(
+              `/api/journal/comments/history?target=mark&studentId=${s.ahmedov}&lessonId=${lesson}`,
+            ),
+          );
+        },
+      );
+    });
+
+    it('answers 404 for another branch\x27s lesson, an unknown work and an unknown student, and writes nothing', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const other = await scene();
+      const lesson = s.lessons[0] ?? '';
+      const before = await t.database.migrator
+        .selectFrom('journal_comments')
+        .selectAll()
+        .orderBy('id')
+        .execute();
+      const audits = await t.auditCount();
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(await present(calls, lesson, s.ahmedov));
+        const audited = await t.auditCount();
+        const send = (on: object) =>
+          calls.put('/api/journal/comments', {
+            on,
+            body: 'Text',
+            visibility: 'staff',
+            version: null,
+          });
+        for (const on of [
+          { target: 'note', lessonId: other.lessons[0] ?? '', studentId: s.ahmedov },
+          { target: 'note', lessonId: randomUUID(), studentId: s.ahmedov },
+          { target: 'note', lessonId: lesson, studentId: other.ahmedov },
+          { target: 'note', lessonId: lesson, studentId: randomUUID() },
+          { target: 'work', lessonId: lesson, workId: randomUUID(), studentId: s.ahmedov },
+          { target: 'rating', journalId: other.journal, quarterId: other.q1, studentId: s.ahmedov },
+          { target: 'rating', journalId: s.journal, quarterId: randomUUID(), studentId: s.ahmedov },
+        ]) {
+          expect(codeOf(await send(on))).toBe('not_found');
+        }
+        expect(
+          codeOf(
+            await calls.get(
+              `/api/journal/comments/history?target=note&studentId=${s.ahmedov}&lessonId=${other.lessons[0] ?? ''}`,
+            ),
+          ),
+        ).toBe('not_found');
+        expect(await t.auditCount()).toBe(audited);
+      });
+      expect(
+        await t.database.migrator
+          .selectFrom('journal_comments')
+          .selectAll()
+          .orderBy('id')
+          .execute(),
+      ).toEqual(before);
+      expect(await t.auditCount()).toBeGreaterThan(audits);
+    });
+
+    it('keeps the comments of a lesson through its forced delete and restore', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const lesson = s.lessons[0] ?? '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'note', lessonId: lesson, studentId: s.ahmedov },
+            body: 'Quiet today',
+            visibility: 'parents',
+            version: null,
+          }),
+        );
+      });
+      // The Super Admin acts at the kit's own moment, as the plan tests do.
+      {
+        const deleted = await request(t.kit.server)
+          .post(`/api/timetable/lessons/${lesson}/forced-delete`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set('Idempotency-Key', randomUUID())
+          .send({ reason: 'Entered for the wrong class' });
+        expect(deleted.status, JSON.stringify(deleted.body)).toBe(200);
+        expect(
+          await t.database.migrator
+            .selectFrom('journal_comments')
+            .select('id')
+            .where('lesson_id', '=', lesson)
+            .execute(),
+        ).toEqual([]);
+        const store = await t.database.migrator
+          .selectFrom('forced_deletes')
+          .select('id')
+          .where('record_id', '=', lesson)
+          .executeTakeFirstOrThrow();
+        const restored = await request(t.kit.server)
+          .post(`/api/forced-deletes/${store.id}/restore`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set('Idempotency-Key', randomUUID())
+          .send({});
+        expect(restored.status, JSON.stringify(restored.body)).toBe(200);
+      }
+      const back = await t.database.migrator
+        .selectFrom('journal_comments')
+        .select(['body', 'visibility', 'version'])
+        .where('lesson_id', '=', lesson)
+        .execute();
+      expect(back).toEqual([{ body: 'Quiet today', visibility: 'parents', version: 1 }]);
+      const lines = await t.database.migrator
+        .selectFrom('journal_comment_history')
+        .select('changed_how')
+        .where('lesson_id', '=', lesson)
+        .orderBy('changed_at')
+        .orderBy('version')
+        .execute();
+      expect(lines.map((one) => one.changed_how).sort()).toEqual([
+        'entry',
+        'forced_delete',
+        'restored',
+      ]);
     });
   });
 

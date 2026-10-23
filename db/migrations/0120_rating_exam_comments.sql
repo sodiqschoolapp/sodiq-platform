@@ -91,11 +91,16 @@ begin
   moment := class_tutors_moment();
   if moment is null and session_user <> 'sodiq_app' then
     -- A change by the migrator outside a request (a data fix, a test fixture):
-    -- a row that reaches every quarter, as the first row of a subject.
+    -- a row of no quarter number at the moment of the subject's newest row, so it
+    -- comes after every row before it and reaches what the newest one reached.
     insert into subject_switches (
       subject_id, journal_type, rating_exam, weights_round, rating_round, changed_at
     ) values (
-      new.id, new.journal_type, new.rating_exam, new.weights_round, new.rating_round, '-infinity'
+      new.id, new.journal_type, new.rating_exam, new.weights_round, new.rating_round,
+      coalesce(
+        (select max(s.changed_at) from subject_switches s where s.subject_id = new.id),
+        '-infinity'
+      )
     );
     return null;
   end if;
