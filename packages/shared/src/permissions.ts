@@ -598,6 +598,22 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view', 'edit'],
     teacher: ['view', 'create'],
   }),
+  /**
+   * Master plans (task 7.3, pull request #216, decision 2, Look first): `02`,
+   * the Head Teacher "Keeps master plans", the Senior Head Teacher "Can keep a
+   * master plan for all branches"; `09`: "For subjects with no Head Teacher,
+   * the Academic Vice Principal can keep it". Every reader of plans reads
+   * them (a teacher copies one). The route decides the keeper from the posts
+   * in force (decision 3).
+   */
+  plan_masters: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+    senior_head_teacher: ['view', 'create', 'edit'],
+    head_teacher: ['view', 'create', 'edit'],
+    teacher: ['view'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

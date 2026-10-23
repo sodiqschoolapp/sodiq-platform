@@ -475,6 +475,20 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('lets the Head Teachers and the Academic Vice Principal keep master plans and every reader of plans read them (task 7.3, decision 2)', () => {
+    const expected: Record<string, readonly string[]> = {
+      super_admin: ['view', 'create', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'create', 'edit'],
+      senior_head_teacher: ['view', 'create', 'edit'],
+      head_teacher: ['view', 'create', 'edit'],
+      teacher: ['view'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.plan_masters[role], role).toEqual(expected[role] ?? []);
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -503,6 +517,7 @@ describe('a frozen permission table', () => {
       'head_teachers',
       'journal',
       'personal_data_report',
+      'plan_masters',
       'plan_requests',
       'plan_windows',
       'plans',

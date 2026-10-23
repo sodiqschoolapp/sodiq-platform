@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { INSTRUCTION_LANGUAGES } from './settings.js';
 import { subjectColourSchema } from './subjects.js';
 
 /**
@@ -10,6 +11,11 @@ import { subjectColourSchema } from './subjects.js';
  * lessons that are not cancelled"); an item stands at a position of the
  * plan's queue and fills that row. The bounds are the checks of 0114.
  */
+
+/** Task 7.3: a master of one branch, or of all branches (decision 1). */
+export const PLAN_MASTER_SCOPES = ['branch', 'all'] as const;
+
+export type PlanMasterScope = (typeof PLAN_MASTER_SCOPES)[number];
 
 /** Decision 7: the spec bounds only the work's title. */
 export const PLAN_TOPIC_MAX_LENGTH = 300;
@@ -332,6 +338,18 @@ export const planSchema = z.object({
       notCovered: z.int().min(0),
     }),
   ),
+  /**
+   * Task 7.3: the master the plan was copied from (`09`, "Master updated"):
+   * `updated` when the comparison has a row that can be taken.
+   */
+  master: z
+    .object({
+      id: z.uuid(),
+      name: z.string(),
+      scope: z.enum(PLAN_MASTER_SCOPES),
+      updated: z.boolean(),
+    })
+    .nullable(),
   /** Task 7.1c: the reader's own journals that may join this plan (same subject, kind, grades and language). */
   shareCandidates: z.array(z.object({ journalId: z.uuid(), unit: planUnitSchema })),
 });
@@ -360,11 +378,22 @@ export type PlanSeparate = z.infer<typeof planSeparateSchema>;
  */
 export const PLAN_COPY_PARTS = ['all', 'remaining'] as const;
 
-export const planCopySchema = z.strictObject({
-  quarterId: z.uuid(),
-  source: z.strictObject({ journalId: z.uuid(), quarterId: z.uuid() }),
-  part: z.enum(PLAN_COPY_PARTS),
-});
+export const planCopySchema = z.union([
+  z.strictObject({
+    quarterId: z.uuid(),
+    source: z.strictObject({ journalId: z.uuid(), quarterId: z.uuid() }),
+    part: z.enum(PLAN_COPY_PARTS),
+  }),
+  /**
+   * Task 7.3: a copy of a master (`09`: "A teacher creates a plan as a copy
+   * of the master. Its items fill the rows of the class in order"); a master
+   * has no held part, so `part` is refused here.
+   */
+  z.strictObject({
+    quarterId: z.uuid(),
+    source: z.strictObject({ masterId: z.uuid() }),
+  }),
+]);
 
 export type PlanCopy = z.infer<typeof planCopySchema>;
 
@@ -403,6 +432,8 @@ export const planListSchema = z.object({
           empty: z.int().min(0),
           /** Task 7.2. */
           flag: z.enum(PLAN_FLAGS).nullable(),
+          /** Task 7.3: the plan's master has changes the plan can take (`09`: "master updated"). */
+          masterUpdated: z.boolean(),
         }),
       ),
     }),
@@ -708,3 +739,222 @@ export const planQueueSchema = z.strictObject({
 });
 
 export type PlanQueue = z.infer<typeof planQueueSchema>;
+
+/**
+ * Master plans (task 7.3, pull request #216; `09`, Master plans: "the same
+ * list of topics, classwork and homework, in order, but with no dates").
+ * A master is of a branch, or of all branches (`all`, the Senior Head
+ * Teacher's: `02`, "Can keep a master plan for all branches"; decision 1).
+ * It belongs to an academic year by its start year and to a quarter by its
+ * number (decision 4). Every write carries the master's `revision` and is
+ * refused `plan_master_stale` when it moved (decision 9).
+ */
+export const PLAN_MASTER_NAME_MAX_LENGTH = 60;
+
+const gradeText = z.string().regex(/^(?:[1-9]|1[01])$/);
+
+const quarterText = z.string().regex(/^[1-4]$/);
+
+/** The masters of the branch's year: by year (the current one when left out), subject, grade and quarter, or those that fit one plan. */
+export const planMastersQuerySchema = z.strictObject({
+  yearId: z.uuid().optional(),
+  subjectId: z.uuid().optional(),
+  grade: gradeText.optional(),
+  quarter: quarterText.optional(),
+  /** The masters a plan may be copied from (subject, a grade of its unit, its language, year and quarter). */
+  journalId: z.uuid().optional(),
+  quarterId: z.uuid().optional(),
+});
+
+export type PlanMastersQuery = z.infer<typeof planMastersQuerySchema>;
+
+const planMasterSubjectSchema = z.object({
+  id: z.uuid(),
+  names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+  colour: subjectColourSchema,
+});
+
+export const planMasterSummarySchema = z.object({
+  id: z.uuid(),
+  scope: z.enum(PLAN_MASTER_SCOPES),
+  subject: planMasterSubjectSchema,
+  grade: z.int().min(1).max(11),
+  language: z.enum(INSTRUCTION_LANGUAGES),
+  startYear: z.int(),
+  quarter: z.int().min(1).max(4),
+  name: z.string(),
+  items: z.int().min(0),
+  archived: z.boolean(),
+  /** The reader keeps this master now (decision 3). */
+  canEdit: z.boolean(),
+});
+
+export type PlanMasterSummary = z.infer<typeof planMasterSummarySchema>;
+
+export const planMastersSchema = z.object({
+  years: z.array(z.object({ id: z.uuid(), startDate: schoolDateSchema, endDate: schoolDateSchema })),
+  yearId: z.uuid().nullable(),
+  masters: z.array(planMasterSummarySchema),
+  /** The subjects whose masters the reader may create, per scope (decision 3). */
+  keeps: z.object({ branch: z.array(z.uuid()), all: z.array(z.uuid()) }),
+});
+
+export type PlanMasters = z.infer<typeof planMastersSchema>;
+
+export const planMasterParamsSchema = z.object({ masterId: z.uuid() });
+
+export type PlanMasterParams = z.infer<typeof planMasterParamsSchema>;
+
+export const planMasterItemParamsSchema = z.object({ masterId: z.uuid(), itemId: z.uuid() });
+
+export type PlanMasterItemParams = z.infer<typeof planMasterItemParamsSchema>;
+
+export const planMasterCreateSchema = z.strictObject({
+  yearId: z.uuid(),
+  quarter: z.int().min(1).max(4),
+  subjectId: z.uuid(),
+  grade: z.int().min(1).max(11),
+  language: z.enum(INSTRUCTION_LANGUAGES),
+  name: filledText(PLAN_MASTER_NAME_MAX_LENGTH),
+  scope: z.enum(PLAN_MASTER_SCOPES),
+});
+
+export type PlanMasterCreate = z.infer<typeof planMasterCreateSchema>;
+
+/** The master's revision as the page read it (decision 9). */
+export const planMasterRevisionSchema = z.strictObject({ revision: z.int().min(0) });
+
+export type PlanMasterRevision = z.infer<typeof planMasterRevisionSchema>;
+
+export const planMasterRenameSchema = z.strictObject({
+  revision: z.int().min(0),
+  name: filledText(PLAN_MASTER_NAME_MAX_LENGTH),
+});
+
+export type PlanMasterRename = z.infer<typeof planMasterRenameSchema>;
+
+export const planMasterItemCreateSchema = z.strictObject({
+  revision: z.int().min(0),
+  /** The place in the master's order, from 1; the items from there move one step. */
+  position: z.int().min(1),
+  values: planNewItemValuesSchema,
+});
+
+export type PlanMasterItemCreate = z.infer<typeof planMasterItemCreateSchema>;
+
+export const planMasterItemSaveSchema = z.strictObject({
+  revision: z.int().min(0),
+  values: planItemValuesSchema,
+});
+
+export type PlanMasterItemSave = z.infer<typeof planMasterItemSaveSchema>;
+
+/** The whole order of the master's items. */
+export const planMasterOrderSchema = z.strictObject({
+  revision: z.int().min(0),
+  order: z.array(z.uuid()).max(400),
+});
+
+export type PlanMasterOrder = z.infer<typeof planMasterOrderSchema>;
+
+export const planMasterItemSchema = z.object({
+  id: z.uuid(),
+  position: z.int().min(1),
+  topic: z.string(),
+  objectives: z.string(),
+  links: z.array(z.string()),
+  classworks: z.array(planWorkSchema),
+  homeworks: z.array(planWorkSchema),
+});
+
+export type PlanMasterItem = z.infer<typeof planMasterItemSchema>;
+
+export const planMasterSchema = planMasterSummarySchema.extend({
+  revision: z.int().min(0),
+  masterItems: z.array(planMasterItemSchema),
+});
+
+export type PlanMaster = z.infer<typeof planMasterSchema>;
+
+/** The content of an item as the comparison shows it. */
+export const planMasterContentSchema = z.object({
+  topic: z.string(),
+  objectives: z.string(),
+  links: z.array(z.string()),
+  classworks: z.array(z.object({ title: z.string(), description: z.string() })),
+  homeworks: z.array(z.object({ title: z.string(), description: z.string() })),
+});
+
+export type PlanMasterContent = z.infer<typeof planMasterContentSchema>;
+
+export const PLAN_MASTER_CHANGES = ['changed', 'added', 'removed'] as const;
+
+export type PlanMasterChange = (typeof PLAN_MASTER_CHANGES)[number];
+
+/**
+ * The "master updated" comparison (decision 5; `edge`: "Items are matched by
+ * identity, not by position"): one row per master item changed, added or
+ * removed since the revision the plan copied, taken or kept; a row whose plan
+ * item is on a started row is shown and not taken.
+ */
+export const planMasterCompareSchema = z.object({
+  master: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    scope: z.enum(PLAN_MASTER_SCOPES),
+    revision: z.int().min(0),
+    archived: z.boolean(),
+  }),
+  rows: z.array(
+    z.object({
+      change: z.enum(PLAN_MASTER_CHANGES),
+      masterItemId: z.uuid(),
+      master: planMasterContentSchema.nullable(),
+      plan: planMasterContentSchema.extend({ itemId: z.uuid() }).nullable(),
+      /** The plan's item is on a lesson already held: not taken. */
+      held: z.boolean(),
+    }),
+  ),
+});
+
+export type PlanMasterCompare = z.infer<typeof planMasterCompareSchema>;
+
+/** Take the master's changes, or keep the plan as it is (decision 6). */
+export const planMasterTakeSchema = z.strictObject({
+  quarterId: z.uuid(),
+  revision: z.int().min(0),
+});
+
+export type PlanMasterTake = z.infer<typeof planMasterTakeSchema>;
+
+/** The parallel classes (`09`, Master plans, "Parallel classes"; decision 13). */
+export const planParallelQuerySchema = z.strictObject({
+  subjectId: z.uuid(),
+  grade: gradeText,
+  quarterId: z.uuid(),
+});
+
+export type PlanParallelQuery = z.infer<typeof planParallelQuerySchema>;
+
+const planParallelRowSchema = z.object({
+  number: z.int().min(1),
+  date: schoolDateSchema,
+  topic: z.string().nullable(),
+});
+
+export const planParallelSchema = z.object({
+  units: z.array(
+    z.object({
+      journalId: z.uuid(),
+      unit: planUnitSchema,
+      grades: z.array(z.int().min(1).max(11)),
+      rows: z.int().min(0),
+      /** The last row whose lesson has started, with its item. */
+      reached: planParallelRowSchema.nullable(),
+      /** The first row not started, with its item. */
+      next: planParallelRowSchema.nullable(),
+    }),
+  ),
+});
+
+export type PlanParallel = z.infer<typeof planParallelSchema>;

@@ -938,6 +938,22 @@ export const ERROR_CODES = [
   'plan_copy_grade',
   /** The plan would be copied into itself (task 7.1c). */
   'plan_copy_same',
+  /** The master is of another language of instruction than the class or group (09: a master is kept per "language of instruction"; task 7.3). */
+  'plan_copy_language',
+  /** The master is of another academic year or quarter than the plan (task 7.3, decision 4). */
+  'plan_copy_quarter',
+  /** The master was changed since the page read it: read it again (task 7.3, decision 9). */
+  'plan_master_stale',
+  /** The master is archived: it is not copied and not changed until it is restored (task 7.3). */
+  'plan_master_archived',
+  /** The reader does not keep the masters of this subject in this scope (02, Head Teachers and Senior Head Teachers; task 7.3, decision 3). */
+  'plan_master_scope',
+  /** The subject is not taught in that grade, or is attendance-only (09: "A plan is required for every graded subject"; task 7.3). */
+  'plan_master_subject',
+  /** The order does not name every item of the master once (task 7.3). */
+  'plan_master_items',
+  /** The plan was not copied from a master (task 7.3). */
+  'plan_master_none',
   /** No file store is configured on this server: plan files cannot be added or opened yet (task 7.1a, decision 1). */
   'files_not_configured',
   /** The file store did not answer in time or refused (task 7.1a, decision 1). */
