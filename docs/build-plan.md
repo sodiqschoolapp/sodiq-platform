@@ -1026,7 +1026,7 @@ How to read the task lines:
   - Build: a plan per class or group and subject; items with topic, any number of classworks and homeworks (at most 10 of each) and files; file limits; attachment of items to lessons in order; who can see a plan.
   - Done when: a plan fills the lessons of a quarter in order.
 
-- [ ] **7.1b Items follow the timetable**
+- [x] **7.1b Items follow the timetable** (pull request #213)
   - Read: `09` (When something else changes), `edge/lesson-plans` (How items stay attached).
   - Build: re-attachment of the queue when lessons are cancelled, added, moved or their number changes; the "not covered" list; prepared edit requests; the impact preview per plan.
   - Done when: every row of the "When something else changes" table has a test.
@@ -1039,6 +1039,7 @@ How to read the task lines:
   - Read: `09` (What a plan contains), `05` (Language of instruction).
   - Build: one plan shared by several classes of the same grade and language; separate later; copy from another plan.
   - Done when: classes of different languages cannot share a plan.
+  - From 7.1b (pull request #213, Left out; plan review correction 3): `09`, When something else changes, "One class of a shared plan loses a lesson: Each class has its own dates, so the classes stand at different items. The plan screen shows where each class is." and "A group is split or merged, or a new group is formed: The new group gets a copy of the plan it came from, attached to its own lessons. The old group's plan is archived with its journal."; `edge/lesson-plans`, How items stay attached, "A teacher who shares a plan between two classes loses one of them" (the plan separated, the new teacher its owner, the earlier teacher's open periods ended, a request prepared for the new teacher) and "Two groups standing at different items are merged" (a copy of one source plan, chosen by the person making the change; only its remaining items attached; the closed journal's last homework "not checked, group closed"). Positions are per plan (`lesson_plan_items.position`, 0114) while the follow keeps its snapshot per journal (`lesson_plan_rows`, 0115): a shared plan keeps the queue per journal (`edge`: "Attachment, 'not covered' and completeness are per class"). Copying plans into the new academic year (`09`, "A new academic year starts").
 
 - [ ] **7.2 The plan window and edit requests**
   - Read: `09` (The plan window, Editing after the window), `02` (Head Teachers and Senior Head Teachers), `edge/lesson-plans` (The window and requests).
@@ -1047,6 +1048,7 @@ How to read the task lines:
   - From 3.6b-3 (pull request #123, decision 2, Look first): an open plan edit request is routed by the post of its subject (`02`, "Subjects, not departments", "Who approves"), read in force on each request (`edge/people-roles-accounts`, row 16), so it follows any change of the post on its date with no job; a department move changes no approver.
   - From 5.7a-3c (pull request #190, decision 9): `edge/timetable`, "The plan, the journal and the reports of a vacancy's subject": "Until an acting teacher is named or the vacancy is filled, nobody writes its plan: the plan window lists it as 'vacancy', not as overdue against anyone". The window reads the owner with `journalOwnerOn` (`apps/api/src/modules/timetable/journal-owners.ts`: the teacher of the journal's row in the published version in force that day; under a vacancy the acting teacher in force (`journal_acting_teachers`, 0100, counted only on days the row names the vacancy and the person is active in the branch), else `none`): `none` is listed as "vacancy", the acting teacher is the plan's owner in the period.
   - From 7.1a (pull request #212, Left out): `edge/lesson-plans`, The window and requests, "A teacher is hired in week 5": "A plan record exists for every journal and quarter that needs one, from the moment the journal exists." 7.1a makes the record (`lesson_plans`, `lesson_plan_journals`, 0114) on the first write (`createItem`, `apps/api/src/modules/plans/plans.service.ts`); this task makes one for every journal of a graded subject and quarter, which "overdue" and the prepared requests read. Until this task the owner writes every row of every quarter of an open year (7.1a, decision 4); the window and the lock go on top of the same routes.
+  - From 7.1b (pull request #213, decisions 2, 4 and 10): the requests the system prepares are stored (`lesson_plan_requests`, status `prepared`, kind `replan`, their causes in `lesson_plan_request_causes`, 0115; `PlanFollow`, `apps/api/src/modules/plans/plan-follow.ts`); this task sends, routes and approves them, approves together by event (`09`, "Approving together"), and decides what a prepared request whose cause went away (a day off removed) becomes at the window's end (decision 10: it stays with its causes until then).
 
 - [ ] **7.3 Master plans**
   - Read: `09` (Master plans), `edge/lesson-plans`.

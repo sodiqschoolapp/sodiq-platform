@@ -129,11 +129,7 @@ export class PlanFollow implements OnModuleInit {
    * the rows left empty (`edge/lesson-plans`: "The impact preview shows, per
    * plan, items that no longer fit and rows left empty").
    */
-  async preview(
-    transaction: Transaction,
-    access: Access,
-    laid?: LaidRows,
-  ): Promise<PlanImpact[]> {
+  async preview(transaction: Transaction, access: Access, laid?: LaidRows): Promise<PlanImpact[]> {
     const marks =
       laid === undefined
         ? await this.marksOf(transaction)
@@ -753,7 +749,10 @@ export class PlanFollow implements OnModuleInit {
           branchId,
           accountIds: [staff.account_id],
           data: {
-            units: [...entry.units].sort((a, b) => a.localeCompare(b, 'en')).slice(0, 200),
+            units: [...entry.units]
+              .sort((a, b) => a.localeCompare(b, 'en'))
+              .join(', ')
+              .slice(0, 4000),
             plans: entry.plans,
             requests: entry.requests,
           },

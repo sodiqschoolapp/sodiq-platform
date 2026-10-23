@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { HeldDataText } from './held-data';
 import { checkBulkCancel, saveBulkCancel } from './timetable-api';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 type Language = 'uz' | 'ru' | 'en';
 
@@ -398,6 +399,7 @@ export function BulkCancelDialog({
                   </ul>
                 </section>
               )}
+              <PlanImpactList plans={result.plans} />
               {(unchosen.length > 0 || unchosenData.length > 0) && (
                 <p className="text-sm" data-bulk-unchosen="true">
                   {t('timetable.bulk.chooseEach')}

@@ -160,7 +160,11 @@ describe('lesson plans and their items', () => {
     get: (path) => request(t.kit.server).get(path).set('Cookie', cookie).set(BRANCH_HEADER, branch),
     post: (path, body = {}) => {
       const send = (sent: object) =>
-        request(t.kit.server).post(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(sent);
+        request(t.kit.server)
+          .post(path)
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, branch)
+          .send(sent);
       const journal = /^\/api\/plans\/journals\/([^/]+)\/items$/.exec(path)?.[1];
       if (journal === undefined || 'lessonId' in body) return send(body);
       // Task 7.1b: a create names the lesson of its row; read as the database holds it.

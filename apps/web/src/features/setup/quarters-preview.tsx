@@ -29,6 +29,7 @@ import { CalendarExamsPreview, examBlocksOf, examsRefuseSave } from './calendar-
 import { CalendarLessonsPreview, hasLessons, refusesSave } from './calendar-lessons-preview';
 import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { nameOf } from './setup-api';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 /** What a save of the quarters would do, written nowhere (task 5.6b-5a). */
 async function quartersPreviewOf(yearId: string, body: QuartersSave): Promise<QuartersPreview> {
@@ -357,6 +358,7 @@ export function useQuartersPreview(): {
           )}
           <QuarterMovedBlocks moved={question.preview.movedBlocks} />
           <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <PlanImpactList plans={question.preview.plans} />
           <CalendarExamsPreview
             lessons={question.preview.lessons}
             choices={examChoices}

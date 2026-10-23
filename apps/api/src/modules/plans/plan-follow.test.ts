@@ -81,7 +81,7 @@ describe('plan items follow the timetable', () => {
     return t.kit.completeSession('Malika', `Yusupova${'a'.repeat(names % 7)}`);
   };
 
-    const keyed = (path: string, branch: string, body: object, cookie = t.admin) =>
+  const keyed = (path: string, branch: string, body: object, cookie = t.admin) =>
     request(t.kit.server)
       .post(path)
       .set('Cookie', cookie)
@@ -175,6 +175,9 @@ describe('plan items follow the timetable', () => {
         ).body,
       ),
     );
+
+  /** The class or group of the scene's plan, as the notice names it. */
+  const unitOf = async (x: Scene) => (await planOf(x)).unit.name;
 
   /** The topic on each row date, `-` for an empty row; and the topics not covered. */
   const laid = (plan: Plan) => ({
@@ -305,7 +308,7 @@ describe('plan items follow the timetable', () => {
         causes: [{ kind: 'not_covered', onDate: '2026-11-16', items: 1 }],
       });
       expect(await noticesOf(x.owner.account.id, 'plans.followed')).toEqual([
-        { units: [expect.any(String)], plans: 1, requests: 1 },
+        { units: await unitOf(x), plans: 1, requests: 1 },
       ]);
       expect(await noticesOf(x.head.account.id, 'plans.followed_counts')).toEqual([
         { plans: 1, requests: 1 },
@@ -339,7 +342,7 @@ describe('plan items follow the timetable', () => {
       expect(plan.request).toBeNull();
       // Decision 8 as changed on #213: the move is told, with no request.
       expect(await noticesOf(x.owner.account.id, 'plans.followed')).toEqual([
-        { units: [expect.any(String)], plans: 1, requests: 0 },
+        { units: await unitOf(x), plans: 1, requests: 0 },
       ]);
     });
 
@@ -532,9 +535,7 @@ describe('plan items follow the timetable', () => {
     const plan = await planOf(x);
     expect(plan.rows.map((row) => row.date)).toEqual(Q2_MONDAYS.slice(0, 6));
     expect(laid(plan).notCovered).toEqual(['Topic 7', 'Topic 8']);
-    expect(plan.request?.causes).toEqual([
-      { kind: 'not_covered', onDate: expect.any(String), items: 2 },
-    ]);
+    expect(plan.request?.causes).toEqual([{ kind: 'not_covered', onDate: '2026-12-21', items: 2 }]);
   });
 
   it('the timetable is replaced before the quarter starts: items attach to the new lessons in the same order', async () => {
@@ -607,7 +608,7 @@ describe('plan items follow the timetable', () => {
       ]);
       // Review correction 1: the new owner is told.
       expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
-        { units: [expect.any(String)], plans: 1, requests: 1 },
+        { units: await unitOf(x), plans: 1, requests: 1 },
       ]);
     });
 
@@ -644,7 +645,7 @@ describe('plan items follow the timetable', () => {
         201,
       );
       expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
-        { units: [expect.any(String)], plans: 1, requests: 1 },
+        { units: await unitOf(x), plans: 1, requests: 1 },
       ]);
       const hired = await account();
       const person = await load.teacher(x.s.branch, {
@@ -671,7 +672,7 @@ describe('plan items follow the timetable', () => {
         201,
       );
       expect(await noticesOf(hired.account.id, 'plans.followed')).toEqual([
-        { units: [expect.any(String)], plans: 1, requests: 1 },
+        { units: await unitOf(x), plans: 1, requests: 1 },
       ]);
       const plan = await planOf(x);
       expect(plan.request?.causes.map((cause) => [cause.kind, cause.onDate])).toEqual([
@@ -801,7 +802,7 @@ describe('plan items follow the timetable', () => {
     });
   });
 
-  it('changes no plan of either branch when a write of dated lessons answers 404 for another branch\'s or an unknown lesson', async () => {
+  it("changes no plan of either branch when a write of dated lessons answers 404 for another branch's or an unknown lesson", async () => {
     const x = await scene();
     const y = await scene();
     await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
@@ -899,7 +900,7 @@ describe('plan items follow the timetable', () => {
       ]);
     });
 
-    it('in the publish check, laid on the draft\'s lessons', async () => {
+    it("in the publish check, laid on the draft's lessons", async () => {
       const x = await scene();
       await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
       // The class's maths every second Monday is not possible in a weekly

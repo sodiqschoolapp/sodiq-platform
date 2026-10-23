@@ -120,6 +120,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
 };
 
 const PREVIEW: CalendarPreview = {
+  plans: [],
   lessons: NO_LESSONS,
   changes: [
     {

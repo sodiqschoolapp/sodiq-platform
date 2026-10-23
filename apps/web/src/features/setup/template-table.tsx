@@ -37,6 +37,7 @@ import { datesText } from './calendar-preview';
 import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { previewOf, rangeText } from './templates-api';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 interface TemplateTableViewProps {
   table: TemplateTable;
@@ -308,6 +309,7 @@ export function usePreview(): {
           />
           <TemplateSlotsInUse slots={question.preview.slotsInUse} />
           <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <PlanImpactList plans={question.preview.plans} />
           <CalendarExamsPreview
             lessons={question.preview.lessons}
             choices={examChoices}

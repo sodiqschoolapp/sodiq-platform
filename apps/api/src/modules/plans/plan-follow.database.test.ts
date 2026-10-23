@@ -97,7 +97,9 @@ describe('the follow of the plans in the database', () => {
   });
 
   it('reads the journal of a lesson in the year whose dates hold its date', async () => {
-    const year = await yearIn((north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)));
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
     const dates = await database.migrator
       .selectFrom('academic_years')
       .select([sql<string>`start_date::text`.as('start'), sql<string>`end_date::text`.as('end')])
@@ -116,7 +118,9 @@ describe('the follow of the plans in the database', () => {
   });
 
   it("marks every journal with a plan of a year when a quarter's dates change, and nothing when they stay", async () => {
-    const year = await yearIn((north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)));
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
     const unit = await planned(north, year);
     const other = await planned(north, year);
     await database.migrator
@@ -144,7 +148,9 @@ describe('the follow of the plans in the database', () => {
   });
 
   it('marks nothing for a write of the migrator', async () => {
-    const year = await yearIn((north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)));
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
     const unit = await planned(north, year);
     await database.migrator.transaction().execute(async (transaction) => {
       await sql`update journals set runs = '{[2026-09-07,2026-12-01)}' where id = ${unit.journal}`.execute(
@@ -176,7 +182,9 @@ describe('the follow of the plans in the database', () => {
   });
 
   it('keeps one prepared request per plan and journal', async () => {
-    const year = await yearIn((north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)));
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
     const unit = await planned(north, year);
     const prepare = () =>
       inBranch(north, (transaction) =>

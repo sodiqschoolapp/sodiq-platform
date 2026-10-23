@@ -665,7 +665,8 @@ export const uz: Texts<'one' | 'other'> = {
     plan_scope: 'Bu reja sizga ochiq emas. Sinf rejasini faqat uning oʻqituvchisi yozadi.',
     plan_row_taken: 'Bu qatorda allaqachon yozuv bor. Oʻzgartirish uchun qatorni qayta oching.',
     plan_row_unknown: 'Chorakda bu qator uchun endi dars yoʻq. Rejani qayta oching.',
-    plan_row_moved: 'Reja ochilgandan keyin uning darslari surildi. Rejani qayta oching va qatorni tanlang.',
+    plan_row_moved:
+      'Reja ochilgandan keyin uning darslari surildi. Rejani qayta oching va qatorni tanlang.',
     plan_closed: 'Bu reja jurnal bilan birga yopilgan: sinfda bu fan boʻyicha boshqa dars yoʻq.',
     plan_item_stale:
       'Bu qatorni kimdir oʻzgartirdi. Hozir saqlangan qiymat maydon ostida koʻrsatilgan; oʻzgarishingizni qayta kiriting.',
@@ -3234,6 +3235,8 @@ export const uz: Texts<'one' | 'other'> = {
         item_clear: 'Reja qatori tozalandi',
         file_add: 'Reja qatoriga fayl qoʻshildi',
         file_remove: 'Reja qatoridan fayl oʻchirildi',
+        items_followed: 'Reja qatorlari dars jadvali oʻzgarishiga ergashdi',
+        request_prepared: 'Rejani oʻzgartirish soʻrovi tayyorlandi',
       },
       absence_reason: {
         set: 'Dars qoldirish sababi belgilandi',
@@ -3617,6 +3620,12 @@ export const uz: Texts<'one' | 'other'> = {
     kinds: {
       unknown:
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
+      plans: {
+        followed:
+          'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi: {{units}}. Siz uchun tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
+        followed_counts:
+          'Fanlaringiz boʻyicha dars rejalari dars jadvali oʻzgarishi bilan surildi: {{plans}}. Tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
+      },
       sample: {
         message: 'Namuna: {{text}}',
       },
@@ -5004,7 +5013,7 @@ export const uz: Texts<'one' | 'other'> = {
       owner: 'Oʻqituvchi:',
       noOwner: 'Oʻqituvchi yoʻq',
       withoutTopic: 'Mavzusiz qatorlar:',
-      closed: 'Yil yopilgan',
+      closed: 'Yopilgan',
       number: '№',
       date: 'Sana',
       slot: '{{number}}-dars',
@@ -5016,7 +5025,30 @@ export const uz: Texts<'one' | 'other'> = {
       rowName: '{{number}}-qator',
       emptyTitle: 'Bu chorakda dars yoʻq',
       empty: 'Jadval chorakka dars berganda qatorlar chiqadi.',
-      unattached: 'Darsga biriktirilmagan yozuvlar',
+      notCovered: 'Qamrab olinmagan',
+      notCoveredNote:
+        'Bu yozuvlar endi chorakka sigʻmaydi. Ular oʻzgartirish soʻrovi orqali boshqa darslarga qoʻshiladi yoki keyingi chorakka oʻtkaziladi.',
+      movedFrom: '{{date}} dan koʻchirilgan',
+      request: {
+        title: 'Oʻzgartirish soʻrovi tayyorlandi',
+        text: 'Tizim {{date}} dan boshlab darslar uchun oʻzgartirish soʻrovini tayyorladi.',
+        not_covered_one: '{{count}} ta yozuv endi sigʻmaydi ({{date}} dan)',
+        not_covered_other: '{{count}} ta yozuv endi sigʻmaydi ({{date}} dan)',
+        rows_added: 'Darslar qoʻshildi ({{date}} dan)',
+        moved_back_one: '{{count}} ta yozuv oʻtmagan darsdan qaytarildi ({{date}} dan)',
+        moved_back_other: '{{count}} ta yozuv oʻtmagan darslardan qaytarildi ({{date}} dan)',
+        owner_changed: 'Reja yangi oʻqituvchiga oʻtadi ({{date}} dan)',
+      },
+    },
+    impact: {
+      title: 'Dars rejalari',
+      text: 'Oʻzgarish har bir dars rejasiga nima qiladi.',
+      plan: '{{unit}}, {{subject}}, {{quarter}}-chorak',
+      moved_one: '{{count}} ta yozuv boshqa darsga oʻtadi',
+      moved_other: '{{count}} ta yozuv boshqa darslarga oʻtadi',
+      notFitting: 'Endi sigʻmaydi: {{topics}}',
+      emptyRows_one: '{{count}} ta qator boʻsh qoladi',
+      emptyRows_other: '{{count}} ta qator boʻsh qoladi',
     },
     panel: {
       fill: 'Toʻldirish',

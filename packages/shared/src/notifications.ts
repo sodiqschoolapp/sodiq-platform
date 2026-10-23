@@ -345,7 +345,8 @@ export const NOTIFICATION_KINDS = {
    * many got a request.
    */
   'plans.followed': z.strictObject({
-    units: z.array(z.string().min(1).max(120)).min(1).max(200),
+    /** The classes and groups, joined with commas, as the text shows them. */
+    units: z.string().min(1).max(4000),
     plans: z.int().min(1),
     requests: z.int().min(0),
   }),

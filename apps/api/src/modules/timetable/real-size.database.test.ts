@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import type { GridAnswer, PublishCheck } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import {
   asVice,
@@ -330,6 +331,28 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
           }
         }
 
+        // Task 7.1b (plan of pull request #213): every journal of a graded
+        // subject in each branch given a plan with an item on every row of each
+        // quarter; one transaction marks them all and the follow before its
+        // commit lays every plan again, as a change of the whole branch does.
+        for (const branch of school.branches) {
+          const planned = await fullPlans(t, branch);
+          const followed = await timed(size.repeats, () =>
+            t.app.get(Transactions).run([branch.id], async (transaction) => {
+              await transaction
+                .insertInto('lesson_plan_follow_marks')
+                .values(planned.journals.map((id) => ({ branch_id: branch.id, journal_id: id })))
+                .execute();
+            }),
+          );
+          timings.push({
+            what: `${branch.name}: the plans follow a change of the whole branch (${String(planned.plans)} plans, ${String(planned.items)} items)`,
+            target: 'under 3 s',
+            runs: followed.runs,
+          });
+          expect(median(followed.runs), `${branch.name}: the plans follow`).toBeLessThan(3000);
+        }
+
         // A teacher shared between branches teaches in both on one day, the
         // travel time kept between the two branches' lessons (`06`, Travel time).
         gaps = await sharedDays(t, school);
@@ -640,4 +663,83 @@ function report(input: {
     '',
   ];
   return lines.join('\n');
+}
+
+/**
+ * Task 7.1b: a plan for every journal of a graded subject of the branch and
+ * every dated quarter, with an item on each of its rows (the quarter's lessons
+ * not cancelled), written as the migrator; laid on its rows by the first follow.
+ */
+async function fullPlans(
+  t: DayTemplatesKit,
+  branch: BranchOfRun,
+): Promise<{ journals: string[]; plans: number; items: number }> {
+  const migrator = t.database.migrator;
+  const journals = await migrator
+    .selectFrom('journals')
+    .innerJoin('subjects', 'subjects.id', 'journals.subject_id')
+    .select(['journals.id', 'journals.class_id', 'journals.group_id', 'journals.subject_id'])
+    .where('journals.branch_id', '=', branch.id)
+    .where('journals.academic_year_id', '=', branch.year)
+    .where('subjects.journal_type', '=', 'graded')
+    .orderBy('journals.id')
+    .execute();
+  const quarters = await migrator
+    .selectFrom('quarters')
+    .select([
+      'id',
+      sql<string>`start_date::text`.as('start'),
+      sql<string>`end_date::text`.as('end'),
+    ])
+    .where('academic_year_id', '=', branch.year)
+    .where('start_date', 'is not', null)
+    .execute();
+  let plans = 0;
+  let items = 0;
+  for (const journal of journals) {
+    for (const quarter of quarters) {
+      let query = migrator
+        .selectFrom('lessons')
+        .select(sql<number>`count(*)::int`.as('count'))
+        .where('branch_id', '=', branch.id)
+        .where('subject_id', '=', journal.subject_id)
+        .where('cancel_cause', 'is', null)
+        .where('lesson_date', '>=', quarter.start)
+        .where('lesson_date', '<=', quarter.end);
+      query =
+        journal.class_id === null
+          ? query.where('group_id', '=', journal.group_id)
+          : query.where('class_id', '=', journal.class_id);
+      const rows = (await query.executeTakeFirstOrThrow()).count;
+      if (rows === 0) continue;
+      const plan = await migrator
+        .insertInto('lesson_plans')
+        .values({ branch_id: branch.id, quarter_id: quarter.id, subject_id: journal.subject_id })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await migrator
+        .insertInto('lesson_plan_journals')
+        .values({
+          branch_id: branch.id,
+          plan_id: plan.id,
+          journal_id: journal.id,
+          quarter_id: quarter.id,
+        })
+        .execute();
+      await migrator
+        .insertInto('lesson_plan_items')
+        .values(
+          Array.from({ length: rows }, (_, index) => ({
+            branch_id: branch.id,
+            plan_id: plan.id,
+            position: index + 1,
+            topic: `Topic ${String(index + 1)}`,
+          })),
+        )
+        .execute();
+      plans += 1;
+      items += rows;
+    }
+  }
+  return { journals: journals.map((one) => one.id), plans, items };
 }

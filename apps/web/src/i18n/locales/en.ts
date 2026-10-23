@@ -653,8 +653,10 @@ export const en = {
       'This plan is not yours to read or change. Only the teacher of the class writes its plan.',
     plan_row_taken: 'This row already holds an item. Open the row again to edit it.',
     plan_row_unknown: 'The quarter has no lesson for this row any more. Open the plan again.',
-    plan_row_moved: 'The lessons of the plan moved since you opened it. Open the plan again and choose the row.',
-    plan_closed: 'This plan is closed with its journal: the class has no more lessons of this subject.',
+    plan_row_moved:
+      'The lessons of the plan moved since you opened it. Open the plan again and choose the row.',
+    plan_closed:
+      'This plan is closed with its journal: the class has no more lessons of this subject.',
     plan_item_stale:
       'Someone changed this row meanwhile. The value saved now is shown under the field; type your change again.',
     plan_row_held: 'The lesson of this row has been held, so the row cannot be cleared.',
@@ -3203,6 +3205,8 @@ export const en = {
         item_clear: 'Plan row cleared',
         file_add: 'File added to a plan row',
         file_remove: 'File removed from a plan row',
+        items_followed: 'Plan rows followed a timetable change',
+        request_prepared: 'Plan edit request prepared',
       },
       absence_reason: {
         set: 'Reason of absence set',
@@ -3579,6 +3583,12 @@ export const en = {
     // The text of each kind of NOTIFICATION_KINDS (packages/shared), filled with its data.
     kinds: {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
+      plans: {
+        followed:
+          'Your lesson plans moved with a change of the timetable: {{units}}. Edit requests prepared for you: {{requests}}.',
+        followed_counts:
+          'Lesson plans of your subjects moved with a change of the timetable: {{plans}}. Edit requests prepared: {{requests}}.',
+      },
       sample: {
         message: 'Sample: {{text}}',
       },
@@ -4959,7 +4969,7 @@ export const en = {
       owner: 'Teacher:',
       noOwner: 'No teacher',
       withoutTopic: 'Rows without a topic:',
-      closed: 'Closed year',
+      closed: 'Closed',
       number: 'No.',
       date: 'Date',
       slot: 'lesson {{number}}',
@@ -4971,7 +4981,32 @@ export const en = {
       rowName: 'Row {{number}}',
       emptyTitle: 'No lessons in this quarter',
       empty: 'The rows appear when the timetable gives the quarter its lessons.',
-      unattached: 'Items without a lesson',
+      notCovered: 'Not covered',
+      notCoveredNote:
+        'These items no longer fit in the quarter. They are merged into other lessons or carried into the next quarter through an edit request.',
+      movedFrom: 'Moved from {{date}}',
+      request: {
+        title: 'Edit request prepared',
+        text: 'The system prepared an edit request for the lessons from {{date}}.',
+        not_covered_one: '{{count}} item no longer fits (from {{date}})',
+        not_covered_other: '{{count}} items no longer fit (from {{date}})',
+        rows_added: 'Lessons were added (from {{date}})',
+        moved_back_one:
+          '{{count}} item moved back from a lesson that did not take place (from {{date}})',
+        moved_back_other:
+          '{{count}} items moved back from lessons that did not take place (from {{date}})',
+        owner_changed: 'A new teacher takes over (from {{date}})',
+      },
+    },
+    impact: {
+      title: 'Lesson plans',
+      text: 'What the change does to each lesson plan.',
+      plan: '{{unit}}, {{subject}}, quarter {{quarter}}',
+      moved_one: '{{count}} item moves to another lesson',
+      moved_other: '{{count}} items move to another lesson',
+      notFitting: 'No longer fit: {{topics}}',
+      emptyRows_one: '{{count}} row left empty',
+      emptyRows_other: '{{count}} rows left empty',
     },
     panel: {
       fill: 'Fill in',

@@ -39,6 +39,7 @@ import { roomsQuery } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { ruleText } from './rule-text';
 import { changeExam, checkExam, createExam, dayQuery } from './timetable-api';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 type Language = 'uz' | 'ru' | 'en';
 
@@ -570,6 +571,7 @@ export function ExamForm({
                   )}
                 </section>
                 {result.rating !== null && <RatingJournals rating={result.rating} />}
+                <PlanImpactList plans={result.plans} />
                 {result.choices.map((one) => (
                   <fieldset
                     key={choiceKey(one.classId, one.blockId)}

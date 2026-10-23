@@ -97,6 +97,8 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
         await createPlanItem(plan.journalId, {
           quarterId: plan.quarterId,
           position: row.number,
+          // Task 7.1b: refused `plan_row_moved` when the rows shifted meanwhile.
+          lessonId: row.lessonId,
           values: {
             ...values,
             classworks: values.classworks.map(({ title, description }) => ({ title, description })),

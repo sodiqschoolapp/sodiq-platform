@@ -68,6 +68,7 @@ const refusalWith = (code: string, details: ErrorDetail[]): Response =>
 
 /** The preview of a save of the quarters that changes nothing (task 5.6b-5b, decision 3). */
 const NOTHING: QuartersPreview = {
+  plans: [],
   lessons: NO_LESSONS,
   movedBlocks: [],
   pastLessons: { items: [], more: 0 },

@@ -139,6 +139,7 @@ const EXAM: Exam = {
 const SHARED_BLOCK = uid(700);
 
 const checkOf = (fields: Partial<ExamCheck>): ExamCheck => ({
+  plans: [],
   cancels: [],
   choices: [],
   blocked: [],

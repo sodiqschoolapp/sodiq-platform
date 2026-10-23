@@ -51,6 +51,7 @@ const LIST: PlanList = {
 };
 
 const ITEM: PlanItem = {
+  movedFrom: null,
   id: uid(40),
   position: 1,
   topic: 'Fractions',
@@ -102,7 +103,8 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
       item: null,
     },
   ],
-  unattached: [],
+  notCovered: [],
+  request: null,
 });
 
 function open(

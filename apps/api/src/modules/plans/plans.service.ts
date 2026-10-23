@@ -348,7 +348,8 @@ export class PlansService {
       closed: scene.closed || !scene.open,
       rows: rows.map((row) => ({ ...row, item: byPosition.get(row.number) ?? null })),
       notCovered: items.filter((item) => item.position > rows.length),
-      request: planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id),
+      request:
+        planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id),
     });
   }
 
@@ -423,7 +424,8 @@ export class PlansService {
       );
       const row = rows.find((one) => one.lessonId === lesson.id);
       const planId = await planIdOf(transaction, scene.journal.id, scene.quarter.id);
-      const items = planId === null || row === undefined ? [] : await planItems(transaction, planId);
+      const items =
+        planId === null || row === undefined ? [] : await planItems(transaction, planId);
       return planLessonItemSchema.parse({
         lessonId: lesson.id,
         journalId: scene.journal.id,

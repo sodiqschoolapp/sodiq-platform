@@ -7,6 +7,7 @@ import { SECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { numbersText } from './grid-conflicts';
 import { ruleText } from './rule-text';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 /** How the lists of a publish check name what they show; `null` when a name is not known. */
 export interface PublishNames {
@@ -253,6 +254,7 @@ export function PublishCheckLists({
           </ul>
         </section>
       )}
+      <PlanImpactList plans={answer.plans} />
     </>
   );
 }

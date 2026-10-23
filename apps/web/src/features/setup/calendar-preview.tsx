@@ -38,6 +38,7 @@ import { CalendarExamsPreview, examBlocksOf, examsRefuseSave } from './calendar-
 import { CalendarGroupsPreview, groupBlocksOf, groupsRefuseSave } from './calendar-groups-preview';
 import { CalendarShortened, dayKeepsOf } from './calendar-shortened';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { PlanImpactList } from '@/components/plan-impact-list';
 
 /** "14 October" or "14 – 16 October 2026". */
 export function datesText(first: string, last: string, language: string): string {
@@ -230,6 +231,7 @@ export function useCalendarPreview(): {
           </DialogHeader>
           {question.preview.changes.length > 0 && <PreviewTable preview={question.preview} />}
           <CalendarLessonsPreview lessons={question.preview.lessons} />
+          <PlanImpactList plans={question.preview.plans} />
           <CalendarExamsPreview
             lessons={question.preview.lessons}
             choices={examChoices}

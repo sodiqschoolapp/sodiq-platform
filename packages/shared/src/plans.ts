@@ -214,7 +214,12 @@ const planQuarterSchema = z.object({
  * lessons were added, a new teacher taking over; `edge/lesson-plans`: an
  * item moved back from a lesson cancelled after its date).
  */
-export const PLAN_REQUEST_CAUSES = ["not_covered", "rows_added", "moved_back", "owner_changed"] as const;
+export const PLAN_REQUEST_CAUSES = [
+  'not_covered',
+  'rows_added',
+  'moved_back',
+  'owner_changed',
+] as const;
 
 export const planRequestCauseSchema = z.enum(PLAN_REQUEST_CAUSES);
 
