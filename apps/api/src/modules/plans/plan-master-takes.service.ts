@@ -335,7 +335,6 @@ export class PlanMasterTakes {
       const units = [];
       for (const journal of journals) {
         const rows = await planRows(transaction, branchId, journal, quarter, timeZone, now);
-        if (rows.length === 0) continue;
         const planId = await planIdOf(transaction, journal.id, quarter.id);
         const items = planId === null ? [] : await planItems(transaction, planId, journal.id);
         const topicAt = (number: number) =>
