@@ -162,8 +162,7 @@ export const studentReportSchema = z.strictObject({
     history: z.array(cellLineSchema.extend({ branch: z.string(), changedBy: accountNamedSchema })),
     /**
      * Task 8.1 (From 6.1c; decision 13): the total and "not held" lines of the
-     * works in which the student has a cell, newest first, at most
-     * `PERSONAL_DATA_ENTRY_LIMIT`.
+     * works in which the student has a cell, newest first, every one.
      */
     workHistory: z.array(workLineSchema.extend({ branch: z.string() })),
     /** The lines beyond the limit: how many, and the moment of the oldest. */

@@ -871,6 +871,17 @@ describe('classwork and homework', () => {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      // An empty work added by hand of the own branch, for the refusals of its delete.
+      const ownWork = await t.database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: s.branch,
+          lesson_id: s.second,
+          source_lesson_id: s.second,
+          kind: 'classwork',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
       const auditBefore = await journalEntries();
       const before = [await rowsOf(s.branch), await rowsOf(elsewhere.branch)];
       const column = planned(item.classworks[0] ?? '', s.first);
@@ -880,9 +891,14 @@ describe('classwork and homework', () => {
         ['post', 'works/carry', { column, version: null }],
         ['post', 'scores', { saves: [{ studentId: s.ahmedov, column, score: 1, version: null }] }],
         ['post', 'works', { kind: 'classwork' }],
+        ['delete', `works/${ownWork.id}`, {}],
       ];
       const send = (calls: Calls, method: string, path: string, body: object) =>
-        method === 'put' ? calls.put(path, body) : calls.post(path, body);
+        method === 'put'
+          ? calls.put(path, body)
+          : method === 'delete'
+            ? calls.del(path)
+            : calls.post(path, body);
       await as(other, s.branch, teacherIn(s), async (calls) => {
         for (const [method, path, body] of bodies) {
           const refused = await send(
@@ -971,6 +987,99 @@ describe('classwork and homework', () => {
           kind: 'classwork',
         });
         expect(codeOf(refused)).toBe('lesson_attendance_only');
+      });
+    });
+  });
+
+  describe('who enters (permission review of the code, should-fix 3)', () => {
+    const addOne = (calls: Calls, lessonId: string) =>
+      calls.post(`/api/journal/lessons/${lessonId}/works`, { kind: 'classwork' });
+
+    it('lets a substitute add works at the substituted lesson only', async () => {
+      const owner = await account();
+      const substitute = await account();
+      const s = await scene({ teacher: owner.account.id, spare: substitute.account.id });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: s.spareTeacher.staffId })
+        .where('id', '=', s.second)
+        .execute();
+      await as(substitute, s.branch, teacherIn(s), async (calls) => {
+        ok(await addOne(calls, s.second));
+        expect(codeOf(await addOne(calls, s.third))).toBe('journal_entry_scope');
+      });
+    });
+
+    it('refuses the class Tutor on a graded lesson, and the Academic Vice Principal and the Super Admin with no lesson of theirs', async () => {
+      const s = await scene();
+      const tutor = await account();
+      const assignment = await t.kit.giveRole(tutor.account.id, {
+        role: 'tutor',
+        branchId: s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.classes.tutorRow(s.branch, s.classId, assignment.id);
+      const before = await rowsOf(s.branch);
+      await as(tutor, s.branch, [], async (calls) => {
+        expect(codeOf(await addOne(calls, s.third))).toBe('journal_entry_scope');
+      });
+      const vice = await account();
+      await as(
+        vice,
+        s.branch,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          expect(codeOf(await addOne(calls, s.third))).toBe('journal_entry_scope');
+        },
+      );
+      const admin = await account();
+      await as(admin, s.branch, [{ role: 'super_admin' }], async (calls) => {
+        expect(codeOf(await addOne(calls, s.third))).toBe('journal_entry_scope');
+      });
+      expect(await rowsOf(s.branch)).toEqual(before);
+    });
+  });
+
+  describe('a reader of attendance only (permission review of the code, should-fix 4)', () => {
+    it('shows the Head Tutor no works, no works "not held", no homework given and no work lines', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { classworks: ['Test', 'Quiz'], homeworks: ['Read'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+              column: planned(item.classworks[0] ?? '', s.first),
+              total: 10,
+              version: null,
+            }),
+          ),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/works/not-held`, {
+            column: planned(item.classworks[1] ?? '', s.first),
+            notHeld: true,
+            version: null,
+          }),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [{ studentId: s.ahmedov, column: { workId: work.id }, score: 4, version: null }],
+          }),
+        );
+      });
+      const headTutor = await account();
+      await as(headTutor, s.branch, [{ role: 'head_tutor', branchId: s.branch }], async (calls) => {
+        const grid = await gridOf(calls, s);
+        expect(grid.shape).toBe('attendance');
+        const first = lessonIn(grid, s.first);
+        expect([first.works, first.notHeldWorks, first.given]).toEqual([[], [], []]);
+        const history = cellHistorySchema.parse(
+          ok(await calls.get(`/api/journal/lessons/${s.first}/students/${s.ahmedov}/history`)),
+        );
+        expect(history.workLines).toEqual([]);
+        expect(history.lines.every((line) => line.work === null)).toBe(true);
       });
     });
   });

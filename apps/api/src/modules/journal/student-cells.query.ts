@@ -108,8 +108,9 @@ export async function studentJournal(
     .filter(
       (line) => line.totalBefore !== line.totalAfter || line.notHeldBefore !== line.notHeldAfter,
     )
-    .reverse()
-    .slice(0, PERSONAL_DATA_ENTRY_LIMIT);
+    // Every line: a student's works are few, and the report holds all of them (permission
+    // review, should-fix 6), newest first.
+    .reverse();
   return {
     workHistory,
     cells: cells.map((cell) => {

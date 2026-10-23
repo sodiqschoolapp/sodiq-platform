@@ -168,6 +168,7 @@ export class ResetEntries {
             window,
             lines: (
               await workLines(transaction, {
+                branchId,
                 writer: { accountId: window.accountId, from: window.start, to: window.end },
               })
             ).filter(

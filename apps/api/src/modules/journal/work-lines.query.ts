@@ -18,6 +18,8 @@ export interface WorkLineWithBranch extends WorkLine {
 }
 
 export interface WorkLineFilter {
+  /** Only the lines of this branch (the reset report; the transaction may hold more). */
+  readonly branchId?: string;
   /** The lines of these works. */
   readonly workIds?: readonly string[];
   /** The lines this account wrote between `from` (included) and `to` (excluded). */
@@ -47,6 +49,7 @@ export async function workLines(
       'changed_at',
     ]);
   if (filter.workIds !== undefined) query = query.where('work_id', 'in', [...filter.workIds]);
+  if (filter.branchId !== undefined) query = query.where('branch_id', '=', filter.branchId);
   if (filter.writer !== undefined) {
     query = query
       .where('changed_by', '=', filter.writer.accountId)

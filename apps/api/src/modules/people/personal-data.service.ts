@@ -173,6 +173,8 @@ export class PersonalData {
           cells: journal.cells.length,
           cellLines: journal.history.length,
           cellLinesLeftOut: journal.historyLeftOut?.count ?? 0,
+          // Task 8.1: the total and "not held" lines (permission review, should-fix 6).
+          workLines: journal.workHistory.length,
         },
       );
       // A relative with no live link left is hidden from `entryAnswers`'s

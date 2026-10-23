@@ -435,6 +435,33 @@ describe('the report of entries after a reset', () => {
     await total(at('2026-10-22', '10:00'), { total: 30 });
     await total(at('2026-10-23', '11:00'), { not_held: true });
     await total(at('2026-10-24', '10:00'), { total: 20 });
+    // A total the account set in another branch within the 48 hours is not this branch's.
+    const southLesson = await lesson(t.south, '2026-10-14');
+    t.clock.set(at('2026-10-22', '11:00'));
+    await t.app.get(Transactions).run([t.south], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: t.south,
+        actorId: person.accountId,
+        action: 'journal.work_total',
+      });
+      const row = await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: t.south,
+          lesson_id: southLesson,
+          source_lesson_id: southLesson,
+          kind: 'classwork',
+          changed_by: person.accountId,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .updateTable('journal_works')
+        .set({ total: 40, changed_by: person.accountId })
+        .where('id', '=', row.id)
+        .execute();
+    });
+    t.clock.set(NOW);
     const answer = ok(await report(t.north, '2026-10-22', '2026-10-22'));
     const [reset] = resetOf(answer, person.accountId);
     expect(
