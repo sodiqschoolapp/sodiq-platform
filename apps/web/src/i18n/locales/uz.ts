@@ -656,21 +656,30 @@ export const uz: Texts<'one' | 'other'> = {
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
       'Bu darsda faqat davomat olinadi: fanda ishlar yoʻq yoki oʻsha kuni jurnalning oʻqituvchisi yoʻq.',
-    quarter_rating_dates: 'Bu sanalar bilan qoʻlda belgilangan reyting imtihoni sanasi oʻz choragidan tashqarida qoladi. Avval jurnalda imtihon sanasini oʻzgartiring.',
-    subject_switches_from: 'Oʻzgarish qaysi chorakdan kuchga kirishini tanlang. U faqat jurnal turi yoki reyting imtihoni oʻzgarganda tanlanadi.',
-    subject_switch_scores: 'Boshlangan chorakda bu fan boʻyicha ballar bor. Oʻzgarishni keyingi chorakdan qiling.',
-    subject_switch_exams: 'Jadvaldagi reyting imtihoni oʻsha chorakda bu fan jurnallariga bogʻlangan. Oʻzgarishni keyingi chorakdan qiling yoki avval bogʻlanishni olib tashlang.',
+    quarter_rating_dates:
+      'Bu sanalar bilan qoʻlda belgilangan reyting imtihoni sanasi oʻz choragidan tashqarida qoladi. Avval jurnalda imtihon sanasini oʻzgartiring.',
+    subject_switches_from:
+      'Oʻzgarish qaysi chorakdan kuchga kirishini tanlang. U faqat jurnal turi yoki reyting imtihoni oʻzgarganda tanlanadi.',
+    subject_switch_scores:
+      'Boshlangan chorakda bu fan boʻyicha ballar bor. Oʻzgarishni keyingi chorakdan qiling.',
+    subject_switch_exams:
+      'Jadvaldagi reyting imtihoni oʻsha chorakda bu fan jurnallariga bogʻlangan. Oʻzgarishni keyingi chorakdan qiling yoki avval bogʻlanishni olib tashlang.',
     rating_exam_off: 'Bu fanda shu chorakda reyting imtihoni yoʻq.',
-    rating_exam_scope: 'Reyting imtihonida buni qila olmaysiz. Ballarni jurnal oʻqituvchisi kiritadi; «ozod» va «oʻtkazilmadi»ni oʻquv ishlari boʻyicha direktor oʻrinbosari belgilaydi.',
+    rating_exam_scope:
+      'Reyting imtihonida buni qila olmaysiz. Ballarni jurnal oʻqituvchisi kiritadi; «ozod» va «oʻtkazilmadi»ni oʻquv ishlari boʻyicha direktor oʻrinbosari belgilaydi.',
     rating_exam_linked: 'Sana jadvaldagi imtihondan olinadi. Uni oʻsha yerda oʻzgartiring.',
     rating_exam_no_date: 'Avval imtihon sanasini belgilang. Ballar shu sanadan kiritiladi.',
     rating_exam_not_yet: 'Ballar imtihon sanasidan boshlab kiritiladi.',
-    rating_exam_not_held: 'Bu jurnal uchun reyting imtihoni «oʻtkazilmadi» deb belgilangan. Avval buni bekor qiling.',
-    rating_exam_entries: 'Oʻquvchilarda yozuvlar bor. Imtihonni oʻtkazilmagan deb belgilash uchun tasdiqlang; yozuvlar tarixda qoladi.',
+    rating_exam_not_held:
+      'Bu jurnal uchun reyting imtihoni «oʻtkazilmadi» deb belgilangan. Avval buni bekor qiling.',
+    rating_exam_entries:
+      'Oʻquvchilarda yozuvlar bor. Imtihonni oʻtkazilmagan deb belgilash uchun tasdiqlang; yozuvlar tarixda qoladi.',
     rating_exam_reason: 'Oʻzgarish sababini yozing, masalan kech topshirish yoki qayta topshirish.',
-    rating_exam_not_member: 'Oʻquvchi imtihon sanasidan chorak oxirigacha bu sinf yoki guruhda emas.',
+    rating_exam_not_member:
+      'Oʻquvchi imtihon sanasidan chorak oxirigacha bu sinf yoki guruhda emas.',
     rating_exam_date_quarter: 'Imtihon sanasi chorak ichida boʻlishi kerak.',
-    rating_exam_stale: 'Bu yozuvni hozirgina kimdir oʻzgartirdi. Koʻrsatilgan qiymatni tekshirib, qayta saqlang.',
+    rating_exam_stale:
+      'Bu yozuvni hozirgina kimdir oʻzgartirdi. Koʻrsatilgan qiymatni tekshirib, qayta saqlang.',
     comment_scope: 'Faqat shu darsda kirita oladigan narsangizga izoh yozish mumkin.',
     comment_no_value: 'Avval baho yoki sonni kiriting, keyin izoh qoʻshing.',
     comment_stale: 'Bu izohni hozirgina kimdir oʻzgartirdi. Uni qayta oching.',
@@ -5571,8 +5580,10 @@ export const uz: Texts<'one' | 'other'> = {
       notHeldShort: 'Oʻtkazilmadi',
       undoNotHeld: '«Oʻtkazilmadi»ni bekor qilish',
       notHeldTitle: 'Imtihon oʻtkazilmagan deb belgilansinmi?',
-      notHeldConfirm_one: '{{count}} ta oʻquvchida yozuv bor. U natijadan chiqadi va tarixda qoladi.',
-      notHeldConfirm_other: '{{count}} ta oʻquvchida yozuv bor. Ular natijalardan chiqadi va tarixda qoladi.',
+      notHeldConfirm_one:
+        '{{count}} ta oʻquvchida yozuv bor. U natijadan chiqadi va tarixda qoladi.',
+      notHeldConfirm_other:
+        '{{count}} ta oʻquvchida yozuv bor. Ular natijalardan chiqadi va tarixda qoladi.',
       entryTitle: 'Reyting imtihoni: {{student}}',
       stored: 'Hozir',
       score: 'Ball',

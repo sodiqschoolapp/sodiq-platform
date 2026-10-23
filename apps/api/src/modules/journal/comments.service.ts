@@ -15,7 +15,12 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf } from '../timetable/journal-owners.js';
 import { enterableLesson, entryAssignment, ownStaffOf } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
-import { COMMENT_COLUMNS, commentsAnswer, visibilityOf, type CommentRow } from './comments.query.js';
+import {
+  COMMENT_COLUMNS,
+  commentsAnswer,
+  visibilityOf,
+  type CommentRow,
+} from './comments.query.js';
 import { JournalGridReader } from './journal-grid.service.js';
 import { journalRows, switchesIn } from './journal-grid.query.js';
 import { ratingRightsOf, ratingRowOf } from './rating.js';
@@ -52,10 +57,9 @@ export class CommentsService {
   save(access: Access, input: CommentSave, requestId: string): Promise<JournalComment> {
     const branchId = branchOf(access);
     // Two first comments on one target at one moment meet on its key: the second is stale.
-    return refusingConstraints(
-      () => this.saveIn(access, branchId, input, requestId),
-      { journal_comments_key: 'comment_stale' },
-    );
+    return refusingConstraints(() => this.saveIn(access, branchId, input, requestId), {
+      journal_comments_key: 'comment_stale',
+    });
   }
 
   private saveIn(

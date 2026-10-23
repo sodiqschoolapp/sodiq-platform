@@ -96,6 +96,23 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await works.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
   await expect(page.getByRole('button', { name: /^Work: / })).toHaveCount(before + 1);
 
+  // Task 8.2 (07, Keyboard: "a key opens the comment"): the key C on an A cell opens the
+  // comments of the student for that lesson; a note "visible to parents" is saved and the
+  // cell shows its marker.
+  const attendance = page.locator(`[row-id="${oktamov ?? ''}"] [col-id="${lessonId}:a"]`).last();
+  await attendance.click();
+  await page.keyboard.press('c');
+  const comments = page.getByRole('dialog', { name: 'Comments: Oʻktamov Bekzod' });
+  const note = comments.getByRole('region', { name: en.journal.comments.targets.note });
+  await note.getByLabel(en.journal.comments.body, { exact: true }).fill('Helped a classmate');
+  await note.getByLabel(en.journal.comments.visibility, { exact: true }).selectOption('parents');
+  await note.getByRole('button', { name: en.journal.comments.save, exact: true }).click();
+  await expect(note.getByRole('list', { name: en.journal.comments.history })).toContainText(
+    'Helped a classmate',
+  );
+  await comments.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
+  await expect(attendance).toHaveClass(/after:border-t-primary/);
+
   // Lesson mode for today's lesson.
   await page
     .getByRole('radio', { name: en.journal.page.lessonMode, exact: true })

@@ -208,8 +208,8 @@ export class PlansService {
       }
       if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
       const quarters = await datedQuarters(transaction, yearId);
-      const journals = (await journalRows(transaction, branchId, { yearId })).filter(
-        (journal) => plannedJournal(journal),
+      const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
+        plannedJournal(journal),
       );
       const reader = await planReaderOf(transaction, access);
       const facts = await ownerFactsOf(

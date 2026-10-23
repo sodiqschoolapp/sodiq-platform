@@ -502,7 +502,9 @@ export class JournalGridReader {
       studentIds: students.map((student) => student.id),
       lessonIds: lessons.map((lesson) => lesson.id),
       ratingExamId:
-        rating === null ? null : ((await this.ratingIdOf(transaction, journal.id, quarter.id)) ?? null),
+        rating === null
+          ? null
+          : ((await this.ratingIdOf(transaction, journal.id, quarter.id)) ?? null),
       shape,
     });
     const months = [...new Set(lessons.map((one) => one.date.slice(0, 7)))];
@@ -821,9 +823,7 @@ export class JournalGridReader {
         daily: attendanceOnly ? null : weights.daily,
         quarterly: attendanceOnly ? null : weights.quarterly,
         weightsChangedOn:
-          changedAt !== null && changedAt > quarter.startDate && !attendanceOnly
-            ? changedAt
-            : null,
+          changedAt !== null && changedAt > quarter.startDate && !attendanceOnly ? changedAt : null,
       },
     });
   }

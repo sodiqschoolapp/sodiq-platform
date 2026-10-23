@@ -947,6 +947,32 @@ describe('publish', () => {
       ]);
     });
 
+    // Task 8.2 (From 2.1 and 5.5c): each quarter is checked against its own switches.
+    it('checks each touched quarter against its own switches and rounds (task 8.2)', async () => {
+      const s = await scene({ journalType: 'graded' });
+      await weigh(s.branch, s.subject, await quarterIds(s.year));
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+      // The rating exam switched on from quarter 3, as the subject edit writes it.
+      await t.app.get(Transactions).run([s.branch], async (transaction) => {
+        await transaction
+          .updateTable('subjects')
+          .set((eb) => ({
+            rating_exam: true,
+            rating_round: eb('rating_round', '+', 1),
+            switches_from: 3,
+          }))
+          .where('id', '=', s.subject)
+          .execute();
+      });
+      // Quarters 1 and 2 keep their distributions; 3 and 4 need one with a rating part.
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual(
+        [3, 4].map((quarter) => ({
+          code: 'subject_quarter_weights',
+          path: `subjects.${s.subject}.quarters.${String(quarter)}`,
+        })),
+      );
+    });
+
     it('publishes a changed date with the Tutor rows following the Tutor of that date (decision 7)', async () => {
       const s = await scene();
       const tutorSubject = await load.tutorSubject({ grades: [7] });

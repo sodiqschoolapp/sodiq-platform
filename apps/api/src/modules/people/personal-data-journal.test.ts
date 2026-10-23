@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
+import { ratingEntryAndNote } from '../../testing/rating-kit.js';
 import { CellsKit, workWithTotal } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { Audit } from '../audit/audit.service.js';
@@ -221,6 +222,31 @@ describe('the marks and attendance of the student report', () => {
       found.journal.workHistory.map((line) => [line.workId, line.totalBefore, line.totalAfter]),
     ).toEqual([[own, 10, 20]]);
     expect(found.journal.workHistory[0]?.changedBy?.accountId).toBe(teacher);
+  });
+
+  // Task 8.2 (From 6.1c; decision 12): the student's rating entries and comments.
+  it("holds the lines of the student's rating entries and comments", async () => {
+    const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
+    const studentId = pupil ?? '';
+    const lesson = await cells.lesson(t.north, year, classId, '2026-10-20');
+    await ratingEntryAndNote(t, cells.lessons.load, {
+      branch: t.north,
+      year,
+      classId,
+      lessonId: lesson,
+      studentId,
+      accountId: teacher,
+      at: '2026-10-21T10:00:00+05:00',
+      examDate: '2026-10-21',
+    });
+    t.clock.set(NOW);
+    const found = await report(studentId);
+    expect(found.journal.ratingHistory.map((line) => [line.after, line.journal.quarter])).toEqual([
+      [{ kind: 'score', score: 77 }, 1],
+    ]);
+    expect(
+      found.journal.commentHistory.map((line) => [line.target, line.bodyAfter, line.visibility]),
+    ).toEqual([['note', 'Helped a classmate', 'parents']]);
   });
 
   it('shows the cells of a cancelled lesson as cancelled', async () => {

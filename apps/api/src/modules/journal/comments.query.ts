@@ -102,4 +102,3 @@ export async function gridComments(
     rows.filter((row) => input.shape !== 'attendance' || row.target === 'mark'),
   );
 }
-

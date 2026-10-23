@@ -4,6 +4,7 @@ import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import type { Json } from '../../database/types.generated.js';
+import { ratingEntryAndNote } from '../../testing/rating-kit.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -471,6 +472,39 @@ describe('the report of entries after a reset', () => {
       [30, 30, true],
     ]);
     expect(reset?.workEntries[0]?.lesson?.date).toBe('2026-10-14');
+  });
+
+  // Task 8.2 (From 6.1c; decision 12): the rating entries and comments of the 48 hours.
+  it('lists the rating entries and comments the account wrote within the 48 hours', async () => {
+    const person = await classes().person(t.north, ['uz']);
+    const lessonId = await lesson(t.north, '2026-10-14');
+    const { classId, year, students } = await scene(t.north);
+    await entry({
+      branch: t.north,
+      action: 'account.password_reset',
+      at: at('2026-10-22', '09:00'),
+      actor: adminAccount,
+      record: { type: 'account', id: person.accountId },
+    });
+    await ratingEntryAndNote(t, cells.lessons.load, {
+      branch: t.north,
+      year,
+      classId,
+      lessonId,
+      studentId: students[1] ?? '',
+      accountId: person.accountId,
+      at: at('2026-10-22', '10:00'),
+      examDate: '2026-10-12',
+    });
+    t.clock.set(NOW);
+    const answer = ok(await report(t.north, '2026-10-22', '2026-10-22'));
+    const [reset] = resetOf(answer, person.accountId);
+    expect(reset?.ratingEntries.map((line) => [line.studentId, line.after])).toEqual([
+      [students[1], { kind: 'score', score: 77 }],
+    ]);
+    expect(
+      reset?.commentEntries.map((line) => [line.target, line.bodyAfter, line.lesson?.date]),
+    ).toEqual([['note', 'Helped a classmate', '2026-10-14']]);
   });
 
   it('keeps a reset and its entries after the branch link is taken off', async () => {

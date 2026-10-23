@@ -161,6 +161,8 @@ describe('the rating exam and comments in the grid', () => {
     fireEvent.click(cell);
     fireEvent.keyDown(cell, { key: 'e', code: 'KeyE' });
     const dialog = await screen.findByRole('dialog', { name: 'Rating exam: Zokirov Ali' });
+    // The letter starts no edit of the score (decision 11).
+    expect(document.querySelector('[data-refused-number]')).toBeNull();
     fireEvent.change(within(dialog).getByLabelText(en.journal.rating.score), {
       target: { value: '75' },
     });

@@ -454,7 +454,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   journal_no_quarter: 'The year has no quarter with dates.',
   journal_entry_scope: 'The lesson is not one the person teaches or owns.',
   lesson_attendance_only: 'The lesson takes attendance only.',
-  subject_switches_from: 'A change of the switches names the quarter it takes effect from, and only such a change names one.',
+  subject_switches_from:
+    'A change of the switches names the quarter it takes effect from, and only such a change names one.',
   subject_switch_scores: 'A started quarter the change reaches holds scores of the subject.',
   subject_switch_exams: 'A standing rating exam links journals in a quarter the change reaches.',
   rating_exam_off: 'The subject has no rating exam in that quarter.',

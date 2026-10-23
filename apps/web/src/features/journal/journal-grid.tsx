@@ -15,6 +15,7 @@ import {
   type GridApi,
   type CellKeyDownEvent,
   type ICellRendererParams,
+  type SuppressKeyboardEventParams,
   type IHeaderParams,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
@@ -176,6 +177,13 @@ interface GridProps {
   /** Comments (task 8.2): a marker on a cell with one, and the dialog at `KeyC`. */
   readonly comments?: CommentsInput | undefined;
 }
+
+/**
+ * The keys that open a dialog (task 8.2, decision 11): C the comment, E a rating entry. On a
+ * cell that takes a typed number they must not start an edit with the letter.
+ */
+const dialogKey = (params: SuppressKeyboardEventParams<GridRow>): boolean =>
+  !params.editing && (params.event.code === 'KeyC' || params.event.code === 'KeyE');
 
 /** The corner marker of a cell with a comment (task 8.2). */
 const COMMENTED =
@@ -359,6 +367,7 @@ export function JournalGridView({
                   }
                 : {}),
             },
+            suppressKeyboardEvent: dialogKey,
             editable: (params) =>
               rating?.exam.canEnter === true &&
               params.data?.kind === 'student' &&
@@ -625,6 +634,7 @@ export function JournalGridView({
                 }),
           },
           width: 112,
+          suppressKeyboardEvent: dialogKey,
           editable: (params) =>
             enterable &&
             params.data?.kind === 'student' &&

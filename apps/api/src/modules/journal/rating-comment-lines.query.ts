@@ -180,10 +180,9 @@ export async function commentLines(
 }
 
 /** A line as the reset report holds it, without the branch. */
-export function withoutBranchOf<T extends { readonly branch: string }>(
-  line: T,
-): Omit<T, 'branch'> {
-  return Object.fromEntries(
-    Object.entries(line).filter(([key]) => key !== 'branch'),
-  ) as Omit<T, 'branch'>;
+export function withoutBranchOf<T extends { readonly branch: string }>(line: T): Omit<T, 'branch'> {
+  return Object.fromEntries(Object.entries(line).filter(([key]) => key !== 'branch')) as Omit<
+    T,
+    'branch'
+  >;
 }

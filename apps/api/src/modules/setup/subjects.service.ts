@@ -17,11 +17,7 @@ import type {
 import { gradeRanges } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import {
-  Transactions,
-  transactionMoment,
-  type Transaction,
-} from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
@@ -261,12 +257,22 @@ async function refuseSwitchChange(
   const found = rows[0] ?? { scores: 0, exams: 0 };
   if (found.scores > 0) {
     throw new ApiException('subject_switch_scores', 409, undefined, [
-      { path: 'switchesFrom', code: 'scores', message: 'Quarters with scores.', count: found.scores },
+      {
+        path: 'switchesFrom',
+        code: 'scores',
+        message: 'Quarters with scores.',
+        count: found.scores,
+      },
     ]);
   }
   if (found.exams > 0) {
     throw new ApiException('subject_switch_exams', 409, undefined, [
-      { path: 'ratingExam', code: 'exams', message: 'Quarters with a linked exam.', count: found.exams },
+      {
+        path: 'ratingExam',
+        code: 'exams',
+        message: 'Quarters with a linked exam.',
+        count: found.exams,
+      },
     ]);
   }
 }
@@ -754,7 +760,8 @@ export class Subjects {
           [id],
           quarters.map((quarter) => quarter.id),
         );
-        const firstSwitches = first === undefined ? undefined : switches.get(switchKey(id, first.id));
+        const firstSwitches =
+          first === undefined ? undefined : switches.get(switchKey(id, first.id));
         const source =
           first === undefined || firstSwitches === undefined
             ? undefined
@@ -778,7 +785,11 @@ export class Subjects {
           if (quarter.number !== 1) {
             const own = switches.get(switchKey(id, quarter.id));
             // Task 8.2: a quarter whose switches differ from quarter 1's takes no copy.
-            if (own === undefined || !fits(source, own.rating_exam) || own.journal_type !== 'graded') {
+            if (
+              own === undefined ||
+              !fits(source, own.rating_exam) ||
+              own.journal_type !== 'graded'
+            ) {
               throw refused('weights_shape_mismatch');
             }
             await this.writeQuarter(

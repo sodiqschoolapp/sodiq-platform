@@ -232,9 +232,12 @@ export const ratingHistoryQuery = (
     queryFn: async () =>
       ratingHistorySchema.parse(
         await answerOf(
-          api.GET('/api/journal/journals/{journalId}/rating/{quarterId}/students/{studentId}/history', {
-            params: { header: branchHeader(), path: { journalId, quarterId, studentId } },
-          }),
+          api.GET(
+            '/api/journal/journals/{journalId}/rating/{quarterId}/students/{studentId}/history',
+            {
+              params: { header: branchHeader(), path: { journalId, quarterId, studentId } },
+            },
+          ),
         ),
       ),
     enabled: branchId !== null,
@@ -242,9 +245,9 @@ export const ratingHistoryQuery = (
 
 /** Writes or clears a comment. */
 export const saveComment = (body: CommentSave) =>
-  answerOf(
-    api.PUT('/api/journal/comments', { params: { header: branchHeader() }, body }),
-  ).then((answer) => journalCommentSchema.parse(answer));
+  answerOf(api.PUT('/api/journal/comments', { params: { header: branchHeader() }, body })).then(
+    (answer) => journalCommentSchema.parse(answer),
+  );
 
 /** The history of a comment. */
 export const commentHistoryQuery = (branchId: string | null, query: CommentHistoryQuery) =>

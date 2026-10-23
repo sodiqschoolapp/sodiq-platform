@@ -506,17 +506,15 @@ export class QuarterLessons {
           row.date > quarter.endDate
         );
       })
-      .map(
-        (row): QuarterItem => ({
-          kind: 'rating_date',
-          date: row.date,
-          unit:
-            row.class_id === null
-              ? { kind: 'group', name: row.group_name ?? '', grade: null }
-              : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
-          subject: subjectOf(row),
-        }),
-      );
+      .map((row): QuarterItem => ({
+        kind: 'rating_date',
+        date: row.date,
+        unit:
+          row.class_id === null
+            ? { kind: 'group', name: row.group_name ?? '', grade: null }
+            : { kind: 'class', name: row.class_name ?? '', grade: row.grade },
+        subject: subjectOf(row),
+      }));
   }
 
   /** Every block of the year on a date that goes to another quarter takes that quarter (decision 4). */

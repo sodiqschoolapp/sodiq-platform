@@ -55,7 +55,10 @@ export const switchesOn = (
 ): JournalQuarterSwitches | undefined =>
   journal.quarters.find(
     (one) =>
-      one.startDate !== null && one.endDate !== null && one.startDate <= date && date <= one.endDate,
+      one.startDate !== null &&
+      one.endDate !== null &&
+      one.startDate <= date &&
+      date <= one.endDate,
   );
 
 /** The switches of a quarter by id; `undefined` for a quarter of another year. */

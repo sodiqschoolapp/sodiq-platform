@@ -642,21 +642,29 @@ export const en = {
       'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
     lesson_attendance_only:
       'This lesson takes attendance only: the subject has no works, or the journal has no teacher that day.',
-    quarter_rating_dates: 'These dates would leave a rating exam date set by hand outside its quarter. Change the exam date in the journal first.',
-    subject_switches_from: 'Choose the quarter the change takes effect from. It is chosen only when the journal type or the rating exam changes.',
-    subject_switch_scores: 'A quarter that has started already holds scores of this subject. Make the change from the next quarter.',
-    subject_switch_exams: 'A rating exam in the timetable is linked to journals of this subject in that quarter. Make the change from the next quarter, or remove the link first.',
+    quarter_rating_dates:
+      'These dates would leave a rating exam date set by hand outside its quarter. Change the exam date in the journal first.',
+    subject_switches_from:
+      'Choose the quarter the change takes effect from. It is chosen only when the journal type or the rating exam changes.',
+    subject_switch_scores:
+      'A quarter that has started already holds scores of this subject. Make the change from the next quarter.',
+    subject_switch_exams:
+      'A rating exam in the timetable is linked to journals of this subject in that quarter. Make the change from the next quarter, or remove the link first.',
     rating_exam_off: 'This subject has no rating exam in this quarter.',
-    rating_exam_scope: 'You cannot do this on the rating exam. Scores are typed by the journal’s teacher; "exempt" and "not held" are set by the Academic Vice Principal.',
+    rating_exam_scope:
+      'You cannot do this on the rating exam. Scores are typed by the journal’s teacher; "exempt" and "not held" are set by the Academic Vice Principal.',
     rating_exam_linked: 'The date comes from the exam in the timetable. Change it there.',
     rating_exam_no_date: 'Set the exam date first. Scores are typed from that date.',
     rating_exam_not_yet: 'Scores are typed from the exam date on.',
     rating_exam_not_held: 'The rating exam is marked "not held" for this journal. Undo that first.',
-    rating_exam_entries: 'Students already have entries. Confirm to mark the exam not held; the entries stay in the history.',
+    rating_exam_entries:
+      'Students already have entries. Confirm to mark the exam not held; the entries stay in the history.',
     rating_exam_reason: 'Write the reason for the change, for example a late sitting or a retake.',
-    rating_exam_not_member: 'The student is not in this class or group from the exam date to the end of the quarter.',
+    rating_exam_not_member:
+      'The student is not in this class or group from the exam date to the end of the quarter.',
     rating_exam_date_quarter: 'The exam date must be inside the quarter.',
-    rating_exam_stale: 'Someone changed this entry a moment ago. Check the value shown and save again.',
+    rating_exam_stale:
+      'Someone changed this entry a moment ago. Check the value shown and save again.',
     comment_scope: 'You can comment only on what you may enter in this lesson.',
     comment_no_value: 'Type the mark or the number first, then add the comment.',
     comment_stale: 'Someone changed this comment a moment ago. Open it again.',
@@ -5522,8 +5530,10 @@ export const en = {
       notHeldShort: 'Not held',
       undoNotHeld: 'Undo "not held"',
       notHeldTitle: 'Mark the exam not held?',
-      notHeldConfirm_one: '{{count}} student has an entry. It leaves the result and stays in the history.',
-      notHeldConfirm_other: '{{count}} students have entries. They leave the results and stay in the history.',
+      notHeldConfirm_one:
+        '{{count}} student has an entry. It leaves the result and stays in the history.',
+      notHeldConfirm_other:
+        '{{count}} students have entries. They leave the results and stay in the history.',
       entryTitle: 'Rating exam: {{student}}',
       stored: 'Now',
       score: 'Score',
