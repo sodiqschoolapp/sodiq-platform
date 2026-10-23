@@ -53,6 +53,7 @@ const table = (date: string, end: number): TemplateTable => ({
 });
 
 const PREVIEW: TemplatePreview = {
+  plans: [],
   before: table('2026-10-11', 610),
   after: table('2026-10-11', 600),
   changed: [{ weekday: 1, grade: 1 }],

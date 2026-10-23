@@ -126,6 +126,12 @@ export type PlanNewItemValues = z.infer<typeof planNewItemValuesSchema>;
 export const planItemCreateSchema = z.strictObject({
   quarterId: z.uuid(),
   position: z.int().min(1),
+  /**
+   * Task 7.1b: the lesson of the row as the client read it; refused
+   * `plan_row_moved` when another lesson stands at the position now
+   * (`edge/lesson-plans`: "A plan is open in two tabs while a cancellation shifts it").
+   */
+  lessonId: z.uuid(),
   values: planNewItemValuesSchema,
 });
 
@@ -157,6 +163,11 @@ export const planItemSchema = z.object({
   classworks: z.array(planWorkSchema),
   homeworks: z.array(planWorkSchema),
   files: z.array(planFileSchema),
+  /**
+   * Task 7.1b: the date of the started lesson this item was moved back from
+   * (`edge/lesson-plans`: "with a \"moved from [date]\" mark"), else `null`.
+   */
+  movedFrom: schoolDateSchema.nullable(),
 });
 
 export type PlanItem = z.infer<typeof planItemSchema>;
@@ -197,6 +208,23 @@ const planQuarterSchema = z.object({
   endDate: schoolDateSchema,
 });
 
+/**
+ * Why the system prepared an edit request (task 7.1b, decision 4; `09`,
+ * "Requests prepared by the system": items not covered, empty rows after
+ * lessons were added, a new teacher taking over; `edge/lesson-plans`: an
+ * item moved back from a lesson cancelled after its date).
+ */
+export const PLAN_REQUEST_CAUSES = [
+  'not_covered',
+  'rows_added',
+  'moved_back',
+  'owner_changed',
+] as const;
+
+export const planRequestCauseSchema = z.enum(PLAN_REQUEST_CAUSES);
+
+export type PlanRequestCause = z.infer<typeof planRequestCauseSchema>;
+
 export const planParamsSchema = z.object({ journalId: z.uuid() });
 
 export type PlanParams = z.infer<typeof planParamsSchema>;
@@ -218,8 +246,21 @@ export const planSchema = z.object({
   canEdit: z.boolean(),
   closed: z.boolean(),
   rows: z.array(planRowSchema),
-  /** Items past the last row, attached to no lesson; 7.1b names them "not covered". */
-  unattached: z.array(planItemSchema),
+  /** Task 7.1b: the items past the last row, attached to no lesson ("not covered"). */
+  notCovered: z.array(planItemSchema),
+  /** Task 7.1b: the edit request the system prepared, until 7.2 sends it. */
+  request: z
+    .object({
+      fromDate: schoolDateSchema,
+      causes: z.array(
+        z.object({
+          kind: planRequestCauseSchema,
+          onDate: schoolDateSchema,
+          items: z.int().min(0),
+        }),
+      ),
+    })
+    .nullable(),
 });
 
 export type Plan = z.infer<typeof planSchema>;
@@ -279,3 +320,41 @@ export const planFileUploadQuerySchema = z.strictObject({
 });
 
 export type PlanFileUploadQuery = z.infer<typeof planFileUploadQuerySchema>;
+
+/** Task 7.1b: the item of one lesson (a reader of the plan, or the substitute of that lesson). */
+export const planLessonParamsSchema = z.object({ lessonId: z.uuid() });
+
+export type PlanLessonParams = z.infer<typeof planLessonParamsSchema>;
+
+export const planLessonItemSchema = z.object({
+  lessonId: z.uuid(),
+  journalId: z.uuid(),
+  date: schoolDateSchema,
+  /** The row number of the lesson; `null` for a cancelled lesson. */
+  number: z.int().min(1).nullable(),
+  subject: planSubjectSchema,
+  unit: planUnitSchema,
+  item: planItemSchema.nullable(),
+});
+
+export type PlanLessonItem = z.infer<typeof planLessonItemSchema>;
+
+/**
+ * Task 7.1b: what a timetable change does to one plan, shown by the impact
+ * previews (`edge/lesson-plans`: "The impact preview shows, per plan, items
+ * that no longer fit and rows left empty").
+ */
+export const planImpactSchema = z.object({
+  journalId: z.uuid(),
+  unit: z.string(),
+  subject: planSubjectSchema,
+  quarter: z.int().min(1).max(4),
+  /** The items moved to another lesson. */
+  moved: z.int().min(0),
+  /** The topics of the items that no longer fit ("not covered"). */
+  notFitting: z.array(z.string()),
+  /** The rows not started that hold no item after the change. */
+  emptyRows: z.int().min(0),
+});
+
+export type PlanImpact = z.infer<typeof planImpactSchema>;

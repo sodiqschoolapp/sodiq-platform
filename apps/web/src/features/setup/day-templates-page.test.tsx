@@ -91,6 +91,7 @@ const MAIN_DETAIL: DayTemplate = {
 };
 
 const EMPTY_PREVIEW: TemplatePreview = {
+  plans: [],
   before: { date: TOMORROW, weekdays: [1, 2, 3, 4, 5], cells: [] },
   after: { date: TOMORROW, weekdays: [1, 2, 3, 4, 5], cells: [] },
   changed: [],

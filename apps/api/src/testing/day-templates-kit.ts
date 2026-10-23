@@ -267,6 +267,11 @@ export async function dayTemplatesKit(
         // Task 5.7b-1 (permission review, must-fix 1): the writes of dated lessons end their rows.
         'substitutions',
         'substitution_lessons',
+        // Task 7.1b: every write of dated lessons follows the plans before its commit.
+        'lesson_plan_items',
+        'lesson_plan_requests',
+        'lesson_plan_request_causes',
+        'lesson_plan_absorbed',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)
@@ -280,6 +285,34 @@ export async function dayTemplatesKit(
         .selectAll()
         .where('branch_id', '=', branch)
         .orderBy('version_id')
+        .orderBy('position')
+        .execute();
+      // Task 7.1b: the plan made on a first write, laid by the follow (`laid_at`), and its marks.
+      rows.lesson_plans = await database.migrator
+        .selectFrom('lesson_plans')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute();
+      rows.lesson_plan_journals = await database.migrator
+        .selectFrom('lesson_plan_journals')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
+        .execute();
+      rows.lesson_plan_follow_marks = await database.migrator
+        .selectFrom('lesson_plan_follow_marks')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('journal_id')
+        .execute();
+      rows.lesson_plan_rows = await database.migrator
+        .selectFrom('lesson_plan_rows')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
         .orderBy('position')
         .execute();
       return rows;

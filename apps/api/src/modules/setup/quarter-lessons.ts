@@ -69,7 +69,7 @@ export interface MovedBlock {
 export interface QuarterFollow {
   readonly rewrite: CalendarRewrite;
   readonly moved: readonly MovedBlock[];
-  readonly preview: Omit<QuartersPreview, 'lessons'>;
+  readonly preview: Omit<QuartersPreview, 'lessons' | 'plans'>;
   /** Whether a refusal was answered as lines (a preview only). */
   readonly refused: boolean;
 }

@@ -29,6 +29,7 @@ import { loadEntries } from './calendar-state.js';
 import { endsOf, lockFollowingRows, refuseCutHolds } from './academic-year-dates.js';
 import { QuarterLessons } from './quarter-lessons.js';
 import { notFound, refusingConstraints } from './setup-refusals.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 interface YearRow {
   id: string;
@@ -92,6 +93,7 @@ export class AcademicYears {
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly quarterLessons: QuarterLessons,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** Every year of the branch of the transaction, newest first, each with its quarters in number order. */
@@ -548,6 +550,8 @@ export class AcademicYears {
           throw new PreviewDone({
             lessons: followed.rewrite.lessons ?? NO_LESSONS,
             ...followed.preview,
+            // Task 7.1b: what the change does to each plan (edge/lesson-plans).
+            plans: await this.planFollow.preview(transaction, access),
           });
         }
         await this.audit.record(transaction, {

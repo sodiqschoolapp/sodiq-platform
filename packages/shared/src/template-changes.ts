@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { planImpactSchema } from './plans.js';
 import { schoolDateSchema } from './academic-year.js';
 import {
   calendarDayKeepsSchema,
@@ -127,6 +128,8 @@ export const templatePreviewSchema = z.object({
   changed: z.array(z.object({ weekday: weekdaySchema, grade: z.int() })),
   lessons: calendarLessonsSchema,
   slotsInUse: z.array(slotInUseSchema),
+  /** Task 7.1b: per plan, the items that no longer fit and the rows left empty. */
+  plans: z.array(planImpactSchema),
 });
 
 export type TemplatePreview = z.infer<typeof templatePreviewSchema>;

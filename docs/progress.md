@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 7.1b Items follow the timetable
+
+- 0115: the snapshot of each plan's rows (`lesson_plan_rows`), the shifts an empty row absorbed (`lesson_plan_absorbed`), the marks of a transaction's touched journals (`lesson_plan_follow_marks`, statement triggers on lessons, quarters, versions, journals, acting teachers and staff links and statuses), prepared requests and their causes, `moved_from` and `laid_at`.
+- Before every commit `Transactions.run` runs `PlanFollow.run` (`plan-follow.ts`): `followQueue` (`plan-queue.ts`, pure) keeps started rows' items, moves an item of a lesson cancelled after its date to the front, lays the queue with the empty-row absorption and its undo, prepares requests, audits and tells the owners and Head Teachers. `GET /api/plans/lessons/:lessonId` for a reader or the lesson's substitute; the create names its row's lesson (`plan_row_moved`).
+- The previews of calendar entries, templates, quarter dates, exams, bulk cancels and the publish check show per plan what moves; the plan page shows "Not covered", "Moved from" and the prepared request.
+- Left out: shared plans, group splits and merges, copying into a new year (7.1c); sending and approving the prepared requests (7.2); "topic not delivered" (8.1); a From line each.
+
+The next sessions must know:
+
+- A plan write that changes which lessons a plan lies on (a copy, a share) marks its journal (`lesson_plan_follow_marks`) so the follow lays it before the commit; the follow is the only writer of `position` outside the create.
+- A preview that runs a change and rolls it back calls `PlanFollow.preview(transaction, access)` before the rollback; a check that computes rows passes them as `LaidRows`.
+- Tests that need the follow use the whole app (`dayTemplatesKit`); a database test with a bare `Transactions` has no before-commit step, so the marks stay for it to read.
+
 ## 22 October 2026: task 7.1a Plans and items
 
 - 0114: `lesson_plans`, `lesson_plan_journals` (one plan per journal and quarter), `lesson_plan_items` (a position in the queue), `lesson_plan_works` (10 of a kind) and `lesson_plan_files` (10 per item, 20 MB, a fixed list of types). Area `plans`; routes under `/api/plans` (list, plan, item create, save, clear, file add, read, remove), only the owner writes, the stale check per field.

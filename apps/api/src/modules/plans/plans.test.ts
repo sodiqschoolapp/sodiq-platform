@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   apiErrorSchema,
   BRANCH_HEADER,
@@ -115,16 +116,60 @@ describe('lesson plans and their items', () => {
 
   interface Api {
     get(path: string): Test;
-    post(path: string, body?: object): Test;
+    post(path: string, body?: object): PromiseLike<Response>;
     put(path: string, body: object): Test;
     del(path: string): Test;
     upload(path: string, type: string, bytes: Buffer): Test;
   }
 
+  /**
+   * The lesson at a create's position, as the plan's rows are (the quarter's
+   * lessons not cancelled, in order); the first row's for a position past the
+   * last, any uuid for a journal or quarter not found.
+   */
+  async function rowLessonOf(journalId: string, body: object): Promise<string> {
+    const { quarterId, position } = body as { quarterId?: string; position?: number };
+    const db = t.database.migrator;
+    const journal = await db
+      .selectFrom('journals')
+      .selectAll()
+      .where('id', '=', journalId)
+      .executeTakeFirst();
+    const quarter = await db
+      .selectFrom('quarters')
+      .select([sql<string>`start_date::text`.as('start'), sql<string>`end_date::text`.as('end')])
+      .where('id', '=', quarterId ?? randomUUID())
+      .executeTakeFirst();
+    if (journal === undefined || quarter === undefined) return randomUUID();
+    let query = db
+      .selectFrom('lessons')
+      .select('id')
+      .where('subject_id', '=', journal.subject_id)
+      .where('cancel_cause', 'is', null)
+      .where('lesson_date', '>=', quarter.start)
+      .where('lesson_date', '<=', quarter.end);
+    query =
+      journal.class_id === null
+        ? query.where('group_id', '=', journal.group_id)
+        : query.where('class_id', '=', journal.class_id);
+    const rows = await query.orderBy('starts_at').orderBy('id').execute();
+    return rows[(position ?? 1) - 1]?.id ?? rows[0]?.id ?? randomUUID();
+  }
+
   const apiOf = (branch: string, cookie: string): Api => ({
     get: (path) => request(t.kit.server).get(path).set('Cookie', cookie).set(BRANCH_HEADER, branch),
-    post: (path, body = {}) =>
-      request(t.kit.server).post(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body),
+    post: (path, body = {}) => {
+      const send = (sent: object) =>
+        request(t.kit.server)
+          .post(path)
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, branch)
+          .send(sent);
+      const journal = /^\/api\/plans\/journals\/([^/]+)\/items$/.exec(path)?.[1];
+      if (journal === undefined || 'lessonId' in body) return send(body);
+      // Task 7.1b: a create names the lesson of its row; read as the database holds it.
+      return rowLessonOf(journal, body).then((lessonId) => send({ ...body, lessonId }));
+    },
     put: (path, body) =>
       request(t.kit.server).put(path).set('Cookie', cookie).set(BRANCH_HEADER, branch).send(body),
     del: (path) =>
@@ -307,7 +352,7 @@ describe('lesson plans and their items', () => {
       'Topic 8',
     ]);
     expect(plan.rows.every((row) => !row.held)).toBe(true);
-    expect(plan.unattached).toEqual([]);
+    expect(plan.notCovered).toEqual([]);
 
     // A future lesson is cancelled with no item written since: the items follow by
     // position at once (edge/lesson-plans: "Cancelled lessons are skipped").
@@ -330,7 +375,7 @@ describe('lesson plans and their items', () => {
       [7, null],
     ]);
     // Past the last row: attached to nothing (7.1b names it "not covered").
-    expect(after.unattached.map((item) => item.topic)).toEqual(['Topic 8']);
+    expect(after.notCovered.map((item) => item.topic)).toEqual(['Topic 8']);
 
     // The other class's plan stands on its own lessons.
     const other = await as(s.owner, s.scene.branch, [], async (api) =>
@@ -548,8 +593,9 @@ describe('lesson plans and their items', () => {
     });
     await acting.period(actingScene, '2026-09-07', null, person.staffId);
     await as(browser, branch, [], async (api) => {
-      // Past the scope: the journal has no lesson yet, so there is no row 1.
-      expect(codeOf(await write(api))).toBe('plan_row_unknown');
+      // Past the scope: the journal has no lesson yet, so the lesson the
+      // create names for row 1 is unknown (task 7.1b, decision 12).
+      expect(codeOf(await write(api))).toBe('not_found');
       expect(planOf(await api.get(`/api/plans/journals/${actingScene.journal}`)).canEdit).toBe(
         true,
       );
@@ -1325,7 +1371,7 @@ describe('lesson plans and their items', () => {
     async function heldThen(
       branch: string,
       hold: (transaction: Transaction) => Promise<void>,
-      run: () => Test,
+      run: () => PromiseLike<Response>,
     ): Promise<Response> {
       let release: () => void = () => undefined;
       const released = new Promise<void>((resolve) => {

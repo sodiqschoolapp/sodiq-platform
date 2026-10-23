@@ -16,6 +16,7 @@ import {
   type ExamSaveAnswer,
   type ExamsAnswer,
   type ExamsQuery,
+  type PlanImpact,
 } from '@sodiq/shared';
 import {
   weekdayOf,
@@ -70,6 +71,7 @@ import {
   type Invigilation,
   type WeekSnapshot,
 } from './week-changes.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /**
  * Exams in the timetable (task 5.6c-1, pull request #181; docs/spec/
@@ -222,6 +224,7 @@ export class TimetableExams {
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
     private readonly notifications: Notifications,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** The branch's exams of a range of dates, standing and cancelled. */
@@ -343,7 +346,16 @@ export class TimetableExams {
             } catch (error) {
               if (!(error instanceof CheckDone)) throw error;
             }
-            throw new PreviewDone(await checkAnswer(transaction, before, moment, found));
+            throw new PreviewDone(
+              await checkAnswer(
+                transaction,
+                before,
+                moment,
+                found,
+                // Task 7.1b: what the save does to each plan (edge/lesson-plans).
+                await this.planFollow.preview(transaction, access),
+              ),
+            );
           }),
         EXAM_REFUSALS,
       );
@@ -1697,6 +1709,7 @@ async function checkAnswer(
   before: readonly StoredDayLesson[],
   moment: Date,
   found: CheckFound,
+  plans: readonly PlanImpact[],
 ): Promise<ExamCheck> {
   const all = await dayLessonsOf(transaction, before, moment);
   const byId = new Map(all.map((one) => [one.id, one]));
@@ -1734,6 +1747,7 @@ async function checkAnswer(
           return lesson === undefined ? [] : [{ lesson, state: item.state, rules: item.rules }];
         });
   return examCheckSchema.parse({
+    plans,
     cancels: named(found.cancels),
     choices: found.choices.map((one) => ({
       classId: one.classId,

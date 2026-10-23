@@ -67,8 +67,18 @@ export function PlanPage(): React.JSX.Element {
         cell: (row) =>
           row.item === null ? (
             <span className="text-muted-foreground">{t('plans.plan.emptyRow')}</span>
-          ) : (
+          ) : row.item.movedFrom === null ? (
             row.item.topic
+          ) : (
+            // Task 7.1b (edge/lesson-plans: 'with a "moved from [date]" mark').
+            <span className="grid">
+              <span>{row.item.topic}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('plans.plan.movedFrom', {
+                  date: schoolDateText(row.item.movedFrom, language, false),
+                })}
+              </span>
+            </span>
           ),
         searchText: (row) => row.item?.topic ?? '',
       },
@@ -170,24 +180,61 @@ export function PlanPage(): React.JSX.Element {
             panel={(row) => <PlanRowPanel key={row.lessonId} plan={data} row={row} />}
             empty={{ title: t('plans.plan.emptyTitle'), text: t('plans.plan.empty') }}
           />
-          {data.unattached.length > 0 && <Unattached plan={data} />}
+          {data.request !== null && <PreparedRequest plan={data} />}
+          {data.notCovered.length > 0 && <NotCovered plan={data} />}
         </div>
       )}
     </>
   );
 }
 
-/** Items past the last row, attached to no lesson (7.1b names them "not covered"). */
-function Unattached({ plan }: { plan: Plan }) {
+/**
+ * The items past the last row, attached to no lesson (task 7.1b; `09`:
+ * "Items that no longer fit in the quarter go to a 'not covered' list at the
+ * end of the plan"; "'Not covered' items are never dropped silently").
+ */
+function NotCovered({ plan }: { plan: Plan }) {
   const { t } = useTranslation();
   return (
-    <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-unattached">
-      <h2 id="plan-unattached" className={SECTION_TITLE}>
-        {t('plans.plan.unattached')}
+    <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-not-covered">
+      <h2 id="plan-not-covered" className={SECTION_TITLE}>
+        {t('plans.plan.notCovered')}
       </h2>
       <ul className="grid gap-1">
-        {plan.unattached.map((item) => (
+        {plan.notCovered.map((item) => (
           <li key={item.id}>{item.topic}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The edit request the system prepared (task 7.1b, decision 2; `09`, "Requests
+ * prepared by the system": "the affected lessons and the reason already
+ * filled in"), with each event that added to it.
+ */
+function PreparedRequest({ plan }: { plan: Plan }) {
+  const { t, i18n } = useTranslation();
+  const request = plan.request;
+  if (request === null) return null;
+  const dateText = (date: string) => schoolDateText(date, i18n.language, false);
+  return (
+    <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-request">
+      <h2 id="plan-request" className={SECTION_TITLE}>
+        {t('plans.plan.request.title')}
+      </h2>
+      <p className="text-sm">
+        {t('plans.plan.request.text', { date: dateText(request.fromDate) })}
+      </p>
+      <ul className="grid gap-1 text-sm">
+        {request.causes.map((cause, index) => (
+          <li key={`${cause.kind}|${cause.onDate}|${String(index)}`}>
+            {t(`plans.plan.request.${cause.kind}`, {
+              count: cause.items,
+              date: dateText(cause.onDate),
+            })}
+          </li>
         ))}
       </ul>
     </section>

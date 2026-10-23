@@ -1,7 +1,9 @@
 import {
   lessonStateOf,
   planFileTypeSchema,
+  planRequestCauseSchema,
   schoolDateOf,
+  type PlanRequestCause,
   type PlanItem,
   type PlanWork,
 } from '@sodiq/shared';
@@ -189,7 +191,14 @@ export async function worksOf(
 export async function planItems(transaction: Transaction, planId: string): Promise<PlanItem[]> {
   const items = await transaction
     .selectFrom('lesson_plan_items')
-    .select(['id', 'position', 'topic', 'objectives', 'links'])
+    .select([
+      'id',
+      'position',
+      'topic',
+      'objectives',
+      'links',
+      sql<string | null>`moved_from::text`.as('moved_from'),
+    ])
     .where('plan_id', '=', planId)
     .where('cleared_at', 'is', null)
     .orderBy('position')
@@ -222,5 +231,43 @@ export async function planItems(transaction: Transaction, planId: string): Promi
         type: planFileTypeSchema.parse(file.type),
         bytes: file.bytes,
       })),
+    movedFrom: item.moved_from,
   }));
+}
+
+/**
+ * The prepared edit request of a plan (task 7.1b, decision 2), with its
+ * causes in the order they came; `null` when none is prepared.
+ */
+export async function preparedRequestOf(
+  transaction: Transaction,
+  planId: string,
+  journalId: string,
+): Promise<{
+  fromDate: string;
+  causes: { kind: PlanRequestCause; onDate: string; items: number }[];
+} | null> {
+  const request = await transaction
+    .selectFrom('lesson_plan_requests')
+    .select(['id', sql<string>`from_date::text`.as('from_date')])
+    .where('plan_id', '=', planId)
+    .where('journal_id', '=', journalId)
+    .where('status', '=', 'prepared')
+    .executeTakeFirst();
+  if (request === undefined) return null;
+  const causes = await transaction
+    .selectFrom('lesson_plan_request_causes')
+    .select(['kind', sql<string>`on_date::text`.as('on_date'), 'items'])
+    .where('request_id', '=', request.id)
+    .orderBy('at')
+    .orderBy('id')
+    .execute();
+  return {
+    fromDate: request.from_date,
+    causes: causes.map((cause) => ({
+      kind: planRequestCauseSchema.parse(cause.kind),
+      onDate: cause.on_date,
+      items: cause.items,
+    })),
+  };
 }

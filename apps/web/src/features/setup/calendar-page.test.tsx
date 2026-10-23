@@ -120,6 +120,7 @@ const NO_LESSONS: CalendarPreview['lessons'] = {
 };
 
 const PREVIEW: CalendarPreview = {
+  plans: [],
   lessons: NO_LESSONS,
   changes: [
     {
@@ -286,6 +287,48 @@ describe('the calendar page', () => {
     });
     // The panel shows the saved record (task 2.7c-2a).
     await savedRecordPanel(en.setup.calendar.newTitle);
+  });
+
+  // Task 7.1b, pull request #213: edge/lesson-plans, "The impact preview shows, per plan,
+  // items that no longer fit and rows left empty".
+  it('shows per lesson plan what the entry moves, what no longer fits and the rows left empty', async () => {
+    await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () =>
+        json({
+          ...PREVIEW,
+          plans: [
+            {
+              journalId: uid(70),
+              unit: '7 Oxford',
+              subject: {
+                id: uid(71),
+                names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+                colour: 'blue',
+              },
+              quarter: 2,
+              moved: 6,
+              notFitting: ['Fractions', 'Decimals'],
+              emptyRows: 1,
+            },
+          ],
+        }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.kind), 'day_off');
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Founders day');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-19');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-19');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
+    const plans = within(dialog).getByRole('region', { name: en.plans.impact.title });
+    const lines = within(plans).getByRole('listitem').textContent;
+    expect(lines).toContain('7 Oxford, Mathematics, quarter 2');
+    expect(lines).toContain('6 items move to another lesson');
+    expect(lines).toContain('No longer fit: Fractions; Decimals');
+    expect(lines).toContain('1 row left empty');
   });
 
   it('sends nothing when the preview is cancelled, and says so', async () => {

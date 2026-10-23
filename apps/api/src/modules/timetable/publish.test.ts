@@ -625,6 +625,7 @@ describe('publish', () => {
         shortenedDays: [],
         unusedKeeps: [],
         chain: null,
+        plans: [],
         canPublish: true,
       });
       // Task 5.5a-2b-1: a first publish from a Monday.

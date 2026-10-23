@@ -59,6 +59,7 @@ import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 import { lessonsAuditOf, NO_LESSONS, refuseForeignChoices } from '../timetable/calendar-lessons.js';
 import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
 import { TemplateLessons } from './template-lessons.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(code: ErrorCode, paths: readonly string[] = []): ApiException {
@@ -129,6 +130,7 @@ export class DayTemplates {
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly templateLessons: TemplateLessons,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** A read in the branch of the request; today in branch time. */
@@ -1100,6 +1102,8 @@ export class DayTemplates {
             // Task 5.6b-4a: what the save does to the published timetable's lessons.
             lessons: context.followed.value?.rewrite.lessons ?? NO_LESSONS,
             slotsInUse: context.followed.value?.slotsInUse ?? ([] as SlotInUse[]),
+            // Task 7.1b: what the change does to each plan (edge/lesson-plans).
+            plans: await this.planFollow.preview(context.transaction, access),
           });
         },
         change.kind === 'assignment_set' ? assignmentRefusals(change.change.level) : {},

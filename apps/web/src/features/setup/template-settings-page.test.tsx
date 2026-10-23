@@ -65,6 +65,7 @@ const tableWith = (fridayName: string | null): TemplateTable => ({
 });
 
 const PREVIEW: TemplatePreview = {
+  plans: [],
   before: tableWith(null),
   after: tableWith('Friday'),
   changed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({ weekday: 5, grade })),

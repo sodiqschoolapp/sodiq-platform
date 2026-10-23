@@ -271,6 +271,10 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.item_clear',
     'plan.file_add',
     'plan.file_remove',
+    // Task 7.1b: the items of a plan followed a change of the timetable, and an edit request
+    // the system prepared or added to.
+    'plan.items_followed',
+    'plan.request_prepared',
   ],
   exports: [
     'building.export',

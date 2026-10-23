@@ -181,6 +181,7 @@ const IMPACT = {
 };
 
 const PUBLISH = {
+  plans: [],
   startsOn: '2026-10-12',
   earliest: '2026-10-11',
   defaultStart: '2026-10-12',

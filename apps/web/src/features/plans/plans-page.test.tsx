@@ -51,6 +51,7 @@ const LIST: PlanList = {
 };
 
 const ITEM: PlanItem = {
+  movedFrom: null,
   id: uid(40),
   position: 1,
   topic: 'Fractions',
@@ -102,7 +103,8 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
       item: null,
     },
   ],
-  unattached: [],
+  notCovered: [],
+  request: null,
 });
 
 function open(
@@ -170,6 +172,44 @@ describe('Lesson plans', () => {
     expect(second?.textContent).toContain(en.plans.plan.emptyRow);
   });
 
+  // Task 7.1b, pull request #213: 09, When something else changes.
+  it('shows the items not covered, the moved-from mark and the prepared request', async () => {
+    const plan = planOf(true);
+    const first = plan.rows[0];
+    open({
+      path: `/plans/${JOURNAL}`,
+      plan: {
+        ...plan,
+        rows: plan.rows.map((row) =>
+          row === first && row.item !== null
+            ? { ...row, item: { ...row.item, movedFrom: '2026-10-05' } }
+            : row,
+        ),
+        notCovered: [{ ...ITEM, id: uid(60), position: 4, topic: 'Percentages' }],
+        request: {
+          fromDate: '2026-10-19',
+          causes: [
+            { kind: 'not_covered', onDate: '2026-10-19', items: 1 },
+            { kind: 'owner_changed', onDate: '2026-10-26', items: 0 },
+          ],
+        },
+      },
+    });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    expect(rows()[0]?.textContent).toContain('Moved from');
+    const notCovered = await screen.findByRole('region', { name: en.plans.plan.notCovered });
+    expect(within(notCovered).getByText('Percentages')).toBeTruthy();
+    const request = screen.getByRole('region', { name: en.plans.plan.request.title });
+    const causes = within(request)
+      .getAllByRole('listitem')
+      .map((one) => one.textContent);
+    expect(causes).toHaveLength(2);
+    expect(causes[0]).toContain('1 item no longer fits');
+    expect(causes[1]).toContain('A new teacher takes over');
+  });
+
   it('lets the owner fill an empty row, sending its number and the works without ids', async () => {
     const calls = open({ path: `/plans/${JOURNAL}` });
     await waitFor(() => {
@@ -190,6 +230,7 @@ describe('Lesson plans', () => {
       expect(calls.find((call) => call.route.startsWith('POST /api/plans/'))?.body).toEqual({
         quarterId: Q1,
         position: 2,
+        lessonId: LESSONS[1],
         values: {
           topic: 'Decimals',
           objectives: '',

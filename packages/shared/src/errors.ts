@@ -858,6 +858,10 @@ export const ERROR_CODES = [
   'plan_row_taken',
   /** The quarter has no row with that number: rows are the lessons of the quarter not cancelled (task 7.1a, decision 5). */
   'plan_row_unknown',
+  /** Another lesson stands at the row now: a change of the timetable shifted the plan since it was read (edge/lesson-plans, "A plan is open in two tabs while a cancellation shifts it"; task 7.1b, decision 12). */
+  'plan_row_moved',
+  /** The journal has no lesson on or after today: the plan is closed with it (09, "A subject is removed from a class"; task 7.1b, decision 9). */
+  'plan_closed',
   /** A field the save changes was changed by somebody else since it was read; the details hold the stored value of each (edge/lesson-plans, "A plan is open in two tabs"; task 7.1a, decision 9). */
   'plan_item_stale',
   /** The lesson of the row is held, so the row cannot be cleared (edge/lesson-plans: "'Clear' empties only rows of lessons not yet held"; task 7.1a). */

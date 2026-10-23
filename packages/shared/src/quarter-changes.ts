@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { planImpactSchema } from './plans.js';
 import {
   quarterItemSchema,
   quarterListSchema,
@@ -49,6 +50,8 @@ export const quartersPreviewSchema = z.object({
   ratingExams: itemsOf(quarterItemSchema),
   /** Task 6.1b-1 (decision 7): the lessons with data on dates that leave every quarter (`lessons_hold_data`). */
   dataLessons: itemsOf(quarterItemSchema),
+  /** Task 7.1b: per plan, the items that no longer fit and the rows left empty. */
+  plans: z.array(planImpactSchema),
 });
 
 export type QuartersPreview = z.infer<typeof quartersPreviewSchema>;

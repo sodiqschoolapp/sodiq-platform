@@ -79,6 +79,19 @@ export class Transactions {
   /** True once the user of this connection was seen to be subject to the branch filter. */
   private filtered = false;
 
+  /**
+   * The steps run after the work and before the commit of every transaction,
+   * in the order registered (task 7.1b, decision 5: the plans follow the
+   * timetable "in the same step as the change"). A module registers its step
+   * when it starts; a step that throws rolls the transaction back.
+   */
+  private readonly beforeCommit: ((transaction: Transaction) => Promise<void>)[] = [];
+
+  /** Registers a step run before the commit of every transaction (`beforeCommit`). */
+  addBeforeCommit(step: (transaction: Transaction) => Promise<void>): void {
+    this.beforeCommit.push(step);
+  }
+
   constructor(
     @Inject(DATABASE) private readonly database: Database,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -125,6 +138,9 @@ export class Transactions {
           set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true)
       `.execute(transaction);
       const result = await work(transaction);
+      for (const step of this.beforeCommit) {
+        await step(transaction);
+      }
       await assertLessonChangesAudited(transaction);
       return result;
     });
