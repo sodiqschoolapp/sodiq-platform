@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 October 2026: task 8.3a Saving and stale saves
+
+- Cell saves of attendance and numbers take `Idempotency-Key` (a repeat answers the first answer from the history lines; the stored answer holds ids and versions); a stale refusal names who changed the cell; keep-or-clear waits for the stale choice. New routes `POST /api/journal/lessons/:lessonId/undo` (grouped by student, at most 1260 cells) and `.../copy-attendance`; the grid answers `copyFrom`. Every write carries `X-App-Version` (`APP_VERSION` of `packages/shared`); an older one than `OLDEST_APP_VERSION` is refused `app_outdated` outside `/api/auth` and `/api/feedback`; 0121 stores the version on a feedback report.
+- Web: the typed value shown at once with a sign (saving, saved, not saved), both values on a stale save with "Use mine", Retry with the same key and the unsent store for a save with no answer, Undo (button and Ctrl+Z), "Copy attendance" over the A column, the reload alert. Browser test: two sessions of one teacher on one cell.
+- Left out: the stored "not saved" list across a reload, and keys on totals, "not held", rating entries, comments and reasons (8.3c); live updates (8.3b); the edit period and its refusal of an undo (8.4). The browser test was not run locally (the cloud Chromium does not match the pinned Playwright); CI runs it.
+
+The next sessions must know:
+
+- A new write of journal cells goes through `saveCells` with its `CellWrite` (`how`, `action`): one audit entry per call, the action named there.
+- A repeat-safe route answers from what it stored; a value in its answer is read back from history, never stored in `request_keys`.
+- Raise `APP_VERSION` in `packages/shared` with a release that changes what a write takes.
+
 ## 23 October 2026: task 8.2 Rating exam and comments
 
 - 0120: `subject_switches` (the log of a subject's switches and rounds, written by the trigger on `subjects` with `switches_from`), `subject_quarter_switches`, the quarterly weights guard on the quarter's rounds, `journal_rating_exams` and `journal_rating_entries` with their database checks, `journal_comments`, both histories partitioned by month, `subject_switch_blocked` (SECURITY DEFINER, counts only), `lesson_holds_data` and `year_cut_holds` with comments and rating entries.

@@ -1085,7 +1085,7 @@ How to read the task lines:
   - From 6.1a (pull request #205, decision 11): `edge/00-definitions`, Data on a lesson: "... or a comment entered by a person": `lesson_holds_data` (0108) gains the comments (`create or replace`).
   - From 6.1c (pull request #209, decision 2, Look first): `edge/00-definitions`, Data on a lesson: "... or a comment entered by a person". The report of entries after a reset (`reset-entries.service.ts`) and the student's personal data report (`student-cells.query.ts`) gain the comments the account wrote within the 48 hours and the student's comments, with a route test each.
 
-- [ ] **8.3a Saving and stale saves**
+- [x] **8.3a Saving and stale saves**
   - Read: `07`, `12` (No lost work), `edge/journal` (Saving and working together), `edge/system-behaviour`.
   - Build: save per cell with optimistic display; refusal of stale saves with both values shown; repeat-safe saves; the application version on every request.
   - Done when: two saves of one cell from two sessions are tested.
