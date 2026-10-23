@@ -466,13 +466,22 @@ export class PlansService {
     let request: Plan['request'] = prepared;
     if (request === null && state === 'ended' && !complete && planId !== null) {
       // Review decision 14: the request of the window's end, worked out on read
-      // while the plan has no prepared or waiting request.
+      // while the plan has no prepared or waiting request and no open period.
       const waiting = await transaction
         .selectFrom('lesson_plan_requests')
         .select('id')
         .where('plan_id', '=', planId)
         .where('journal_id', '=', scene.journal.id)
-        .where('status', 'in', ['prepared', 'sent'])
+        .where((builder) =>
+          builder.or([
+            builder('status', 'in', ['prepared', 'sent']),
+            builder.and([
+              builder('status', '=', 'approved'),
+              builder('finished_at', 'is', null),
+              builder('open_until', '>=', scene.now),
+            ]),
+          ]),
+        )
         .executeTakeFirst();
       if (waiting === undefined) {
         const empty = rows.filter((row) => !byPosition.has(row.number));

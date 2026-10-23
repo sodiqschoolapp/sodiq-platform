@@ -598,7 +598,24 @@ export class PlanRequestsService {
       await this.addWindowEndPart(transaction, existing, part, scene.now);
       return existing;
     }
-    if (part === null) throw new ApiException('plan_request_nothing', 409);
+    // A request already sent waits: a second store (two at once) answers it.
+    const others = await requestRows(transaction, (query) =>
+      query
+        .where('plan_id', '=', planId)
+        .where('journal_id', '=', scene.journal.id)
+        .where('status', 'in', ['sent', 'approved']),
+    );
+    const sent = others.find((one) => one.status === 'sent');
+    if (sent !== undefined) return sent;
+    // An open period covers it already.
+    if (
+      part === null ||
+      others.some((one) =>
+        periodOpen({ openUntil: one.open_until, finishedAt: one.finished_at, status: one.status }, scene.now),
+      )
+    ) {
+      throw new ApiException('plan_request_nothing', 409);
+    }
     const made = await transaction
       .insertInto('lesson_plan_requests')
       .values({

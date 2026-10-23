@@ -167,6 +167,20 @@ const PLAN_READERS: readonly Role[] = [
 /** The writers of `plans` (task 7.1a, decision 2): the owner in the route; the Super Admin owns none. */
 const PLAN_WRITERS: readonly Role[] = ['super_admin', 'teacher'];
 
+/** Task 7.2, decision 1: who opens, moves and extends a plan window. */
+const PLAN_WINDOW_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+
+/** Task 7.2, decision 1: who sends a plan request (the owner in the route). */
+const PLAN_REQUEST_SENDERS: readonly Role[] = ['super_admin', 'teacher'];
+
+/** Task 7.2, decision 1: who decides one (the routing in the route, plan-request-routing.ts). */
+const PLAN_REQUEST_DECIDERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
+
 const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
@@ -723,6 +737,37 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/plans/items/:itemId/files': { branch: 'request', roles: PLAN_WRITERS },
   'DELETE /api/plans/files/:fileId': { branch: 'request', roles: PLAN_WRITERS },
   'GET /api/plans/files/:fileId': { branch: 'request', roles: PLAN_READERS },
+  // Task 7.2: the queue edit (the owner, plan-requests.test.ts), the window and the requests.
+  'PUT /api/plans/journals/:journalId/queue': { branch: 'request', roles: PLAN_WRITERS },
+  'GET /api/plans/windows': { branch: 'request', roles: PLAN_READERS },
+  'PUT /api/plans/windows/:quarterId': { branch: 'request', roles: PLAN_WINDOW_WRITERS },
+  'POST /api/plans/windows/:quarterId/extensions': {
+    branch: 'request',
+    roles: PLAN_WINDOW_WRITERS,
+  },
+  'GET /api/plans/requests': { branch: 'request', roles: PLAN_READERS },
+  'POST /api/plans/journals/:journalId/requests': {
+    branch: 'request',
+    roles: PLAN_REQUEST_SENDERS,
+  },
+  'POST /api/plans/journals/:journalId/requests/prepared': {
+    branch: 'request',
+    roles: PLAN_REQUEST_SENDERS,
+  },
+  'POST /api/plans/journals/:journalId/requests/prepared/decide': {
+    branch: 'request',
+    roles: PLAN_REQUEST_DECIDERS,
+  },
+  'POST /api/plans/requests/:requestId/send': { branch: 'request', roles: PLAN_REQUEST_SENDERS },
+  'POST /api/plans/requests/:requestId/decide': {
+    branch: 'request',
+    roles: PLAN_REQUEST_DECIDERS,
+  },
+  'POST /api/plans/requests/decide-event': { branch: 'request', roles: PLAN_REQUEST_DECIDERS },
+  'POST /api/plans/requests/:requestId/finish': {
+    branch: 'request',
+    roles: PLAN_REQUEST_SENDERS,
+  },
   // Task 5.9b: the teaching home page, own lessons only (teaching-home.test.ts).
   'GET /api/timetable/home': { branch: 'request', roles: VIEW_READERS },
   // Task 5.7b-2: the substitution per journal from an absence or a vacancy, under timetable edit.

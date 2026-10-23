@@ -712,20 +712,13 @@ async function fullPlans(
           : query.where('class_id', '=', journal.class_id);
       const rows = (await query.executeTakeFirstOrThrow()).count;
       if (rows === 0) continue;
+      // Task 7.2: the journal's plan records are made with it (0117).
       const plan = await migrator
-        .insertInto('lesson_plans')
-        .values({ branch_id: branch.id, quarter_id: quarter.id, subject_id: journal.subject_id })
-        .returning('id')
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id as id')
+        .where('journal_id', '=', journal.id)
+        .where('quarter_id', '=', quarter.id)
         .executeTakeFirstOrThrow();
-      await migrator
-        .insertInto('lesson_plan_journals')
-        .values({
-          branch_id: branch.id,
-          plan_id: plan.id,
-          journal_id: journal.id,
-          quarter_id: quarter.id,
-        })
-        .execute();
       const written = await migrator
         .insertInto('lesson_plan_items')
         .values(
