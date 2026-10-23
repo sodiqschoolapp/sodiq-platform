@@ -82,7 +82,14 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(cell).toContainText('75%');
   // The lesson has no plan item ("No plan"): a classwork is added by hand.
   const before = await page.getByRole('button', { name: /^Work: / }).count();
-  await page.getByRole('button', { name: en.journal.works.button, exact: true }).last().click();
+  // The button under the A of the same lesson; the pinned columns may cover its place on screen,
+  // so it is pressed from the keyboard.
+  const lessonId = (column ?? '').split(':')[0] ?? '';
+  const button = page
+    .locator(`.ag-header-cell[col-id="${lessonId}:a"]`)
+    .getByRole('button', { name: en.journal.works.button, exact: true });
+  await button.focus();
+  await page.keyboard.press('Enter');
   const works = page.getByRole('dialog');
   await expect(works).toContainText(en.journal.works.noPlan);
   await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();
