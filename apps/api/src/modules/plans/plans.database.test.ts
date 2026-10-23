@@ -116,14 +116,32 @@ describe('lesson plans in the database', () => {
       return row.id;
     });
 
+  // Task 7.1c: an item and its place in the plan's first journal.
   const item = (branch: string, planId: string, position: number, change: object = {}) =>
-    inBranch(branch, (transaction) =>
-      transaction
+    inBranch(branch, async (transaction) => {
+      const row = await transaction
         .insertInto('lesson_plan_items')
-        .values({ branch_id: branch, plan_id: planId, position, topic: 'Fractions', ...change })
+        .values({ branch_id: branch, plan_id: planId, topic: 'Fractions', ...change })
         .returning('id')
-        .executeTakeFirstOrThrow(),
-    );
+        .executeTakeFirstOrThrow();
+      const link = await transaction
+        .selectFrom('lesson_plan_journals')
+        .select('journal_id')
+        .where('plan_id', '=', planId)
+        .orderBy('journal_id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('lesson_plan_places')
+        .values({
+          branch_id: branch,
+          plan_id: planId,
+          journal_id: link.journal_id,
+          item_id: row.id,
+          position,
+        })
+        .execute();
+      return row;
+    });
 
   const work = (branch: string, itemId: string, kind: string, change: object = {}) =>
     inBranch(branch, (transaction) =>
@@ -180,6 +198,7 @@ describe('lesson plans in the database', () => {
       'lesson_plans',
       'lesson_plan_journals',
       'lesson_plan_items',
+      'lesson_plan_places',
       'lesson_plan_works',
       'lesson_plan_files',
     ] as const) {
@@ -252,24 +271,50 @@ describe('lesson plans in the database', () => {
     expect(wrongYear.constraint).toBe('lesson_plan_journal_year');
   });
 
-  it('keeps one item per position among those not cleared', async () => {
+  // Task 7.1c (decision 2): the row of an item is kept per journal; the 7.1a
+  // test of one item per position moves to the places.
+  it('keeps one item per row of a journal; a cleared item gives its place up', async () => {
     const u = await unit(north, await yearOf(north));
     const planId = await plan(u);
     const first = await item(north, planId, 1);
     const taken = await refusal(item(north, planId, 1));
     expect(taken.code).toBe(UNIQUE_VIOLATION);
-    expect(taken.constraint).toBe('lesson_plan_items_position_idx');
-    await inBranch(north, (transaction) =>
-      transaction
+    expect(taken.constraint).toBe('lesson_plan_places_row_key');
+    await inBranch(north, async (transaction) => {
+      await transaction
         .updateTable('lesson_plan_items')
         .set({ cleared_at: new Date(NOW) })
         .where('id', '=', first.id)
-        .execute(),
-    );
+        .execute();
+      await transaction.deleteFrom('lesson_plan_places').where('item_id', '=', first.id).execute();
+    });
     await item(north, planId, 1);
     expect((await refusal(item(north, planId, 0))).constraint).toBe(
-      'lesson_plan_items_position_check',
+      'lesson_plan_places_position_check',
     );
+  });
+
+  it('keeps a place in the plan of its item', async () => {
+    const own = await unit(north, await yearOf(north));
+    const other = await unit(north, await yearOf(north));
+    const ownPlan = await plan(own);
+    const otherPlan = await plan(other);
+    const { id } = await item(north, otherPlan, 1);
+    const refused = await refusal(
+      inBranch(north, (transaction) =>
+        transaction
+          .insertInto('lesson_plan_places')
+          .values({
+            branch_id: north,
+            plan_id: ownPlan,
+            journal_id: own.journal,
+            item_id: id,
+            position: 1,
+          })
+          .execute(),
+      ),
+    );
+    expect(refused.constraint).toBe('lesson_plan_places_item_fkey');
   });
 
   it('holds 10 works of a kind and 10 files on an item, also for the migrator', async () => {
@@ -425,7 +470,7 @@ describe('lesson plans in the database', () => {
     await key(
       m
         .insertInto('lesson_plan_items')
-        .values({ branch_id: north, plan_id: otherPlan, position: 1, topic: 'Fractions' })
+        .values({ branch_id: north, plan_id: otherPlan, topic: 'Fractions' })
         .execute(),
       'lesson_plan_items_plan_fkey',
     );
@@ -477,7 +522,7 @@ describe('lesson plans in the database', () => {
       expect(refused.code, table).toBe(INSUFFICIENT_PRIVILEGE);
     }
     // Task 7.1b (pull request #213): the follow of the queue rewrites the
-    // position (0115), so the application may change it; the plan stays.
+    // position (0115, a place's since 0116), so the application may change it; the plan stays.
     for (const set of [{ plan_id: planId }]) {
       const refused = await refusal(
         inBranch(north, (transaction) =>

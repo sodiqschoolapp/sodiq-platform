@@ -714,6 +714,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // Task 7.1b: the item of one lesson (a reader of the plan or the lesson's substitute).
   'GET /api/plans/lessons/:lessonId': { branch: 'request', roles: PLAN_READERS },
   'POST /api/plans/journals/:journalId/items': { branch: 'request', roles: PLAN_WRITERS },
+  // Task 7.1c: share, separate and copy (the owner of every journal of the plan, plans.test.ts).
+  'POST /api/plans/journals/:journalId/share': { branch: 'request', roles: PLAN_WRITERS },
+  'POST /api/plans/journals/:journalId/separate': { branch: 'request', roles: PLAN_WRITERS },
+  'POST /api/plans/journals/:journalId/copy': { branch: 'request', roles: PLAN_WRITERS },
   'PUT /api/plans/items/:itemId': { branch: 'request', roles: PLAN_WRITERS },
   'POST /api/plans/items/:itemId/clear': { branch: 'request', roles: PLAN_WRITERS },
   'PUT /api/plans/items/:itemId/files': { branch: 'request', roles: PLAN_WRITERS },

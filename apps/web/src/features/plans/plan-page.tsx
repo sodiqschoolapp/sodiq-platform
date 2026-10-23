@@ -13,6 +13,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { PlanRowPanel } from './plan-row-panel';
+import { SharedWith, SharingActions } from './plan-sharing';
 import { planQuery } from './plans-api';
 import type { PlanSearch } from './plans-search';
 
@@ -162,6 +163,7 @@ export function PlanPage(): React.JSX.Element {
               </div>
               {data.closed && <dd>{t('plans.plan.closed')}</dd>}
             </dl>
+            <SharingActions plan={data} />
           </div>
           <ListPage
             listId="plan-rows"
@@ -180,6 +182,7 @@ export function PlanPage(): React.JSX.Element {
             panel={(row) => <PlanRowPanel key={row.lessonId} plan={data} row={row} />}
             empty={{ title: t('plans.plan.emptyTitle'), text: t('plans.plan.empty') }}
           />
+          <SharedWith plan={data} />
           {data.request !== null && <PreparedRequest plan={data} />}
           {data.notCovered.length > 0 && <NotCovered plan={data} />}
         </div>

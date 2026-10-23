@@ -540,6 +540,17 @@ describe('lesson plans and their items', () => {
       }),
       api.post(`/api/plans/items/${item?.id ?? ''}/clear`),
       api.upload(`/api/plans/items/${item?.id ?? ''}/files?name=Sheet.pdf`, 'application/pdf', PDF),
+      // Task 7.1c (permission review of the code, must-fix 2).
+      api.post(`/api/plans/journals/${s.journal}/share`, {
+        quarterId: s.q2,
+        journalId: s.otherJournal,
+      }),
+      api.post(`/api/plans/journals/${s.journal}/separate`, { quarterId: s.q2 }),
+      api.post(`/api/plans/journals/${s.journal}/copy`, {
+        quarterId: s.q2,
+        source: { journalId: s.otherJournal, quarterId: s.q2 },
+        part: 'all',
+      }),
     ];
     await as(s.spare, branch, teacherOf(s), async (api) => {
       for (const response of await Promise.all(writes(api))) {
@@ -1483,9 +1494,20 @@ describe('lesson plans and their items', () => {
                 quarter_id: s.q2,
               })
               .execute();
-            await transaction
+            const first = await transaction
               .insertInto('lesson_plan_items')
-              .values({ branch_id: s.scene.branch, plan_id: plan.id, position: 1, topic: 'First' })
+              .values({ branch_id: s.scene.branch, plan_id: plan.id, topic: 'First' })
+              .returning('id')
+              .executeTakeFirstOrThrow();
+            await transaction
+              .insertInto('lesson_plan_places')
+              .values({
+                branch_id: s.scene.branch,
+                plan_id: plan.id,
+                journal_id: s.journal,
+                item_id: first.id,
+                position: 1,
+              })
               .execute();
             await t.app.get(Audit).record(transaction, {
               branchId: s.scene.branch,
@@ -1576,5 +1598,115 @@ describe('lesson plans and their items', () => {
         .execute();
       expect(files).toHaveLength(10);
     });
+  });
+
+  // Task 7.1c, decision 10: a copy names the file whose bytes it shows; no
+  // bytes are copied and removing the copy leaves the source as it is.
+  it('copies the files of a plan: the copy reads the bytes of the file it names', async () => {
+    const s = await plannedScene();
+    const [source] = await fill(s, s.q2, [1]);
+    const id = source?.id ?? '';
+    await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+      const added = planFileSchema.parse(
+        (await api.upload(`/api/plans/items/${id}/files?name=Sheet.pdf`, 'application/pdf', PDF))
+          .body,
+      );
+      // Into the first quarter of the same journal: another plan of the owner.
+      const copied = planOf(
+        await api.post(`/api/plans/journals/${s.journal}/copy`, {
+          quarterId: s.q1,
+          source: { journalId: s.journal, quarterId: s.q2 },
+          part: 'all',
+        }),
+      );
+      const item = [...copied.rows.map((row) => row.item), ...copied.notCovered].find(
+        (one) => one?.topic === 'Topic 1',
+      );
+      const copy = item?.files[0];
+      expect(copy?.name).toBe('Sheet.pdf');
+      expect(copy?.id).not.toBe(added.id);
+      expect(item?.copiedFrom).toEqual({ journalId: s.journal, quarterId: s.q2 });
+      const read = await api.get(`/api/plans/files/${copy?.id ?? ''}`).buffer(true);
+      expect(read.status).toBe(200);
+      expect(Buffer.compare(read.body as Buffer, PDF)).toBe(0);
+      expect((await api.del(`/api/plans/files/${copy?.id ?? ''}`)).status).toBe(204);
+      const kept = await api.get(`/api/plans/files/${added.id}`).buffer(true);
+      expect(Buffer.compare(kept.body as Buffer, PDF)).toBe(0);
+    });
+  });
+
+  // Task 7.1c, decision 14 (permission review of the code, should-fix 5):
+  // only the owner of every journal of a shared plan writes it. The second
+  // journal is linked as a share writes it; its owner is another teacher.
+  it('refuses every write of a shared plan to a teacher who owns one of its journals only', async () => {
+    const s = await plannedScene();
+    const branch = s.scene.branch;
+    const [item] = await fill(s, s.q2, [1]);
+    const id = item?.id ?? '';
+    const plan = await t.database.migrator
+      .selectFrom('lesson_plan_journals')
+      .select('plan_id')
+      .where('journal_id', '=', s.journal)
+      .where('quarter_id', '=', s.q2)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('lesson_plan_journals')
+      .values({
+        branch_id: branch,
+        plan_id: plan.plan_id,
+        journal_id: s.otherJournal,
+        quarter_id: s.q2,
+      })
+      .execute();
+    await t.database.migrator
+      .insertInto('lesson_plan_places')
+      .values({
+        branch_id: branch,
+        plan_id: plan.plan_id,
+        journal_id: s.otherJournal,
+        item_id: id,
+        position: 1,
+      })
+      .execute();
+    const file = await t.database.migrator
+      .insertInto('lesson_plan_files')
+      .values({
+        branch_id: branch,
+        item_id: id,
+        name: 'Sheet.pdf',
+        type: 'application/pdf',
+        bytes: PDF.length,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const before = await planRowsOf(branch);
+    const audit = await planEntries();
+    await as(s.owner, branch, teacherOf(s), async (api) => {
+      for (const response of [
+        await api.post(`/api/plans/journals/${s.journal}/items`, {
+          quarterId: s.q2,
+          position: 2,
+          values: values(),
+        }),
+        await api.put(`/api/plans/items/${id}`, {
+          base: baseOf(item ?? planItemSchema.parse({})),
+          values: values({ topic: 'Changed' }),
+        }),
+        await api.post(`/api/plans/items/${id}/clear`),
+        await api.upload(`/api/plans/items/${id}/files?name=Sheet.pdf`, 'application/pdf', PDF),
+        await api.del(`/api/plans/files/${file.id}`),
+        await api.post(`/api/plans/journals/${s.journal}/separate`, { quarterId: s.q2 }),
+        await api.post(`/api/plans/journals/${s.journal}/copy`, {
+          quarterId: s.q2,
+          source: { journalId: s.otherJournal, quarterId: s.q1 },
+          part: 'all',
+        }),
+      ]) {
+        expect(response.status, JSON.stringify(response.body)).toBe(403);
+        expect(codeOf(response)).toBe('plan_scope');
+      }
+    });
+    expect(await planRowsOf(branch)).toEqual(before);
+    expect(await planEntries()).toBe(audit);
   });
 });

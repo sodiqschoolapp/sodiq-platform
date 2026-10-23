@@ -726,14 +726,28 @@ async function fullPlans(
           quarter_id: quarter.id,
         })
         .execute();
-      await migrator
+      const written = await migrator
         .insertInto('lesson_plan_items')
         .values(
           Array.from({ length: rows }, (_, index) => ({
             branch_id: branch.id,
             plan_id: plan.id,
-            position: index + 1,
             topic: `Topic ${String(index + 1)}`,
+          })),
+        )
+        .returning(['id', 'topic'])
+        .execute();
+      // Task 7.1c: the row of each item in the journal, by its topic (the
+      // order of `returning` is not relied on).
+      await migrator
+        .insertInto('lesson_plan_places')
+        .values(
+          written.map((one) => ({
+            branch_id: branch.id,
+            plan_id: plan.id,
+            journal_id: journal.id,
+            item_id: one.id,
+            position: Number(one.topic.slice('Topic '.length)),
           })),
         )
         .execute();

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 7.1c Shared plans
+
+- 0116: the row of an item per journal (`lesson_plan_places`, the position and "moved from" moved off the items), `copied_from` on items and files, the link moves by `update` with the snapshot, absorbed shifts and request cascading, and the deferred `lesson_plan_share_check` (one kind, grades and language) on links, classes, groups and group classes.
+- Routes `POST /api/plans/journals/:journalId/share`, `/separate`, `/copy` (`plan-sharing.service.ts`); the follow separates a journal whose teacher, language or grade parts it from its shared plan (`PlanFollow.separateShared`, `separations` of `plan-share.ts`); a new item in a shared plan is laid in every journal (`placeNew`).
+- The plan page: "Shared with" with where each class stands, Share, Separate, "Copy from a plan" and the link to the plan an item was copied from.
+- Left out: joining only inside the window and ending the earlier teacher's periods (7.2), "not checked, group closed" (8.1), masters (7.3); a From line each.
+
+The next sessions must know:
+
+- An item's row is per journal: read and write `lesson_plan_places` (`planItems(transaction, planId, journalId)`, `movePlaces`); `lesson_plan_items` holds the text only.
+- Every write of a plan locks every journal of it in the order of the id (`lockJournals`, `PlansService.lockPlanOf`); a write to a shared plan needs the writer to own every journal (`writeSceneOf` for each).
+- A journal moves between plans by updating its link's `plan_id`; never delete a link.
+
 ## 23 October 2026: task 7.1b Items follow the timetable
 
 - 0115: the snapshot of each plan's rows (`lesson_plan_rows`), the shifts an empty row absorbed (`lesson_plan_absorbed`), the marks of a transaction's touched journals (`lesson_plan_follow_marks`, statement triggers on lessons, quarters, versions, journals, acting teachers and staff links and statuses), prepared requests and their causes, `moved_from` and `laid_at`.

@@ -275,6 +275,11 @@ export const AUDIT_ACTION_GROUPS = {
     // the system prepared or added to.
     'plan.items_followed',
     'plan.request_prepared',
+    // Task 7.1c: a journal joined a shared plan, left it (by its owner or by itself when its
+    // teacher, language or grade changed), or a plan was filled as a copy of another.
+    'plan.shared',
+    'plan.separated',
+    'plan.copied',
   ],
   exports: [
     'building.export',

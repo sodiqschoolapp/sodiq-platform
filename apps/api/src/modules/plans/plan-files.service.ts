@@ -107,12 +107,16 @@ export class PlanFiles {
     const found = await transaction
       .selectFrom('lesson_plan_files')
       .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_files.item_id')
+      // Task 7.1c, decision 10: a copied file shows the bytes of the file it names.
+      .leftJoin('lesson_plan_files as source', 'source.id', 'lesson_plan_files.copied_from')
       .select([
         'lesson_plan_files.id',
         'lesson_plan_files.item_id',
         'lesson_plan_files.name',
         'lesson_plan_files.type',
         'lesson_plan_files.bytes',
+        'lesson_plan_files.copied_from',
+        'source.item_id as source_item_id',
       ])
       .where('lesson_plan_files.id', '=', fileId)
       .where('lesson_plan_files.removed_at', 'is', null)
@@ -162,7 +166,9 @@ export class PlanFiles {
     if (!this.store.configured) throw new ApiException('files_not_configured', 503);
     let content: Buffer;
     try {
-      content = await this.store.get(planFileKey(row.item_id, row.id));
+      content = await this.store.get(
+        planFileKey(row.source_item_id ?? row.item_id, row.copied_from ?? row.id),
+      );
     } catch {
       throw new ApiException('files_unavailable', 503);
     }

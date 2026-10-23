@@ -3,8 +3,10 @@ import {
   planItemSchema,
   planListSchema,
   planSchema,
+  type PlanCopy,
   type PlanItemCreate,
   type PlanItemSave,
+  type PlanShare,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -75,6 +77,33 @@ export const clearPlanItem = (itemId: string) =>
       params: { header: branchHeader(), path: { itemId } },
     }),
   );
+
+/** Task 7.1c: another journal of the owner joins the plan of this journal. */
+export const sharePlan = (journalId: string, body: PlanShare) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/share', {
+      params: { header: branchHeader(), path: { journalId } },
+      body,
+    }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 7.1c: this journal leaves its shared plan with a copy of the items. */
+export const separatePlan = (journalId: string, quarterId: string) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/separate', {
+      params: { header: branchHeader(), path: { journalId } },
+      body: { quarterId },
+    }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 7.1c: the items of another plan copied into this empty plan. */
+export const copyPlan = (journalId: string, body: PlanCopy) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/copy', {
+      params: { header: branchHeader(), path: { journalId } },
+      body,
+    }),
+  ).then((answer) => planSchema.parse(answer));
 
 /** Sends a file as it is; its type is one of `PLAN_FILE_TYPES`. */
 export const addPlanFile = (itemId: string, file: File) =>

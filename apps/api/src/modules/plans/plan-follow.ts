@@ -13,7 +13,15 @@ import { Audit } from '../audit/audit.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
-import { referenceDateOf, type PlanQuarter } from './plan-read.js';
+import {
+  lockJournals,
+  movePlaces,
+  planRows,
+  referenceDateOf,
+  type PlanQuarter,
+} from './plan-read.js';
+import { separateJournal, unitKeysOf } from './plan-separate.js';
+import { separations, type SharingJournal } from './plan-share.js';
 import { followQueue, type Absorbed, type FollowResult, type QueueRow } from './plan-queue.js';
 import { planReachOf, planReaderOf } from './plan-scope.js';
 
@@ -78,9 +86,6 @@ interface Cause {
   readonly staffId: string | null;
 }
 
-/** The position offset of the first of the two writes (the partial unique index of 0114). */
-const OFFSET = 1_000_000;
-
 const unitKey = (one: {
   readonly classId: string | null;
   readonly groupId: string | null;
@@ -118,9 +123,169 @@ export class PlanFollow implements OnModuleInit {
       delete from lesson_plan_follow_marks where written_xact = pg_current_xact_id_if_assigned()
     `.execute(transaction);
     for (const [branchId, journalIds] of marks) {
-      const followed = await this.followBranch(transaction, branchId, journalIds);
+      // Task 7.1c: a journal of a shared plan that lost its teacher, language
+      // or grade leaves the plan first, then follows on its own.
+      const separated = await this.separateShared(transaction, branchId, journalIds);
+      const followed = await this.followBranch(
+        transaction,
+        branchId,
+        [...new Set([...journalIds, ...separated])].sort(),
+      );
       await this.write(transaction, branchId, followed);
     }
+  }
+
+  /**
+   * Task 7.1c, decisions 6 and 17: locks every journal of the shared plans
+   * of the marked journals (in the order of the id, the links read again
+   * until none is missing), then separates each journal whose owners of the
+   * rows not started, or whose kind, grades or language, part it from the
+   * plan (`separations`). Gives the journals separated.
+   */
+  private async separateShared(
+    transaction: Transaction,
+    branchId: string,
+    journalIds: readonly string[],
+  ): Promise<string[]> {
+    const linksOf = async () => {
+      const own = await transaction
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', 'in', [...journalIds])
+        .execute();
+      const planIds = [...new Set(own.map((row) => row.plan_id))];
+      if (planIds.length === 0) return [];
+      return transaction
+        .selectFrom('lesson_plan_journals')
+        .select(['plan_id', 'journal_id'])
+        .where('plan_id', 'in', planIds)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
+        .execute();
+    };
+    const locked = new Set<string>();
+    let links = await linksOf();
+    for (;;) {
+      // The marked journals with the first batch, in one statement in the
+      // order of the id, as 7.1b locks them (code review, should-fix 7).
+      const missing = [...new Set([...journalIds, ...links.map((row) => row.journal_id)])]
+        .filter((id) => !locked.has(id))
+        .sort();
+      if (missing.length === 0) break;
+      await lockJournals(transaction, missing);
+      for (const id of missing) locked.add(id);
+      links = await linksOf();
+    }
+    const byPlan = new Map<string, string[]>();
+    for (const row of links)
+      byPlan.set(row.plan_id, [...(byPlan.get(row.plan_id) ?? []), row.journal_id]);
+    const shared = [...byPlan].filter(([, members]) => members.length > 1);
+    if (shared.length === 0) return [];
+    const { timeZone, now } = await this.clockOf(transaction, branchId);
+    const actor = await this.actorOf(transaction, branchId);
+    const separatedIds: string[] = [];
+    for (const [planId, members] of shared) {
+      const quarter = await transaction
+        .selectFrom('lesson_plans')
+        .innerJoin('quarters', 'quarters.id', 'lesson_plans.quarter_id')
+        .select([
+          'lesson_plans.shared_unit',
+          'quarters.id',
+          'quarters.number',
+          sql<string | null>`quarters.start_date::text`.as('start_date'),
+          sql<string | null>`quarters.end_date::text`.as('end_date'),
+        ])
+        .where('lesson_plans.id', '=', planId)
+        .executeTakeFirstOrThrow();
+      if (quarter.start_date === null || quarter.end_date === null) continue;
+      const planQuarter: PlanQuarter = {
+        id: quarter.id,
+        number: quarter.number,
+        startDate: quarter.start_date,
+        endDate: quarter.end_date,
+      };
+      const journals: JournalRow[] = [];
+      for (const journalId of members) {
+        const [journal] = await journalRows(transaction, branchId, { journalId });
+        if (journal !== undefined) journals.push(journal);
+      }
+      const keys = await unitKeysOf(transaction, journals);
+      const facts = await this.factsOf(transaction, branchId, journals);
+      const ordered = [...journals].sort(
+        (a, b) =>
+          Number(a.classId === null) - Number(b.classId === null) ||
+          (a.grades[0] ?? 0) - (b.grades[0] ?? 0) ||
+          a.unitName.localeCompare(b.unitName, 'en') ||
+          a.id.localeCompare(b.id),
+      );
+      const sharing: SharingJournal[] = [];
+      for (const [index, journal] of ordered.entries()) {
+        const rows = await planRows(transaction, branchId, journal, planQuarter, timeZone, now);
+        sharing.push({
+          journalId: journal.id,
+          order: index,
+          unit: keys.get(journal.id) ?? '',
+          owners: rows
+            .filter((row) => !row.started)
+            .map((row) => {
+              const owner = ownerOn(
+                facts.runs.get(journal.id) ?? [],
+                facts.periods.get(journal.id) ?? [],
+                facts.out,
+                row.date,
+              );
+              return owner === null || owner.kind === 'none' ? null : owner.staffId;
+            }),
+        });
+      }
+      // The earlier owner: the snapshot's owner of the first row not started,
+      // read in the order of the units.
+      const snapshot = await transaction
+        .selectFrom('lesson_plan_rows')
+        .select(['journal_id', 'owner_staff_id'])
+        .where('plan_id', '=', planId)
+        .where('starts_at', '>', now)
+        .orderBy('journal_id')
+        .orderBy('position')
+        .execute();
+      let earlier: string | null | undefined;
+      for (const journal of ordered) {
+        const first = snapshot.find((row) => row.journal_id === journal.id);
+        if (first !== undefined) {
+          earlier = first.owner_staff_id;
+          break;
+        }
+      }
+      const leavers = separations(sharing, earlier, quarter.shared_unit);
+      // Every journal changed together: the plan is shared under the new unit.
+      const kept = sharing.find((one) => !leavers.some((out) => out.journalId === one.journalId));
+      if (kept !== undefined && kept.unit !== quarter.shared_unit) {
+        await transaction
+          .updateTable('lesson_plans')
+          .set({ shared_unit: kept.unit })
+          .where('id', '=', planId)
+          .execute();
+      }
+      for (const leaving of leavers) {
+        const separated = await separateJournal(transaction, branchId, planId, leaving.journalId);
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: actor.actorId,
+          ...(actor.assignmentId === null ? {} : { assignmentId: actor.assignmentId }),
+          action: 'plan.separated',
+          record: { type: 'lesson_plan', id: planId },
+          newValue: {
+            journalId: leaving.journalId,
+            quarterId: planQuarter.id,
+            planId: separated.planId,
+            items: separated.items,
+            cause: leaving.cause,
+          },
+        });
+        separatedIds.push(leaving.journalId);
+      }
+    }
+    return separatedIds;
   }
 
   /**
@@ -309,12 +474,19 @@ export class PlanFollow implements OnModuleInit {
               .orderBy('plan_id')
               .orderBy('position')
               .execute(),
+            // Task 7.1c: the places of each journal (a cleared item has none).
             transaction
-              .selectFrom('lesson_plan_items')
-              .select(['id', 'plan_id', 'position', 'topic'])
-              .where('plan_id', 'in', planIds)
-              .where('cleared_at', 'is', null)
-              .orderBy('position')
+              .selectFrom('lesson_plan_places')
+              .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+              .select([
+                'lesson_plan_items.id',
+                'lesson_plan_places.plan_id',
+                'lesson_plan_places.journal_id',
+                'lesson_plan_places.position',
+                'lesson_plan_items.topic',
+              ])
+              .where('lesson_plan_places.plan_id', 'in', planIds)
+              .orderBy('lesson_plan_places.position')
               .execute(),
             transaction
               .selectFrom('lesson_plan_absorbed')
@@ -362,7 +534,9 @@ export class PlanFollow implements OnModuleInit {
         open: open.has(plan.plan_id),
         before,
         after,
-        items: items.filter((item) => item.plan_id === plan.plan_id),
+        items: items.filter(
+          (item) => item.plan_id === plan.plan_id && item.journal_id === plan.journal_id,
+        ),
         absorbed: absorbed
           .filter((row) => row.plan_id === plan.plan_id && row.journal_id === plan.journal_id)
           .map((row) => ({
@@ -477,27 +651,14 @@ export class PlanFollow implements OnModuleInit {
       const changed = [...result.positions].filter(
         ([id, position]) => plan.items.find((item) => item.id === id)?.position !== position,
       );
-      if (changed.length > 0) {
-        for (const [id, position] of changed) {
-          await transaction
-            .updateTable('lesson_plan_items')
-            .set({ position: position + OFFSET })
-            .where('id', '=', id)
-            .execute();
-        }
-        for (const [id, position] of changed) {
-          await transaction
-            .updateTable('lesson_plan_items')
-            .set({ position })
-            .where('id', '=', id)
-            .execute();
-        }
-      }
+      await movePlaces(transaction, plan.planId, plan.journal.id, new Map(changed));
       for (const [id, date] of result.movedBack) {
         await transaction
-          .updateTable('lesson_plan_items')
+          .updateTable('lesson_plan_places')
           .set({ moved_from: date })
-          .where('id', '=', id)
+          .where('plan_id', '=', plan.planId)
+          .where('journal_id', '=', plan.journal.id)
+          .where('item_id', '=', id)
           .execute();
       }
       const snapshot = plan.after.map((row, index) => ({

@@ -667,6 +667,24 @@ export const en = {
     plan_file_type: 'Choose a PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4 file.',
     plan_attendance_only: 'This subject is attendance only and has no lesson plan.',
     plan_year_closed: 'This academic year is closed, so its plans cannot change.',
+    plan_share_language:
+      'A plan can be shared only by classes or groups with the same language of instruction.',
+    plan_share_grade:
+      'A plan can be shared only by classes of one grade, or by groups of the same grades.',
+    plan_share_kind:
+      'A class and a group cannot share a plan. Share classes with classes, groups with groups.',
+    plan_share_subject: 'Only plans of the same subject can be shared.',
+    plan_share_owner:
+      'That class or group gets another teacher later in this quarter, so it cannot share this plan.',
+    plan_share_same: 'This class or group already shares this plan.',
+    plan_share_has_items:
+      'The plan of that class or group already has items. Clear its rows first, then share.',
+    plan_not_shared: 'This plan is not shared with another class or group.',
+    plan_not_empty:
+      'This plan already has items on lessons not yet held. Clear those rows first, then copy.',
+    plan_copy_subject: 'A plan can be copied only from a plan of the same subject.',
+    plan_copy_grade: 'A plan can be copied only from a plan of the same grade.',
+    plan_copy_same: 'Choose another plan to copy from: this is the same plan.',
     files_not_configured: 'Files are not configured yet. Ask the administrator.',
     files_unavailable: 'Files cannot be reached right now. Try again later.',
     journal_no_quarter:
@@ -3207,6 +3225,9 @@ export const en = {
         file_remove: 'File removed from a plan row',
         items_followed: 'Plan rows followed a timetable change',
         request_prepared: 'Plan edit request prepared',
+        shared: 'Class or group joined a shared plan',
+        separated: 'Class or group separated from a shared plan',
+        copied: 'Plan copied from another plan',
       },
       absence_reason: {
         set: 'Reason of absence set',
@@ -5004,6 +5025,38 @@ export const en = {
       notFitting: 'No longer fit: {{topics}}',
       emptyRows_one: '{{count}} row left empty',
       emptyRows_other: '{{count}} rows left empty',
+    },
+    share: {
+      sharedTitle: 'Shared with',
+      at: 'Lesson {{number}}, {{date}}: {{topic}}',
+      atEmpty: 'Lesson {{number}}, {{date}}: no topic yet',
+      finished: 'No lesson left this quarter',
+      notCovered_one: '{{count}} item not covered',
+      notCovered_other: '{{count}} items not covered',
+      share: 'Share plan',
+      shareTitle: 'Share this plan with another class or group',
+      shareWith: 'Class or group',
+      choose: 'Choose a class or group.',
+      chooseOption: 'Choose',
+      shareSend: 'Share',
+      separate: 'Separate',
+      separateTitle: 'Separate {{unit}} from the shared plan?',
+      separateText:
+        'This class keeps a copy of every item at its own lessons. The other classes keep the shared plan.',
+      copy: 'Copy from a plan',
+      copyTitle: 'Copy the items of another plan',
+      copyYear: 'Academic year',
+      copySource: 'Plan',
+      copyQuarter: 'Quarter',
+      copyPart: 'Items',
+      copyAll: 'All items',
+      copyRemaining: 'Only items of lessons not yet held',
+      copyChoose: 'Choose a plan.',
+      copyNone: 'No plan of this subject and grade in that year.',
+      copySend: 'Copy',
+      back: 'Back',
+      copiedFrom: 'Copied from another plan',
+      openSource: 'Open that plan',
     },
     panel: {
       fill: 'Fill in',

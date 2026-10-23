@@ -168,6 +168,12 @@ export const planItemSchema = z.object({
    * (`edge/lesson-plans`: "with a \"moved from [date]\" mark"), else `null`.
    */
   movedFrom: schoolDateSchema.nullable(),
+  /**
+   * Task 7.1c, decision 16: the plan the item was copied from (a copy or a
+   * separation), whose history holds its earlier changes; `null` for an item
+   * written here.
+   */
+  copiedFrom: z.object({ journalId: z.uuid(), quarterId: z.uuid() }).nullable(),
 });
 
 export type PlanItem = z.infer<typeof planItemSchema>;
@@ -261,9 +267,60 @@ export const planSchema = z.object({
       ),
     })
     .nullable(),
+  /**
+   * Task 7.1c: the other classes or groups of a shared plan and where each
+   * stands (`09`: "The plan screen shows where each class is"): its next
+   * lesson not yet held, with the item there, and its items not covered.
+   */
+  sharedWith: z.array(
+    z.object({
+      journalId: z.uuid(),
+      unit: planUnitSchema,
+      next: z
+        .object({
+          number: z.int().min(1),
+          date: schoolDateSchema,
+          topic: z.string().nullable(),
+        })
+        .nullable(),
+      notCovered: z.int().min(0),
+    }),
+  ),
+  /** Task 7.1c: the reader's own journals that may join this plan (same subject, kind, grades and language). */
+  shareCandidates: z.array(z.object({ journalId: z.uuid(), unit: planUnitSchema })),
 });
 
 export type Plan = z.infer<typeof planSchema>;
+
+/** Task 7.1c: one more journal joins the plan of the path's journal. */
+export const planShareSchema = z.strictObject({
+  quarterId: z.uuid(),
+  journalId: z.uuid(),
+});
+
+export type PlanShare = z.infer<typeof planShareSchema>;
+
+/** Task 7.1c: the path's journal leaves its shared plan with a copy of the items. */
+export const planSeparateSchema = z.strictObject({ quarterId: z.uuid() });
+
+export type PlanSeparate = z.infer<typeof planSeparateSchema>;
+
+/**
+ * Task 7.1c: the items of another plan copied into an empty plan (`09`: "A
+ * plan can be copied from another class, from another teacher of the same
+ * subject and grade, or from last year"); `remaining` copies only the items
+ * of lessons not yet held (`edge/lesson-plans`: "Only its remaining items are
+ * attached").
+ */
+export const PLAN_COPY_PARTS = ['all', 'remaining'] as const;
+
+export const planCopySchema = z.strictObject({
+  quarterId: z.uuid(),
+  source: z.strictObject({ journalId: z.uuid(), quarterId: z.uuid() }),
+  part: z.enum(PLAN_COPY_PARTS),
+});
+
+export type PlanCopy = z.infer<typeof planCopySchema>;
 
 /** The state of a plan in a quarter (`09`: "A plan is complete when every lesson of the quarter has a topic"). */
 export const PLAN_STATES = ['not_started', 'incomplete', 'complete', 'no_lessons'] as const;
