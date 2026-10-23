@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, Put } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   PLAN_FILE_TYPES,
   planFileParamsSchema,
@@ -115,6 +115,7 @@ export class PlansController {
 
   /** Task 7.1c: another journal of the owner joins this journal's plan. */
   @Post('journals/:journalId/share')
+  @HttpCode(200)
   @Requires('plans', 'edit')
   @Returns(planSchema)
   share(
@@ -128,6 +129,7 @@ export class PlansController {
 
   /** Task 7.1c: the journal leaves its shared plan with a copy of the items. */
   @Post('journals/:journalId/separate')
+  @HttpCode(200)
   @Requires('plans', 'edit')
   @Returns(planSchema)
   separate(
@@ -141,6 +143,7 @@ export class PlansController {
 
   /** Task 7.1c: the items of another plan copied into this empty plan. */
   @Post('journals/:journalId/copy')
+  @HttpCode(200)
   @Requires('plans', 'edit')
   @Returns(planSchema)
   copy(

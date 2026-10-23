@@ -74,6 +74,20 @@ export class PlanSharing {
     return { started: rows.filter((row) => row.started).length, rows: rows.length };
   }
 
+  /** Decision 3: one kind, the same grades and one language of instruction. */
+  private async unitCheck(
+    transaction: Transaction,
+    own: JournalRow,
+    joining: JournalRow,
+  ): Promise<void> {
+    const keys = await unitKeysOf(transaction, [own, joining]);
+    const [ownKind, ownGrades, ownLanguage] = (keys.get(own.id) ?? '').split('|');
+    const [kind, grades, language] = (keys.get(joining.id) ?? '').split('|');
+    if (kind !== ownKind) throw new ApiException('plan_share_kind', 409);
+    if (grades !== ownGrades) throw new ApiException('plan_share_grade', 409);
+    if (language !== ownLanguage) throw new ApiException('plan_share_language', 409);
+  }
+
   /**
    * One more journal joins the plan of the path's journal (decisions 3 and
    * 4). Correction 2 of #214: the classes (or groups) of every journal
@@ -108,6 +122,16 @@ export class PlanSharing {
           if (joining.subjectId !== scene.journal.subjectId) {
             throw new ApiException('plan_share_subject', 409);
           }
+          // A state of the joining journal is told only to a reader of it.
+          const joiningScene = await this.plans.sceneOf(
+            transaction,
+            access,
+            branchId,
+            joining.id,
+            input.quarterId,
+          );
+          if (!joiningScene.reach.read) throw new ApiException('plan_scope', 403);
+          await this.unitCheck(transaction, scene.journal, joining);
           await this.plans.writeSceneOf(transaction, access, branchId, joining.id, input.quarterId);
           const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
           const members =
@@ -157,12 +181,10 @@ export class PlanSharing {
           const rows = (
             await journalRows(transaction, branchId, { yearId: joining.academicYearId })
           ).filter((journal) => shared.includes(journal.id) || journal.id === joining.id);
-          const keys = await unitKeysOf(transaction, rows);
-          const [ownKind, ownGrades, ownLanguage] = (keys.get(journalId) ?? '').split('|');
-          const [kind, grades, language] = (keys.get(joining.id) ?? '').split('|');
-          if (kind !== ownKind) throw new ApiException('plan_share_kind', 409);
-          if (grades !== ownGrades) throw new ApiException('plan_share_grade', 409);
-          if (language !== ownLanguage) throw new ApiException('plan_share_language', 409);
+          const joined = rows.find((journal) => journal.id === joining.id) ?? joining;
+          for (const member of rows) {
+            if (member.id !== joining.id) await this.unitCheck(transaction, member, joined);
+          }
           if (theirs !== null && (await this.plans.hasItems(transaction, theirs))) {
             throw new ApiException('plan_share_has_items', 409);
           }

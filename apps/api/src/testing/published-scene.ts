@@ -116,6 +116,13 @@ export async function publishedScene(
      * and the same for each quarter, in place of the attendance-only one.
      */
     graded?: boolean;
+    /**
+     * Task 7.1c: the teacher teaches the other class too (Monday, the second
+     * lesson), so the two journals can share a plan.
+     */
+    shared?: boolean;
+    /** Task 7.1c: the subject, made before the scene (a plan of last year names it). */
+    subject?: string;
   } = {},
 ) {
   const branch = input.branch ?? (await t.newBranch());
@@ -137,10 +144,12 @@ export async function publishedScene(
     input.startTime,
   );
   await t.assign(branch, regular);
-  const subject = await load.classes.subject({
-    grades: [7],
-    journalType: input.graded === true ? 'graded' : 'attendance_only',
-  });
+  const subject =
+    input.subject ??
+    (await load.classes.subject({
+      grades: [7],
+      journalType: input.graded === true ? 'graded' : 'attendance_only',
+    }));
   if (input.graded === true) {
     const weights = { attendance: 20, classwork: 40, homework: 40 };
     await t.database.migrator
@@ -205,10 +214,11 @@ export async function publishedScene(
     version_id: version,
     class_id: otherClass,
     subject_id: subject,
-    teacher_id: otherTeacher.staffId,
+    teacher_id: input.shared === true ? teacher.staffId : otherTeacher.staffId,
     lessons_per_week: 1,
   });
-  await placeAt(t, branch, version, otherRow, 1);
+  if (input.shared === true) await placeAt(t, branch, version, otherRow, 1, 3);
+  else await placeAt(t, branch, version, otherRow, 1);
   if (secondSubject !== null) {
     const secondRow = await load.row({
       branch_id: branch,
@@ -238,6 +248,7 @@ export async function publishedScene(
     spareTeacher,
     version,
     rowId,
+    otherRow,
     secondSubject,
   };
 }
