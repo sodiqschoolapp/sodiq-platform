@@ -109,13 +109,23 @@ describe('master plans', () => {
    * Teacher (unless `noHead`), the Senior Head Teacher and the Academic Vice
    * Principal of the subject; the window of quarter 2 opened.
    */
-  async function scene(input: { noHead?: boolean; shared?: boolean; branch?: string } = {}) {
+  async function scene(
+    input: {
+      noHead?: boolean;
+      shared?: boolean;
+      branch?: string;
+      subject?: string;
+      /** The subject's Senior Head Teacher is of another scene (one per subject). */
+      noSenior?: boolean;
+    } = {},
+  ) {
     const owner = await account();
     const spare = await account();
     const head = await account();
     const senior = await account();
     const vice = await account();
-    const subject = await load.classes.subject({ grades: [7, 8], journalType: 'graded' });
+    const subject =
+      input.subject ?? (await load.classes.subject({ grades: [7, 8], journalType: 'graded' }));
     const s = await publishedScene(t, load, {
       graded: true,
       subject,
@@ -139,11 +149,14 @@ describe('master plans', () => {
             subjectIds: [s.subject],
             validFrom: VALID_FROM,
           });
-    const seniorRole = await t.kit.giveRole(senior.account.id, {
-      role: 'senior_head_teacher',
-      subjectIds: [s.subject],
-      validFrom: VALID_FROM,
-    });
+    const seniorRole =
+      input.noSenior === true
+        ? null
+        : await t.kit.giveRole(senior.account.id, {
+            role: 'senior_head_teacher',
+            subjectIds: [s.subject],
+            validFrom: VALID_FROM,
+          });
     const viceRole = await t.kit.giveRole(vice.account.id, {
       role: 'academic_vice_principal',
       branchId: s.branch,
@@ -170,7 +183,7 @@ describe('master plans', () => {
       head,
       headRole: headRole?.id ?? null,
       senior,
-      seniorRole: seniorRole.id,
+      seniorRole: seniorRole?.id ?? null,
       vice,
       viceRole: viceRole.id,
       journal: await journalOf(s.classId),
@@ -497,6 +510,14 @@ describe('master plans', () => {
         branchId: x.s.branch,
         validFrom: VALID_FROM,
       });
+      // A Head Teacher of another subject does not read it (permission review, should-fix 6).
+      const otherHead = await account();
+      await t.kit.giveRole(otherHead.account.id, {
+        role: 'head_teacher',
+        branchId: x.s.branch,
+        subjectIds: [await load.classes.subject({ grades: [7] })],
+        validFrom: VALID_FROM,
+      });
       const before = await rowsOf(x.s.branch);
       const writes = (browser: Browser) => [
         () =>
@@ -506,6 +527,10 @@ describe('master plans', () => {
           }),
         () =>
           send('post', `/api/plans/masters/${master.id}/archive`, x.s.branch, browser.cookie, {
+            revision: master.revision,
+          }),
+        () =>
+          send('post', `/api/plans/masters/${master.id}/restore`, x.s.branch, browser.cookie, {
             revision: master.revision,
           }),
         () =>
@@ -546,6 +571,12 @@ describe('master plans', () => {
       for (const write of writes(x.vice)) {
         expect(codeOf(await at(NOV02, write))).toBe('plan_master_scope');
       }
+      for (const write of writes(otherHead)) {
+        expect(codeOf(await at(NOV02, write))).toBe('plan_scope');
+      }
+      expect(codeOf(await createMaster(x, otherHead, { name: 'By another head' }))).toBe(
+        'plan_master_scope',
+      );
       expect(codeOf(await createMaster(x, x.vice, { name: 'By the vice' }))).toBe(
         'plan_master_scope',
       );
@@ -635,8 +666,16 @@ describe('master plans', () => {
         .where('id', '=', all.id)
         .executeTakeFirstOrThrow();
       expect(stored.branch_id).toBeNull();
-      // A second branch of the same school year reads it and copies it.
-      const y = await scene();
+      // A second branch of the same school year and subject reads it and copies it
+      // (permission review, must-fix 5).
+      const y = await scene({ subject: x.s.subject, noSenior: true });
+      expect(
+        masterOf(
+          await at(NOV02, async () =>
+            send('get', `/api/plans/masters/${all.id}`, y.s.branch, y.owner.cookie),
+          ),
+        ).scope,
+      ).toBe('all');
       const listed = planMastersSchema.parse(
         ok(
           await at(NOV02, async () =>
@@ -649,8 +688,10 @@ describe('master plans', () => {
           ),
         ).body,
       );
-      // y's subject is another subject: the master of x's subject does not fit y's plan.
-      expect(listed.masters.map((one) => one.id)).not.toContain(all.id);
+      expect(listed.masters.map((one) => one.id)).toContain(all.id);
+      const inY = planSchema.parse(ok(await copyMaster(y, all.id)).body);
+      expect(topics(inY).slice(0, 3)).toEqual(['M1', 'M2', null]);
+      expect(inY.master?.scope).toBe('all');
       // In x's branch, the owner copies it.
       const copied = planSchema.parse(ok(await copyMaster(x, all.id)).body);
       expect(topics(copied).slice(0, 3)).toEqual(['M1', 'M2', null]);
@@ -711,7 +752,8 @@ describe('master plans', () => {
         for (const call of calls) {
           const answer = await at(NOV02, call);
           expect(answer.status, `${browser.account.id} ${JSON.stringify(answer.body)}`).toBe(403);
-          expect(['plan_master_scope', 'plan_scope']).toContain(codeOf(answer));
+          // The Head Teacher and the vice read it and do not keep it; the other senior does not read it.
+          expect(codeOf(answer)).toBe(browser === otherSenior ? 'plan_scope' : 'plan_master_scope');
         }
       }
       expect(await rowsOf(x.s.branch)).toEqual(before);
@@ -832,8 +874,182 @@ describe('master plans', () => {
           ).toBe(404);
         }
       }
+      // A journal of another branch, or unknown, in the path (permission review, must-fix 1).
+      for (const journalId of [y.journal, randomUUID()]) {
+        expect(
+          (
+            await at(NOV02, async () =>
+              send(
+                'get',
+                `/api/plans/journals/${journalId}/master-compare?quarterId=${x.q2}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            )
+          ).status,
+        ).toBe(404);
+        for (const path of ['master-take', 'master-keep']) {
+          expect(
+            (
+              await at(NOV02, async () =>
+                send(
+                  'post',
+                  `/api/plans/journals/${journalId}/${path}`,
+                  x.s.branch,
+                  x.owner.cookie,
+                  {
+                    quarterId: x.q2,
+                    revision: 0,
+                  },
+                ),
+              )
+            ).status,
+          ).toBe(404);
+        }
+        expect(
+          (
+            await at(NOV02, async () =>
+              send(
+                'get',
+                `/api/plans/masters?journalId=${journalId}&quarterId=${x.q2}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            )
+          ).status,
+        ).toBe(404);
+      }
+      // A year of another branch, or unknown, and an unknown subject in a body or a query
+      // (permission review, must-fix 2 and should-fix 8).
+      for (const yearId of [y.s.year, randomUUID()]) {
+        expect((await createMaster(x, x.head, { yearId, name: 'Elsewhere' })).status).toBe(404);
+        expect(
+          (
+            await at(NOV02, async () =>
+              send('get', `/api/plans/masters?yearId=${yearId}`, x.s.branch, x.head.cookie),
+            )
+          ).status,
+        ).toBe(404);
+      }
+      expect(
+        (await createMaster(x, x.head, { subjectId: randomUUID(), name: 'Unknown' })).status,
+      ).toBe(404);
+      expect(
+        (
+          await at(NOV02, async () =>
+            send(
+              'get',
+              `/api/plans/parallel?subjectId=${randomUUID()}&grade=7&quarterId=${x.q2}`,
+              x.s.branch,
+              x.head.cookie,
+            ),
+          )
+        ).status,
+      ).toBe(404);
+      // The list of branch x leaves out branch y's master.
+      const listed = planMastersSchema.parse(
+        ok(
+          await at(NOV02, async () =>
+            send('get', `/api/plans/masters?yearId=${x.s.year}`, x.s.branch, x.head.cookie),
+          ),
+        ).body,
+      );
+      expect(listed.masters.map((one) => one.id)).not.toContain(theirs.id);
       expect(await rowsOf(x.s.branch)).toEqual(beforeX);
       expect(await rowsOf(y.s.branch)).toEqual(beforeY);
+    });
+  });
+
+  describe('the scope of the master of a plan and of the parallel classes', () => {
+    it('refuses take and keep to anyone but the owner, the comparison and the parallel classes to another subject, and the list shows another subject nothing (permission review, must-fixes 3 and 4)', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 2);
+      ok(await copyMaster(x, master.id));
+      const changed = masterOf(await saveMasterItem(x, master, 1, 'M1 changed'));
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      const otherHead = await account();
+      await t.kit.giveRole(otherHead.account.id, {
+        role: 'head_teacher',
+        branchId: x.s.branch,
+        subjectIds: [otherSubject],
+        validFrom: VALID_FROM,
+      });
+      const otherTeacher = await account();
+      await load.teacher(x.s.branch, {
+        subjects: [{ subject: otherSubject, grades: [7] }],
+        accountId: otherTeacher.account.id,
+      });
+      await t.kit.giveRole(otherTeacher.account.id, {
+        role: 'teacher',
+        branchId: x.s.branch,
+        validFrom: VALID_FROM,
+      });
+      const before = await rowsOf(x.s.branch);
+      for (const path of ['master-take', 'master-keep']) {
+        const call = (browser: Browser) =>
+          at(NOV02, async () =>
+            send('post', `/api/plans/journals/${x.journal}/${path}`, x.s.branch, browser.cookie, {
+              quarterId: x.q2,
+              revision: changed.revision,
+            }),
+          );
+        // The spare teacher reads the plan by the profile and does not own it.
+        expect(codeOf(await call(x.spare))).toBe('plan_scope');
+        // The Head Teacher has no `plans` edit: the guard refuses.
+        expect((await call(x.head)).status).toBe(403);
+      }
+      // A stale revision is refused on keep too.
+      expect(
+        codeOf(
+          await at(NOV02, async () =>
+            send(
+              'post',
+              `/api/plans/journals/${x.journal}/master-keep`,
+              x.s.branch,
+              x.owner.cookie,
+              {
+                quarterId: x.q2,
+                revision: changed.revision - 1,
+              },
+            ),
+          ),
+        ),
+      ).toBe('plan_master_stale');
+      expect(await rowsOf(x.s.branch)).toEqual(before);
+      for (const browser of [otherHead, otherTeacher]) {
+        expect(
+          codeOf(
+            await at(NOV02, async () =>
+              send(
+                'get',
+                `/api/plans/journals/${x.journal}/master-compare?quarterId=${x.q2}`,
+                x.s.branch,
+                browser.cookie,
+              ),
+            ),
+          ),
+        ).toBe('plan_scope');
+        const list = planMastersSchema.parse(
+          ok(
+            await at(NOV02, async () =>
+              send('get', `/api/plans/masters?yearId=${x.s.year}`, x.s.branch, browser.cookie),
+            ),
+          ).body,
+        );
+        expect(list.masters).toEqual([]);
+      }
+      expect(
+        codeOf(
+          await at(NOV02, async () =>
+            send(
+              'get',
+              `/api/plans/parallel?subjectId=${x.s.subject}&grade=7&quarterId=${x.q2}`,
+              x.s.branch,
+              otherHead.cookie,
+            ),
+          ),
+        ),
+      ).toBe('plan_scope');
     });
   });
 
