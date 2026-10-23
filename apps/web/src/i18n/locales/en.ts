@@ -1701,6 +1701,7 @@ export const en = {
         cancelledExamLine: '{{date}} · {{title}} (cancelled)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
         ratingExams: 'Journals that would have two rating exams in one quarter',
+        ratingDates: 'Rating exam dates that would fall outside their quarter',
         ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'and {{count}} more',
         more_other: 'and {{count}} more',
@@ -3286,6 +3287,10 @@ export const en = {
         work_carry: 'Homework carried to the next lesson',
         work_move: 'Work moved to its check lesson',
         work_takeover: 'Hand-added works taken over by a plan row',
+        rating_date: 'Rating exam date set',
+        rating_not_held: 'Rating exam marked not held',
+        rating_entry: 'Rating exam entry',
+        comment: 'Journal comment',
       },
       plan: {
         create: 'Lesson plan started',

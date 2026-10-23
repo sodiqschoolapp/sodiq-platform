@@ -4,7 +4,9 @@
  * quarterly one also in its current `rating_round` with a rating exam part
  * exactly when the subject has the rating exam switch. The subjects list
  * (`quarterWeightsMissing`) and the publish check (task 5.5a-1, decision 10)
- * both read them here.
+ * both read them here. A quarterly row is compared with the switches of its
+ * quarter (`subject-switches.ts`; task 8.2, correction 1), not the subject's
+ * current ones: a quarter that a later change does not reach keeps its rows.
  */
 export interface SubjectRounds {
   readonly weights_round: number;

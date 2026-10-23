@@ -22,6 +22,11 @@ import {
   namedAccounts,
   workKinds,
 } from '../journal/cell-lines.query.js';
+import {
+  commentLines,
+  ratingLines,
+  withoutBranchOf,
+} from '../journal/rating-comment-lines.query.js';
 import { workLines, withoutBranch } from '../journal/work-lines.query.js';
 import { branchOf } from './staff-account-records.js';
 
@@ -178,6 +183,27 @@ export class ResetEntries {
           })),
         )
       ).map((one) => one.lines);
+      // Task 8.2 (From 6.1c; decision 12): the rating entry and comment lines in the same windows.
+      const ratingEntries = await Promise.all(
+        windows.map(async (window) =>
+          (
+            await ratingLines(transaction, {
+              branchId,
+              writer: { accountId: window.accountId, from: window.start, to: window.end },
+            })
+          ).map(withoutBranchOf),
+        ),
+      );
+      const commentEntries = await Promise.all(
+        windows.map(async (window) =>
+          (
+            await commentLines(transaction, {
+              branchId,
+              writer: { accountId: window.accountId, from: window.start, to: window.end },
+            })
+          ).map(withoutBranchOf),
+        ),
+      );
       const named = (id: string | null) =>
         id === null ? null : (accounts.get(id) ?? { accountId: id, login: null, name: null });
       return {
@@ -209,6 +235,8 @@ export class ResetEntries {
                 ? null
                 : { ...changedBy, at: reset.email_change_at.toISOString() },
             workEntries: (workEntries[index] ?? []).map(withoutBranch),
+            ratingEntries: ratingEntries[index] ?? [],
+            commentEntries: commentEntries[index] ?? [],
             entries: lines
               .filter(
                 (line) =>

@@ -1730,6 +1730,7 @@ export const uz: Texts<'one' | 'other'> = {
         cancelledExamLine: '{{date}} · {{title}} (bekor qilingan)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
         ratingExams: 'Bitta chorakda ikkita reyting imtihoni boʻlib qoladigan jurnallar',
+        ratingDates: 'Oʻz choragidan tashqarida qoladigan reyting imtihoni sanalari',
         ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'va yana {{count}} ta',
         more_other: 'va yana {{count}} ta',
@@ -3324,6 +3325,10 @@ export const uz: Texts<'one' | 'other'> = {
         work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
         work_move: 'Ish tekshiriladigan darsga koʻchirildi',
         work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
+        rating_date: 'Reyting imtihoni sanasi belgilandi',
+        rating_not_held: 'Reyting imtihoni oʻtkazilmagan deb belgilandi',
+        rating_entry: 'Reyting imtihoni yozuvi',
+        comment: 'Jurnaldagi izoh',
       },
       plan: {
         create: 'Dars rejasi boshlandi',

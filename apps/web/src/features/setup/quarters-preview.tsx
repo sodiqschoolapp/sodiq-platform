@@ -55,6 +55,8 @@ const ITEM_CODES = [
   'quarter_leaves_exam',
   'quarter_splits_move',
   'quarter_rating_exams',
+  // Task 8.2 (decision 13): hand-set rating exam dates left outside their quarter.
+  'quarter_rating_dates',
   'year_leaves_exam',
   // Task 6.1b-1 (decision 7): the lessons with data on days cut off.
   'lessons_hold_data',
@@ -97,6 +99,8 @@ export function QuarterItemsList({
     switch (item.kind) {
       case 'past_lesson':
       case 'data_lesson':
+      // Task 8.2: a hand-set rating exam date, drawn as a lesson line.
+      case 'rating_date':
         return t('setup.years.preview.lessonLine', {
           date: schoolDateText(item.date, language),
           unit: unitText(item.unit),
@@ -147,6 +151,7 @@ const LIST_TITLES = {
   quarter_leaves_exam: 'setup.years.preview.exams',
   quarter_splits_move: 'setup.years.preview.splitMoves',
   quarter_rating_exams: 'setup.years.preview.ratingExams',
+  quarter_rating_dates: 'setup.years.preview.ratingDates',
   year_leaves_exam: 'setup.years.preview.yearExams',
   lessons_hold_data: 'setup.years.preview.dataLessons',
 } as const;
@@ -166,6 +171,7 @@ const listsRefuse = (preview: QuartersPreview): boolean =>
     preview.exams,
     preview.splitMoves,
     preview.ratingExams,
+    preview.ratingDates,
     preview.dataLessons,
   ].some((list) => list.items.length > 0 || list.more > 0);
 
@@ -346,6 +352,10 @@ export function useQuartersPreview(): {
               <QuarterItemsList
                 title={t('setup.years.preview.ratingExams')}
                 list={question.preview.ratingExams}
+              />
+              <QuarterItemsList
+                title={t('setup.years.preview.ratingDates')}
+                list={question.preview.ratingDates}
               />
               <QuarterItemsList
                 title={t('setup.years.preview.dataLessons')}

@@ -48,6 +48,8 @@ export const quartersPreviewSchema = z.object({
   splitMoves: itemsOf(quarterItemSchema),
   /** Task 5.6c-3b: the journals given two rating exams in one quarter (`quarter_rating_exams`). */
   ratingExams: itemsOf(quarterItemSchema),
+  /** Task 8.2 (decision 13): the hand-set rating exam dates left outside their quarter (`quarter_rating_dates`). */
+  ratingDates: itemsOf(quarterItemSchema),
   /** Task 6.1b-1 (decision 7): the lessons with data on dates that leave every quarter (`lessons_hold_data`). */
   dataLessons: itemsOf(quarterItemSchema),
   /** Task 7.1b: per plan, the items that no longer fit and the rows left empty. */

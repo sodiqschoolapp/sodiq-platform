@@ -1180,7 +1180,10 @@ export class StudentMerges {
       if (
         failure.code === '23503' &&
         (failure.constraint === 'journal_cells_student_fkey' ||
-          failure.constraint === 'student_forced_cells')
+          failure.constraint === 'student_forced_cells' ||
+          // Task 8.2: rating entries and comments are not carried either (From 2.4b-1).
+          failure.constraint === 'journal_rating_entries_student_fkey' ||
+          failure.constraint === 'journal_comments_student_fkey')
       ) {
         throw new ApiException('student_merge_has_cells', 409);
       }

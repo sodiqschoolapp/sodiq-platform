@@ -54,9 +54,8 @@ const journalOf = (grades: readonly number[]): JournalRow => ({
   subject: {
     names: { uz: 'a', ru: 'a', en: 'a' },
     colour: 'blue',
-    attendanceOnly: false,
-    ratingExam: false,
   },
+  quarters: [],
 });
 
 // Task 7.1a, decision 2: edge/lesson-plans, "Who may read a plan?"; 09, "A group of

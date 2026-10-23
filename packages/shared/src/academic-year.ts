@@ -240,6 +240,16 @@ export const quarterItemSchema = z.discriminatedUnion('kind', [
     subject: lineSubjectSchema,
     exams: z.array(z.object({ title: z.string(), date: schoolDateSchema })).min(2),
   }),
+  /**
+   * Task 8.2 (decision 13): a journal whose hand-set rating exam date the new
+   * dates leave outside its quarter (`quarter_rating_dates`).
+   */
+  z.object({
+    kind: z.literal('rating_date'),
+    date: schoolDateSchema,
+    unit: lineUnitSchema,
+    subject: lineSubjectSchema,
+  }),
 ]);
 
 export type QuarterItem = z.infer<typeof quarterItemSchema>;

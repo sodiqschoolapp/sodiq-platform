@@ -527,6 +527,95 @@ export interface JournalCells {
   work_id: string | null;
 }
 
+export interface JournalCommentHistory {
+  body_after: string | null;
+  body_before: string | null;
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  comment_id: string;
+  id: Generated<string>;
+  lesson_id: string | null;
+  rating_exam_id: string | null;
+  student_id: string;
+  target: string;
+  version: number;
+  visibility_after: string | null;
+  visibility_before: string | null;
+  work_id: string | null;
+  written_xact: Generated<string>;
+}
+
+export interface JournalComments {
+  body: string | null;
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  lesson_id: string | null;
+  rating_exam_id: string | null;
+  student_id: string;
+  target: string;
+  version: number;
+  visibility: string;
+  work_id: string | null;
+}
+
+export interface JournalRatingEntries {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string | null;
+  rating_exam_id: string;
+  reason: string | null;
+  score: number | null;
+  student_id: string;
+  version: number;
+}
+
+export interface JournalRatingExams {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  created_at: Generated<Timestamp>;
+  exam_date: string | null;
+  id: Generated<string>;
+  journal_id: string;
+  not_held: Generated<boolean>;
+  quarter_id: string;
+  version: number;
+}
+
+export interface JournalRatingHistory {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  date_after: string | null;
+  date_before: string | null;
+  entry_id: string | null;
+  id: Generated<string>;
+  journal_id: string;
+  kind_after: string | null;
+  kind_before: string | null;
+  not_held_after: boolean | null;
+  not_held_before: boolean | null;
+  quarter_id: string;
+  rating_exam_id: string;
+  reason: string | null;
+  score_after: number | null;
+  score_before: number | null;
+  student_id: string | null;
+  version: number;
+  written_xact: Generated<string>;
+}
+
 export interface Journals {
   academic_year_id: string;
   branch_id: string;
@@ -1380,7 +1469,20 @@ export interface Subjects {
   name_uz: string;
   rating_exam: Generated<boolean>;
   rating_round: Generated<number>;
+  switches_from: number | null;
   weights_round: Generated<number>;
+}
+
+export interface SubjectSwitches {
+  changed_at: Timestamp;
+  from_quarter: number | null;
+  id: Generated<string>;
+  journal_type: string;
+  rating_exam: boolean;
+  rating_round: number;
+  subject_id: string;
+  weights_round: number;
+  written_xact: Generated<string>;
 }
 
 export interface SubstitutionLessons {
@@ -1598,6 +1700,11 @@ export interface DB {
   journal_acting_teachers: JournalActingTeachers;
   journal_cell_history: JournalCellHistory;
   journal_cells: JournalCells;
+  journal_comment_history: JournalCommentHistory;
+  journal_comments: JournalComments;
+  journal_rating_entries: JournalRatingEntries;
+  journal_rating_exams: JournalRatingExams;
+  journal_rating_history: JournalRatingHistory;
   journal_work_history: JournalWorkHistory;
   journal_works: JournalWorks;
   journals: Journals;
@@ -1668,6 +1775,7 @@ export interface DB {
   students: Students;
   subject_daily_weights: SubjectDailyWeights;
   subject_quarter_weights: SubjectQuarterWeights;
+  subject_switches: SubjectSwitches;
   subjects: Subjects;
   substitution_lessons: SubstitutionLessons;
   substitutions: Substitutions;

@@ -28,7 +28,12 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import {
+  journalRows,
+  plannedJournal,
+  staffNames,
+  type JournalRow,
+} from '../journal/journal-grid.query.js';
 import { removePlanWork } from '../journal/plan-work-remove.js';
 import { takeOverUnplanned } from '../journal/works-takeover.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
@@ -204,7 +209,7 @@ export class PlansService {
       if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
       const quarters = await datedQuarters(transaction, yearId);
       const journals = (await journalRows(transaction, branchId, { yearId })).filter(
-        (journal) => !journal.subject.attendanceOnly,
+        (journal) => plannedJournal(journal),
       );
       const reader = await planReaderOf(transaction, access);
       const facts = await ownerFactsOf(
@@ -451,7 +456,7 @@ export class PlansService {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const scene = await this.sceneOf(transaction, access, branchId, journalId, query.quarterId);
       if (!scene.reach.read) throw scopeRefusal();
-      if (scene.journal.subject.attendanceOnly) {
+      if (!plannedJournal(scene.journal)) {
         throw new ApiException('plan_attendance_only', 409);
       }
       return this.answer(transaction, scene);
@@ -791,7 +796,7 @@ export class PlansService {
             : new Map();
         if (!substitutes.has(lesson.id)) throw scopeRefusal();
       }
-      if (scene.journal.subject.attendanceOnly) {
+      if (!plannedJournal(scene.journal)) {
         throw new ApiException('plan_attendance_only', 409);
       }
       const rows = await planRows(
@@ -897,7 +902,7 @@ export class PlansService {
       throw new ApiException('plan_closed', 409);
     }
     if (!scene.reach.edit || scene.reach.assignmentId === null) throw scopeRefusal();
-    if (scene.journal.subject.attendanceOnly) {
+    if (!plannedJournal(scene.journal)) {
       throw new ApiException('plan_attendance_only', 409);
     }
     if (scene.closed) throw new ApiException('plan_year_closed', 409);

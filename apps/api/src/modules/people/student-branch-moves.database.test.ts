@@ -44,6 +44,9 @@ const KEPT = [
   'class_memberships',
   'group_memberships',
   'journal_cells',
+  // Task 8.2: a comment stays in the branch of its lesson, a rating entry in its journal's.
+  'journal_comments',
+  'journal_rating_entries',
   // Task 6.3: a reason of absence stays in the branch of its date.
   'student_absence_reasons',
   'student_moves',
@@ -312,7 +315,11 @@ describe('branch moves in the database', () => {
       // rows it writes are in both branches.
       for (const table of KEPT.filter(
         (one) =>
-          one !== 'student_moves' && one !== 'journal_cells' && one !== 'student_absence_reasons',
+          one !== 'student_moves' &&
+          one !== 'journal_cells' &&
+          one !== 'journal_comments' &&
+          one !== 'journal_rating_entries' &&
+          one !== 'student_absence_reasons',
       )) {
         expect((await branchOf(table, student)).sort()).toEqual([north, south].sort());
       }

@@ -150,6 +150,13 @@ export const subjectRecordSchema = subjectFieldsSchema
      * the branch's time zone and no later than the end of its latest year.
      */
     departmentStartsOn: schoolDateSchema.nullable().optional(),
+    /**
+     * The quarter a change of the journal type or the rating exam switch takes
+     * effect from, in the year of today in each branch and in every later year
+     * (task 8.2, decision 16; `edge/calculation`: "These switches are stored per
+     * quarter"). Sent with a change of the switches only.
+     */
+    switchesFrom: z.int().min(1).max(4).nullable().optional(),
   })
   .superRefine((subject, context) => {
     if (subject.journalType === 'attendance_only') {
@@ -263,8 +270,12 @@ export const subjectQuarterSchema = z.object({
       ratingExam: z.int().nullable(),
     })
     .nullable(),
-  /** Whether the stored distribution fits the subject's rating switch (decision 3). */
+  /** Whether the stored distribution fits the subject's rating switch in the quarter (decision 3; task 8.2). */
   fits: z.boolean(),
+  /** The subject is graded in this quarter (task 8.2: the switches are stored per quarter). */
+  graded: z.boolean(),
+  /** The subject has the rating exam in this quarter: the shape of its distribution (task 8.2). */
+  ratingExam: z.boolean(),
 });
 
 export type SubjectQuarter = z.infer<typeof subjectQuarterSchema>;

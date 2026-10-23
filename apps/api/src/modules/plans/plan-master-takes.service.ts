@@ -14,7 +14,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { journalRows } from '../journal/journal-grid.query.js';
+import { journalRows, plannedJournal } from '../journal/journal-grid.query.js';
 import { notFound } from '../setup/setup-refusals.js';
 import type { GateTarget } from './plan-gate.js';
 import { takePlaces, type CompareRow } from './plan-master-compare.js';
@@ -349,7 +349,7 @@ export class PlanMasterTakes {
       ).filter(
         (journal) =>
           journal.subjectId === query.subjectId &&
-          !journal.subject.attendanceOnly &&
+          plannedJournal(journal) &&
           journal.grades.includes(grade),
       );
       const units = [];

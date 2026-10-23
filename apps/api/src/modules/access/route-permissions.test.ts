@@ -734,6 +734,25 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   'POST /api/journal/lessons/:lessonId/works/carry': { branch: 'request', roles: JOURNAL_WRITERS },
   'POST /api/journal/lessons/:lessonId/scores': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.2: the rating exam and comments.
+  'PUT /api/journal/journals/:journalId/rating/:quarterId/date': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'PUT /api/journal/journals/:journalId/rating/:quarterId/not-held': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'POST /api/journal/journals/:journalId/rating/:quarterId/entries': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'GET /api/journal/journals/:journalId/rating/:quarterId/students/:studentId/history': {
+    branch: 'request',
+    roles: VIEW_READERS,
+  },
+  'PUT /api/journal/comments': { branch: 'request', roles: JOURNAL_WRITERS },
+  'GET /api/journal/comments/history': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',
     roles: VIEW_READERS,

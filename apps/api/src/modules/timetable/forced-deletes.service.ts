@@ -114,6 +114,21 @@ export interface LessonRows {
   readonly cells?: readonly StoredCell[];
   /** Task 6.1b-2: every work of the lesson, as stored. */
   readonly works?: readonly StoredWork[];
+  /** Task 8.2: every comment on the lesson (a mark, a number, a note), as stored. */
+  readonly comments?: readonly StoredComment[];
+}
+
+/** A comment kept in the store (task 8.2). */
+export interface StoredComment {
+  readonly id: string;
+  readonly student_id: string;
+  readonly target: string;
+  readonly work_id: string | null;
+  readonly body: string | null;
+  readonly visibility: string;
+  readonly version: number;
+  readonly changed_by: string;
+  readonly changed_at: string;
 }
 
 /** A journal cell kept in the store (task 6.1b-2). */
@@ -380,7 +395,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     ]);
     // Task 6.1b-2: the lesson's cells and works, read after the lesson's lock
     // (`snapshotWeek`), which a save of cells waits for or has committed before.
-    const [cells, works] = await Promise.all([
+    const [cells, works, comments] = await Promise.all([
       transaction
         .selectFrom('journal_cells')
         .select([
@@ -412,6 +427,23 @@ export class LessonForcedDeletes implements OnModuleInit {
           'changed_by',
           'changed_how',
           sql<string | null>`changed_at::text`.as('changed_at'),
+        ])
+        .where('lesson_id', '=', id)
+        .orderBy('id')
+        .execute(),
+      // Task 8.2: the comments, kept and put back as the cells are.
+      transaction
+        .selectFrom('journal_comments')
+        .select([
+          'id',
+          'student_id',
+          'target',
+          'work_id',
+          'body',
+          'visibility',
+          'version',
+          'changed_by',
+          sql<string>`changed_at::text`.as('changed_at'),
         ])
         .where('lesson_id', '=', id)
         .orderBy('id')
@@ -456,6 +488,7 @@ export class LessonForcedDeletes implements OnModuleInit {
         live === undefined ? null : { substitutionId: live.substitution_id, relaxed: live.relaxed },
       cells,
       works,
+      comments,
     };
     const stored = await transaction
       .insertInto('forced_deletes')
@@ -474,6 +507,7 @@ export class LessonForcedDeletes implements OnModuleInit {
       .executeTakeFirstOrThrow();
     // The rows whose key to the lesson or block has no action go first; the
     // cells and works only as the store row holds them (0111).
+    await transaction.deleteFrom('journal_comments').where('lesson_id', '=', id).execute();
     await transaction.deleteFrom('journal_cells').where('lesson_id', '=', id).execute();
     await transaction.deleteFrom('journal_works').where('lesson_id', '=', id).execute();
     await transaction.deleteFrom('lesson_absence_taught').where('lesson_id', '=', id).execute();
@@ -988,15 +1022,37 @@ async function restoreCells(
     }
     await transaction.insertInto('journal_works').values(rows).execute();
   }
-  if (cells.length === 0) return;
+  const comments = rows.comments ?? [];
+  if (cells.length === 0 && comments.length === 0) return;
   try {
-    await transaction
-      .insertInto('journal_cells')
-      .values(cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
-      .execute();
+    if (cells.length > 0) {
+      await transaction
+        .insertInto('journal_cells')
+        .values(cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
+        .execute();
+    }
+    // Task 8.2: the comments after the works they name, as stored (`restored`, 0120).
+    if (comments.length > 0) {
+      await transaction
+        .insertInto('journal_comments')
+        .values(
+          comments.map((one) => ({
+            ...one,
+            branch_id: branchId,
+            lesson_id: lessonId,
+            rating_exam_id: null,
+            changed_how: 'restored',
+          })),
+        )
+        .execute();
+    }
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
-    if (failure.code === '23503' && failure.constraint === 'journal_cells_student_fkey') {
+    if (
+      failure.code === '23503' &&
+      (failure.constraint === 'journal_cells_student_fkey' ||
+        failure.constraint === 'journal_comments_student_fkey')
+    ) {
       throw new ApiException('forced_delete_parent_changed', 409, undefined, [
         {
           path: 'students',

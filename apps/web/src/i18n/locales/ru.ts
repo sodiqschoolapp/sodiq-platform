@@ -1795,6 +1795,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         cancelledExamLine: '{{date}} · {{title}} (отменён)',
         moveLine: '{{from}} → {{to}} · {{unit}} · {{subject}}',
         ratingExams: 'Журналы, у которых оказалось бы два рейтинговых экзамена в одной четверти',
+        ratingDates: 'Даты рейтинговых экзаменов, которые оказались бы вне своей четверти',
         ratingLine: '{{unit}} · {{subject}}: {{exams}}',
         more_one: 'и ещё {{count}}',
         more_few: 'и ещё {{count}}',
@@ -3435,6 +3436,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         work_carry: 'Домашнее задание перенесено на следующий урок',
         work_move: 'Работа перенесена на урок проверки',
         work_takeover: 'Работы, добавленные вручную, взяты строкой плана',
+        rating_date: 'Дата рейтингового экзамена',
+        rating_not_held: 'Рейтинговый экзамен отмечен как не проведённый',
+        rating_entry: 'Запись рейтингового экзамена',
+        comment: 'Комментарий в журнале',
       },
       plan: {
         create: 'Начат план уроков',

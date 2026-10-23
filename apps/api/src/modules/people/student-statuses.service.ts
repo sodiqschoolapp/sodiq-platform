@@ -85,6 +85,9 @@ const DATA_KEYS: Readonly<Record<string, true>> = {
   student_forced_cells: true,
   // Task 6.3: the reasons of absence (0113).
   student_absence_reasons_student_fkey: true,
+  // Task 8.2: rating entries and comments (0120).
+  journal_rating_entries_student_fkey: true,
+  journal_comments_student_fkey: true,
 };
 
 /** The database guards of 0033 and 0045 and the refusal each gives. */

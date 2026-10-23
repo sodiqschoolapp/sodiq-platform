@@ -15,8 +15,13 @@ import type {
   SubjectRecord,
 } from '@sodiq/shared';
 import { gradeRanges } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import {
+  Transactions,
+  transactionMoment,
+  type Transaction,
+} from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
@@ -44,6 +49,7 @@ import {
   type DepartmentChange,
 } from '../people/department-moves.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
+import { switchKey, switchesOf, type QuarterSwitches } from './subject-switches.js';
 import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
@@ -216,15 +222,53 @@ function roundDetails(
   row: SubjectRow,
   round: number,
   ratingRound: number,
-): { details?: Record<string, { from: number; to: number }> } {
-  const details: Record<string, { from: number; to: number }> = {};
+  switchesFrom: number | null,
+): { details?: Record<string, { from: number; to: number } | number> } {
+  const details: Record<string, { from: number; to: number } | number> = {};
   if (round !== row.weights_round) {
     details.weightsRound = { from: row.weights_round, to: round };
   }
   if (ratingRound !== row.rating_round) {
     details.ratingRound = { from: row.rating_round, to: ratingRound };
   }
+  // Task 8.2 (decision 16): the quarter the change of the switches takes effect from.
+  if (switchesFrom !== null) {
+    details.switchesFrom = switchesFrom;
+  }
   return Object.keys(details).length === 0 ? {} : { details };
+}
+
+/**
+ * Refuses a change of the switches from `switchesFrom` while a started quarter
+ * it reaches holds scores of the subject (`subject_switch_scores`), or, for
+ * the rating switch, a standing rating exam links journals there
+ * (`subject_switch_exams`), in every branch (task 8.2, decisions 2 and 3,
+ * review should-fix 1). `subject_switch_blocked` (0120) answers counts only.
+ */
+async function refuseSwitchChange(
+  transaction: Transaction,
+  subjectId: string,
+  switchesFrom: number,
+  change: { readonly typeChanges: boolean; readonly ratingChanges: boolean },
+): Promise<void> {
+  const moment = await transactionMoment(transaction);
+  const { rows } = await sql<{ scores: number; exams: number }>`
+    select scores, exams from subject_switch_blocked(
+      ${subjectId}::uuid, ${switchesFrom}::smallint, ${moment.toISOString()}::timestamptz,
+      ${change.typeChanges}, ${change.ratingChanges}
+    )
+  `.execute(transaction);
+  const found = rows[0] ?? { scores: 0, exams: 0 };
+  if (found.scores > 0) {
+    throw new ApiException('subject_switch_scores', 409, undefined, [
+      { path: 'switchesFrom', code: 'scores', message: 'Quarters with scores.', count: found.scores },
+    ]);
+  }
+  if (found.exams > 0) {
+    throw new ApiException('subject_switch_exams', 409, undefined, [
+      { path: 'ratingExam', code: 'exams', message: 'Quarters with a linked exam.', count: found.exams },
+    ]);
+  }
 }
 
 /**
@@ -456,6 +500,22 @@ export class Subjects {
         if (record.journalType === 'graded' && daily === undefined && record.daily === null) {
           throw refused('daily_weights_required');
         }
+        // Task 8.2 (decisions 1 to 3 and 16): a change of the switches names the
+        // quarter it takes effect from and is refused while a started quarter it
+        // reaches holds scores, in any branch; the subject row is held FOR UPDATE
+        // (`lock`), and every writer of a score holds it FOR SHARE first.
+        const typeChanges = before.journalType !== after.journalType;
+        const ratingChanges = before.ratingExam !== after.ratingExam;
+        const switchesFrom = record.switchesFrom ?? null;
+        if ((typeChanges || ratingChanges) !== (switchesFrom !== null)) {
+          throw refused('subject_switches_from');
+        }
+        if (switchesFrom !== null) {
+          await refuseSwitchChange(transaction, id, switchesFrom, {
+            typeChanges,
+            ratingChanges,
+          });
+        }
         const changes = changesOf({ ...before }, { ...after });
         if (changes !== null || change.kind !== 'none') {
           await transaction
@@ -464,6 +524,7 @@ export class Subjects {
               ...columnsOf(after),
               weights_round: round,
               rating_round: ratingRound,
+              ...(switchesFrom === null ? {} : { switches_from: switchesFrom }),
               // Task 3.6b-3: the department in force until the start date is
               // kept beside it, and a cancel gives it back.
               ...(change.kind === 'none'
@@ -492,7 +553,7 @@ export class Subjects {
               ...(change.kind === 'cancel' ? { departmentMoveCancelled: true } : {}),
             },
             // A new round: the weights of every branch from before no longer count.
-            ...roundDetails(row, round, ratingRound),
+            ...roundDetails(row, round, ratingRound, switchesFrom),
             requestId,
           });
         }
@@ -637,7 +698,9 @@ export class Subjects {
           throw notFound();
         }
         await this.lockOpenYear(transaction, quarter.academic_year_id);
-        if ((weights.ratingExam !== null) !== subject.rating_exam) {
+        // Task 8.2 (correction 1): the shape and the rounds of the quarter's switches.
+        const switches = await this.switchesIn(transaction, subject.id, quarterId);
+        if ((weights.ratingExam !== null) !== switches.rating_exam) {
           throw refused('weights_shape_mismatch');
         }
         await this.writeQuarter(
@@ -645,6 +708,7 @@ export class Subjects {
           access,
           branchId,
           subject,
+          switches,
           quarterId,
           weights,
           requestId,
@@ -685,8 +749,14 @@ export class Subjects {
           .orderBy('number')
           .execute();
         const first = quarters.find((quarter) => quarter.number === 1);
+        const switches = await switchesOf(
+          transaction,
+          [id],
+          quarters.map((quarter) => quarter.id),
+        );
+        const firstSwitches = first === undefined ? undefined : switches.get(switchKey(id, first.id));
         const source =
-          first === undefined
+          first === undefined || firstSwitches === undefined
             ? undefined
             : await transaction
                 .selectFrom('subject_quarter_weights')
@@ -694,19 +764,29 @@ export class Subjects {
                 .where('branch_id', '=', branchId)
                 .where('subject_id', '=', id)
                 .where('quarter_id', '=', first.id)
-                .where('weights_round', '=', subject.weights_round)
-                .where('rating_round', '=', subject.rating_round)
+                .where('weights_round', '=', firstSwitches.weights_round)
+                .where('rating_round', '=', firstSwitches.rating_round)
                 .executeTakeFirst();
-        if (source === undefined || !fits(source, subject.rating_exam)) {
+        if (
+          source === undefined ||
+          firstSwitches === undefined ||
+          !fits(source, firstSwitches.rating_exam)
+        ) {
           throw refused('quarter_one_not_set');
         }
         for (const quarter of quarters) {
           if (quarter.number !== 1) {
+            const own = switches.get(switchKey(id, quarter.id));
+            // Task 8.2: a quarter whose switches differ from quarter 1's takes no copy.
+            if (own === undefined || !fits(source, own.rating_exam) || own.journal_type !== 'graded') {
+              throw refused('weights_shape_mismatch');
+            }
             await this.writeQuarter(
               transaction,
               access,
               branchId,
               subject,
+              own,
               quarter.id,
               quarterOf(source),
               requestId,
@@ -775,6 +855,27 @@ export class Subjects {
       throw refused('subject_archived');
     }
     return row;
+  }
+
+  /**
+   * The switches of the subject in a quarter (task 8.2): a quarter where it is
+   * attendance only has no weights.
+   */
+  private async switchesIn(
+    transaction: Transaction,
+    subjectId: string,
+    quarterId: string,
+  ): Promise<QuarterSwitches> {
+    const switches = (await switchesOf(transaction, [subjectId], [quarterId])).get(
+      switchKey(subjectId, quarterId),
+    );
+    if (switches === undefined) {
+      throw notFound();
+    }
+    if (switches.journal_type !== 'graded') {
+      throw refused('attendance_only_no_weights');
+    }
+    return switches;
   }
 
   /** An active graded subject, locked: an attendance-only subject has no weights. */
@@ -878,13 +979,15 @@ export class Subjects {
     access: Access,
     branchId: string,
     subject: SubjectRow,
+    switches: QuarterSwitches,
     quarterId: string,
     weights: QuarterWeights,
     requestId: string,
   ): Promise<void> {
     const subjectId = subject.id;
-    const round = subject.weights_round;
-    const ratingRound = subject.rating_round;
+    // Task 8.2 (correction 1): the rounds of the quarter's switches.
+    const round = switches.weights_round;
+    const ratingRound = switches.rating_round;
     const before = await transaction
       .selectFrom('subject_quarter_weights')
       .select([
@@ -993,6 +1096,7 @@ export class Subjects {
         .select('quarters.id')
         .where('quarters.branch_id', '=', branchId)
         .where('academic_years.status', 'in', ['planned', 'current'])
+        .orderBy('quarters.id')
         .execute(),
       transaction
         .selectFrom('subject_quarter_weights')
@@ -1000,6 +1104,7 @@ export class Subjects {
         .innerJoin('academic_years', 'academic_years.id', 'quarters.academic_year_id')
         .select([
           'subject_quarter_weights.subject_id',
+          'subject_quarter_weights.quarter_id',
           'subject_quarter_weights.rating_exam',
           'subject_quarter_weights.weights_round',
           'subject_quarter_weights.rating_round',
@@ -1009,6 +1114,12 @@ export class Subjects {
         .where('academic_years.status', 'in', ['planned', 'current'])
         .execute(),
     ]);
+    // Task 8.2: each quarter counts against the subject's switches there.
+    const switches = await switchesOf(
+      transaction,
+      ids,
+      quarters.map((quarter) => quarter.id),
+    );
     // The department each subject shows: in force today in the branch time of
     // the request (task 3.6b-3, decision 5).
     const today = await todayOf(transaction, branchId);
@@ -1018,9 +1129,19 @@ export class Subjects {
       const own = daily.find(
         (weights) => weights.subject_id === row.id && dailyWeightsFit(row, weights),
       );
-      const fitting = weights.filter(
-        (stored) => stored.subject_id === row.id && quarterWeightsFit(row, stored),
-      ).length;
+      // The graded quarters of the subject, each against its own switches (task 8.2).
+      const counted = quarters.filter(
+        (quarter) => switches.get(switchKey(row.id, quarter.id))?.journal_type === 'graded',
+      );
+      const fitting = weights.filter((stored) => {
+        const own = switches.get(switchKey(row.id, stored.quarter_id));
+        return (
+          stored.subject_id === row.id &&
+          own?.journal_type === 'graded' &&
+          counted.some((quarter) => quarter.id === stored.quarter_id) &&
+          quarterWeightsFit(own, stored)
+        );
+      }).length;
       return {
         id: row.id,
         ...fieldsOf(row),
@@ -1032,8 +1153,8 @@ export class Subjects {
             : { departmentId: shown.move.departmentId, startsOn: shown.move.startsOn },
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         daily: !graded || own === undefined ? null : dailyOf(own),
-        quarterWeightsMissing: graded && quarters.length > 0 ? quarters.length - fitting : null,
-        quarterCount: graded && quarters.length > 0 ? quarters.length : null,
+        quarterWeightsMissing: graded && counted.length > 0 ? counted.length - fitting : null,
+        quarterCount: graded && counted.length > 0 ? counted.length : null,
       };
     });
   }
@@ -1058,9 +1179,7 @@ export class Subjects {
         join
           .onRef('subject_quarter_weights.quarter_id', '=', 'quarters.id')
           .on('subject_quarter_weights.subject_id', '=', subject.id)
-          .on('subject_quarter_weights.branch_id', '=', branchId)
-          .on('subject_quarter_weights.weights_round', '=', subject.weights_round)
-          .on('subject_quarter_weights.rating_round', '=', subject.rating_round),
+          .on('subject_quarter_weights.branch_id', '=', branchId),
       )
       .select([
         'quarters.id',
@@ -1071,16 +1190,31 @@ export class Subjects {
         'subject_quarter_weights.classwork',
         'subject_quarter_weights.homework',
         'subject_quarter_weights.rating_exam',
+        'subject_quarter_weights.weights_round',
+        'subject_quarter_weights.rating_round',
       ])
       .where('quarters.academic_year_id', '=', yearId)
       .orderBy('quarters.number')
       .execute();
+    // Task 8.2 (correction 1): a stored row counts in the rounds of its quarter's switches.
+    const switches = await switchesOf(
+      transaction,
+      [subject.id],
+      quarters.map((quarter) => quarter.id),
+    );
     return {
       yearId: year.id,
       yearStatus: year.status as SubjectQuarterWeights['yearStatus'],
       quarters: quarters.map((quarter) => {
+        const own = switches.get(switchKey(subject.id, quarter.id));
+        const ratingExam = own?.rating_exam ?? subject.rating_exam;
         const stored =
-          quarter.attendance === null || quarter.classwork === null || quarter.homework === null
+          quarter.attendance === null ||
+          quarter.classwork === null ||
+          quarter.homework === null ||
+          own === undefined ||
+          quarter.weights_round !== own.weights_round ||
+          quarter.rating_round !== own.rating_round
             ? null
             : {
                 attendance: quarter.attendance,
@@ -1094,7 +1228,9 @@ export class Subjects {
           startDate: quarter.start_date,
           endDate: quarter.end_date,
           weights: stored === null ? null : quarterOf(stored),
-          fits: stored !== null && fits(stored, subject.rating_exam),
+          fits: stored !== null && fits(stored, ratingExam),
+          graded: (own?.journal_type ?? subject.journal_type) === 'graded',
+          ratingExam,
         };
       }),
     };

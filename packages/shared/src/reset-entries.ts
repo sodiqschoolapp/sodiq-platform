@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { AUDIT_MAX_RANGE_DAYS } from './audit.js';
+import { COMMENT_VISIBILITIES, ratingEntryValueSchema } from './journal-rating.js';
 
 /**
  * The reports over the journal cells (task 6.1c, pull request #209): the
@@ -113,6 +114,47 @@ export const workLineSchema = z.strictObject({
 
 export type WorkLine = z.infer<typeof workLineSchema>;
 
+/**
+ * One line of a rating entry's history (0120; task 8.2, From 6.1c and
+ * decision 12): the entry before and after, the reason, who and when, with
+ * the journal and quarter it belongs to.
+ */
+export const ratingLineSchema = z.strictObject({
+  id: z.uuid(),
+  changedAt: z.iso.datetime(),
+  journal: z.strictObject({
+    subject: threeNamesSchema,
+    /** "7 Oxford" or the group's name. */
+    taughtTo: z.string(),
+    quarter: z.int().min(1).max(4),
+  }),
+  studentId: z.uuid(),
+  before: ratingEntryValueSchema.nullable(),
+  after: ratingEntryValueSchema.nullable(),
+  reason: z.string().nullable(),
+  changedBy: accountNamedSchema,
+});
+
+export type RatingLine = z.infer<typeof ratingLineSchema>;
+
+/** One line of a comment's history (0120; task 8.2, From 6.1c). */
+export const commentLineSchema = z.strictObject({
+  id: z.uuid(),
+  changedAt: z.iso.datetime(),
+  target: z.enum(['mark', 'work', 'note', 'rating']),
+  /** The lesson of a mark, a number or a note; `null` for a rating entry or a lesson gone. */
+  lesson: cellLessonSchema,
+  studentId: z.uuid(),
+  bodyBefore: z.string().nullable(),
+  bodyAfter: z.string().nullable(),
+  visibility: z.enum(COMMENT_VISIBILITIES).nullable(),
+  changedHow: z.enum(['entry', 'restored', 'forced_delete']),
+  /** `null` for a line no person wrote. */
+  changedBy: accountNamedSchema.nullable(),
+});
+
+export type CommentLine = z.infer<typeof commentLineSchema>;
+
 function daysBetween(from: string, to: string): number {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
 }
@@ -178,6 +220,10 @@ export const resetSchema = z.strictObject({
   entries: z.array(resetEntrySchema),
   /** Task 8.1 (From 6.1c): the total and "not held" lines the account wrote there, oldest first. */
   workEntries: z.array(workLineSchema),
+  /** Task 8.2 (From 6.1c; decision 12): the rating entry lines the account wrote there, oldest first. */
+  ratingEntries: z.array(ratingLineSchema),
+  /** Task 8.2 (From 6.1c): the comment lines the account wrote there, oldest first. */
+  commentEntries: z.array(commentLineSchema),
 });
 
 export type Reset = z.infer<typeof resetSchema>;

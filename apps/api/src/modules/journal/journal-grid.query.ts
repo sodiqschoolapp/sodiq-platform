@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
+import { switchKey, switchesOf } from '../setup/subject-switches.js';
 
 /**
  * The reads of the journal grid (task 6.2, pull request #210), each one
@@ -27,10 +28,57 @@ export interface JournalRow {
   readonly subject: {
     readonly names: { readonly uz: string; readonly ru: string; readonly en: string };
     readonly colour: string;
-    readonly attendanceOnly: boolean;
-    readonly ratingExam: boolean;
   };
+  /**
+   * The subject's switches in each quarter of the journal's year, by quarter
+   * number (task 8.2, From 2.1 and 5.5c: "These switches are stored per
+   * quarter"; `subject-switches.ts`). Read with `switchesOn`, `switchesIn`
+   * and `plannedJournal`.
+   */
+  readonly quarters: readonly JournalQuarterSwitches[];
 }
+
+/** The switches of a journal's subject in one quarter of its year. */
+export interface JournalQuarterSwitches {
+  readonly id: string;
+  readonly number: number;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
+  readonly attendanceOnly: boolean;
+  readonly ratingExam: boolean;
+}
+
+/** The switches of the quarter that holds `date`; `undefined` for a date in no quarter. */
+export const switchesOn = (
+  journal: Pick<JournalRow, 'quarters'>,
+  date: string,
+): JournalQuarterSwitches | undefined =>
+  journal.quarters.find(
+    (one) =>
+      one.startDate !== null && one.endDate !== null && one.startDate <= date && date <= one.endDate,
+  );
+
+/** The switches of a quarter by id; `undefined` for a quarter of another year. */
+export const switchesIn = (
+  journal: Pick<JournalRow, 'quarters'>,
+  quarterId: string,
+): JournalQuarterSwitches | undefined => journal.quarters.find((one) => one.id === quarterId);
+
+/**
+ * Whether the lessons on `date` take attendance only: the subject is attendance
+ * only in that quarter. A date in no quarter has no lessons; it reads the
+ * nearest decision, attendance only, so nothing is graded there.
+ */
+export const attendanceOnlyOn = (journal: Pick<JournalRow, 'quarters'>, date: string): boolean =>
+  switchesOn(journal, date)?.attendanceOnly ?? true;
+
+/**
+ * Whether the journal is planned (task 8.2, decision 18): the subject is graded
+ * in any quarter of its year. Attendance-only quarters are left out of the
+ * figures by their switches, not by the plan.
+ */
+export const plannedJournal = (journal: Pick<JournalRow, 'quarters'>): boolean =>
+  journal.quarters.some((one) => !one.attendanceOnly);
 
 /** The journals of a branch, one or every one of a year, with their units and subjects. */
 export async function journalRows(
@@ -56,8 +104,6 @@ export async function journalRows(
       'subjects.name_ru',
       'subjects.name_en',
       'subjects.colour',
-      'subjects.journal_type',
-      'subjects.rating_exam',
     ])
     .where('journals.branch_id', '=', branchId);
   query =
@@ -65,6 +111,27 @@ export async function journalRows(
       ? query.where('journals.id', '=', filter.journalId)
       : query.where('journals.academic_year_id', '=', filter.yearId);
   const rows = await query.execute();
+  const yearIds = [...new Set(rows.map((row) => row.academic_year_id))].sort();
+  const quarters =
+    yearIds.length === 0
+      ? []
+      : await transaction
+          .selectFrom('quarters')
+          .select([
+            'id',
+            'academic_year_id',
+            'number',
+            sql<string | null>`start_date::text`.as('start_date'),
+            sql<string | null>`end_date::text`.as('end_date'),
+          ])
+          .where('academic_year_id', 'in', yearIds)
+          .orderBy('number')
+          .execute();
+  const switches = await switchesOf(
+    transaction,
+    [...new Set(rows.map((row) => row.subject_id))].sort(),
+    quarters.map((quarter) => quarter.id),
+  );
   const groupIds = rows.flatMap((row) => (row.group_id === null ? [] : [row.group_id]));
   const groupClasses =
     groupIds.length === 0
@@ -93,9 +160,20 @@ export async function journalRows(
       subject: {
         names: { uz: row.name_uz, ru: row.name_ru, en: row.name_en },
         colour: row.colour,
-        attendanceOnly: row.journal_type === 'attendance_only',
-        ratingExam: row.rating_exam,
       },
+      quarters: quarters
+        .filter((quarter) => quarter.academic_year_id === row.academic_year_id)
+        .map((quarter) => {
+          const own = switches.get(switchKey(row.subject_id, quarter.id));
+          return {
+            id: quarter.id,
+            number: quarter.number,
+            startDate: quarter.start_date,
+            endDate: quarter.end_date,
+            attendanceOnly: own?.journal_type !== 'graded',
+            ratingExam: own?.journal_type === 'graded' && own.rating_exam,
+          };
+        }),
     };
   });
 }
