@@ -1,6 +1,8 @@
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
+import { removePlanWorks } from '../journal/plan-work-remove.js';
 import type { JournalRow } from '../journal/journal-grid.query.js';
+import { followSeparation } from '../journal/works-takeover.js';
 
 /**
  * The writes of shared plans that both a route and the follow make (task
@@ -145,13 +147,16 @@ export async function copyItems(
  * text and needs no request"): a new plan with a copy of every item not
  * cleared at the journal's places with their marks; the link moves, and its
  * snapshot, absorbed shifts and prepared request with it (decision 7). The
- * caller holds the journals of the plan. Gives the new plan.
+ * caller holds the journals of the plan and writes the audit entry. Task 8.1
+ * (decision 17): the journal's works follow the copied plan works
+ * (`followSeparation`), written by `actorId`. Gives the new plan.
  */
 export async function separateJournal(
   transaction: Transaction,
   branchId: string,
   planId: string,
   journalId: string,
+  actorId: string | null,
 ): Promise<{ planId: string; items: number }> {
   const plan = await transaction
     .selectFrom('lesson_plans')
@@ -218,6 +223,7 @@ export async function separateJournal(
       )
       .execute();
   }
+  await followSeparation(transaction, actorId, journalId, made);
   return { planId: created.id, items: places.length };
 }
 
@@ -299,6 +305,6 @@ export async function takeFromMaster(
     .set({ topic: source.topic, objectives: source.objectives, links: [...source.links] })
     .where('id', '=', itemId)
     .execute();
-  await transaction.deleteFrom('lesson_plan_works').where('item_id', '=', itemId).execute();
+  await removePlanWorks(transaction, itemId);
   await insertWorksFrom(transaction, branchId, itemId, source);
 }

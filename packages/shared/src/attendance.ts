@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { accountNamedSchema, cellChangeSchema, cellWorkKindSchema } from './reset-entries.js';
+import {
+  accountNamedSchema,
+  cellChangeSchema,
+  cellWorkKindSchema,
+  workLineSchema,
+} from './reset-entries.js';
 
 /**
  * Attendance (task 6.3, pull request #211; `07`, Entering data; `edge/journal`,
@@ -46,6 +51,12 @@ export const attendanceSaveSchema = z
           mark: attendanceMarkSchema.nullable(),
           /** The version the mark was typed on; `null` for a cell never saved. */
           version: z.int().min(1).nullable(),
+          /**
+           * Task 8.1, decision 15: a change from present or late to absent or
+           * skipped of a student with numbers in the lesson keeps or clears
+           * them; left out there, the save is refused `numbers_keep_or_clear`.
+           */
+          numbers: z.enum(['keep', 'clear']).optional(),
         }),
       )
       .min(1)
@@ -109,6 +120,8 @@ export const cellHistorySchema = z.object({
       changedAt: z.iso.datetime(),
     }),
   ),
+  /** The total and "not held" lines of the lesson's works the grid shows (task 8.1; From 6.3 decision 16). */
+  workLines: z.array(workLineSchema),
 });
 
 export type CellHistory = z.infer<typeof cellHistorySchema>;

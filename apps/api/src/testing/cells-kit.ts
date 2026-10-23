@@ -202,11 +202,20 @@ export async function workWithTotal(
   migrator: Database,
   input: { readonly branchId: string; readonly lessonId: string; readonly total?: number },
 ): Promise<string> {
+  // Task 8.1 (0119): the next free place of the lesson's works added by hand.
+  const taken = await migrator
+    .selectFrom('journal_works')
+    .select('id')
+    .where('source_lesson_id', '=', input.lessonId)
+    .execute();
   const row = await migrator
     .insertInto('journal_works')
     .values({
       branch_id: input.branchId,
       lesson_id: input.lessonId,
+      // A classwork's source is its own lesson.
+      source_lesson_id: input.lessonId,
+      position: taken.length + 1,
       kind: 'classwork',
       total: input.total ?? 30,
     })

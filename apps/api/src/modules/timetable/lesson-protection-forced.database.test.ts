@@ -133,7 +133,8 @@ describe('the forced delete of a lesson that holds data in the database', () => 
           branch_id: north,
           lesson_id: row.id,
           kind: 'classwork',
-          total: 30,
+          // Task 8.1 (0119): a total is never cleared, so a work "not held" alone has none from the start.
+          total: input.notHeld === true && input.noCells === true ? null : 30,
           not_held: input.notHeld ?? false,
         })
         .returning('id')
@@ -388,11 +389,6 @@ describe('the forced delete of a lesson that holds data in the database', () => 
         );
         expect(refused.constraint, one.name).toBe('journal_cell_delete');
       }
-      await database.migrator
-        .updateTable('journal_works')
-        .set({ total: null })
-        .where('lesson_id', '=', notHeld.lesson)
-        .execute();
       for (const lesson of [total.lesson, notHeld.lesson]) {
         const refused = await refusal(
           inNorth((transaction) =>

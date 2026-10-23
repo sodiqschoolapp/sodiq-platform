@@ -129,12 +129,24 @@ export interface StoredCell {
   readonly changed_at: string;
 }
 
-/** A work kept in the store (task 6.1b-2). */
+/**
+ * A work kept in the store (task 6.1b-2). Task 8.1 (0119) adds its source,
+ * plan link, place, carry, version and last change; a store row written
+ * before has none of them.
+ */
 export interface StoredWork {
   readonly id: string;
   readonly kind: string;
   readonly total: number | null;
   readonly not_held: boolean;
+  readonly source_lesson_id?: string | null;
+  readonly plan_work_id?: string | null;
+  readonly position?: number;
+  readonly carried_from_lesson_id?: string | null;
+  readonly version?: number;
+  readonly changed_by?: string | null;
+  readonly changed_how?: string;
+  readonly changed_at?: string | null;
 }
 
 /** The constraints a restore meets after its check: the refusal its check would give. */
@@ -387,7 +399,20 @@ export class LessonForcedDeletes implements OnModuleInit {
         .execute(),
       transaction
         .selectFrom('journal_works')
-        .select(['id', 'kind', 'total', 'not_held'])
+        .select([
+          'id',
+          'kind',
+          'total',
+          'not_held',
+          'source_lesson_id',
+          'plan_work_id',
+          'position',
+          'carried_from_lesson_id',
+          'version',
+          'changed_by',
+          'changed_how',
+          sql<string | null>`changed_at::text`.as('changed_at'),
+        ])
         .where('lesson_id', '=', id)
         .orderBy('id')
         .execute(),
@@ -857,9 +882,60 @@ async function restoreCells(
   const works = rows.works ?? [];
   const cells = rows.cells ?? [];
   if (works.length > 0) {
+    // Task 8.1 (spec review should-fix 9): a source or carry lesson, or a plan
+    // work, gone since comes back as none; the row is then a column of its own.
+    const lessonsNamed = works.flatMap((one) => [
+      one.source_lesson_id ?? null,
+      one.carried_from_lesson_id ?? null,
+    ]);
+    const named = lessonsNamed.filter((one): one is string => one !== null && one !== lessonId);
+    const lessonsThere = new Set(
+      named.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('lessons')
+              .select('id')
+              .where('id', 'in', [...new Set(named)])
+              .execute()
+          ).map((one) => one.id),
+    );
+    lessonsThere.add(lessonId);
+    const planNamed = works.flatMap((one) => (one.plan_work_id == null ? [] : [one.plan_work_id]));
+    const plansThere = new Set(
+      planNamed.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('lesson_plan_works')
+              .select('id')
+              .where('id', 'in', [...new Set(planNamed)])
+              .execute()
+          ).map((one) => one.id),
+    );
+    const there = (id: string | null | undefined, set: Set<string>) =>
+      id != null && set.has(id) ? id : null;
     await transaction
       .insertInto('journal_works')
-      .values(works.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
+      .values(
+        works.map((one) => ({
+          id: one.id,
+          kind: one.kind,
+          total: one.total,
+          not_held: one.not_held,
+          branch_id: branchId,
+          lesson_id: lessonId,
+          source_lesson_id:
+            one.source_lesson_id === undefined ? lessonId : there(one.source_lesson_id, lessonsThere),
+          plan_work_id: there(one.plan_work_id, plansThere),
+          position: one.position ?? 1,
+          carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),
+          version: one.version ?? 1,
+          changed_by: one.changed_by ?? null,
+          changed_how: 'restored',
+          changed_at: one.changed_at ?? null,
+        })),
+      )
       .execute();
   }
   if (cells.length === 0) return;

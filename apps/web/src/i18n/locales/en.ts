@@ -3250,6 +3250,13 @@ export const en = {
         runs: 'Days of a journal changed by a publish',
         cells_save: 'Journal cells saved',
         all_present: 'All present marked',
+        work_add: 'Work added by hand',
+        work_delete: 'Work added by hand removed',
+        work_total: 'Total of a work set',
+        work_not_held: 'Work marked not held, or the mark undone',
+        work_carry: 'Homework carried to the next lesson',
+        work_move: 'Work moved to its check lesson',
+        work_takeover: 'Hand-added works taken over by a plan row',
       },
       plan: {
         create: 'Lesson plan started',

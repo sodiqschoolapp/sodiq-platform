@@ -1168,7 +1168,18 @@ describe('the forced delete of a dated lesson and its restore', () => {
         .where('id', '=', store)
         .executeTakeFirstOrThrow();
       const kept = row.rows as unknown as LessonRows;
-      expect(kept.works).toEqual(works);
+      // Task 8.1 (0119): the store also keeps the source, link, place, carry and version.
+      expect(
+        kept.works?.map((one) => ({
+          id: one.id,
+          kind: one.kind,
+          total: one.total,
+          not_held: one.not_held,
+        })),
+      ).toEqual(works);
+      expect(kept.works?.every((one) => one.version !== undefined && 'source_lesson_id' in one)).toBe(
+        true,
+      );
       expect(kept.cells?.map((one) => [one.id, one.mark, one.score, one.version])).toEqual(
         cells.map((one) => [one.id, one.mark, one.score, one.version]),
       );

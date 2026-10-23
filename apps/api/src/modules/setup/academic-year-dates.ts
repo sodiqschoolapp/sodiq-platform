@@ -90,7 +90,8 @@ export async function endsOf(
 }
 
 /**
- * Refuses a change of the year's dates that cuts days a stay stands in
+ * Refuses a change of the year's dates that cuts days a stay or a journal
+ * entry (task 8.1, decision 16) stands in
  * (L128, `year_cut_holds` of db/migrations/0064): one detail per stay, at most
  * `CUT_HOLDS_LISTED`, then a detail `more` with the count of the rest. Each
  * detail carries the stay as fields (`stay`), which the screen words; a
@@ -104,7 +105,8 @@ export async function refuseCutHolds(
   endDate: string,
 ): Promise<void> {
   const found = await sql<{
-    kind: 'class' | 'group';
+    kind: 'class' | 'group' | 'entry';
+    unit_kind: 'class' | 'group';
     first_name: string | null;
     last_name: string | null;
     holder_name: string;
@@ -112,13 +114,14 @@ export async function refuseCutHolds(
     first_day: string;
     last_day: string;
   }>`
-    select h.kind, s.first_name, s.last_name,
+    select h.kind, case when c.id is null then 'group' else 'class' end as unit_kind,
+      s.first_name, s.last_name,
       coalesce(c.name, g.name) as holder_name, c.grade,
       h.valid_from::text as first_day, (h.valid_until - 1)::text as last_day
     from year_cut_holds(${yearId}, ${startDate}::date, ${endDate}::date) h
     left join students s on s.id = h.student_id
-    left join classes c on h.kind = 'class' and c.id = h.holder_id
-    left join groups g on h.kind = 'group' and g.id = h.holder_id
+    left join classes c on h.kind in ('class', 'entry') and c.id = h.holder_id
+    left join groups g on h.kind in ('group', 'entry') and g.id = h.holder_id
     order by h.kind, h.valid_from, h.row_id
   `.execute(transaction);
   if (found.rows.length === 0) {
@@ -132,12 +135,14 @@ export async function refuseCutHolds(
       studentName:
         row.first_name === null ? null : `${row.first_name} ${row.last_name ?? ''}`.trim(),
       unit: {
-        kind: row.kind,
+        kind: row.unit_kind,
         name: row.holder_name,
-        grade: row.kind === 'class' ? row.grade : null,
+        grade: row.unit_kind === 'class' ? row.grade : null,
       },
       firstDay: row.first_day,
       lastDay: row.last_day,
+      // Task 8.1 (decision 16): a mark or a number of the student that day.
+      ...(row.kind === 'entry' ? { entry: true } : {}),
     },
   }));
   if (found.rows.length > CUT_HOLDS_LISTED) {

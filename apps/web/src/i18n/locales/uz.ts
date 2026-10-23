@@ -3283,6 +3283,13 @@ export const uz: Texts<'one' | 'other'> = {
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
         cells_save: 'Jurnal katakchalari saqlandi',
         all_present: 'Hammasi keldi deb belgilandi',
+        work_add: 'Ish qoʻlda qoʻshildi',
+        work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
+        work_total: 'Ishning jami belgilandi',
+        work_not_held: 'Ish oʻtkazilmadi deb belgilandi yoki belgi bekor qilindi',
+        work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
+        work_move: 'Ish tekshiriladigan darsga koʻchirildi',
+        work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',

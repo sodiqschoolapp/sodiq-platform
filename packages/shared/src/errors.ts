@@ -958,6 +958,40 @@ export const ERROR_CODES = [
   'files_not_configured',
   /** The file store did not answer in time or refused (task 7.1a, decision 1). */
   'files_unavailable',
+  /** The subject is attendance only, or the journal has no teacher that day, so the lesson takes attendance only: no works and no numbers (edge/calculation; edge/timetable, "A vacancy lasts a quarter"; task 8.1). */
+  'lesson_attendance_only',
+  /** The work named is not a column of this lesson now (task 8.1). */
+  'work_not_in_lesson',
+  /** The lesson's row has a plan item: works come from the plan, and only a lesson with no plan item takes works added by hand (edge/journal, "A lesson is held with no plan item"; task 8.1). */
+  'lesson_has_plan_item',
+  /** A lesson has at most 10 classworks and at most 10 homeworks given (edge/journal; task 8.1). */
+  'journal_works_limit',
+  /** The work holds a total, a "not held" mark or a number, or comes from the plan, so it is not removed (task 8.1, decision 1). */
+  'work_holds_data',
+  /** A number typed is above the new total; the details list those students (07, The total; task 8.1). */
+  'total_below_numbers',
+  /** Numbers exist: the details show each student's percent before and after, and the change is sent again with `confirm` (edge/journal, "A total of 3000 is typed"; task 8.1, decision 10). */
+  'total_confirm',
+  /** Numbers exist: the detail names their count, and the mark is sent again with `confirm` (edge/journal, "A work is marked 'not held' after 18 numbers were typed"; task 8.1, decision 10). */
+  'not_held_confirm',
+  /** The work was changed since it was read; the detail holds the stored work (task 8.1). */
+  'work_stale',
+  /** The homework has numbers at this lesson, so it is not carried (task 8.1, decision 6). */
+  'work_holds_numbers',
+  /** The homework was carried once already (edge/journal: "'check at the next lesson' (once)"; task 8.1). */
+  'work_carried',
+  /** The journal has no later lesson to check the homework at (task 8.1). */
+  'no_next_lesson',
+  /** A number is typed before the work's total is set (07: "Numbers cannot be typed for a work until its total is set"; task 8.1). */
+  'work_total_missing',
+  /** A number above the work's total (07: "A number above the total is refused"; task 8.1). */
+  'score_above_total',
+  /** The work is marked "not held": its numbers are out of the averages and no number is typed (task 8.1). */
+  'work_not_held',
+  /** A change from present or late to absent or skipped for students with numbers: the details list them, and the save is sent again with `numbers` "keep" or "clear" (edge/journal, "An attendance mark is changed after numbers were typed"; task 8.1, decision 15). */
+  'numbers_keep_or_clear',
+  /** A plan work that a journal work names is not removed: mark it "not held" in the journal (edge/lesson-plans, Plans and the journal; task 8.1, decision 11). */
+  'plan_work_has_data',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -1067,6 +1101,8 @@ export const errorDetailSchema = z.object({
       }),
       firstDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       lastDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      /** A journal entry (a mark or a number) of the student on `firstDay`, not a stay (task 8.1, decision 16). */
+      entry: z.boolean().optional(),
     })
     .optional(),
   /**
@@ -1118,6 +1154,25 @@ export const errorDetailSchema = z.object({
   more: z.int().min(1).optional(),
   /** The lessons that will be held without a plan, on a `plan_window_confirm` (task 7.2, review decision 10). */
   lessonsWithoutPlan: z.int().min(0).optional(),
+  /**
+   * A student's number of a work, on a `total_below_numbers` or a
+   * `total_confirm` (task 8.1): the number typed and its percent shown with
+   * the total before and after (`null` when it has none). `recordId` is the
+   * student.
+   */
+  workScore: z
+    .object({
+      score: z.int().min(0),
+      percentBefore: z.int().min(0).max(100).nullable(),
+      percentAfter: z.int().min(0).max(100).nullable(),
+    })
+    .optional(),
+  /** The numbers a "not held" mark takes out of the averages, on a `not_held_confirm` (task 8.1). */
+  count: z.int().min(0).optional(),
+  /** The stored work, on a `work_stale` (task 8.1): its total, "not held" mark and version. `recordId` is the work. */
+  storedWork: z
+    .object({ total: z.int().nullable(), notHeld: z.boolean(), version: z.int().min(1) })
+    .optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

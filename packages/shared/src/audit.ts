@@ -261,7 +261,20 @@ export const AUDIT_ACTION_GROUPS = {
   ],
   // Task 6.1a: journal cells saved (one entry per save; the lines are in the cell history).
   // Task 6.3: "all present" (one entry per action) and a reason of absence set or cleared.
-  journal: ['journal.cells_save', 'journal.all_present', 'absence_reason.set'],
+  // Task 8.1: a work added by hand or removed, a total, "not held", a carry, a work moved to its
+  // check lesson, and the takeover of hand-added works by a plan item (the lines are the work history).
+  journal: [
+    'journal.cells_save',
+    'journal.all_present',
+    'absence_reason.set',
+    'journal.work_add',
+    'journal.work_delete',
+    'journal.work_total',
+    'journal.work_not_held',
+    'journal.work_carry',
+    'journal.work_move',
+    'journal.work_takeover',
+  ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).
   plans: [

@@ -337,7 +337,13 @@ export class PlanSharing {
       const planId = await planIdOf(transaction, journalId, scene.quarter.id);
       if (planId === null || members.length < 2) throw new ApiException('plan_not_shared', 409);
       await this.ownAll(transaction, access, scene, members);
-      const separated = await separateJournal(transaction, branchId, planId, journalId);
+      const separated = await separateJournal(
+        transaction,
+        branchId,
+        planId,
+        journalId,
+        access.accountId,
+      );
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,

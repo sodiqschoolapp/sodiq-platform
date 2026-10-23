@@ -385,6 +385,67 @@ describe('the report of entries after a reset', () => {
     expect(resetOf(south, southOnly.accountId)).toHaveLength(1);
   });
 
+  // Task 8.1 (From 6.1c): the total and "not held" lines the account wrote within the 48 hours.
+  it('lists the totals and "not held" marks the account set within the 48 hours, and none after', async () => {
+    const person = await classes().person(t.north, ['uz']);
+    const lessonId = await lesson(t.north, '2026-10-14');
+    await entry({
+      branch: t.north,
+      action: 'account.password_reset',
+      at: at('2026-10-22', '09:00'),
+      actor: adminAccount,
+      record: { type: 'account', id: person.accountId },
+    });
+    const total = async (moment: string, values: { total?: number; not_held?: boolean }) => {
+      t.clock.set(moment);
+      await t.app.get(Transactions).run([t.north], async (transaction) => {
+        await t.app.get(Audit).record(transaction, {
+          branchId: t.north,
+          actorId: person.accountId,
+          action: 'journal.work_total',
+        });
+        const existing = await transaction
+          .selectFrom('journal_works')
+          .select('id')
+          .where('lesson_id', '=', lessonId)
+          .executeTakeFirst();
+        const id =
+          existing?.id ??
+          (
+            await transaction
+              .insertInto('journal_works')
+              .values({
+                branch_id: t.north,
+                lesson_id: lessonId,
+                source_lesson_id: lessonId,
+                kind: 'classwork',
+                changed_by: person.accountId,
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow()
+          ).id;
+        await transaction
+          .updateTable('journal_works')
+          .set({ ...values, changed_by: person.accountId })
+          .where('id', '=', id)
+          .execute();
+      });
+      t.clock.set(NOW);
+    };
+    await total(at('2026-10-22', '10:00'), { total: 30 });
+    await total(at('2026-10-23', '11:00'), { not_held: true });
+    await total(at('2026-10-24', '10:00'), { total: 20 });
+    const answer = ok(await report(t.north, '2026-10-22', '2026-10-22'));
+    const [reset] = resetOf(answer, person.accountId);
+    expect(
+      reset?.workEntries.map((line) => [line.totalBefore, line.totalAfter, line.notHeldAfter]),
+    ).toEqual([
+      [null, 30, false],
+      [30, 30, true],
+    ]);
+    expect(reset?.workEntries[0]?.lesson?.date).toBe('2026-10-14');
+  });
+
   it('keeps a reset and its entries after the branch link is taken off', async () => {
     const moved = await classes().person(t.south, ['uz'], { further: [t.north] });
     const lessonId = await lesson(t.north, '2026-10-13');

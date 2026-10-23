@@ -272,7 +272,13 @@ export class PlanFollow implements OnModuleInit {
           .execute();
       }
       for (const leaving of leavers) {
-        const separated = await separateJournal(transaction, branchId, planId, leaving.journalId);
+        const separated = await separateJournal(
+          transaction,
+          branchId,
+          planId,
+          leaving.journalId,
+          actor.actorId,
+        );
         await this.audit.record(transaction, {
           branchId,
           actorId: actor.actorId,

@@ -1,4 +1,4 @@
-import type { ErrorDetail } from '@sodiq/shared';
+import type { ErrorCode, ErrorDetail } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
@@ -6,9 +6,13 @@ import type { Audit } from '../audit/audit.service.js';
 const CHECK_VIOLATION = '23514';
 
 /** The refusals of `journal_cells_write` (0108), as error codes. */
-const CELL_REFUSALS: Readonly<Record<string, 'cell_closed' | 'lesson_cancelled_cell'>> = {
+const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   journal_cell_not_member: 'cell_closed',
   journal_cell_cancelled: 'lesson_cancelled_cell',
+  // Task 8.1 (0119): the rules of a number.
+  journal_cell_no_total: 'work_total_missing',
+  journal_cell_above_total: 'score_above_total',
+  journal_cell_not_held: 'work_not_held',
 };
 
 /** One cell to save: the attendance cell (`workId` null) or a work's cell. */

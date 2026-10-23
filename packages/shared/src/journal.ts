@@ -111,13 +111,26 @@ const bottomSchema = z.object({
 export type JournalBottom = z.infer<typeof bottomSchema>;
 
 const journalWorkSchema = z.object({
-  id: z.uuid(),
+  /** The stored work; `null` for a column of the plan with no row yet (task 8.1: written at its first write). */
+  id: z.uuid().nullable(),
+  /** The plan's work, `null` for a work added by hand ("unplanned"). */
+  planWorkId: z.uuid().nullable(),
+  /** The lesson whose plan item holds it: the classwork's lesson, the lesson where the homework was given. */
+  sourceLessonId: z.uuid().nullable(),
   kind: z.enum(['classwork', 'homework']),
   /** Its place among the works of its kind in the lesson, from 1 ("CW 1", decision 11). */
   position: z.int().min(1),
+  /** The plan's title; `null` for an unplanned work, which the screen numbers. */
+  title: z.string().nullable(),
+  /** Added by hand at a lesson with no plan item (`edge/journal`: listed as "unplanned"). */
+  unplanned: z.boolean(),
   /** `null` while the teacher has not set it: "Soni" with no number (review correction 2). */
   total: z.int().min(1).max(1000).nullable(),
   notHeld: z.boolean(),
+  /** The check lesson a homework was carried from ("check at the next lesson"). */
+  carriedFrom: z.uuid().nullable(),
+  /** The work's version, `null` before its first write. */
+  version: z.int().min(1).nullable(),
 });
 
 export type JournalWork = z.infer<typeof journalWorkSchema>;
@@ -138,6 +151,21 @@ export const journalLessonSchema = z.object({
   works: z.array(journalWorkSchema),
   /** The reader may enter its attendance now: held, theirs to teach or own (task 6.3, decisions 3 and 15). */
   canEnter: z.boolean(),
+  /** The reader may add works and type numbers now: `canEnter`, a graded subject and a journal teacher that day (task 8.1). */
+  canEnterWorks: z.boolean(),
+  /** The lesson's row has a plan item; `false` shows "No plan" (`edge/journal`, "A lesson is held with no plan item"; task 8.1). */
+  planItem: z.boolean(),
+  /** The works of the lesson marked "not held": out of the columns, listed for the undo (`09`: "its column is removed from that lesson"). */
+  notHeldWorks: z.array(journalWorkSchema),
+  /** The homeworks given at this lesson, with the lesson that checks them, or why none does (task 8.1). */
+  given: z.array(
+    z.object({
+      title: z.string().nullable(),
+      checkAt: z.uuid().nullable(),
+      /** `year_end`: "will not be graded"; `group_closed`: "not checked, group closed" (`edge/lesson-plans`). */
+      ungraded: z.enum(['year_end', 'group_closed']).nullable(),
+    }),
+  ),
 });
 
 export type JournalLesson = z.infer<typeof journalLessonSchema>;
@@ -153,7 +181,14 @@ const journalCellSchema = z.object({
   typedBy: z.string().nullable(),
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
-    z.object({ score: z.int().min(0).nullable(), percent: z.int().min(0).max(100).nullable() }),
+    z.object({
+      score: z.int().min(0).nullable(),
+      percent: z.int().min(0).max(100).nullable(),
+      /** The cell's version, `null` while never saved (task 8.1: the version a number is sent with). */
+      version: z.int().min(1).nullable(),
+      /** A number on a student marked 0 or 3 (`edge/journal`: "marked 'score on an absent student'"). */
+      onAbsent: z.boolean(),
+    }),
   ),
   /** The lesson score (AVG), `null` when blank or for an attendance-only subject. */
   score: z.int().min(0).max(100).nullable(),
@@ -237,6 +272,8 @@ export const journalGridSchema = z.object({
   months: z.array(z.string().regex(/^\d{4}-\d{2}$/)),
   lessons: z.array(journalLessonSchema),
   students: z.array(journalStudentSchema),
+  /** The last total the reader set in this journal, offered for the next work (`07`, The total; task 8.1, decision 9). */
+  lastTotal: z.int().min(1).max(1000).nullable(),
   /** `null` when the reader may not see the averages (a Tutor of a mixed group, a lesson reader). */
   bottom: z
     .object({ quarter: bottomSchema, months: z.record(z.string(), bottomSchema) })

@@ -74,6 +74,45 @@ export const cellLineSchema = z.strictObject({
 
 export type CellLine = z.infer<typeof cellLineSchema>;
 
+/** How a work came to its state (0119). */
+export const WORK_CHANGES = [
+  'entry',
+  'not_held',
+  'carry',
+  'move',
+  'takeover',
+  'separation',
+  'restored',
+  'deleted',
+  'forced_delete',
+] as const;
+
+export const workChangeSchema = z.enum(WORK_CHANGES);
+
+export type WorkChange = z.infer<typeof workChangeSchema>;
+
+/**
+ * One line of a work's history (0119): the total and the "not held" mark
+ * before and after (`07`: "The number and the total stay visible in the
+ * journal and in the cell history").
+ */
+export const workLineSchema = z.strictObject({
+  id: z.uuid(),
+  workId: z.uuid(),
+  workKind: cellWorkKindSchema,
+  changedAt: z.iso.datetime(),
+  lesson: cellLessonSchema,
+  totalBefore: z.int().nullable(),
+  totalAfter: z.int().nullable(),
+  notHeldBefore: z.boolean().nullable(),
+  notHeldAfter: z.boolean().nullable(),
+  changedHow: workChangeSchema,
+  /** `null` for a line no person wrote (a migration). */
+  changedBy: accountNamedSchema.nullable(),
+});
+
+export type WorkLine = z.infer<typeof workLineSchema>;
+
 function daysBetween(from: string, to: string): number {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
 }
@@ -137,6 +176,8 @@ export const resetSchema = z.strictObject({
   emailChangedBy: accountNamedSchema.extend({ at: z.iso.datetime() }).nullable(),
   /** The cell lines the account wrote in the branch within 48 hours, oldest first. */
   entries: z.array(resetEntrySchema),
+  /** Task 8.1 (From 6.1c): the total and "not held" lines the account wrote there, oldest first. */
+  workEntries: z.array(workLineSchema),
 });
 
 export type Reset = z.infer<typeof resetSchema>;

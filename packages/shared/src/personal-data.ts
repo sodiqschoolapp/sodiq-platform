@@ -9,6 +9,7 @@ import {
   cellLessonSchema,
   cellLineSchema,
   cellWorkKindSchema,
+  workLineSchema,
 } from './reset-entries.js';
 import { roleSchema } from './roles.js';
 import { instructionLanguageSchema } from './settings.js';
@@ -159,6 +160,12 @@ export const studentReportSchema = z.strictObject({
       }),
     ),
     history: z.array(cellLineSchema.extend({ branch: z.string(), changedBy: accountNamedSchema })),
+    /**
+     * Task 8.1 (From 6.1c; decision 13): the total and "not held" lines of the
+     * works in which the student has a cell, newest first, at most
+     * `PERSONAL_DATA_ENTRY_LIMIT`.
+     */
+    workHistory: z.array(workLineSchema.extend({ branch: z.string() })),
     /** The lines beyond the limit: how many, and the moment of the oldest. */
     historyLeftOut: z
       .strictObject({ count: z.int().min(1), oldestAt: z.iso.datetime() })
