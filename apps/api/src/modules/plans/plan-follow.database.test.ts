@@ -69,20 +69,13 @@ describe('the follow of the plans in the database', () => {
       .where('academic_year_id', '=', year)
       .where('number', '=', 1)
       .executeTakeFirstOrThrow();
+    // Task 7.2: the journal's plan records are made with it (0117).
     const plan = await database.migrator
-      .insertInto('lesson_plans')
-      .values({ branch_id: branch, quarter_id: quarter.id, subject_id: subject })
-      .returning('id')
+      .selectFrom('lesson_plan_journals')
+      .select('plan_id as id')
+      .where('journal_id', '=', journal.id)
+      .where('quarter_id', '=', quarter.id)
       .executeTakeFirstOrThrow();
-    await database.migrator
-      .insertInto('lesson_plan_journals')
-      .values({
-        branch_id: branch,
-        plan_id: plan.id,
-        journal_id: journal.id,
-        quarter_id: quarter.id,
-      })
-      .execute();
     return { classId, subject, journal: journal.id, quarter: quarter.id, plan: plan.id };
   }
 

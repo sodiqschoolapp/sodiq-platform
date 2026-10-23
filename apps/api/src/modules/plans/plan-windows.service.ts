@@ -301,7 +301,7 @@ export class PlanWindowsService {
           .where('quarter_id', '=', quarter.id)
           .forUpdate()
           .executeTakeFirst();
-        if (input.startDate > input.endDate || input.startDate < quarter.startDate) {
+        if (input.startDate > input.endDate) {
           throw new ApiException('plan_window_dates', 409);
         }
         if (input.endDate > quarter.endDate) {

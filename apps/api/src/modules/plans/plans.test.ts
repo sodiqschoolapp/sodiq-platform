@@ -47,6 +47,7 @@ import {
   QUARTERS,
   type PublishedScene,
 } from '../../testing/published-scene.js';
+import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -288,6 +289,8 @@ describe('lesson plans and their items', () => {
       ...(input.double === true ? { double: true } : {}),
     });
     const quarters = await quartersOf(scene.year);
+    // Task 7.2: the plans are written inside their window.
+    await openPlanWindows(t.database.migrator, scene.branch, scene.year);
     return {
       scene,
       owner,
@@ -616,6 +619,7 @@ describe('lesson plans and their items', () => {
   it('refuses an attendance-only journal and a closed year', async () => {
     const owner = await account();
     const scene = await publishedScene(t, load, { accounts: { teacher: owner.account.id } });
+    await openPlanWindows(t.database.migrator, scene.branch, scene.year);
     const journal = await journalOf(scene.classId);
     const [q1] = await quartersOf(scene.year);
     await as(owner, scene.branch, [{ role: 'teacher', branchId: scene.branch }], async (api) => {
@@ -657,18 +661,27 @@ describe('lesson plans and their items', () => {
     expect(await planRowsOf(s.scene.branch)).toEqual(before);
   });
 
-  it('makes one plan on the first write and refuses a taken or unknown row', async () => {
+  // Task 7.2 (review decision 21): the journal has its plan of every quarter
+  // from the moment it exists (0117), so a first write makes none.
+  it('writes into the plan the journal has of each quarter and refuses a taken or unknown row', async () => {
     const s = await plannedScene();
+    const before = await t.database.migrator
+      .selectFrom('lesson_plan_journals')
+      .select(['plan_id', 'quarter_id'])
+      .where('journal_id', '=', s.journal)
+      .orderBy('quarter_id')
+      .execute();
+    expect(before).toHaveLength(4);
     const [first] = await fill(s, s.q2, [1]);
     await fill(s, s.q2, [2]);
     const plans = await t.database.migrator
       .selectFrom('lesson_plan_journals')
-      .select('plan_id')
+      .select(['plan_id', 'quarter_id'])
       .where('journal_id', '=', s.journal)
+      .orderBy('quarter_id')
       .execute();
-    expect(plans).toHaveLength(1);
-    const created = await t.entries('plan.create', plans[0]?.plan_id);
-    expect(created).toHaveLength(1);
+    expect(plans).toEqual(before);
+    expect(await t.entries('plan.create')).toEqual([]);
     await as(s.owner, s.scene.branch, [], async (api) => {
       const taken = await api.post(`/api/plans/journals/${s.journal}/items`, {
         quarterId: s.q2,
@@ -1467,32 +1480,26 @@ describe('lesson plans and their items', () => {
       });
     });
 
-    it('makes one plan of two first writes: the second waits on the journal and finds the row taken', async () => {
+    // Task 7.2: the plan exists with the journal; two first writes of one row
+    // meet on the journal's lock.
+    it('makes one item of two first writes of a row: the second waits on the journal and finds the row taken', async () => {
       const s = await plannedScene();
+      const plan = await t.database.migrator
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id as id')
+        .where('journal_id', '=', s.journal)
+        .where('quarter_id', '=', s.q2)
+        .executeTakeFirstOrThrow();
       await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
         const answer = await heldThen(
           s.scene.branch,
           async (transaction) => {
-            // The first write, held before its commit: the journal's lock, the plan and the item.
+            // The first write, held before its commit: the journal's lock and the item.
             await transaction
               .selectFrom('journals')
               .select('id')
               .where('id', '=', s.journal)
               .forNoKeyUpdate()
-              .execute();
-            const plan = await transaction
-              .insertInto('lesson_plans')
-              .values({ branch_id: s.scene.branch, quarter_id: s.q2, subject_id: s.scene.subject })
-              .returning('id')
-              .executeTakeFirstOrThrow();
-            await transaction
-              .insertInto('lesson_plan_journals')
-              .values({
-                branch_id: s.scene.branch,
-                plan_id: plan.id,
-                journal_id: s.journal,
-                quarter_id: s.q2,
-              })
               .execute();
             const first = await transaction
               .insertInto('lesson_plan_items')
@@ -1512,7 +1519,7 @@ describe('lesson plans and their items', () => {
             await t.app.get(Audit).record(transaction, {
               branchId: s.scene.branch,
               actorId: s.owner.account.id,
-              action: 'plan.create',
+              action: 'plan.item_create',
               record: { type: 'lesson_plan', id: plan.id },
             });
           },
@@ -1526,17 +1533,18 @@ describe('lesson plans and their items', () => {
         expect(answer.status, JSON.stringify(answer.body)).toBe(409);
         expect(codeOf(answer)).toBe('plan_row_taken');
       });
-      const plans = await t.database.migrator
-        .selectFrom('lesson_plans')
-        .select('id')
-        .where('branch_id', '=', s.scene.branch)
+      const items = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .select('item_id')
+        .where('plan_id', '=', plan.id)
+        .where('position', '=', 1)
         .execute();
-      expect(plans).toHaveLength(1);
+      expect(items).toHaveLength(1);
       const created = await t.database.migrator
         .selectFrom('audit_log')
         .select('id')
         .where('branch_id', '=', s.scene.branch)
-        .where('action', '=', 'plan.create')
+        .where('action', '=', 'plan.item_create')
         .execute();
       expect(created).toHaveLength(1);
     });
@@ -1649,14 +1657,12 @@ describe('lesson plans and their items', () => {
       .where('journal_id', '=', s.journal)
       .where('quarter_id', '=', s.q2)
       .executeTakeFirstOrThrow();
+    // Task 7.2: the other journal has its own plan record (0117); its link moves, as a share does.
     await t.database.migrator
-      .insertInto('lesson_plan_journals')
-      .values({
-        branch_id: branch,
-        plan_id: plan.plan_id,
-        journal_id: s.otherJournal,
-        quarter_id: s.q2,
-      })
+      .updateTable('lesson_plan_journals')
+      .set({ plan_id: plan.plan_id })
+      .where('journal_id', '=', s.otherJournal)
+      .where('quarter_id', '=', s.q2)
       .execute();
     await t.database.migrator
       .insertInto('lesson_plan_places')

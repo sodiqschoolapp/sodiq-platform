@@ -54,22 +54,25 @@ describe('shared plans in the database', () => {
         .executeTakeFirstOrThrow()
     ).id;
 
-  /** A plan of the first journal, written as the application. */
-  const planOf = (subject: string, journal: string) =>
+  /** The plan of a journal: task 7.2 makes the record with the journal (0117). */
+  const planOf = (_subject: string, journal: string) =>
     inBranch(async (transaction) => {
-      const plan = await transaction
-        .insertInto('lesson_plans')
-        .values({ branch_id: north, quarter_id: quarter, subject_id: subject })
-        .returning('id')
+      const row = await transaction
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', journal)
+        .where('quarter_id', '=', quarter)
         .executeTakeFirstOrThrow();
-      await link(transaction, plan.id, journal);
-      return plan.id;
+      return row.plan_id;
     });
 
+  /** A journal joins a plan as the application does: its link moves (7.1c, decision 5). */
   const link = (transaction: Transaction, plan: string, journal: string) =>
     transaction
-      .insertInto('lesson_plan_journals')
-      .values({ branch_id: north, plan_id: plan, journal_id: journal, quarter_id: quarter })
+      .updateTable('lesson_plan_journals')
+      .set({ plan_id: plan })
+      .where('journal_id', '=', journal)
+      .where('quarter_id', '=', quarter)
       .execute();
 
   const join = (plan: string, journal: string) =>
