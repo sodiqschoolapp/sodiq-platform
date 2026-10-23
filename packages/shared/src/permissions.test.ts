@@ -448,6 +448,33 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the plan window to the Academic Vice Principal and every plan reader its view (task 7.2, decision 1)', () => {
+    const readers = ['principal', 'senior_head_teacher', 'head_teacher', 'teacher'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.plan_windows[role], role).toEqual(
+        role === 'academic_vice_principal' || role === 'super_admin'
+          ? ['view', 'create', 'edit']
+          : readers.includes(role)
+            ? ['view']
+            : [],
+      );
+    }
+  });
+
+  it('lets the Teacher send plan requests and the Head Teachers and the Academic Vice Principal decide them (task 7.2, decision 1)', () => {
+    const expected: Record<string, readonly string[]> = {
+      super_admin: ['view', 'create', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'edit'],
+      senior_head_teacher: ['view', 'edit'],
+      head_teacher: ['view', 'edit'],
+      teacher: ['view', 'create'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.plan_requests[role], role).toEqual(expected[role] ?? []);
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -476,6 +503,8 @@ describe('a frozen permission table', () => {
       'head_teachers',
       'journal',
       'personal_data_report',
+      'plan_requests',
+      'plan_windows',
       'plans',
       'quarters',
       'relatives',
