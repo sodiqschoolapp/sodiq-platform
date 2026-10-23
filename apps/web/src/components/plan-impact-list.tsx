@@ -20,7 +20,6 @@ export function PlanImpactList({ plans }: { plans: readonly PlanImpact[] }) {
       <h4 id="plan-impact-title" className={SUBSECTION_TITLE}>
         {t('plans.impact.title')}
       </h4>
-      <p className="text-sm text-muted-foreground">{t('plans.impact.text')}</p>
       <ul className="grid gap-2 text-sm">
         {plans.map((plan) => (
           <li key={`${plan.journalId}|${String(plan.quarter)}`} className="grid gap-0.5">

@@ -3585,7 +3585,7 @@ export const en = {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
       plans: {
         followed:
-          'Your lesson plans moved with a change of the timetable: {{units}}. Edit requests prepared for you: {{requests}}.',
+          'Your lesson plans moved with a change of the timetable. An edit request is prepared for you: {{requested}}. Moved only: {{moved}}.',
         followed_counts:
           'Lesson plans of your subjects moved with a change of the timetable: {{plans}}. Edit requests prepared: {{requests}}.',
       },
@@ -4982,8 +4982,6 @@ export const en = {
       emptyTitle: 'No lessons in this quarter',
       empty: 'The rows appear when the timetable gives the quarter its lessons.',
       notCovered: 'Not covered',
-      notCoveredNote:
-        'These items no longer fit in the quarter. They are merged into other lessons or carried into the next quarter through an edit request.',
       movedFrom: 'Moved from {{date}}',
       request: {
         title: 'Edit request prepared',
@@ -5000,7 +4998,6 @@ export const en = {
     },
     impact: {
       title: 'Lesson plans',
-      text: 'What the change does to each lesson plan.',
       plan: '{{unit}}, {{subject}}, quarter {{quarter}}',
       moved_one: '{{count}} item moves to another lesson',
       moved_other: '{{count}} items move to another lesson',

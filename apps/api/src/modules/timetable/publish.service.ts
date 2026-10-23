@@ -600,8 +600,14 @@ export class TimetablePublish {
     return this.planFollow.preview(transaction, access, {
       branchId: version.branch_id,
       yearId: version.academic_year_id,
-      rows: (journal, _quarter, stored) =>
-        [
+      rows: (journal, _quarter, stored) => {
+        // A draft lesson at the date and time of a stored one is that lesson,
+        // as the publish pairs them, so an item on it is not counted as moved
+        // (spec review of the code, should-fix 3).
+        const storedAt = new Map(
+          stored.map((row) => [`${row.date}|${String(row.startsAt.getTime())}`, row.lessonId]),
+        );
+        return [
           ...stored.filter((row) => row.date < startsOn || row.date > lastDate),
           ...dated
             .filter(
@@ -614,17 +620,24 @@ export class TimetablePublish {
                   : lesson.placement.classId === journal.classId &&
                     lesson.placement.groupId === null),
             )
-            .map((lesson) => ({
-              lessonId: `draft:${lesson.placement.id}@${lesson.date}`,
-              date: lesson.date,
-              startsAt: new Date(
+            .map((lesson) => {
+              const startsAt = new Date(
                 written.findings.begins(lesson.date).getTime() + lesson.placement.start * 60_000,
-              ),
-            })),
+              );
+              const key = `${lesson.date}|${String(startsAt.getTime())}`;
+              const same = storedAt.get(key);
+              storedAt.delete(key);
+              return {
+                lessonId: same ?? `draft:${lesson.placement.id}@${lesson.date}`,
+                date: lesson.date,
+                startsAt,
+              };
+            }),
         ].sort(
           (a, b) =>
             a.startsAt.getTime() - b.startsAt.getTime() || a.lessonId.localeCompare(b.lessonId),
-        ),
+        );
+      },
     });
   }
 

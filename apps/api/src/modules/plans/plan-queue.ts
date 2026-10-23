@@ -194,11 +194,10 @@ export function followQueue(input: FollowInput): FollowResult {
       if (at !== undefined) inserts.push(at);
       continue;
     }
-    // Kept while both lessons can still come back or be laid on.
-    const removedRow = before.find((row) => row.lessonId === record.removedLessonId);
-    if (at !== undefined && (removedRow === undefined || !started(removedRow, now))) {
-      kept.push(record);
-    }
+    // Kept while the absorbing lesson is still in the queue: once it has
+    // started (or is gone), a lesson coming back before it is a fixed row or
+    // an added one, and the record is dropped (spec review of the code, should-fix 7).
+    if (at !== undefined) kept.push(record);
   }
   for (const at of inserts.sort((a, b) => a - b)) {
     laid.splice(Math.min(at, laid.length), 0, { item: null, lessonId: null, removed: false });

@@ -370,7 +370,6 @@ export class PlansService {
           'group_id',
           'subject_id',
           'teacher_id',
-          'cancel_cause',
           sql<string>`lesson_date::text`.as('lesson_date'),
         ])
         .where('id', '=', lessonId)
@@ -392,7 +391,9 @@ export class PlansService {
         .where('quarters.start_date', '<=', lesson.lesson_date)
         .where('quarters.end_date', '>=', lesson.lesson_date)
         .executeTakeFirst();
-      if (found === undefined) throw new ApiException('journal_no_quarter', 409);
+      // No journal or quarter holds the lesson: no plan to read (404, before any scope:
+      // a state is told only to a reader, permission review should-fix 3).
+      if (found === undefined) throw notFound();
       const scene = await this.sceneOf(
         transaction,
         access,

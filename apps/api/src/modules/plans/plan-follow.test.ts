@@ -308,7 +308,7 @@ describe('plan items follow the timetable', () => {
         causes: [{ kind: 'not_covered', onDate: '2026-11-16', items: 1 }],
       });
       expect(await noticesOf(x.owner.account.id, 'plans.followed')).toEqual([
-        { units: await unitOf(x), plans: 1, requests: 1 },
+        { requested: await unitOf(x), moved: '—' },
       ]);
       expect(await noticesOf(x.head.account.id, 'plans.followed_counts')).toEqual([
         { plans: 1, requests: 1 },
@@ -342,7 +342,7 @@ describe('plan items follow the timetable', () => {
       expect(plan.request).toBeNull();
       // Decision 8 as changed on #213: the move is told, with no request.
       expect(await noticesOf(x.owner.account.id, 'plans.followed')).toEqual([
-        { units: await unitOf(x), plans: 1, requests: 0 },
+        { requested: '—', moved: await unitOf(x) },
       ]);
     });
 
@@ -385,7 +385,10 @@ describe('plan items follow the timetable', () => {
           {},
         ),
       );
-      const back = laid(await planOf(y));
+      const backPlan = await planOf(y);
+      const back = laid(backPlan);
+      // Decision 10: the request prepared by the cancel stays with its cause.
+      expect(backPlan.request?.causes.map((cause) => cause.kind)).toEqual(['not_covered']);
       expect(back.notCovered).toEqual([]);
       expect(back.rows['2026-11-09']).toBe('Topic 1');
       expect(back.rows['2026-12-28']).toBe('Topic 8');
@@ -412,6 +415,34 @@ describe('plan items follow the timetable', () => {
       const plan = laid(await planOf(x));
       expect(plan.rows['2026-11-16']).toBe('Topic 1');
       expect(plan.notCovered).toEqual(['Topic 8']);
+    });
+
+    it('moves the items back when a day off is removed (edge, a day off added by mistake)', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      const before = laid(await planOf(x));
+      const created = ok(
+        await t.post('/api/setup/calendar-entries', x.s.branch, {
+          kind: 'day_off',
+          name: 'Founders day',
+          firstDate: '2026-11-16',
+          lastDate: '2026-11-16',
+          gradeFrom: null,
+          gradeTo: null,
+          dayTemplateId: null,
+          followsWeekday: null,
+          examWeek: null,
+        }),
+        201,
+      );
+      expect(laid(await planOf(x)).notCovered).toEqual(['Topic 8']);
+      ok(
+        await t.post(
+          `/api/setup/calendar-entries/${(created.body as { id: string }).id}/archive`,
+          x.s.branch,
+        ),
+      );
+      expect(laid(await planOf(x))).toEqual(before);
     });
 
     it('follows a new day off', async () => {
@@ -513,6 +544,25 @@ describe('plan items follow the timetable', () => {
     );
     expect(plan.rows.slice(8).every((row) => row.item === null)).toBe(true);
     expect(plan.request?.causes.map((cause) => cause.kind)).toEqual(['rows_added']);
+    // Fewer lessons a week again from 23 November: the last items are not covered.
+    await publishWith(x, '2026-11-23', async (draft, rows) => {
+      for (const row of rows) {
+        if (row.class_id === x.s.classId) {
+          await t.database.migrator
+            .updateTable('teaching_load_rows')
+            .set({ lessons_per_week: 1 })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        await placeAt(x, draft, row.id, 1);
+      }
+    });
+    const fewer = await planOf(x);
+    // 9, 11, 16 and 18 November, then the Mondays from 23 November: ten rows.
+    expect(fewer.rows).toHaveLength(10);
+    expect(laid(fewer).notCovered).toEqual([]);
+    expect(fewer.rows.every((row) => row.item !== null)).toBe(false);
+    expect(fewer.request?.causes.map((cause) => cause.kind)).toEqual(['rows_added']);
   });
 
   it('the quarter dates change: fewer lessons, the last items are not covered, a request is prepared', async () => {
@@ -583,6 +633,17 @@ describe('plan items follow the timetable', () => {
       });
     expect(saved.status).toBe(409);
     expect(codeOf(saved)).toBe('plan_closed');
+    // A reader who does not own it is told it is closed too (permission review, should-fix 4).
+    const read = await request(t.kit.server)
+      .put(`/api/plans/items/${first?.id ?? ''}`)
+      .set('Cookie', x.spare.cookie)
+      .set(BRANCH_HEADER, x.s.branch)
+      .send({
+        base: { topic: 'Topic 1', objectives: '', links: [], classworks: [], homeworks: [] },
+        values: values('Changed'),
+      });
+    expect(read.status).toBe(409);
+    expect(codeOf(read)).toBe('plan_closed');
   });
 
   describe('the teacher of the class changes', () => {
@@ -601,14 +662,31 @@ describe('plan items follow the timetable', () => {
           await placeAt(x, draft, row.id, 1);
         }
       });
+      // Read by the earlier teacher (`planOf` signs in as the scene's owner).
       const plan = await planOf(x);
       expect(laid(plan).rows['2026-11-09']).toBe('Topic 1');
       expect(plan.request?.causes).toEqual([
         { kind: 'owner_changed', onDate: '2026-11-16', items: 0 },
       ]);
+      // From 16 November the plan's owner is the new teacher: they edit it, the earlier one reads it.
+      const later = await planOf(x, THURSDAY);
+      expect(later.canEdit).toBe(false);
+      expect(laid(later).rows['2026-11-09']).toBe('Topic 1');
+      const taken = await at(THURSDAY, async () =>
+        planSchema.parse(
+          ok(
+            await get(
+              `/api/plans/journals/${x.journal}?quarterId=${x.q2}`,
+              x.s.branch,
+              x.spare.cookie,
+            ),
+          ).body,
+        ),
+      );
+      expect(taken.canEdit).toBe(true);
       // Review correction 1: the new owner is told.
       expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
-        { units: await unitOf(x), plans: 1, requests: 1 },
+        { requested: await unitOf(x), moved: '—' },
       ]);
     });
 
@@ -645,7 +723,7 @@ describe('plan items follow the timetable', () => {
         201,
       );
       expect(await noticesOf(x.spare.account.id, 'plans.followed')).toEqual([
-        { units: await unitOf(x), plans: 1, requests: 1 },
+        { requested: await unitOf(x), moved: '—' },
       ]);
       const hired = await account();
       const person = await load.teacher(x.s.branch, {
@@ -672,7 +750,7 @@ describe('plan items follow the timetable', () => {
         201,
       );
       expect(await noticesOf(hired.account.id, 'plans.followed')).toEqual([
-        { units: await unitOf(x), plans: 1, requests: 1 },
+        { requested: await unitOf(x), moved: '—' },
       ]);
       const plan = await planOf(x);
       expect(plan.request?.causes.map((cause) => [cause.kind, cause.onDate])).toEqual([
@@ -751,6 +829,102 @@ describe('plan items follow the timetable', () => {
     });
   });
 
+  describe('the item of one lesson (decision 11)', () => {
+    const role = async (
+      x: Scene,
+      held: {
+        role: 'principal' | 'academic_vice_principal' | 'head_teacher' | 'teacher';
+        subjectIds?: string[];
+      },
+    ) => {
+      const browser = await account();
+      await t.kit.giveRole(browser.account.id, {
+        role: held.role,
+        branchId: x.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+        ...(held.subjectIds === undefined ? {} : { subjectIds: held.subjectIds }),
+      });
+      return browser;
+    };
+
+    it('lets every reader of the plan read it (edge/lesson-plans, "Who may read a plan?") and refuses the others', async () => {
+      const x = await scene();
+      await fill(x, [1]);
+      const monday = await lessonOn(x.s, '2026-11-09');
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      const outsider = await account();
+      await load.teacher(x.s.branch, {
+        subjects: [{ subject: otherSubject, grades: [7] }],
+        accountId: outsider.account.id,
+      });
+      await t.kit.giveRole(outsider.account.id, {
+        role: 'teacher',
+        branchId: x.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const readers = [
+        x.owner.cookie,
+        x.spare.cookie,
+        x.head.cookie,
+        t.admin,
+        (await role(x, { role: 'principal' })).cookie,
+        (await role(x, { role: 'academic_vice_principal' })).cookie,
+      ];
+      const refused = [
+        outsider.cookie,
+        (await role(x, { role: 'head_teacher', subjectIds: [otherSubject] })).cookie,
+      ];
+      await at(START, async () => {
+        for (const cookie of readers) {
+          const read = planLessonItemSchema.parse(
+            ok(await get(`/api/plans/lessons/${monday.id}`, x.s.branch, cookie)).body,
+          );
+          expect(read.item?.topic).toBe('Topic 1');
+        }
+        for (const cookie of refused) {
+          const answer = await get(`/api/plans/lessons/${monday.id}`, x.s.branch, cookie);
+          expect(answer.status, JSON.stringify(answer.body)).toBe(403);
+          expect(codeOf(answer)).toBe('plan_scope');
+        }
+      });
+    });
+
+    it('shows the plans section of the publish check to the Principal too', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      const principal = await role(x, { role: 'principal' });
+      const draft = await publishWith(
+        x,
+        '2026-12-07',
+        async (version, rows) => {
+          for (const row of rows) {
+            if (row.class_id === x.s.classId) {
+              await t.database.migrator
+                .deleteFrom('teaching_load_rows')
+                .where('id', '=', row.id)
+                .execute();
+            } else {
+              await placeAt(x, version, row.id, 1);
+            }
+          }
+        },
+        false,
+      );
+      const check = await at(START, async () =>
+        publishCheckSchema.parse(
+          ok(
+            await get(
+              `/api/timetable/versions/${draft}/publish-check?startsOn=2026-12-07`,
+              x.s.branch,
+              principal.cookie,
+            ),
+          ).body,
+        ),
+      );
+      expect(check.plans.map((plan) => plan.journalId)).toEqual([x.journal]);
+    });
+  });
+
   describe("the create of an item names its row's lesson", () => {
     it('refuses plan_row_moved when a cancellation shifted the rows since the plan was read', async () => {
       const x = await scene();
@@ -774,19 +948,7 @@ describe('plan items follow the timetable', () => {
       const x = await scene();
       const y = await scene();
       const foreign = await lessonOn(y.s, '2026-11-09');
-      const rowsOf = async () => ({
-        plans: await t.database.migrator
-          .selectFrom('lesson_plan_items')
-          .selectAll()
-          .where('branch_id', 'in', [x.s.branch, y.s.branch])
-          .orderBy('id')
-          .execute(),
-        audit: await t.database.migrator
-          .selectFrom('audit_log')
-          .select('id')
-          .where('branch_id', 'in', [x.s.branch, y.s.branch])
-          .execute(),
-      });
+      const rowsOf = async () => [await t.rowsOf(x.s.branch), await t.rowsOf(y.s.branch)];
       const before = await rowsOf();
       for (const lessonId of [foreign.id, randomUUID()]) {
         const created = await request(t.kit.server)
@@ -933,6 +1095,7 @@ describe('plan items follow the timetable', () => {
       expect(check.plans).toEqual([
         expect.objectContaining({
           journalId: x.journal,
+          moved: 4,
           notFitting: ['Topic 5', 'Topic 6', 'Topic 7', 'Topic 8'],
           emptyRows: 0,
         }),
@@ -941,53 +1104,117 @@ describe('plan items follow the timetable', () => {
   });
 
   describe('at the same moment', () => {
+    /**
+     * Holds the journal row `for no key update` (as a plan write and the follow
+     * take it) in a transaction of the migrator; answers its pid and a release.
+     */
+    async function holdJournal(journal: string) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: (pid: number) => void = () => undefined;
+      const holding = new Promise<number>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select id from journals where id = ${journal} for no key update`.execute(
+          transaction,
+        );
+        const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction);
+        ready(pid.rows[0]?.pid ?? 0);
+        await released;
+      });
+      const pid = await holding;
+      return {
+        pid,
+        release: async () => {
+          release();
+          await done;
+        },
+      };
+    }
+
+    /** Waits until `count` backends of this database wait, directly or behind another, on `pid`. */
+    async function waitingOn(pid: number, count: number): Promise<void> {
+      for (let tries = 0; tries < 400; tries += 1) {
+        const found = await sql<{ count: number }>`
+          select count(*)::int as count from pg_stat_activity a
+          where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+            and (${pid} = any(pg_blocking_pids(a.pid)) or exists (
+              select 1 from pg_stat_activity b
+              where b.pid = any(pg_blocking_pids(a.pid)) and ${pid} = any(pg_blocking_pids(b.pid))
+            ))
+        `.execute(t.database.migrator);
+        if ((found.rows[0]?.count ?? 0) >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error(`Fewer than ${String(count)} requests waited on the held journal.`);
+    }
+
+    /** Starts a request at once (a supertest request is sent only once awaited, `api.md`). */
+    const started = (send: () => PromiseLike<Response>) =>
+      new Promise<Response>((resolve, reject) => {
+        send().then(resolve, reject);
+      });
+
+    const cancelOf = (x: Scene, id: string) => () =>
+      keyed(`/api/timetable/lessons/${id}/cancel`, x.s.branch, { reason: 'Excursion' });
+
+    const createOf = (x: Scene, lessonId: string) => () =>
+      request(t.kit.server)
+        .post(`/api/plans/journals/${x.journal}/items`)
+        .set('Cookie', x.owner.cookie)
+        .set(BRANCH_HEADER, x.s.branch)
+        .send({ quarterId: x.q2, position: 1, lessonId, values: values('Topic new') });
+
     it("two cancels of one journal: the second waits on the journal and follows the first one's snapshot", async () => {
       const x = await scene();
       await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
       const first = await lessonOn(x.s, '2026-11-09');
       const second = await lessonOn(x.s, '2026-11-16');
-      // Hold the journal row as a plan write does, start both cancels, then release.
-      let release: () => void = () => undefined;
-      const released = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let locked: () => void = () => undefined;
-      const holding = new Promise<void>((resolve) => {
-        locked = resolve;
-      });
-      const held = t.database.migrator.transaction().execute(async (transaction) => {
-        await sql`select id from journals where id = ${x.journal} for no key update`.execute(
-          transaction,
-        );
-        locked();
-        await released;
-      });
-      await holding;
-      const run = (id: string) =>
-        new Promise<Response>((resolve, reject) => {
-          keyed(`/api/timetable/lessons/${id}/cancel`, x.s.branch, { reason: 'Excursion' }).then(
-            resolve,
-            reject,
-          );
-        });
-      const both = [run(first.id), run(second.id)];
-      // Both wait on the held journal row (the follow's lock).
-      for (let tries = 0; tries < 200; tries += 1) {
-        const waiting = await sql<{ count: number }>`
-          select count(*)::int as count from pg_locks l
-          join pg_stat_activity a on a.pid = l.pid
-          where not l.granted and a.datname = current_database()
-        `.execute(t.database.migrator);
-        if ((waiting.rows[0]?.count ?? 0) >= 1) break;
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-      release();
-      await held;
+      const held = await holdJournal(x.journal);
+      const both = [started(cancelOf(x, first.id)), started(cancelOf(x, second.id))];
+      await waitingOn(held.pid, 2);
+      await held.release();
       for (const response of await Promise.all(both)) ok(response);
       const plan = laid(await planOf(x));
       expect(plan.rows['2026-11-23']).toBe('Topic 1');
       expect(plan.rows['2026-12-28']).toBe('Topic 6');
       expect(plan.notCovered).toEqual(['Topic 7', 'Topic 8']);
+    });
+
+    it('a create and a cancel, the cancel first: the create is refused plan_row_moved', async () => {
+      const x = await scene();
+      await fill(x, [2, 3]);
+      const monday = await lessonOn(x.s, '2026-11-09');
+      const held = await holdJournal(x.journal);
+      const cancelled = started(cancelOf(x, monday.id));
+      await waitingOn(held.pid, 1);
+      const created = started(createOf(x, monday.id));
+      await waitingOn(held.pid, 2);
+      await held.release();
+      ok(await cancelled);
+      const answer = await created;
+      expect(answer.status, JSON.stringify(answer.body)).toBe(409);
+      expect(codeOf(answer)).toBe('plan_row_moved');
+    });
+
+    it('a create and a cancel, the create first: the item follows the cancel to the next lesson', async () => {
+      const x = await scene();
+      await fill(x, [2, 3]);
+      const monday = await lessonOn(x.s, '2026-11-09');
+      const held = await holdJournal(x.journal);
+      const created = started(createOf(x, monday.id));
+      await waitingOn(held.pid, 1);
+      const cancelled = started(cancelOf(x, monday.id));
+      await waitingOn(held.pid, 2);
+      await held.release();
+      ok(await created, 201);
+      ok(await cancelled);
+      const plan = laid(await planOf(x));
+      expect(plan.rows['2026-11-16']).toBe('Topic new');
+      expect(plan.rows['2026-11-23']).toBe('Topic 2');
     });
   });
 });

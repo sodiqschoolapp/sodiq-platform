@@ -115,6 +115,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/plans',
       'GET /api/plans/files/:fileId',
       'GET /api/plans/journals/:journalId',
+      'GET /api/plans/lessons/:lessonId',
       'GET /api/search/classes',
       'GET /api/search/groups',
       'GET /api/search/relatives',

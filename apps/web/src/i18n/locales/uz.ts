@@ -3622,7 +3622,7 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       plans: {
         followed:
-          'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi: {{units}}. Siz uchun tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
+          'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi. Siz uchun oʻzgartirish soʻrovi tayyorlandi: {{requested}}. Faqat surilgan: {{moved}}.',
         followed_counts:
           'Fanlaringiz boʻyicha dars rejalari dars jadvali oʻzgarishi bilan surildi: {{plans}}. Tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
       },
@@ -5026,8 +5026,6 @@ export const uz: Texts<'one' | 'other'> = {
       emptyTitle: 'Bu chorakda dars yoʻq',
       empty: 'Jadval chorakka dars berganda qatorlar chiqadi.',
       notCovered: 'Qamrab olinmagan',
-      notCoveredNote:
-        'Bu yozuvlar endi chorakka sigʻmaydi. Ular oʻzgartirish soʻrovi orqali boshqa darslarga qoʻshiladi yoki keyingi chorakka oʻtkaziladi.',
       movedFrom: '{{date}} dan koʻchirilgan',
       request: {
         title: 'Oʻzgartirish soʻrovi tayyorlandi',
@@ -5042,7 +5040,6 @@ export const uz: Texts<'one' | 'other'> = {
     },
     impact: {
       title: 'Dars rejalari',
-      text: 'Oʻzgarish har bir dars rejasiga nima qiladi.',
       plan: '{{unit}}, {{subject}}, {{quarter}}-chorak',
       moved_one: '{{count}} ta yozuv boshqa darsga oʻtadi',
       moved_other: '{{count}} ta yozuv boshqa darslarga oʻtadi',

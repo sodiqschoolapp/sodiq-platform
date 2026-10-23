@@ -345,10 +345,10 @@ export const NOTIFICATION_KINDS = {
    * many got a request.
    */
   'plans.followed': z.strictObject({
-    /** The classes and groups, joined with commas, as the text shows them. */
-    units: z.string().min(1).max(4000),
-    plans: z.int().min(1),
-    requests: z.int().min(0),
+    /** The classes and groups whose plan got an edit request, joined with commas; a dash for none. */
+    requested: z.string().min(1).max(4000),
+    /** Those whose items only moved; a dash for none. */
+    moved: z.string().min(1).max(4000),
   }),
   /** The same event for a Head Teacher of the subject: "one per Head Teacher with counts". */
   'plans.followed_counts': z.strictObject({

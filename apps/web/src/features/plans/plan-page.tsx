@@ -200,7 +200,6 @@ function NotCovered({ plan }: { plan: Plan }) {
       <h2 id="plan-not-covered" className={SECTION_TITLE}>
         {t('plans.plan.notCovered')}
       </h2>
-      <p className="text-sm text-muted-foreground">{t('plans.plan.notCoveredNote')}</p>
       <ul className="grid gap-1">
         {plan.notCovered.map((item) => (
           <li key={item.id}>{item.topic}</li>

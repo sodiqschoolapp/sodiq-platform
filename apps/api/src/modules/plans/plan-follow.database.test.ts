@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -145,6 +146,86 @@ describe('the follow of the plans in the database', () => {
     });
     expect(seen[0]).toEqual([]);
     expect(seen[1]).toEqual([unit.journal, other.journal].sort());
+  });
+
+  /** Runs `work` as the application, reads the marks, and rolls back. */
+  async function marksAfter(branch: string, work: (transaction: Transaction) => Promise<unknown>) {
+    const rolledBack = new Error('rolled back');
+    let marks: string[] = [];
+    await inBranch(branch, async (transaction) => {
+      await work(transaction);
+      marks = await marksOf(transaction);
+      throw rolledBack;
+    }).catch((error: unknown) => {
+      if (error !== rolledBack) throw error;
+    });
+    return marks;
+  }
+
+  it('marks the journal whose runs a publish changes, and nothing when they stay', async () => {
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
+    const unit = await planned(north, year);
+    expect(
+      await marksAfter(north, (transaction) =>
+        sql`update journals set runs = runs where id = ${unit.journal}`.execute(transaction),
+      ),
+    ).toEqual([]);
+    expect(
+      await marksAfter(north, (transaction) =>
+        sql`update journals set runs = '{[2026-09-07,2026-12-01)}' where id = ${unit.journal}`.execute(
+          transaction,
+        ),
+      ),
+    ).toEqual([unit.journal]);
+  });
+
+  it('marks the journals a person acts for when their status or branch link changes (personOutOf)', async () => {
+    const year = await yearIn(
+      (north = await insertBranch(database.migrator, `North ${String((branches += 1))}`)),
+    );
+    const unit = await planned(north, year);
+    const other = await planned(north, year);
+    const load = new LoadKit(database.migrator);
+    const vacancy = await load.vacancy(north, {
+      subjects: [{ subject: unit.subject, grades: [7] }],
+    });
+    const person = await load.teacher(north, {
+      subjects: [{ subject: unit.subject, grades: [7] }],
+    });
+    await database.migrator
+      .insertInto('journal_acting_teachers')
+      .values({
+        branch_id: north,
+        journal_id: unit.journal,
+        vacancy_id: vacancy,
+        person_id: person.staffId,
+        valid_from: '2026-09-07',
+        valid_until: null,
+        given_by: await classes.account(),
+      })
+      .execute();
+    expect(
+      await marksAfter(north, (transaction) =>
+        transaction
+          .updateTable('staff_statuses')
+          .set({ valid_until: '2027-06-01' })
+          .where('staff_id', '=', person.staffId)
+          .execute(),
+      ),
+    ).toEqual([unit.journal]);
+    expect(
+      await marksAfter(north, (transaction) =>
+        transaction
+          .deleteFrom('staff_branches')
+          .where('staff_id', '=', person.staffId)
+          .where('branch_id', '=', north)
+          .execute(),
+      ),
+    ).toEqual([unit.journal]);
+    // The other journal has no acting period of the person.
+    expect(other.journal).not.toBe(unit.journal);
   });
 
   it('marks nothing for a write of the migrator', async () => {

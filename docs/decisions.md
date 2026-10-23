@@ -303,14 +303,17 @@ Plan approved on pull request #213 with corrections 1 to 3; decisions 1 to 7 and
 | The follow runs once before the commit of every transaction (`Transactions.addBeforeCommit`), from the marks of statement triggers; writes as the migrator mark nothing | Decision 5 |
 | The follow's audit entries name the actor and assignment of the transaction's first audit entry in the branch, by id; none gives the system | Decision 6 |
 | A plan with no snapshot (`laid_at` null, made before 0115) takes its positions as they are at its first follow | Decision 7 |
-| One `plans.followed` notice per owner per event listing the classes and groups of the plans whose items moved or that got a request (an `owner_changed` request goes to the new owner, review correction 1); one `plans.followed_counts` per Head Teacher of the subject with counts | Decision 8 as changed on #213 |
+| One `plans.followed` notice per owner per event naming the classes and groups whose plan got a request and those whose items only moved (review correction 2; an `owner_changed` request goes to the new owner, correction 1); one `plans.followed_counts` per Head Teacher of the subject with counts | Decision 8 as changed on #213 |
 | A plan is closed when its journal has no run day from the later of today and its quarter's first day: the follow leaves its items not covered with no request and no notice, and every write is refused `plan_closed` (to a reader of it; anyone else gets `plan_scope`) | Decision 9; **build decision**: the quarter's first day, so a plan of a quarter the subject no longer reaches is closed at once |
 | A prepared request whose cause goes away stays with its causes | Decision 10 |
 | `GET /api/plans/lessons/:lessonId` under `plans` `view`: a reader of the plan, or the substitute of that lesson while the substitution is in force | Decision 11 |
 | The create of an item names its row's lesson: 404 for another branch's or an unknown lesson, then `plan_row_moved` | Decision 12 |
 | **Build decision.** Items past the last row keep their gaps in the queue, so rows that come back give each its row again | Property "moves nothing when the rows did not change" |
 | **Build decision.** The publish check lays the plans on the stored lessons outside the draft's dates and on the draft's dated lessons, without the one-day changes a publish keeps; a vacancy fill's check shows no plan (a fill changes teachers, not lessons); the bulk cancel check cancels every lesson of its scope without data under a savepoint rolled back | The checks that compute rather than write |
-| **Build decision.** The notice's classes and groups are one text joined with commas | The notification text interpolates its data as it is |
+| **Build decision.** The notice's two lists are texts joined with commas, a dash for an empty one | The notification text interpolates its data as it is |
+| **Build decision.** A record of an absorbed shift is kept while its absorbing lesson is still in the queue | The removed lesson is no row of the snapshot any more (code review, should-fix 7) |
+| **Build decision.** The item of a lesson that no journal and quarter hold is 404, before the scope | A state is told only to a reader (permission review, should-fix 3) |
+| **Build decision.** A status or branch link of a person marks only the acting journals the transaction's branches see; another branch's plans follow at their next change | The marks are branch rows under the filter; a person-wide change written in one branch cannot write another's (code review, should-fix 5, not built) |
 
 ## 22 October 2026: lesson plans and their items (task 7.1a)
 

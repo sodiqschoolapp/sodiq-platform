@@ -609,6 +609,7 @@ describe('the day page', () => {
       alreadyCancelled: [],
       held: [],
       withData: [],
+      plans: [],
     };
 
     it('checks the classes and slots, needs a choice for the shared block and sends what the check listed', async () => {

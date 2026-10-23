@@ -287,6 +287,26 @@ export async function dayTemplatesKit(
         .orderBy('version_id')
         .orderBy('position')
         .execute();
+      // Task 7.1b: the plan made on a first write, laid by the follow (`laid_at`), and its marks.
+      rows.lesson_plans = await database.migrator
+        .selectFrom('lesson_plans')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('id')
+        .execute();
+      rows.lesson_plan_journals = await database.migrator
+        .selectFrom('lesson_plan_journals')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
+        .execute();
+      rows.lesson_plan_follow_marks = await database.migrator
+        .selectFrom('lesson_plan_follow_marks')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('journal_id')
+        .execute();
       rows.lesson_plan_rows = await database.migrator
         .selectFrom('lesson_plan_rows')
         .selectAll()

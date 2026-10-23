@@ -16,6 +16,7 @@ import {
   type ExamSaveAnswer,
   type ExamsAnswer,
   type ExamsQuery,
+  type PlanImpact,
 } from '@sodiq/shared';
 import {
   weekdayOf,
@@ -345,11 +346,16 @@ export class TimetableExams {
             } catch (error) {
               if (!(error instanceof CheckDone)) throw error;
             }
-            throw new PreviewDone({
-              ...(await checkAnswer(transaction, before, moment, found)),
-              // Task 7.1b: what the save does to each plan (edge/lesson-plans).
-              plans: await this.planFollow.preview(transaction, access),
-            });
+            throw new PreviewDone(
+              await checkAnswer(
+                transaction,
+                before,
+                moment,
+                found,
+                // Task 7.1b: what the save does to each plan (edge/lesson-plans).
+                await this.planFollow.preview(transaction, access),
+              ),
+            );
           }),
         EXAM_REFUSALS,
       );
@@ -1703,6 +1709,7 @@ async function checkAnswer(
   before: readonly StoredDayLesson[],
   moment: Date,
   found: CheckFound,
+  plans: readonly PlanImpact[],
 ): Promise<ExamCheck> {
   const all = await dayLessonsOf(transaction, before, moment);
   const byId = new Map(all.map((one) => [one.id, one]));
@@ -1740,6 +1747,7 @@ async function checkAnswer(
           return lesson === undefined ? [] : [{ lesson, state: item.state, rules: item.rules }];
         });
   return examCheckSchema.parse({
+    plans,
     cancels: named(found.cancels),
     choices: found.choices.map((one) => ({
       classId: one.classId,

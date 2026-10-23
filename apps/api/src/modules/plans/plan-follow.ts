@@ -470,7 +470,7 @@ export class PlanFollow implements OnModuleInit {
     const now = await transactionMoment(transaction);
     const actor = await this.actorOf(transaction, branchId);
     // Decision 8 as changed on #213: a plan whose items moved, or that got a request.
-    const told = new Map<string, { units: Set<string>; plans: number; requests: number }>();
+    const told = new Map<string, { requested: Set<string>; moved: Set<string> }>();
     const counts = new Map<string, { plans: number; requests: number }>();
     for (const one of followed) {
       const { plan, result } = one;
@@ -585,10 +585,11 @@ export class PlanFollow implements OnModuleInit {
       const referenceOwner = await this.referenceOwner(transaction, branchId, plan);
       const people = new Set([...takers, ...(referenceOwner === null ? [] : [referenceOwner])]);
       for (const person of people) {
-        const entry = told.get(person) ?? { units: new Set<string>(), plans: 0, requests: 0 };
-        entry.units.add(plan.journal.unitName);
-        entry.plans += 1;
-        if (requested) entry.requests += 1;
+        const entry = told.get(person) ?? {
+          requested: new Set<string>(),
+          moved: new Set<string>(),
+        };
+        (requested ? entry.requested : entry.moved).add(plan.journal.unitName);
         told.set(person, entry);
       }
       const key = plan.journal.subjectId;
@@ -665,6 +666,7 @@ export class PlanFollow implements OnModuleInit {
       .executeTakeFirst();
     let requestId: string;
     let oldValue: JsonValue = null;
+    let storedFrom = fromDate;
     if (existing === undefined) {
       const created = await transaction
         .insertInto('lesson_plan_requests')
@@ -688,7 +690,7 @@ export class PlanFollow implements OnModuleInit {
       await transaction
         .updateTable('lesson_plan_requests')
         .set({
-          from_date: existing.from_date < fromDate ? existing.from_date : fromDate,
+          from_date: (storedFrom = existing.from_date < fromDate ? existing.from_date : fromDate),
           updated_at: now,
         })
         .where('id', '=', existing.id)
@@ -719,7 +721,7 @@ export class PlanFollow implements OnModuleInit {
         requestId,
         journalId: plan.journal.id,
         quarterId: plan.quarter.id,
-        fromDate,
+        fromDate: storedFrom,
         causes: causes.map((cause) => ({ ...cause })),
       },
     });
@@ -729,7 +731,7 @@ export class PlanFollow implements OnModuleInit {
   private async tell(
     transaction: Transaction,
     branchId: string,
-    told: ReadonlyMap<string, { units: Set<string>; plans: number; requests: number }>,
+    told: ReadonlyMap<string, { requested: Set<string>; moved: Set<string> }>,
     counts: ReadonlyMap<string, { plans: number; requests: number }>,
     now: Date,
   ): Promise<void> {
@@ -748,14 +750,8 @@ export class PlanFollow implements OnModuleInit {
           kind: 'plans.followed',
           branchId,
           accountIds: [staff.account_id],
-          data: {
-            units: [...entry.units]
-              .sort((a, b) => a.localeCompare(b, 'en'))
-              .join(', ')
-              .slice(0, 4000),
-            plans: entry.plans,
-            requests: entry.requests,
-          },
+          // Review correction 2: each plan marked "request prepared" or "moved only".
+          data: { requested: unitList(entry.requested), moved: unitList(entry.moved) },
         });
       }
     }
@@ -861,6 +857,16 @@ function causesOf(
     }
   }
   return causes;
+}
+
+/** The classes and groups of a notice, joined, or a dash for none (the text names both lists). */
+function unitList(units: ReadonlySet<string>): string {
+  return units.size === 0
+    ? '—'
+    : [...units]
+        .sort((a, b) => a.localeCompare(b, 'en'))
+        .join(', ')
+        .slice(0, 4000);
 }
 
 /** What a preview shows of one plan. */

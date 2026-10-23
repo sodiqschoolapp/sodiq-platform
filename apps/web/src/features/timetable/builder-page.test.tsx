@@ -716,6 +716,7 @@ describe('pinSlots', () => {
       shortenedDays: [],
       unusedKeeps: [],
       chain: null,
+      plans: [],
       canPublish: true,
     };
     const checkRoute = `GET /api/timetable/versions/${VERSION.id}/publish-check`;
@@ -1698,6 +1699,7 @@ describe('a draft out of date', () => {
     shortenedDays: [],
     unusedKeeps: [],
     chain: null,
+    plans: [],
     canPublish: false,
   };
   const CALENDAR = {
