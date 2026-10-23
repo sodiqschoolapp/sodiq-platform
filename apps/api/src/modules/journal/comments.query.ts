@@ -66,9 +66,11 @@ export async function commentsAnswer(
 }
 
 /**
- * The comments with a body of the students and lessons shown, and of the
- * quarter's rating exam row, that a reader of `shape` may read (decision 10):
- * the comments of attendance marks only for a reader who sees attendance.
+ * The comments of the students and lessons shown, and of the quarter's rating
+ * exam row, that a reader of `shape` may read (decision 10): the comments of
+ * attendance marks only for a reader who sees attendance. A cleared comment is
+ * answered too, with `body: null` and its version, so that the next save on its
+ * target names the stored version (code review round 2).
  */
 export async function gridComments(
   transaction: Transaction,
@@ -84,7 +86,6 @@ export async function gridComments(
     .selectFrom('journal_comments')
     .select(COMMENT_COLUMNS)
     .where('student_id', 'in', input.studentIds)
-    .where('body', 'is not', null)
     .where((where) => {
       const lessons =
         input.lessonIds.length === 0 ? where.val(false) : where('lesson_id', 'in', input.lessonIds);

@@ -1007,12 +1007,26 @@ describe('the rating exam and comments', () => {
             version: 1,
           }),
         );
+        // The grid answers the cleared comment with no body and its version, so the
+        // next save on the mark names that version (code review round 2).
         const grid = await gridOf(calls, s);
         const ahmedov = grid.students.find((one) => one.id === s.ahmedov);
-        expect(ahmedov?.comments.map((one) => [one.target, one.body]).sort()).toEqual([
-          ['rating', 'Strong exam'],
-          ['work', 'Two answers copied'],
+        expect(ahmedov?.comments.map((one) => [one.target, one.body, one.version]).sort()).toEqual([
+          ['mark', null, 2],
+          ['rating', 'Strong exam', 1],
+          ['work', 'Two answers copied', 1],
         ]);
+        const again = journalCommentSchema.parse(
+          ok(
+            await calls.put('/api/journal/comments', {
+              on: onMark,
+              body: 'Came late again',
+              visibility: 'staff',
+              version: 2,
+            }),
+          ),
+        );
+        expect([again.body, again.version]).toEqual(['Came late again', 3]);
         const boboyev = grid.students.find((one) => one.id === s.boboyev);
         expect(boboyev?.comments.map((one) => [one.target, one.body])).toEqual([
           ['note', 'Helped a classmate'],
@@ -1027,6 +1041,7 @@ describe('the rating exam and comments', () => {
         expect(history.lines.map((one) => [one.bodyBefore, one.bodyAfter])).toEqual([
           [null, 'Came late'],
           ['Came late', null],
+          [null, 'Came late again'],
         ]);
       });
       expect((await t.entries('journal.comment')).length).toBeGreaterThanOrEqual(5);

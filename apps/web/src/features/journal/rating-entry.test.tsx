@@ -264,4 +264,51 @@ describe('the rating exam and comments in the grid', () => {
     const plain = await cellOf(uid(102), 'ratingExam');
     expect(plain.className).not.toContain('after:border-t-info');
   });
+
+  it('saves on a cleared comment with its stored version, and does not mark the cell (code review round 2)', async () => {
+    const calls = open('en', {
+      ...GRID,
+      students: [
+        {
+          ...student(1, 'Zokirov'),
+          comments: [
+            {
+              id: uid(91),
+              target: 'mark',
+              studentId: uid(101),
+              lessonId: LESSON,
+              workId: null,
+              body: null,
+              visibility: 'staff',
+              version: 2,
+              changedBy: null,
+              changedAt: '2026-10-27T05:00:00.000Z',
+            },
+          ],
+        },
+        student(2, 'Abdullayev'),
+      ],
+    });
+    const cell = await cellOf(uid(101), `${LESSON}:a`);
+    expect(cell.className).not.toContain('after:border-t-info');
+    fireEvent.click(cell);
+    fireEvent.keyDown(cell, { key: 'c', code: 'KeyC' });
+    const dialog = await screen.findByRole('dialog');
+    const mark = within(dialog).getByRole('region', { name: en.journal.comments.targets.mark });
+    expect(within(mark).queryByRole('button', { name: en.journal.comments.clear })).toBeNull();
+    fireEvent.change(within(mark).getByLabelText(en.journal.comments.body), {
+      target: { value: 'Came late again' },
+    });
+    fireEvent.click(within(mark).getByRole('button', { name: en.journal.comments.save }));
+    await waitFor(() => {
+      expect(sent(calls, 'PUT /api/journal/comments')).toEqual([
+        {
+          on: { target: 'mark', lessonId: LESSON, studentId: uid(101) },
+          body: 'Came late again',
+          visibility: 'staff',
+          version: 2,
+        },
+      ]);
+    });
+  });
 });

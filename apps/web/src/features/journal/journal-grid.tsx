@@ -211,7 +211,7 @@ export function JournalGridView({
   /** The marker class of a cell with a comment, for a student row. */
   const marked = useCallback(
     (row: GridRow | undefined, cell: (studentId: string) => CommentCell): string | undefined =>
-      row?.kind === 'student' && comments?.commentOn(cell(row.student.id)) !== undefined
+      row?.kind === 'student' && (comments?.commentOn(cell(row.student.id))?.body ?? null) !== null
         ? COMMENTED
         : undefined,
     [comments],
