@@ -16,6 +16,16 @@ import {
   type PlanItemCreate,
   type PlanItemSave,
   type PlanShare,
+  planMasterCompareSchema,
+  planMasterSchema,
+  planMastersSchema,
+  planParallelSchema,
+  type PlanMasterCreate,
+  type PlanMasterItemCreate,
+  type PlanMasterItemSave,
+  type PlanMasterOrder,
+  type PlanMasterRename,
+  type PlanMasterTake,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -258,3 +268,144 @@ export const finishPlanRequest = (requestId: string) =>
       params: { header: branchHeader(), path: { requestId } },
     }),
   ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.3: the masters of a year (the current one without `yearId`), or those that fit a plan. */
+export const planMastersQuery = (
+  branchId: string | null,
+  query: { yearId?: string; journalId?: string; quarterId?: string },
+) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'masters', query],
+    queryFn: async () =>
+      planMastersSchema.parse(
+        await answerOf(api.GET('/api/plans/masters', { params: { header: branchHeader(), query } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 7.3: one master with its items. */
+export const planMasterQuery = (branchId: string | null, masterId: string) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'master', masterId],
+    queryFn: async () =>
+      planMasterSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/masters/{masterId}', {
+            params: { header: branchHeader(), path: { masterId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const createPlanMaster = (body: PlanMasterCreate) =>
+  answerOf(api.POST('/api/plans/masters', { params: { header: branchHeader() }, body })).then(
+    (answer) => planMasterSchema.parse(answer),
+  );
+
+export const renamePlanMaster = (masterId: string, body: PlanMasterRename) =>
+  answerOf(
+    api.PATCH('/api/plans/masters/{masterId}', {
+      params: { header: branchHeader(), path: { masterId } },
+      body,
+    }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+export const archivePlanMaster = (masterId: string, revision: number, archive: boolean) =>
+  answerOf(
+    archive
+      ? api.POST('/api/plans/masters/{masterId}/archive', {
+          params: { header: branchHeader(), path: { masterId } },
+          body: { revision },
+        })
+      : api.POST('/api/plans/masters/{masterId}/restore', {
+          params: { header: branchHeader(), path: { masterId } },
+          body: { revision },
+        }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+export const createPlanMasterItem = (masterId: string, body: PlanMasterItemCreate) =>
+  answerOf(
+    api.POST('/api/plans/masters/{masterId}/items', {
+      params: { header: branchHeader(), path: { masterId } },
+      body,
+    }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+export const savePlanMasterItem = (masterId: string, itemId: string, body: PlanMasterItemSave) =>
+  answerOf(
+    api.PUT('/api/plans/masters/{masterId}/items/{itemId}', {
+      params: { header: branchHeader(), path: { masterId, itemId } },
+      body,
+    }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+export const removePlanMasterItem = (masterId: string, itemId: string, revision: number) =>
+  answerOf(
+    api.POST('/api/plans/masters/{masterId}/items/{itemId}/remove', {
+      params: { header: branchHeader(), path: { masterId, itemId } },
+      body: { revision },
+    }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+export const orderPlanMaster = (masterId: string, body: PlanMasterOrder) =>
+  answerOf(
+    api.PUT('/api/plans/masters/{masterId}/order', {
+      params: { header: branchHeader(), path: { masterId } },
+      body,
+    }),
+  ).then((answer) => planMasterSchema.parse(answer));
+
+/** Task 7.3: the "master updated" comparison of a plan. */
+export const planMasterCompareQuery = (
+  branchId: string | null,
+  journalId: string,
+  quarterId: string,
+) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'compare', journalId, quarterId],
+    queryFn: async () =>
+      planMasterCompareSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/journals/{journalId}/master-compare', {
+            params: { header: branchHeader(), path: { journalId }, query: { quarterId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 7.3: takes the master's changes, or keeps the plan as it is. */
+export const answerPlanMaster = (journalId: string, body: PlanMasterTake, take: boolean) =>
+  answerOf(
+    take
+      ? api.POST('/api/plans/journals/{journalId}/master-take', {
+          params: { header: branchHeader(), path: { journalId } },
+          body,
+        })
+      : api.POST('/api/plans/journals/{journalId}/master-keep', {
+          params: { header: branchHeader(), path: { journalId } },
+          body,
+        }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 7.3: the parallel classes of a grade. */
+export const planParallelQuery = (
+  branchId: string | null,
+  query: { subjectId: string; grade: string; quarterId: string } | null,
+) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'parallel', query],
+    queryFn: async () =>
+      planParallelSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/parallel', {
+            params: {
+              header: branchHeader(),
+              query: query ?? { subjectId: '', grade: '', quarterId: '' },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && query !== null,
+  });

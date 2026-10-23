@@ -100,7 +100,7 @@ export class PlanMastersService {
     return tries.find((one) => one !== null) ?? null;
   }
 
-  /** The subjects whose masters the reader may create, per scope. */
+  /** The subjects whose masters the reader may create, with their grades and scopes. */
   private async keeps(
     transaction: Transaction,
     access: Access,
@@ -111,23 +111,35 @@ export class PlanMastersService {
         assignment.role,
       ),
     );
-    if (!writes) return { branch: [], all: [] };
+    if (!writes) return [];
     const subjects = await transaction
       .selectFrom('subjects')
-      .select('id')
+      .select(['id', 'name_uz', 'name_ru', 'name_en', 'colour', 'grades'])
       .where('journal_type', '=', 'graded')
       .where('archived_at', 'is', null)
+      .orderBy('name_en')
       .orderBy('id')
       .execute();
-    const branch: string[] = [];
-    const all: string[] = [];
-    for (const { id } of subjects) {
-      if ((await this.keeperOf(transaction, access, branchId, id, 'branch')) !== null) {
-        branch.push(id);
+    const keeps: unknown[] = [];
+    for (const subject of subjects) {
+      const scopes: PlanMasterScope[] = [];
+      for (const scope of ['branch', 'all'] as const) {
+        if ((await this.keeperOf(transaction, access, branchId, subject.id, scope)) !== null) {
+          scopes.push(scope);
+        }
       }
-      if ((await this.keeperOf(transaction, access, branchId, id, 'all')) !== null) all.push(id);
+      if (scopes.length === 0) continue;
+      keeps.push({
+        subject: {
+          id: subject.id,
+          names: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en },
+          colour: subject.colour,
+        },
+        grades: subject.grades,
+        scopes,
+      });
     }
-    return { branch, all };
+    return planMastersSchema.shape.keeps.parse(keeps);
   }
 
   /** The keeper of a master, else `plan_master_scope` (after the read, so a master read is told). */

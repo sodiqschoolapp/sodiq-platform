@@ -331544,30 +331544,89 @@
                       }
                     },
                     "keeps": {
-                      "type": "object",
-                      "properties": {
-                        "branch": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "subject": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "names": {
+                                "type": "object",
+                                "properties": {
+                                  "uz": {
+                                    "type": "string"
+                                  },
+                                  "ru": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "uz",
+                                  "ru",
+                                  "en"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "colour": {
+                                "type": "string",
+                                "enum": [
+                                  "red",
+                                  "orange",
+                                  "amber",
+                                  "lime",
+                                  "green",
+                                  "teal",
+                                  "cyan",
+                                  "blue",
+                                  "indigo",
+                                  "violet",
+                                  "pink",
+                                  "brown"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "names",
+                              "colour"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "grades": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 11
+                            }
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "branch",
+                                "all"
+                              ]
+                            }
                           }
                         },
-                        "all": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          }
-                        }
-                      },
-                      "required": [
-                        "branch",
-                        "all"
-                      ],
-                      "additionalProperties": false
+                        "required": [
+                          "subject",
+                          "grades",
+                          "scopes"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [

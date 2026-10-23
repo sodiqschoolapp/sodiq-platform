@@ -26,10 +26,13 @@ export type PlanField = 'topic' | 'objectives' | 'links' | `${WorkKind}${string}
 export const titleField = (kind: WorkKind, slot: number): PlanField => `${kind}${String(slot)}`;
 export const noteField = (kind: WorkKind, slot: number): PlanField => `${kind}Note${String(slot)}`;
 
+/** The content of an item a form shows: a plan item, or a master item (task 7.3). */
+export type ItemContent = Pick<PlanItem, 'topic' | 'objectives' | 'links' | 'classworks' | 'homeworks'>;
+
 const SLOTS = Array.from({ length: PLAN_WORKS_MAX }, (_, slot) => slot);
 
 /** What the form opens with: the item's values, or an empty row. */
-export function initialOf(item: PlanItem | null): Record<PlanField, string> {
+export function initialOf(item: ItemContent | null): Record<PlanField, string> {
   const typed: Record<string, string> = {
     topic: item?.topic ?? '',
     objectives: item?.objectives ?? '',
@@ -57,7 +60,7 @@ export const filledSlots = (typed: Readonly<Record<string, string>>, kind: WorkK
  * (each work with the id its slot held), checked by `planItemValuesSchema`;
  * an issue goes back to the field it came from.
  */
-export function planFormSchema(item: PlanItem | null): FormSchema<PlanItemValues> {
+export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemValues> {
   return {
     safeParse: (input: unknown) => {
       const typed = input as Readonly<Record<string, string>>;

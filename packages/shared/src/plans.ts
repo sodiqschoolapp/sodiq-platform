@@ -795,8 +795,14 @@ export const planMastersSchema = z.object({
   years: z.array(z.object({ id: z.uuid(), startDate: schoolDateSchema, endDate: schoolDateSchema })),
   yearId: z.uuid().nullable(),
   masters: z.array(planMasterSummarySchema),
-  /** The subjects whose masters the reader may create, per scope (decision 3). */
-  keeps: z.object({ branch: z.array(z.uuid()), all: z.array(z.uuid()) }),
+  /** The subjects whose masters the reader may create, with their grades and the scopes (decision 3). */
+  keeps: z.array(
+    z.object({
+      subject: planMasterSubjectSchema,
+      grades: z.array(z.int().min(1).max(11)),
+      scopes: z.array(z.enum(PLAN_MASTER_SCOPES)),
+    }),
+  ),
 });
 
 export type PlanMasters = z.infer<typeof planMastersSchema>;

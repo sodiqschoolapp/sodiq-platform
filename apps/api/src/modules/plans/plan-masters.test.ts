@@ -451,12 +451,13 @@ describe('master plans', () => {
         expect(list.masters.map((one) => one.id)).toEqual([master.id]);
         expect(list.masters[0]?.canEdit).toBe(browser === x.senior);
       }
-      expect((await listOf(principal)).keeps).toEqual({ branch: [], all: [] });
-      expect((await listOf(x.head)).keeps.branch).toContain(x.s.subject);
-      expect((await listOf(x.head)).keeps.all).toEqual([]);
-      expect((await listOf(x.senior)).keeps.all).toContain(x.s.subject);
+      expect((await listOf(principal)).keeps).toEqual([]);
+      const keepsOf = async (browser: Browser) =>
+        (await listOf(browser)).keeps.find((one) => one.subject.id === x.s.subject)?.scopes ?? [];
+      expect(await keepsOf(x.head)).toEqual(['branch']);
+      expect(await keepsOf(x.senior)).toEqual(['branch', 'all']);
       // The Academic Vice Principal does not keep it while the subject has a Head Teacher.
-      expect((await listOf(x.vice)).keeps.branch).not.toContain(x.s.subject);
+      expect(await keepsOf(x.vice)).toEqual([]);
 
       // A teacher with another subject only reads nothing of it.
       const other = await account();

@@ -64931,9 +64931,20 @@ export interface operations {
                             canEdit: boolean;
                         }[];
                         keeps: {
-                            branch: string[];
-                            all: string[];
-                        };
+                            subject: {
+                                /** Format: uuid */
+                                id: string;
+                                names: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
+                            };
+                            grades: number[];
+                            scopes: ("branch" | "all")[];
+                        }[];
                     };
                 };
             };
