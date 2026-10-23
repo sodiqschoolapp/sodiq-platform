@@ -603,10 +603,12 @@ describe('department_move_loads in the database', () => {
           columns:
             'department_before,department_before_since,department_id,department_since,is_main',
         },
+        // Task 8.2 (db/migrations/0120, correction 2 of pull request #218): the quarter a
+        // change of the switches takes effect from.
         {
           table_name: 'subjects',
           columns:
-            'archived_at,colour,demanding,department_before,department_before_since,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,weights_round',
+            'archived_at,colour,demanding,department_before,department_before_since,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,switches_from,weights_round',
         },
       ]);
     });
