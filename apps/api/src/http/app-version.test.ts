@@ -75,11 +75,13 @@ describe('the application version of a request', () => {
     }
   });
 
-  it('never refuses a read or the sign-in for the version (decision 9)', () => {
+  it('never refuses a read, the sign-in or a feedback report for the version (decision 9)', () => {
     expect(run('GET', '/api/journal/journals', '1').passed).toBe(true);
     expect(run('HEAD', '/api/journal/journals', 'x').passed).toBe(true);
     expect(run('POST', '/api/auth/sign-in', '1').passed).toBe(true);
     expect(run('POST', '/api/auth/second-step', 'x').passed).toBe(true);
+    // A feedback report from an outdated page still arrives, with its version.
+    expect(run('POST', '/api/feedback', '1').passed).toBe(true);
     // A path that only begins with the same letters is a write like any other.
     expect(run('POST', '/api/authors', '1').passed).toBe(false);
   });

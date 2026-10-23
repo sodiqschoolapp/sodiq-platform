@@ -13,6 +13,7 @@ import {
 } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'supertest';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { workWithTotal } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
@@ -223,6 +224,31 @@ describe('saving journal cells', () => {
         .execute(),
     ]);
 
+  /** A mark written as the migrator, with the moment the triggers read: another teacher's entry. */
+  const atMomentWrite = (branch: string, lessonId: string, studentId: string, mark: number) =>
+    t.database.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+      const by = await transaction
+        .selectFrom('accounts')
+        .select('id')
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('journal_cells')
+        .values({
+          branch_id: branch,
+          lesson_id: lessonId,
+          student_id: studentId,
+          work_id: null,
+          mark,
+          changed_by: by.id,
+          changed_how: 'entry',
+          version: 1,
+          changed_at: new Date(MOMENT),
+        })
+        .execute();
+    });
+
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
@@ -408,6 +434,10 @@ describe('saving journal cells', () => {
         lessonId: s.first,
         total: 20,
       });
+      const otherWork = await workWithTotal(t.database.migrator, {
+        branchId: elsewhere.branch,
+        lessonId: elsewhere.first,
+      });
       const key = randomUUID();
       const scoreKey = randomUUID();
       const body = { saves: [{ studentId: s.ahmedov, mark: 2, version: null }] };
@@ -453,6 +483,38 @@ describe('saving journal cells', () => {
             scoreKey,
           );
           expect(numbers.status, lesson).toBe(404);
+        }
+        // A repeat of a used key with ids in the body of another branch or unknown
+        // (permission review of the code, should-fix 1): 404, never the stored answer.
+        for (const studentId of [elsewhere.ahmedov, randomUUID()]) {
+          const attendance = await post(
+            s.branch,
+            `/api/journal/lessons/${s.first}/attendance`,
+            { saves: [{ ...body.saves[0], studentId }] },
+            key,
+          );
+          expect(attendance.status, studentId).toBe(404);
+          const numbers = await post(
+            s.branch,
+            `/api/journal/lessons/${s.first}/scores`,
+            { saves: [{ ...scores.saves[0], studentId }] },
+            scoreKey,
+          );
+          expect(numbers.status, studentId).toBe(404);
+        }
+        for (const column of [
+          { workId: otherWork },
+          { workId: randomUUID() },
+          { planWorkId: randomUUID(), sourceLessonId: s.first },
+          { planWorkId: randomUUID(), sourceLessonId: elsewhere.first },
+        ]) {
+          const numbers = await post(
+            s.branch,
+            `/api/journal/lessons/${s.first}/scores`,
+            { saves: [{ ...scores.saves[0], column }] },
+            scoreKey,
+          );
+          expect(numbers.status, JSON.stringify(column)).toBe(404);
         }
         for (const path of ['attendance', 'scores']) {
           const missing = await post(
@@ -915,6 +977,25 @@ describe('saving journal cells', () => {
         );
         expect(undo.undone).toHaveLength(1);
         expect((await cellOf(s.second, s.ahmedov))?.mark).toBeNull();
+      });
+    });
+
+    it('copies from a first lesson another teacher held: the person who enters the second lesson reads the same journal (decision 2)', async () => {
+      const owner = await account();
+      const s = await doubleScene({ teacher: owner.account.id });
+      // A substitute held the first lesson of the double.
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: s.spareTeacher.staffId })
+        .where('id', '=', s.first)
+        .execute();
+      await atMomentWrite(s.branch, s.first, s.ahmedov, 3);
+      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        const copied = attendanceCopySchema.parse(
+          (await post(s.branch, `/api/journal/lessons/${s.second}/copy-attendance`)).body,
+        );
+        expect(copied.filled).toEqual([{ studentId: s.ahmedov, version: 1 }]);
+        expect((await cellOf(s.second, s.ahmedov))?.mark).toBe(3);
       });
     });
 

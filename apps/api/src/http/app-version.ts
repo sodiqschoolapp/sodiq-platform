@@ -6,8 +6,12 @@ import { sendError } from './error-response.js';
 /** Requests that change nothing, never refused for their version. */
 const READING_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-/** The sign-in and its steps: an outdated tab still signs in (decision 9). */
-const AUTH_PATH = /^\/api\/auth(\/|$)/;
+/**
+ * The sign-in and its steps, and the feedback report: an outdated tab still
+ * signs in (decision 9) and can still report a problem, whose report records
+ * its version (permission review of the code, should-fix 3).
+ */
+const NEVER_OUTDATED = /^\/api\/(auth|feedback)(\/|$)/;
 
 /**
  * The application version of a writing request (task 8.3a, decisions 4 and 9;
@@ -25,7 +29,7 @@ export function appVersionCheck(oldest: number) {
     if (
       header === undefined ||
       READING_METHODS.has(request.method) ||
-      AUTH_PATH.test(request.path)
+      NEVER_OUTDATED.test(request.path)
     ) {
       next();
       return;
