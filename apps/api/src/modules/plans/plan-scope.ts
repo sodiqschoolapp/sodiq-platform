@@ -125,7 +125,11 @@ export function planReachOf(
  * the readers who decide or oversee them (`02`, "Who approves"); a teacher who
  * reads the plan by the subject and grade of the profile does not.
  */
-export function seesRequests(reader: PlanReader, journal: JournalRow, ownerId: string | null): boolean {
+export function seesRequests(
+  reader: PlanReader,
+  journal: JournalRow,
+  ownerId: string | null,
+): boolean {
   if (reader.staffId !== null && ownerId !== null && reader.staffId === ownerId) return true;
   return reader.access.permitting.some(
     (assignment) =>
