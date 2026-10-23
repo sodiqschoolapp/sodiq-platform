@@ -1066,9 +1066,12 @@ describe('every route of the application, as every role', () => {
     expect(callers.callers.map((caller) => caller.name)).toEqual(['nobody', 'no role', ...ROLES]);
   });
 
+  // Every route as 17 callers in two branches: about 58 s here after task 7.2's
+  // routes, and over 120 s on a CI runner once (pull request #215); the limit
+  // is time only, the list it checks is the same.
   it('allows and refuses as listed', async () => {
     expect(await accessProblems(app, ROUTE_ACCESS, callers, handlerStop)).toEqual([]);
-  }, 120_000);
+  }, 240_000);
 });
 
 // docs/build-plan.md, task 0.7b: "sample routes pass for all 15 roles".
