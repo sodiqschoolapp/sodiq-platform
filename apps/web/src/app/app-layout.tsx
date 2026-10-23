@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useDismissQuestionsOnLeave } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-changes';
+import { OutdatedAlert } from './outdated-alert';
 import { sessionQuery } from '@/features/auth/session';
 import { FeedbackButton } from '@/features/feedback/feedback-button';
 import { NotificationsButton } from '@/features/notifications/notifications-button';
@@ -136,6 +137,7 @@ export function AppLayout() {
           </div>
         </header>
         <main className="min-w-0 flex-1 p-8 max-sm:p-4 max-sm:pb-24">
+          <OutdatedAlert />
           <AttentionAlerts />
           <NotTrustedNote trusted={session?.trustedUntil != null} />
           <FailureAlert error={signOut.error ?? accountLanguage.error} />

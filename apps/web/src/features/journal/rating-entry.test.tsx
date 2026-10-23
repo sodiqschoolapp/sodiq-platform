@@ -30,6 +30,7 @@ const lesson: JournalLesson = {
   canEnter: true,
   canEnterWorks: true,
   planItem: true,
+  copyFrom: null,
   works: [],
   notHeldWorks: [],
   given: [],

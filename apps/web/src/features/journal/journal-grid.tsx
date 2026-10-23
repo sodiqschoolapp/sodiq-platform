@@ -22,10 +22,11 @@ import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
 import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircleIcon, CheckIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
+import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { schoolDateText, weekdayName } from '@/lib/dates';
-import { cellKey, type AttendanceEntry } from './attendance-entry';
+import type { AttendanceEntry } from './attendance-entry';
+import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
 import { workKey, type WorksEntry } from './works-entry';
@@ -90,7 +91,7 @@ interface HeaderAction {
   readonly label: string;
   readonly disabled: boolean;
   readonly run: () => void;
-  readonly icon?: 'check' | 'more';
+  readonly icon?: 'check' | 'more' | 'copy';
 }
 
 /** A header of two lines: the title, and "Soni" with the total under a work, or an action. */
@@ -99,10 +100,11 @@ function TwoLineHeader(
     second?: string;
     label?: string;
     action?: HeaderAction;
+    copy?: HeaderAction;
     more?: HeaderAction;
   },
 ) {
-  const buttons = [props.action, props.more].filter(
+  const buttons = [props.action, props.copy, props.more].filter(
     (one): one is HeaderAction => one !== undefined,
   );
   return (
@@ -125,6 +127,8 @@ function TwoLineHeader(
             >
               {button.icon === 'more' ? (
                 <MoreHorizIcon className="size-4" aria-hidden="true" />
+              ) : button.icon === 'copy' ? (
+                <ContentCopyIcon className="size-4" aria-hidden="true" />
               ) : (
                 <CheckCircleIcon className="size-4" aria-hidden="true" />
               )}
@@ -224,7 +228,6 @@ export function JournalGridView({
     () => new Map(grid.absences.map((one) => [`${one.studentId}|${one.date}`, one.category])),
     [grid.absences],
   );
-  const saved = entry?.saved;
   const busy = entry?.busy ?? false;
   const entering = entry !== undefined;
 
@@ -503,6 +506,19 @@ export function JournalGridView({
                   },
                 }
               : {}),
+            // Task 8.3a: "copy attendance" on the second lesson of a double (edge/timetable).
+            ...(entering && lesson.canEnter && lesson.copyFrom !== null
+              ? {
+                  copy: {
+                    label: t('journal.saving.copy'),
+                    icon: 'copy',
+                    disabled: busy,
+                    run: () => {
+                      entry?.copy(lesson.id);
+                    },
+                  },
+                }
+              : {}),
             // Task 8.1: the works of the lesson ("No plan", added by hand, not held, given).
             ...(works !== undefined && graded && lessonWorksShown(lesson)
               ? {
@@ -542,16 +558,9 @@ export function JournalGridView({
             if (row?.kind !== 'student') return null;
             const cell = row.student.cells[index];
             if (cell === undefined) return null;
-            const savedSign = saved?.has(cellKey(lesson.id, row.student.id)) === true && (
-              <span
-                className="ml-0.5 text-xs text-success"
-                aria-label={t('journal.entry.saved')}
-                title={t('journal.entry.saved')}
-                data-saved="true"
-              >
-                <CheckIcon className="inline size-3" aria-hidden="true" />
-              </span>
-            );
+            // Task 8.3a: saving, saved or not saved (07: "shows a saved sign").
+            const state = entry?.stateOf(lesson.id, row.student.id);
+            const savedSign = state !== undefined && <SaveSign state={state} />;
             if (cell.mark === null) return cell.closed ? closedSign : savedSign || null;
             const reason =
               cell.mark === 0 || cell.mark === 3
@@ -678,8 +687,10 @@ export function JournalGridView({
             if (row?.kind !== 'student') return null;
             const cell = row.student.cells[index];
             const typed = cell?.works[workIndex];
+            const state =
+              works === undefined ? undefined : works.stateOf(lesson.id, row.student.id, work);
             if (typed === undefined || typed.score === null)
-              return cell?.closed === true ? closedSign : null;
+              return cell?.closed === true ? closedSign : <SaveSign state={state} />;
             return (
               <span
                 className={struck}
@@ -700,6 +711,7 @@ export function JournalGridView({
                     <InfoIcon className="size-3.5" aria-hidden="true" />
                   </span>
                 )}
+                <SaveSign state={state} />
               </span>
             );
           },
@@ -764,7 +776,6 @@ export function JournalGridView({
     whole,
     month,
     reasons,
-    saved,
     busy,
     entering,
     entry,

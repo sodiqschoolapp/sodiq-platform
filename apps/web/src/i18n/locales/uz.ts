@@ -277,6 +277,11 @@ export const uz: Texts<'one' | 'other'> = {
     student_changed: 'Oʻquvchini boshqa kishi oʻzgartirdi. Sahifani yangilang va qayta urining.',
     cell_stale:
       'Bu katakchani sizdan oldin boshqa kishi saqladi. Ikkala qiymat koʻrsatilgan: qaysi biri qolishini tanlang.',
+    app_outdated:
+      'Bu sahifa platformaning eski versiyasiga tegishli va saqlay olmaydi. Sahifani yangilang; saqlanmagan narsalar avval koʻrsatiladi.',
+    lesson_not_double: 'Davomatni nusxalash faqat juft darsning ikkinchi darsida ishlaydi.',
+    lesson_copy_cancelled:
+      'Juft darsning birinchi darsi bekor qilingan, nusxalanadigan davomat yoʻq.',
     cell_closed:
       'Oʻquvchi ushbu dars sanasida sinf yoki guruhda emas, shuning uchun katakcha yopiq.',
     lesson_cancelled_cell:
@@ -1098,6 +1103,9 @@ export const uz: Texts<'one' | 'other'> = {
     more: 'va yana {{n}} ta',
   },
   unsent: {
+    outdated:
+      'Platformaning yangi versiyasi chiqdi. Saqlashni davom ettirish uchun sahifani yangilang.',
+    reload: 'Yangilash',
     typed: 'Oʻzgarishlar saqlanmagan',
     failed: 'Saqlab boʻlmadi',
     leaveTitle: 'Saqlamasdan chiqasizmi?',
@@ -3352,6 +3360,8 @@ export const uz: Texts<'one' | 'other'> = {
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
         cells_save: 'Jurnal katakchalari saqlandi',
         all_present: 'Hammasi keldi deb belgilandi',
+        cells_undo: 'Oxirgi amal bekor qilindi',
+        attendance_copy: 'Davomat juft darsning birinchi darsidan nusxalandi',
         work_add: 'Ish qoʻlda qoʻshildi',
         work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
         work_total: 'Ishning jami belgilandi',
@@ -5545,6 +5555,34 @@ export const uz: Texts<'one' | 'other'> = {
       changedOn: '({{date}} kuni oʻzgartirilgan)',
       markers:
         '{{provisional}}: taxminiy, ulushli qismda hali maʼlumot yoʻq; {{leftOut}}: qism hisobga olinmagan.',
+    },
+    saving: {
+      saving: 'Saqlanmoqda',
+      notSaved: 'Saqlanmadi',
+      notSavedCount_one: '{{count}} ta yozuv saqlanmadi: serverdan javob kelmadi.',
+      notSavedCount_other: '{{count}} ta yozuv saqlanmadi: serverdan javob kelmadi.',
+      unsentLabel_one: 'Jurnal: {{count}} ta yozuv saqlanmadi',
+      unsentLabel_other: 'Jurnal: {{count}} ta yozuv saqlanmadi',
+      retry: 'Qayta yuborish',
+      staleTitle: 'Bu katakchani boshqa kishi oʻzgartirdi',
+      stored: 'Hozir saqlangan: {{value}}, {{who}}, {{when}}',
+      someone: 'kimdir',
+      mine: 'Siz yozdingiz: {{value}}',
+      keepStored: 'Saqlangan qiymat qolsin',
+      useMine: 'Meniki qolsin',
+      undo: 'Bekor qilish',
+      undoHint: 'Bu sahifadagi oxirgi amalingizni bekor qilish (Ctrl+Z)',
+      undone_one: '{{count}} ta katakcha bekor qilindi.',
+      undone_other: '{{count}} ta katakcha bekor qilindi.',
+      undoSkipped_one: '{{count}} tasi keyin oʻzgargan, oʻz holicha qoldi.',
+      undoSkipped_other: '{{count}} tasi keyin oʻzgargan, oʻz holicha qoldi.',
+      copy: 'Davomatni birinchi darsdan nusxalash',
+      copied_one: 'Birinchi darsdan {{count}} ta belgi nusxalandi.',
+      copied_other: 'Birinchi darsdan {{count}} ta belgi nusxalandi.',
+      copySkipped_one:
+        '{{count}} tasi allaqachon belgilangan yoki birinchi darsda belgilanmagan, oʻz holicha qoldi.',
+      copySkipped_other:
+        '{{count}} tasi allaqachon belgilangan yoki birinchi darsda belgilanmagan, oʻz holicha qoldi.',
     },
     entry: {
       markButton: '{{mark}}: {{name}}',

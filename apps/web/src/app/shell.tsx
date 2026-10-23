@@ -27,6 +27,7 @@ import {
   type LiveConnector,
 } from '@/features/notifications/live';
 import { ThemeContext, type ThemeStore } from '@/theme/theme';
+import { markOutdated } from './outdated-alert';
 import { createAppRouter, type AppRouter } from './router';
 
 export interface Shell {
@@ -53,6 +54,11 @@ export function createShell(
   connectLive: LiveConnector = connectWithSocketIo,
 ): Shell {
   const onError = (error: unknown): void => {
+    // Task 8.3a: a write from a page too old for the server: the page asks to reload.
+    if (error instanceof ApiFailure && error.code === 'app_outdated') {
+      markOutdated(queryClient);
+      return;
+    }
     if (!(error instanceof ApiFailure) || !sessionChanged(error.code)) {
       return;
     }

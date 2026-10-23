@@ -25,6 +25,14 @@ import {
 } from '@/components/ui/dialog';
 import { schoolDateText } from '@/lib/dates';
 import {
+  StaleDialog,
+  storedOf,
+  useSaveStates,
+  type LastAction,
+  type SaveState,
+  type StaleCell,
+} from './cell-saves';
+import {
   addWork,
   carryWork,
   invalidateJournal,
@@ -32,6 +40,7 @@ import {
   saveScores,
   setWorkNotHeld,
   setWorkTotal,
+  showTyped,
 } from './journal-api';
 
 /**
@@ -66,7 +75,23 @@ export interface WorksEntry {
   ) => void;
   openLesson: (lesson: JournalLesson) => void;
   openWork: (lesson: JournalLesson, work: JournalWork) => void;
+  /** Where each number typed in this visit stands, for its sign (task 8.3a). */
+  stateOf: (lessonId: string, studentId: string, work: JournalWork) => SaveState | undefined;
   busy: boolean;
+}
+
+/** A typed number on its way: the key is made once and sent again on a retry. */
+interface TypedNumber {
+  lessonId: string;
+  column: WorkColumn;
+  /** The column's key in the lesson and its place there, for the sign and the shown value. */
+  cell: string;
+  workIndex: number;
+  kind: JournalWork['kind'];
+  studentId: string;
+  score: number | null;
+  version: number | null;
+  key: string;
 }
 
 /** The name of a work in a sentence: the plan's title, or "CW 2" / "HW 1". */
@@ -82,7 +107,10 @@ export function useWorkName(): (work: JournalWork) => string {
 const confirmCode = (error: unknown, code: string): error is ApiFailure =>
   error instanceof ApiFailure && error.code === code;
 
-export function useWorksEntry(grid: JournalGrid): {
+export function useWorksEntry(
+  grid: JournalGrid,
+  record: (action: LastAction) => void = () => undefined,
+): {
   works: WorksEntry;
   dialogs: React.JSX.Element;
 } {
@@ -102,30 +130,75 @@ export function useWorksEntry(grid: JournalGrid): {
     await invalidateJournal(queryClient);
   };
 
+  // Task 8.3a: the sign of each typed number, the retry of one with no answer, both values.
+  const saves = useSaveStates();
+  const [stale, setStale] = useState<{ input: TypedNumber; cell: StaleCell } | null>(null);
+  const signKey = (lessonId: string, studentId: string, cell: string) =>
+    `${lessonId}/${studentId}/${cell}`;
+
   const score = useMutation({
-    mutationFn: (input: {
-      lessonId: string;
-      column: WorkColumn;
-      studentId: string;
-      score: number | null;
-      version: number | null;
-    }) =>
-      saveScores(input.lessonId, {
-        saves: [
-          {
-            studentId: input.studentId,
-            column: input.column,
-            score: input.score,
-            version: input.version,
-          },
-        ],
-      }),
-    onMutate: () => {
+    mutationFn: (input: TypedNumber) =>
+      saveScores(
+        input.lessonId,
+        {
+          saves: [
+            {
+              studentId: input.studentId,
+              column: input.column,
+              score: input.score,
+              version: input.version,
+            },
+          ],
+        },
+        input.key,
+      ),
+    onMutate: (input) => {
       setFailure(null);
+      showTyped(queryClient, {
+        lessonId: input.lessonId,
+        studentId: input.studentId,
+        workIndex: input.workIndex,
+        value: input.score,
+      });
+      saves.set(signKey(input.lessonId, input.studentId, input.cell), 'saving');
     },
-    onSuccess: done,
-    onError: async (error) => {
-      setFailure(error);
+    onSuccess: async (answer, input) => {
+      const key = signKey(input.lessonId, input.studentId, input.cell);
+      saves.set(key, 'saved');
+      saves.keepUnsent(key, null);
+      record({
+        lessonId: input.lessonId,
+        cells: answer.cells.map((one) => ({
+          studentId: one.studentId,
+          workId: one.workId,
+          version: one.version,
+        })),
+      });
+      await done();
+    },
+    onError: async (error, input) => {
+      const key = signKey(input.lessonId, input.studentId, input.cell);
+      if (error instanceof ApiFailure && error.code === 'no_answer') {
+        saves.set(key, 'failed');
+        saves.keepUnsent(key, { retry: () => score.mutate(input) });
+        return;
+      }
+      saves.set(key, null);
+      saves.keepUnsent(key, null);
+      if (error instanceof ApiFailure && error.code === 'cell_stale') {
+        setStale({
+          input,
+          cell: {
+            student: studentName(input.studentId),
+            attendance: false,
+            workKind: input.kind,
+            mine: input.score,
+            stored: storedOf(error),
+          },
+        });
+      } else {
+        setFailure(error);
+      }
       await done();
     },
   });
@@ -158,6 +231,7 @@ export function useWorksEntry(grid: JournalGrid): {
   });
 
   const { mutate: saveScore, isPending: scoring } = score;
+  const { states } = saves;
   const { mutate: run, isPending: changing } = change;
 
   const works = useMemo(
@@ -168,11 +242,17 @@ export function useWorksEntry(grid: JournalGrid): {
         saveScore({
           lessonId: lesson.id,
           column: columnOf(work),
+          cell: workKey(work),
+          workIndex: at,
+          kind: work.kind,
           studentId: student.id,
           score: value,
           version: student.cells[index]?.works[at]?.version ?? null,
+          key: crypto.randomUUID(),
         });
       },
+      stateOf: (lessonId, studentId, work) =>
+        states.get(signKey(lessonId, studentId, workKey(work))),
       openLesson: (lesson) => {
         setLessonOpen(lesson.id);
       },
@@ -181,7 +261,7 @@ export function useWorksEntry(grid: JournalGrid): {
       },
       busy: scoring || changing,
     }),
-    [grid.lessons, saveScore, scoring, changing],
+    [grid.lessons, saveScore, scoring, changing, states],
   );
 
   const lesson = grid.lessons.find((one) => one.id === (workOpen?.lessonId ?? lessonOpen));
@@ -251,7 +331,25 @@ export function useWorksEntry(grid: JournalGrid): {
 
   const dialogs = (
     <>
+      {saves.notice}
       <FailureAlert error={failure} />
+      {stale !== null && (
+        <StaleDialog
+          cells={[stale.cell]}
+          onKeep={() => {
+            setStale(null);
+          }}
+          onMine={() => {
+            const { input, cell } = stale;
+            setStale(null);
+            saveScore({
+              ...input,
+              version: cell.stored?.version ?? null,
+              key: crypto.randomUUID(),
+            });
+          }}
+        />
+      )}
       {aboveTotal.length > 0 && (
         <p className="text-sm" data-above-total="true">
           {t('journal.works.aboveTotal', { names: aboveTotal.join(', ') })}

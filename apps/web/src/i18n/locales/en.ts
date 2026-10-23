@@ -266,6 +266,11 @@ export const en = {
     student_changed: 'This student was changed by someone else. Reload the page and try again.',
     cell_stale:
       'Someone saved this cell before you. Both values are shown: choose the one to keep.',
+    app_outdated:
+      'This page is of an older version of the platform and cannot save. Reload the page; what is not saved is listed first.',
+    lesson_not_double: 'Copy attendance works only on the second lesson of a double.',
+    lesson_copy_cancelled:
+      'The first lesson of the double is cancelled, so there is no attendance to copy.',
     cell_closed:
       'This student is not in the class or group on the date of this lesson, so the cell is closed.',
     lesson_cancelled_cell:
@@ -1072,6 +1077,8 @@ export const en = {
     more: 'and {{n}} more',
   },
   unsent: {
+    outdated: 'A new version of the platform is out. Reload the page to go on saving.',
+    reload: 'Reload',
     typed: 'Changes not saved',
     failed: 'Save failed',
     leaveTitle: 'Leave without saving?',
@@ -3313,6 +3320,8 @@ export const en = {
         runs: 'Days of a journal changed by a publish',
         cells_save: 'Journal cells saved',
         all_present: 'All present marked',
+        cells_undo: 'Last action undone',
+        attendance_copy: 'Attendance copied from the first lesson of a double',
         work_add: 'Work added by hand',
         work_delete: 'Work added by hand removed',
         work_total: 'Total of a work set',
@@ -5495,6 +5504,32 @@ export const en = {
       changedOn: '(changed on {{date}})',
       markers:
         '{{provisional}}: provisional, a weighted part has no data yet; {{leftOut}}: a part left out.',
+    },
+    saving: {
+      saving: 'Saving',
+      notSaved: 'Not saved',
+      notSavedCount_one: '{{count}} entry is not saved: no answer from the server.',
+      notSavedCount_other: '{{count}} entries are not saved: no answer from the server.',
+      unsentLabel_one: 'Journal: {{count}} entry not saved',
+      unsentLabel_other: 'Journal: {{count}} entries not saved',
+      retry: 'Send again',
+      staleTitle: 'Someone changed this cell',
+      stored: 'Saved now: {{value}}, by {{who}}, {{when}}',
+      someone: 'someone',
+      mine: 'You typed: {{value}}',
+      keepStored: 'Keep the saved value',
+      useMine: 'Use mine',
+      undo: 'Undo',
+      undoHint: 'Undo your last action on this page (Ctrl+Z)',
+      undone_one: '{{count}} cell undone.',
+      undone_other: '{{count}} cells undone.',
+      undoSkipped_one: '{{count}} changed since and left as it is.',
+      undoSkipped_other: '{{count}} changed since and left as they are.',
+      copy: 'Copy attendance from the first lesson',
+      copied_one: '{{count}} mark copied from the first lesson.',
+      copied_other: '{{count}} marks copied from the first lesson.',
+      copySkipped_one: '{{count}} already marked or not marked in the first lesson, left as is.',
+      copySkipped_other: '{{count}} already marked or not marked in the first lesson, left as is.',
     },
     entry: {
       markButton: '{{mark}}: {{name}}',
