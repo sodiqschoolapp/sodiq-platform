@@ -11,6 +11,7 @@ import { isSchoolDay } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { refuseOwnRequest } from '../access/own-request.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
@@ -428,6 +429,11 @@ export class PlanWindowsService {
           .where('staff_branches.branch_id', '=', branchId)
           .executeTakeFirst();
         if (person === undefined) throw notFound();
+        // Permission review, must-fix 1 (`02`: "Nobody approves their own. ... An
+        // Academic Vice Principal's own go to the Super Admin"): an extension of
+        // one's own window, before or after its end, is refused.
+        const personAccount = await accountOfStaff(transaction, person.id);
+        if (personAccount !== null) refuseOwnRequest(access.accountId, personAccount);
         const { today, now, timeZone } = await clockOf(transaction, branchId);
         const window = await transaction
           .selectFrom('lesson_plan_windows')

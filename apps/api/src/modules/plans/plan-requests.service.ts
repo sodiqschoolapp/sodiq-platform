@@ -198,7 +198,9 @@ export class PlanRequestsService {
         } else {
           const reach = await this.reachOf(transaction, access, branchId, journal, requester, now);
           // `02`: the Senior Head Teacher and the Academic Vice Principal "see it too".
-          include = reach === 'decide' && row.status !== 'void';
+          // Permission review, should-fix 3: the Principal "views everything in the branch".
+          const principal = access.permitting.some((one) => one.role === 'principal');
+          include = (reach === 'decide' || principal) && row.status !== 'void';
           canDecide = reach === 'decide' && (WAITING as readonly string[]).includes(row.status);
         }
         if (!include) continue;
@@ -348,6 +350,23 @@ export class PlanRequestsService {
     return { scene, planId };
   }
 
+  /** Every lesson named by a body is a lesson of the branch: another branch's or an unknown one is 404. */
+  private async lessonsOfBranch(
+    transaction: Transaction,
+    branchId: string,
+    lessonIds: readonly string[],
+  ): Promise<void> {
+    const unique = [...new Set(lessonIds)];
+    if (unique.length === 0) return;
+    const found = await transaction
+      .selectFrom('lessons')
+      .select('id')
+      .where('id', 'in', unique)
+      .where('branch_id', '=', branchId)
+      .execute();
+    if (found.length !== unique.length) throw notFound();
+  }
+
   /** `edge`, review decision 13: a request is asked only while the owner's window is not open. */
   private async refuseInsideWindow(transaction: Transaction, scene: Scene): Promise<void> {
     const window = await storedWindowOf(
@@ -376,6 +395,12 @@ export class PlanRequestsService {
         branchId,
         journalId,
         input.quarterId,
+      );
+      // Permission review, should-fix 5: a lesson of the body is of the branch (404).
+      await this.lessonsOfBranch(
+        transaction,
+        branchId,
+        input.kind === 'text' ? input.lessonIds : [input.fromLessonId],
       );
       await this.refuseInsideWindow(transaction, scene);
       const rows = await this.plans.rowsOfJournal(transaction, scene, journalId);
@@ -696,8 +721,8 @@ export class PlanRequestsService {
     journalId: string,
     quarterId: string,
   ): Promise<{ scene: Scene; planId: string }> {
+    // Permission review, should-fix 1: a closed year is told after the routing.
     const scene = await this.plans.sceneOf(transaction, access, branchId, journalId, quarterId);
-    if (scene.closed) throw new ApiException('plan_year_closed', 409);
     await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
     const planId = await planIdOf(transaction, journalId, scene.quarter.id);
     if (planId === null) throw notFound();
@@ -751,6 +776,7 @@ export class PlanRequestsService {
       );
       const request = await this.lockRequest(transaction, requestId);
       const requester = await this.refuseNonDecider(transaction, access, scene, request);
+      if (scene.closed) throw new ApiException('plan_year_closed', 409);
       if (!(WAITING as readonly string[]).includes(request.status) || request.plan_id !== planId) {
         throw new ApiException('plan_request_decided', 409);
       }
@@ -787,6 +813,7 @@ export class PlanRequestsService {
       );
       if (reach === 'own') refuseOwnRequest(access.accountId, owner ?? '');
       if (reach !== 'decide') throw scopeRefusal();
+      if (scene.closed) throw new ApiException('plan_year_closed', 409);
       const stored = await this.storeWindowEnd(transaction, scene, planId);
       const request = await this.lockRequest(transaction, stored.id);
       if (!(WAITING as readonly string[]).includes(request.status)) {
@@ -866,6 +893,10 @@ export class PlanRequestsService {
         now,
       );
     }
+    await this.lessonsOfBranch(transaction, branchId, [
+      ...(input.untick ?? []).map((one) => one.lessonId),
+      ...(input.later === undefined ? [] : [input.later.fromLessonId]),
+    ]);
     const fresh = await this.lockRequest(transaction, request.id);
     const listed = await transaction
       .selectFrom('lesson_plan_request_lessons')

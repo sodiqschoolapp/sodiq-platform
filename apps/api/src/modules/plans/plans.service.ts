@@ -52,6 +52,7 @@ import {
   ownerIdOn,
   planReachOf,
   planReaderOf,
+  seesRequests,
   type PlanReach,
   type PlanReader,
 } from './plan-scope.js';
@@ -520,7 +521,10 @@ export class PlansService {
         endDate: endsAt === null ? null : schoolDateOf(endsAt, scene.timeZone),
       },
       flag,
-      requests: planId === null ? [] : await planRequestsOf(transaction, scene, planId, false),
+      requests:
+        planId === null || !seesRequests(scene.reader, scene.journal, scene.ownerId)
+          ? []
+          : await planRequestsOf(transaction, scene, planId, false),
       sharedWith: planId === null ? [] : await this.sharedWith(transaction, scene, planId),
       shareCandidates:
         scene.reach.edit && !scene.closed && scene.open

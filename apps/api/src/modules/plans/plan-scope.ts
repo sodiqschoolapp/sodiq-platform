@@ -118,3 +118,19 @@ export function planReachOf(
     assignmentId: null,
   };
 }
+
+/**
+ * Task 7.2 (permission review, should-fix 7): who reads the edit requests of a
+ * plan: its owner, the whole-branch roles and the Head Teachers of its subject,
+ * the readers who decide or oversee them (`02`, "Who approves"); a teacher who
+ * reads the plan by the subject and grade of the profile does not.
+ */
+export function seesRequests(reader: PlanReader, journal: JournalRow, ownerId: string | null): boolean {
+  if (reader.staffId !== null && ownerId !== null && reader.staffId === ownerId) return true;
+  return reader.access.permitting.some(
+    (assignment) =>
+      WHOLE_ROLES.includes(assignment.role) ||
+      (SUBJECT_ROLES.includes(assignment.role) &&
+        assignment.subjectIds.includes(lower(journal.subjectId))),
+  );
+}

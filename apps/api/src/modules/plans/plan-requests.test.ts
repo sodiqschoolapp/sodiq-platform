@@ -276,8 +276,10 @@ describe('the plan window and edit requests', () => {
       'lesson_plan_window_extensions',
       'lesson_plan_requests',
       'lesson_plan_request_lessons',
+      'lesson_plan_request_causes',
       'lesson_plan_items',
       'lesson_plan_places',
+      'notifications',
     ] as const) {
       found[table] = await t.database.migrator
         .selectFrom(table)
@@ -405,8 +407,10 @@ describe('the plan window and edit requests', () => {
         );
         expect(extended.status).toBe(404);
       }
+      expect(await rowsOf(x.s.branch)).toEqual(before[0]);
       // A person of another branch, and an unknown one.
       ok(await openWindow(x));
+      const opened = await rowsOf(x.s.branch);
       for (const staffId of [y.s.teacher.staffId, randomUUID()]) {
         const extended = await at(OCT27, async () =>
           send('post', `/api/plans/windows/${x.q2}/extensions`, x.s.branch, x.vice.cookie, {
@@ -416,7 +420,16 @@ describe('the plan window and edit requests', () => {
         );
         expect(extended.status).toBe(404);
       }
+      expect(await rowsOf(x.s.branch)).toEqual(opened);
       expect(await rowsOf(y.s.branch)).toEqual(before[1]);
+      // Permission review, should-fix 6: the windows of another branch's year.
+      expect(
+        (
+          await at(OCT27, async () =>
+            send('get', `/api/plans/windows?yearId=${y.s.year}`, x.s.branch, x.vice.cookie),
+          )
+        ).status,
+      ).toBe(404);
     });
   });
 
@@ -431,7 +444,7 @@ describe('the plan window and edit requests', () => {
       ok(await openWindow(x));
       const beforeStart = await at(OCT27, async () => create(x, plan, 1));
       expect(codeOf(beforeStart)).toBe('plan_window_not_open');
-      const [item] = await fill(x, [1, 2]);
+      const [item, second] = await fill(x, [1, 2]);
       if (item === undefined) throw new Error('no item');
       const last = await at(LAST_MINUTE, async () => save(x, item, 'Last minute'));
       const saved = planItemSchema.parse(ok(last).body);
@@ -468,11 +481,11 @@ describe('the plan window and edit requests', () => {
           x.owner.cookie,
           {
             quarterId: x.q2,
-            base: [],
-            order: [],
+            base: [second?.id ?? null],
+            order: [null, second?.id ?? null],
           },
         );
-        expect([200, 409]).toContain(queue.status);
+        expect(codeOf(queue)).toBe('plan_window_closed');
       });
       // The list shows the flag of each quarter: overdue in quarter 2, no window in quarter 3.
       const list = await at(AFTER_END, async () =>
@@ -556,6 +569,13 @@ describe('the plan window and edit requests', () => {
       const held = plan.rows[1];
       const ahead = plan.rows[3];
       if (held === undefined || ahead === undefined) throw new Error('no rows');
+      // A lesson of the branch that is no row of this plan (the other class's).
+      const otherClassLesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('class_id', '=', x.s.otherClass)
+        .where('lesson_date', '=', '2026-11-16')
+        .executeTakeFirstOrThrow();
       // Inside the window there is nothing to ask.
       expect(
         codeOf(
@@ -567,7 +587,7 @@ describe('the plan window and edit requests', () => {
       expect(
         codeOf(
           await at(THURSDAY, async () =>
-            ask(x, { kind: 'text', lessonIds: [randomUUID()], reason: 'Typo' }),
+            ask(x, { kind: 'text', lessonIds: [otherClassLesson.id], reason: 'Typo' }),
           ),
         ),
       ).toBe('plan_request_lesson_unknown');
@@ -816,6 +836,7 @@ describe('the plan window and edit requests', () => {
         201,
       );
       const before = await rowsOf(y.s.branch);
+      const own = await rowsOf(x.s.branch);
       await at(THURSDAY, async () => {
         for (const id of [theirs.id, randomUUID()]) {
           expect(
@@ -888,6 +909,7 @@ describe('the plan window and edit requests', () => {
         ).toBe(404);
       });
       expect(await rowsOf(y.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s.branch)).toEqual(own);
     });
   });
 
@@ -1309,6 +1331,283 @@ describe('the plan window and edit requests', () => {
         );
       expect(codeOf(await share(THURSDAY))).toBe('plan_window_closed');
       ok(await share(NOV02));
+    });
+  });
+
+  // Permission review of the code: the scope of every route and nobody's own.
+  describe('scope and own requests', () => {
+    /** A scene whose window ended with rows 1 and 2 filled, and a Text request sent for row 2. */
+    async function askedScene() {
+      const x = await scene();
+      ok(await openWindow(x));
+      const items = await fill(x, [1, 2]);
+      const plan = await planOf(x, THURSDAY);
+      const asked = requestOf(
+        await at(THURSDAY, async () =>
+          ask(x, { kind: 'text', lessonIds: [plan.rows[1]?.lessonId ?? ''], reason: 'Typo' }),
+        ),
+        201,
+      );
+      return { x, items, plan, asked };
+    }
+
+    it("refuses an Academic Vice Principal their own window's extension, before and after its end; the Super Admin gives it", async () => {
+      const x = await scene();
+      await t.kit.giveRole(x.owner.account.id, {
+        role: 'academic_vice_principal',
+        branchId: x.s.branch,
+        validFrom: VALID_FROM,
+      });
+      ok(await openWindow(x));
+      const before = await rowsOf(x.s.branch);
+      for (const moment of [NOV02, THURSDAY]) {
+        const own = await at(moment, async () =>
+          send('post', `/api/plans/windows/${x.q2}/extensions`, x.s.branch, x.owner.cookie, {
+            staffId: x.s.teacher.staffId,
+            endDate: '2026-11-27',
+          }),
+        );
+        expect(own.status).toBe(403);
+        expect(codeOf(own)).toBe('own_request');
+      }
+      expect(await rowsOf(x.s.branch)).toEqual(before);
+      ok(
+        await at(THURSDAY, async () =>
+          send('post', `/api/plans/windows/${x.q2}/extensions`, x.s.branch, t.admin, {
+            staffId: x.s.teacher.staffId,
+            endDate: '2026-11-27',
+          }),
+        ),
+      );
+    });
+
+    it("refuses a teacher who reads the plan by the profile every owner's route: ask, send, send prepared, finish, queue", async () => {
+      const { x, plan, asked } = await askedScene();
+      ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 2 })));
+      // The spare teacher reads the plan (the subject and grade in the profile).
+      ok(
+        await at(THURSDAY, async () =>
+          send(
+            'get',
+            `/api/plans/journals/${x.journal}?quarterId=${x.q2}`,
+            x.s.branch,
+            x.spare.cookie,
+          ),
+        ),
+      );
+      const before = await rowsOf(x.s.branch);
+      await at(THURSDAY, async () => {
+        const calls: (() => PromiseLike<Response>)[] = [
+          () =>
+            ask(
+              x,
+              { kind: 'text', lessonIds: [plan.rows[0]?.lessonId ?? ''], reason: 'Mine' },
+              x.spare,
+            ),
+          () =>
+            send('post', `/api/plans/requests/${asked.id}/send`, x.s.branch, x.spare.cookie, {}),
+          () =>
+            send(
+              'post',
+              `/api/plans/journals/${x.journal}/requests/prepared`,
+              x.s.branch,
+              x.spare.cookie,
+              {
+                quarterId: x.q2,
+              },
+            ),
+          () => send('post', `/api/plans/requests/${asked.id}/finish`, x.s.branch, x.spare.cookie),
+          () =>
+            send('put', `/api/plans/journals/${x.journal}/queue`, x.s.branch, x.spare.cookie, {
+              quarterId: x.q2,
+              base: [],
+              order: [],
+            }),
+        ];
+        for (const call of calls) {
+          const answer = await call();
+          expect(answer.status, JSON.stringify(answer.body)).toBe(403);
+          expect(codeOf(answer)).toBe('plan_scope');
+        }
+      });
+      expect(await rowsOf(x.s.branch)).toEqual(before);
+    });
+
+    it("answers 404 for another branch's or an unknown journal on the queue, and for another branch's lesson in a body", async () => {
+      const { x, asked } = await askedScene();
+      const y = await scene();
+      const theirs = (await planOf(y, THURSDAY)).rows[0]?.lessonId ?? '';
+      const before = [await rowsOf(x.s.branch), await rowsOf(y.s.branch)];
+      await at(THURSDAY, async () => {
+        for (const journal of [y.journal, randomUUID()]) {
+          const queue = await send(
+            'put',
+            `/api/plans/journals/${journal}/queue`,
+            x.s.branch,
+            x.owner.cookie,
+            {
+              quarterId: x.q2,
+              base: [],
+              order: [],
+            },
+          );
+          expect(queue.status).toBe(404);
+        }
+        for (const lesson of [theirs, randomUUID()]) {
+          expect((await ask(x, { kind: 'text', lessonIds: [lesson], reason: 'Typo' })).status).toBe(
+            404,
+          );
+          expect(
+            (await ask(x, { kind: 'replan', fromLessonId: lesson, reason: 'Typo' })).status,
+          ).toBe(404);
+          expect(
+            (
+              await decide(x, asked.id, {
+                decision: 'approve',
+                days: 1,
+                untick: [{ lessonId: lesson, reason: 'No' }],
+              })
+            ).status,
+          ).toBe(404);
+        }
+      });
+      expect(await rowsOf(x.s.branch)).toEqual(before[0]);
+      expect(await rowsOf(y.s.branch)).toEqual(before[1]);
+    });
+
+    it("refuses an owner holding the Head Teacher post the request of the window's end, stores nothing, and skips their own in a decision by event", async () => {
+      const x = await scene();
+      await t.database.migrator
+        .updateTable('assignments')
+        .set({ valid_until: VALID_FROM })
+        .where('id', '=', x.headRole)
+        .execute();
+      await t.kit.giveRole(x.owner.account.id, {
+        role: 'head_teacher',
+        branchId: x.s.branch,
+        subjectIds: [x.s.subject],
+        validFrom: VALID_FROM,
+      });
+      ok(await openWindow(x));
+      await fill(x, [1, 3, 4, 5, 6, 7, 8]);
+      const before = await rowsOf(x.s.branch);
+      const own = await at(THURSDAY, async () =>
+        send(
+          'post',
+          `/api/plans/journals/${x.journal}/requests/prepared/decide`,
+          x.s.branch,
+          x.owner.cookie,
+          {
+            quarterId: x.q2,
+            decision: { decision: 'approve', days: 1 },
+          },
+        ),
+      );
+      expect(own.status).toBe(403);
+      expect(codeOf(own)).toBe('own_request');
+      expect(await rowsOf(x.s.branch)).toEqual(before);
+      // A cancel after the window prepares a request: its event.
+      const lesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('class_id', '=', x.s.classId)
+        .where('subject_id', '=', x.s.subject)
+        .where('lesson_date', '=', '2026-11-30')
+        .executeTakeFirstOrThrow();
+      await at(THURSDAY, async () =>
+        ok(
+          await request(t.kit.server)
+            .post(`/api/timetable/lessons/${lesson.id}/cancel`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, x.s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send({ reason: 'Excursion' }),
+        ),
+      );
+      const prepared = (await planOf(x, THURSDAY)).request;
+      const cause = await t.database.migrator
+        .selectFrom('lesson_plan_request_causes')
+        .select('event_id')
+        .where('request_id', '=', prepared?.id ?? '')
+        .executeTakeFirstOrThrow();
+      const decided = planEventDecidedSchema.parse(
+        ok(
+          await at(THURSDAY, async () =>
+            send('post', '/api/plans/requests/decide-event', x.s.branch, x.owner.cookie, {
+              eventId: cause.event_id,
+              days: 1,
+            }),
+          ),
+        ).body,
+      );
+      expect(decided).toEqual({ approved: [], skipped: [prepared?.id] });
+      const stored = await t.database.migrator
+        .selectFrom('lesson_plan_requests')
+        .select('status')
+        .where('id', '=', prepared?.id ?? '')
+        .executeTakeFirstOrThrow();
+      expect(stored.status).toBe('prepared');
+      // Another branch's event is 404.
+      const y = await scene();
+      expect(
+        (
+          await at(THURSDAY, async () =>
+            send('post', '/api/plans/requests/decide-event', y.s.branch, y.head.cookie, {
+              eventId: cause.event_id,
+              days: 1,
+            }),
+          )
+        ).status,
+      ).toBe(404);
+    });
+
+    it('shows the requests to those who decide or oversee them, the Principal read only, and to nobody else', async () => {
+      const { x, asked } = await askedScene();
+      const list = (browser: Browser, query = 'view=deciding') =>
+        at(THURSDAY, async () =>
+          planRequestsSchema.parse(
+            ok(await send('get', `/api/plans/requests?${query}`, x.s.branch, browser.cookie)).body,
+          ),
+        );
+      expect((await list(x.head)).requests.map((one) => [one.id, one.canDecide])).toEqual([
+        [asked.id, true],
+      ]);
+      expect((await list(x.spare)).requests).toEqual([]);
+      const other = await account();
+      await t.kit.giveRole(other.account.id, {
+        role: 'head_teacher',
+        branchId: x.s.branch,
+        subjectIds: [await load.classes.subject({ grades: [7], journalType: 'graded' })],
+        validFrom: VALID_FROM,
+      });
+      expect((await list(other)).requests).toEqual([]);
+      const principal = await account();
+      await t.kit.giveRole(principal.account.id, {
+        role: 'principal',
+        branchId: x.s.branch,
+        validFrom: VALID_FROM,
+      });
+      expect((await list(principal)).requests.map((one) => [one.id, one.canDecide])).toEqual([
+        [asked.id, false],
+      ]);
+      expect((await list(x.owner, 'view=mine')).requests.map((one) => one.id)).toEqual([asked.id]);
+      const y = await scene();
+      expect(
+        (
+          await at(THURSDAY, async () =>
+            send(
+              'get',
+              `/api/plans/requests?view=mine&yearId=${y.s.year}`,
+              x.s.branch,
+              x.owner.cookie,
+            ),
+          )
+        ).status,
+      ).toBe(404);
+      // The plan page: the owner and the Head Teacher see the request, a reader by profile does not.
+      expect((await planOf(x, THURSDAY)).requests.map((one) => one.id)).toEqual([asked.id]);
+      expect((await planOf(x, THURSDAY, x.head)).requests.map((one) => one.id)).toEqual([asked.id]);
+      expect((await planOf(x, THURSDAY, x.spare)).requests).toEqual([]);
     });
   });
 
