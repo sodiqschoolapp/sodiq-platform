@@ -1173,6 +1173,53 @@ describe('the rating exam and comments', () => {
       expect(await t.auditCount()).toBeGreaterThan(audits);
     });
 
+    // Code review round 1, defect 1: a student of the branch not expected in the
+    // lesson on its date is refused `cell_closed`, never a 500 from the trigger.
+    it('refuses a note on a student outside the lesson on its date, and a comment on the mark of one who left, as a closed cell', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const lesson = s.lessons[0] ?? '';
+      const joinedLater = await student(s.branch, s.classId, 'Karimov', '2026-10-20');
+      const comments = () =>
+        Promise.all(
+          (['journal_comments', 'journal_comment_history'] as const).map((table) =>
+            t.database.migrator.selectFrom(table).selectAll().orderBy('id').execute(),
+          ),
+        );
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(await present(calls, lesson, s.ahmedov));
+        // Ahmedov's mark stays, and he leaves on the lesson's date.
+        const members = new MembersKit(t.database.migrator, await load.classes.account());
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          const leavingId = await members.leaving(transaction, s.branch, s.ahmedov, '2026-10-12');
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: '2026-10-12', ended_by: 'leaving', leaving_id: leavingId })
+            .where('student_id', '=', s.ahmedov)
+            .execute();
+        });
+        const before = await comments();
+        const audits = await t.auditCount();
+        const send = (on: object) =>
+          calls.put('/api/journal/comments', {
+            on,
+            body: 'Text',
+            visibility: 'staff',
+            version: null,
+          });
+        // The route's own check.
+        expect(
+          codeOf(await send({ target: 'note', lessonId: lesson, studentId: joinedLater })),
+        ).toBe('cell_closed');
+        // The trigger's refusal, mapped by the route.
+        expect(codeOf(await send({ target: 'mark', lessonId: lesson, studentId: s.ahmedov }))).toBe(
+          'cell_closed',
+        );
+        expect(await comments()).toEqual(before);
+        expect(await t.auditCount()).toBe(audits);
+      });
+    });
+
     it('keeps the comments of a lesson through its forced delete and restore', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });

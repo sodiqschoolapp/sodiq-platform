@@ -642,10 +642,12 @@ begin
   if tg_op = 'INSERT' then
     new.version := 1;
   else
-    if new.lesson_id is not distinct from old.lesson_id
-      and new.body is not distinct from old.body
-      and new.visibility = old.visibility then
-      -- A move of the work's lesson only (on update cascade).
+    if new.body is not distinct from old.body and new.visibility = old.visibility then
+      -- A move of the work's lesson (on update cascade), or a write that changes
+      -- nothing: no version, no moment, no author and no check, so the history
+      -- writes no line (code review round 1, defect 2).
+      new.changed_by := old.changed_by;
+      new.changed_how := old.changed_how;
       return new;
     end if;
     new.version := old.version + 1;

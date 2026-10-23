@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import type {
   CommentHistory,
   CommentHistoryQuery,
@@ -57,8 +58,13 @@ export class CommentsService {
   save(access: Access, input: CommentSave, requestId: string): Promise<JournalComment> {
     const branchId = branchOf(access);
     // Two first comments on one target at one moment meet on its key: the second is stale.
+    // The lesson refusals of `journal_comments_write` meet a save that the checks of
+    // `targetOf` let through at the same moment (a membership or a cancel committed
+    // meanwhile), with the codes of a cell (code review round 1, defect 1).
     return refusingConstraints(() => this.saveIn(access, branchId, input, requestId), {
       journal_comments_key: 'comment_stale',
+      journal_cell_not_member: 'cell_closed',
+      journal_cell_cancelled: 'lesson_cancelled_cell',
     });
   }
 
@@ -334,6 +340,17 @@ export class CommentsService {
     }
     if (work !== undefined && work.lesson_id !== on.lessonId) {
       throw new ApiException('work_not_in_lesson', 409);
+    }
+    if (on.target === 'note') {
+      // The student is expected in the lesson, as for a cell (code review round 1,
+      // defect 1): a note on a closed cell (a student who joined later or left
+      // earlier) is refused, never a 500 from the trigger. A mark or a number
+      // needs its value, and the trigger refuses one of a student no longer
+      // expected, mapped in `save`.
+      const { rows: expected } = await sql<{ expected: boolean }>`
+        select lesson_student_expected(${on.lessonId}, ${on.studentId}) as expected
+      `.execute(transaction);
+      if (expected[0]?.expected !== true) throw new ApiException('cell_closed', 409);
     }
     if (on.target !== 'note') {
       const cell = await transaction

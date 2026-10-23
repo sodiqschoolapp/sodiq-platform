@@ -369,6 +369,75 @@ describe('journal works in the database', () => {
       );
     });
 
+    // Task 8.2, code review round 1, defect 2: the comment of a cleared number
+    // follows the move by the cascade, with no version, no moment and no line,
+    // and no check of the student at the target lesson.
+    it('moves a homework with the comment of a cleared number of a student who left before the target lesson', async () => {
+      const { classId, lesson: id, student } = await scene();
+      const next = await lesson(classId, '2026-10-15');
+      const homework = await work(id, { kind: 'homework', total: 5 });
+      const cell = await number(id, student, homework, 4);
+      const comment = await inBranch(async (transaction) => {
+        await audited(transaction);
+        await transaction
+          .updateTable('journal_cells')
+          .set({ score: null, changed_by: account })
+          .where('id', '=', cell.id)
+          .execute();
+        return (
+          await transaction
+            .insertInto('journal_comments')
+            .values({
+              branch_id: north,
+              student_id: student,
+              target: 'work',
+              lesson_id: id,
+              work_id: homework,
+              body: 'Text',
+              visibility: 'staff',
+              version: 1,
+              changed_by: account,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+      await inBranch(async (transaction) => {
+        await audited(transaction);
+        const leavingId = await kit.members.leaving(transaction, north, student, '2026-10-15');
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-10-15', ended_by: 'leaving', leaving_id: leavingId })
+          .where('student_id', '=', student)
+          .execute();
+      });
+      const expected = await sql<{ expected: boolean }>`
+        select lesson_student_expected(${next}::uuid, ${student}::uuid) as expected
+      `.execute(database.migrator);
+      expect(expected.rows[0]?.expected).toBe(false);
+      const before = await database.migrator
+        .selectFrom('journal_comments')
+        .select(['version', 'changed_at', 'changed_by', 'changed_how'])
+        .where('id', '=', comment)
+        .executeTakeFirstOrThrow();
+      await setWork(homework, { lesson_id: next });
+      expect(
+        await database.migrator
+          .selectFrom('journal_comments')
+          .select(['lesson_id', 'version', 'changed_at', 'changed_by', 'changed_how'])
+          .where('id', '=', comment)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ ...before, lesson_id: next });
+      const lines = await database.migrator
+        .selectFrom('journal_comment_history')
+        .select('version')
+        .where('comment_id', '=', comment)
+        .execute();
+      expect(lines.map((one) => one.version)).toEqual([1]);
+    });
+
     it('sets the carry once, on a homework only', async () => {
       const { lesson: id } = await scene();
       const homework = await work(id, { kind: 'homework' });
