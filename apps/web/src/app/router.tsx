@@ -65,6 +65,9 @@ import { JournalPage } from '@/features/journal/journal-page';
 import { journalSearch, journalsSearch } from '@/features/journal/journal-search';
 import { JournalsPage } from '@/features/journal/journals-page';
 import { PlanPage } from '@/features/plans/plan-page';
+import { PlanMasterPage } from '@/features/plans/plan-master-page';
+import { PlanMastersPage } from '@/features/plans/plan-masters-page';
+import { PlanParallelPage } from '@/features/plans/plan-parallel-page';
 import { PlanRequestsPage } from '@/features/plans/plan-requests-page';
 import { PlanWindowsPage } from '@/features/plans/plan-windows-page';
 import { PlansPage } from '@/features/plans/plans-page';
@@ -400,6 +403,29 @@ const planWindowsRoute = createRoute({
   component: guarded('plan_windows', PlanWindowsPage),
 });
 
+/** The master plans of a year (task 7.3). */
+const planMastersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/masters',
+  validateSearch: plansSearch,
+  component: guarded('plan_masters', PlanMastersPage),
+});
+
+/** One master plan with its items (task 7.3). */
+const planMasterRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/masters/$masterId',
+  validateSearch: listSearch,
+  component: guarded('plan_masters', PlanMasterPage),
+});
+
+/** The parallel classes of a grade (task 7.3). */
+const planParallelRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/parallel',
+  component: guarded('plans', PlanParallelPage),
+});
+
 /** The plan edit requests the reader decides (task 7.2). */
 const planRequestsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -630,6 +656,9 @@ const routeTree = rootRoute.addChildren([
     plansRoute,
     planWindowsRoute,
     planRequestsRoute,
+    planMastersRoute,
+    planMasterRoute,
+    planParallelRoute,
     planRoute,
     loadRoute,
     peopleRoute,

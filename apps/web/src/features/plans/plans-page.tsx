@@ -1,4 +1,4 @@
-import type { PlanList } from '@sodiq/shared';
+import type { PlanList, Role } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -12,10 +12,20 @@ import { useMayView, useView } from '@/features/access/use-view';
 import { yearText } from '@/features/journal/journals-page';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
+import { MasterLinks } from './plan-masters-page';
 import { plansQuery } from './plans-api';
 import type { PlansSearch } from './plans-search';
 
 type Row = PlanList['plans'][number];
+
+/** Task 7.3, decision 13: who reads the parallel classes (the server decides). */
+const PARALLEL_ROLES: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
 
 /**
  * The Lesson plans page (task 7.1a, pull request #212; `09`): the plans of
@@ -31,6 +41,10 @@ export function PlansPage(): React.JSX.Element {
   const list = useQuery(plansQuery(branchId, search.year ?? null));
   const mayWindows = useMayView('plan_windows');
   const mayDecide = useMayView('plan_requests', 'edit');
+  // Task 7.3: the masters for every reader of them; the parallel classes for the roles that oversee a subject.
+  const mayMasters = useMayView('plan_masters');
+  const { role } = useView();
+  const parallel = role !== null && PARALLEL_ROLES.includes(role);
   const language = i18n.language;
   const tab = search.tab ?? 'class';
   const quarters = useMemo(() => list.data?.quarters ?? [], [list.data]);
@@ -65,7 +79,9 @@ export function PlansPage(): React.JSX.Element {
               ? t('plans.state.incomplete', { count: state.empty })
               : t(`plans.state.${state.state}`);
           // Task 7.2: overdue, window not opened, vacancy.
-          return state.flag === null ? text : `${text} · ${t(`plans.flag.${state.flag}`)}`;
+          const flagged = state.flag === null ? text : `${text} · ${t(`plans.flag.${state.flag}`)}`;
+          // Task 7.3: "master updated" (decision 12).
+          return state.masterUpdated ? `${flagged} · ${t('plans.updated.mark')}` : flagged;
         },
       })),
     ],
@@ -118,6 +134,7 @@ export function PlansPage(): React.JSX.Element {
                 {t('plans.requests.pageTitle')}
               </Link>
             )}
+            {mayMasters && <MasterLinks parallel={parallel} />}
           </>
         }
       />
