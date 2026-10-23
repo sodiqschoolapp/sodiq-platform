@@ -143,7 +143,9 @@ jobs:
   e2e-parts:
     name: e2e (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 20 minutes since 24 October 2026 (15 before): a slow runner needs the room
+    # for its setup; the browser tests keep their own 10-minute limit below.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -176,6 +178,18 @@ jobs:
           PGPASSWORD: postgres
       - name: Apply migrations
         run: pnpm db:migrate
+      # Chromium is kept between runs (owner, 24 October 2026): downloading it took
+      # about 30 s on most runners but 7 to 15 minutes on slow ones, which ran a
+      # part past its limit with every test passed (pull request #218). With the
+      # browser in the cache, the install below only checks the system packages.
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter @sodiq/web exec playwright --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" >> "$GITHUB_OUTPUT"
+      - name: Keep Chromium between runs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - name: Install Chromium
         run: pnpm --filter @sodiq/web exec playwright install --with-deps chromium
       - name: Browser tests

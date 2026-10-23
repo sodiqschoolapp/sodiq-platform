@@ -24,6 +24,10 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 24 October 2026: Chromium is kept between CI runs
+
+Decided by the owner on 24 October 2026. Each browser-test part downloaded Chromium on every run: about 30 s on most runners, but 7 to 15 minutes on slow ones. On pull request #218 the part `e2e (1/3)` was cancelled twice at its 15-minute limit, once before any test ran and once with all 30 of its tests passed, and the loop stood still for hours. The browser is now kept in the GitHub Actions cache under the Playwright version (`actions/cache`, pinned by commit), so a run only checks the system packages; the part's limit is 20 minutes, and "Browser tests" keeps its own 10. The same tests run on every commit.
+
 ## 22 October 2026: tasks are not split without need
 
 Decided by the owner on 22 October 2026: splitting a task is not advised. Phase 5 grew from 10 tasks (12 with the two deferred) to 70 through splits, some three and four levels deep (5.6b-2c-1, 5.5a-3b-2), and each part costs a plan, a plan review, a CI run and a code review. A session now plans and builds the whole task. It splits only when one session truly cannot build and test the task, names the piece that does not fit, uses as few parts as possible and never splits a part again; what a part cannot hold goes to a From line of a later task (`.claude/skills/next-task/SKILL.md` step 7, `CLAUDE.md` step 3). The reviewers' rule against needless splits (15 October 2026) stays: such a split is a correction to merge the parts back.
