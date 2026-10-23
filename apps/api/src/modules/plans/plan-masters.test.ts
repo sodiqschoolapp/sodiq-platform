@@ -318,7 +318,11 @@ describe('master plans', () => {
         .where('action', '=', action)
         .orderBy('id')
         .execute()
-    ).filter((entry) => JSON.stringify(entry).includes(id));
+    ).filter((entry) => {
+      // By the record, or by the master an entry of a plan names (spec review of the code, should-fix 11).
+      const value = (entry.new_value ?? {}) as Record<string, unknown>;
+      return entry.record_id === id || value.masterId === id || value.sourceMasterId === id;
+    });
 
   /** Every row of the tables the routes of 7.3 write, in one branch (and the masters of all branches). */
   const rowsOf = async (branch: string) => {
@@ -1139,6 +1143,21 @@ describe('master plans', () => {
       expect(codeOf(await copyMaster(x, russian.id))).toBe('plan_copy_language');
       const third = masterOf(await createMaster(x, x.head, { quarter: 3, name: 'Q3' }), 201);
       expect(codeOf(await copyMaster(x, third.id))).toBe('plan_copy_quarter');
+      // A master of another year (spec review of the code, must-fix 3), written by the migrator.
+      const nextYear = await t.database.migrator
+        .insertInto('lesson_plan_masters')
+        .values({
+          branch_id: x.s.branch,
+          subject_id: x.s.subject,
+          grade: 7,
+          language: 'uz',
+          start_year: 2027,
+          quarter: 2,
+          name: 'Next year',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      expect(codeOf(await copyMaster(x, nextYear.id))).toBe('plan_copy_quarter');
       const archived = masterOf(await createMaster(x, x.head, { name: 'Old' }), 201);
       ok(
         await at(NOV02, async () =>
@@ -1243,6 +1262,31 @@ describe('master plans', () => {
           .map((item) => item.master_item_id)
           .sort(),
       ).toEqual(yIds);
+    });
+
+    it('drops the master link in a copy to a plan of another quarter (spec review of the code, should-fix 6)', async () => {
+      const x = await scene({ shared: true });
+      const master = await masterWith(x, 2);
+      ok(await copyMaster(x, master.id));
+      ok(
+        await at(OCT27, async () =>
+          send('put', `/api/plans/windows/${x.q3}`, x.s.branch, x.vice.cookie, {
+            startDate: '2026-10-28',
+            endDate: '2027-03-20',
+            confirm: true,
+          }),
+        ),
+      );
+      const copied = await at(NOV02, async () =>
+        send('post', `/api/plans/journals/${x.otherJournal}/copy`, x.s.branch, x.owner.cookie, {
+          quarterId: x.q3,
+          source: { journalId: x.journal, quarterId: x.q2 },
+          part: 'all',
+        }),
+      );
+      const plan = planSchema.parse(ok(copied).body);
+      expect(plan.master).toBeNull();
+      expect(plan.rows.slice(0, 2).map((row) => row.item?.topic ?? null)).toEqual(['M1', 'M2']);
     });
 
     it('drops the master link in a copy to a plan whose language the master does not have (decision 11)', async () => {
@@ -1478,6 +1522,11 @@ describe('master plans', () => {
       expect(topics(taken).slice(0, 4)).toEqual(['M1', 'M2', 'M3', 'M4 changed']);
       const [entry] = await entries('plan.master_taken', x.master.id);
       expect(JSON.stringify(entry?.details)).toContain(requestId);
+      // `09`: "old text, new text, who approved" (spec review of the code, must-fix 1).
+      const topicsOf = (value: unknown) =>
+        ((value as { items?: { topic: string }[] } | null)?.items ?? []).map((item) => item.topic);
+      expect(topicsOf(entry?.old_value)).toEqual(['M4']);
+      expect(topicsOf(entry?.new_value)).toEqual(['M4 changed']);
     });
   });
 
@@ -1593,15 +1642,25 @@ describe('master plans', () => {
     it('keeps the revision it copied when the copy holds the master first: the save that waited shows as master updated', async () => {
       const x = await scene();
       const master = await masterWith(x, 2);
+      const held0 = await t.database.migrator
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', x.journal)
+        .where('quarter_id', '=', x.q2)
+        .executeTakeFirstOrThrow();
       await inMoment(async () => {
-        // The save waits on the master the copy reads `for share`; the copy commits first.
+        // The real copy runs first and stops at its first item, after it read the
+        // master `for share` (the plan row is held); the save then waits on the copy
+        // (spec review of the code, must-fix 5: without the share it would not wait).
         const held = await holdRow(
-          sql`select id from lesson_plan_masters where id = ${master.id} for share`,
+          sql`select id from lesson_plans where id = ${held0.plan_id} for update`,
         );
+        const copy = started(copyCall(x, master.id));
+        await waitingOn(held.pid, 1);
         const save = started(saveCall(x, master, 'M1 saved'));
-        await waitingOn(held.pid);
-        ok(await copyCall(x, master.id)());
+        await waitingOn(held.pid, 2);
         await held.release();
+        ok(await copy);
         ok(await save);
       });
       expect((await storedLink(x.journal, x.q2)).master_revision).toBe(master.revision);
@@ -1620,15 +1679,23 @@ describe('master plans', () => {
           quarterId: x.q2,
           revision: changed.revision,
         });
-      // The take holds the master `for share` first: the save waits and comes after it.
+      // The real take runs first and stops at the plan item it rewrites, after it
+      // read the master `for share`; the save then waits on the take (must-fix 5).
+      const second = await t.database.migrator
+        .selectFrom('lesson_plan_items')
+        .select('id')
+        .where('master_item_id', '=', masterItem(master, 2).id)
+        .executeTakeFirstOrThrow();
       await inMoment(async () => {
         const held = await holdRow(
-          sql`select id from lesson_plan_masters where id = ${master.id} for share`,
+          sql`select id from lesson_plan_items where id = ${second.id} for update`,
         );
+        const take = started(takeCall);
+        await waitingOn(held.pid, 1);
         const save = started(saveCall(x, changed, 'M1 later'));
-        await waitingOn(held.pid);
-        ok(await takeCall());
+        await waitingOn(held.pid, 2);
         await held.release();
+        ok(await take);
         ok(await save);
       });
       const plan = await planOf(x, NOV02);

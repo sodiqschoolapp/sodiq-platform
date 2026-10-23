@@ -2,6 +2,7 @@ import { planCopySchema, type Plan, type PlanCopy, type PlanMasterContent } from
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
 import { useRecordForm } from '@/components/form/use-record-form';
@@ -175,11 +176,21 @@ function CompareDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const compare = useQuery(planMasterCompareQuery(branchId, plan.journalId, plan.quarterId));
   const answer = useMutation({
     mutationFn: async (take: boolean) => {
       const revision = compare.data?.master.revision;
       if (revision === undefined) return;
+      // Neither can be undone (`.claude/rules/web.md`; spec review of the code, should-fix 10).
+      const sure = await confirm({
+        title: take ? t('plans.updated.takeTitle') : t('plans.updated.keepTitle'),
+        names: [
+          `${plan.unit.name} · ${t('plans.page.quarter', { number: plan.quarters.find((one) => one.id === plan.quarterId)?.number ?? 0 })}`,
+        ],
+        action: take ? t('plans.updated.take') : t('plans.updated.keep'),
+      });
+      if (!sure) return;
       await answerPlanMaster(plan.journalId, { quarterId: plan.quarterId, revision }, take);
       await invalidatePlans(queryClient);
       onClose();

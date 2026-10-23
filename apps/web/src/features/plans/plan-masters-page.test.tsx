@@ -326,6 +326,11 @@ describe('Master plans', () => {
     expect(changed?.textContent).toContain('Fractions');
     expect(removed?.textContent).toContain(en.plans.updated.held);
     fireEvent.click(within(dialog).getByRole('button', { name: en.plans.updated.take }));
+    // Neither take nor keep can be undone: it asks first.
+    const sure = await screen.findByRole('alertdialog');
+    expect(sure.textContent).toContain(en.plans.updated.takeTitle);
+    expect(calls.some((call) => call.route.endsWith('/master-take'))).toBe(false);
+    fireEvent.click(within(sure).getByRole('button', { name: en.plans.updated.take }));
     await waitFor(() => {
       expect(calls.find((call) => call.route.endsWith('/master-take'))?.body).toEqual({
         quarterId: Q1,

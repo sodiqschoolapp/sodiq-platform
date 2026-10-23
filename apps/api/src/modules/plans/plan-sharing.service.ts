@@ -442,15 +442,20 @@ export class PlanSharing {
       }
       const target = await this.plans.planFor(transaction, access, scene, requestId);
       // Task 7.3, decision 11: the master link goes with the copy when the
-      // master fits the target (one of its grades, its language); else it is dropped.
+      // master fits the target (one of its grades, its language, its year and quarter);
+      // else it is dropped.
       const link = sourcePlan === null ? null : await planMasterOf(transaction, sourcePlan);
       let keepMaster = false;
       if (link !== null) {
         const master = await masterRowOf(transaction, link.masterId);
         const keys = await unitKeysOf(transaction, [scene.journal]);
+        // Spec review of the code, should-fix 6: also the year and the quarter the
+        // master is for (decision 4), so a plan of another quarter is not linked to it.
         keepMaster =
           scene.journal.grades.includes(master.grade) &&
-          (keys.get(scene.journal.id) ?? '').split('|')[2] === master.language;
+          (keys.get(scene.journal.id) ?? '').split('|')[2] === master.language &&
+          master.start_year === (await startYearOf(transaction, scene.journal.academicYearId)) &&
+          master.quarter === scene.quarter.number;
       }
       await transaction
         .updateTable('lesson_plans')

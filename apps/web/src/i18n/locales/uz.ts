@@ -5220,6 +5220,8 @@ export const uz: Texts<'one' | 'other'> = {
       held: 'Dars oʻtilgan: qabul qilinmaydi',
       keep: 'Rejamni qoldirish',
       take: 'Oʻzgarishlarni qabul qilish',
+      takeTitle: 'Master-reja oʻzgarishlari shu rejaga qabul qilinsinmi?',
+      keepTitle: 'Reja oʻz holicha qolsinmi? Belgi master-reja yana oʻzgarguncha yoʻqoladi.',
     },
     parallel: {
       title: 'Parallel sinflar',

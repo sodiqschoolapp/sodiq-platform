@@ -71,8 +71,8 @@ describe('master plans in the database', () => {
     master_id: masterId,
     position,
     topic: 'Fractions',
-    added_revision: 1,
-    changed_revision: 1,
+    added_revision: 0,
+    changed_revision: 0,
   });
 
   const item = async (branch: string | null, masterId: string, position = 1) =>
@@ -401,5 +401,53 @@ describe('master plans in the database', () => {
         )
       ).code,
     ).toBe('42501');
+  });
+
+  it('writes an item only in the current revision of its master (spec review of the code, should-fix 7)', async () => {
+    const own = await master(north);
+    expect(
+      (
+        await refusal(
+          database.migrator
+            .insertInto('lesson_plan_master_items')
+            .values({ ...itemValues(north, own, 1), added_revision: 1, changed_revision: 1 })
+            .execute(),
+        )
+      ).constraint,
+    ).toBe('lesson_plan_master_item_revision');
+    const itemId = await item(north, own, 1);
+    await database.migrator
+      .updateTable('lesson_plan_masters')
+      .set({ revision: 2 })
+      .where('id', '=', own)
+      .execute();
+    // A change written in an older revision, or a removal in one, would hide it from the comparison.
+    for (const change of [
+      { changed_revision: 1 },
+      { removed_revision: 1 },
+      { added_revision: 2 },
+    ]) {
+      expect(
+        (
+          await refusal(
+            database.migrator
+              .updateTable('lesson_plan_master_items')
+              .set(change)
+              .where('id', '=', itemId)
+              .execute(),
+          )
+        ).constraint,
+      ).toBe('lesson_plan_master_item_revision');
+    }
+    await database.migrator
+      .updateTable('lesson_plan_master_items')
+      .set({ topic: 'Changed', changed_revision: 2 })
+      .where('id', '=', itemId)
+      .execute();
+    await database.migrator
+      .updateTable('lesson_plan_master_items')
+      .set({ removed_revision: 2 })
+      .where('id', '=', itemId)
+      .execute();
   });
 });

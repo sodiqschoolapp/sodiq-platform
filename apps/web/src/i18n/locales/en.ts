@@ -5175,6 +5175,8 @@ export const en = {
       held: 'Lesson held: not taken',
       keep: 'Keep my plan',
       take: 'Take the changes',
+      takeTitle: 'Take the changes of the master into this plan?',
+      keepTitle: 'Keep this plan as it is? The mark goes until the master changes again.',
     },
     parallel: {
       title: 'Parallel classes',

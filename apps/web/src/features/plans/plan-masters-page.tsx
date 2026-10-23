@@ -128,6 +128,14 @@ export function PlanMastersPage(): React.JSX.Element {
         matches: (row, value) => row.subject.id === value,
       },
       {
+        key: 'grade',
+        label: t('plans.masters.grade'),
+        options: [...new Set((list.data?.masters ?? []).map((row) => row.grade))]
+          .sort((a, b) => a - b)
+          .map((grade) => ({ value: String(grade), label: String(grade) })),
+        matches: (row, value) => String(row.grade) === value,
+      },
+      {
         key: 'quarter',
         label: t('plans.masters.quarter'),
         options: QUARTER_NUMBERS.map((number) => ({

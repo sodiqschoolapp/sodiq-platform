@@ -161,6 +161,46 @@ grant insert (id, branch_id, master_id, position, topic, objectives, links, adde
 grant update (position, topic, objectives, links, changed_revision, removed_revision)
   on lesson_plan_master_items to sodiq_app;
 
+-- The revisions an item is written with are the master's current one, which
+-- every write raises first (`writeOf`): an older revision would hide a change
+-- from every plan's comparison (`.claude/rules/database.md`, a counter that
+-- decides which rows count; spec review of the code, should-fix 7). Runs as
+-- the invoker, after the route locked the master.
+create function lesson_plan_master_items_revision() returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+declare
+  current_revision integer;
+begin
+  select m.revision into current_revision
+    from lesson_plan_masters m where m.id = new.master_id;
+  if tg_op = 'INSERT' then
+    if new.added_revision is distinct from current_revision
+      or new.changed_revision is distinct from current_revision
+      or new.removed_revision is not null then
+      raise exception 'lesson_plan_master_item_revision'
+        using errcode = 'check_violation', constraint = 'lesson_plan_master_item_revision';
+    end if;
+    return new;
+  end if;
+  if new.master_id is distinct from old.master_id
+    or new.added_revision is distinct from old.added_revision
+    or (new.changed_revision is distinct from old.changed_revision
+      and new.changed_revision is distinct from current_revision)
+    or (new.removed_revision is distinct from old.removed_revision
+      and (old.removed_revision is not null or new.removed_revision is distinct from current_revision)) then
+    raise exception 'lesson_plan_master_item_revision'
+      using errcode = 'check_violation', constraint = 'lesson_plan_master_item_revision';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger lesson_plan_master_items_revision
+  before insert or update on lesson_plan_master_items
+  for each row execute function lesson_plan_master_items_revision();
+
 -- ---------------------------------------------------------------------------
 -- The classworks and homeworks of a master item. A work removed from an item
 -- is deleted, its values in the audit entry of the save (as 0114, decision 8).

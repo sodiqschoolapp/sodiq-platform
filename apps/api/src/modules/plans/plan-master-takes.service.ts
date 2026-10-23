@@ -139,9 +139,9 @@ export class PlanMasterTakes {
         planId,
         targetsOf(rows, layouts, await this.predecessors(transaction, master.id, planId, rows)),
       );
-      if (taking) {
-        await this.apply(transaction, scene, planId, master.id, rows, layouts);
-      }
+      const made = taking
+        ? await this.apply(transaction, scene, planId, master.id, rows, layouts)
+        : new Map<string, string>();
       await transaction
         .updateTable('lesson_plans')
         .set({ master_revision: master.revision })
@@ -153,15 +153,34 @@ export class PlanMasterTakes {
         assignmentId: scene.assignmentId,
         action: taking ? 'plan.master_taken' : 'plan.master_kept',
         record: { type: 'lesson_plan', id: planId },
-        oldValue: { masterRevision: link.revision },
+        // `09`, Editing after the window: "old text, new text, who approved" (spec
+        // review of the code, must-fix 1): the plan items as they were and as taken.
+        oldValue: {
+          masterRevision: link.revision,
+          items: rows.flatMap((row) =>
+            taking && row.plan !== null ? [{ masterItemId: row.masterItemId, ...row.plan }] : [],
+          ),
+        },
         newValue: {
           journalId,
           quarterId: scene.quarter.id,
           masterId: master.id,
           masterRevision: master.revision,
+          taken: taking,
           changed: rows.filter((row) => row.change === 'changed').map((row) => row.masterItemId),
           added: rows.filter((row) => row.change === 'added').map((row) => row.masterItemId),
           removed: rows.filter((row) => row.change === 'removed').map((row) => row.masterItemId),
+          items: rows.flatMap((row) =>
+            taking && row.master !== null
+              ? [
+                  {
+                    masterItemId: row.masterItemId,
+                    itemId: row.plan?.itemId ?? made.get(row.masterItemId) ?? null,
+                    ...row.master,
+                  },
+                ]
+              : [],
+          ),
         },
         ...gateAudit(pass),
         ...(requestId === undefined ? {} : { requestId }),
@@ -223,7 +242,7 @@ export class PlanMasterTakes {
     masterId: string,
     rows: readonly CompareRow[],
     layouts: ReadonlyMap<string, { rows: PlanRowLesson[]; places: Map<string, number> }>,
-  ): Promise<void> {
+  ): Promise<Map<string, string>> {
     const live = new Map(
       (await masterItemsOf(transaction, masterId)).map((item) => [item.id, item]),
     );
@@ -291,6 +310,7 @@ export class PlanMasterTakes {
           .execute();
       }
     }
+    return made;
   }
 
   /** The classes and groups of a grade side by side with the item each has reached (decision 13). */
