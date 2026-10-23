@@ -273,6 +273,8 @@ export const planSchema = z.object({
   quarterId: z.uuid(),
   /** The owner's name on the quarter's reference date; `null` under a vacancy with no acting teacher. */
   owner: z.string().nullable(),
+  /** Task 7.2: the staff record of that owner, for an extension of the window. */
+  ownerStaffId: z.uuid().nullable(),
   /** The reader owns the plan and the year is open. */
   canEdit: z.boolean(),
   closed: z.boolean(),

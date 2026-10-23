@@ -502,6 +502,7 @@ export class PlansService {
       quarters: scene.quarters,
       quarterId: scene.quarter.id,
       owner: scene.ownerId === null ? null : (names.get(scene.ownerId) ?? null),
+      ownerStaffId: scene.ownerId,
       canEdit: scene.reach.edit && !scene.closed && scene.open,
       closed: scene.closed || !scene.open,
       rows: rows.map((row) => ({ ...row, open: openOf(row), item: byPosition.get(row.number) ?? null })),

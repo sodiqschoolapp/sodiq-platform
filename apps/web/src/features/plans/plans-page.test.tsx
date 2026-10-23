@@ -1,4 +1,4 @@
-import type { Plan, PlanItem, PlanList } from '@sodiq/shared';
+import type { Plan, PlanItem, PlanList, PlanRequest, PlanWindows } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -34,8 +34,8 @@ const LIST: PlanList = {
       unit: { kind: 'class', id: uid(6), name: '7 Oxford' },
       subject,
       quarters: [
-        { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2 },
-        { quarterId: Q2, state: 'not_started', rows: 8, empty: 8 },
+        { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2, flag: null },
+        { quarterId: Q2, state: 'not_started', rows: 8, empty: 8, flag: null },
       ],
     },
     {
@@ -43,8 +43,8 @@ const LIST: PlanList = {
       unit: { kind: 'group', id: uid(7), name: 'English A' },
       subject,
       quarters: [
-        { quarterId: Q1, state: 'complete', rows: 3, empty: 0 },
-        { quarterId: Q2, state: 'no_lessons', rows: 0, empty: 0 },
+        { quarterId: Q1, state: 'complete', rows: 3, empty: 0, flag: null },
+        { quarterId: Q2, state: 'no_lessons', rows: 0, empty: 0, flag: null },
       ],
     },
   ],
@@ -53,6 +53,7 @@ const LIST: PlanList = {
 const ITEM: PlanItem = {
   movedFrom: null,
   copiedFrom: null,
+  editedAfterLesson: false,
   id: uid(40),
   position: 1,
   topic: 'Fractions',
@@ -70,6 +71,7 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
   quarters,
   quarterId: Q1,
   owner: 'Karimova Nodira',
+  ownerStaffId: uid(8),
   canEdit,
   closed: false,
   rows: [
@@ -81,6 +83,8 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
       end: 525,
       slot: 1,
       held: true,
+      started: true,
+      open: canEdit ? 'all' : 'none',
       item,
     },
     {
@@ -91,6 +95,8 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
       end: 525,
       slot: 1,
       held: false,
+      started: false,
+      open: canEdit ? 'all' : 'none',
       item: null,
     },
     {
@@ -101,18 +107,23 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
       end: 585,
       slot: 2,
       held: false,
+      started: false,
+      open: canEdit ? 'all' : 'none',
       item: null,
     },
   ],
   notCovered: [],
   request: null,
+  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31' },
+  flag: null,
+  requests: [],
   sharedWith: [],
   shareCandidates: [],
 });
 
 function open(
   input: {
-    role?: 'teacher' | 'head_teacher';
+    role?: 'teacher' | 'head_teacher' | 'academic_vice_principal';
     language?: 'en' | 'ru';
     plan?: Plan;
     path?: string;
@@ -192,6 +203,8 @@ describe('Lesson plans', () => {
         ),
         notCovered: [{ ...ITEM, id: uid(60), position: 4, topic: 'Percentages' }],
         request: {
+          id: uid(70),
+          lessons: [],
           fromDate: '2026-10-19',
           causes: [
             { kind: 'not_covered', onDate: '2026-10-19', items: 1 },
@@ -206,7 +219,7 @@ describe('Lesson plans', () => {
     expect(rows()[0]?.textContent).toContain('Moved from');
     const notCovered = await screen.findByRole('region', { name: en.plans.plan.notCovered });
     expect(within(notCovered).getByText('Percentages')).toBeTruthy();
-    const request = screen.getByRole('region', { name: en.plans.plan.request.title });
+    const request = screen.getByRole('region', { name: en.plans.requests.title });
     const causes = within(request)
       .getAllByRole('listitem')
       .map((one) => one.textContent);
@@ -481,3 +494,187 @@ describe('Lesson plans', () => {
     });
   });
 });
+
+// Task 7.2, pull request #215: the plan window and edit requests.
+describe('the plan window and edit requests', () => {
+  const ended = (plan: Plan): Plan => ({
+    ...plan,
+    window: { state: 'ended', startDate: '2026-09-01', endDate: '2026-10-10' },
+    flag: 'overdue',
+    rows: plan.rows.map((row) => ({ ...row, open: 'none' })),
+  });
+
+  it('shows the window and the overdue flag, keeps the rows closed, and lets the owner ask to edit', async () => {
+    const calls = open({
+      path: `/plans/${JOURNAL}`,
+      plan: ended(planOf(true)),
+      routes: {
+        [`POST /api/plans/journals/${JOURNAL}/requests`]: () =>
+          json({ ...REQUEST, status: 'sent' }, 201),
+      },
+    });
+    const window = await screen.findByText(/ended/);
+    expect(window.closest('[data-plan-window]')?.textContent).toContain(en.plans.flag.overdue);
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(rows()[1]?.querySelector('a, button') ?? document.body);
+    expect(screen.queryByRole('button', { name: en.plans.panel.fill })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.ask }));
+    const form = await screen.findByRole('form', { name: en.plans.requests.askTitle });
+    fireEvent.change(within(form).getByRole('combobox', { name: en.plans.requests.lastLabel }), {
+      target: { value: LESSONS[1] },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.requests.send }));
+    expect(await within(form).findByText(en.plans.requests.reasonNeeded)).toBeDefined();
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.requests.reasonLabel }), {
+      target: { value: 'Typos' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.requests.send }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/requests'))?.body).toEqual({
+        kind: 'text',
+        quarterId: Q1,
+        lessonIds: [LESSONS[0], LESSONS[1]],
+        reason: 'Typos',
+      });
+    });
+  });
+
+  it('asks to confirm the lessons held without a plan, then opens the window', async () => {
+    let tries = 0;
+    const calls = open({
+      role: 'academic_vice_principal',
+      path: '/plans/windows',
+      routes: {
+        'GET /api/plans/windows': () => json(WINDOWS),
+        [`PUT /api/plans/windows/${Q2}`]: () => {
+          tries += 1;
+          return tries === 1
+            ? json(
+                {
+                  error: {
+                    code: 'plan_window_confirm',
+                    message: 'Lessons will be held without a plan.',
+                    requestId: uid(98),
+                    details: [
+                      {
+                        path: 'endDate',
+                        code: 'plan_window_confirm',
+                        message: 'Lessons will be held without a plan.',
+                        lessonsWithoutPlan: 4,
+                      },
+                    ],
+                  },
+                },
+                409,
+              )
+            : json(WINDOWS);
+        },
+      },
+    });
+    const form = await screen.findByRole('form', {
+      name: en.plans.windows.formTitle.replace('{{number}}', '2'),
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.windows.open }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain(
+      '4 lessons will be held before the window ends without a plan.',
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: en.plans.windows.save }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === `PUT /api/plans/windows/${Q2}`)
+          .map((call) => call.body),
+      ).toEqual([
+        { startDate: '2026-11-09', endDate: '2026-12-28' },
+        { startDate: '2026-11-09', endDate: '2026-12-28', confirm: true },
+      ]);
+    });
+  });
+
+  it('lists the requests to decide, marks a late one, and approves with the days chosen, a lesson unticked', async () => {
+    const calls = open({
+      role: 'head_teacher',
+      path: '/plans/requests',
+      routes: {
+        'GET /api/plans/requests': () => json({ requests: [REQUEST], events: [] }),
+        [`POST /api/plans/requests/${REQUEST.id}/decide`]: () =>
+          json({ ...REQUEST, status: 'approved', canDecide: false }),
+      },
+    });
+    const row = await waitFor(() => {
+      const found = document.querySelector('tbody tr');
+      if (found === null || !(found.textContent ?? '').includes('7 Oxford'))
+        throw new Error('no row');
+      return found;
+    });
+    expect(row.textContent).toContain(en.plans.requests.late);
+    fireEvent.click(within(row as HTMLElement).getByText('7 Oxford'));
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.decide }));
+    const form = await screen.findByRole('form', { name: en.plans.requests.decideTitle });
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.requests.daysLabel }), {
+      target: { value: '3' },
+    });
+    fireEvent.click(within(form).getAllByRole('checkbox')[0] ?? form);
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.requests.untickReason }), {
+      target: { value: 'Fine as it is' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.requests.approve }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/decide'))?.body).toEqual({
+        decision: 'approve',
+        days: 3,
+        untick: [{ lessonId: LESSONS[0], reason: 'Fine as it is' }],
+      });
+    });
+  });
+});
+
+const REQUEST: PlanRequest = {
+  id: uid(80),
+  journalId: JOURNAL,
+  quarterId: Q1,
+  quarter: 1,
+  unit: { kind: 'class', id: uid(6), name: '7 Oxford' },
+  subject,
+  owner: 'Karimova Nodira',
+  kind: 'text',
+  status: 'sent',
+  fromDate: null,
+  lessons: [
+    { lessonId: LESSONS[0] ?? '', date: '2026-10-12', approved: true, untickReason: '' },
+    { lessonId: LESSONS[1] ?? '', date: '2026-10-19', approved: true, untickReason: '' },
+  ],
+  reason: 'Typos',
+  causes: [],
+  sentAt: '2026-10-20T10:00:00.000Z',
+  decidedBy: null,
+  decidedAt: null,
+  decisionReason: '',
+  days: null,
+  openUntil: null,
+  open: false,
+  finishedAt: null,
+  waitingDays: 3,
+  late: true,
+  canDecide: true,
+};
+
+const WINDOWS: PlanWindows = {
+  yearId: uid(3),
+  canEdit: true,
+  quarters: [
+    {
+      quarter: quarters[0] ?? { id: Q1, number: 1, startDate: '', endDate: '' },
+      published: true,
+      window: { startDate: '2026-09-01', endDate: '2026-10-10', state: 'ended', extensions: [] },
+    },
+    {
+      quarter: quarters[1] ?? { id: Q2, number: 2, startDate: '', endDate: '' },
+      published: true,
+      window: null,
+    },
+  ],
+};

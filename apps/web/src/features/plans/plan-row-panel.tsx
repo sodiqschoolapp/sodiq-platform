@@ -81,7 +81,8 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
   const index = plan.rows.findIndex((one) => one.lessonId === row.lessonId);
   const previous = index > 0 ? plan.rows[index - 1] : undefined;
   const next = plan.rows[index + 1];
-  const editable = plan.canEdit;
+  // Task 7.2: the window or an open period opens the row (`row.open`); the server decides.
+  const editable = plan.canEdit && row.open !== 'none';
   const slotText = (slot: number) => t('plans.plan.slot', { number: slot });
   const [shown, setShown] = useState<Record<WorkKind, number>>({
     classwork: item?.classworks.length ?? 0,
@@ -389,7 +390,7 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
             </Button>
           }
           secondary={
-            item !== null && !row.held ? (
+            item !== null && !row.held && row.open === 'all' ? (
               <Button
                 variant="ghost"
                 disabled={clear.isPending}

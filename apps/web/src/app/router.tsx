@@ -65,6 +65,8 @@ import { JournalPage } from '@/features/journal/journal-page';
 import { journalSearch, journalsSearch } from '@/features/journal/journal-search';
 import { JournalsPage } from '@/features/journal/journals-page';
 import { PlanPage } from '@/features/plans/plan-page';
+import { PlanRequestsPage } from '@/features/plans/plan-requests-page';
+import { PlanWindowsPage } from '@/features/plans/plan-windows-page';
 import { PlansPage } from '@/features/plans/plans-page';
 import { planSearch, plansSearch } from '@/features/plans/plans-search';
 import {
@@ -391,6 +393,21 @@ const plansRoute = createRoute({
   component: guarded('plans', PlansPage),
 });
 
+/** The plan windows of a year (task 7.2). */
+const planWindowsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/windows',
+  component: guarded('plan_windows', PlanWindowsPage),
+});
+
+/** The plan edit requests the reader decides (task 7.2). */
+const planRequestsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/requests',
+  validateSearch: listSearch,
+  component: guarded('plan_requests', PlanRequestsPage, 'edit'),
+});
+
 /** The plan of a journal for one quarter (task 7.1a). */
 const planRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -611,6 +628,8 @@ const routeTree = rootRoute.addChildren([
     studentAbsencesRoute,
     journalRoute,
     plansRoute,
+    planWindowsRoute,
+    planRequestsRoute,
     planRoute,
     loadRoute,
     peopleRoute,

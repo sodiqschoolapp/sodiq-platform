@@ -13,6 +13,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { PlanRowPanel } from './plan-row-panel';
+import { ExtendWindow, RequestsSection, WindowLine } from './plan-requests';
 import { SharedWith, SharingActions } from './plan-sharing';
 import { planQuery } from './plans-api';
 import type { PlanSearch } from './plans-search';
@@ -162,8 +163,10 @@ export function PlanPage(): React.JSX.Element {
                 <dd>{empty}</dd>
               </div>
               {data.closed && <dd>{t('plans.plan.closed')}</dd>}
+              <WindowLine plan={data} />
             </dl>
             <SharingActions plan={data} />
+            <ExtendWindow plan={data} />
           </div>
           <ListPage
             listId="plan-rows"
@@ -183,7 +186,7 @@ export function PlanPage(): React.JSX.Element {
             empty={{ title: t('plans.plan.emptyTitle'), text: t('plans.plan.empty') }}
           />
           <SharedWith plan={data} />
-          {data.request !== null && <PreparedRequest plan={data} />}
+          <RequestsSection plan={data} />
           {data.notCovered.length > 0 && <NotCovered plan={data} />}
         </div>
       )}
@@ -206,38 +209,6 @@ function NotCovered({ plan }: { plan: Plan }) {
       <ul className="grid gap-1">
         {plan.notCovered.map((item) => (
           <li key={item.id}>{item.topic}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/**
- * The edit request the system prepared (task 7.1b, decision 2; `09`, "Requests
- * prepared by the system": "the affected lessons and the reason already
- * filled in"), with each event that added to it.
- */
-function PreparedRequest({ plan }: { plan: Plan }) {
-  const { t, i18n } = useTranslation();
-  const request = plan.request;
-  if (request === null) return null;
-  const dateText = (date: string) => schoolDateText(date, i18n.language, false);
-  return (
-    <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-request">
-      <h2 id="plan-request" className={SECTION_TITLE}>
-        {t('plans.plan.request.title')}
-      </h2>
-      <p className="text-sm">
-        {t('plans.plan.request.text', { date: dateText(request.fromDate) })}
-      </p>
-      <ul className="grid gap-1 text-sm">
-        {request.causes.map((cause, index) => (
-          <li key={`${cause.kind}|${cause.onDate}|${String(index)}`}>
-            {t(`plans.plan.request.${cause.kind}`, {
-              count: cause.items,
-              date: dateText(cause.onDate),
-            })}
-          </li>
         ))}
       </ul>
     </section>
