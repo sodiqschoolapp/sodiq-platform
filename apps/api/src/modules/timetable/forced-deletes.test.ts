@@ -1177,9 +1177,9 @@ describe('the forced delete of a dated lesson and its restore', () => {
           not_held: one.not_held,
         })),
       ).toEqual(works);
-      expect(kept.works?.every((one) => one.version !== undefined && 'source_lesson_id' in one)).toBe(
-        true,
-      );
+      expect(
+        kept.works?.every((one) => one.version !== undefined && 'source_lesson_id' in one),
+      ).toBe(true);
       expect(kept.cells?.map((one) => [one.id, one.mark, one.score, one.version])).toEqual(
         cells.map((one) => [one.id, one.mark, one.score, one.version]),
       );

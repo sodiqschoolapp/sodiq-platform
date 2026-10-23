@@ -20,10 +20,11 @@ import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
 import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircleIcon, CheckIcon, InfoIcon } from '@/components/icons';
+import { CheckCircleIcon, CheckIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { cellKey, type AttendanceEntry } from './attendance-entry';
+import { workKey, type WorksEntry } from './works-entry';
 
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
@@ -77,37 +78,72 @@ const THEME = themeQuartz.withParams({
   wrapperBorderRadius: 0,
 });
 
-/** A button under a header: "all present" over the A column (`07`, Layout, Lessons, row 3). */
+/**
+ * A button under a header: "all present" over the A column (`07`, Layout,
+ * Lessons, row 3); the works of the lesson and of a work (task 8.1).
+ */
 interface HeaderAction {
   readonly label: string;
   readonly disabled: boolean;
   readonly run: () => void;
+  readonly icon?: 'check' | 'more';
 }
 
 /** A header of two lines: the title, and "Soni" with the total under a work, or an action. */
 function TwoLineHeader(
-  props: IHeaderParams & { second?: string; label?: string; action?: HeaderAction },
+  props: IHeaderParams & {
+    second?: string;
+    label?: string;
+    action?: HeaderAction;
+    more?: HeaderAction;
+  },
 ) {
+  const buttons = [props.action, props.more].filter(
+    (one): one is HeaderAction => one !== undefined,
+  );
   return (
     <div className="grid leading-tight" aria-label={props.label}>
       <span className="font-semibold">{props.displayName}</span>
       {props.second !== undefined && (
         <span className="text-xs text-muted-foreground">{props.second}</span>
       )}
-      {props.action !== undefined && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={props.action.label}
-          title={props.action.label}
-          disabled={props.action.disabled}
-          onClick={props.action.run}
-        >
-          <CheckCircleIcon className="size-4" aria-hidden="true" />
-        </Button>
+      {buttons.length > 0 && (
+        <span className="flex">
+          {buttons.map((button) => (
+            <Button
+              key={button.label}
+              variant="ghost"
+              size="icon-sm"
+              aria-label={button.label}
+              title={button.label}
+              disabled={button.disabled}
+              onClick={button.run}
+            >
+              {button.icon === 'more' ? (
+                <MoreHorizIcon className="size-4" aria-hidden="true" />
+              ) : (
+                <CheckCircleIcon className="size-4" aria-hidden="true" />
+              )}
+            </Button>
+          ))}
+        </span>
       )}
     </div>
   );
+}
+
+/**
+ * The number typed in a work's cell (`07`: "The number typed is a whole number"; `edge/journal`:
+ * "Letters, decimals and numbers above the total are refused in the cell"): the number, `null`
+ * for an emptied cell, or `undefined` for what is refused.
+ */
+export function typedScore(typed: unknown, total: number): number | null | undefined {
+  const text =
+    typeof typed === 'number' ? String(typed) : typeof typed === 'string' ? typed.trim() : '';
+  if (text === '') return null;
+  if (!/^\d+$/.test(text)) return undefined;
+  const value = Number(text);
+  return value <= total ? value : undefined;
 }
 
 /** The keys that type a mark in an A cell (`edge/journal`: "An attendance digit saves at once and moves down"). */
@@ -128,6 +164,10 @@ interface GridProps {
   readonly scrollTo: string | null;
   /** Attendance entry (task 6.3): a lesson with `canEnter` takes marks. */
   readonly entry?: AttendanceEntry | undefined;
+  /** Works and numbers (task 8.1): a lesson with `canEnterWorks` takes them. */
+  readonly works?: WorksEntry | undefined;
+  /** A number refused in the cell (a letter, a decimal, above the total). */
+  readonly onRefusedNumber?: (total: number) => void;
 }
 
 export function JournalGridView({
@@ -140,6 +180,8 @@ export function JournalGridView({
   onToggleFolded,
   scrollTo,
   entry,
+  works,
+  onRefusedNumber,
 }: GridProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -372,6 +414,19 @@ export function JournalGridView({
                   },
                 }
               : {}),
+            // Task 8.1: the works of the lesson ("No plan", added by hand, not held, given).
+            ...(works !== undefined && graded && lessonWorksShown(lesson)
+              ? {
+                  more: {
+                    label: t('journal.works.button'),
+                    icon: 'more',
+                    disabled: works.busy,
+                    run: () => {
+                      works.openLesson(lesson);
+                    },
+                  },
+                }
+              : {}),
           },
           width: lesson.canEnter ? 64 : 52,
           cellClass: (params) =>
@@ -444,21 +499,60 @@ export function JournalGridView({
         },
       ];
       lesson.works.forEach((work, workIndex) => {
-        const title =
+        const short =
           work.kind === 'classwork'
             ? t('journal.grid.classworkShort', { number: work.position })
             : t('journal.grid.homeworkShort', { number: work.position });
+        // The plan's title (09: "The titles come from the plan"); a work added by hand is numbered.
+        const title = work.title ?? `${short} · ${t('journal.works.unplanned')}`;
+        const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
         children.push({
-          colId: `${lesson.id}:${work.id}`,
+          colId: `${lesson.id}:${workKey(work)}`,
           headerName: title,
+          headerTooltip:
+            work.carriedFrom === null ? title : `${title} · ${t('journal.works.carried')}`,
           headerComponentParams: {
             second:
               work.total === null
                 ? t('journal.grid.soni')
                 : `${t('journal.grid.soni')} ${work.total}`,
             label: work.notHeld ? `${title}, ${t('journal.grid.notHeld')}` : title,
+            ...(works === undefined
+              ? {}
+              : {
+                  more: {
+                    label: t('journal.works.workTitle', { name: title }),
+                    icon: 'more',
+                    disabled: works.busy,
+                    run: () => {
+                      works.openWork(lesson, work);
+                    },
+                  },
+                }),
           },
-          width: 96,
+          width: 112,
+          editable: (params) =>
+            enterable &&
+            params.data?.kind === 'student' &&
+            params.data.student.cells[index]?.closed !== true,
+          valueGetter: (params) =>
+            params.data?.kind === 'student'
+              ? (params.data.student.cells[index]?.works[workIndex]?.score ?? null)
+              : null,
+          // A number is saved when the cell is left (edge/journal: "not per key"); the grid
+          // shows the server's answer, so the row is never changed here.
+          valueSetter: (params) => {
+            const row = params.data;
+            if (works === undefined || row?.kind !== 'student' || work.total === null) return false;
+            const value = typedScore(params.newValue, work.total);
+            if (value === undefined) {
+              onRefusedNumber?.(work.total);
+              return false;
+            }
+            const before = row.student.cells[index]?.works[workIndex]?.score ?? null;
+            if (value !== before) works.score(lesson, work, row.student, value);
+            return false;
+          },
           cellClass: (params) =>
             cancelled ||
             (params.data?.kind === 'student' && params.data.student.cells[index]?.closed === true)
@@ -472,10 +566,24 @@ export function JournalGridView({
             if (typed === undefined || typed.score === null)
               return cell?.closed === true ? closedSign : null;
             return (
-              <span className={struck} data-score={typed.score}>
+              <span
+                className={struck}
+                data-score={typed.score}
+                title={typed.onAbsent ? t('journal.works.onAbsent') : undefined}
+              >
                 {typed.score}
                 {typed.percent !== null && (
                   <span className="ml-1 text-xs text-muted-foreground">{typed.percent}%</span>
+                )}
+                {typed.onAbsent && (
+                  <span
+                    className="ml-0.5 inline-flex align-middle text-warning"
+                    role="img"
+                    aria-label={t('journal.works.onAbsent')}
+                    data-on-absent="true"
+                  >
+                    <InfoIcon className="size-3.5" aria-hidden="true" />
+                  </span>
                 )}
               </span>
             );
@@ -496,9 +604,12 @@ export function JournalGridView({
           },
         });
       }
+      // "No plan" on a held lesson with no plan item (edge/journal).
+      const noPlan =
+        graded && lesson.held && !lesson.planItem ? ` · ${t('journal.works.noPlan')}` : '';
       return {
         groupId: lesson.id,
-        headerName: reason === null ? `${date}${slot}` : `${date}${slot} · ${reason}`,
+        headerName: reason === null ? `${date}${slot}${noPlan}` : `${date}${slot} · ${reason}`,
         headerTooltip: reason ?? undefined,
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
         children: children.map((child) => ({
@@ -542,6 +653,8 @@ export function JournalGridView({
     busy,
     entering,
     entry,
+    works,
+    onRefusedNumber,
   ]);
 
   /**
@@ -578,6 +691,16 @@ export function JournalGridView({
     [grid.lessons, entry],
   );
 
+  /** Whether the works button of a lesson has anything to show. */
+  function lessonWorksShown(lesson: JournalLesson): boolean {
+    return (
+      lesson.canEnterWorks ||
+      lesson.notHeldWorks.length > 0 ||
+      lesson.given.length > 0 ||
+      (lesson.held && !lesson.planItem)
+    );
+  }
+
   const pinnedBottomRowData = useMemo(
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
     [bottom],
@@ -587,7 +710,13 @@ export function JournalGridView({
     <div className="h-[70vh] min-h-96" data-journal-grid="true">
       <AgGridReact<GridRow>
         // Room for the "all present" button under the A of a lesson the reader enters.
-        headerHeight={grid.lessons.some((lesson) => lesson.canEnter) && entering ? 64 : 40}
+        headerHeight={
+          (grid.lessons.some((lesson) => lesson.canEnter) && entering) || works !== undefined
+            ? 64
+            : 40
+        }
+        singleClickEdit={false}
+        stopEditingWhenCellsLoseFocus
         modules={[AllCommunityModule]}
         theme={THEME}
         rowData={rows}

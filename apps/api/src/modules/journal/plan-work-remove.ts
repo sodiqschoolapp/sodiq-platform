@@ -9,7 +9,9 @@ import { ApiException } from '../../http/api-exception.js';
  * 8.8's.
  */
 export function removePlanWork(transaction: Transaction, workId: string): Promise<void> {
-  return refusingKept(transaction.deleteFrom('lesson_plan_works').where('id', '=', workId).execute());
+  return refusingKept(
+    transaction.deleteFrom('lesson_plan_works').where('id', '=', workId).execute(),
+  );
 }
 
 /** Removes every work of an item (the take of a master's content, task 7.3), as `removePlanWork`. */

@@ -926,7 +926,9 @@ async function restoreCells(
           branch_id: branchId,
           lesson_id: lessonId,
           source_lesson_id:
-            one.source_lesson_id === undefined ? lessonId : there(one.source_lesson_id, lessonsThere),
+            one.source_lesson_id === undefined
+              ? lessonId
+              : there(one.source_lesson_id, lessonsThere),
           plan_work_id: there(one.plan_work_id, plansThere),
           position: one.position ?? 1,
           carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),

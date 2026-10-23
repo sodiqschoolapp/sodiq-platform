@@ -91,6 +91,17 @@ export async function workLines(
 
 /** A line as the answers hold it, without the branch. */
 export function withoutBranch(line: WorkLineWithBranch): WorkLine {
-  const { branch: _branch, ...rest } = line;
-  return rest;
+  return {
+    id: line.id,
+    workId: line.workId,
+    workKind: line.workKind,
+    changedAt: line.changedAt,
+    lesson: line.lesson,
+    totalBefore: line.totalBefore,
+    totalAfter: line.totalAfter,
+    notHeldBefore: line.notHeldBefore,
+    notHeldAfter: line.notHeldAfter,
+    changedHow: line.changedHow,
+    changedBy: line.changedBy,
+  };
 }

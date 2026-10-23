@@ -5,9 +5,16 @@ import {
   cellHistorySchema,
   journalGridSchema,
   journalListSchema,
+  scoresSavedSchema,
   studentAbsencesSchema,
+  workSavedSchema,
   type AbsenceReasonRecord,
   type AttendanceSave,
+  type ScoresSave,
+  type WorkAdd,
+  type WorkCarry,
+  type WorkNotHeld,
+  type WorkTotal,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -117,3 +124,59 @@ export const setAbsenceReason = (studentId: string, date: string, body: AbsenceR
       body,
     }),
   ).then((answer) => absenceReasonSchema.parse(answer));
+
+// ---------------------------------------------------------------------------
+// Task 8.1: classwork and homework.
+
+/** A work added by hand at a lesson with no plan item. */
+export const addWork = (lessonId: string, body: WorkAdd) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/works', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => workSavedSchema.parse(answer));
+
+/** Removes an empty work added by hand. */
+export const removeWork = (lessonId: string, workId: string) =>
+  answerOf(
+    api.DELETE('/api/journal/lessons/{lessonId}/works/{workId}', {
+      params: { header: branchHeader(), path: { lessonId, workId } },
+    }),
+  );
+
+/** The total of a work; `confirm` after a `total_confirm`. */
+export const setWorkTotal = (lessonId: string, body: WorkTotal) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/works/total', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => workSavedSchema.parse(answer));
+
+/** "Not held" and its undo; `confirm` after a `not_held_confirm`. */
+export const setWorkNotHeld = (lessonId: string, body: WorkNotHeld) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/works/not-held', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => workSavedSchema.parse(answer));
+
+/** "Check at the next lesson" of a homework. */
+export const carryWork = (lessonId: string, body: WorkCarry) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/works/carry', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => workSavedSchema.parse(answer));
+
+/** Numbers typed for works of one lesson; `score: null` clears a cell. */
+export const saveScores = (lessonId: string, body: ScoresSave) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/scores', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => scoresSavedSchema.parse(answer));

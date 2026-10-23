@@ -18,7 +18,13 @@ import {
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { formatMoment, schoolDateText } from '@/lib/dates';
-import { accountText, cellChangeText, cellKindText, cellLessonText } from './cell-lines';
+import {
+  accountText,
+  cellChangeText,
+  cellKindText,
+  cellLessonText,
+  workLineText,
+} from './cell-lines';
 import { resetEntriesQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 
@@ -103,6 +109,34 @@ function ResetCard({ reset }: { reset: Reset }) {
                 <TableCell>{cellKindText(t, line)}</TableCell>
                 <TableCell>{cellChangeText(t, line)}</TableCell>
                 <TableCell>{t(`journal.changes.${line.changedHow}`)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {/* Task 8.1: the totals and "not held" marks the account set in the 48 hours. */}
+      {reset.workEntries.length > 0 && (
+        <Table data-work-entries="true">
+          <TableCaption className="sr-only">{t('people.resetEntries.workCaption')}</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('people.resetEntries.moment')}</TableHead>
+              <TableHead>{t('people.resetEntries.lesson')}</TableHead>
+              <TableHead>{t('people.resetEntries.change')}</TableHead>
+              <TableHead>{t('people.resetEntries.how')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {reset.workEntries.map((line) => (
+              <TableRow key={line.id}>
+                <TableCell>{formatMoment(language, line.changedAt)}</TableCell>
+                <TableCell>
+                  {cellLessonText(t, language, line.lesson, (date) =>
+                    schoolDateText(date, language),
+                  )}
+                </TableCell>
+                <TableCell>{workLineText(t, line)}</TableCell>
+                <TableCell>{t(`journal.works.changes.${line.changedHow}`)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

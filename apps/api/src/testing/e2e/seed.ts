@@ -5215,7 +5215,14 @@ try {
         );
         const work = await transaction
           .insertInto('journal_works')
-          .values({ branch_id: journalBranch, lesson_id: lessonId, kind: 'classwork', total: 10 })
+          .values({
+            branch_id: journalBranch,
+            lesson_id: lessonId,
+            // Task 8.1 (0119): a classwork's source is its own lesson.
+            source_lesson_id: lessonId,
+            kind: 'classwork',
+            total: 10,
+          })
           .returning('id')
           .executeTakeFirstOrThrow();
         for (const [index, studentId] of studentIds.entries()) {

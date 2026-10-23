@@ -201,8 +201,13 @@ export class WorksService {
     ): Promise<number> =>
       ids.size === 0
         ? 0
-        : (await transaction.selectFrom(table).select('id').where('id', 'in', [...ids]).execute())
-            .length;
+        : (
+            await transaction
+              .selectFrom(table)
+              .select('id')
+              .where('id', 'in', [...ids])
+              .execute()
+          ).length;
     if (
       (await count('journal_works', works)) !== works.size ||
       (await count('lesson_plan_works', planWorks)) !== planWorks.size ||

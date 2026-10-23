@@ -10,9 +10,12 @@ import {
   type JournalLesson,
   type WorkColumn,
 } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ActingKit } from '../../testing/acting-kit.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -972,6 +975,270 @@ describe('classwork and homework', () => {
     });
   });
 
+  describe('the journal teacher of the day (From 5.7a-3c)', () => {
+    /** A vacancy's journal of the kit's graded subject with a lesson on 26 October held by a substitute. */
+    async function vacancyScene() {
+      const cells = await CellsKit.create(t.database.migrator);
+      const acting = new ActingKit(t.database.migrator);
+      const branch = await t.newBranch();
+      const { year } = await cells.lessons.year(branch);
+      const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const vacancy = await load.vacancy(branch, {
+        languages: ['uz'],
+        subjects: [{ subject: cells.subject, grades: [7] }],
+      });
+      const substituteBrowser = await account();
+      const substitute = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: substituteBrowser.account.id,
+      });
+      const lesson = await cells.lesson(branch, year, classId, '2026-10-26');
+      const scene = { branch, year, classId, subject: cells.subject };
+      await acting.published(scene, '2026-10-19', vacancy);
+      const journal = await acting.journal(branch, year, classId, cells.subject);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: substitute.staffId })
+        .where('id', '=', lesson)
+        .execute();
+      const pupil = await student(branch, classId, 'Ahmedov');
+      return {
+        acting,
+        branch,
+        year,
+        classId,
+        vacancy,
+        journal,
+        lesson,
+        pupil,
+        substituteBrowser,
+        scene,
+      };
+    }
+
+    it('lets the acting teacher of a vacancy add a work and type a number', async () => {
+      const v = await vacancyScene();
+      const actingBrowser = await account();
+      const person = await load.teacher(v.branch, {
+        subjects: [{ subject: v.scene.subject, grades: [7] }],
+        accountId: actingBrowser.account.id,
+      });
+      await v.acting.period(
+        {
+          ...v.scene,
+          vacancy: v.vacancy,
+          person: person.staffId,
+          personAccount: actingBrowser.account.id,
+          version: '',
+          journal: v.journal,
+        },
+        '2026-10-19',
+      );
+      await as(
+        actingBrowser,
+        v.branch,
+        [{ role: 'teacher', branchId: v.branch }],
+        async (calls) => {
+          const added = workSavedSchema.parse(
+            ok(await calls.post(`/api/journal/lessons/${v.lesson}/works`, { kind: 'classwork' })),
+          );
+          const totalled = workSavedSchema.parse(
+            ok(
+              await calls.put(`/api/journal/lessons/${v.lesson}/works/total`, {
+                column: { workId: added.id },
+                total: 5,
+                version: added.version,
+              }),
+            ),
+          );
+          ok(
+            await calls.post(`/api/journal/lessons/${v.lesson}/scores`, {
+              saves: [
+                { studentId: v.pupil, column: { workId: totalled.id }, score: 4, version: null },
+              ],
+            }),
+          );
+        },
+      );
+    });
+
+    it('takes attendance only on a day the journal has no teacher: the substitute marks attendance, no work', async () => {
+      const v = await vacancyScene();
+      await as(
+        v.substituteBrowser,
+        v.branch,
+        [{ role: 'teacher', branchId: v.branch }],
+        async (calls) => {
+          const refused = await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
+            kind: 'classwork',
+          });
+          expect(codeOf(refused)).toBe('lesson_attendance_only');
+          ok(
+            await calls.post(`/api/journal/lessons/${v.lesson}/attendance`, {
+              saves: [{ studentId: v.pupil, mark: 1, version: null }],
+            }),
+          );
+        },
+      );
+    });
+  });
+
+  describe('at the same moment', () => {
+    it('makes an add by hand wait for another add of the lesson, and refuses it past the tenth', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        for (let index = 0; index < 9; index += 1) {
+          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' }));
+        }
+      });
+      // The held side writes what the route writes: the lock of the limit, then the tenth work.
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.database.migrator
+        .transaction()
+        .execute(async (transaction) => {
+          await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+          await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${s.second}`}, 0))`.execute(
+            transaction,
+          );
+          await transaction
+            .insertInto('journal_works')
+            .values({
+              branch_id: s.branch,
+              lesson_id: s.second,
+              source_lesson_id: s.second,
+              kind: 'classwork',
+              position: 10,
+            })
+            .execute();
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      await as(owner, s.branch, [], async (calls) => {
+        const started = new Promise<Response>((resolve, reject) => {
+          calls
+            .post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })
+            .then(resolve, reject);
+        });
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const waiting = await sql<{ waiting: number }>`
+            select count(*)::int as waiting from pg_locks l
+            join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and not l.granted and l.locktype = 'advisory'
+          `.execute(t.database.migrator);
+          if ((waiting.rows[0]?.waiting ?? 0) >= 1) break;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        release();
+        expect(await held).toBeUndefined();
+        expect(codeOf(await started)).toBe('journal_works_limit');
+      });
+    });
+  });
+
+  describe('the separation of a shared plan (decision 17)', () => {
+    it('keeps the column, the total and the numbers of the separated journal', async () => {
+      const owner = await account();
+      const s = await publishedScene(t, load, {
+        graded: true,
+        shared: true,
+        accounts: { teacher: owner.account.id },
+      });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      const journal = await journalOf(s.classId);
+      const other = await journalOf(s.otherClass);
+      const q1 = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', s.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const pupil = await student(s.branch, s.otherClass, 'Ergashev');
+      const otherLesson = (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', s.otherClass)
+          .where('lesson_date', '=', '2026-10-12')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await as(owner, s.branch, [{ role: 'teacher', branchId: s.branch }], async (calls) => {
+        ok(
+          await calls.post(`/api/plans/journals/${journal}/share`, {
+            quarterId: q1,
+            journalId: other,
+          }),
+        );
+        const created = planItemSchema.parse(
+          ok(
+            // Written at the separated journal's own first row (the other journal lays it after its started rows).
+            await calls.post(`/api/plans/journals/${other}/items`, {
+              quarterId: q1,
+              position: 1,
+              lessonId: otherLesson,
+              values: {
+                topic: 'Fractions',
+                objectives: '',
+                links: [],
+                classworks: [{ title: 'Test', description: '' }],
+                homeworks: [],
+              },
+            }),
+            201,
+          ),
+        );
+        const planWork = created.classworks[0]?.id ?? '';
+        const work = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${otherLesson}/works/total`, {
+              column: { planWorkId: planWork, sourceLessonId: otherLesson },
+              total: 20,
+              version: null,
+            }),
+          ),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${otherLesson}/scores`, {
+            saves: [{ studentId: pupil, column: { workId: work.id }, score: 15, version: null }],
+          }),
+        );
+        ok(await calls.post(`/api/plans/journals/${other}/separate`, { quarterId: q1 }));
+        const grid = journalGridSchema.parse(ok(await calls.get(`/api/journal/journals/${other}`)));
+        const lesson = lessonIn(grid, otherLesson);
+        expect(lesson.works.map((one) => [one.id, one.title, one.total])).toEqual([
+          [work.id, 'Test', 20],
+        ]);
+        const at = grid.lessons.findIndex((one) => one.id === otherLesson);
+        expect(grid.students.find((one) => one.id === pupil)?.cells[at]?.works[0]?.score).toBe(15);
+        expect(lesson.works[0]?.planWorkId).not.toBe(planWork);
+      });
+      const row = await t.database.migrator
+        .selectFrom('journal_works')
+        .innerJoin('lesson_plan_works', 'lesson_plan_works.id', 'journal_works.plan_work_id')
+        .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_works.item_id')
+        .innerJoin(
+          'lesson_plan_journals',
+          'lesson_plan_journals.plan_id',
+          'lesson_plan_items.plan_id',
+        )
+        .select('lesson_plan_journals.journal_id')
+        .where('journal_works.lesson_id', '=', otherLesson)
+        .executeTakeFirstOrThrow();
+      expect(row.journal_id).toBe(other);
+    });
+  });
+
   describe('the plan save', () => {
     it('lets a plan item take over the works added by hand in order, keeps the numbers under their titles after a reorder, and refuses removing a work with data', async () => {
       const owner = await account();
@@ -1087,4 +1354,3 @@ describe('classwork and homework', () => {
     });
   });
 });
-

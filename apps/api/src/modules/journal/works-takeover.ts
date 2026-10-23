@@ -49,7 +49,9 @@ export async function takeOverUnplanned(
       .orderBy('id')
       .forUpdate()
       .execute();
-    const taken = new Set(rows.flatMap((row) => (row.plan_work_id === null ? [] : [row.plan_work_id])));
+    const taken = new Set(
+      rows.flatMap((row) => (row.plan_work_id === null ? [] : [row.plan_work_id])),
+    );
     for (const kind of ['classwork', 'homework'] as const) {
       const free = planned.filter((work) => work.kind === kind && !taken.has(work.id));
       const unplanned = rows.filter((row) => row.kind === kind && row.plan_work_id === null);
@@ -102,7 +104,12 @@ export async function followSeparation(
     .innerJoin('lesson_plan_works as copy', (join) =>
       join.onRef('copy.kind', '=', 'old.kind').onRef('copy.position', '=', 'old.position'),
     )
-    .select(['old.id as old_id', 'old.item_id as old_item', 'copy.id as copy_id', 'copy.item_id as copy_item'])
+    .select([
+      'old.id as old_id',
+      'old.item_id as old_item',
+      'copy.id as copy_id',
+      'copy.item_id as copy_item',
+    ])
     .where('old.item_id', 'in', [...copies.keys()])
     .where('copy.item_id', 'in', [...copies.values()])
     .execute();

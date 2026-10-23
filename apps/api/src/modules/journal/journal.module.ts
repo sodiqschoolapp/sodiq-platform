@@ -9,7 +9,12 @@ import { WorksController } from './works.controller.js';
 import { WorksService } from './works.service.js';
 
 @Module({
-  controllers: [JournalsController, AttendanceController, StudentAbsencesController, WorksController],
+  controllers: [
+    JournalsController,
+    AttendanceController,
+    StudentAbsencesController,
+    WorksController,
+  ],
   providers: [JournalGridReader, AttendanceService, StudentAbsences, WorksService],
 })
 export class JournalModule {}

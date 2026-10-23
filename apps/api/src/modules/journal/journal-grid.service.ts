@@ -732,7 +732,8 @@ export class JournalGridReader {
         canEnter: canEnter(lesson),
         canEnterWorks: canEnter(lesson) && worksTaken(lesson),
         planItem: columnsOf.get(lesson.id)?.planItem ?? false,
-        works: shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),
+        works:
+          shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),
         notHeldWorks:
           shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.notHeld ?? []).map(gridWork),
         given:

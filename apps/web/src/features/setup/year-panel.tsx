@@ -54,15 +54,25 @@ function CutHoldsList({ failure }: { failure: unknown }) {
           ? []
           : [
               <li key={path}>
-                {t('setup.years.cutHoldsLine', {
-                  student: stay.studentName ?? t('setup.years.cutHoldsOtherBranch'),
-                  unit:
-                    stay.unit.grade === null
-                      ? stay.unit.name
-                      : classDisplayName(stay.unit.grade, stay.unit.name),
-                  from: schoolDateText(stay.firstDay, i18n.language),
-                  until: schoolDateText(stay.lastDay, i18n.language),
-                })}
+                {/* Task 8.1 (decision 16): a mark or a number of the student on that day. */}
+                {stay.entry === true
+                  ? t('setup.years.cutHoldsEntry', {
+                      student: stay.studentName ?? t('setup.years.cutHoldsOtherBranch'),
+                      unit:
+                        stay.unit.grade === null
+                          ? stay.unit.name
+                          : classDisplayName(stay.unit.grade, stay.unit.name),
+                      from: schoolDateText(stay.firstDay, i18n.language),
+                    })
+                  : t('setup.years.cutHoldsLine', {
+                      student: stay.studentName ?? t('setup.years.cutHoldsOtherBranch'),
+                      unit:
+                        stay.unit.grade === null
+                          ? stay.unit.name
+                          : classDisplayName(stay.unit.grade, stay.unit.name),
+                      from: schoolDateText(stay.firstDay, i18n.language),
+                      until: schoolDateText(stay.lastDay, i18n.language),
+                    })}
               </li>,
             ],
       )}

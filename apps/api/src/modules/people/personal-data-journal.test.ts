@@ -185,8 +185,16 @@ describe('the marks and attendance of the student report', () => {
     const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
     const studentId = pupil ?? '';
     const lesson = await cells.lesson(t.north, year, classId, '2026-10-19');
-    const own = await workWithTotal(t.database.migrator, { branchId: t.north, lessonId: lesson, total: 10 });
-    const other = await workWithTotal(t.database.migrator, { branchId: t.north, lessonId: lesson, total: 10 });
+    const own = await workWithTotal(t.database.migrator, {
+      branchId: t.north,
+      lessonId: lesson,
+      total: 10,
+    });
+    const other = await workWithTotal(t.database.migrator, {
+      branchId: t.north,
+      lessonId: lesson,
+      total: 10,
+    });
     await save(
       t.north,
       [{ lessonId: lesson, studentId, workId: own, value: 7, version: null }],
@@ -209,9 +217,9 @@ describe('the marks and attendance of the student report', () => {
     });
     t.clock.set(NOW);
     const found = await report(studentId);
-    expect(found.journal.workHistory.map((line) => [line.workId, line.totalBefore, line.totalAfter])).toEqual([
-      [own, 10, 20],
-    ]);
+    expect(
+      found.journal.workHistory.map((line) => [line.workId, line.totalBefore, line.totalAfter]),
+    ).toEqual([[own, 10, 20]]);
     expect(found.journal.workHistory[0]?.changedBy?.accountId).toBe(teacher);
   });
 

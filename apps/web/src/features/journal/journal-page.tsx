@@ -25,6 +25,7 @@ import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
 import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
+import { useWorksEntry } from './works-entry';
 import { journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
@@ -150,6 +151,9 @@ function JournalLoaded({
   // Lesson mode on a phone (`12`, Devices), or by the switch.
   const narrow = !useMinWidth(SM);
   const { entry, notices } = useAttendanceEntry(data);
+  // Task 8.1: works and numbers.
+  const { works, dialogs } = useWorksEntry(data);
+  const [refusedNumber, setRefusedNumber] = useState<number | null>(null);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;
   const subject = nameOf(data.journal.subject.names, language);
@@ -312,6 +316,12 @@ function JournalLoaded({
           </div>
         </div>
         {notices}
+        {dialogs}
+        {refusedNumber !== null && (
+          <p role="alert" className="text-sm text-destructive" data-refused-number="true">
+            {t('journal.works.wholeNumber', { total: refusedNumber })}
+          </p>
+        )}
         {data.lessons.length === 0 ? (
           <div className={PANEL}>
             <EmptyState text={t('journal.page.noLessons')} />
@@ -337,6 +347,8 @@ function JournalLoaded({
               }}
               scrollTo={nearest?.id ?? null}
               entry={entry}
+              works={works}
+              onRefusedNumber={setRefusedNumber}
             />
           </div>
         )}

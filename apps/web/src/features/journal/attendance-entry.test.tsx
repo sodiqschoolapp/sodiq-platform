@@ -53,6 +53,10 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   month: '2026-10',
   canEnter,
   works: [],
+  canEnterWorks: false,
+  planItem: true,
+  notHeldWorks: [],
+  given: [],
 });
 
 /** An attendance-only journal (a Ma'naviyat soati of a class): today's lesson entered, an older one read. */
@@ -77,6 +81,7 @@ const GRID: JournalGrid = {
   lessons: [lesson(LESSON, '2026-10-27', true), lesson(OLD, '2026-10-20', false)],
   students: [student(1, 'Zokirov'), student(2, 'Abdullayev', { cells: [cell(2), cell(0)] })],
   absences: [{ studentId: uid(101), date: '2026-10-20', category: 'illness' }],
+  lastTotal: null,
   bottom: null,
   legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },
 };
@@ -93,6 +98,7 @@ const HISTORY: CellHistory = {
       changedAt: '2026-10-27T03:05:00.000Z',
     },
   ],
+  workLines: [],
 };
 
 function open(path = `/journal/${JOURNAL}`, language: 'en' | 'ru' = 'en', grid = GRID) {

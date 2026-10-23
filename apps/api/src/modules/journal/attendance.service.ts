@@ -68,7 +68,8 @@ async function keepOrClear(
           {
             path: `saves.${String(index)}.numbers`,
             code: 'unexpected',
-            message: 'Only a change from present or late to absent or skipped with numbers keeps or clears them.',
+            message:
+              'Only a change from present or late to absent or skipped with numbers keeps or clears them.',
           },
         ]);
       }
@@ -210,11 +211,13 @@ export class AttendanceService {
       );
       const cells = await inGridOrder(
         transaction,
-        saved.flatMap((cell) => (cell.workId === null ? [cell] : [])).map((cell) => ({
-          studentId: cell.studentId,
-          mark: cell.value === null ? null : attendanceMarkSchema.parse(cell.value),
-          version: cell.version,
-        })),
+        saved
+          .flatMap((cell) => (cell.workId === null ? [cell] : []))
+          .map((cell) => ({
+            studentId: cell.studentId,
+            mark: cell.value === null ? null : attendanceMarkSchema.parse(cell.value),
+            version: cell.version,
+          })),
       );
       const zeros = cells.filter((cell) => cell.mark === 0).map((cell) => cell.studentId);
       return { cells, presentEarlier: await presentEarlierOf(transaction, lesson, zeros) };

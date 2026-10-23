@@ -36,6 +36,28 @@ const BY_ADMIN: Reset = {
       student: { id: uid(5), uid: '2607001', firstName: 'Gulnoza', lastName: 'Ismoilova' },
     },
   ],
+  // Task 8.1: a total set in the 48 hours.
+  workEntries: [
+    {
+      id: uid(8),
+      workId: uid(9),
+      workKind: 'classwork',
+      changedAt: '2026-10-12T05:10:00.000Z',
+      lesson: {
+        date: '2026-10-12',
+        startsAt: '2026-10-12T03:00:00.000Z',
+        subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        taughtTo: '7 Oxford',
+        cancelled: false,
+      },
+      totalBefore: null,
+      totalAfter: 30,
+      notHeldBefore: false,
+      notHeldAfter: false,
+      changedHow: 'entry',
+      changedBy: { accountId: uid(2), login: 'n.rahimova', name: 'Rahimova Nodira' },
+    },
+  ],
 };
 
 const BY_EMAIL: Reset = {
@@ -51,6 +73,7 @@ const BY_EMAIL: Reset = {
     at: '2026-10-11T03:00:00.000Z',
   },
   entries: [],
+  workEntries: [],
 };
 
 const ROUTE = 'GET /api/people/accounts/reset-entries';
@@ -97,6 +120,10 @@ describe('the entries after a reset', () => {
     expect(row?.textContent).toContain(`1 (${en.journal.marks.present})`);
     expect(row?.textContent).toContain(`0 (${en.journal.marks.absent})`);
     expect(admin.querySelector('[data-email-changed]')).toBeNull();
+    // Task 8.1: the total set in the 48 hours, in its own table.
+    expect(admin.querySelector('[data-work-entries] tbody tr')?.textContent).toContain(
+      `${en.journal.works.historyTotal.replace('{{work}}', en.journal.grid.parts.classwork)}: — → 30`,
+    );
     // The email reset after an edit of the email by somebody else is marked, with no entries.
     const email = card('Qodirov Kamol');
     expect(email.textContent).toContain(en.people.resetEntries.kinds.email);
