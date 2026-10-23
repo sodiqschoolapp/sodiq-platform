@@ -10,6 +10,7 @@ import {
   type BulkCancelChoice,
   type BulkCancelDataLesson,
   type ErrorDetail,
+  type PlanImpact,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
@@ -27,6 +28,7 @@ import { dataHeldBy } from './lesson-data.js';
 import { PUBLISH_LOCK, lockPublishChain, refusingPublish } from './publish.service.js';
 import { storedLessonsOn, type StoredDayLesson } from './stored-day.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /** A chosen lesson slot of a class on the date, at the times of its own day (decision 2). */
 interface Span {
@@ -105,6 +107,7 @@ export class TimetableBulkCancels {
     private readonly audit: Audit,
     private readonly requestKeys: RequestKeys,
     private readonly notifications: Notifications,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** What a bulk cancel of the input would do; writes nothing. */
@@ -133,6 +136,31 @@ export class TimetableBulkCancels {
           .map((id) => ({ id, name: scope.classNames.get(id) ?? '' }))
           .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
       const chosen = new Set(input.classIds);
+      const withData = await withDataOf(transaction, scope.items);
+      // Task 7.1b: what the cancel does to each plan (edge/lesson-plans, "The
+      // impact preview shows, per plan, items that no longer fit and rows left
+      // empty"): the lessons of the scope without data cancelled under a
+      // savepoint rolled back, every shared block taken as cancelled.
+      const keptData = new Set(withData.map((one) => one.lessonId));
+      const cancelled = scope.items
+        .flatMap((item) => item.lessons)
+        .map((one) => one.id)
+        .filter((id) => !keptData.has(id));
+      await sql`savepoint bulk_cancel_plans`.execute(transaction);
+      let plans: PlanImpact[];
+      try {
+        if (cancelled.length > 0) {
+          await transaction
+            .updateTable('lessons')
+            .set({ cancel_cause: 'reason', cancel_reason: input.date })
+            .where('id', 'in', cancelled)
+            .execute();
+        }
+        plans = await this.planFollow.preview(transaction, access);
+      } finally {
+        await sql`rollback to savepoint bulk_cancel_plans`.execute(transaction);
+        await sql`release savepoint bulk_cancel_plans`.execute(transaction);
+      }
       return bulkCancelCheckAnswerSchema.parse({
         date: input.date,
         cancel: scope.items
@@ -160,7 +188,8 @@ export class TimetableBulkCancels {
           }),
         alreadyCancelled: show(scope.alreadyCancelled),
         held: show(scope.held),
-        withData: await withDataOf(transaction, scope.items),
+        withData,
+        plans,
       });
     });
   }

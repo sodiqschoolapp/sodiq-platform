@@ -3,9 +3,12 @@ import {
   apiErrorSchema,
   BRANCH_HEADER,
   bulkCancelCheckAnswerSchema,
+  calendarPreviewSchema,
   planItemSchema,
   planLessonItemSchema,
   planSchema,
+  publishCheckSchema,
+  quartersPreviewSchema,
   REQUEST_KEY_HEADER,
   vacancyFillCheckSchema,
   type Plan,
@@ -242,6 +245,7 @@ describe('plan items follow the timetable', () => {
     x: Scene,
     startsOn: string,
     place: (draft: string, rows: { id: string; class_id: string | null }[]) => Promise<void>,
+    publish = true,
   ) {
     const created = ok(
       await t.post('/api/timetable/versions', x.s.branch, {
@@ -264,7 +268,7 @@ describe('plan items follow the timetable', () => {
     await place(draft, rows);
     ok(await t.post(`/api/timetable/versions/${draft}/templates/confirm`, x.s.branch));
     await load.freeEditLock(draft);
-    ok(await publishOf(t)(x.s.branch, draft, startsOn));
+    if (publish) ok(await publishOf(t)(x.s.branch, draft, startsOn));
     return draft;
   }
 
@@ -794,6 +798,144 @@ describe('plan items follow the timetable', () => {
         expect(read.status).toBe(404);
       }
       expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  it('changes no plan of either branch when a write of dated lessons answers 404 for another branch\'s or an unknown lesson', async () => {
+    const x = await scene();
+    const y = await scene();
+    await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+    await fill(y, [1, 2, 3, 4, 5, 6, 7, 8]);
+    const foreign = await lessonOn(y.s, '2026-11-09');
+    const before = [await t.rowsOf(x.s.branch), await t.rowsOf(y.s.branch)];
+    for (const id of [foreign.id, randomUUID()]) {
+      for (const [path, body] of [
+        ['cancel', { reason: 'Excursion' }],
+        ['restore', {}],
+        ['move', { date: '2026-11-18', lessonNumber: 1, reason: 'Swapped' }],
+        ['correction', { kind: 'cancel', reason: 'Did not happen' }],
+        ['substitute', { teacherId: x.s.spareTeacher.staffId, reason: 'Seminar', confirm: true }],
+      ] as const) {
+        const answer = await keyed(`/api/timetable/lessons/${id}/${path}`, x.s.branch, body);
+        expect(answer.status, `${path} ${JSON.stringify(answer.body)}`).toBe(404);
+      }
+    }
+    expect([await t.rowsOf(x.s.branch), await t.rowsOf(y.s.branch)]).toEqual(before);
+  });
+
+  describe('the impact previews show, per plan, items that no longer fit and rows left empty', () => {
+    const dayOff = {
+      kind: 'day_off',
+      name: 'Founders day',
+      firstDate: '2026-11-23',
+      lastDate: '2026-11-23',
+      gradeFrom: null,
+      gradeTo: null,
+      dayTemplateId: null,
+      followsWeekday: null,
+      examWeek: null,
+    };
+
+    it('in the preview of a calendar entry, and writes nothing', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      const before = await t.rowsOf(x.s.branch);
+      const preview = calendarPreviewSchema.parse(
+        ok(
+          await t.post('/api/setup/calendar-entries/preview', x.s.branch, {
+            action: 'create',
+            record: dayOff,
+          }),
+        ).body,
+      );
+      expect(preview.plans).toEqual([
+        expect.objectContaining({
+          journalId: x.journal,
+          quarter: 2,
+          moved: 6,
+          notFitting: ['Topic 8'],
+          emptyRows: 0,
+        }),
+      ]);
+      expect(await t.rowsOf(x.s.branch)).toEqual(before);
+    });
+
+    it('in the check of a bulk cancel, with the rows left empty', async () => {
+      const x = await scene();
+      await fill(x, [1, 2]);
+      const before = await t.rowsOf(x.s.branch);
+      const check = bulkCancelCheckAnswerSchema.parse(
+        ok(
+          await t.post('/api/timetable/bulk-cancels/check', x.s.branch, {
+            date: '2026-11-09',
+            classIds: [x.s.classId],
+            lessonNumbers: [1],
+          }),
+        ).body,
+      );
+      expect(check.plans).toEqual([
+        expect.objectContaining({ journalId: x.journal, moved: 2, notFitting: [], emptyRows: 5 }),
+      ]);
+      expect(await t.rowsOf(x.s.branch)).toEqual(before);
+    });
+
+    it('in the preview of the quarter dates', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      const preview = quartersPreviewSchema.parse(
+        ok(
+          await t.post(`/api/setup/academic-years/${x.s.year}/quarters/preview`, x.s.branch, {
+            quarters: [
+              { startDate: '2026-09-01', endDate: '2026-10-31' },
+              { startDate: '2026-11-09', endDate: '2026-12-20' },
+              { startDate: '2027-01-11', endDate: '2027-03-20' },
+              { startDate: '2027-03-30', endDate: '2027-05-31' },
+            ],
+          }),
+        ).body,
+      );
+      expect(preview.plans).toEqual([
+        expect.objectContaining({ journalId: x.journal, notFitting: ['Topic 7', 'Topic 8'] }),
+      ]);
+    });
+
+    it('in the publish check, laid on the draft\'s lessons', async () => {
+      const x = await scene();
+      await fill(x, [1, 2, 3, 4, 5, 6, 7, 8]);
+      // The class's maths every second Monday is not possible in a weekly
+      // pattern; the draft drops it from 7 December by starting there with no row.
+      const draft = await publishWith(
+        x,
+        '2026-12-07',
+        async (version, rows) => {
+          for (const row of rows) {
+            if (row.class_id === x.s.classId) {
+              await t.database.migrator
+                .deleteFrom('teaching_load_rows')
+                .where('id', '=', row.id)
+                .execute();
+            } else {
+              await placeAt(x, version, row.id, 1);
+            }
+          }
+        },
+        false,
+      );
+      const check = publishCheckSchema.parse(
+        ok(
+          await t.get(
+            `/api/timetable/versions/${draft}/publish-check?startsOn=2026-12-07`,
+            x.s.branch,
+          ),
+        ).body,
+      );
+      expect(check.plans).toEqual([
+        expect.objectContaining({
+          journalId: x.journal,
+          notFitting: ['Topic 5', 'Topic 6', 'Topic 7', 'Topic 8'],
+          emptyRows: 0,
+        }),
+      ]);
     });
   });
 

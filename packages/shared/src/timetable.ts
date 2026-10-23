@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { planImpactSchema } from './plans.js';
 import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { tableCellSchema } from './day-templates.js';
 import { instructionLanguageSchema } from './settings.js';
@@ -2002,6 +2003,8 @@ export const publishCheckSchema = z.object({
   unusedKeeps: z.array(z.object({ date: schoolDateSchema, classId: z.uuid() })),
   /** Task 5.5a-3a: `null` when no published version of the year starts on or after the start. */
   chain: publishChainAnswerSchema.nullable(),
+  /** Task 7.1b: per plan, the items that no longer fit and the rows left empty. */
+  plans: z.array(planImpactSchema),
   canPublish: z.boolean(),
 });
 

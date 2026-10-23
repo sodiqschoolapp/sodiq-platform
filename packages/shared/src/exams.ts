@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { planImpactSchema } from './plans.js';
 import { schoolDateSchema } from './academic-year.js';
 import { DAY_CHANGE_REASON_MAX, dayLessonSchema } from './day-changes.js';
 import { errorDetailSchema } from './errors.js';
@@ -368,6 +369,8 @@ export const examCheckSchema = z.object({
   /** The journals a save would store, when the body is a rating exam (task 5.6c-3b). */
   rating: examRatingSchema.nullable(),
   canSave: z.boolean(),
+  /** Task 7.1b: per plan, the items that no longer fit and the rows left empty. */
+  plans: z.array(planImpactSchema),
 });
 
 export type ExamCheck = z.infer<typeof examCheckSchema>;

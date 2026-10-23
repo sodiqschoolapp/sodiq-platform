@@ -39,6 +39,7 @@ import {
 } from '../timetable/calendar-lessons.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
 import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /** A refusal of 409 that names the fields to show it beside. */
 function refused(
@@ -236,6 +237,7 @@ export class Calendar {
     private readonly audit: Audit,
     private readonly lessons: TimetableCalendarLessons,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   private async context(
@@ -592,6 +594,8 @@ export class Calendar {
           throw new PreviewDone({
             changes: changesOn(context, [...dates].sort(), before, after, entriesAfter),
             lessons: context.rewrite.result?.lessons ?? NO_LESSONS,
+            // Task 7.1b: what the change does to each plan (edge/lesson-plans).
+            plans: await this.planFollow.preview(context.transaction, access),
           });
         },
         change.action === 'restore' ? RESTORE_REFUSALS : REFUSALS,

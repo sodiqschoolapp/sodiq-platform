@@ -711,6 +711,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // Task 7.1a: the plans, scope in the route; only the owner writes (plans.test.ts).
   'GET /api/plans': { branch: 'request', roles: PLAN_READERS },
   'GET /api/plans/journals/:journalId': { branch: 'request', roles: PLAN_READERS },
+  // Task 7.1b: the item of one lesson (a reader of the plan or the lesson's substitute).
+  'GET /api/plans/lessons/:lessonId': { branch: 'request', roles: PLAN_READERS },
   'POST /api/plans/journals/:journalId/items': { branch: 'request', roles: PLAN_WRITERS },
   'PUT /api/plans/items/:itemId': { branch: 'request', roles: PLAN_WRITERS },
   'POST /api/plans/items/:itemId/clear': { branch: 'request', roles: PLAN_WRITERS },

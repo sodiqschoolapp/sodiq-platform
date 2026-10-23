@@ -36,10 +36,11 @@ import { TimetableViews } from './views.service.js';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { ChromiumPdfRenderer, PDF_RENDERER } from '../../http/pdf.js';
+import { PlansModule } from '../plans/plans.module.js';
 
 /** Draft timetable versions, their teaching load (task 3.4a) and the grid of their pattern (task 5.4a) publish (task 5.5a-1) bringing a draft up to date (tasks 5.5a-3b-1 and 5.5a-3b-2) one-day changes (task 5.6a-1), the bulk cancel (task 5.6a-3) exams (task 5.6c-1) the vacancy fill (task 5.7a-3a) and the acting teacher (task 5.7a-3c), the read-only views (task 5.9a) and the teaching home page (task 5.9b). */
 @Module({
-  imports: [AccessModule, NotificationsModule],
+  imports: [AccessModule, NotificationsModule, PlansModule],
   controllers: [
     TimetableController,
     DayChangesController,

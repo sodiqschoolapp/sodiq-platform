@@ -70,6 +70,7 @@ import {
   type Invigilation,
   type WeekSnapshot,
 } from './week-changes.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /**
  * Exams in the timetable (task 5.6c-1, pull request #181; docs/spec/
@@ -222,6 +223,7 @@ export class TimetableExams {
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
     private readonly notifications: Notifications,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** The branch's exams of a range of dates, standing and cancelled. */
@@ -343,7 +345,11 @@ export class TimetableExams {
             } catch (error) {
               if (!(error instanceof CheckDone)) throw error;
             }
-            throw new PreviewDone(await checkAnswer(transaction, before, moment, found));
+            throw new PreviewDone({
+              ...(await checkAnswer(transaction, before, moment, found)),
+              // Task 7.1b: what the save does to each plan (edge/lesson-plans).
+              plans: await this.planFollow.preview(transaction, access),
+            });
           }),
         EXAM_REFUSALS,
       );

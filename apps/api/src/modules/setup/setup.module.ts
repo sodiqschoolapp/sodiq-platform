@@ -24,6 +24,7 @@ import { SubjectsController } from './subjects.controller.js';
 import { Subjects } from './subjects.service.js';
 import { QuarterLessons } from './quarter-lessons.js';
 import { TemplateLessons } from './template-lessons.js';
+import { PlansModule } from '../plans/plans.module.js';
 
 /**
  * School setup (docs/spec/03-school-setup.md): the branch record, buildings,
@@ -34,7 +35,7 @@ import { TemplateLessons } from './template-lessons.js';
  * the forced delete of a building, floor or room (task 5.8c).
  */
 @Module({
-  imports: [TimetableModule],
+  imports: [TimetableModule, PlansModule],
   controllers: [
     BranchesController,
     BuildingsController,

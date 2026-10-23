@@ -14,6 +14,7 @@ import {
   type PublishBody,
   type PublishChain,
   type PublishChainAnswer,
+  type PlanImpact,
   type PublishCheck,
   type PublishRefusal,
   type RuleResultAnswer,
@@ -110,6 +111,7 @@ import { lockSubjects, Timetable, type VersionRow } from './timetable.service.js
 import { auditOf, followChanged, followVersion } from './tutor-lessons.js';
 import { storeVersionDays } from './version-days.js';
 import { sendWeekChanges, snapshotWeek } from './week-changes.js';
+import { PlanFollow } from '../plans/plan-follow.js';
 
 /**
  * The one lock of every publish of the school (decision 2): two publishes run
@@ -534,6 +536,7 @@ export class TimetablePublish {
     private readonly timetable: Timetable,
     private readonly pattern: TimetablePattern,
     private readonly notifications: Notifications,
+    private readonly planFollow: PlanFollow,
   ) {}
 
   /** What a publish on the date would refuse and warn, written nowhere (decision 13). */
@@ -566,12 +569,62 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
+        plans: await this.plansOf(transaction, access, version, startsOn, findings),
         // Task 6.1b-1 (decision 3): a lesson with data in the way refuses the publish too.
         canPublish:
           version.status === 'draft' &&
           findings.refusals.length === 0 &&
           (findings.impact?.answer.heldData.length ?? 0) === 0,
       };
+    });
+  }
+
+  /**
+   * Task 7.1b (`edge/lesson-plans`: "The impact preview shows, per plan,
+   * items that no longer fit and rows left empty"): each plan of the year laid
+   * on its stored lessons before the start and after the draft's last date,
+   * and on the draft's dated lessons between them. The one-day changes a
+   * publish keeps over the draft's dates are not applied here.
+   */
+  private async plansOf(
+    transaction: Transaction,
+    access: Access,
+    version: { readonly branch_id: string; readonly academic_year_id: string },
+    startsOn: string,
+    findings: Findings,
+  ): Promise<PlanImpact[]> {
+    const written = findings.written;
+    if (written === null) return [];
+    const lastDate = written.state.pattern.model.data.versionEnd;
+    const dated = written.findings.dated.lessons;
+    return this.planFollow.preview(transaction, access, {
+      branchId: version.branch_id,
+      yearId: version.academic_year_id,
+      rows: (journal, _quarter, stored) =>
+        [
+          ...stored.filter((row) => row.date < startsOn || row.date > lastDate),
+          ...dated
+            .filter(
+              (lesson) =>
+                lesson.date >= startsOn &&
+                lesson.date <= lastDate &&
+                lesson.placement.subjectId === journal.subjectId &&
+                (journal.classId === null
+                  ? lesson.placement.groupId === journal.groupId
+                  : lesson.placement.classId === journal.classId &&
+                    lesson.placement.groupId === null),
+            )
+            .map((lesson) => ({
+              lessonId: `draft:${lesson.placement.id}@${lesson.date}`,
+              date: lesson.date,
+              startsAt: new Date(
+                written.findings.begins(lesson.date).getTime() + lesson.placement.start * 60_000,
+              ),
+            })),
+        ].sort(
+          (a, b) =>
+            a.startsAt.getTime() - b.startsAt.getTime() || a.lessonId.localeCompare(b.lessonId),
+        ),
     });
   }
 
@@ -840,6 +893,9 @@ export class TimetablePublish {
         shortenedDays: findings.shortenedDays,
         unusedKeeps: findings.unusedKeeps,
         chain: findings.chain,
+        // Task 7.1b: a fill changes the teacher of its rows, not their lessons,
+        // so no item of a plan moves; the new owner gets a prepared request.
+        plans: [],
         canPublish:
           findings.refusals.length === 0 && (findings.impact?.answer.heldData.length ?? 0) === 0,
       },

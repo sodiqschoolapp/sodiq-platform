@@ -32,6 +32,20 @@ import { planReachOf, planReaderOf } from './plan-scope.js';
  * write, for the impact previews that run a change and roll it back.
  */
 
+/**
+ * Rows a check computes without writing them (the publish check, task 7.1b):
+ * the plans of a year laid on `rows`, given the rows stored now.
+ */
+export interface LaidRows {
+  readonly branchId: string;
+  readonly yearId: string;
+  readonly rows: (
+    journal: JournalRow,
+    quarter: PlanQuarter,
+    stored: readonly QueueRow[],
+  ) => readonly QueueRow[];
+}
+
 /** A plan of a marked journal, as the follow reads it. */
 interface FollowedPlan {
   readonly planId: string;
@@ -115,12 +129,20 @@ export class PlanFollow implements OnModuleInit {
    * the rows left empty (`edge/lesson-plans`: "The impact preview shows, per
    * plan, items that no longer fit and rows left empty").
    */
-  async preview(transaction: Transaction, access: Access): Promise<PlanImpact[]> {
-    const marks = await this.marksOf(transaction);
+  async preview(
+    transaction: Transaction,
+    access: Access,
+    laid?: LaidRows,
+  ): Promise<PlanImpact[]> {
+    const marks =
+      laid === undefined
+        ? await this.marksOf(transaction)
+        : new Map([[laid.branchId, await this.plannedJournals(transaction, laid)]]);
     const impacts: PlanImpact[] = [];
     const reader = await planReaderOf(transaction, access);
     for (const [branchId, journalIds] of marks) {
-      const followed = await this.followBranch(transaction, branchId, journalIds);
+      if (journalIds.length === 0) continue;
+      const followed = await this.followBranch(transaction, branchId, journalIds, laid?.rows);
       const { today, now } = await this.clockOf(transaction, branchId);
       const facts = await this.factsOf(
         transaction,
@@ -147,6 +169,20 @@ export class PlanFollow implements OnModuleInit {
         a.subject.names.en.localeCompare(b.subject.names.en, 'en') ||
         a.quarter - b.quarter,
     );
+  }
+
+  /** The journals with a plan of a year of the branch. */
+  private async plannedJournals(transaction: Transaction, laid: LaidRows): Promise<string[]> {
+    const rows = await transaction
+      .selectFrom('lesson_plan_journals')
+      .innerJoin('journals', 'journals.id', 'lesson_plan_journals.journal_id')
+      .select('journals.id')
+      .distinct()
+      .where('journals.branch_id', '=', laid.branchId)
+      .where('journals.academic_year_id', '=', laid.yearId)
+      .orderBy('journals.id')
+      .execute();
+    return rows.map((row) => row.id);
   }
 
   /** The journals marked by this transaction, by branch. */
@@ -203,6 +239,7 @@ export class PlanFollow implements OnModuleInit {
     transaction: Transaction,
     branchId: string,
     journalIds: readonly string[],
+    rewrite?: LaidRows['rows'],
   ): Promise<Followed[]> {
     await transaction
       .selectFrom('journals')
@@ -301,9 +338,15 @@ export class PlanFollow implements OnModuleInit {
         startDate: plan.start_date,
         endDate: plan.end_date,
       };
-      const after = (lessons.get(unitKey(journal)) ?? []).filter(
+      const stored = (lessons.get(unitKey(journal)) ?? []).filter(
         (row) => quarter.startDate <= row.date && row.date <= quarter.endDate,
       );
+      const after =
+        rewrite === undefined
+          ? stored
+          : rewrite(journal, quarter, stored).filter(
+              (row) => quarter.startDate <= row.date && row.date <= quarter.endDate,
+            );
       const snapshot = snapshots.filter(
         (row) => row.plan_id === plan.plan_id && row.journal_id === plan.journal_id,
       );
