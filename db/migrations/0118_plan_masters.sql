@@ -230,6 +230,7 @@ alter table lesson_plans add constraint lesson_plans_master_check check (
   (master_id is null) = (master_revision is null)
 );
 
+grant insert (master_id, master_revision) on lesson_plans to sodiq_app;
 grant update (master_id, master_revision) on lesson_plans to sodiq_app;
 
 -- The master item an item was copied from (decision 11: copied with the item).

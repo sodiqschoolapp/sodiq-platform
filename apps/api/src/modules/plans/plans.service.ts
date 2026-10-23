@@ -76,6 +76,7 @@ import {
   type GateRow,
 } from './plan-window.js';
 import { placeNew } from './plan-share.js';
+import { planMasterMark } from './plan-masters-read.js';
 
 /**
  * Lesson plans and their items (task 7.1a, pull request #212; `09`, What a
@@ -288,6 +289,34 @@ export class PlansService {
           );
         }
       }
+      // Task 7.3: "master updated" (decision 12), worked out only for a plan whose master moved on.
+      const updated = new Set<string>();
+      const linked =
+        links.length === 0
+          ? []
+          : await transaction
+              .selectFrom('lesson_plans')
+              .innerJoin('lesson_plan_masters', 'lesson_plan_masters.id', 'lesson_plans.master_id')
+              .select(['lesson_plans.id'])
+              .where(
+                'lesson_plans.id',
+                'in',
+                links.map((link) => link.plan_id),
+              )
+              .whereRef('lesson_plan_masters.revision', '>', 'lesson_plans.master_revision')
+              .execute();
+      const moved = new Set(linked.map((row) => row.id));
+      for (const link of links) {
+        if (!moved.has(link.plan_id)) continue;
+        const quarter = quarters.find((one) => one.id === link.quarter_id);
+        if (quarter === undefined) continue;
+        const mark = await planMasterMark(
+          transaction,
+          { branchId, quarter, timeZone, now },
+          link.plan_id,
+        );
+        if (mark?.updated === true) updated.add(`${link.journal_id}|${link.quarter_id}`);
+      }
       const sorted = [...readable].sort(
         (a, b) =>
           Number(a.classId === null) - Number(b.classId === null) ||
@@ -322,6 +351,7 @@ export class PlansService {
               rows,
               empty: Math.max(rows - topics, 0),
               flag: flags.get(key) ?? null,
+              masterUpdated: updated.has(key),
             };
           }),
         })),
@@ -543,6 +573,8 @@ export class PlansService {
         scene.reach.edit && !scene.closed && scene.open
           ? await this.shareCandidates(transaction, scene, planId)
           : [],
+      // Task 7.3: the master the plan was copied from, and "master updated" (decision 12).
+      master: await planMasterMark(transaction, scene, planId),
     });
   }
 

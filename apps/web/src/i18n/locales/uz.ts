@@ -3305,6 +3305,18 @@ export const uz: Texts<'one' | 'other'> = {
         shared: 'Sinf yoki guruh umumiy rejaga qoʻshildi',
         separated: 'Sinf yoki guruh umumiy rejadan ajratildi',
         copied: 'Reja boshqa rejadan nusxalandi',
+        master_taken: 'Master-reja oʻzgarishlari qabul qilindi',
+        master_kept: 'Master-reja oʻzgargach reja oʻz holicha qoldirildi',
+      },
+      plan_master: {
+        create: 'Master-reja yaratildi',
+        rename: 'Master-reja nomi oʻzgartirildi',
+        archive: 'Master-reja arxivlandi',
+        restore: 'Master-reja tiklandi',
+        item_create: 'Master-reja qatori qoʻshildi',
+        item_edit: 'Master-reja qatori oʻzgartirildi',
+        item_remove: 'Master-reja qatori olib tashlandi',
+        order: 'Master-reja qatorlari tartibi oʻzgartirildi',
       },
       absence_reason: {
         set: 'Dars qoldirish sababi belgilandi',

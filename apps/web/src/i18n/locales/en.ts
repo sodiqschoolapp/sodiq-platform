@@ -3273,6 +3273,18 @@ export const en = {
         shared: 'Class or group joined a shared plan',
         separated: 'Class or group separated from a shared plan',
         copied: 'Plan copied from another plan',
+        master_taken: 'Changes of the master plan taken',
+        master_kept: 'Plan kept as it is after a master change',
+      },
+      plan_master: {
+        create: 'Master plan created',
+        rename: 'Master plan renamed',
+        archive: 'Master plan archived',
+        restore: 'Master plan restored',
+        item_create: 'Master plan row added',
+        item_edit: 'Master plan row changed',
+        item_remove: 'Master plan row removed',
+        order: 'Order of master plan rows changed',
       },
       absence_reason: {
         set: 'Reason of absence set',

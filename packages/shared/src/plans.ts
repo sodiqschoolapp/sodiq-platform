@@ -842,9 +842,10 @@ export const planMasterItemCreateSchema = z.strictObject({
 
 export type PlanMasterItemCreate = z.infer<typeof planMasterItemCreateSchema>;
 
+/** The works of a master item are replaced as a whole: nothing refers to them by id. */
 export const planMasterItemSaveSchema = z.strictObject({
   revision: z.int().min(0),
-  values: planItemValuesSchema,
+  values: planNewItemValuesSchema,
 });
 
 export type PlanMasterItemSave = z.infer<typeof planMasterItemSaveSchema>;
@@ -918,6 +919,10 @@ export const planMasterCompareSchema = z.object({
 });
 
 export type PlanMasterCompare = z.infer<typeof planMasterCompareSchema>;
+
+export const planMasterCompareQuerySchema = z.strictObject({ quarterId: z.uuid() });
+
+export type PlanMasterCompareQuery = z.infer<typeof planMasterCompareQuerySchema>;
 
 /** Take the master's changes, or keep the plan as it is (decision 6). */
 export const planMasterTakeSchema = z.strictObject({

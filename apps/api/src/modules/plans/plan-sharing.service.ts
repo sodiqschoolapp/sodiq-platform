@@ -9,7 +9,14 @@ import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { lockJournals, planIdOf, planItems, planJournalIds, planRows } from './plan-read.js';
-import { copyItems, separateJournal, unitKeysOf } from './plan-separate.js';
+import { copyItems, insertFromMaster, separateJournal, unitKeysOf } from './plan-separate.js';
+import {
+  masterItemsOf,
+  masterRowOf,
+  planMasterOf,
+  readsMaster,
+  startYearOf,
+} from './plan-masters-read.js';
 import type { GateTarget } from './plan-gate.js';
 import { gateAudit, PlansService, type Scene } from './plans.service.js';
 
@@ -34,7 +41,7 @@ export class PlanSharing {
   ) {}
 
   /** The scenes of every journal of a plan: the writer owns each one (decision 14). */
-  private async ownAll(
+  async ownAll(
     transaction: Transaction,
     access: Access,
     scene: WriteScene,
@@ -53,7 +60,7 @@ export class PlanSharing {
   }
 
   /** The rows of a journal in the scene's quarter whose start has passed. */
-  private async startedOf(
+  async startedOf(
     transaction: Transaction,
     scene: Scene,
     journal: JournalRow,
@@ -356,6 +363,11 @@ export class PlanSharing {
    * laid from the first row not started of each journal).
    */
   copy(access: Access, journalId: string, input: PlanCopy, requestId: string | undefined) {
+    if ('masterId' in input.source) {
+      return this.copyMaster(access, journalId, input.quarterId, input.source.masterId, requestId);
+    }
+    const source = input.source;
+    const part = 'part' in input ? input.part : 'all';
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction): Promise<Plan> => {
       const scene = await this.plans.writeSceneOf(
@@ -365,23 +377,23 @@ export class PlanSharing {
         journalId,
         input.quarterId,
       );
-      const source = await this.plans.sceneOf(
+      const sourceScene = await this.plans.sceneOf(
         transaction,
         access,
         branchId,
-        input.source.journalId,
-        input.source.quarterId,
+        source.journalId,
+        source.quarterId,
       );
-      if (!source.reach.read) throw new ApiException('plan_scope', 403);
-      if (source.journal.subjectId !== scene.journal.subjectId) {
+      if (!sourceScene.reach.read) throw new ApiException('plan_scope', 403);
+      if (sourceScene.journal.subjectId !== scene.journal.subjectId) {
         throw new ApiException('plan_copy_subject', 409);
       }
-      if (!source.journal.grades.some((grade) => scene.journal.grades.includes(grade))) {
+      if (!sourceScene.journal.grades.some((grade) => scene.journal.grades.includes(grade))) {
         throw new ApiException('plan_copy_grade', 409);
       }
       const members = await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
       await this.ownAll(transaction, access, scene, members);
-      const sourcePlan = await planIdOf(transaction, source.journal.id, source.quarter.id);
+      const sourcePlan = await planIdOf(transaction, sourceScene.journal.id, sourceScene.quarter.id);
       const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
       if (sourcePlan !== null && sourcePlan === planNow) {
         throw new ApiException('plan_copy_same', 409);
@@ -419,17 +431,37 @@ export class PlanSharing {
       }
       const pass = await this.plans.gate(transaction, scene, planNow ?? '', targets);
       let sourceItems =
-        sourcePlan === null ? [] : await planItems(transaction, sourcePlan, source.journal.id);
-      if (input.part === 'remaining') {
-        const { started } = await this.startedOf(transaction, source, source.journal);
+        sourcePlan === null ? [] : await planItems(transaction, sourcePlan, sourceScene.journal.id);
+      if (part === 'remaining') {
+        const { started } = await this.startedOf(transaction, sourceScene, sourceScene.journal);
         sourceItems = sourceItems.filter((item) => item.position > started);
       }
       const target = await this.plans.planFor(transaction, access, scene, requestId);
+      // Task 7.3, decision 11: the master link goes with the copy when the
+      // master fits the target (one of its grades, its language); else it is dropped.
+      const link = sourcePlan === null ? null : await planMasterOf(transaction, sourcePlan);
+      let keepMaster = false;
+      if (link !== null) {
+        const master = await masterRowOf(transaction, link.masterId);
+        const keys = await unitKeysOf(transaction, [scene.journal]);
+        keepMaster =
+          scene.journal.grades.includes(master.grade) &&
+          (keys.get(scene.journal.id) ?? '').split('|')[2] === master.language;
+      }
+      await transaction
+        .updateTable('lesson_plans')
+        .set({
+          master_id: keepMaster ? (link?.masterId ?? null) : null,
+          master_revision: keepMaster ? (link?.revision ?? null) : null,
+        })
+        .where('id', '=', target)
+        .execute();
       const made = await copyItems(
         transaction,
         branchId,
         target,
         sourceItems.map((item) => item.id),
+        keepMaster,
       );
       const copied = sourceItems.flatMap((item) => {
         const id = made.get(item.id);
@@ -460,11 +492,134 @@ export class PlanSharing {
         newValue: {
           journalId,
           quarterId: scene.quarter.id,
-          sourceJournalId: source.journal.id,
-          sourceQuarterId: source.quarter.id,
+          sourceJournalId: sourceScene.journal.id,
+          sourceQuarterId: sourceScene.quarter.id,
           sourcePlanId: sourcePlan,
-          part: input.part,
+          part,
           items: copied.length,
+          masterId: keepMaster ? (link?.masterId ?? null) : null,
+        },
+        ...gateAudit(pass),
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return this.plans.answer(transaction, scene);
+    });
+  }
+
+  /**
+   * Task 7.3: an empty plan filled as a copy of a master (`09`: "A teacher
+   * creates a plan as a copy of the master. Its items fill the rows of the
+   * class in order. ... If it has fewer, the items left over are listed for
+   * the teacher to merge during the window."; decision 10): laid from the
+   * first row not started of each journal, items past the last row not
+   * covered. The master is read `for share` before its items, so the
+   * revision stored is the one whose items were copied (review should-fix 7).
+   */
+  private copyMaster(
+    access: Access,
+    journalId: string,
+    quarterId: string,
+    masterId: string,
+    requestId: string | undefined,
+  ): Promise<Plan> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction): Promise<Plan> => {
+      const scene = await this.plans.writeSceneOf(
+        transaction,
+        access,
+        branchId,
+        journalId,
+        quarterId,
+      );
+      const seen = await masterRowOf(transaction, masterId);
+      // A reader of the master, or the owner of a plan of its subject and grade (review note 13).
+      const reads =
+        readsMaster(scene.reader, seen) ||
+        (seen.subject_id === scene.journal.subjectId && scene.journal.grades.includes(seen.grade));
+      if (!reads) throw new ApiException('plan_scope', 403);
+      if (seen.subject_id !== scene.journal.subjectId) {
+        throw new ApiException('plan_copy_subject', 409);
+      }
+      if (!scene.journal.grades.includes(seen.grade)) throw new ApiException('plan_copy_grade', 409);
+      const keys = await unitKeysOf(transaction, [scene.journal]);
+      if ((keys.get(scene.journal.id) ?? '').split('|')[2] !== seen.language) {
+        throw new ApiException('plan_copy_language', 409);
+      }
+      const startYear = await startYearOf(transaction, scene.journal.academicYearId);
+      if (seen.start_year !== startYear || seen.quarter !== scene.quarter.number) {
+        throw new ApiException('plan_copy_quarter', 409);
+      }
+      if (seen.archived_at !== null) throw new ApiException('plan_master_archived', 409);
+      const members = await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
+      await this.ownAll(transaction, access, scene, members);
+      const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
+      const starts = new Map<string, number>();
+      for (const id of members) {
+        const [journal] = await journalRows(transaction, branchId, { journalId: id });
+        if (journal === undefined) continue;
+        const { started } = await this.startedOf(transaction, scene, journal);
+        starts.set(id, started);
+        if (planNow === null) continue;
+        const places = await this.plans.placesOf(transaction, planNow, id);
+        if ([...places.values()].some((position) => position > started)) {
+          throw new ApiException('plan_not_empty', 409);
+        }
+      }
+      const targets: GateTarget[] = [];
+      for (const id of members) {
+        const rows = await this.plans.rowsOfJournal(transaction, scene, id);
+        const ahead = rows.filter((row) => !row.started);
+        targets.push({
+          journalId: id,
+          rows:
+            ahead.length === 0
+              ? [{ lessonId: null, date: null, started: false }]
+              : ahead.map((row) => ({ lessonId: row.lessonId, date: row.date, started: false })),
+          op: 'move',
+        });
+      }
+      const pass = await this.plans.gate(transaction, scene, planNow ?? '', targets);
+      const master = await masterRowOf(transaction, masterId, 'share');
+      if (master.archived_at !== null) throw new ApiException('plan_master_archived', 409);
+      const items = await masterItemsOf(transaction, masterId);
+      const target = await this.plans.planFor(transaction, access, scene, requestId);
+      const made: string[] = [];
+      for (const item of items) {
+        made.push(await insertFromMaster(transaction, branchId, target, item));
+      }
+      for (const id of members) {
+        if (made.length === 0) break;
+        const started = starts.get(id) ?? 0;
+        await transaction
+          .insertInto('lesson_plan_places')
+          .values(
+            made.map((itemId, index) => ({
+              branch_id: branchId,
+              plan_id: target,
+              journal_id: id,
+              item_id: itemId,
+              position: started + index + 1,
+            })),
+          )
+          .execute();
+      }
+      await transaction
+        .updateTable('lesson_plans')
+        .set({ master_id: masterId, master_revision: master.revision })
+        .where('id', '=', target)
+        .execute();
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: scene.assignmentId,
+        action: 'plan.copied',
+        record: { type: 'lesson_plan', id: target },
+        newValue: {
+          journalId,
+          quarterId: scene.quarter.id,
+          sourceMasterId: masterId,
+          masterRevision: master.revision,
+          items: made.length,
         },
         ...gateAudit(pass),
         ...(requestId === undefined ? {} : { requestId }),
