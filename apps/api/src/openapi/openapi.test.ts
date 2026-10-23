@@ -176,6 +176,7 @@ describe('OpenAPI document', () => {
         '/api/plans/items/{itemId}/files',
         '/api/plans/journals/{journalId}',
         '/api/plans/journals/{journalId}/items',
+        '/api/plans/lessons/{lessonId}',
         '/api/search/classes',
         '/api/search/groups',
         '/api/search/relatives',

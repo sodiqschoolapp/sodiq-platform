@@ -1109,6 +1109,15 @@ describe('plan items follow the timetable', () => {
      * take it) in a transaction of the migrator; answers its pid and a release.
      */
     async function holdJournal(journal: string) {
+      return holdRow(sql`select id from journals where id = ${journal} for no key update`);
+    }
+
+    /** Holds the class's lesson row `for update`, as a writer of dated lessons takes it first. */
+    async function holdLesson(lesson: string) {
+      return holdRow(sql`select id from lessons where id = ${lesson} for update`);
+    }
+
+    async function holdRow(lock: ReturnType<typeof sql>) {
       let release: () => void = () => undefined;
       const released = new Promise<void>((resolve) => {
         release = resolve;
@@ -1118,9 +1127,7 @@ describe('plan items follow the timetable', () => {
         ready = resolve;
       });
       const done = t.database.migrator.transaction().execute(async (transaction) => {
-        await sql`select id from journals where id = ${journal} for no key update`.execute(
-          transaction,
-        );
+        await lock.execute(transaction);
         const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction);
         ready(pid.rows[0]?.pid ?? 0);
         await released;
@@ -1186,9 +1193,13 @@ describe('plan items follow the timetable', () => {
 
     it('a create and a cancel, the cancel first: the create is refused plan_row_moved', async () => {
       const x = await scene();
-      await fill(x, [2, 3]);
+      const [second] = await fill(x, [2, 3]);
       const monday = await lessonOn(x.s, '2026-11-09');
-      const held = await holdJournal(x.journal);
+      // The cancel's follow takes the journal, then waits on an item it moves;
+      // the create waits on the journal behind it.
+      const held = await holdRow(
+        sql`select id from lesson_plan_items where id = ${second?.id ?? ''} for update`,
+      );
       const cancelled = started(cancelOf(x, monday.id));
       await waitingOn(held.pid, 1);
       const created = started(createOf(x, monday.id));
@@ -1204,13 +1215,12 @@ describe('plan items follow the timetable', () => {
       const x = await scene();
       await fill(x, [2, 3]);
       const monday = await lessonOn(x.s, '2026-11-09');
-      const held = await holdJournal(x.journal);
-      const created = started(createOf(x, monday.id));
-      await waitingOn(held.pid, 1);
+      // The cancel waits on its lesson; the create commits meanwhile.
+      const held = await holdLesson(monday.id);
       const cancelled = started(cancelOf(x, monday.id));
-      await waitingOn(held.pid, 2);
+      await waitingOn(held.pid, 1);
+      ok(await createOf(x, monday.id)(), 201);
       await held.release();
-      ok(await created, 201);
       ok(await cancelled);
       const plan = laid(await planOf(x));
       expect(plan.rows['2026-11-16']).toBe('Topic new');
