@@ -50,6 +50,52 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(names).toHaveText(['Oʻktamov Bekzod']);
   await page.getByLabel(en.journal.page.search, { exact: true }).fill('');
 
+  // Task 8.1: the classwork of yesterday's lesson (seeded with a total of 10 and numbers):
+  // its total changes to 20 after the confirmation, and a number typed in a cell shows its
+  // percent from the server (07, The total).
+  const work = page.getByRole('button', { name: /^Work: / }).last();
+  await expect(work).toBeVisible();
+  const column = await work.locator('xpath=ancestor::*[@col-id][1]').getAttribute('col-id');
+  await work.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(en.journal.works.total, { exact: true }).fill('20');
+  await dialog.getByRole('button', { name: en.journal.works.saveTotal, exact: true }).click();
+  const question = page.getByRole('alertdialog');
+  await expect(question).toContainText(en.journal.works.confirmTotalTitle);
+  await question
+    .getByRole('button', { name: en.journal.works.confirmTotalAction, exact: true })
+    .click();
+  await dialog.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
+  await expect(page.locator(`.ag-header-cell[col-id="${column ?? ''}"]`)).toContainText(
+    `${en.journal.grid.soni} 20`,
+  );
+  const oktamov = await page
+    .locator('.ag-row')
+    .filter({ hasText: 'Oʻktamov Bekzod' })
+    .first()
+    .getAttribute('row-id');
+  const cell = page.locator(`[row-id="${oktamov ?? ''}"] [col-id="${column ?? ''}"]`).last();
+  await cell.click();
+  await page.keyboard.type('15');
+  await page.keyboard.press('Enter');
+  await expect(cell).toContainText('15');
+  await expect(cell).toContainText('75%');
+  // The lesson has no plan item ("No plan"): a classwork is added by hand.
+  const before = await page.getByRole('button', { name: /^Work: / }).count();
+  // The button under the A of the same lesson; the pinned columns may cover its place on screen,
+  // so it is pressed from the keyboard.
+  const lessonId = (column ?? '').split(':')[0] ?? '';
+  const button = page
+    .locator(`.ag-header-cell[col-id="${lessonId}:a"]`)
+    .getByRole('button', { name: en.journal.works.button, exact: true });
+  await button.focus();
+  await page.keyboard.press('Enter');
+  const works = page.getByRole('dialog');
+  await expect(works).toContainText(en.journal.works.noPlan);
+  await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();
+  await works.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Work: / })).toHaveCount(before + 1);
+
   // Lesson mode for today's lesson.
   await page
     .getByRole('radio', { name: en.journal.page.lessonMode, exact: true })

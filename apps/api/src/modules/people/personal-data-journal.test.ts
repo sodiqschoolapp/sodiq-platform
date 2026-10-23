@@ -179,6 +179,50 @@ describe('the marks and attendance of the student report', () => {
   });
 
   // Decision 10: a cancelled lesson's cells are shown with the cancel.
+  // Task 8.1 (From 6.1c, decision 13): the total and "not held" lines of the works in
+  // which the student has a cell, and of no other work.
+  it('holds the total and "not held" lines of the works the student has a cell in', async () => {
+    const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
+    const studentId = pupil ?? '';
+    const lesson = await cells.lesson(t.north, year, classId, '2026-10-19');
+    const own = await workWithTotal(t.database.migrator, {
+      branchId: t.north,
+      lessonId: lesson,
+      total: 10,
+    });
+    const other = await workWithTotal(t.database.migrator, {
+      branchId: t.north,
+      lessonId: lesson,
+      total: 10,
+    });
+    await save(
+      t.north,
+      [{ lessonId: lesson, studentId, workId: own, value: 7, version: null }],
+      '2026-10-19T10:00:00+05:00',
+    );
+    t.clock.set('2026-10-19T11:00:00+05:00');
+    await t.app.get(Transactions).run([t.north], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: t.north,
+        actorId: teacher,
+        action: 'journal.work_total',
+      });
+      for (const id of [own, other]) {
+        await transaction
+          .updateTable('journal_works')
+          .set({ total: 20, changed_by: teacher })
+          .where('id', '=', id)
+          .execute();
+      }
+    });
+    t.clock.set(NOW);
+    const found = await report(studentId);
+    expect(
+      found.journal.workHistory.map((line) => [line.workId, line.totalBefore, line.totalAfter]),
+    ).toEqual([[own, 10, 20]]);
+    expect(found.journal.workHistory[0]?.changedBy?.accountId).toBe(teacher);
+  });
+
   it('shows the cells of a cancelled lesson as cancelled', async () => {
     const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
     const studentId = pupil ?? '';

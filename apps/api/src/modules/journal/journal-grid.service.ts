@@ -39,6 +39,8 @@ import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-own
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
 import { expectedStudents } from './expected-students.js';
+import { journalColumns } from './journal-works.query.js';
+import type { Column } from './lesson-columns.js';
 import {
   classesOfStudents,
   gridWeights,
@@ -46,7 +48,6 @@ import {
   journalLessons,
   journalRows,
   lessonCells,
-  lessonWorks,
   slotNumbers,
   staffNames,
   studentsOf,
@@ -341,7 +342,7 @@ export class JournalGridReader {
           journal.grades.length === 0 ? undefined : Math.min(...journal.grades),
           lessons,
         ),
-        lessonWorks(transaction, lessonIds),
+        journalColumns(transaction, journal, timeZone, now),
         lessonCells(transaction, lessonIds),
         expectedStudents(transaction, lessonIds),
         unitMemberships(transaction, journal, quarter.startDate, quarter.endDate),
@@ -364,8 +365,20 @@ export class JournalGridReader {
         ) === 'held',
       ]),
     );
-    const worksOf = new Map<string, GridWorkRow[]>(lessonIds.map((id) => [id, []]));
-    for (const work of works) worksOf.get(work.lessonId)?.push(work);
+    // Task 8.1: the columns of each lesson (`lesson-columns.ts`); a column with no row has no number.
+    const columnsOf = new Map(lessonIds.map((id) => [id, works.columns.get(id) ?? null] as const));
+    const worksOf = new Map<string, GridWorkRow[]>(
+      lessonIds.map((id) => [
+        id,
+        (columnsOf.get(id)?.columns ?? []).map((column) => ({
+          id: column.workId ?? '',
+          lessonId: id,
+          kind: column.kind,
+          total: column.total,
+          notHeld: column.notHeld,
+        })),
+      ]),
+    );
     const expectedOf = new Map(
       [...expected].map(([lessonId, students]) => [lessonId, new Set(students)]),
     );
@@ -438,6 +451,7 @@ export class JournalGridReader {
     );
     const gridStudents: JournalStudent[] = students.map((student, index) => {
       const marks = new Map<string, number | null>();
+      const scoreVersions = new Map<string, number>();
       const attendanceCells = new Map<string, { version: number; typedBy: string | null }>();
       const scores = new Map<string, number | null>();
       for (const cell of cells) {
@@ -449,7 +463,10 @@ export class JournalGridReader {
             version: cell.version,
             typedBy: typist?.name ?? typist?.login ?? null,
           });
-        } else scores.set(cell.workId, cell.score);
+        } else {
+          scores.set(cell.workId, cell.score);
+          scoreVersions.set(cell.workId, cell.version);
+        }
       }
       const gridCells: JournalCell[] = lessons.map((lesson) => {
         const isExpected = expectedOf.get(lesson.id)?.has(student.id) ?? false;
@@ -481,13 +498,16 @@ export class JournalGridReader {
             shape === 'attendance'
               ? []
               : lessonWorksOf.map((work) => {
-                  const typed = scores.get(work.id) ?? null;
+                  const typed = work.id === '' ? null : (scores.get(work.id) ?? null);
                   return {
                     score: typed,
                     percent:
                       typed === null || work.total === null
                         ? null
                         : Number(shownPercent(typed, work.total)),
+                    version: work.id === '' ? null : (scoreVersions.get(work.id) ?? null),
+                    // edge/journal: "marked 'score on an absent student'".
+                    onAbsent: typed !== null && (mark === 0 || mark === 3),
                   };
                 }),
           score,
@@ -641,6 +661,13 @@ export class JournalGridReader {
     // with a role that enters; the routes decide the same way.
     const entering = entersByRole(access, branchId);
     const staffId = entering ? await ownStaffOf(transaction, access.accountId) : null;
+    // Task 8.1: works and numbers on a graded subject with a journal teacher that day (From 5.7a-3c).
+    const worksTaken = (lesson: GridLessonRow): boolean => {
+      if (journal.subject.attendanceOnly) return false;
+      const found = ownerOn(runs, periods, facts.out, lesson.date);
+      return found === null || found.kind !== 'none';
+    };
+    const lastTotal = await lastTotalOf(transaction, access.accountId, works.lessons);
     const canEnter = (lesson: GridLessonRow): boolean =>
       entering &&
       held.get(lesson.id) === true &&
@@ -703,24 +730,23 @@ export class JournalGridReader {
             : { cause: lesson.cancelCause, reason: lesson.cancelReason },
         month: lesson.date.slice(0, 7),
         canEnter: canEnter(lesson),
+        canEnterWorks: canEnter(lesson) && worksTaken(lesson),
+        planItem: columnsOf.get(lesson.id)?.planItem ?? false,
         works:
+          shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),
+        notHeldWorks:
+          shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.notHeld ?? []).map(gridWork),
+        given:
           shape === 'attendance'
             ? []
-            : (() => {
-                const counts = { classwork: 0, homework: 0 };
-                return (worksOf.get(lesson.id) ?? []).map((work) => {
-                  counts[work.kind] += 1;
-                  return {
-                    id: work.id,
-                    kind: work.kind,
-                    position: counts[work.kind],
-                    total: work.total,
-                    notHeld: work.notHeld,
-                  };
-                });
-              })(),
+            : (columnsOf.get(lesson.id)?.given ?? []).map((one) => ({
+                title: one.title,
+                checkAt: one.checkAt,
+                ungraded: one.ungraded,
+              })),
       })),
       students: gridStudents,
+      lastTotal,
       bottom,
       absences,
       legend: {
@@ -883,4 +909,50 @@ async function readableJournals(
       a.unitName.localeCompare(b.unitName, 'en') ||
       a.subject.names.en.localeCompare(b.subject.names.en, 'en'),
   );
+}
+
+/** A column as the grid sends it (task 8.1). */
+function gridWork(column: Column) {
+  return {
+    id: column.workId,
+    planWorkId: column.planWorkId,
+    sourceLessonId: column.sourceLessonId,
+    kind: column.kind,
+    position: column.position,
+    title: column.title,
+    unplanned: column.unplanned,
+    total: column.total,
+    notHeld: column.notHeld,
+    carriedFrom: column.carriedFrom,
+    version: column.version,
+  };
+}
+
+/**
+ * The last total the reader set in this journal (`07`: "The last total the
+ * teacher used in that journal is offered for the next work"; decision 9),
+ * from the work history of the journal's lessons in its year.
+ */
+async function lastTotalOf(
+  transaction: Transaction,
+  accountId: string,
+  yearLessons: readonly GridLessonRow[],
+): Promise<number | null> {
+  if (yearLessons.length === 0) return null;
+  const found = await transaction
+    .selectFrom('journal_work_history')
+    .select('total_after')
+    .where('changed_by', '=', accountId)
+    .where('total_after', 'is not', null)
+    .where((eb) => eb('total_after', 'is distinct from', eb.ref('total_before')))
+    .where(
+      'lesson_id',
+      'in',
+      yearLessons.map((one) => one.id),
+    )
+    .orderBy('changed_at', 'desc')
+    .orderBy('id', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+  return found?.total_after ?? null;
 }

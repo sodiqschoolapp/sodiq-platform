@@ -2,6 +2,8 @@ import type { AttendanceMark, JournalGrid, JournalStudent } from '@sodiq/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiFailure } from '@/api/failure';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, EmptyState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -62,6 +64,7 @@ export function useAttendanceEntry(grid: JournalGrid): {
 } {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [saved, setSaved] = useState<ReadonlySet<string>>(new Set());
   const [notice, setNotice] = useState<Notice | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
@@ -74,15 +77,39 @@ export function useAttendanceEntry(grid: JournalGrid): {
   };
 
   const save = useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       lessonId: string;
       studentId: string;
       mark: AttendanceMark | null;
       version: number | null;
-    }) =>
-      saveAttendance(input.lessonId, {
-        saves: [{ studentId: input.studentId, mark: input.mark, version: input.version }],
-      }),
+    }) => {
+      const send = (numbers?: 'keep' | 'clear') =>
+        saveAttendance(input.lessonId, {
+          saves: [
+            {
+              studentId: input.studentId,
+              mark: input.mark,
+              version: input.version,
+              ...(numbers === undefined ? {} : { numbers }),
+            },
+          ],
+        });
+      try {
+        return await send();
+      } catch (error) {
+        // edge/journal: "Changing present to absent with numbers asks 'keep or clear', keeping by
+        // default": the button that goes on clears, the one that does not keeps.
+        if (!(error instanceof ApiFailure) || error.code !== 'numbers_keep_or_clear') throw error;
+        const clear = await confirm({
+          title: t('journal.works.keepTitle'),
+          text: t('journal.works.keepText', { names: nameOf(input.studentId) }),
+          action: t('journal.works.clear'),
+          cancel: t('journal.works.keep'),
+          destructive: true,
+        });
+        return send(clear ? 'clear' : 'keep');
+      }
+    },
     onMutate: () => {
       setFailure(null);
     },
@@ -216,7 +243,7 @@ function CellHistoryDialog({
           <ErrorState error={history.error} onRetry={() => void history.refetch()} />
         ) : history.data === undefined ? (
           <LoadingOutline />
-        ) : history.data.lines.length === 0 ? (
+        ) : history.data.lines.length === 0 && history.data.workLines.length === 0 ? (
           <EmptyState text={t('journal.entry.historyEmpty')} />
         ) : (
           <Table aria-label={title}>
@@ -244,6 +271,37 @@ function CellHistoryDialog({
                     <TableCell>{accountText(line.changedBy, '—')}</TableCell>
                     <TableCell>{momentText(language, line.changedAt)}</TableCell>
                     <TableCell>{t(`journal.changes.${line.changedHow}`)}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {/* Task 8.1: the total and "not held" of the lesson's works (07: "The number and the total stay visible ... in the cell history"). */}
+              {history.data.workLines.map((line) => {
+                const work = t(
+                  line.workKind === 'classwork'
+                    ? 'journal.grid.parts.classwork'
+                    : 'journal.grid.parts.homework',
+                );
+                const total = line.totalBefore !== line.totalAfter;
+                const yesNo = (value: boolean | null) =>
+                  value === null ? '—' : value ? t('journal.works.yes') : t('journal.works.no');
+                return (
+                  <TableRow key={line.id} data-work-line="true">
+                    <TableCell>
+                      {total
+                        ? t('journal.works.historyTotal', { work })
+                        : t('journal.works.historyNotHeld', { work })}
+                    </TableCell>
+                    <TableCell>
+                      {total ? (line.totalBefore ?? '—') : yesNo(line.notHeldBefore)}
+                    </TableCell>
+                    <TableCell>
+                      {total ? (line.totalAfter ?? '—') : yesNo(line.notHeldAfter)}
+                    </TableCell>
+                    <TableCell>
+                      {line.changedBy === null ? '—' : accountText(line.changedBy, '—')}
+                    </TableCell>
+                    <TableCell>{momentText(language, line.changedAt)}</TableCell>
+                    <TableCell>{t(`journal.works.changes.${line.changedHow}`)}</TableCell>
                   </TableRow>
                 );
               })}

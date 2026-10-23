@@ -267,6 +267,9 @@ describe('lesson plans and their items', () => {
       'lesson_plan_items',
       'lesson_plan_works',
       'lesson_plan_files',
+      // Task 8.1: the takeover and the separation write the journal's works.
+      'journal_works',
+      'journal_work_history',
     ] as const) {
       rows[table] = await t.database.migrator
         .selectFrom(table)
@@ -277,6 +280,30 @@ describe('lesson plans and their items', () => {
         .execute();
     }
     return rows;
+  };
+
+  /**
+   * Task 8.1 (permission review, must-fix 1): a work added by hand at the class's first
+   * lesson, so the 404 tests of the plan writes that now write journal works (the
+   * takeover, the separation, the take of a master) hold rows of those tables.
+   */
+  const handWorkOf = async (branch: string, classId: string) => {
+    const lesson = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', classId)
+      .orderBy('starts_at')
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('journal_works')
+      .values({
+        branch_id: branch,
+        lesson_id: lesson.id,
+        source_lesson_id: lesson.id,
+        kind: 'classwork',
+        total: 10,
+      })
+      .execute();
   };
 
   /** A graded scene whose teacher (and spare teacher of the subject) sign in. */
@@ -1267,6 +1294,8 @@ describe('lesson plans and their items', () => {
         ).body,
       ),
     );
+    await handWorkOf(s.scene.branch, s.scene.classId);
+    await handWorkOf(other.scene.branch, other.scene.classId);
     const before = [await planRowsOf(s.scene.branch), await planRowsOf(other.scene.branch)];
     const audit = await planEntries();
     await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
@@ -1685,6 +1714,7 @@ describe('lesson plans and their items', () => {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
+    await handWorkOf(branch, s.scene.classId);
     const before = await planRowsOf(branch);
     const audit = await planEntries();
     await as(s.owner, branch, teacherOf(s), async (api) => {

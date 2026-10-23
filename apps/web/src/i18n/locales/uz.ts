@@ -654,6 +654,37 @@ export const uz: Texts<'one' | 'other'> = {
     journal_scope: 'Bu jurnal rolingizga ochiq emas. Jurnallar sahifasidan birini oching.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
+    lesson_attendance_only:
+      'Bu darsda faqat davomat olinadi: fanda ishlar yoʻq yoki oʻsha kuni jurnalning oʻqituvchisi yoʻq.',
+    work_not_in_lesson:
+      'Bu ish endi bu darsning ustuni emas. Jurnalni yangilab, qayta urinib koʻring.',
+    lesson_has_plan_item:
+      'Bu darsning reja qatori bor: ishlar rejadan olinadi. Ishlarni dars rejasida oʻzgartiring.',
+    journal_works_limit:
+      'Bir darsda koʻpi bilan 10 ta sinf ishi va 10 ta berilgan uy vazifasi boʻladi.',
+    work_holds_data:
+      'Bu ishda jami, «oʻtkazilmadi» belgisi yoki sonlar bor yoki u rejadan olingan, shuning uchun qoladi. Uning oʻrniga «oʻtkazilmadi» deb belgilang.',
+    total_below_numbers:
+      'Kiritilgan ayrim sonlar yangi jamidan katta. Avval oʻsha sonlarni oʻzgartiring yoki kattaroq jami tanlang.',
+    total_confirm: 'Bu ish uchun sonlar allaqachon kiritilgan. Yangi jamini tasdiqlang.',
+    not_held_confirm:
+      'Bu ish uchun sonlar allaqachon kiritilgan. «Oʻtkazilmadi» belgisini tasdiqlang.',
+    work_stale:
+      'Kimdir bu ishni hozirgina oʻzgartirdi. Jurnal uni hozir koʻrsatadi; qayta urinib koʻring.',
+    work_holds_numbers:
+      'Bu uy vazifasining shu darsda sonlari bor, shuning uchun u shu yerda tekshiriladi.',
+    work_carried: 'Bu uy vazifasi bir marta keyingi darsga oʻtkazilgan.',
+    no_next_lesson: 'Jurnalda bu uy vazifasini tekshirish uchun keyingi dars yoʻq.',
+    work_total_missing: 'Avval ishning jamini belgilang, soʻng sonlarni kiriting.',
+    score_above_total: 'Son ishning jamidan katta. 0 dan jamigacha son kiriting.',
+    work_not_held:
+      'Bu ish «oʻtkazilmadi» deb belgilangan. Son kiritish uchun belgini bekor qiling.',
+    numbers_keep_or_clear:
+      'Bu oʻquvchining shu darsda sonlari bor. Ularni qoldirish yoki tozalashni tanlang.',
+    restore_works_full:
+      'Dars qaytmaydi: uning ishlari bogʻlangan darsda qoʻlda qoʻshilgan shu turdagi 10 ta ish bor. Avval ulardan birini olib tashlang.',
+    plan_work_has_data:
+      'Bu ishning jurnalda jami yoki sonlari bor, shuning uchun uni rejadan olib tashlab boʻlmaydi. Uning oʻrniga jurnalda «oʻtkazilmadi» deb belgilang.',
     entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
     lesson_not_held:
       'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',
@@ -1669,6 +1700,7 @@ export const uz: Texts<'one' | 'other'> = {
       startBlockedEarlier: 'Filialning oldingi yili hali yopilmagan.',
       cutHoldsList: 'Toʻsqinlik qilayotgan oʻquvchilar',
       cutHoldsLine: '{{student}} · {{unit}} · {{from}} – {{until}}',
+      cutHoldsEntry: '{{student}} · {{unit}} · {{from}} dagi jurnal yozuvi',
       cutHoldsOtherBranch: 'Boshqa filial oʻquvchisi',
       cutHoldsMore_one: 'va yana {{count}} ta',
       cutHoldsMore_other: 'va yana {{count}} ta',
@@ -1795,6 +1827,7 @@ export const uz: Texts<'one' | 'other'> = {
     report: {
       journalTitle: 'Baholar va davomat',
       noCells: 'Baholar va davomat yoʻq.',
+      workHistoryTitle: 'Jamilar va «oʻtkazilmadi» belgilari',
       historyTitle: 'Jurnal tarixi',
       noHistory: 'Jurnal tarixi yoʻq.',
       historyLeftOut: 'Koʻrsatilmagan eski qatorlar: {{count}}, eng eskisi {{moment}}.',
@@ -2265,6 +2298,7 @@ export const uz: Texts<'one' | 'other'> = {
       noEntries: '48 soat ichida yozuv yoʻq.',
       emptyTitle: 'Tiklashlar yoʻq',
       empty: 'Bu sanalarda ushbu filialning paroli tiklanmagan.',
+      workCaption: '48 soatda belgilangan jamilar va «oʻtkazilmadi» belgilari',
       caption: 'Tiklashdan keyin 48 soat ichidagi yozuvlar',
       moment: 'Kiritilgan',
       lesson: 'Dars',
@@ -3283,6 +3317,13 @@ export const uz: Texts<'one' | 'other'> = {
         runs: 'Nashr jurnal kunlarini oʻzgartirdi',
         cells_save: 'Jurnal katakchalari saqlandi',
         all_present: 'Hammasi keldi deb belgilandi',
+        work_add: 'Ish qoʻlda qoʻshildi',
+        work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
+        work_total: 'Ishning jami belgilandi',
+        work_not_held: 'Ish oʻtkazilmadi deb belgilandi yoki belgi bekor qilindi',
+        work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
+        work_move: 'Ish tekshiriladigan darsga koʻchirildi',
+        work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',
@@ -5488,6 +5529,62 @@ export const uz: Texts<'one' | 'other'> = {
       historyHow: 'Qanday',
       close: 'Yopish',
       reason: 'Sabab: {{category}}',
+    },
+    works: {
+      noPlan: 'Reja yoʻq',
+      unplanned: 'rejasiz',
+      button: 'Dars ishlari',
+      title: 'Dars ishlari, {{date}}',
+      addClasswork: 'Sinf ishi qoʻshish',
+      addHomework: 'Berilgan uy vazifasini qoʻshish',
+      notHeldList: '«Oʻtkazilmadi» deb belgilangan',
+      undoNotHeld: '«Oʻtkazilmadi»ni bekor qilish',
+      workTitle: 'Ish: {{name}}',
+      total: 'Jami (Soni)',
+      saveTotal: 'Jamini belgilash',
+      notHeld: 'Oʻtkazilmadi',
+      notChecked: 'Tekshirilmadi',
+      carry: 'Keyingi darsda tekshirish',
+      remove: 'Ishni olib tashlash',
+      carried: 'oʻtkazilgan',
+      given: 'Berilgan uy vazifasi',
+      checkedOn: '{{date}} da tekshiriladi',
+      ungraded: {
+        year_end: 'baholanmaydi',
+        group_closed: 'tekshirilmadi, guruh yopildi',
+      },
+      confirmTotalTitle: 'Jamini oʻzgartirasizmi?',
+      confirmTotalText: 'Foizlar quyidagicha oʻzgaradi.',
+      confirmTotalLine: '{{student}}: {{score}}, {{before}}% → {{after}}%',
+      confirmTotalAction: 'Jamini oʻzgartirish',
+      confirmNotHeldTitle: 'Ishni «oʻtkazilmadi» deb belgilaysizmi?',
+      confirmNotHeldText_one:
+        'Kiritilgan {{count}} ta son oʻrtachalardan chiqadi va tarixda qoladi.',
+      confirmNotHeldText_other:
+        'Kiritilgan {{count}} ta son oʻrtachalardan chiqadi va tarixda qoladi.',
+      confirmNotHeldAction: '«Oʻtkazilmadi» deb belgilash',
+      keepTitle: 'Sonlar qolsinmi?',
+      keepText: 'Bu oʻquvchilarning shu darsda sonlari bor: {{names}}.',
+      keep: 'Sonlarni qoldirish',
+      clear: 'Sonlarni tozalash',
+      aboveTotal: 'Yangi jamidan katta: {{names}}',
+      wholeNumber: '0 dan {{total}} gacha butun son kiriting.',
+      onAbsent: 'yoʻq oʻquvchiga qoʻyilgan son',
+      historyTotal: '{{work}} jamisi',
+      historyNotHeld: '{{work}}: «oʻtkazilmadi»',
+      yes: 'ha',
+      no: 'yoʻq',
+      changes: {
+        entry: 'Kiritildi',
+        not_held: '«Oʻtkazilmadi»',
+        carry: 'Oʻtkazildi',
+        move: 'Tekshiriladigan darsga koʻchirildi',
+        takeover: 'Reja oldi',
+        separation: 'Reja ajratildi',
+        restored: 'Tiklandi',
+        deleted: 'Olib tashlandi',
+        forced_delete: 'Majburiy oʻchirish',
+      },
     },
     absences: {
       title: 'Oʻquvchilarning dars qoldirishlari',

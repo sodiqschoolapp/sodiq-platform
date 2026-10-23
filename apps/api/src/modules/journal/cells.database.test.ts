@@ -575,14 +575,16 @@ describe('journal cells in the database', () => {
       }
     });
 
-    it('refuses an update of a work', async () => {
+    // Task 8.1 grants the update of the total and "not held" (From 6.1a); the
+    // kind of a work still never changes.
+    it('refuses an update of the kind of a work', async () => {
       const { lesson: id } = await scene();
       const workId = await work(north, id);
       const failed = await refusal(
         inBranch(north, (transaction) =>
           transaction
             .updateTable('journal_works')
-            .set({ total: 5 })
+            .set({ kind: 'homework' })
             .where('id', '=', workId)
             .execute(),
         ),
@@ -602,10 +604,12 @@ describe('journal cells in the database', () => {
         );
         expect(failed.constraint).toBe('journal_cell_delete');
       }
-      const emptyWork = await work(north, id);
+      // Task 8.1 (decision 1, Look first): an empty work added by hand is
+      // deleted by the application; one with a total is still refused.
+      const totalled = await work(north, id, 5);
       const failed = await refusal(
         inBranch(north, (transaction) =>
-          transaction.deleteFrom('journal_works').where('id', '=', emptyWork).execute(),
+          transaction.deleteFrom('journal_works').where('id', '=', totalled).execute(),
         ),
       );
       expect(failed.constraint).toBe('journal_cell_delete');
@@ -807,7 +811,8 @@ describe('journal cells in the database', () => {
       await cell(north, {
         lesson: scored.lesson,
         student: scored.student,
-        work: await work(north, scored.lesson, null),
+        // Task 8.1 (0119): a number needs its work's total.
+        work: await work(north, scored.lesson, 5),
         score: 0,
       });
       const totalled = await scene();

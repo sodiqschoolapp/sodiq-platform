@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 8.1 Classwork and homework
+
+- 0119: `journal_works` gains its source lesson, plan link, place, carry and version; the database checks of a number and a total, the limit of 10, the move and the carry; `journal_work_history`; the forced delete keeps the new columns; `year_cut_holds` gains the entries.
+- Routes under `/api/journal/lessons/:lessonId`: `works` (add, delete), `works/total`, `works/not-held`, `works/carry`, `scores`; keep or clear on the attendance route; the work lines in the cell history and the two reports. The grid's columns come from `lesson-columns.ts`; the takeover and the separation link from the plan writes.
+- Web: work columns with titles and "Soni", numbers typed in the cells, the dialogs of a lesson's works and of a work, keep or clear, the report pages. Left out: the lesson card and "topic not delivered" (8.8), optional cells and the status (8.7), the edit period (8.4), stale saves with both values (8.3a). The browser test was not run locally (the cloud Chromium does not match the pinned Playwright); CI runs it.
+
+The next sessions must know:
+
+- A works write goes through `WorksService`: `sceneOf` (entry as 6.3, then attendance only), `refuseUnknownColumns`, `columnOf` and `rowOf` (the first write inserts, a homework shown elsewhere moves).
+- A test fixture that writes a number gives its work a total first; a fixture work names its `source_lesson_id` and a free `position` (`workWithTotal` of `cells-kit.ts`).
+- A plan write that changes the works of a started row calls `PlansService.takeOverWorks`.
+
 ## 23 October 2026: task 7.3 Master plans
 
 - 0118: `lesson_plan_masters`, `_items`, `_works` (a branch, or none for all branches, under the policy `branch_or_school`; children keyed by `scope_key`), `lesson_plans.master_id`/`master_revision`, `lesson_plan_items.master_item_id`.

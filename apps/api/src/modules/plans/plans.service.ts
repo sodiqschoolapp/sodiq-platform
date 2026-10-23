@@ -29,6 +29,8 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import { removePlanWork } from '../journal/plan-work-remove.js';
+import { takeOverUnplanned } from '../journal/works-takeover.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { substitutionsInForce } from '../timetable/substitutions-read.js';
@@ -1026,6 +1028,38 @@ export class PlansService {
       .execute();
   }
 
+  /**
+   * Task 8.1 (review correction 1): the works added by hand at the started
+   * lessons of the item's rows are taken over by its works, in order
+   * (`takeOverUnplanned`).
+   */
+  async takeOverWorks(
+    transaction: Transaction,
+    scene: Scene & { readonly assignmentId: string },
+    access: Access,
+    itemId: string,
+    startedIn: readonly string[],
+    requestId: string | undefined,
+  ): Promise<void> {
+    const lessonIds: string[] = [];
+    for (const journalId of startedIn) {
+      const row = await this.gateRowOf(transaction, scene, journalId, itemId);
+      if (row.started && row.lessonId !== null) lessonIds.push(row.lessonId);
+    }
+    await takeOverUnplanned(
+      transaction,
+      this.audit,
+      {
+        branchId: scene.branchId,
+        accountId: access.accountId,
+        assignmentId: scene.assignmentId,
+        ...(requestId === undefined ? {} : { requestId }),
+      },
+      itemId,
+      lessonIds,
+    );
+  }
+
   /** The row of an item in one journal, as the gate reads it; an item past the last row has none. */
   private async gateRowOf(
     transaction: Transaction,
@@ -1275,6 +1309,7 @@ export class PlansService {
           // Decided without the owner (code round 1): an item created on a held
           // row through a request changes the item of a lesson already held.
           await this.markEditedAfterLesson(transaction, pass, item.id, startedIn);
+          await this.takeOverWorks(transaction, scene, access, item.id, startedIn, requestId);
           const created = await this.itemOf(transaction, item.id, journalId);
           const row = rows[input.position - 1];
           await this.audit.record(transaction, {
@@ -1441,7 +1476,7 @@ export class PlansService {
               const current = change.now[index];
               if (current === undefined) continue;
               removedWorks.push(workEntry(current, change.kind, index + 1));
-              await transaction.deleteFrom('lesson_plan_works').where('id', '=', work.id).execute();
+              await removePlanWork(transaction, work.id);
             }
             for (const work of change.edited) {
               await transaction
@@ -1495,6 +1530,7 @@ export class PlansService {
             );
           }
           await this.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
+          await this.takeOverWorks(transaction, scene, access, itemId, scene.startedIn, requestId);
           const saved = await this.itemOf(transaction, itemId, scene.journal.id);
           for (const change of workChanges) {
             if (change.list in oldValue) {

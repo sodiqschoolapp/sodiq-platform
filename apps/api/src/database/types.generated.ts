@@ -538,14 +538,44 @@ export interface Journals {
   subject_id: string;
 }
 
+export interface JournalWorkHistory {
+  branch_id: string;
+  carried_from_after: string | null;
+  changed_at: Timestamp;
+  changed_by: string | null;
+  changed_how: string;
+  id: Generated<string>;
+  kind: string;
+  lesson_before: string | null;
+  lesson_id: string;
+  not_held_after: boolean | null;
+  not_held_before: boolean | null;
+  plan_work_after: string | null;
+  plan_work_before: string | null;
+  source_lesson_id: string | null;
+  total_after: number | null;
+  total_before: number | null;
+  version: number;
+  work_id: string;
+  written_xact: Generated<string>;
+}
+
 export interface JournalWorks {
   branch_id: string;
+  carried_from_lesson_id: string | null;
+  changed_at: Timestamp | null;
+  changed_by: string | null;
+  changed_how: Generated<string>;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   kind: string;
   lesson_id: string;
   not_held: Generated<boolean>;
+  plan_work_id: string | null;
+  position: Generated<number>;
+  source_lesson_id: string | null;
   total: number | null;
+  version: Generated<number>;
 }
 
 export interface KnownDevices {
@@ -1568,6 +1598,7 @@ export interface DB {
   journal_acting_teachers: JournalActingTeachers;
   journal_cell_history: JournalCellHistory;
   journal_cells: JournalCells;
+  journal_work_history: JournalWorkHistory;
   journal_works: JournalWorks;
   journals: Journals;
   known_devices: KnownDevices;

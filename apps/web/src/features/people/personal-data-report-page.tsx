@@ -35,6 +35,7 @@ import {
   cellKindText,
   cellLessonText,
   cellValueText,
+  workLineText,
 } from './cell-lines';
 import { mergeValueText } from './student-merge';
 import { formatMomentIn, schoolDateText, weekdayName } from '@/lib/dates';
@@ -369,6 +370,32 @@ function StudentJournal({ report, words }: { report: StudentReport; words: Words
           </p>
         )}
       </section>
+      {/* Task 8.1: the totals and "not held" marks of the works the student has a cell in. */}
+      {journal.workHistory.length > 0 && (
+        <section className="grid gap-3">
+          <h3 className={SECTION_TITLE}>{t('people.report.workHistoryTitle')}</h3>
+          <ol className="grid gap-2 text-sm" data-journal="work-history">
+            {journal.workHistory.map((line) => (
+              <li key={line.id} className="grid gap-0.5 break-inside-avoid">
+                <p className="font-semibold">
+                  {words.moment(line.changedAt)} · {t(`journal.works.changes.${line.changedHow}`)}
+                </p>
+                <p>
+                  {[line.branch, lessonText(line.lesson)].join(' · ')}: {workLineText(t, line)}
+                </p>
+                <p className="text-muted-foreground print:text-current">
+                  {t('people.report.lineBy', {
+                    name:
+                      line.changedBy === null
+                        ? words.empty
+                        : accountText(line.changedBy, words.empty),
+                  })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </>
   );
 }

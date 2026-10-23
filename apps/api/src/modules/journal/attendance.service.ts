@@ -6,6 +6,7 @@ import {
   type AttendanceSave,
   type AttendanceSaved,
   type CellHistory,
+  type ErrorDetail,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
@@ -16,21 +17,87 @@ import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { enterableLesson, entryAssignment, type EntryLesson } from './attendance-entry.js';
 import { cellChange, lineValues, namedAccounts } from './cell-lines.query.js';
-import { saveCells } from './cells.js';
+import { saveCells, type CellSave } from './cells.js';
+import { refuseOtherStudents } from './students-of-branch.js';
+import { workLines, withoutBranch } from './work-lines.query.js';
 import { JournalGridReader } from './journal-grid.service.js';
 
-/** Students of the branch among `ids`, read through the branch filter; any other is 404. */
-async function refuseOtherStudents(
+/**
+ * "Keep or clear" (task 8.1, decision 15; `edge/journal`: "A mark change
+ * never deletes numbers. Changing present to absent with numbers asks 'keep
+ * or clear', keeping by default; cleared values stay in history"): a save
+ * that changes a 1 or 2 to a 0 or 3 for a student with numbers in the lesson
+ * names `numbers`; without it the save is refused with those students listed.
+ * A `numbers` on any other save is refused, never dropped. Gives the cells
+ * that `clear` empties, saved with the marks.
+ */
+async function keepOrClear(
   transaction: Transaction,
-  ids: readonly string[],
-): Promise<void> {
-  const wanted = [...new Set(ids.map((id) => id.toLowerCase()))];
-  const found = await transaction
-    .selectFrom('students')
-    .select('id')
-    .where('id', 'in', wanted)
+  lessonId: string,
+  input: AttendanceSave,
+): Promise<CellSave[]> {
+  const ids = input.saves.map((save) => save.studentId.toLowerCase());
+  const marks = await transaction
+    .selectFrom('journal_cells')
+    .select(['student_id', 'mark'])
+    .where('lesson_id', '=', lessonId)
+    .where('work_id', 'is', null)
+    .where('student_id', 'in', ids)
     .execute();
-  if (found.length !== wanted.length) throw notFound();
+  const numbers = await transaction
+    .selectFrom('journal_cells')
+    .select(['student_id', 'work_id', 'version'])
+    .where('lesson_id', '=', lessonId)
+    .where('work_id', 'is not', null)
+    .where('score', 'is not', null)
+    .where('student_id', 'in', ids)
+    .orderBy('work_id')
+    .execute();
+  const markOf = new Map(marks.map((row) => [row.student_id, row.mark]));
+  const missing: ErrorDetail[] = [];
+  const clears: CellSave[] = [];
+  input.saves.forEach((save, index) => {
+    const studentId = save.studentId.toLowerCase();
+    const before = markOf.get(studentId) ?? null;
+    const own = numbers.filter((row) => row.student_id === studentId);
+    const asks =
+      (before === 1 || before === 2) && (save.mark === 0 || save.mark === 3) && own.length > 0;
+    if (!asks) {
+      if (save.numbers !== undefined) {
+        throw new ApiException('validation_failed', 400, undefined, [
+          {
+            path: `saves.${String(index)}.numbers`,
+            code: 'unexpected',
+            message:
+              'Only a change from present or late to absent or skipped with numbers keeps or clears them.',
+          },
+        ]);
+      }
+      return;
+    }
+    if (save.numbers === undefined) {
+      missing.push({
+        path: `saves.${String(index)}`,
+        code: 'numbers_keep_or_clear',
+        message: 'Keep or clear the numbers.',
+        recordId: studentId,
+      });
+    } else if (save.numbers === 'clear') {
+      for (const row of own) {
+        clears.push({
+          lessonId,
+          studentId,
+          workId: row.work_id,
+          value: null,
+          version: row.version,
+        });
+      }
+    }
+  });
+  if (missing.length > 0) {
+    throw new ApiException('numbers_keep_or_clear', 409, undefined, missing);
+  }
+  return clears;
 }
 
 /** The students in the order of the grid (`compareStudentNames`, 6.2 decision 15). */
@@ -122,6 +189,7 @@ export class AttendanceService {
         transaction,
         input.saves.map((save) => save.studentId),
       );
+      const clears = await keepOrClear(transaction, lesson.id, input);
       const saved = await saveCells(
         transaction,
         this.audit,
@@ -130,21 +198,26 @@ export class AttendanceService {
           assignmentId: entryAssignment(access),
           ...(requestId === undefined ? {} : { requestId }),
         },
-        input.saves.map((save) => ({
-          lessonId: lesson.id,
-          studentId: save.studentId.toLowerCase(),
-          workId: null,
-          value: save.mark,
-          version: save.version,
-        })),
+        [
+          ...input.saves.map((save) => ({
+            lessonId: lesson.id,
+            studentId: save.studentId.toLowerCase(),
+            workId: null,
+            value: save.mark,
+            version: save.version,
+          })),
+          ...clears,
+        ],
       );
       const cells = await inGridOrder(
         transaction,
-        saved.map((cell) => ({
-          studentId: cell.studentId,
-          mark: cell.value === null ? null : attendanceMarkSchema.parse(cell.value),
-          version: cell.version,
-        })),
+        saved
+          .flatMap((cell) => (cell.workId === null ? [cell] : []))
+          .map((cell) => ({
+            studentId: cell.studentId,
+            mark: cell.value === null ? null : attendanceMarkSchema.parse(cell.value),
+            version: cell.version,
+          })),
       );
       const zeros = cells.filter((cell) => cell.mark === 0).map((cell) => cell.studentId);
       return { cells, presentEarlier: await presentEarlierOf(transaction, lesson, zeros) };
@@ -297,7 +370,23 @@ export class AttendanceService {
         transaction,
         rows.map((row) => row.changed_by),
       );
+      // Task 8.1 (From 6.3 decision 16): the total and "not held" lines of the lesson's works.
+      const workIds =
+        shape === 'attendance'
+          ? []
+          : (
+              await transaction
+                .selectFrom('journal_work_history')
+                .select('work_id')
+                .distinct()
+                .where('lesson_id', '=', lesson.id)
+                .execute()
+            ).map((row) => row.work_id);
+      const works = (await workLines(transaction, { workIds })).filter(
+        (line) => line.totalBefore !== line.totalAfter || line.notHeldBefore !== line.notHeldAfter,
+      );
       return {
+        workLines: works.map(withoutBranch),
         lines: rows.map((row) => ({
           work:
             row.work_id === null

@@ -8,6 +8,7 @@ import {
   namedAccounts,
   workKinds,
 } from './cell-lines.query.js';
+import { workLines } from './work-lines.query.js';
 
 /**
  * The student's marks and attendance for the personal data report (task 6.1c,
@@ -91,7 +92,27 @@ export async function studentJournal(
     ]),
   );
   const leftOut = Number(rest.total) - lines.length;
+  // Task 8.1 (decision 13): the lines of the works in which the student has a cell.
+  const studentWorks = await transaction
+    .selectFrom('journal_cells')
+    .select('work_id')
+    .distinct()
+    .where('student_id', '=', studentId)
+    .where('work_id', 'is not', null)
+    .execute();
+  const workHistory = (
+    await workLines(transaction, {
+      workIds: studentWorks.flatMap((row) => (row.work_id === null ? [] : [row.work_id])),
+    })
+  )
+    .filter(
+      (line) => line.totalBefore !== line.totalAfter || line.notHeldBefore !== line.notHeldAfter,
+    )
+    // Every line: a student's works are few, and the report holds all of them (permission
+    // review, should-fix 6), newest first.
+    .reverse();
   return {
+    workHistory,
     cells: cells.map((cell) => {
       const lesson = lessons.get(cell.lesson_id);
       const work = cell.work_id === null ? undefined : works.get(cell.work_id);

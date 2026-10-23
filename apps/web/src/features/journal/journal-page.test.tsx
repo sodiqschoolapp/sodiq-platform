@@ -28,7 +28,7 @@ const cell = (
   mark,
   version,
   typedBy: mark === null ? null : 'Karimova Aziza',
-  works,
+  works: works.map((one) => ({ ...one, version: one.score === null ? null : 1, onAbsent: false })),
   score,
 });
 
@@ -94,7 +94,25 @@ const GRID: JournalGrid = {
       cancelled: null,
       month: '2026-10',
       canEnter: false,
-      works: [{ id: uid(70), kind: 'classwork', position: 1, total: 30, notHeld: false }],
+      works: [
+        {
+          id: uid(70),
+          planWorkId: uid(71),
+          sourceLessonId: uid(60),
+          kind: 'classwork',
+          position: 1,
+          title: 'Test',
+          unplanned: false,
+          total: 30,
+          notHeld: false,
+          carriedFrom: null,
+          version: 2,
+        },
+      ],
+      canEnterWorks: false,
+      planItem: true,
+      notHeldWorks: [],
+      given: [],
     },
     {
       id: uid(61),
@@ -107,6 +125,10 @@ const GRID: JournalGrid = {
       month: '2026-10',
       canEnter: false,
       works: [],
+      canEnterWorks: false,
+      planItem: true,
+      notHeldWorks: [],
+      given: [],
     },
     {
       id: uid(62),
@@ -119,6 +141,10 @@ const GRID: JournalGrid = {
       month: '2026-10',
       canEnter: false,
       works: [],
+      canEnterWorks: false,
+      planItem: true,
+      notHeldWorks: [],
+      given: [],
     },
   ],
   students: [
@@ -139,6 +165,7 @@ const GRID: JournalGrid = {
     }),
   ],
   absences: [],
+  lastTotal: null,
   bottom: {
     quarter: { attendance: 75, classwork: 60, homework: 50, ratingExam: null, result: 59 },
     months: {
@@ -320,7 +347,7 @@ describe('a journal', () => {
       document
         .querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`)
         ?.textContent?.trim(),
-    ).toBe('CW 1Soni 30');
+    ).toBe('TestSoni 30');
   });
 
   it('filters the students who left, and those with an empty cell', async () => {

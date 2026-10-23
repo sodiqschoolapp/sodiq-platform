@@ -289,6 +289,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 23 October 2026: classwork and homework (task 8.1)
+
+Plan approved on pull request #217 with correction 1; decisions 1 to 18 confirmed or changed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a trigger widened by a requirement). `journal_works_delete` (0119) lets the application delete a work added by hand with no total, not "not held" and no number; every other delete stays refused | Decision 1; From 6.1a: "the delete of an empty work" |
+| **Look first** (a reading of a journal rule). Works added by hand at a lesson with no plan item are taken over by a later plan item once, at the plan write (`takeOverUnplanned`, the item create and save), in order per kind; the link is set once from none and moves only to the copy of its work on a separation; a read never maps a number onto another title | Decision 4, review correction 1; `edge/journal`, "A lesson is held with no plan item" |
+| The columns of a lesson are worked out on read (`lesson-columns.ts`) from the plan items and the stored works; a work row is written at its first write (a total, "not held", a carry, a number) | Decision 2 |
+| The source of a lesson's homework columns is its nearest earlier lesson not cancelled and not "started but not held"; the check lesson of homework is the next one; none gives "will not be graded" or, for a journal with no run day left, "not checked, group closed" | Decision 3; From 7.1c |
+| "Not checked" is "not held" on that homework; "check at the next lesson" marks the row `carried_from_lesson_id`, once and only without numbers; a homework with no number is shown at the check lesson of its source and moved there at the first write; every other row with data stays a column of its own lesson | Decisions 5 to 7 and 18; spec review of the plan, must-fixes 2 and 3 |
+| A number needs the work's total, is at most the total, is not typed on a work "not held"; a total is 1 to 1000, never cleared, never below a number typed; all are database checks of 0119, the work row locked FOR SHARE by the cell trigger | From 6.1a; `07`, The total |
+| A total change with numbers and "not held" with numbers answer 409 with the figures (`packages/calc`) and are sent again with `confirm` | Decision 10 |
+| A plan work a journal work names is not removed (the key's refusal, `plan_work_has_data`); the wider rules stay with 8.8 | Decision 11 |
+| Keep or clear on a change from 1 or 2 to 0 or 3 with numbers; a `numbers` choice on any other save is refused | Decision 15 |
+| The work history (`journal_work_history`, partitioned, append-only, audited with the cells' history) feeds the cell history route, the reset report and the student's personal data report | Decisions 9 and 13 |
+| `year_cut_holds` counts the entries of the days cut off as kind `entry` | Decision 16; From 3.6b-2 |
+| **Build decision.** The ids a works write names in its body (a work, a plan work, a source lesson) are checked against the branch before the column check, 404 otherwise | `.claude/rules/api.md` |
+
 ## 23 October 2026: master plans (task 7.3)
 
 Plan approved on pull request #216 with corrections 1 and 2; decisions 1 to 16 confirmed there. Flagged on issue #42.

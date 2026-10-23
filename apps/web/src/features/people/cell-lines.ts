@@ -1,4 +1,4 @@
-import type { AccountNamed, CellLine } from '@sodiq/shared';
+import type { AccountNamed, CellLine, WorkLine } from '@sodiq/shared';
 import type { TFunction } from 'i18next';
 
 /**
@@ -57,3 +57,25 @@ export function cellLessonText(
 /** A person named by an account: the name when readable, else the login. */
 export const accountText = (named: AccountNamed, empty: string): string =>
   named.name ?? named.login ?? empty;
+
+/**
+ * A line of a work's history (task 8.1): "Total of Classwork: 30 → 20", or
+ * '"Not held" of Homework: no → yes'.
+ */
+export function workLineText(
+  t: TFunction,
+  line: Pick<
+    WorkLine,
+    'workKind' | 'totalBefore' | 'totalAfter' | 'notHeldBefore' | 'notHeldAfter'
+  >,
+): string {
+  const work = t(
+    line.workKind === 'classwork' ? 'journal.grid.parts.classwork' : 'journal.grid.parts.homework',
+  );
+  if (line.totalBefore !== line.totalAfter) {
+    return `${t('journal.works.historyTotal', { work })}: ${String(line.totalBefore ?? '—')} → ${String(line.totalAfter ?? '—')}`;
+  }
+  const yesNo = (value: boolean | null) =>
+    value === null ? '—' : value ? t('journal.works.yes') : t('journal.works.no');
+  return `${t('journal.works.historyNotHeld', { work })}: ${yesNo(line.notHeldBefore)} → ${yesNo(line.notHeldAfter)}`;
+}

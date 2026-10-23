@@ -721,6 +721,19 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // cell (within the reader's grid) and the reasons of absence (student-absences.test.ts).
   'POST /api/journal/lessons/:lessonId/attendance': { branch: 'request', roles: JOURNAL_WRITERS },
   'POST /api/journal/lessons/:lessonId/all-present': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.1: classwork and homework (scope in the route, journal-works.test.ts).
+  'POST /api/journal/lessons/:lessonId/works': { branch: 'request', roles: JOURNAL_WRITERS },
+  'DELETE /api/journal/lessons/:lessonId/works/:workId': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'PUT /api/journal/lessons/:lessonId/works/total': { branch: 'request', roles: JOURNAL_WRITERS },
+  'PUT /api/journal/lessons/:lessonId/works/not-held': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'POST /api/journal/lessons/:lessonId/works/carry': { branch: 'request', roles: JOURNAL_WRITERS },
+  'POST /api/journal/lessons/:lessonId/scores': { branch: 'request', roles: JOURNAL_WRITERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',
     roles: VIEW_READERS,

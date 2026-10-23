@@ -22,6 +22,7 @@ import {
   namedAccounts,
   workKinds,
 } from '../journal/cell-lines.query.js';
+import { workLines, withoutBranch } from '../journal/work-lines.query.js';
 import { branchOf } from './staff-account-records.js';
 
 const HOUR_MS = 3_600_000;
@@ -160,12 +161,29 @@ export class ResetEntries {
         transaction,
         resets.flatMap((reset) => [reset.account_id, reset.actor_id, reset.email_change_by]),
       );
+      // Task 8.1 (From 6.1c): the total and "not held" lines in the same windows.
+      const workEntries = (
+        await Promise.all(
+          windows.map(async (window) => ({
+            window,
+            lines: (
+              await workLines(transaction, {
+                branchId,
+                writer: { accountId: window.accountId, from: window.start, to: window.end },
+              })
+            ).filter(
+              (line) =>
+                line.totalBefore !== line.totalAfter || line.notHeldBefore !== line.notHeldAfter,
+            ),
+          })),
+        )
+      ).map((one) => one.lines);
       const named = (id: string | null) =>
         id === null ? null : (accounts.get(id) ?? { accountId: id, login: null, name: null });
       return {
         from,
         to,
-        resets: resets.map((reset) => {
+        resets: resets.map((reset, index) => {
           const end = reset.occurred_at.getTime() + RESET_ENTRY_HOURS * HOUR_MS;
           // Decision 4: an edit of the email (not the email given at
           // creation) by an account other than the one reset.
@@ -190,6 +208,7 @@ export class ResetEntries {
               changedBy === null || reset.email_change_at === null
                 ? null
                 : { ...changedBy, at: reset.email_change_at.toISOString() },
+            workEntries: (workEntries[index] ?? []).map(withoutBranch),
             entries: lines
               .filter(
                 (line) =>

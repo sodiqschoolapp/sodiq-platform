@@ -324,6 +324,30 @@ describe('master plans', () => {
       return entry.record_id === id || value.masterId === id || value.sourceMasterId === id;
     });
 
+  /**
+   * Task 8.1 (permission review, must-fix 1): a work added by hand at the class's first
+   * lesson, so the 404 tests of the plan writes that now write journal works (the
+   * takeover, the separation, the take of a master) hold rows of those tables.
+   */
+  const handWorkOf = async (branch: string, classId: string) => {
+    const lesson = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', classId)
+      .orderBy('starts_at')
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('journal_works')
+      .values({
+        branch_id: branch,
+        lesson_id: lesson.id,
+        source_lesson_id: lesson.id,
+        kind: 'classwork',
+        total: 10,
+      })
+      .execute();
+  };
+
   /** Every row of the tables the routes of 7.3 write, in one branch (and the masters of all branches). */
   const rowsOf = async (branch: string) => {
     const found: Record<string, unknown[]> = {};
@@ -332,6 +356,9 @@ describe('master plans', () => {
       'lesson_plan_items',
       'lesson_plan_works',
       'lesson_plan_places',
+      // Task 8.1: the take of a master removes plan works a journal work could name.
+      'journal_works',
+      'journal_work_history',
     ] as const) {
       found[table] = await t.database.migrator
         .selectFrom(table)
@@ -771,6 +798,8 @@ describe('master plans', () => {
       const mine = await masterWith(x, 2);
       const theirs = await masterWith(y, 1);
       const second = await masterWith(x, 1, x.head, { name: 'Second' });
+      await handWorkOf(x.s.branch, x.s.classId);
+      await handWorkOf(y.s.branch, y.s.classId);
       const beforeX = await rowsOf(x.s.branch);
       const beforeY = await rowsOf(y.s.branch);
       for (const masterId of [theirs.id, randomUUID()]) {

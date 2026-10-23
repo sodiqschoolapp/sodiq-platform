@@ -275,7 +275,12 @@ describe('the journal grid', () => {
 
       // The number and its percent; the lesson score from the daily 20 · 40 · 40.
       expect(
-        zokirov?.cells.map((cell) => [cell.closed, cell.mark, cell.works, cell.score]),
+        zokirov?.cells.map((cell) => [
+          cell.closed,
+          cell.mark,
+          cell.works.map((one) => ({ score: one.score, percent: one.percent })),
+          cell.score,
+        ]),
       ).toEqual([
         [false, 1, [{ score: 12, percent: 40 }], 60],
         [
