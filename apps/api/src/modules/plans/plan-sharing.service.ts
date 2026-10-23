@@ -10,7 +10,8 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { lockJournals, planIdOf, planItems, planJournalIds, planRows } from './plan-read.js';
 import { copyItems, separateJournal, unitKeysOf } from './plan-separate.js';
-import { PlansService, type Scene } from './plans.service.js';
+import type { GateTarget } from './plan-gate.js';
+import { gateAudit, PlansService, type Scene } from './plans.service.js';
 
 /**
  * Shared plans and copies (task 7.1c, pull request #214; `09`, What a plan
@@ -208,6 +209,8 @@ export class PlanSharing {
         if (planId !== null && planId === theirs) throw new ApiException('plan_share_same', 409);
         const shared = planId === null ? [journalId] : await planJournalIds(transaction, planId);
         await this.ownAll(transaction, access, scene, shared);
+        // Task 7.2: `edge`, "Joining is allowed only inside the window".
+        await this.plans.gate(transaction, scene, planId ?? '', [], true);
         // Read after the locks (`database.md`): kind, grades and language.
         const rows = (
           await journalRows(transaction, branchId, { yearId: joining.academicYearId })
@@ -399,6 +402,22 @@ export class PlanSharing {
           throw new ApiException('plan_not_empty', 409);
         }
       }
+      // Task 7.2: a copy lays items from the first row not started: the window,
+      // or a Re-plan period over those rows in every journal.
+      const targets: GateTarget[] = [];
+      for (const id of members) {
+        const rows = await this.plans.rowsOfJournal(transaction, scene, id);
+        const ahead = rows.filter((row) => !row.started);
+        targets.push({
+          journalId: id,
+          rows:
+            ahead.length === 0
+              ? [{ lessonId: null, date: null, started: false }]
+              : ahead.map((row) => ({ lessonId: row.lessonId, date: row.date, started: false })),
+          op: 'move',
+        });
+      }
+      const pass = await this.plans.gate(transaction, scene, planNow ?? '', targets);
       let sourceItems =
         sourcePlan === null ? [] : await planItems(transaction, sourcePlan, source.journal.id);
       if (input.part === 'remaining') {
@@ -447,6 +466,7 @@ export class PlanSharing {
           part: input.part,
           items: copied.length,
         },
+        ...gateAudit(pass),
         ...(requestId === undefined ? {} : { requestId }),
       });
       return this.plans.answer(transaction, scene);

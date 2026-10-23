@@ -1,4 +1,13 @@
 import {
+  planEventDecidedSchema,
+  planRequestSchema,
+  planRequestsSchema,
+  planWindowsSchema,
+  type PlanEventDecision,
+  type PlanRequestCreate,
+  type PlanRequestDecision,
+  type PlanWindowExtend,
+  type PlanWindowSave,
   planFileSchema,
   planItemSchema,
   planListSchema,
@@ -135,3 +144,117 @@ export async function downloadPlanFile(fileId: string, name: string): Promise<vo
   if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
   save(file, fileNameOf(result.response.headers.get('Content-Disposition'), name));
 }
+
+/** Task 7.2: the plan windows of a year (the current one without `yearId`). */
+export const planWindowsQuery = (branchId: string | null, yearId: string | null) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'windows', yearId],
+    queryFn: async () =>
+      planWindowsSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/windows', {
+            params: { header: branchHeader(), query: yearId === null ? {} : { yearId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 7.2: opens the window of a quarter or moves its dates. */
+export const savePlanWindow = (quarterId: string, body: PlanWindowSave) =>
+  answerOf(
+    api.PUT('/api/plans/windows/{quarterId}', {
+      params: { header: branchHeader(), path: { quarterId } },
+      body,
+    }),
+  ).then((answer) => planWindowsSchema.parse(answer));
+
+/** Task 7.2: extends the window of a quarter for one teacher. */
+export const extendPlanWindow = (quarterId: string, body: PlanWindowExtend) =>
+  answerOf(
+    api.POST('/api/plans/windows/{quarterId}/extensions', {
+      params: { header: branchHeader(), path: { quarterId } },
+      body,
+    }),
+  ).then((answer) => planWindowsSchema.parse(answer));
+
+/** Task 7.2: the requests of the reader's plans, or those the reader decides. */
+export const planRequestsQuery = (branchId: string | null, view: 'mine' | 'deciding') =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'requests', view],
+    queryFn: async () =>
+      planRequestsSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/requests', {
+            params: { header: branchHeader(), query: { view } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 7.2: the owner asks to edit (Text or Re-plan). */
+export const askPlanRequest = (journalId: string, body: PlanRequestCreate) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/requests', {
+      params: { header: branchHeader(), path: { journalId } },
+      body,
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.2: the owner sends a request the system prepared. */
+export const sendPlanRequest = (requestId: string) =>
+  answerOf(
+    api.POST('/api/plans/requests/{requestId}/send', {
+      params: { header: branchHeader(), path: { requestId } },
+      body: {},
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.2: the owner sends the request of the window's end. */
+export const sendPreparedPlanRequest = (journalId: string, quarterId: string) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/requests/prepared', {
+      params: { header: branchHeader(), path: { journalId } },
+      body: { quarterId },
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.2: an approver decides the request of the window's end without waiting. */
+export const decidePreparedPlanRequest = (
+  journalId: string,
+  quarterId: string,
+  decision: PlanRequestDecision,
+) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/requests/prepared/decide', {
+      params: { header: branchHeader(), path: { journalId } },
+      body: { quarterId, decision },
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.2: approve with a number of school days, or refuse with a reason. */
+export const decidePlanRequest = (requestId: string, body: PlanRequestDecision) =>
+  answerOf(
+    api.POST('/api/plans/requests/{requestId}/decide', {
+      params: { header: branchHeader(), path: { requestId } },
+      body,
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));
+
+/** Task 7.2: approves every waiting request of one event. */
+export const decidePlanEvent = (body: PlanEventDecision) =>
+  answerOf(
+    api.POST('/api/plans/requests/decide-event', {
+      params: { header: branchHeader() },
+      body,
+    }),
+  ).then((answer) => planEventDecidedSchema.parse(answer));
+
+/** Task 7.2: the owner locks an open period early. */
+export const finishPlanRequest = (requestId: string) =>
+  answerOf(
+    api.POST('/api/plans/requests/{requestId}/finish', {
+      params: { header: branchHeader(), path: { requestId } },
+    }),
+  ).then((answer) => planRequestSchema.parse(answer));

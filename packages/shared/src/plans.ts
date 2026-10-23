@@ -174,6 +174,11 @@ export const planItemSchema = z.object({
    * written here.
    */
   copiedFrom: z.object({ journalId: z.uuid(), quarterId: z.uuid() }).nullable(),
+  /**
+   * Task 7.2: the item of a lesson already held was changed through a request
+   * (`09`: "it carries an \"edited after the lesson\" mark").
+   */
+  editedAfterLesson: z.boolean(),
 });
 
 export type PlanItem = z.infer<typeof planItemSchema>;
@@ -190,6 +195,10 @@ export const planRowSchema = z.object({
   slot: z.int().min(1).nullable(),
   /** `edge/00-definitions`, Held lesson, as the journal reads it. */
   held: z.boolean(),
+  /** Task 7.2: the lesson's start has passed (the fixed part; a held row takes only Text). */
+  started: z.boolean(),
+  /** Task 7.2: what the reader may write on this row now (the window or an open period). */
+  open: z.enum(['none', 'text', 'all']),
   item: planItemSchema.nullable(),
 });
 
@@ -225,11 +234,29 @@ export const PLAN_REQUEST_CAUSES = [
   'rows_added',
   'moved_back',
   'owner_changed',
+  /** Task 7.2: a journal made after its quarter's window ended (`edge`: "a subject is added mid-quarter"). */
+  'journal_added',
+  /** Task 7.2: the plan was incomplete when the window ended (`edge`: "a request is prepared for every incomplete plan"). */
+  'window_end',
 ] as const;
 
 export const planRequestCauseSchema = z.enum(PLAN_REQUEST_CAUSES);
 
 export type PlanRequestCause = z.infer<typeof planRequestCauseSchema>;
+
+/** Task 7.2: where the window of a quarter stands for an owner. */
+export const PLAN_WINDOW_STATES = ['not_opened', 'before', 'open', 'ended'] as const;
+
+export type PlanWindowState = (typeof PLAN_WINDOW_STATES)[number];
+
+/**
+ * Task 7.2: `edge/lesson-plans`: "Such plans show \"window not opened\", not
+ * \"overdue\""; `edge/timetable`: "the plan window lists it as \"vacancy\", not
+ * as overdue against anyone".
+ */
+export const PLAN_FLAGS = ['overdue', 'window_not_opened', 'vacancy'] as const;
+
+export type PlanFlag = (typeof PLAN_FLAGS)[number];
 
 export const planParamsSchema = z.object({ journalId: z.uuid() });
 
@@ -248,16 +275,24 @@ export const planSchema = z.object({
   quarterId: z.uuid(),
   /** The owner's name on the quarter's reference date; `null` under a vacancy with no acting teacher. */
   owner: z.string().nullable(),
+  /** Task 7.2: the staff record of that owner, for an extension of the window. */
+  ownerStaffId: z.uuid().nullable(),
   /** The reader owns the plan and the year is open. */
   canEdit: z.boolean(),
   closed: z.boolean(),
   rows: z.array(planRowSchema),
   /** Task 7.1b: the items past the last row, attached to no lesson ("not covered"). */
   notCovered: z.array(planItemSchema),
-  /** Task 7.1b: the edit request the system prepared, until 7.2 sends it. */
+  /**
+   * Task 7.1b: the edit request the system prepared; task 7.2: `id` is
+   * `null` for the request worked out at the window's end and not stored yet.
+   */
   request: z
     .object({
-      fromDate: schoolDateSchema,
+      id: z.uuid().nullable(),
+      fromDate: schoolDateSchema.nullable(),
+      /** The started rows with no topic, for Text (review correction 2). */
+      lessons: z.array(z.object({ lessonId: z.uuid(), date: schoolDateSchema })),
       causes: z.array(
         z.object({
           kind: planRequestCauseSchema,
@@ -267,6 +302,17 @@ export const planSchema = z.object({
       ),
     })
     .nullable(),
+  /** Task 7.2: the window of the quarter for the plan's owner. */
+  window: z.object({
+    state: z.enum(PLAN_WINDOW_STATES),
+    startDate: schoolDateSchema.nullable(),
+    /** The last day in force for the owner (an extension included). */
+    endDate: schoolDateSchema.nullable(),
+  }),
+  /** Task 7.2: overdue, window not opened, or vacancy; `null` otherwise. */
+  flag: z.enum(PLAN_FLAGS).nullable(),
+  /** Task 7.2: the requests of this plan and journal not prepared, newest first. */
+  requests: z.array(z.lazy(() => planRequestSchema)),
   /**
    * Task 7.1c: the other classes or groups of a shared plan and where each
    * stands (`09`: "The plan screen shows where each class is"): its next
@@ -355,6 +401,8 @@ export const planListSchema = z.object({
           rows: z.int().min(0),
           /** Rows without a topic. */
           empty: z.int().min(0),
+          /** Task 7.2. */
+          flag: z.enum(PLAN_FLAGS).nullable(),
         }),
       ),
     }),
@@ -415,3 +463,248 @@ export const planImpactSchema = z.object({
 });
 
 export type PlanImpact = z.infer<typeof planImpactSchema>;
+
+// ---------------------------------------------------------------------------
+// Task 7.2: the plan window and edit requests (pull request #215).
+
+/** The windows of a year (`09`, The plan window). */
+export const planWindowsQuerySchema = z.strictObject({ yearId: z.uuid().optional() });
+
+export type PlanWindowsQuery = z.infer<typeof planWindowsQuerySchema>;
+
+export const planWindowsSchema = z.object({
+  yearId: z.uuid().nullable(),
+  /** The reader may open, change and extend (the Academic Vice Principal, the Super Admin). */
+  canEdit: z.boolean(),
+  quarters: z.array(
+    z.object({
+      quarter: planQuarterSchema,
+      /** Every school day of the quarter lies in a published version (review decision 9). */
+      published: z.boolean(),
+      window: z
+        .object({
+          startDate: schoolDateSchema,
+          endDate: schoolDateSchema,
+          state: z.enum(PLAN_WINDOW_STATES),
+          extensions: z.array(
+            z.object({ staffId: z.uuid(), name: z.string(), endDate: schoolDateSchema }),
+          ),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
+export type PlanWindows = z.infer<typeof planWindowsSchema>;
+
+export const planWindowParamsSchema = z.object({ quarterId: z.uuid() });
+
+export type PlanWindowParams = z.infer<typeof planWindowParamsSchema>;
+
+/**
+ * Open a window or move its dates (`edge`: "If it ends after the quarter's
+ * first lesson, the system shows how many lessons will be held without a
+ * plan and asks for confirmation").
+ */
+export const planWindowSaveSchema = z.strictObject({
+  startDate: schoolDateSchema,
+  endDate: schoolDateSchema,
+  confirm: z.boolean().optional(),
+});
+
+export type PlanWindowSave = z.infer<typeof planWindowSaveSchema>;
+
+/** `09`: "The Academic Vice Principal can extend the window for one teacher". */
+export const planWindowExtendSchema = z.strictObject({
+  staffId: z.uuid(),
+  endDate: schoolDateSchema,
+});
+
+export type PlanWindowExtend = z.infer<typeof planWindowExtendSchema>;
+
+export const PLAN_REQUEST_KINDS = ['text', 'replan', 'extension'] as const;
+
+export const PLAN_REQUEST_STATUSES = ['prepared', 'sent', 'approved', 'refused', 'void'] as const;
+
+export const PLAN_REQUEST_REASON_MAX_LENGTH = 1000;
+
+/** `edge`: "The days are school days, from 1 to 10." */
+export const PLAN_REQUEST_DAYS_MIN = 1;
+export const PLAN_REQUEST_DAYS_MAX = 10;
+
+const reasonSchema = z.string().max(PLAN_REQUEST_REASON_MAX_LENGTH);
+
+const requiredReasonSchema = reasonSchema.refine((value) => value.trim().length > 0, {
+  message: 'A reason is required.',
+});
+
+export const planRequestSchema = z.object({
+  id: z.uuid(),
+  journalId: z.uuid(),
+  quarterId: z.uuid(),
+  quarter: z.int().min(1).max(4),
+  unit: planUnitSchema,
+  subject: planSubjectSchema,
+  /** The plan's owner now; `null` under a vacancy with nobody acting. */
+  owner: z.string().nullable(),
+  kind: z.enum(PLAN_REQUEST_KINDS),
+  status: z.enum(PLAN_REQUEST_STATUSES),
+  fromDate: schoolDateSchema.nullable(),
+  lessons: z.array(
+    z.object({
+      lessonId: z.uuid(),
+      date: schoolDateSchema,
+      approved: z.boolean(),
+      untickReason: z.string(),
+    }),
+  ),
+  reason: z.string(),
+  causes: z.array(
+    z.object({
+      kind: planRequestCauseSchema,
+      onDate: schoolDateSchema,
+      items: z.int().min(0),
+      eventId: z.uuid(),
+    }),
+  ),
+  sentAt: z.iso.datetime({ offset: true }).nullable(),
+  decidedBy: z.string().nullable(),
+  decidedAt: z.iso.datetime({ offset: true }).nullable(),
+  decisionReason: z.string(),
+  days: z.int().min(1).max(10).nullable(),
+  openUntil: z.iso.datetime({ offset: true }).nullable(),
+  /** The period is open now. */
+  open: z.boolean(),
+  finishedAt: z.iso.datetime({ offset: true }).nullable(),
+  /** School days a sent request has waited (`edge`: "one unanswered for 2 school days is highlighted"). */
+  waitingDays: z.int().min(0),
+  late: z.boolean(),
+  /** The reader may decide it now. */
+  canDecide: z.boolean(),
+});
+
+export type PlanRequest = z.infer<typeof planRequestSchema>;
+
+export const PLAN_REQUEST_VIEWS = ['mine', 'deciding'] as const;
+
+export const planRequestsQuerySchema = z.strictObject({
+  view: z.enum(PLAN_REQUEST_VIEWS),
+  yearId: z.uuid().optional(),
+});
+
+export type PlanRequestsQuery = z.infer<typeof planRequestsQuerySchema>;
+
+export const planRequestsSchema = z.object({
+  requests: z.array(planRequestSchema),
+  /** The events of the waiting requests the reader may decide (`09`, Approving together). */
+  events: z.array(
+    z.object({
+      eventId: z.uuid(),
+      at: z.iso.datetime({ offset: true }),
+      requests: z.int().min(1),
+      subjects: z.array(planSubjectSchema),
+    }),
+  ),
+});
+
+export type PlanRequests = z.infer<typeof planRequestsSchema>;
+
+/** `09`: "The teacher sends an edit request: which lessons, and the reason." */
+export const planRequestCreateSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('text'),
+    quarterId: z.uuid(),
+    lessonIds: z.array(z.uuid()).min(1).max(200),
+    reason: requiredReasonSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('replan'),
+    quarterId: z.uuid(),
+    fromLessonId: z.uuid(),
+    reason: requiredReasonSchema,
+  }),
+]);
+
+export type PlanRequestCreate = z.infer<typeof planRequestCreateSchema>;
+
+export const planRequestParamsSchema = z.object({ requestId: z.uuid() });
+
+export type PlanRequestParams = z.infer<typeof planRequestParamsSchema>;
+
+/** A prepared request sent as it is ("The teacher only sends it"), with an optional note. */
+export const planRequestSendSchema = z.strictObject({ reason: reasonSchema.optional() });
+
+export type PlanRequestSend = z.infer<typeof planRequestSendSchema>;
+
+/**
+ * `edge`: "The days are school days, from 1 to 10. The approver can untick
+ * lessons, giving a reason. A refusal changes nothing and the teacher may ask
+ * again." Unticking a Re-plan is a later first lesson (review decision 10).
+ */
+export const planRequestDecisionSchema = z.discriminatedUnion('decision', [
+  z.strictObject({
+    decision: z.literal('approve'),
+    days: z.int().min(PLAN_REQUEST_DAYS_MIN).max(PLAN_REQUEST_DAYS_MAX),
+    untick: z
+      .array(z.strictObject({ lessonId: z.uuid(), reason: requiredReasonSchema }))
+      .max(200)
+      .optional(),
+    later: z.strictObject({ fromLessonId: z.uuid(), reason: requiredReasonSchema }).optional(),
+  }),
+  z.strictObject({ decision: z.literal('refuse'), reason: requiredReasonSchema }),
+]);
+
+export type PlanRequestDecision = z.infer<typeof planRequestDecisionSchema>;
+
+/** The request worked out at the window's end, stored by the owner's send. */
+export const planPreparedSendSchema = z.strictObject({
+  quarterId: z.uuid(),
+  reason: reasonSchema.optional(),
+});
+
+export type PlanPreparedSend = z.infer<typeof planPreparedSendSchema>;
+
+/** The same request stored and decided by an approver ("can approve it without waiting"). */
+export const planPreparedDecisionSchema = z.strictObject({
+  quarterId: z.uuid(),
+  decision: planRequestDecisionSchema,
+});
+
+export type PlanPreparedDecision = z.infer<typeof planPreparedDecisionSchema>;
+
+/** `09`, Approving together: "approve all requests caused by one event ... and set the number of days once". */
+export const planEventDecisionSchema = z.strictObject({
+  eventId: z.uuid(),
+  subjectId: z.uuid().optional(),
+  days: z.int().min(PLAN_REQUEST_DAYS_MIN).max(PLAN_REQUEST_DAYS_MAX),
+});
+
+export type PlanEventDecision = z.infer<typeof planEventDecisionSchema>;
+
+export const planEventDecidedSchema = z.object({
+  approved: z.array(z.uuid()),
+  /** The waiting requests of the event the reader may not decide: their own, or of a closed quarter. */
+  skipped: z.array(z.uuid()),
+  /**
+   * The waiting requests of the event the reader does not oversee (another
+   * subject), counted and not named: `02`, a Head Teacher's scope is "own
+   * subjects in own branch" (review of the code of task 7.2, round 1).
+   */
+  others: z.int().min(0),
+});
+
+export type PlanEventDecided = z.infer<typeof planEventDecidedSchema>;
+
+/**
+ * The queue edit (review decision 6; `edge`: "Re-plan ... allows insert,
+ * delete, merge and reorder"): the order of the items from the first row not
+ * started, `null` for an empty row; an item left out is cleared. `base` is
+ * the order as the page read it.
+ */
+export const planQueueSchema = z.strictObject({
+  quarterId: z.uuid(),
+  base: z.array(z.uuid().nullable()).max(400),
+  order: z.array(z.uuid().nullable()).max(400),
+});
+
+export type PlanQueue = z.infer<typeof planQueueSchema>;

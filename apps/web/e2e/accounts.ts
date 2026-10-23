@@ -93,6 +93,8 @@ export type AccountKey =
   | 'attendanceTeacher'
   | 'attendanceTutor'
   | 'plansTeacher'
+  | 'requestsTeacher'
+  | 'requestsHead'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
 

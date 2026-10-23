@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import {
   schoolDateOf,
@@ -20,7 +21,9 @@ import {
   referenceDateOf,
   type PlanQuarter,
 } from './plan-read.js';
+import { storedWindowOf } from './plan-gate.js';
 import { separateJournal, unitKeysOf } from './plan-separate.js';
+import { windowStateOf } from './plan-window.js';
 import { separations, type SharingJournal } from './plan-share.js';
 import { followQueue, type Absorbed, type FollowResult, type QueueRow } from './plan-queue.js';
 import { planReachOf, planReaderOf } from './plan-scope.js';
@@ -122,6 +125,8 @@ export class PlanFollow implements OnModuleInit {
     await sql`
       delete from lesson_plan_follow_marks where written_xact = pg_current_xact_id_if_assigned()
     `.execute(transaction);
+    // Task 7.2: one event per transaction (`09`, Approving together).
+    const eventId = randomUUID();
     for (const [branchId, journalIds] of marks) {
       // Task 7.1c: a journal of a shared plan that lost its teacher, language
       // or grade leaves the plan first, then follows on its own.
@@ -131,7 +136,7 @@ export class PlanFollow implements OnModuleInit {
         branchId,
         [...new Set([...journalIds, ...separated])].sort(),
       );
-      await this.write(transaction, branchId, followed);
+      await this.write(transaction, branchId, followed, eventId);
     }
   }
 
@@ -409,7 +414,7 @@ export class PlanFollow implements OnModuleInit {
       .orderBy('id')
       .forNoKeyUpdate()
       .execute();
-    const { today, now } = await this.clockOf(transaction, branchId);
+    const { today, now, timeZone } = await this.clockOf(transaction, branchId);
     const plans = await transaction
       .selectFrom('lesson_plan_journals')
       .innerJoin('quarters', 'quarters.id', 'lesson_plan_journals.quarter_id')
@@ -419,6 +424,9 @@ export class PlanFollow implements OnModuleInit {
         'quarters.id as quarter_id',
         'quarters.number',
         'lesson_plan_journals.laid_at',
+        // Task 7.2: the link was made by this transaction (its journal is new;
+        // `database.md`: the bookkeeping column compared with `now()`).
+        sql<boolean>`lesson_plan_journals.created_at = now()`.as('made_now'),
         sql<string | null>`quarters.start_date::text`.as('start_date'),
         sql<string | null>`quarters.end_date::text`.as('end_date'),
       ])
@@ -560,12 +568,24 @@ export class PlanFollow implements OnModuleInit {
         );
         return owner === null || owner.kind === 'none' ? null : owner.staffId;
       });
-      followed.push({
-        plan: followedPlan,
-        result,
-        owners,
-        causes: causesOf(followedPlan, result, owners, now),
-      });
+      const causes = causesOf(followedPlan, result, owners, now);
+      // Task 7.2: a plan laid for the first time after its quarter's window
+      // ended for its owner (`edge`: "a subject is added mid-quarter"; "The
+      // system prepares a request covering the lessons not yet held").
+      // Spec review of the code, should-fix 7: only a journal made in this
+      // transaction, never a plan record laid late for the first time.
+      if (before === null && rewrite === undefined && plan.made_now) {
+        const first = after.findIndex((row) => row.startsAt.getTime() > now.getTime());
+        const owner = owners[first] ?? null;
+        const row = after[first];
+        if (row !== undefined && owner !== null) {
+          const window = await storedWindowOf(transaction, quarter, owner, timeZone);
+          if (windowStateOf(window, now).state === 'ended') {
+            causes.push({ kind: 'journal_added', onDate: row.date, items: 0, staffId: owner });
+          }
+        }
+      }
+      followed.push({ plan: followedPlan, result, owners, causes });
     }
     return followed;
   }
@@ -639,6 +659,7 @@ export class PlanFollow implements OnModuleInit {
     transaction: Transaction,
     branchId: string,
     followed: readonly Followed[],
+    eventId: string,
   ): Promise<void> {
     if (followed.length === 0) return;
     const now = await transactionMoment(transaction);
@@ -731,9 +752,15 @@ export class PlanFollow implements OnModuleInit {
           } satisfies JsonValue,
         });
       }
+      // Task 7.2, review correction 4 (`edge/people-roles-accounts`: "On the
+      // date, their own requests are cancelled"): a new owner of the rows not
+      // started voids the earlier owner's sent requests and ends their periods.
+      if (one.causes.some((cause) => cause.kind === 'owner_changed')) {
+        await this.endEarlierOwners(transaction, branchId, plan, now, actor);
+      }
       let requested = false;
       if (plan.open && one.causes.length > 0) {
-        await this.prepare(transaction, branchId, plan, one.causes, now, actor);
+        await this.prepare(transaction, branchId, plan, one.causes, now, actor, eventId);
         requested = true;
       }
       if (!plan.open || (result.moves.length === 0 && !requested)) continue;
@@ -760,6 +787,60 @@ export class PlanFollow implements OnModuleInit {
       counts.set(key, count);
     }
     await this.tell(transaction, branchId, told, counts, now);
+  }
+
+  /**
+   * Task 7.2 (review correction 4): the sent requests of the plan's journal
+   * become void and the open periods end, at the transaction's moment.
+   */
+  private async endEarlierOwners(
+    transaction: Transaction,
+    branchId: string,
+    plan: FollowedPlan,
+    now: Date,
+    actor: { actorId: string | null; assignmentId: string | null },
+  ): Promise<void> {
+    const requests = await transaction
+      .selectFrom('lesson_plan_requests')
+      .select(['id', 'status', 'open_until', 'finished_at'])
+      .where('plan_id', '=', plan.planId)
+      .where('journal_id', '=', plan.journal.id)
+      .where('status', 'in', ['sent', 'approved'])
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    const voided: string[] = [];
+    const ended: string[] = [];
+    for (const request of requests) {
+      if (request.status === 'sent') {
+        await transaction
+          .updateTable('lesson_plan_requests')
+          .set({ status: 'void', updated_at: now })
+          .where('id', '=', request.id)
+          .execute();
+        voided.push(request.id);
+      } else if (
+        request.finished_at === null &&
+        request.open_until !== null &&
+        request.open_until.getTime() >= now.getTime()
+      ) {
+        await transaction
+          .updateTable('lesson_plan_requests')
+          .set({ finished_at: now, updated_at: now })
+          .where('id', '=', request.id)
+          .execute();
+        ended.push(request.id);
+      }
+    }
+    if (voided.length === 0 && ended.length === 0) return;
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: actor.actorId,
+      ...(actor.assignmentId === null ? {} : { assignmentId: actor.assignmentId }),
+      action: 'plan.request_void',
+      record: { type: 'lesson_plan', id: plan.planId },
+      newValue: { journalId: plan.journal.id, voided, ended, cause: 'owner_changed' },
+    });
   }
 
   /** The owner on the quarter's reference date (7.1a, decision 6). */
@@ -805,6 +886,7 @@ export class PlanFollow implements OnModuleInit {
     causes: readonly Cause[],
     now: Date,
     actor: { actorId: string | null; assignmentId: string | null },
+    eventId: string,
   ): Promise<void> {
     const fromDate = causes.reduce(
       (min, cause) => (cause.onDate < min ? cause.onDate : min),
@@ -868,6 +950,7 @@ export class PlanFollow implements OnModuleInit {
           items: cause.items,
           staff_id: cause.staffId,
           at: now,
+          event_id: eventId,
         })),
       )
       .execute();

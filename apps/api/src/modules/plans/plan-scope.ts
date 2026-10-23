@@ -62,6 +62,34 @@ export async function ownerIdOn(
   return owner === null || owner.kind === 'none' ? null : owner.staffId;
 }
 
+/**
+ * Task 7.2: the journal is under a vacancy with nobody acting on a day
+ * (`ownerOn` gives `none`); a day the journal does not run is no vacancy.
+ */
+export async function vacancyOn(
+  transaction: Transaction,
+  branchId: string,
+  journal: JournalRow,
+  day: string,
+): Promise<boolean> {
+  const facts = await ownerFactsOf(transaction, branchId, [
+    {
+      id: journal.id,
+      academic_year_id: journal.academicYearId,
+      class_id: journal.classId,
+      group_id: journal.groupId,
+      subject_id: journal.subjectId,
+    },
+  ]);
+  const owner = ownerOn(
+    facts.runs.get(journal.id) ?? [],
+    facts.periods.get(journal.id) ?? [],
+    facts.out,
+    day,
+  );
+  return owner?.kind === 'none';
+}
+
 /** The reader as the scope reads it, loaded once per request. */
 export interface PlanReader {
   readonly access: Access;
@@ -117,4 +145,24 @@ export function planReachOf(
     edit: false,
     assignmentId: null,
   };
+}
+
+/**
+ * Task 7.2 (permission review, should-fix 7): who reads the edit requests of a
+ * plan: its owner, the whole-branch roles and the Head Teachers of its subject,
+ * the readers who decide or oversee them (`02`, "Who approves"); a teacher who
+ * reads the plan by the subject and grade of the profile does not.
+ */
+export function seesRequests(
+  reader: PlanReader,
+  journal: JournalRow,
+  ownerId: string | null,
+): boolean {
+  if (reader.staffId !== null && ownerId !== null && reader.staffId === ownerId) return true;
+  return reader.access.permitting.some(
+    (assignment) =>
+      WHOLE_ROLES.includes(assignment.role) ||
+      (SUBJECT_ROLES.includes(assignment.role) &&
+        assignment.subjectIds.includes(lower(journal.subjectId))),
+  );
 }

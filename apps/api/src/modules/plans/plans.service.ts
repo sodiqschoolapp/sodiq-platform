@@ -12,9 +12,12 @@ import {
   type PlanItemSave,
   type PlanLessonItem,
   type PlanList,
+  type PlanQueue,
   type PlanListQuery,
   type PlanQuery,
+  type PlanFlag,
   type PlanState,
+  type PlanWindowState,
   type PlanWork,
   type PlanWorkInput,
 } from '@sodiq/shared';
@@ -47,12 +50,31 @@ import {
 } from './plan-read.js';
 import {
   ownerIdOn,
+  vacancyOn,
   planReachOf,
   planReaderOf,
+  seesRequests,
   type PlanReach,
   type PlanReader,
 } from './plan-scope.js';
+import {
+  gateDetail,
+  openPeriodsOf,
+  ownerPeriodsOf,
+  passGate,
+  storedWindowOf,
+  type GatePass,
+  type GateTarget,
+} from './plan-gate.js';
+import { planRequestsOf } from './plan-request-read.js';
 import { unitKeysOf } from './plan-separate.js';
+import {
+  periodCovers,
+  planFlagOf,
+  windowStateOf,
+  type GateOp,
+  type GateRow,
+} from './plan-window.js';
 import { placeNew } from './plan-share.js';
 
 /**
@@ -64,6 +86,12 @@ import { placeNew } from './plan-share.js';
  * refused in a closed year and audited with the old and new values of what
  * it changed, which is the plan's history.
  */
+
+/** The audit field of a write let through by requests (task 7.2). */
+export const gateAudit = (pass: GatePass): { details?: JsonValue } => {
+  const detail = gateDetail(pass);
+  return detail === null ? {} : { details: detail };
+};
 
 const scopeRefusal = () => new ApiException('plan_scope', 403);
 
@@ -204,6 +232,62 @@ export class PlansService {
       );
       const counts = await this.rowCounts(transaction, readable, quarters);
       const filled = await this.filledCounts(transaction, readable, quarters, counts);
+      // Task 7.2: the flag of each plan (overdue, window not opened, vacancy).
+      const { now, timeZone } = await clockOf(transaction, branchId);
+      const links =
+        readable.length === 0
+          ? []
+          : await transaction
+              .selectFrom('lesson_plan_journals')
+              .select(['plan_id', 'journal_id', 'quarter_id'])
+              .where(
+                'journal_id',
+                'in',
+                readable.map((journal) => journal.id),
+              )
+              .execute();
+      const planOf = new Map(
+        links.map((link) => [`${link.journal_id}|${link.quarter_id}`, link.plan_id]),
+      );
+      const ownerPeriods = await ownerPeriodsOf(
+        transaction,
+        links.map((link) => link.plan_id),
+        now,
+      );
+      const windowStates = new Map<string, PlanWindowState>();
+      const stateOf = async (quarter: PlanQuarter, ownerId: string | null) => {
+        const key = `${quarter.id}|${ownerId ?? ''}`;
+        const known = windowStates.get(key);
+        if (known !== undefined) return known;
+        const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
+        const found = windowStateOf(window, now).state;
+        windowStates.set(key, found);
+        return found;
+      };
+      const flags = new Map<string, PlanFlag | null>();
+      for (const journal of readable) {
+        for (const quarter of quarters) {
+          const key = `${journal.id}|${quarter.id}`;
+          const owner = ownerOn(
+            facts.runs.get(journal.id) ?? [],
+            facts.periods.get(journal.id) ?? [],
+            facts.out,
+            referenceDateOf(quarter, today),
+          );
+          const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
+          const rows = counts.get(key) ?? 0;
+          flags.set(
+            key,
+            planFlagOf({
+              rows,
+              complete: (filled.get(key)?.topics ?? 0) >= rows,
+              vacancy: owner?.kind === 'none',
+              window: await stateOf(quarter, ownerId),
+              ownerPeriod: ownerPeriods.has(`${planOf.get(key) ?? ''}|${journal.id}`),
+            }),
+          );
+        }
+      }
       const sorted = [...readable].sort(
         (a, b) =>
           Number(a.classId === null) - Number(b.classId === null) ||
@@ -232,7 +316,13 @@ export class PlansService {
                   : topics >= rows
                     ? 'complete'
                     : 'incomplete';
-            return { quarterId: quarter.id, state, rows, empty: Math.max(rows - topics, 0) };
+            return {
+              quarterId: quarter.id,
+              state,
+              rows,
+              empty: Math.max(rows - topics, 0),
+              flag: flags.get(key) ?? null,
+            };
           }),
         })),
       });
@@ -349,6 +439,78 @@ export class PlansService {
     const items = planId === null ? [] : await planItems(transaction, planId, scene.journal.id);
     const byPosition = new Map(items.map((item) => [item.position, item]));
     const names = await staffNames(transaction, scene.ownerId === null ? [] : [scene.ownerId]);
+    // Task 7.2: the window for the owner, what the reader may write on each row now, the flag.
+    const window = await storedWindowOf(transaction, scene.quarter, scene.ownerId, scene.timeZone);
+    const { state, endsAt } = windowStateOf(window, scene.now);
+    const writes = scene.reach.edit && !scene.closed && scene.open;
+    const periods =
+      writes && state !== 'open' && planId !== null
+        ? await openPeriodsOf(transaction, planId, scene.journal.id, scene.now)
+        : [];
+    const openOf = (row: PlanRowLesson): 'none' | 'text' | 'all' => {
+      if (!writes) return 'none';
+      if (state === 'open') return 'all';
+      const gateRow = { lessonId: row.lessonId, date: row.date, started: row.started };
+      if (periods.some((period) => periodCovers(period, gateRow, 'move'))) return 'all';
+      if (periods.some((period) => periodCovers(period, gateRow, 'wording'))) return 'text';
+      return 'none';
+    };
+    const complete = rows.every((row) => byPosition.has(row.number));
+    const ownerPeriods =
+      planId === null ? new Set<string>() : await ownerPeriodsOf(transaction, [planId], scene.now);
+    const flag = planFlagOf({
+      rows: rows.length,
+      complete,
+      vacancy: await vacancyOn(
+        transaction,
+        scene.branchId,
+        scene.journal,
+        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+      ),
+      window: state,
+      ownerPeriod: ownerPeriods.has(`${planId ?? ''}|${scene.journal.id}`),
+    });
+    const prepared =
+      planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id);
+    let request: Plan['request'] = prepared;
+    if (request === null && state === 'ended' && !complete && planId !== null) {
+      // Review decision 14: the request of the window's end, worked out on read
+      // while the plan has no prepared or waiting request and no open period.
+      const waiting = await transaction
+        .selectFrom('lesson_plan_requests')
+        .select('id')
+        .where('plan_id', '=', planId)
+        .where('journal_id', '=', scene.journal.id)
+        .where((builder) =>
+          builder.or([
+            builder('status', 'in', ['prepared', 'sent']),
+            builder.and([
+              builder('status', '=', 'approved'),
+              builder('finished_at', 'is', null),
+              builder('open_until', '>=', scene.now),
+            ]),
+          ]),
+        )
+        .executeTakeFirst();
+      if (waiting === undefined) {
+        const empty = rows.filter((row) => !byPosition.has(row.number));
+        request = {
+          id: null,
+          fromDate: empty.find((row) => !row.started)?.date ?? null,
+          lessons: empty
+            .filter((row) => row.started)
+            .map((row) => ({ lessonId: row.lessonId, date: row.date })),
+          causes: [
+            {
+              kind: 'window_end',
+              onDate:
+                (empty.find((row) => !row.started) ?? empty[0])?.date ?? scene.quarter.endDate,
+              items: 0,
+            },
+          ],
+        };
+      }
+    }
     return planSchema.parse({
       journalId: scene.journal.id,
       unit: unitOf(scene.journal),
@@ -356,12 +518,26 @@ export class PlansService {
       quarters: scene.quarters,
       quarterId: scene.quarter.id,
       owner: scene.ownerId === null ? null : (names.get(scene.ownerId) ?? null),
+      ownerStaffId: scene.ownerId,
       canEdit: scene.reach.edit && !scene.closed && scene.open,
       closed: scene.closed || !scene.open,
-      rows: rows.map((row) => ({ ...row, item: byPosition.get(row.number) ?? null })),
+      rows: rows.map((row) => ({
+        ...row,
+        open: openOf(row),
+        item: byPosition.get(row.number) ?? null,
+      })),
       notCovered: items.filter((item) => item.position > rows.length),
-      request:
-        planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id),
+      request,
+      window: {
+        state,
+        startDate: window?.startDate ?? null,
+        endDate: endsAt === null ? null : schoolDateOf(endsAt, scene.timeZone),
+      },
+      flag,
+      requests:
+        planId === null || !seesRequests(scene.reader, scene.journal, scene.ownerId)
+          ? []
+          : await planRequestsOf(transaction, scene, planId, false),
       sharedWith: planId === null ? [] : await this.sharedWith(transaction, scene, planId),
       shareCandidates:
         scene.reach.edit && !scene.closed && scene.open
@@ -744,11 +920,15 @@ export class PlansService {
     return place;
   }
 
-  /** The scene of a write to an item: the request may write its plan. */
+  /**
+   * The scene of a write to an item: the request may write its plan, and the
+   * window or an open period lets the write through (task 7.2, `plan-gate.ts`).
+   */
   async itemWriteScene(
     transaction: Transaction,
     access: Access,
     itemId: string,
+    op: GateOp,
   ): Promise<
     Scene & {
       readonly assignmentId: string;
@@ -756,6 +936,9 @@ export class PlansService {
       readonly journalIds: readonly string[];
       /** The item's row in the scene's journal. */
       readonly position: number;
+      readonly pass: GatePass;
+      /** Task 7.2: the journals in which the item's row has started. */
+      readonly startedIn: readonly string[];
     }
   > {
     const branchId = branchOf(access);
@@ -778,7 +961,85 @@ export class PlansService {
       }
     }
     const { position } = await this.placeOf(transaction, itemId, scene.journal.id);
-    return { ...scene, planId: target.planId, journalIds, position };
+    const targets: GateTarget[] = [];
+    const startedIn: string[] = [];
+    for (const journalId of journalIds) {
+      const row = await this.gateRowOf(transaction, scene, journalId, itemId);
+      if (row.started) startedIn.push(journalId);
+      targets.push({ journalId, rows: [row], op });
+    }
+    const pass = await this.gate(transaction, scene, target.planId, targets);
+    return { ...scene, planId: target.planId, journalIds, position, pass, startedIn };
+  }
+
+  /**
+   * Task 7.2: `09`, "If the item of a lesson already held is changed, it
+   * carries an \"edited after the lesson\" mark": a write let through by a
+   * request (after the window) marks the item's place in each journal whose
+   * row has started. A save, a file added or removed, and an item created on
+   * a held row all change the item of that lesson (review of the code, round 1).
+   */
+  async markEditedAfterLesson(
+    transaction: Transaction,
+    pass: GatePass,
+    itemId: string,
+    startedIn: readonly string[],
+  ): Promise<void> {
+    if (pass.via !== 'request' || startedIn.length === 0) return;
+    await transaction
+      .updateTable('lesson_plan_places')
+      .set({ edited_after_lesson: true })
+      .where('item_id', '=', itemId)
+      .where('journal_id', 'in', [...startedIn])
+      .execute();
+  }
+
+  /** The row of an item in one journal, as the gate reads it; an item past the last row has none. */
+  private async gateRowOf(
+    transaction: Transaction,
+    scene: Scene,
+    journalId: string,
+    itemId: string,
+  ): Promise<GateRow> {
+    const rows = await this.rowsOfJournal(transaction, scene, journalId);
+    const { position } = await this.placeOf(transaction, itemId, journalId);
+    const row = rows[position - 1];
+    return row === undefined
+      ? { lessonId: null, date: null, started: false }
+      : { lessonId: row.lessonId, date: row.date, started: row.started };
+  }
+
+  /** The rows of a journal of the scene's plan in the scene's quarter. */
+  async rowsOfJournal(
+    transaction: Transaction,
+    scene: Scene,
+    journalId: string,
+  ): Promise<PlanRowLesson[]> {
+    const journal =
+      journalId === scene.journal.id
+        ? scene.journal
+        : (await journalRows(transaction, scene.branchId, { journalId }))[0];
+    if (journal === undefined) throw notFound();
+    return planRows(transaction, scene.branchId, journal, scene.quarter, scene.timeZone, scene.now);
+  }
+
+  /** Task 7.2: the window of the writer, else the open periods of every journal touched (`plan-gate.ts`). */
+  gate(
+    transaction: Transaction,
+    scene: Scene,
+    planId: string,
+    targets: readonly GateTarget[],
+    windowOnly = false,
+  ): Promise<GatePass> {
+    return passGate(transaction, {
+      planId,
+      quarter: scene.quarter,
+      staffId: scene.reader.staffId,
+      timeZone: scene.timeZone,
+      now: scene.now,
+      targets,
+      windowOnly,
+    });
   }
 
   /** The scene of a read of an item's file: the request may read its plan. */
@@ -879,6 +1140,41 @@ export class PlansService {
             ]);
           }
           const page = await this.placesOf(transaction, planId, journalId);
+          // Task 7.2: the window, else a period covering the row in every
+          // journal (a new item moves the later ones of another journal).
+          const own = rows[input.position - 1];
+          // The journals whose row of the new item is held (the mark, below).
+          const startedIn: string[] = own?.started === true ? [journalId] : [];
+          const targets: GateTarget[] = [
+            {
+              journalId,
+              rows: [
+                own === undefined
+                  ? { lessonId: null, date: null, started: false }
+                  : { lessonId: own.lessonId, date: own.date, started: own.started },
+              ],
+              op: 'create',
+            },
+          ];
+          for (const other of [...others].sort()) {
+            const otherRows = await this.rowsOfJournal(transaction, scene, other);
+            const placed = placeNew(page, input.position, {
+              started: otherRows.filter((one) => one.started).length,
+              places: await this.placesOf(transaction, planId, other),
+            });
+            const at = otherRows[placed.position - 1];
+            if (at?.started === true) startedIn.push(other);
+            targets.push({
+              journalId: other,
+              rows: [
+                at === undefined
+                  ? { lessonId: null, date: null, started: false }
+                  : { lessonId: at.lessonId, date: at.date, started: at.started },
+              ],
+              op: placed.shifts.size > 0 ? 'move' : 'create',
+            });
+          }
+          const pass = await this.gate(transaction, scene, planId, targets);
           const values = input.values;
           const item = await transaction
             .insertInto('lesson_plan_items')
@@ -944,6 +1240,9 @@ export class PlansService {
               })
               .execute();
           }
+          // Decided without the owner (code round 1): an item created on a held
+          // row through a request changes the item of a lesson already held.
+          await this.markEditedAfterLesson(transaction, pass, item.id, startedIn);
           const created = await this.itemOf(transaction, item.id, journalId);
           const row = rows[input.position - 1];
           await this.audit.record(transaction, {
@@ -962,6 +1261,7 @@ export class PlansService {
               classworks: created.classworks,
               homeworks: created.homeworks,
             },
+            ...gateAudit(pass),
             ...(requestId === undefined ? {} : { requestId }),
           });
           return created;
@@ -986,7 +1286,7 @@ export class PlansService {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const scene = await this.itemWriteScene(transaction, access, itemId);
+          const scene = await this.itemWriteScene(transaction, access, itemId, 'wording');
           const stored = await this.lockItem(transaction, itemId);
           const storedWorks = (await worksOf(transaction, [itemId])).get(itemId) ?? {
             classworks: [],
@@ -1162,6 +1462,7 @@ export class PlansService {
               workEntry(work, change.kind, index + 1),
             );
           }
+          await this.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
           const saved = await this.itemOf(transaction, itemId, scene.journal.id);
           for (const change of workChanges) {
             if (change.list in oldValue) {
@@ -1179,7 +1480,12 @@ export class PlansService {
               record: { type: 'lesson_plan', id: scene.planId },
               oldValue,
               newValue,
-              details: { itemId, position: scene.position, removedWorks },
+              details: {
+                itemId,
+                position: scene.position,
+                removedWorks,
+                ...(gateDetail(scene.pass) ?? {}),
+              },
               ...(requestId === undefined ? {} : { requestId }),
             });
           }
@@ -1193,7 +1499,7 @@ export class PlansService {
   clearItem(access: Access, itemId: string, requestId: string | undefined): Promise<void> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.itemWriteScene(transaction, access, itemId);
+      const scene = await this.itemWriteScene(transaction, access, itemId, 'move');
       await this.lockItem(transaction, itemId);
       // Task 7.1c: a held row of any journal of a shared plan keeps its item.
       let row: PlanRowLesson | undefined;
@@ -1238,8 +1544,155 @@ export class PlansService {
           files: before.files.map((file) => file.id),
         },
         newValue: null,
+        ...gateAudit(scene.pass),
         ...(requestId === undefined ? {} : { requestId }),
       });
+    });
+  }
+
+  /**
+   * The queue edit (task 7.2, review decision 6; `edge`: "'Re-plan' runs from
+   * a chosen lesson not yet held to the end of the quarter and allows insert,
+   * delete, merge and reorder"): the new order of the items from the first row
+   * not started, `null` for an empty row; an item left out is cleared. In a
+   * shared plan each journal lays the order from its own first row not
+   * started; an item on a started row of any journal is not moved.
+   */
+  editQueue(
+    access: Access,
+    journalId: string,
+    input: PlanQueue,
+    requestId: string | undefined,
+  ): Promise<Plan> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.writeSceneOf(
+        transaction,
+        access,
+        branchId,
+        journalId,
+        input.quarterId,
+      );
+      const members = await this.lockPlanOf(transaction, journalId, scene.quarter.id);
+      for (const other of members) {
+        if (other !== journalId) {
+          await this.writeSceneOf(transaction, access, branchId, other, input.quarterId);
+        }
+      }
+      const planId = await planIdOf(transaction, journalId, scene.quarter.id);
+      if (planId === null) throw notFound();
+      // `.claude/rules/api.md`: an id in the body that is no item of the branch
+      // is 404, read before the stale check (review of the code, round 1).
+      const sent = [...new Set([...input.base, ...input.order])].filter(
+        (one): one is string => one !== null,
+      );
+      if (sent.length > 0) {
+        const known = await transaction
+          .selectFrom('lesson_plan_items')
+          .select('id')
+          .where('id', 'in', sent)
+          .where('branch_id', '=', branchId)
+          .execute();
+        if (known.length !== sent.length) throw notFound();
+      }
+      const trim = (list: readonly (string | null)[]) => {
+        const copy = [...list];
+        while (copy.length > 0 && copy.at(-1) === null) copy.pop();
+        return copy;
+      };
+      const layout = new Map<
+        string,
+        { rows: PlanRowLesson[]; started: number; places: Map<string, number> }
+      >();
+      for (const id of members) {
+        const rows = await this.rowsOfJournal(transaction, scene, id);
+        layout.set(id, {
+          rows,
+          started: rows.filter((row) => row.started).length,
+          places: await this.placesOf(transaction, planId, id),
+        });
+      }
+      const own = layout.get(journalId);
+      if (own === undefined) throw notFound();
+      const current: (string | null)[] = [];
+      for (const [itemId, position] of own.places) {
+        if (position > own.started) current[position - own.started - 1] = itemId;
+      }
+      const now = trim(Array.from(current, (one) => one ?? null));
+      const base = trim(input.base);
+      if (now.length !== base.length || now.some((one, index) => one !== base[index])) {
+        throw new ApiException('plan_queue_stale', 409);
+      }
+      const order = trim(input.order);
+      const named = order.filter((one): one is string => one !== null);
+      const inQueue = new Set(now.filter((one): one is string => one !== null));
+      if (new Set(named).size !== named.length || named.some((one) => !inQueue.has(one))) {
+        throw new ApiException('plan_queue_items', 409);
+      }
+      // An item on a started row of another journal stays where it is.
+      for (const [id, one] of layout) {
+        if (id === journalId) continue;
+        for (const itemId of inQueue) {
+          const at = one.places.get(itemId);
+          if (at !== undefined && at <= one.started) throw new ApiException('plan_row_held', 409);
+        }
+      }
+      const first = order.findIndex((one, index) => one !== (now[index] ?? null));
+      const changed = first === -1 ? Math.max(order.length, now.length) : first;
+      if (first === -1 && order.length === now.length) return this.answer(transaction, scene);
+      const targets: GateTarget[] = [...layout].map(([id, one]) => {
+        const row = one.rows[one.started + changed];
+        return {
+          journalId: id,
+          rows: [
+            row === undefined
+              ? { lessonId: null, date: null, started: false }
+              : { lessonId: row.lessonId, date: row.date, started: row.started },
+          ],
+          op: 'move' as const,
+        };
+      });
+      const pass = await this.gate(transaction, scene, planId, targets);
+      const cleared = [...inQueue].filter((itemId) => !named.includes(itemId)).sort();
+      if (cleared.length > 0) {
+        await transaction
+          .deleteFrom('lesson_plan_places')
+          .where('plan_id', '=', planId)
+          .where('item_id', 'in', cleared)
+          .execute();
+        await transaction
+          .updateTable('lesson_plan_items')
+          .set({ cleared_at: scene.now })
+          .where('id', 'in', cleared)
+          .execute();
+      }
+      for (const [id, one] of layout) {
+        const moves = new Map<string, number>();
+        order.forEach((itemId, index) => {
+          if (itemId !== null) moves.set(itemId, one.started + index + 1);
+        });
+        // Items of this journal's queue the order does not name (a started row elsewhere) follow.
+        let next = one.started + order.length;
+        for (const [itemId, position] of [...one.places].sort((a, b) => a[1] - b[1])) {
+          if (position > one.started && !moves.has(itemId) && !cleared.includes(itemId)) {
+            next += 1;
+            moves.set(itemId, next);
+          }
+        }
+        await movePlaces(transaction, planId, id, moves);
+      }
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: scene.assignmentId,
+        action: 'plan.queue_edit',
+        record: { type: 'lesson_plan', id: planId },
+        oldValue: { journalId, from: own.started + 1, order: now },
+        newValue: { journalId, from: own.started + 1, order, cleared },
+        ...gateAudit(pass),
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return this.answer(transaction, scene);
     });
   }
 

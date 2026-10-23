@@ -14,6 +14,7 @@ import {
   planListQuerySchema,
   planListSchema,
   planParamsSchema,
+  planQueueSchema,
   planQuerySchema,
   planSchema,
   planSeparateSchema,
@@ -33,6 +34,7 @@ import {
   type PlanListQuery,
   type PlanParams,
   type PlanQuery,
+  type PlanQueue,
   type PlanSeparate,
   type PlanShare,
 } from '@sodiq/shared';
@@ -153,6 +155,19 @@ export class PlansController {
     @RequestId() requestId: string,
   ): Promise<Plan> {
     return this.sharing.copy(access, params.journalId, input, requestId);
+  }
+
+  /** Task 7.2: insert, delete, merge and reorder of the queue (review decision 6). */
+  @Put('journals/:journalId/queue')
+  @Requires('plans', 'edit')
+  @Returns(planSchema)
+  editQueue(
+    @CurrentAccess() access: Access,
+    @ValidParams(planParamsSchema) params: PlanParams,
+    @ValidBody(planQueueSchema) input: PlanQueue,
+    @RequestId() requestId: string,
+  ): Promise<Plan> {
+    return this.plans.editQueue(access, params.journalId, input, requestId);
   }
 
   @Put('items/:itemId')

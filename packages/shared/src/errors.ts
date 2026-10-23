@@ -878,6 +878,42 @@ export const ERROR_CODES = [
   'plan_attendance_only',
   /** The year is closed: nothing in its plans changes (edge/lesson-plans: "Nothing is possible in a closed quarter"; task 7.1a). */
   'plan_year_closed',
+  /** The plan window of the quarter has ended for the plan's owner and no approved request opens the row (09: "When the window ends, every plan is locked"; task 7.2). */
+  'plan_window_closed',
+  /** No window of the quarter is open yet and no approved request opens the row (09: "Inside the window teachers create and edit their plans freely"; task 7.2, review decision 8). */
+  'plan_window_not_open',
+  /** The published timetable does not cover every school day of the quarter (09: "It can be opened only when the timetable covering that quarter is published"; task 7.2). */
+  'plan_window_unpublished',
+  /** The end of a window or an extension is before today (edge/lesson-plans: "The end can move to any date from today on"; task 7.2). */
+  'plan_window_end_past',
+  /** The window or the extension would end after the quarter's last day (edge/lesson-plans: "It ends no later than the quarter's last day"; task 7.2). */
+  'plan_window_after_quarter',
+  /** The window starts before the quarter, or its start is after its end (task 7.2). */
+  'plan_window_dates',
+  /** The window has started: its start date no longer moves (task 7.2). */
+  'plan_window_started',
+  /** The window ends after the quarter's first lesson: the lessons held without a plan are in the details; send again with the confirmation (edge/lesson-plans; task 7.2). */
+  'plan_window_confirm',
+  /** The window of the quarter is not open yet: there is nothing to extend (task 7.2). */
+  'plan_window_none',
+  /** The extension does not end later than the end in force for the person (edge/lesson-plans: "simply a later end date"; task 7.2). */
+  'plan_extension_not_later',
+  /** The person owns no plan of the quarter in the branch (task 7.2). */
+  'plan_extension_owner',
+  /** The window is open for the plan's owner: plans are written freely, there is nothing to ask (task 7.2, review decision 13). */
+  'plan_request_window_open',
+  /** A Re-plan starts at a lesson already held (edge/lesson-plans: "Lessons already held take only Text"; task 7.2). */
+  'plan_request_held_replan',
+  /** A lesson named is not a row of the plan's journal in the quarter (task 7.2). */
+  'plan_request_lesson_unknown',
+  /** The request is not waiting for a decision any more, or not open (task 7.2). */
+  'plan_request_decided',
+  /** The plan needs nothing at the window's end: no request is prepared (task 7.2). */
+  'plan_request_nothing',
+  /** The queue sent is not the plan's queue as it is now (edge/lesson-plans: "A save made on an older state ... is refused"; task 7.2). */
+  'plan_queue_stale',
+  /** The queue names an item twice, or one not in the queue (task 7.2). */
+  'plan_queue_items',
   /** The classes or groups have different languages of instruction: a shared plan joins only one language (05, Language of instruction; task 7.1c, decision 3). */
   'plan_share_language',
   /** The classes are of different grades, or the groups of different grades (09, What a plan contains; task 7.1c, decision 3). */
@@ -1064,6 +1100,8 @@ export const errorDetailSchema = z.object({
   heldData: heldDataSchema.optional(),
   /** The number of items a list of details leaves out, on its detail `more` (`year_cut_holds`, task 3.6b-2). */
   more: z.int().min(1).optional(),
+  /** The lessons that will be held without a plan, on a `plan_window_confirm` (task 7.2, review decision 10). */
+  lessonsWithoutPlan: z.int().min(0).optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

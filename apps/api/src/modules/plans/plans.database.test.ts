@@ -96,8 +96,20 @@ describe('lesson plans in the database', () => {
         .executeTakeFirstOrThrow()
     ).id;
 
-  /** A plan of the unit, linked, written as the application. */
+  /** The plan of the unit: task 7.2 makes the record with the journal (0117). */
   const plan = (u: Unit) =>
+    inBranch(u.branch, async (transaction) => {
+      const row = await transaction
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', u.journal)
+        .where('quarter_id', '=', u.quarter)
+        .executeTakeFirstOrThrow();
+      return row.plan_id;
+    });
+
+  /** A second plan of the unit, linked, written as the application: what the keys and checks refuse. */
+  const newPlan = (u: Unit) =>
     inBranch(u.branch, async (transaction) => {
       const row = await transaction
         .insertInto('lesson_plans')
@@ -216,7 +228,7 @@ describe('lesson plans in the database', () => {
   it('keeps one plan per journal and quarter, of the plan’s quarter', async () => {
     const u = await unit(north, await yearOf(north));
     await plan(u);
-    const second = await refusal(plan(u));
+    const second = await refusal(newPlan(u));
     expect(second.code).toBe(UNIQUE_VIOLATION);
     expect(second.constraint).toBe('lesson_plan_journals_key');
     // A link naming another quarter than its plan's.
@@ -226,6 +238,13 @@ describe('lesson plans in the database', () => {
       .where('academic_year_id', '=', u.year)
       .where('number', '=', 2)
       .executeTakeFirstOrThrow();
+    // Task 7.2: the journal's own record of quarter 2 (0117) is taken away by
+    // the migrator, so the key below is the one that refuses.
+    await database.migrator
+      .deleteFrom('lesson_plan_journals')
+      .where('journal_id', '=', u.journal)
+      .where('quarter_id', '=', quarter2.id)
+      .execute();
     const mismatched = await refusal(
       inBranch(north, async (transaction) => {
         const row = await transaction
@@ -251,13 +270,21 @@ describe('lesson plans in the database', () => {
   it('refuses a plan of an attendance-only subject, of another subject and of another year', async () => {
     const year = await yearOf(south);
     const attendance = await unit(south, year, 'attendance_only');
-    const only = await refusal(plan(attendance));
+    // Task 7.2: the journal of an attendance-only subject gets no plan record (0117).
+    expect(
+      await database.migrator
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', attendance.journal)
+        .execute(),
+    ).toEqual([]);
+    const only = await refusal(newPlan(attendance));
     expect(only.code).toBe(CHECK_VIOLATION);
     expect(only.constraint).toBe('lesson_plan_attendance_only');
 
     const u = await unit(south, year);
     const other = await classes.subject({ grades: [7] });
-    const subject = await refusal(plan({ ...u, subject: other }));
+    const subject = await refusal(newPlan({ ...u, subject: other }));
     expect(subject.constraint).toBe('lesson_plan_journal_subject');
 
     const nextYear = await classes.year(south, 'planned', '2027-09-01', '2028-05-31');
@@ -267,7 +294,7 @@ describe('lesson plans in the database', () => {
       .where('academic_year_id', '=', nextYear)
       .where('number', '=', 1)
       .executeTakeFirstOrThrow();
-    const wrongYear = await refusal(plan({ ...u, quarter: quarter.id }));
+    const wrongYear = await refusal(newPlan({ ...u, quarter: quarter.id }));
     expect(wrongYear.constraint).toBe('lesson_plan_journal_year');
   });
 

@@ -1,6 +1,6 @@
 import type { PlanList } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SelectField } from '@/components/field';
@@ -8,7 +8,7 @@ import { ListPage } from '@/components/list/list-page';
 import type { Column, Filter, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Segmented } from '@/components/ui/segmented';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
 import { yearText } from '@/features/journal/journals-page';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
@@ -29,6 +29,8 @@ export function PlansPage(): React.JSX.Element {
   const search: PlansSearch = useSearch({ from: '/app/plans' });
   const { branchId } = useView();
   const list = useQuery(plansQuery(branchId, search.year ?? null));
+  const mayWindows = useMayView('plan_windows');
+  const mayDecide = useMayView('plan_requests', 'edit');
   const language = i18n.language;
   const tab = search.tab ?? 'class';
   const quarters = useMemo(() => list.data?.quarters ?? [], [list.data]);
@@ -58,9 +60,12 @@ export function PlansPage(): React.JSX.Element {
         cell: (row) => {
           const state = row.quarters[index];
           if (state === undefined) return null;
-          return state.state === 'incomplete'
-            ? t('plans.state.incomplete', { count: state.empty })
-            : t(`plans.state.${state.state}`);
+          const text =
+            state.state === 'incomplete'
+              ? t('plans.state.incomplete', { count: state.empty })
+              : t(`plans.state.${state.state}`);
+          // Task 7.2: overdue, window not opened, vacancy.
+          return state.flag === null ? text : `${text} · ${t(`plans.flag.${state.flag}`)}`;
         },
       })),
     ],
@@ -100,6 +105,21 @@ export function PlansPage(): React.JSX.Element {
       <PageHeader
         title={t('plans.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
+        actions={
+          <>
+            {/* Task 7.2: the windows, and the requests for those who decide them. */}
+            {mayWindows && (
+              <Link to="/plans/windows" className="text-link">
+                {t('plans.windows.title')}
+              </Link>
+            )}
+            {mayDecide && (
+              <Link to="/plans/requests" className="text-link">
+                {t('plans.requests.pageTitle')}
+              </Link>
+            )}
+          </>
+        }
       />
       <div className="grid gap-4">
         <div className="flex flex-wrap items-end gap-4">

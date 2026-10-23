@@ -27,6 +27,7 @@ import {
   publishOf,
   type PublishedScene,
 } from '../../testing/published-scene.js';
+import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 
 /** The Mondays of the second quarter (9 November to 28 December): the eight rows of its plans. */
 const Q2_MONDAYS = [
@@ -121,6 +122,8 @@ describe('plan items follow the timetable', () => {
       graded: true,
       accounts: { teacher: owner.account.id, spare: spare.account.id },
     });
+    // Task 7.2: the plans are written inside their window.
+    await openPlanWindows(t.database.migrator, s.branch, s.year);
     for (const browser of [owner, spare]) {
       await t.kit.giveRole(browser.account.id, {
         role: 'teacher',
@@ -305,7 +308,11 @@ describe('plan items follow the timetable', () => {
         },
         notCovered: ['Topic 8'],
       });
-      expect(plan.request).toEqual({
+      // Task 7.2: the request is stored, with its id and no Text part.
+      expect(plan.request?.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect({ ...plan.request, id: null }).toEqual({
+        id: null,
+        lessons: [],
         fromDate: '2026-11-16',
         causes: [{ kind: 'not_covered', onDate: '2026-11-16', items: 1 }],
       });
@@ -1304,6 +1311,7 @@ describe('plan items follow the timetable', () => {
         ...(subject === undefined ? {} : { subject }),
         accounts: { teacher: owner.account.id, spare: spare.account.id },
       });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
       for (const browser of [owner, spare]) {
         await t.kit.giveRole(browser.account.id, {
           role: 'teacher',
@@ -1892,22 +1900,15 @@ describe('plan items follow the timetable', () => {
             .returning('id')
             .executeTakeFirstOrThrow()
         ).id;
+        // Task 7.2: the journal's plan records are made with it (0117).
         const lastPlan = (
           await m
-            .insertInto('lesson_plans')
-            .values({ branch_id: branch, quarter_id: lastQuarter, subject_id: subject })
-            .returning('id')
+            .selectFrom('lesson_plan_journals')
+            .select('plan_id')
+            .where('journal_id', '=', lastJournal)
+            .where('quarter_id', '=', lastQuarter)
             .executeTakeFirstOrThrow()
-        ).id;
-        await m
-          .insertInto('lesson_plan_journals')
-          .values({
-            branch_id: branch,
-            plan_id: lastPlan,
-            journal_id: lastJournal,
-            quarter_id: lastQuarter,
-          })
-          .execute();
+        ).plan_id;
         for (const [index, topic] of ['Sets', 'Ratios'].entries()) {
           const item = await m
             .insertInto('lesson_plan_items')
@@ -2164,19 +2165,20 @@ describe('plan items follow the timetable', () => {
         ]);
         const firstJournal = await journalFor(x, { groupId: first });
         const secondJournal = await journalFor(x, { groupId: second });
+        // Task 7.2: each journal has its plan record (0117); the second joins the first's.
         const plan = (
           await m
-            .insertInto('lesson_plans')
-            .values({ branch_id: x.s.branch, quarter_id: x.q2, subject_id: x.s.subject })
-            .returning('id')
+            .selectFrom('lesson_plan_journals')
+            .select('plan_id')
+            .where('journal_id', '=', firstJournal)
+            .where('quarter_id', '=', x.q2)
             .executeTakeFirstOrThrow()
-        ).id;
+        ).plan_id;
         await m
-          .insertInto('lesson_plan_journals')
-          .values([
-            { branch_id: x.s.branch, plan_id: plan, journal_id: firstJournal, quarter_id: x.q2 },
-            { branch_id: x.s.branch, plan_id: plan, journal_id: secondJournal, quarter_id: x.q2 },
-          ])
+          .updateTable('lesson_plan_journals')
+          .set({ plan_id: plan })
+          .where('journal_id', '=', secondJournal)
+          .where('quarter_id', '=', x.q2)
           .execute();
         await m
           .updateTable('lesson_plans')

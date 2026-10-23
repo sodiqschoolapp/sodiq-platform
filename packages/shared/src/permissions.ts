@@ -566,6 +566,38 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view'],
     teacher: ['view', 'edit'],
   }),
+  /**
+   * The plan window (task 7.2, pull request #215, decision 1, Look first):
+   * `02`: the Academic Vice Principal "Opens the lesson plan window"; `09`:
+   * "can extend the window for one teacher". Every reader of plans sees the
+   * windows; the Principal changes nothing.
+   */
+  plan_windows: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view'],
+  }),
+  /**
+   * Plan edit requests (task 7.2, decision 1, Look first): `create` sends a
+   * request of an own plan (the Teacher; the Super Admin by `checkTable`,
+   * refused `plan_scope` as it owns no plan); `edit` decides one: `02`, the
+   * Head Teacher "Approves ... requests to edit a lesson plan after the
+   * window, for those subjects", the Senior Head Teacher "Everything a Head
+   * Teacher can do", the Academic Vice Principal "can approve any plan edit
+   * request"; the Super Admin decides an Academic Vice Principal's own. The
+   * route routes and refuses the own (`plan-request-routing.ts`).
+   */
+  plan_requests: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+    senior_head_teacher: ['view', 'edit'],
+    head_teacher: ['view', 'edit'],
+    teacher: ['view', 'create'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

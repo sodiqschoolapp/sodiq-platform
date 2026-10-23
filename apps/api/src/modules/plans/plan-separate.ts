@@ -166,6 +166,8 @@ export async function separateJournal(
       'lesson_plan_places.item_id',
       'lesson_plan_places.position',
       sql<string | null>`lesson_plan_places.moved_from::text`.as('moved_from'),
+      // Task 7.2: the mark stays with the separated rows (`edge`: "Separating the plan changes no text").
+      'lesson_plan_places.edited_after_lesson',
     ])
     .where('lesson_plan_places.plan_id', '=', planId)
     .where('lesson_plan_places.journal_id', '=', journalId)
@@ -200,6 +202,7 @@ export async function separateJournal(
           item_id: made.get(place.item_id) ?? '',
           position: place.position,
           moved_from: place.moved_from,
+          edited_after_lesson: place.edited_after_lesson,
         })),
       )
       .execute();
