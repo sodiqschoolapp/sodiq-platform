@@ -94,6 +94,8 @@ export interface PlanRowLesson {
   readonly end: number;
   readonly slot: number | null;
   readonly held: boolean;
+  /** The lesson's start has passed (the fixed part of the queue, task 7.1b decision 3). */
+  readonly started: boolean;
 }
 
 /**
@@ -143,6 +145,7 @@ export async function planRows(
         },
         now,
       ) === 'held',
+    started: lesson.startsAt.getTime() <= now.getTime(),
   }));
 }
 
@@ -187,21 +190,85 @@ export async function worksOf(
   return found;
 }
 
-/** The items of a plan that are not cleared, by position, with their works and files. */
-export async function planItems(transaction: Transaction, planId: string): Promise<PlanItem[]> {
+/** The journals of a plan (task 7.1c: several when it is shared), in the order of the id. */
+export async function planJournalIds(transaction: Transaction, planId: string): Promise<string[]> {
+  const rows = await transaction
+    .selectFrom('lesson_plan_journals')
+    .select('journal_id')
+    .where('plan_id', '=', planId)
+    .orderBy('journal_id')
+    .execute();
+  return rows.map((row) => row.journal_id);
+}
+
+/**
+ * Locks journals `for no key update` in the order of the id, in one
+ * statement, as the follow does (task 7.1c, "Locks"): every write of a plan
+ * locks every journal of it.
+ */
+export async function lockJournals(
+  transaction: Transaction,
+  journalIds: readonly string[],
+): Promise<void> {
+  if (journalIds.length === 0) return;
+  await transaction
+    .selectFrom('journals')
+    .select('id')
+    .where('id', 'in', [...journalIds])
+    .orderBy('id')
+    .forNoKeyUpdate()
+    .execute();
+}
+
+/** The offset of the first of the two writes of a move (the unique row of `lesson_plan_places`). */
+export const PLACE_OFFSET = 1_000_000;
+
+/** Moves items of one journal of a plan to new places, in two writes so that no row is held twice. */
+export async function movePlaces(
+  transaction: Transaction,
+  planId: string,
+  journalId: string,
+  moves: ReadonlyMap<string, number>,
+): Promise<void> {
+  for (const step of [PLACE_OFFSET, 0]) {
+    for (const [itemId, position] of moves) {
+      await transaction
+        .updateTable('lesson_plan_places')
+        .set({ position: position + step })
+        .where('plan_id', '=', planId)
+        .where('journal_id', '=', journalId)
+        .where('item_id', '=', itemId)
+        .execute();
+    }
+  }
+}
+
+/**
+ * The items of a plan that are not cleared, as one journal lays them, by
+ * position, with their works and files (task 7.1c, decision 2: the place of
+ * an item is per journal, `lesson_plan_places`).
+ */
+export async function planItems(
+  transaction: Transaction,
+  planId: string,
+  journalId: string,
+): Promise<PlanItem[]> {
   const items = await transaction
     .selectFrom('lesson_plan_items')
+    .innerJoin('lesson_plan_places', 'lesson_plan_places.item_id', 'lesson_plan_items.id')
     .select([
-      'id',
-      'position',
-      'topic',
-      'objectives',
-      'links',
-      sql<string | null>`moved_from::text`.as('moved_from'),
+      'lesson_plan_items.id',
+      'lesson_plan_places.position',
+      'lesson_plan_items.topic',
+      'lesson_plan_items.objectives',
+      'lesson_plan_items.links',
+      sql<string | null>`lesson_plan_places.moved_from::text`.as('moved_from'),
     ])
-    .where('plan_id', '=', planId)
-    .where('cleared_at', 'is', null)
-    .orderBy('position')
+    .where('lesson_plan_items.plan_id', '=', planId)
+    .where('lesson_plan_places.plan_id', '=', planId)
+    .where('lesson_plan_places.journal_id', '=', journalId)
+    .where('lesson_plan_items.cleared_at', 'is', null)
+    .orderBy('lesson_plan_places.position')
     .execute();
   const ids = items.map((item) => item.id);
   const works = await worksOf(transaction, ids);

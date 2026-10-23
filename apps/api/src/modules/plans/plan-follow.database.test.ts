@@ -251,7 +251,13 @@ describe('the follow of the plans in the database', () => {
       where not t.tgisinternal and t.tgname like 'lesson_plan_mark%'
       order by 1
     `.execute(database.migrator);
+    // Task 7.1c (plan review of #214, correction 1): a class's language or
+    // grade and a group's language or classes mark the journals of the shared
+    // plans they take part in; no student, membership or exemption table.
     expect([...new Set(triggers.rows.map((row) => row.table))]).toEqual([
+      'classes',
+      'group_classes',
+      'groups',
       'journal_acting_teachers',
       'journals',
       'lessons',

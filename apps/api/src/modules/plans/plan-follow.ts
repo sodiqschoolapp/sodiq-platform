@@ -13,7 +13,7 @@ import { Audit } from '../audit/audit.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
-import { referenceDateOf, type PlanQuarter } from './plan-read.js';
+import { movePlaces, referenceDateOf, type PlanQuarter } from './plan-read.js';
 import { followQueue, type Absorbed, type FollowResult, type QueueRow } from './plan-queue.js';
 import { planReachOf, planReaderOf } from './plan-scope.js';
 
@@ -77,9 +77,6 @@ interface Cause {
   readonly items: number;
   readonly staffId: string | null;
 }
-
-/** The position offset of the first of the two writes (the partial unique index of 0114). */
-const OFFSET = 1_000_000;
 
 const unitKey = (one: {
   readonly classId: string | null;
@@ -309,12 +306,19 @@ export class PlanFollow implements OnModuleInit {
               .orderBy('plan_id')
               .orderBy('position')
               .execute(),
+            // Task 7.1c: the places of each journal (a cleared item has none).
             transaction
-              .selectFrom('lesson_plan_items')
-              .select(['id', 'plan_id', 'position', 'topic'])
-              .where('plan_id', 'in', planIds)
-              .where('cleared_at', 'is', null)
-              .orderBy('position')
+              .selectFrom('lesson_plan_places')
+              .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+              .select([
+                'lesson_plan_items.id',
+                'lesson_plan_places.plan_id',
+                'lesson_plan_places.journal_id',
+                'lesson_plan_places.position',
+                'lesson_plan_items.topic',
+              ])
+              .where('lesson_plan_places.plan_id', 'in', planIds)
+              .orderBy('lesson_plan_places.position')
               .execute(),
             transaction
               .selectFrom('lesson_plan_absorbed')
@@ -362,7 +366,9 @@ export class PlanFollow implements OnModuleInit {
         open: open.has(plan.plan_id),
         before,
         after,
-        items: items.filter((item) => item.plan_id === plan.plan_id),
+        items: items.filter(
+          (item) => item.plan_id === plan.plan_id && item.journal_id === plan.journal_id,
+        ),
         absorbed: absorbed
           .filter((row) => row.plan_id === plan.plan_id && row.journal_id === plan.journal_id)
           .map((row) => ({
@@ -477,27 +483,14 @@ export class PlanFollow implements OnModuleInit {
       const changed = [...result.positions].filter(
         ([id, position]) => plan.items.find((item) => item.id === id)?.position !== position,
       );
-      if (changed.length > 0) {
-        for (const [id, position] of changed) {
-          await transaction
-            .updateTable('lesson_plan_items')
-            .set({ position: position + OFFSET })
-            .where('id', '=', id)
-            .execute();
-        }
-        for (const [id, position] of changed) {
-          await transaction
-            .updateTable('lesson_plan_items')
-            .set({ position })
-            .where('id', '=', id)
-            .execute();
-        }
-      }
+      await movePlaces(transaction, plan.planId, plan.journal.id, new Map(changed));
       for (const [id, date] of result.movedBack) {
         await transaction
-          .updateTable('lesson_plan_items')
+          .updateTable('lesson_plan_places')
           .set({ moved_from: date })
-          .where('id', '=', id)
+          .where('plan_id', '=', plan.planId)
+          .where('journal_id', '=', plan.journal.id)
+          .where('item_id', '=', id)
           .execute();
       }
       const snapshot = plan.after.map((row, index) => ({

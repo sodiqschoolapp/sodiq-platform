@@ -1252,7 +1252,7 @@ describe('plan items follow the timetable', () => {
       // The cancel's follow takes the journal, then waits on an item it moves;
       // the create waits on the journal behind it.
       const held = await holdRow(
-        sql`select id from lesson_plan_items where id = ${second?.id ?? ''} for update`,
+        sql`select item_id from lesson_plan_places where item_id = ${second?.id ?? ''} for update`,
       );
       const cancelled = started(cancelOf(x, monday.id));
       await waitingOn(held.pid, 1);

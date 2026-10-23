@@ -269,6 +269,9 @@ export async function dayTemplatesKit(
         'substitution_lessons',
         // Task 7.1b: every write of dated lessons follows the plans before its commit.
         'lesson_plan_items',
+        // Task 7.1c: a copy or a separation writes works and files too.
+        'lesson_plan_works',
+        'lesson_plan_files',
         'lesson_plan_requests',
         'lesson_plan_request_causes',
         'lesson_plan_absorbed',
@@ -306,6 +309,15 @@ export async function dayTemplatesKit(
         .selectAll()
         .where('branch_id', '=', branch)
         .orderBy('journal_id')
+        .execute();
+      // Task 7.1c: the row of each item per journal.
+      rows.lesson_plan_places = await database.migrator
+        .selectFrom('lesson_plan_places')
+        .selectAll()
+        .where('branch_id', '=', branch)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
+        .orderBy('position')
         .execute();
       rows.lesson_plan_rows = await database.migrator
         .selectFrom('lesson_plan_rows')

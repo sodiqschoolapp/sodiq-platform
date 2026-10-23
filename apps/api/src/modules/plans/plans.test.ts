@@ -1483,9 +1483,20 @@ describe('lesson plans and their items', () => {
                 quarter_id: s.q2,
               })
               .execute();
-            await transaction
+            const first = await transaction
               .insertInto('lesson_plan_items')
-              .values({ branch_id: s.scene.branch, plan_id: plan.id, position: 1, topic: 'First' })
+              .values({ branch_id: s.scene.branch, plan_id: plan.id, topic: 'First' })
+              .returning('id')
+              .executeTakeFirstOrThrow();
+            await transaction
+              .insertInto('lesson_plan_places')
+              .values({
+                branch_id: s.scene.branch,
+                plan_id: plan.id,
+                journal_id: s.journal,
+                item_id: first.id,
+                position: 1,
+              })
               .execute();
             await t.app.get(Audit).record(transaction, {
               branchId: s.scene.branch,

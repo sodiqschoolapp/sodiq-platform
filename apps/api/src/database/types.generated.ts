@@ -670,6 +670,7 @@ export interface LessonPlanAbsorbed {
 export interface LessonPlanFiles {
   branch_id: string;
   bytes: number;
+  copied_from: string | null;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   item_id: string;
@@ -687,13 +688,12 @@ export interface LessonPlanFollowMarks {
 export interface LessonPlanItems {
   branch_id: string;
   cleared_at: Timestamp | null;
+  copied_from: string | null;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   links: Generated<string[]>;
-  moved_from: string | null;
   objectives: Generated<string>;
   plan_id: string;
-  position: number;
   topic: string;
 }
 
@@ -704,6 +704,15 @@ export interface LessonPlanJournals {
   laid_at: Timestamp | null;
   plan_id: string;
   quarter_id: string;
+}
+
+export interface LessonPlanPlaces {
+  branch_id: string;
+  item_id: string;
+  journal_id: string;
+  moved_from: string | null;
+  plan_id: string;
+  position: number;
 }
 
 export interface LessonPlanRequestCauses {
@@ -1486,6 +1495,7 @@ export interface DB {
   lesson_plan_follow_marks: LessonPlanFollowMarks;
   lesson_plan_items: LessonPlanItems;
   lesson_plan_journals: LessonPlanJournals;
+  lesson_plan_places: LessonPlanPlaces;
   lesson_plan_request_causes: LessonPlanRequestCauses;
   lesson_plan_requests: LessonPlanRequests;
   lesson_plan_rows: LessonPlanRows;
