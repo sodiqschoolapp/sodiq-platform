@@ -1058,7 +1058,7 @@ How to read the task lines:
 
 ## Phase 8. Journal: works, rules and exemptions
 
-- [ ] **8.1 Classwork and homework**
+- [x] **8.1 Classwork and homework**
   - Read: `07` (Entering data, The total), `09` (In the journal), `edge/journal` (Entering), `edge/lesson-plans` (Plans and the journal).
   - Build: columns taken from the plan; works added by hand when a lesson has no plan item, flagged "unplanned"; a total per work, whole numbers only, percent shown; any number of classworks and homeworks per lesson (at most 10 of each), each with its own column and total; homework entered on the lesson where it is checked; "not held"; no empty columns.
   - Done when: the first lesson of a journal has no homework column and every entering rule has a test.
