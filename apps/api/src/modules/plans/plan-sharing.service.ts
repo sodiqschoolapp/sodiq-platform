@@ -7,6 +7,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
+import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { lockJournals, planIdOf, planItems, planJournalIds, planRows } from './plan-read.js';
 import { copyItems, separateJournal, unitKeysOf } from './plan-separate.js';
 import { PlansService, type Scene } from './plans.service.js';
@@ -20,13 +21,6 @@ import { PlansService, type Scene } from './plans.service.js';
  * same subject and grade, or from last year."). Only the owner of every
  * journal of the plan writes (decision 14).
  */
-
-/** The share check of 0116, at the commit, for a language or grade changed meanwhile. */
-const SHARE_REFUSALS = {
-  lesson_plan_share_language: 'plan_share_language',
-  lesson_plan_share_grade: 'plan_share_grade',
-  lesson_plan_share_kind: 'plan_share_kind',
-} as const;
 
 type WriteScene = Scene & { readonly assignmentId: string };
 
@@ -74,6 +68,42 @@ export class PlanSharing {
     return { started: rows.filter((row) => row.started).length, rows: rows.length };
   }
 
+  /** Every row not started of the journal in the quarter is owned by the reader. */
+  private async ownsTheRest(
+    transaction: Transaction,
+    scene: Scene,
+    journal: JournalRow,
+  ): Promise<boolean> {
+    const rows = await planRows(
+      transaction,
+      scene.branchId,
+      journal,
+      scene.quarter,
+      scene.timeZone,
+      scene.now,
+    );
+    const facts = await ownerFactsOf(transaction, scene.branchId, [
+      {
+        id: journal.id,
+        academic_year_id: journal.academicYearId,
+        class_id: journal.classId,
+        group_id: journal.groupId,
+        subject_id: journal.subjectId,
+      },
+    ]);
+    return rows
+      .filter((row) => !row.started)
+      .every((row) => {
+        const owner = ownerOn(
+          facts.runs.get(journal.id) ?? [],
+          facts.periods.get(journal.id) ?? [],
+          facts.out,
+          row.date,
+        );
+        return owner !== null && owner.kind !== 'none' && owner.staffId === scene.reader.staffId;
+      });
+  }
+
   /** Decision 3: one kind, the same grades and one language of instruction. */
   private async unitCheck(
     transaction: Transaction,
@@ -101,164 +131,179 @@ export class PlanSharing {
     requestId: string | undefined,
   ): Promise<Plan> {
     const branchId = branchOf(access);
-    return refusingConstraints(
-      () =>
-        this.transactions.run(access.branchIds, async (transaction) => {
-          const scene = await this.plans.writeSceneOf(
-            transaction,
-            access,
-            branchId,
-            journalId,
-            input.quarterId,
-          );
-          const [joining] = await journalRows(transaction, branchId, {
-            journalId: input.journalId,
-          });
-          if (joining === undefined) throw notFound();
-          if (joining.id === journalId) throw new ApiException('plan_share_same', 409);
-          if (joining.academicYearId !== scene.journal.academicYearId) {
-            throw new ApiException('plan_share_year', 409);
+    // No refusal of the deferred share check is mapped: the route checks kind,
+    // grades and language after taking the classes or groups `for share`
+    // (correction 2), so no change of them reaches the commit in between
+    // (code review, must-fix 2d).
+    return refusingConstraints(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const scene = await this.plans.writeSceneOf(
+          transaction,
+          access,
+          branchId,
+          journalId,
+          input.quarterId,
+        );
+        const [joining] = await journalRows(transaction, branchId, {
+          journalId: input.journalId,
+        });
+        if (joining === undefined) throw notFound();
+        if (joining.id === journalId) throw new ApiException('plan_share_same', 409);
+        // A state of the joining journal is told only to a reader of it
+        // (permission review of the code, must-fix 1); a journal of another
+        // year has no such quarter and is 404 there.
+        const joiningScene = await this.plans.sceneOf(
+          transaction,
+          access,
+          branchId,
+          joining.id,
+          input.quarterId,
+        );
+        if (!joiningScene.reach.read) throw new ApiException('plan_scope', 403);
+        if (joining.subjectId !== scene.journal.subjectId) {
+          throw new ApiException('plan_share_subject', 409);
+        }
+        await this.unitCheck(transaction, scene.journal, joining);
+        await this.plans.writeSceneOf(transaction, access, branchId, joining.id, input.quarterId);
+        const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
+        const members = planNow === null ? [journalId] : await planJournalIds(transaction, planNow);
+        const involved = [
+          ...(await journalRows(transaction, branchId, { yearId: joining.academicYearId })),
+        ].filter((journal) => members.includes(journal.id) || journal.id === joining.id);
+        const classIds = involved.flatMap((journal) =>
+          journal.classId === null ? [] : [journal.classId],
+        );
+        const groupIds = involved.flatMap((journal) =>
+          journal.groupId === null ? [] : [journal.groupId],
+        );
+        if (classIds.length > 0) {
+          await transaction
+            .selectFrom('classes')
+            .select('id')
+            .where('id', 'in', classIds)
+            .orderBy('id')
+            .forShare()
+            .execute();
+        }
+        if (groupIds.length > 0) {
+          await transaction
+            .selectFrom('groups')
+            .select('id')
+            .where('id', 'in', groupIds)
+            .orderBy('id')
+            .forShare()
+            .execute();
+        }
+        // Then the journals, in the order of the id; the plan's links read
+        // again after the lock until none is missing.
+        await lockJournals(transaction, [...new Set([...members, joining.id])].sort());
+        const all = [
+          ...new Set([
+            ...(await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id)),
+            ...(await this.plans.lockPlanOf(transaction, joining.id, scene.quarter.id)),
+          ]),
+        ];
+        const planId = await planIdOf(transaction, journalId, scene.quarter.id);
+        const theirs = await planIdOf(transaction, joining.id, scene.quarter.id);
+        if (planId !== null && planId === theirs) throw new ApiException('plan_share_same', 409);
+        const shared = planId === null ? [journalId] : await planJournalIds(transaction, planId);
+        await this.ownAll(transaction, access, scene, shared);
+        // Read after the locks (`database.md`): kind, grades and language.
+        const rows = (
+          await journalRows(transaction, branchId, { yearId: joining.academicYearId })
+        ).filter((journal) => shared.includes(journal.id) || journal.id === joining.id);
+        const joined = rows.find((journal) => journal.id === joining.id) ?? joining;
+        for (const member of rows) {
+          if (member.id !== joining.id) await this.unitCheck(transaction, member, joined);
+        }
+        // Every lesson not yet held of each journal is the reader's (code
+        // review, should-fix 5): otherwise the follow would part it at once
+        // and the answer would show a plan shared that is not.
+        for (const member of rows) {
+          if (!(await this.ownsTheRest(transaction, scene, member))) {
+            throw new ApiException('plan_share_owner', 409);
           }
-          if (joining.subjectId !== scene.journal.subjectId) {
-            throw new ApiException('plan_share_subject', 409);
-          }
-          // A state of the joining journal is told only to a reader of it.
-          const joiningScene = await this.plans.sceneOf(
-            transaction,
-            access,
-            branchId,
-            joining.id,
-            input.quarterId,
-          );
-          if (!joiningScene.reach.read) throw new ApiException('plan_scope', 403);
-          await this.unitCheck(transaction, scene.journal, joining);
-          await this.plans.writeSceneOf(transaction, access, branchId, joining.id, input.quarterId);
-          const planNow = await planIdOf(transaction, journalId, scene.quarter.id);
-          const members =
-            planNow === null ? [journalId] : await planJournalIds(transaction, planNow);
-          const involved = [
-            ...(await journalRows(transaction, branchId, { yearId: joining.academicYearId })),
-          ].filter((journal) => members.includes(journal.id) || journal.id === joining.id);
-          const classIds = involved.flatMap((journal) =>
-            journal.classId === null ? [] : [journal.classId],
-          );
-          const groupIds = involved.flatMap((journal) =>
-            journal.groupId === null ? [] : [journal.groupId],
-          );
-          if (classIds.length > 0) {
-            await transaction
-              .selectFrom('classes')
-              .select('id')
-              .where('id', 'in', classIds)
-              .orderBy('id')
-              .forShare()
-              .execute();
-          }
-          if (groupIds.length > 0) {
-            await transaction
-              .selectFrom('groups')
-              .select('id')
-              .where('id', 'in', groupIds)
-              .orderBy('id')
-              .forShare()
-              .execute();
-          }
-          // Then the journals, in the order of the id; the plan's links read
-          // again after the lock until none is missing.
-          await lockJournals(transaction, [...new Set([...members, joining.id])].sort());
-          const all = [
-            ...new Set([
-              ...(await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id)),
-              ...(await this.plans.lockPlanOf(transaction, joining.id, scene.quarter.id)),
-            ]),
-          ];
-          const planId = await planIdOf(transaction, journalId, scene.quarter.id);
-          const theirs = await planIdOf(transaction, joining.id, scene.quarter.id);
-          if (planId !== null && planId === theirs) throw new ApiException('plan_share_same', 409);
-          const shared = planId === null ? [journalId] : await planJournalIds(transaction, planId);
-          await this.ownAll(transaction, access, scene, shared);
-          // Read after the locks (`database.md`): kind, grades and language.
-          const rows = (
-            await journalRows(transaction, branchId, { yearId: joining.academicYearId })
-          ).filter((journal) => shared.includes(journal.id) || journal.id === joining.id);
-          const joined = rows.find((journal) => journal.id === joining.id) ?? joining;
-          for (const member of rows) {
-            if (member.id !== joining.id) await this.unitCheck(transaction, member, joined);
-          }
-          if (theirs !== null && (await this.plans.hasItems(transaction, theirs))) {
-            throw new ApiException('plan_share_has_items', 409);
-          }
-          const target = await this.plans.planFor(transaction, access, scene, requestId);
-          // Decision 4: from the joining journal's first row not started, in
-          // the order of the path's journal; its held rows stay empty.
-          const { started } = await this.startedOf(transaction, scene, joining);
-          const page = await this.plans.placesOf(transaction, target, journalId);
-          if (theirs === null) {
-            await transaction
-              .insertInto('lesson_plan_journals')
-              .values({
+        }
+        if (theirs !== null && (await this.plans.hasItems(transaction, theirs))) {
+          throw new ApiException('plan_share_has_items', 409);
+        }
+        const target = await this.plans.planFor(transaction, access, scene, requestId);
+        // Decision 4: from the joining journal's first row not started, in
+        // the order of the path's journal; its held rows stay empty.
+        const { started } = await this.startedOf(transaction, scene, joining);
+        const page = await this.plans.placesOf(transaction, target, journalId);
+        if (theirs === null) {
+          await transaction
+            .insertInto('lesson_plan_journals')
+            .values({
+              branch_id: branchId,
+              plan_id: target,
+              journal_id: joining.id,
+              quarter_id: scene.quarter.id,
+            })
+            .execute();
+        } else {
+          // Decision 18: its queue is laid afresh; a prepared request goes with the link.
+          await transaction
+            .deleteFrom('lesson_plan_rows')
+            .where('plan_id', '=', theirs)
+            .where('journal_id', '=', joining.id)
+            .execute();
+          await transaction
+            .deleteFrom('lesson_plan_absorbed')
+            .where('plan_id', '=', theirs)
+            .where('journal_id', '=', joining.id)
+            .execute();
+          await transaction
+            .updateTable('lesson_plan_journals')
+            .set({ plan_id: target, laid_at: null })
+            .where('plan_id', '=', theirs)
+            .where('journal_id', '=', joining.id)
+            .execute();
+        }
+        if (page.size > 0) {
+          await transaction
+            .insertInto('lesson_plan_places')
+            .values(
+              [...page].map(([itemId, position]) => ({
                 branch_id: branchId,
                 plan_id: target,
                 journal_id: joining.id,
-                quarter_id: scene.quarter.id,
-              })
-              .execute();
-          } else {
-            // Decision 18: its queue is laid afresh; a prepared request goes with the link.
-            await transaction
-              .deleteFrom('lesson_plan_rows')
-              .where('plan_id', '=', theirs)
-              .where('journal_id', '=', joining.id)
-              .execute();
-            await transaction
-              .deleteFrom('lesson_plan_absorbed')
-              .where('plan_id', '=', theirs)
-              .where('journal_id', '=', joining.id)
-              .execute();
-            await transaction
-              .updateTable('lesson_plan_journals')
-              .set({ plan_id: target, laid_at: null })
-              .where('plan_id', '=', theirs)
-              .where('journal_id', '=', joining.id)
-              .execute();
-          }
-          if (page.size > 0) {
-            await transaction
-              .insertInto('lesson_plan_places')
-              .values(
-                [...page].map(([itemId, position]) => ({
-                  branch_id: branchId,
-                  plan_id: target,
-                  journal_id: joining.id,
-                  item_id: itemId,
-                  position: position + started,
-                })),
-              )
-              .execute();
-          }
-          // The follow writes its snapshot before the commit (task 7.1b, decision 7).
-          await transaction
-            .insertInto('lesson_plan_follow_marks')
-            .values({ branch_id: branchId, journal_id: joining.id })
+                item_id: itemId,
+                position: position + started,
+              })),
+            )
             .execute();
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: scene.assignmentId,
-            action: 'plan.shared',
-            record: { type: 'lesson_plan', id: target },
-            newValue: {
-              journalId: joining.id,
-              quarterId: scene.quarter.id,
-              fromPlanId: theirs,
-              items: page.size,
-              journals: [...new Set([...all, joining.id])].sort(),
-            },
-            ...(requestId === undefined ? {} : { requestId }),
-          });
-          return this.plans.answer(transaction, scene);
-        }),
-      SHARE_REFUSALS,
+        }
+        // The unit the plan is shared under (code review, must-fix 1).
+        const unit = (await unitKeysOf(transaction, [scene.journal])).get(journalId) ?? null;
+        await transaction
+          .updateTable('lesson_plans')
+          .set({ shared_unit: unit })
+          .where('id', '=', target)
+          .execute();
+        // The follow writes its snapshot before the commit (task 7.1b, decision 7).
+        await transaction
+          .insertInto('lesson_plan_follow_marks')
+          .values({ branch_id: branchId, journal_id: joining.id })
+          .execute();
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: scene.assignmentId,
+          action: 'plan.shared',
+          record: { type: 'lesson_plan', id: target },
+          newValue: {
+            journalId: joining.id,
+            quarterId: scene.quarter.id,
+            fromPlanId: theirs,
+            items: page.size,
+            journals: [...new Set([...all, joining.id])].sort(),
+          },
+          ...(requestId === undefined ? {} : { requestId }),
+        });
+        return this.plans.answer(transaction, scene);
+      }),
     );
   }
 

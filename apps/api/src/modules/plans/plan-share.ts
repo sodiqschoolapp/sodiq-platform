@@ -80,7 +80,9 @@ const signature = (owners: readonly (string | null)[]) =>
   [...new Set(owners.map((owner) => owner ?? '-'))].sort().join(',');
 
 /**
- * Decisions 6 and 17: the journals of a shared plan that leave it. A plan
+ * Decisions 6 and 17: the journals of a shared plan that leave it. The unit
+ * kept is the one the plan was shared under (`sharedUnit`) while a journal
+ * still has it. A plan
  * stays together while every row not started of each journal has one same
  * owner and every journal one unit (kind, grades, language). The plan stays
  * with the journals of the earlier owner (`earlierOwner`, the snapshot's);
@@ -91,37 +93,33 @@ const signature = (owners: readonly (string | null)[]) =>
 export function separations(
   journals: readonly SharingJournal[],
   earlierOwner: string | null | undefined,
+  sharedUnit: string | null = null,
 ): Separation[] {
   if (journals.length < 2) return [];
   const sorted = [...journals].sort((a, b) => a.order - b.order);
-  const live = sorted.filter((one) => one.owners.length > 0);
+  // The unit kept: the one the plan was shared under while a journal still
+  // has it (code review, must-fix 1: the class that changed leaves); else the
+  // majority, ties to the first journal (every journal changed).
+  const units = new Map<string, number>();
+  for (const one of sorted) units.set(one.unit, (units.get(one.unit) ?? 0) + 1);
+  const keepUnit =
+    sharedUnit !== null && units.has(sharedUnit)
+      ? sharedUnit
+      : ([...units].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '');
+  const live = sorted.filter((one) => one.unit === keepUnit && one.owners.length > 0);
   const groups = new Map<string, SharingJournal[]>();
   for (const one of live) {
-    const key = `${one.unit}|${signature(one.owners)}`;
+    const key = signature(one.owners);
     groups.set(key, [...(groups.get(key) ?? []), one]);
   }
-  const ranked = [...groups.values()].sort(
-    (a, b) => b.length - a.length || (a[0]?.order ?? 0) - (b[0]?.order ?? 0),
+  const ranked = [...groups.entries()].sort(
+    (a, b) => b[1].length - a[1].length || (a[1][0]?.order ?? 0) - (b[1][0]?.order ?? 0),
   );
   const earlier = earlierOwner === undefined ? undefined : signature([earlierOwner]);
-  const keeper =
-    (earlier === undefined
-      ? undefined
-      : ranked.find((group) => group[0] !== undefined && signature(group[0].owners) === earlier)) ??
-    ranked[0];
-  let keepUnit: string;
-  let keepOwners: string | null;
-  if (keeper?.[0] === undefined) {
-    // Every journal finished: only the unit can part them, the majority keeps it.
-    const units = new Map<string, number>();
-    for (const one of sorted) units.set(one.unit, (units.get(one.unit) ?? 0) + 1);
-    const best = [...units].sort((a, b) => b[1] - a[1])[0];
-    keepUnit = best?.[0] ?? '';
-    keepOwners = null;
-  } else {
-    keepUnit = keeper[0].unit;
-    keepOwners = signature(keeper[0].owners);
-  }
+  const keepOwners =
+    (earlier === undefined ? undefined : ranked.find(([key]) => key === earlier)?.[0]) ??
+    ranked[0]?.[0] ??
+    null;
   const found: Separation[] = [];
   for (const one of sorted) {
     if (one.unit !== keepUnit) {

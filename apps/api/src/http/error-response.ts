@@ -474,7 +474,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   plan_share_grade: 'Their grades differ.',
   plan_share_kind: 'A class and a group do not share a plan.',
   plan_share_subject: 'The subjects differ.',
-  plan_share_year: 'The years differ.',
+  plan_share_owner: 'A class of the share gets another teacher later in the quarter.',
   plan_share_same: 'The journal already shares this plan.',
   plan_share_has_items: 'The plan of the joining journal has items.',
   plan_not_shared: 'The plan is not shared.',

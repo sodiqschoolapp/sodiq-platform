@@ -886,10 +886,10 @@ export const ERROR_CODES = [
   'plan_share_kind',
   /** The journals are of different subjects (task 7.1c). */
   'plan_share_subject',
-  /** The journals are of different academic years (task 7.1c). */
-  'plan_share_year',
   /** The journal already shares this plan (task 7.1c). */
   'plan_share_same',
+  /** A class or group of the share gets another teacher, or nobody, on a lesson not yet held of the quarter: the follow would part it at once (code review of 7.1c, should-fix 5). */
+  'plan_share_owner',
   /** The joining journal’s own plan of the quarter has items: nothing written is dropped (task 7.1c, decision 4). */
   'plan_share_has_items',
   /** The plan serves one journal only, so there is nothing to separate (task 7.1c). */

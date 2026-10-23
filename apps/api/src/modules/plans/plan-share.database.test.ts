@@ -230,4 +230,70 @@ describe('shared plans in the database', () => {
       transaction.updateTable('classes').set({ language: 'ru' }).where('id', '=', alone).execute(),
     );
   });
+
+  // Code review of 7.1c, should-fix 8: each path of the guard.
+  it('refuses the commit of a class grade changed while it shares a plan', async () => {
+    const subject = await classes.subject({ grades: [7, 8] });
+    const oxford = await classes.schoolClass(north, year, { grade: 7 });
+    const princeton = await classes.schoolClass(north, year, { grade: 7 });
+    const plan = await planOf(subject, await journalOf(subject, { classId: oxford }));
+    await join(plan, await journalOf(subject, { classId: princeton }));
+    const refused = await refusal(
+      inBranch((transaction) =>
+        transaction.updateTable('classes').set({ grade: 8 }).where('id', '=', princeton).execute(),
+      ),
+    );
+    expect(refused.constraint).toBe('lesson_plan_share_grade');
+  });
+
+  it('refuses the commit of a class taken out of a two-grade group that shares a plan', async () => {
+    const subject = await classes.subject({ grades: [7, 8] });
+    const twoGrades = async () => {
+      const eighth = await classes.schoolClass(north, year, { grade: 8 });
+      const group = await classes.group(north, year, subject, [
+        await classes.schoolClass(north, year, { grade: 7 }),
+        eighth,
+      ]);
+      return { group, eighth };
+    };
+    const first = await twoGrades();
+    const second = await twoGrades();
+    const plan = await planOf(subject, await journalOf(subject, { groupId: first.group }));
+    await join(plan, await journalOf(subject, { groupId: second.group }));
+    const refused = await refusal(
+      inBranch(async (transaction) => {
+        await transaction
+          .updateTable('groups')
+          .set({ name: 'Seven only' })
+          .where('id', '=', second.group)
+          .execute();
+        await transaction
+          .deleteFrom('group_classes')
+          .where('group_id', '=', second.group)
+          .where('class_id', '=', second.eighth)
+          .execute();
+      }),
+    );
+    expect(refused.constraint).toBe('lesson_plan_share_grade');
+  });
+
+  it('refuses a link moved into a plan of another language (the update of plan_id)', async () => {
+    const subject = await classes.subject({ grades: [7] });
+    const oxford = await classes.schoolClass(north, year, { grade: 7, language: 'uz' });
+    const princeton = await classes.schoolClass(north, year, { grade: 7, language: 'ru' });
+    const plan = await planOf(subject, await journalOf(subject, { classId: oxford }));
+    const joining = await journalOf(subject, { classId: princeton });
+    const own = await planOf(subject, joining);
+    const refused = await refusal(
+      inBranch((transaction) =>
+        transaction
+          .updateTable('lesson_plan_journals')
+          .set({ plan_id: plan })
+          .where('plan_id', '=', own)
+          .where('journal_id', '=', joining)
+          .execute(),
+      ),
+    );
+    expect(refused.constraint).toBe('lesson_plan_share_language');
+  });
 });

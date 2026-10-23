@@ -755,6 +755,7 @@ export interface LessonPlans {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   quarter_id: string;
+  shared_unit: string | null;
   subject_id: string;
 }
 

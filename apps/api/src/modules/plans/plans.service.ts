@@ -4,6 +4,7 @@ import {
   planLessonItemSchema,
   planListSchema,
   planSchema,
+  schoolDateOf,
   type ErrorDetail,
   type Plan,
   type PlanItem,
@@ -103,6 +104,8 @@ export interface Scene {
   readonly now: Date;
   readonly ownerId: string | null;
   readonly reach: PlanReach;
+  /** The reader as the scope reads it (task 7.1c: the other journals of a shared plan). */
+  readonly reader: PlanReader;
 }
 
 type Kind = 'classwork' | 'homework';
@@ -381,6 +384,14 @@ export class PlansService {
       if (journalId === scene.journal.id) continue;
       const [journal] = await journalRows(transaction, scene.branchId, { journalId });
       if (journal === undefined) continue;
+      // Each journal told only to a reader of it (permission review, should-fix 4).
+      const ownerId = await ownerIdOn(
+        transaction,
+        scene.branchId,
+        journal,
+        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+      );
+      if (!planReachOf(scene.reader, journal, ownerId).read) continue;
       const rows = await planRows(
         transaction,
         scene.branchId,
@@ -657,6 +668,7 @@ export class PlansService {
       now,
       ownerId,
       reach: planReachOf(reader, journal, ownerId),
+      reader,
     };
   }
 
@@ -757,9 +769,16 @@ export class PlansService {
     }
     const [scene] = scenes;
     if (scene === undefined) throw notFound();
-    await lockJournals(transaction, target.journalIds);
+    // The links read again after the lock (permission review, note 7): a
+    // journal that joined meanwhile is owned too.
+    const journalIds = await this.lockPlanOf(transaction, scene.journal.id, target.quarterId);
+    for (const journalId of journalIds) {
+      if (!target.journalIds.includes(journalId)) {
+        await this.writeSceneOf(transaction, access, branchId, journalId, target.quarterId);
+      }
+    }
     const { position } = await this.placeOf(transaction, itemId, scene.journal.id);
-    return { ...scene, planId: target.planId, journalIds: target.journalIds, position };
+    return { ...scene, planId: target.planId, journalIds, position };
   }
 
   /** The scene of a read of an item's file: the request may read its plan. */

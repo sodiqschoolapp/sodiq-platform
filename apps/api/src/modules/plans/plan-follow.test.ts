@@ -18,6 +18,7 @@ import {
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import {
@@ -1531,6 +1532,36 @@ describe('plan items follow the timetable', () => {
       refused(answer, 409, 'plan_row_held');
     });
 
+    it('joins a class whose own plan is empty (its link moves), and refuses one that gets another teacher later (should-fix 5)', async () => {
+      const x = await sharedScene();
+      await fillIn(x, x.journal, [1, 2]);
+      const [own] = await fillIn(x, x.other, [3]);
+      ok(
+        await post(`/api/plans/items/${own?.id ?? ''}/clear`, x.s.branch, x.owner.cookie, {}),
+        204,
+      );
+      const emptied = await planIdOf(x.other, x.q2);
+      ok(await shareOf(x));
+      expect(await planIdOf(x.other, x.q2)).toBe(await planIdOf(x.journal, x.q2));
+      expect(await planIdOf(x.other, x.q2)).not.toBe(emptied);
+      expect(laid(await planIn(x, x.other)).rows['2026-11-16']).toBe('Topic 2');
+      const y = await sharedScene();
+      await fillIn(y, y.journal, [1]);
+      await publishWith(y, '2026-11-30', async (draft, rows) => {
+        for (const row of rows) {
+          if (row.class_id === y.s.otherClass) {
+            await t.database.migrator
+              .updateTable('teaching_load_rows')
+              .set({ teacher_id: y.s.spareTeacher.staffId })
+              .where('id', '=', row.id)
+              .execute();
+          }
+          await placeAt(y, draft, row.id, 1, row.class_id === y.s.classId ? 1 : 3);
+        }
+      });
+      refused(await shareOf(y), 409, 'plan_share_owner');
+    });
+
     it('lays a mid-quarter join from the first lesson not yet held; the held rows stay empty', async () => {
       const x = await sharedScene();
       await fillIn(x, x.journal, [1, 2]);
@@ -1575,14 +1606,18 @@ describe('plan items follow the timetable', () => {
         );
         const otherSubject = await load.classes.subject({ grades: [7] });
         const subjectJournal = await journalFor(x, { classId: x.s.otherClass }, otherSubject);
-        refused(
-          await post(`/api/plans/journals/${x.journal}/share`, x.s.branch, x.owner.cookie, {
+        const shareSubject = () =>
+          post(`/api/plans/journals/${x.journal}/share`, x.s.branch, x.owner.cookie, {
             quarterId: x.q2,
             journalId: subjectJournal,
-          }),
-          409,
-          'plan_share_subject',
-        );
+          });
+        // A journal the teacher may not read is told nothing of (permission review, must-fix 1).
+        refused(await shareSubject(), 403, 'plan_scope');
+        await t.database.migrator
+          .insertInto('staff_subjects')
+          .values({ staff_id: x.s.teacher.staffId, subject_id: otherSubject, grades: [7] })
+          .execute();
+        refused(await shareSubject(), 409, 'plan_share_subject');
         refused(
           await post(`/api/plans/journals/${x.journal}/share`, x.s.branch, x.owner.cookie, {
             quarterId: x.q2,
@@ -1684,10 +1719,44 @@ describe('plan items follow the timetable', () => {
     });
 
     describe('separates a plan by hand', () => {
-      it('with a copy of every item at its rows; no text changes and no request (edge)', async () => {
+      it('with a copy of every item, its works, files and mark at its rows; the prepared request goes with it; no text changes (edge; decision 7)', async () => {
         const x = await sharedScene();
-        await fillIn(x, x.journal, [1, 2, 3]);
+        const [first] = await fillIn(x, x.journal, [1, 2, 3, 4, 5, 6, 7, 8]);
         ok(await shareOf(x));
+        // A work and a file on the first item, a "moved from" on its place in the other class.
+        ok(
+          await request(t.kit.server)
+            .put(`/api/plans/items/${first?.id ?? ''}`)
+            .set('Cookie', x.owner.cookie)
+            .set(BRANCH_HEADER, x.s.branch)
+            .send({
+              base: { topic: 'Topic 1', objectives: '', links: [], classworks: [], homeworks: [] },
+              values: {
+                ...values('Topic 1'),
+                classworks: [{ title: 'Exercise 1', description: '' }],
+              },
+            }),
+        );
+        await t.database.migrator
+          .insertInto('lesson_plan_files')
+          .values({
+            branch_id: x.s.branch,
+            item_id: first?.id ?? '',
+            name: 'Sheet.pdf',
+            type: 'application/pdf',
+            bytes: 100,
+          })
+          .execute();
+        await t.database.migrator
+          .updateTable('lesson_plan_places')
+          .set({ moved_from: '2026-11-02' })
+          .where('item_id', '=', first?.id ?? '')
+          .where('journal_id', '=', x.other)
+          .execute();
+        // The other class loses a lesson: its last item is not covered and a request is prepared.
+        await cancelIn(x, x.s.otherClass, '2026-11-16');
+        const prepared = (await planIn(x, x.other)).request;
+        expect(prepared?.causes.map((cause) => cause.kind)).toEqual(['not_covered']);
         const before = await planIdOf(x.journal, x.q2);
         const answer = planSchema.parse(
           ok(
@@ -1699,14 +1768,23 @@ describe('plan items follow the timetable', () => {
         expect(answer.sharedWith).toEqual([]);
         expect(await planIdOf(x.journal, x.q2)).toBe(before);
         expect(await planIdOf(x.other, x.q2)).not.toBe(before);
-        expect(laid(answer).rows['2026-11-23']).toBe('Topic 3');
-        expect(answer.rows[0]?.item?.copiedFrom).toEqual({ journalId: x.journal, quarterId: x.q2 });
-        expect(answer.request).toBeNull();
+        const copied = answer.rows[0]?.item;
+        expect(copied?.topic).toBe('Topic 1');
+        expect(copied?.id).not.toBe(first?.id);
+        expect(copied?.classworks.map((work) => work.title)).toEqual(['Exercise 1']);
+        expect(copied?.files.map((file) => file.name)).toEqual(['Sheet.pdf']);
+        expect(copied?.movedFrom).toBe('2026-11-02');
+        expect(copied?.copiedFrom).toEqual({ journalId: x.journal, quarterId: x.q2 });
+        expect(laid(answer).rows['2026-11-23']).toBe('Topic 2');
+        expect(laid(answer).notCovered).toEqual(['Topic 8']);
+        // The request moved with the link; separating prepared nothing new.
+        expect(answer.request).toEqual(prepared);
+        expect((await planIn(x, x.journal)).request).toBeNull();
         expect(laid(await planIn(x, x.journal)).rows['2026-11-23']).toBe('Topic 3');
         expect((await planIn(x, x.journal)).sharedWith).toEqual([]);
         const entry = (await t.entries('plan.separated')).at(-1);
         expect(entry?.new_value).toEqual(
-          expect.objectContaining({ journalId: x.other, cause: 'by_owner', items: 3 }),
+          expect.objectContaining({ journalId: x.other, cause: 'by_owner', items: 8 }),
         );
       });
 
@@ -1895,45 +1973,66 @@ describe('plan items follow the timetable', () => {
     });
 
     it("answers 404 for another branch's or an unknown journal or quarter on share, separate and copy, and writes nothing", async () => {
-      const x = await sharedScene();
+      // Each scene is one where the request with valid ids would write
+      // (permission review of the code, must-fix 3): a share of an empty
+      // class, a separate of a shared plan, a copy into an empty plan.
+      const a = await sharedScene();
+      await fillIn(a, a.journal, [1]);
+      const b = await sharedScene();
+      await fillIn(b, b.journal, [1]);
+      ok(await shareOf(b));
+      const c = await sharedScene();
+      await fillIn(c, c.other, [1]);
       const y = await sharedScene();
-      await fillIn(x, x.journal, [1]);
       await fillIn(y, y.journal, [1]);
       ok(await shareOf(y));
-      const rows = async () => [await t.rowsOf(x.s.branch), await t.rowsOf(y.s.branch)];
+      const scenes = [a, b, c, y];
+      const rows = async () => Promise.all(scenes.map((one) => t.rowsOf(one.s.branch)));
+      const planEntries = () =>
+        t.database.migrator
+          .selectFrom('audit_log')
+          .selectAll()
+          .where('action', 'like', 'plan.%')
+          .orderBy('id')
+          .execute();
       const before = await rows();
-      const entries = await t.entries('plan.shared');
+      const entries = await planEntries();
       const unknown = randomUUID();
-      const path = (journal: string, action: string) => `/api/plans/journals/${journal}/${action}`;
-      const send = (journal: string, action: string, body: object) =>
-        post(path(journal, action), x.s.branch, x.owner.cookie, body);
-      const copyBody = (journalId: string, quarterId: string) => ({
-        quarterId: x.q2,
+      const send = (x: Shared, journal: string, action: string, body: object) =>
+        post(`/api/plans/journals/${journal}/${action}`, x.s.branch, x.owner.cookie, body);
+      const copyBody = (journalId: string, quarterId: string, target = c.q2) => ({
+        quarterId: target,
         source: { journalId, quarterId },
         part: 'all',
       });
       for (const answer of [
-        await send(unknown, 'share', { quarterId: x.q2, journalId: x.other }),
-        await send(y.journal, 'share', { quarterId: x.q2, journalId: x.other }),
-        await send(x.journal, 'share', { quarterId: x.q2, journalId: unknown }),
-        await send(x.journal, 'share', { quarterId: x.q2, journalId: y.other }),
-        await send(x.journal, 'share', { quarterId: unknown, journalId: x.other }),
-        await send(x.journal, 'share', { quarterId: y.q2, journalId: x.other }),
-        await send(unknown, 'separate', { quarterId: x.q2 }),
-        await send(y.journal, 'separate', { quarterId: y.q2 }),
-        await send(x.journal, 'separate', { quarterId: unknown }),
-        await send(unknown, 'copy', copyBody(x.other, x.q2)),
-        await send(y.journal, 'copy', copyBody(x.other, x.q2)),
-        await send(x.journal, 'copy', copyBody(unknown, x.q2)),
-        await send(x.journal, 'copy', copyBody(y.other, y.q2)),
-        await send(x.journal, 'copy', copyBody(x.other, unknown)),
-        await send(x.journal, 'copy', copyBody(x.other, y.q2)),
-        await send(x.journal, 'copy', { ...copyBody(x.other, x.q2), quarterId: unknown }),
+        await send(a, unknown, 'share', { quarterId: a.q2, journalId: a.other }),
+        await send(a, y.journal, 'share', { quarterId: a.q2, journalId: a.other }),
+        await send(a, a.journal, 'share', { quarterId: a.q2, journalId: unknown }),
+        await send(a, a.journal, 'share', { quarterId: a.q2, journalId: y.other }),
+        await send(a, a.journal, 'share', { quarterId: unknown, journalId: a.other }),
+        await send(a, a.journal, 'share', { quarterId: y.q2, journalId: a.other }),
+        await send(b, unknown, 'separate', { quarterId: b.q2 }),
+        await send(b, y.journal, 'separate', { quarterId: y.q2 }),
+        await send(b, b.journal, 'separate', { quarterId: unknown }),
+        await send(b, b.journal, 'separate', { quarterId: y.q2 }),
+        await send(c, unknown, 'copy', copyBody(c.other, c.q2)),
+        await send(c, y.journal, 'copy', copyBody(c.other, c.q2)),
+        await send(c, c.journal, 'copy', copyBody(unknown, c.q2)),
+        await send(c, c.journal, 'copy', copyBody(y.other, y.q2)),
+        await send(c, c.journal, 'copy', copyBody(c.other, unknown)),
+        await send(c, c.journal, 'copy', copyBody(c.other, y.q2)),
+        await send(c, c.journal, 'copy', copyBody(c.other, c.q2, unknown)),
+        await send(c, c.journal, 'copy', copyBody(c.other, c.q2, y.q2)),
       ]) {
         expect(answer.status, JSON.stringify(answer.body)).toBe(404);
       }
       expect(await rows()).toEqual(before);
-      expect(await t.entries('plan.shared')).toEqual(entries);
+      expect(await planEntries()).toEqual(entries);
+      // The same requests with valid ids write: the fixtures can fail.
+      ok(await send(a, a.journal, 'share', { quarterId: a.q2, journalId: a.other }));
+      ok(await send(b, b.journal, 'separate', { quarterId: b.q2 }));
+      ok(await send(c, c.journal, 'copy', copyBody(c.other, c.q2)));
     });
 
     describe('a teacher who shares a plan loses one class (edge)', () => {
@@ -2004,36 +2103,105 @@ describe('plan items follow the timetable', () => {
         });
       }
 
-      it('separates a class whose language the Academic Vice Principal changes (decision 17)', async () => {
+      for (const changed of ['first', 'second'] as const) {
+        it(`separates the class whose language the Academic Vice Principal changes, the ${changed} by unit order; the other keeps the plan (decision 17; code review, must-fix 1)`, async () => {
+          const x = await sharedScene();
+          await fillIn(x, x.journal, [1, 2]);
+          ok(await shareOf(x));
+          const kept = await planIdOf(x.journal, x.q2);
+          // Which class sorts first is the order of their names.
+          const names = await t.database.migrator
+            .selectFrom('classes')
+            .select(['id', 'name'])
+            .where('id', 'in', [x.s.classId, x.s.otherClass])
+            .orderBy('name')
+            .execute();
+          const classId = (changed === 'first' ? names[0] : names[1])?.id ?? '';
+          const [leaving, staying] =
+            classId === x.s.classId ? [x.journal, x.other] : [x.other, x.journal];
+          await t.database.migrator
+            .insertInto('staff_languages')
+            .values({ staff_id: x.s.teacher.staffId, language: 'ru' })
+            .execute();
+          const read = (
+            await request(t.kit.server)
+              .get(`/api/classes/${classId}`)
+              .set('Cookie', t.admin)
+              .set(BRANCH_HEADER, x.s.branch)
+          ).body as { grade: number; name: string; maxSize: number; version: number };
+          ok(
+            await t.put(`/api/classes/${classId}`, x.s.branch, {
+              grade: read.grade,
+              name: read.name,
+              language: 'ru',
+              mainRoomId: null,
+              maxSize: read.maxSize,
+              version: read.version,
+              confirmMixedGroups: true,
+            }),
+          );
+          expect(await planIdOf(staying, x.q2)).toBe(kept);
+          expect(await planIdOf(leaving, x.q2)).not.toBe(kept);
+          expect(laid(await planIn(x, leaving)).rows['2026-11-16']).toBe('Topic 2');
+          const entry = (await t.entries('plan.separated')).at(-1);
+          expect(entry?.new_value).toEqual(
+            expect.objectContaining({ journalId: leaving, cause: 'unit_changed' }),
+          );
+        });
+      }
+
+      it('separates a group whose class list gains a class of another grade (correction 1)', async () => {
         const x = await sharedScene();
-        await fillIn(x, x.journal, [1, 2]);
-        ok(await shareOf(x));
-        await t.database.migrator
-          .insertInto('staff_languages')
-          .values({ staff_id: x.s.teacher.staffId, language: 'ru' })
+        const m = t.database.migrator;
+        await m
+          .updateTable('subjects')
+          .set({ grades: [7, 8] })
+          .where('id', '=', x.s.subject)
           .execute();
-        const read = (
-          await request(t.kit.server)
-            .get(`/api/classes/${x.s.otherClass}`)
-            .set('Cookie', t.admin)
-            .set(BRANCH_HEADER, x.s.branch)
-        ).body as { grade: number; name: string; maxSize: number; version: number };
-        ok(
-          await t.put(`/api/classes/${x.s.otherClass}`, x.s.branch, {
-            grade: read.grade,
-            name: read.name,
-            language: 'ru',
-            mainRoomId: null,
-            maxSize: read.maxSize,
-            version: read.version,
-            confirmMixedGroups: true,
-          }),
-        );
-        expect(await planIdOf(x.other, x.q2)).not.toBe(await planIdOf(x.journal, x.q2));
-        expect(laid(await planIn(x, x.other)).rows['2026-11-16']).toBe('Topic 2');
+        const first = await load.classes.group(x.s.branch, x.s.year, x.s.subject, [x.s.classId]);
+        const second = await load.classes.group(x.s.branch, x.s.year, x.s.subject, [
+          x.s.otherClass,
+        ]);
+        const firstJournal = await journalFor(x, { groupId: first });
+        const secondJournal = await journalFor(x, { groupId: second });
+        const plan = (
+          await m
+            .insertInto('lesson_plans')
+            .values({ branch_id: x.s.branch, quarter_id: x.q2, subject_id: x.s.subject })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+        await m
+          .insertInto('lesson_plan_journals')
+          .values([
+            { branch_id: x.s.branch, plan_id: plan, journal_id: firstJournal, quarter_id: x.q2 },
+            { branch_id: x.s.branch, plan_id: plan, journal_id: secondJournal, quarter_id: x.q2 },
+          ])
+          .execute();
+        await m
+          .updateTable('lesson_plans')
+          .set({ shared_unit: 'group|7|uz' })
+          .where('id', '=', plan)
+          .execute();
+        const eighth = await load.classes.schoolClass(x.s.branch, x.s.year, { grade: 8 });
+        // A transaction of the application, with the follow before its commit,
+        // writes the group's classes as the group edit does.
+        await t.app.get(Transactions).run([x.s.branch], async (transaction) => {
+          await transaction
+            .updateTable('groups')
+            .set({ name: 'Mixed 7-8' })
+            .where('id', '=', second)
+            .execute();
+          await transaction
+            .insertInto('group_classes')
+            .values({ branch_id: x.s.branch, group_id: second, class_id: eighth })
+            .execute();
+        });
+        expect(await planIdOf(firstJournal, x.q2)).toBe(plan);
+        expect(await planIdOf(secondJournal, x.q2)).not.toBe(plan);
         const entry = (await t.entries('plan.separated')).at(-1);
         expect(entry?.new_value).toEqual(
-          expect.objectContaining({ journalId: x.other, cause: 'unit_changed' }),
+          expect.objectContaining({ journalId: secondJournal, cause: 'unit_changed' }),
         );
       });
     });
@@ -2186,63 +2354,80 @@ describe('plan items follow the timetable', () => {
         expect(other.rows['2026-12-07']).toBe('Topic 4');
       });
 
-      it('a create in a shared plan and a cancel in the other class, the create first: the cancel follows the new item', async () => {
+      it('a create in a shared plan and a cancel in the other class, the create first: the cancel waits on the create and follows the new item (code review, must-fix 3)', async () => {
         const x = await sharedScene();
-        await fillIn(x, x.journal, [1, 2, 4]);
+        const [, , fourth] = await fillIn(x, x.journal, [1, 2, 4]);
         ok(await shareOf(x));
+        // The other class lays Topic 4 on its third row, so the create moves it up there.
+        await t.database.migrator
+          .updateTable('lesson_plan_places')
+          .set({ position: 3 })
+          .where('item_id', '=', fourth?.id ?? '')
+          .where('journal_id', '=', x.other)
+          .execute();
         const own = await planIn(x, x.journal);
-        const lesson = await lessonOf(x.s.otherClass, x.s.subject, '2026-11-09');
-        const held = await holdRow(sql`select id from lessons where id = ${lesson.id} for update`);
-        const cancelled = started(() =>
-          keyed(`/api/timetable/lessons/${lesson.id}/cancel`, x.s.branch, { reason: 'Excursion' }),
+        // The create holds the journals of the plan and waits on that place.
+        const held = await holdRow(
+          sql`select item_id from lesson_plan_places where item_id = ${fourth?.id ?? ''} and journal_id = ${x.other} for update`,
         );
-        await waitingOn(held.pid, 1);
-        ok(
-          await post(`/api/plans/journals/${x.journal}/items`, x.s.branch, x.owner.cookie, {
+        const created = started(() =>
+          post(`/api/plans/journals/${x.journal}/items`, x.s.branch, x.owner.cookie, {
             quarterId: x.q2,
             position: 3,
             lessonId: own.rows[2]?.lessonId ?? '',
             values: values('Topic 3'),
           }),
-          201,
         );
+        await waitingOn(held.pid, 1);
+        const lesson = await lessonOf(x.s.otherClass, x.s.subject, '2026-11-09');
+        const cancelled = started(() =>
+          keyed(`/api/timetable/lessons/${lesson.id}/cancel`, x.s.branch, { reason: 'Excursion' }),
+        );
+        // The cancel waits behind the create (on the journals it holds).
+        await waitingOn(held.pid, 2);
         await held.release();
+        ok(await created, 201);
         ok(await cancelled);
         const other = laid(await planIn(x, x.other));
         expect(other.rows['2026-11-16']).toBe('Topic 1');
+        expect(other.rows['2026-11-23']).toBe('Topic 2');
         expect(other.rows['2026-11-30']).toBe('Topic 3');
         expect(other.rows['2026-12-07']).toBe('Topic 4');
       });
 
-      it('two cancels in the two classes of one shared plan: each class follows its own lessons', async () => {
-        const x = await sharedScene();
-        await fillIn(x, x.journal, [1, 2, 3, 4, 5, 6, 7, 8]);
-        ok(await shareOf(x));
-        const ownLesson = await lessonOf(x.s.classId, x.s.subject, '2026-11-09');
-        const otherLesson = await lessonOf(x.s.otherClass, x.s.subject, '2026-11-16');
-        const held = await holdRow(
-          sql`select id from journals where id = ${x.journal} for no key update`,
-        );
-        const both = [
-          started(() =>
-            keyed(`/api/timetable/lessons/${ownLesson.id}/cancel`, x.s.branch, {
-              reason: 'Excursion',
-            }),
-          ),
-          started(() =>
-            keyed(`/api/timetable/lessons/${otherLesson.id}/cancel`, x.s.branch, {
-              reason: 'Excursion',
-            }),
-          ),
-        ];
-        await waitingOn(held.pid, 2);
-        await held.release();
-        for (const response of await Promise.all(both)) ok(response);
-        expect(laid(await planIn(x, x.journal)).rows['2026-11-16']).toBe('Topic 1');
-        const other = laid(await planIn(x, x.other));
-        expect(other.rows['2026-11-09']).toBe('Topic 1');
-        expect(other.rows['2026-11-23']).toBe('Topic 2');
-      });
+      for (const order of ['own first', 'other first'] as const) {
+        it(`two cancels in the two classes of one shared plan, the ${order}: the second waits on the journals and each class follows its own lessons`, async () => {
+          const x = await sharedScene();
+          await fillIn(x, x.journal, [1, 2, 3, 4, 5, 6, 7, 8]);
+          ok(await shareOf(x));
+          const ownLesson = await lessonOf(x.s.classId, x.s.subject, '2026-11-09');
+          const otherLesson = await lessonOf(x.s.otherClass, x.s.subject, '2026-11-16');
+          const [firstLesson, secondLesson] =
+            order === 'own first' ? [ownLesson, otherLesson] : [otherLesson, ownLesson];
+          const cancel = (id: string) => () =>
+            keyed(`/api/timetable/lessons/${id}/cancel`, x.s.branch, { reason: 'Excursion' });
+          // The first cancel's follow holds the journals and waits on the
+          // snapshot of its class, which it writes again.
+          const journal = order === 'own first' ? x.journal : x.other;
+          const held = await holdRow(
+            sql`select position from lesson_plan_rows where journal_id = ${journal} and position = 1 for update`,
+          );
+          const first = started(cancel(firstLesson.id));
+          await waitingOn(held.pid, 1);
+          const second = started(cancel(secondLesson.id));
+          await waitingOn(held.pid, 2);
+          await held.release();
+          ok(await first);
+          ok(await second);
+          const own = laid(await planIn(x, x.journal));
+          expect(own.rows['2026-11-16']).toBe('Topic 1');
+          expect(own.notCovered).toEqual(['Topic 8']);
+          const other = laid(await planIn(x, x.other));
+          expect(other.rows['2026-11-09']).toBe('Topic 1');
+          expect(other.rows['2026-11-23']).toBe('Topic 2');
+          expect(other.notCovered).toEqual(['Topic 8']);
+        });
+      }
     });
   });
 });

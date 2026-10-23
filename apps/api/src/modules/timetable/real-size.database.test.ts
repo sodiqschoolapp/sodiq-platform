@@ -735,18 +735,19 @@ async function fullPlans(
             topic: `Topic ${String(index + 1)}`,
           })),
         )
-        .returning('id')
+        .returning(['id', 'topic'])
         .execute();
-      // Task 7.1c: the row of each item in the journal.
+      // Task 7.1c: the row of each item in the journal, by its topic (the
+      // order of `returning` is not relied on).
       await migrator
         .insertInto('lesson_plan_places')
         .values(
-          written.map((one, index) => ({
+          written.map((one) => ({
             branch_id: branch.id,
             plan_id: plan.id,
             journal_id: journal.id,
             item_id: one.id,
-            position: index + 1,
+            position: Number(one.topic.slice('Topic '.length)),
           })),
         )
         .execute();

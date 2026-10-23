@@ -674,7 +674,8 @@ export const en = {
     plan_share_kind:
       'A class and a group cannot share a plan. Share classes with classes, groups with groups.',
     plan_share_subject: 'Only plans of the same subject can be shared.',
-    plan_share_year: 'Only plans of the same academic year can be shared.',
+    plan_share_owner:
+      'That class or group gets another teacher later in this quarter, so it cannot share this plan.',
     plan_share_same: 'This class or group already shares this plan.',
     plan_share_has_items:
       'The plan of that class or group already has items. Clear its rows first, then share.',

@@ -166,7 +166,9 @@ export class PlanFollow implements OnModuleInit {
     const locked = new Set<string>();
     let links = await linksOf();
     for (;;) {
-      const missing = [...new Set(links.map((row) => row.journal_id))]
+      // The marked journals with the first batch, in one statement in the
+      // order of the id, as 7.1b locks them (code review, should-fix 7).
+      const missing = [...new Set([...journalIds, ...links.map((row) => row.journal_id)])]
         .filter((id) => !locked.has(id))
         .sort();
       if (missing.length === 0) break;
@@ -187,6 +189,7 @@ export class PlanFollow implements OnModuleInit {
         .selectFrom('lesson_plans')
         .innerJoin('quarters', 'quarters.id', 'lesson_plans.quarter_id')
         .select([
+          'lesson_plans.shared_unit',
           'quarters.id',
           'quarters.number',
           sql<string | null>`quarters.start_date::text`.as('start_date'),
@@ -253,7 +256,17 @@ export class PlanFollow implements OnModuleInit {
           break;
         }
       }
-      for (const leaving of separations(sharing, earlier)) {
+      const leavers = separations(sharing, earlier, quarter.shared_unit);
+      // Every journal changed together: the plan is shared under the new unit.
+      const kept = sharing.find((one) => !leavers.some((out) => out.journalId === one.journalId));
+      if (kept !== undefined && kept.unit !== quarter.shared_unit) {
+        await transaction
+          .updateTable('lesson_plans')
+          .set({ shared_unit: kept.unit })
+          .where('id', '=', planId)
+          .execute();
+      }
+      for (const leaving of leavers) {
         const separated = await separateJournal(transaction, branchId, planId, leaving.journalId);
         await this.audit.record(transaction, {
           branchId,

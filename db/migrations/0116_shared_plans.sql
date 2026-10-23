@@ -96,6 +96,15 @@ grant insert (copied_from) on lesson_plan_files to sodiq_app;
 
 grant update (plan_id) on lesson_plan_journals to sodiq_app;
 
+-- The unit (kind, grades, language) the plan was shared under (code review,
+-- must-fix 1): when one class's language or grade changes, the class that
+-- changed leaves the plan (decision 17), not the one that kept its unit.
+-- Written by the share, and by the follow when every journal changed
+-- together. Null for a plan never shared.
+alter table lesson_plans add column shared_unit text;
+
+grant update (shared_unit) on lesson_plans to sodiq_app;
+
 alter table lesson_plan_rows drop constraint lesson_plan_rows_plan_fkey;
 alter table lesson_plan_rows add constraint lesson_plan_rows_plan_fkey
   foreign key (plan_id, journal_id) references lesson_plan_journals (plan_id, journal_id)

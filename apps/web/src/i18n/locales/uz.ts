@@ -685,7 +685,8 @@ export const uz: Texts<'one' | 'other'> = {
     plan_share_kind:
       'Sinf va guruh bitta rejani boʻlisha olmaydi. Sinflarni sinflar bilan, guruhlarni guruhlar bilan boʻlishing.',
     plan_share_subject: 'Faqat bir xil fan rejalarini boʻlishish mumkin.',
-    plan_share_year: 'Faqat bir oʻquv yilidagi rejalarni boʻlishish mumkin.',
+    plan_share_owner:
+      'Ushbu sinf yoki guruhga bu chorakda keyinroq boshqa oʻqituvchi tayinlangan, shuning uchun u bu rejani boʻlisha olmaydi.',
     plan_share_same: 'Bu sinf yoki guruh ushbu rejani allaqachon boʻlishgan.',
     plan_share_has_items:
       'Ushbu sinf yoki guruh rejasida allaqachon mavzular bor. Avval qatorlarni tozalang, keyin boʻlishing.',

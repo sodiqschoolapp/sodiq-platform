@@ -305,7 +305,12 @@ Plan approved on pull request #214 with corrections 1 and 2; decisions 1 to 8 an
 | A new item in a shared plan: the same distance after the item before it, else right after it and the following items move up to the first empty row | Decision 8 |
 | A copy goes into a plan with no item on a row not started and none not covered; items on started rows stay; laid from the first row not started of each journal | Decision 9 as changed on #214 |
 | A copied file names the file whose bytes it shows; a copied item names its source item | Decisions 10 and 16 |
-| **Build decision.** The share checks the joining journal in this order: found (404), the same journal, year, subject, read by the reader (`plan_scope`), kind, grades and language, then owned | A state of a journal is told only to a reader |
+| **Build decision.** The share checks the joining journal in this order: found (404), the same journal, read by the reader (`plan_scope`; a journal of another year has no such quarter, 404), subject, kind, grades and language, then owned | A state of a journal is told only to a reader (permission review of the code, must-fix 1) |
+| **Build decision.** A plan keeps the unit it was shared under (`lesson_plans.shared_unit`, 0116); the follow parts the journal whose unit differs from it, and takes the new unit when every journal changed together | The class that changed leaves, whatever the order of the classes (spec review of the code, must-fix 1) |
+| **Build decision.** A share is refused `plan_share_owner` when a lesson not yet held of the quarter of either journal has another owner than the reader | The follow would part the plan in the same commit (spec review of the code, should-fix 5) |
+| **Build decision.** No refusal of the deferred share check is mapped by the route: the route checks the units after taking them `for share`, so the check cannot refuse a share it let through | A mapping no route test can reach (spec review of the code, must-fix 2d) |
+| **Build decision.** The deferred share check locks the journals of the plan `for no key update` in the order of the id, not the `lesson_plans` row (the application has no update right on it) | The same order as every plan write and the follow |
+| **Build decision.** A journal separated keeps its snapshot and absorbed shifts (decision 7); only a join lays the joining journal afresh (decision 18 as built) | Decisions 7 and 18 read together |
 | **Build decision.** The share, separate and copy routes answer 200 with the plan of the path's journal | They change the plan, they create no record of their own |
 
 ## 23 October 2026: plan items follow the timetable (task 7.1b)
