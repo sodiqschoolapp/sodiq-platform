@@ -65009,6 +65009,8 @@ export interface operations {
                         /** Format: uuid */
                         quarterId: string;
                         owner: string | null;
+                        /** Format: uuid */
+                        ownerStaffId: string | null;
                         canEdit: boolean;
                         closed: boolean;
                         rows: {
@@ -66066,6 +66068,8 @@ export interface operations {
                         /** Format: uuid */
                         quarterId: string;
                         owner: string | null;
+                        /** Format: uuid */
+                        ownerStaffId: string | null;
                         canEdit: boolean;
                         closed: boolean;
                         rows: {
@@ -66547,6 +66551,8 @@ export interface operations {
                         /** Format: uuid */
                         quarterId: string;
                         owner: string | null;
+                        /** Format: uuid */
+                        ownerStaffId: string | null;
                         canEdit: boolean;
                         closed: boolean;
                         rows: {
@@ -67036,6 +67042,8 @@ export interface operations {
                         /** Format: uuid */
                         quarterId: string;
                         owner: string | null;
+                        /** Format: uuid */
+                        ownerStaffId: string | null;
                         canEdit: boolean;
                         closed: boolean;
                         rows: {
@@ -67519,6 +67527,8 @@ export interface operations {
                         /** Format: uuid */
                         quarterId: string;
                         owner: string | null;
+                        /** Format: uuid */
+                        ownerStaffId: string | null;
                         canEdit: boolean;
                         closed: boolean;
                         rows: {

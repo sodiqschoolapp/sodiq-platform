@@ -42,9 +42,7 @@ type RequestQuery = ReturnType<typeof baseQuery>;
 
 export async function requestRows(
   transaction: Transaction,
-  where: (
-    query: RequestQuery,
-  ) => RequestQuery,
+  where: (query: RequestQuery) => RequestQuery,
 ): Promise<RequestRow[]> {
   return where(baseQuery(transaction)).orderBy('id', 'desc').execute();
 }
@@ -73,7 +71,10 @@ function baseQuery(transaction: Transaction) {
     ]);
 }
 
-export async function calendarOf(transaction: Transaction, branchId: string): Promise<CalendarSettings> {
+export async function calendarOf(
+  transaction: Transaction,
+  branchId: string,
+): Promise<CalendarSettings> {
   const branch = await transaction
     .selectFrom('branches')
     .select('working_weekdays')

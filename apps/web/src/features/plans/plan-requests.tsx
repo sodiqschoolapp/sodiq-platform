@@ -15,6 +15,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import {
   CHECKED,
   CheckboxField,
+  DateField,
   NumberField,
   SelectField,
   TextAreaField,

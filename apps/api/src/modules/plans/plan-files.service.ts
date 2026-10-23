@@ -131,12 +131,7 @@ export class PlanFiles {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const row = await this.fileRow(transaction, fileId);
-      const scene = await this.plans.itemWriteScene(
-        transaction,
-        access,
-        row.item_id,
-        'wording',
-      );
+      const scene = await this.plans.itemWriteScene(transaction, access, row.item_id, 'wording');
       await this.plans.lockItem(transaction, row.item_id);
       const still = await this.fileRow(transaction, fileId);
       await transaction

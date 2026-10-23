@@ -308,8 +308,10 @@ describe('plan items follow the timetable', () => {
         },
         notCovered: ['Topic 8'],
       });
-      expect(plan.request).toEqual({
-        id: expect.any(String),
+      // Task 7.2: the request is stored, with its id and no Text part.
+      expect(plan.request?.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect({ ...plan.request, id: null }).toEqual({
+        id: null,
         lessons: [],
         fromDate: '2026-11-16',
         causes: [{ kind: 'not_covered', onDate: '2026-11-16', items: 1 }],

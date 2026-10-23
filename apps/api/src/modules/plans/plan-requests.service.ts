@@ -39,17 +39,8 @@ import {
 } from './plan-read.js';
 import { decisionReach, firstTier } from './plan-request-routing.js';
 import { ownerIdOn } from './plan-scope.js';
-import {
-  periodLastDay,
-  periodOpen,
-  windowStateOf,
-} from './plan-window.js';
-import {
-  answerOf,
-  calendarOf,
-  requestRows,
-  type RequestRow,
-} from './plan-request-read.js';
+import { periodLastDay, periodOpen, windowStateOf } from './plan-window.js';
+import { answerOf, calendarOf, requestRows, type RequestRow } from './plan-request-read.js';
 import { PlansService, type Scene } from './plans.service.js';
 
 /**
@@ -64,7 +55,6 @@ import { PlansService, type Scene } from './plans.service.js';
  */
 
 const scopeRefusal = () => new ApiException('plan_scope', 403);
-
 
 /** What the system would prepare at the window's end (review correction 2). */
 interface WindowEndPart {
@@ -88,8 +78,6 @@ export class PlanRequestsService {
   // -------------------------------------------------------------------------
   // Reads.
 
-
-
   /** A request of the branch, 404 otherwise. */
   private async requestOf(
     transaction: Transaction,
@@ -111,13 +99,10 @@ export class PlanRequestsService {
       .where('id', '=', requestId)
       .forUpdate()
       .execute();
-    const [found] = await requestRows(transaction, (query) =>
-      query.where('id', '=', requestId),
-    );
+    const [found] = await requestRows(transaction, (query) => query.where('id', '=', requestId));
     if (found === undefined) throw notFound();
     return found;
   }
-
 
   /** The account that asks: the sender, else the plan's owner on the reference date (review decision 15). */
   private async requesterOf(
@@ -270,8 +255,6 @@ export class PlanRequestsService {
       });
     });
   }
-
-
 
   // -------------------------------------------------------------------------
   // The window's end (review decision 14 and correction 2).
@@ -557,7 +540,10 @@ export class PlanRequestsService {
       await this.refuseInsideWindow(transaction, scene);
       const stored = await this.storeWindowEnd(transaction, scene, planId);
       const request = await this.lockRequest(transaction, stored.id);
-      if (!(request.status === 'prepared' || (request.status === 'sent' && request.requested_by === null))) {
+      if (!(
+        request.status === 'prepared' ||
+        (request.status === 'sent' && request.requested_by === null)
+      )) {
         // Stored and sent by a send at the same moment: the answer is that request.
         return this.answerSingle(transaction, branchId, request.id, scene);
       }
@@ -611,7 +597,10 @@ export class PlanRequestsService {
     if (
       part === null ||
       others.some((one) =>
-        periodOpen({ openUntil: one.open_until, finishedAt: one.finished_at, status: one.status }, scene.now),
+        periodOpen(
+          { openUntil: one.open_until, finishedAt: one.finished_at, status: one.status },
+          scene.now,
+        ),
       )
     ) {
       throw new ApiException('plan_request_nothing', 409);

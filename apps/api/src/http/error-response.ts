@@ -474,7 +474,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   plan_window_not_open: 'The plan window is not open yet and no approved request opens this.',
   plan_window_unpublished: 'The published timetable does not cover the quarter.',
   plan_window_end_past: 'The end is before today.',
-  plan_window_after_quarter: 'The end is after the quarter\'s last day.',
+  plan_window_after_quarter: "The end is after the quarter's last day.",
   plan_window_dates: 'The window must start inside the quarter, on or before its end.',
   plan_window_started: 'The window has started; its start does not move.',
   plan_window_confirm: 'Lessons will be held without a plan; confirm to go on.',

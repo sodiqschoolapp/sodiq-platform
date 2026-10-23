@@ -244,7 +244,9 @@ export class PlansService {
                 readable.map((journal) => journal.id),
               )
               .execute();
-      const planOf = new Map(links.map((link) => [`${link.journal_id}|${link.quarter_id}`, link.plan_id]));
+      const planOf = new Map(
+        links.map((link) => [`${link.journal_id}|${link.quarter_id}`, link.plan_id]),
+      );
       const ownerPeriods = await ownerPeriodsOf(
         transaction,
         links.map((link) => link.plan_id),
@@ -505,7 +507,11 @@ export class PlansService {
       ownerStaffId: scene.ownerId,
       canEdit: scene.reach.edit && !scene.closed && scene.open,
       closed: scene.closed || !scene.open,
-      rows: rows.map((row) => ({ ...row, open: openOf(row), item: byPosition.get(row.number) ?? null })),
+      rows: rows.map((row) => ({
+        ...row,
+        open: openOf(row),
+        item: byPosition.get(row.number) ?? null,
+      })),
       notCovered: items.filter((item) => item.position > rows.length),
       request,
       window: {
@@ -514,10 +520,7 @@ export class PlansService {
         endDate: endsAt === null ? null : schoolDateOf(endsAt, scene.timeZone),
       },
       flag,
-      requests:
-        planId === null
-          ? []
-          : await planRequestsOf(transaction, scene, planId, false),
+      requests: planId === null ? [] : await planRequestsOf(transaction, scene, planId, false),
       sharedWith: planId === null ? [] : await this.sharedWith(transaction, scene, planId),
       shareCandidates:
         scene.reach.edit && !scene.closed && scene.open
@@ -1527,7 +1530,13 @@ export class PlansService {
   ): Promise<Plan> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.writeSceneOf(transaction, access, branchId, journalId, input.quarterId);
+      const scene = await this.writeSceneOf(
+        transaction,
+        access,
+        branchId,
+        journalId,
+        input.quarterId,
+      );
       const members = await this.lockPlanOf(transaction, journalId, scene.quarter.id);
       for (const other of members) {
         if (other !== journalId) {

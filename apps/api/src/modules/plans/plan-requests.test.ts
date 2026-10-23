@@ -1207,7 +1207,10 @@ describe('the plan window and edit requests', () => {
           201,
         );
         const draft = (created.body as { id: string }).id;
-        await t.database.migrator.deleteFrom('pattern_blocks').where('version_id', '=', draft).execute();
+        await t.database.migrator
+          .deleteFrom('pattern_blocks')
+          .where('version_id', '=', draft)
+          .execute();
         const rows = await t.database.migrator
           .selectFrom('teaching_load_rows')
           .select(['id', 'class_id'])
@@ -1245,7 +1248,9 @@ describe('the plan window and edit requests', () => {
       expect(byId.get(open.id)?.finished_at).not.toBeNull();
       expect(rows.some((row) => row.status === 'prepared')).toBe(true);
       // The earlier owner still owns the plan on 26 November, but the period has ended.
-      expect(codeOf(await at(THURSDAY, async () => save(x, first, 'No')))).toBe('plan_window_closed');
+      expect(codeOf(await at(THURSDAY, async () => save(x, first, 'No')))).toBe(
+        'plan_window_closed',
+      );
       const entry = (await entries('plan.request_void', x.journal)).at(-1);
       expect(entry?.new_value).toEqual(
         expect.objectContaining({ voided: [waiting.id], ended: [open.id], cause: 'owner_changed' }),
