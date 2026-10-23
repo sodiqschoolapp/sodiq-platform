@@ -262,6 +262,7 @@ export async function planItems(
       'lesson_plan_items.topic',
       'lesson_plan_items.objectives',
       'lesson_plan_items.links',
+      'lesson_plan_items.copied_from',
       sql<string | null>`lesson_plan_places.moved_from::text`.as('moved_from'),
     ])
     .where('lesson_plan_items.plan_id', '=', planId)
@@ -282,6 +283,29 @@ export async function planItems(
           .where('removed_at', 'is', null)
           .orderBy('id')
           .execute();
+  // Decision 16: the plan each copied item came from, by its first journal.
+  const copied = items.flatMap((item) => (item.copied_from === null ? [] : [item.copied_from]));
+  const sources = new Map<string, { journalId: string; quarterId: string }>();
+  if (copied.length > 0) {
+    const rows = await transaction
+      .selectFrom('lesson_plan_items')
+      .innerJoin(
+        'lesson_plan_journals',
+        'lesson_plan_journals.plan_id',
+        'lesson_plan_items.plan_id',
+      )
+      .select([
+        'lesson_plan_items.id',
+        'lesson_plan_journals.journal_id',
+        'lesson_plan_journals.quarter_id',
+      ])
+      .where('lesson_plan_items.id', 'in', copied)
+      .orderBy('lesson_plan_journals.journal_id', 'desc')
+      .execute();
+    for (const row of rows) {
+      sources.set(row.id, { journalId: row.journal_id, quarterId: row.quarter_id });
+    }
+  }
   return items.map((item) => ({
     id: item.id,
     position: item.position,
@@ -299,6 +323,7 @@ export async function planItems(
         bytes: file.bytes,
       })),
     movedFrom: item.moved_from,
+    copiedFrom: item.copied_from === null ? null : (sources.get(item.copied_from) ?? null),
   }));
 }
 

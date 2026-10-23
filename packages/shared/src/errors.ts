@@ -878,6 +878,30 @@ export const ERROR_CODES = [
   'plan_attendance_only',
   /** The year is closed: nothing in its plans changes (edge/lesson-plans: "Nothing is possible in a closed quarter"; task 7.1a). */
   'plan_year_closed',
+  /** The classes or groups have different languages of instruction: a shared plan joins only one language (05, Language of instruction; task 7.1c, decision 3). */
+  'plan_share_language',
+  /** The classes are of different grades, or the groups of different grades (09, What a plan contains; task 7.1c, decision 3). */
+  'plan_share_grade',
+  /** A class journal and a group journal do not share a plan (task 7.1c, decision 3). */
+  'plan_share_kind',
+  /** The journals are of different subjects (task 7.1c). */
+  'plan_share_subject',
+  /** The journals are of different academic years (task 7.1c). */
+  'plan_share_year',
+  /** The journal already shares this plan (task 7.1c). */
+  'plan_share_same',
+  /** The joining journal’s own plan of the quarter has items: nothing written is dropped (task 7.1c, decision 4). */
+  'plan_share_has_items',
+  /** The plan serves one journal only, so there is nothing to separate (task 7.1c). */
+  'plan_not_shared',
+  /** The plan has an item on a lesson not yet held, or one not covered: a copy never mixes with written items (task 7.1c, decision 9). */
+  'plan_not_empty',
+  /** The plan copied from is of another subject (09: "from another teacher of the same subject and grade"; task 7.1c). */
+  'plan_copy_subject',
+  /** The plan copied from has no grade in common (09: "of the same subject and grade"; task 7.1c). */
+  'plan_copy_grade',
+  /** The plan would be copied into itself (task 7.1c). */
+  'plan_copy_same',
   /** No file store is configured on this server: plan files cannot be added or opened yet (task 7.1a, decision 1). */
   'files_not_configured',
   /** The file store did not answer in time or refused (task 7.1a, decision 1). */

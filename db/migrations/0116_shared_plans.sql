@@ -87,11 +87,27 @@ alter table lesson_plan_files add constraint lesson_plan_files_copied_from_fkey
 grant insert (copied_from) on lesson_plan_files to sodiq_app;
 
 -- ---------------------------------------------------------------------------
--- A journal joins a plan or leaves it: its link moves (decision 5). The plan
--- and its items stay. A prepared request goes with its journal (decision 7).
+-- A journal joins a plan or leaves it: its link moves to the other plan
+-- (decision 5), so "one plan per journal and quarter"
+-- (`lesson_plan_journals_key`) holds at every statement. The plan and its
+-- items stay. What hangs on the link (its snapshot, absorbed shifts and
+-- prepared request, decision 7) goes with it: the same keys, now `on update
+-- cascade`.
 
-grant delete on lesson_plan_journals to sodiq_app;
-grant update (plan_id) on lesson_plan_requests to sodiq_app;
+grant update (plan_id) on lesson_plan_journals to sodiq_app;
+
+alter table lesson_plan_rows drop constraint lesson_plan_rows_plan_fkey;
+alter table lesson_plan_rows add constraint lesson_plan_rows_plan_fkey
+  foreign key (plan_id, journal_id) references lesson_plan_journals (plan_id, journal_id)
+  on update cascade;
+alter table lesson_plan_absorbed drop constraint lesson_plan_absorbed_plan_fkey;
+alter table lesson_plan_absorbed add constraint lesson_plan_absorbed_plan_fkey
+  foreign key (plan_id, journal_id) references lesson_plan_journals (plan_id, journal_id)
+  on update cascade;
+alter table lesson_plan_requests drop constraint lesson_plan_requests_plan_fkey;
+alter table lesson_plan_requests add constraint lesson_plan_requests_plan_fkey
+  foreign key (plan_id, journal_id) references lesson_plan_journals (plan_id, journal_id)
+  on update cascade;
 
 -- ---------------------------------------------------------------------------
 -- Who shares a plan (decision 3): every journal a class journal of one grade,
@@ -205,7 +221,7 @@ end;
 $$;
 
 create constraint trigger lesson_plan_journals_share
-  after insert on lesson_plan_journals
+  after insert or update of plan_id on lesson_plan_journals
   deferrable initially deferred
   for each row execute function lesson_plan_share_check();
 

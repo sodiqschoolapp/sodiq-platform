@@ -4,6 +4,7 @@ import {
   planFileParamsSchema,
   planFileSchema,
   planFileUploadQuerySchema,
+  planCopySchema,
   planItemCreateSchema,
   planItemParamsSchema,
   planItemSaveSchema,
@@ -15,7 +16,10 @@ import {
   planParamsSchema,
   planQuerySchema,
   planSchema,
+  planSeparateSchema,
+  planShareSchema,
   type Plan,
+  type PlanCopy,
   type PlanFile,
   type PlanFileParams,
   type PlanFileUploadQuery,
@@ -29,6 +33,8 @@ import {
   type PlanListQuery,
   type PlanParams,
   type PlanQuery,
+  type PlanSeparate,
+  type PlanShare,
 } from '@sodiq/shared';
 import { PLAN_FILE_ROUTE, type UploadedFile } from '../../http/file-routes.js';
 import { RequestId } from '../../http/request-id.js';
@@ -44,6 +50,7 @@ import { ReturnsStoredFile, type StoredFile } from '../../http/stored-file.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanFiles } from './plan-files.service.js';
+import { PlanSharing } from './plan-sharing.service.js';
 import { PlansService } from './plans.service.js';
 
 /**
@@ -59,6 +66,7 @@ export class PlansController {
   constructor(
     private readonly plans: PlansService,
     private readonly files: PlanFiles,
+    private readonly sharing: PlanSharing,
   ) {}
 
   @Get()
@@ -103,6 +111,45 @@ export class PlansController {
     @RequestId() requestId: string,
   ): Promise<PlanItem> {
     return this.plans.createItem(access, params.journalId, input, requestId);
+  }
+
+  /** Task 7.1c: another journal of the owner joins this journal's plan. */
+  @Post('journals/:journalId/share')
+  @Requires('plans', 'edit')
+  @Returns(planSchema)
+  share(
+    @CurrentAccess() access: Access,
+    @ValidParams(planParamsSchema) params: PlanParams,
+    @ValidBody(planShareSchema) input: PlanShare,
+    @RequestId() requestId: string,
+  ): Promise<Plan> {
+    return this.sharing.share(access, params.journalId, input, requestId);
+  }
+
+  /** Task 7.1c: the journal leaves its shared plan with a copy of the items. */
+  @Post('journals/:journalId/separate')
+  @Requires('plans', 'edit')
+  @Returns(planSchema)
+  separate(
+    @CurrentAccess() access: Access,
+    @ValidParams(planParamsSchema) params: PlanParams,
+    @ValidBody(planSeparateSchema) input: PlanSeparate,
+    @RequestId() requestId: string,
+  ): Promise<Plan> {
+    return this.sharing.separate(access, params.journalId, input, requestId);
+  }
+
+  /** Task 7.1c: the items of another plan copied into this empty plan. */
+  @Post('journals/:journalId/copy')
+  @Requires('plans', 'edit')
+  @Returns(planSchema)
+  copy(
+    @CurrentAccess() access: Access,
+    @ValidParams(planParamsSchema) params: PlanParams,
+    @ValidBody(planCopySchema) input: PlanCopy,
+    @RequestId() requestId: string,
+  ): Promise<Plan> {
+    return this.sharing.copy(access, params.journalId, input, requestId);
   }
 
   @Put('items/:itemId')

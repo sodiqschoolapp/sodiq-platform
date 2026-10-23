@@ -51,6 +51,7 @@ import {
   type PlanReach,
   type PlanReader,
 } from './plan-scope.js';
+import { unitKeysOf } from './plan-separate.js';
 import { placeNew } from './plan-share.js';
 
 /**
@@ -86,7 +87,7 @@ const subjectOf = (journal: JournalRow) => ({
 });
 
 /** A journal and quarter as a request reads them. */
-interface Scene {
+export interface Scene {
   readonly branchId: string;
   readonly journal: JournalRow;
   readonly closed: boolean;
@@ -332,7 +333,7 @@ export class PlansService {
     });
   }
 
-  private async answer(transaction: Transaction, scene: Scene): Promise<Plan> {
+  async answer(transaction: Transaction, scene: Scene): Promise<Plan> {
     const rows = await planRows(
       transaction,
       scene.branchId,
@@ -358,7 +359,156 @@ export class PlansService {
       notCovered: items.filter((item) => item.position > rows.length),
       request:
         planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id),
+      sharedWith: planId === null ? [] : await this.sharedWith(transaction, scene, planId),
+      shareCandidates:
+        scene.reach.edit && !scene.closed && scene.open
+          ? await this.shareCandidates(transaction, scene, planId)
+          : [],
     });
+  }
+
+  /**
+   * Task 7.1c: the other journals of a shared plan and where each stands
+   * (`09`: "The plan screen shows where each class is").
+   */
+  private async sharedWith(
+    transaction: Transaction,
+    scene: Scene,
+    planId: string,
+  ): Promise<Plan['sharedWith']> {
+    const found: Plan['sharedWith'] = [];
+    for (const journalId of await planJournalIds(transaction, planId)) {
+      if (journalId === scene.journal.id) continue;
+      const [journal] = await journalRows(transaction, scene.branchId, { journalId });
+      if (journal === undefined) continue;
+      const rows = await planRows(
+        transaction,
+        scene.branchId,
+        journal,
+        scene.quarter,
+        scene.timeZone,
+        scene.now,
+      );
+      const items = await planItems(transaction, planId, journalId);
+      const next = rows.find((row) => !row.started);
+      found.push({
+        journalId,
+        unit: unitOf(journal),
+        next:
+          next === undefined
+            ? null
+            : {
+                number: next.number,
+                date: next.date,
+                topic: items.find((item) => item.position === next.number)?.topic ?? null,
+              },
+        notCovered: items.filter((item) => item.position > rows.length).length,
+      });
+    }
+    return found.sort((a, b) => a.unit.name.localeCompare(b.unit.name, 'en'));
+  }
+
+  /**
+   * Task 7.1c: the reader's own journals that may join the plan (decision 3):
+   * the same year, subject, kind, grades and language, owned by the plan's
+   * owner on the reference date, not in the plan, with a plan of the quarter
+   * holding no item (decision 4).
+   */
+  private async shareCandidates(
+    transaction: Transaction,
+    scene: Scene,
+    planId: string | null,
+  ): Promise<Plan['shareCandidates']> {
+    const inPlan = new Set(
+      planId === null ? [scene.journal.id] : await planJournalIds(transaction, planId),
+    );
+    const year = await journalRows(transaction, scene.branchId, {
+      yearId: scene.journal.academicYearId,
+    });
+    const keys = await unitKeysOf(transaction, year);
+    const own = keys.get(scene.journal.id);
+    const alike = year.filter(
+      (journal) =>
+        !inPlan.has(journal.id) &&
+        journal.subjectId === scene.journal.subjectId &&
+        keys.get(journal.id) === own,
+    );
+    const { today } = await clockOf(transaction, scene.branchId);
+    const found: Plan['shareCandidates'] = [];
+    for (const journal of alike) {
+      const owner = await ownerIdOn(
+        transaction,
+        scene.branchId,
+        journal,
+        referenceDateOf(scene.quarter, today),
+      );
+      if (owner === null || owner !== scene.ownerId) continue;
+      const theirs = await planIdOf(transaction, journal.id, scene.quarter.id);
+      if (theirs !== null && (await this.hasItems(transaction, theirs))) continue;
+      found.push({ journalId: journal.id, unit: unitOf(journal) });
+    }
+    return found.sort((a, b) => a.unit.name.localeCompare(b.unit.name, 'en'));
+  }
+
+  /**
+   * The plan of the scene's journal and quarter, made on the first write
+   * under the journal's lock (review must-fix 3 of #212), with its link, the
+   * mark that lays it before the commit (task 7.1b) and its audit entry.
+   */
+  async planFor(
+    transaction: Transaction,
+    access: Access,
+    scene: Scene & { readonly assignmentId: string },
+    requestId: string | undefined,
+  ): Promise<string> {
+    const journalId = scene.journal.id;
+    const found = await planIdOf(transaction, journalId, scene.quarter.id);
+    if (found !== null) return found;
+    const plan = await transaction
+      .insertInto('lesson_plans')
+      .values({
+        branch_id: scene.branchId,
+        quarter_id: scene.quarter.id,
+        subject_id: scene.journal.subjectId,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('lesson_plan_journals')
+      .values({
+        branch_id: scene.branchId,
+        plan_id: plan.id,
+        journal_id: journalId,
+        quarter_id: scene.quarter.id,
+      })
+      .execute();
+    // Task 7.1b: the plan is laid on its rows before the commit (its
+    // snapshot, `PlanFollow`), as after any change of the timetable.
+    await transaction
+      .insertInto('lesson_plan_follow_marks')
+      .values({ branch_id: scene.branchId, journal_id: journalId })
+      .execute();
+    await this.audit.record(transaction, {
+      branchId: scene.branchId,
+      actorId: access.accountId,
+      assignmentId: scene.assignmentId,
+      action: 'plan.create',
+      record: { type: 'lesson_plan', id: plan.id },
+      newValue: { journalId, quarterId: scene.quarter.id },
+      ...(requestId === undefined ? {} : { requestId }),
+    });
+    return plan.id;
+  }
+
+  /** The plan holds an item not cleared. */
+  async hasItems(transaction: Transaction, planId: string): Promise<boolean> {
+    const found = await transaction
+      .selectFrom('lesson_plan_items')
+      .select('id')
+      .where('plan_id', '=', planId)
+      .where('cleared_at', 'is', null)
+      .executeTakeFirst();
+    return found !== undefined;
   }
 
   /**
@@ -450,7 +600,7 @@ export class PlansService {
   }
 
   /** Reads the journal, its year, the quarter and what the request may do. */
-  private async sceneOf(
+  async sceneOf(
     transaction: Transaction,
     access: Access,
     branchId: string,
@@ -511,7 +661,7 @@ export class PlansService {
   }
 
   /** The scene of a write: read and owned, the year open. */
-  private async writeSceneOf(
+  async writeSceneOf(
     transaction: Transaction,
     access: Access,
     branchId: string,
@@ -691,43 +841,7 @@ export class PlansService {
           if (rows[input.position - 1]?.lessonId !== input.lessonId) {
             throw new ApiException('plan_row_moved', 409);
           }
-          let planId = await planIdOf(transaction, journalId, scene.quarter.id);
-          if (planId === null) {
-            const plan = await transaction
-              .insertInto('lesson_plans')
-              .values({
-                branch_id: branchId,
-                quarter_id: scene.quarter.id,
-                subject_id: scene.journal.subjectId,
-              })
-              .returning('id')
-              .executeTakeFirstOrThrow();
-            planId = plan.id;
-            await transaction
-              .insertInto('lesson_plan_journals')
-              .values({
-                branch_id: branchId,
-                plan_id: planId,
-                journal_id: journalId,
-                quarter_id: scene.quarter.id,
-              })
-              .execute();
-            // Task 7.1b: the plan is laid on its rows before the commit (its
-            // snapshot, `PlanFollow`), as after any change of the timetable.
-            await transaction
-              .insertInto('lesson_plan_follow_marks')
-              .values({ branch_id: branchId, journal_id: journalId })
-              .execute();
-            await this.audit.record(transaction, {
-              branchId,
-              actorId: access.accountId,
-              assignmentId: scene.assignmentId,
-              action: 'plan.create',
-              record: { type: 'lesson_plan', id: planId },
-              newValue: { journalId, quarterId: scene.quarter.id },
-              ...(requestId === undefined ? {} : { requestId }),
-            });
-          }
+          const planId = await this.planFor(transaction, access, scene, requestId);
           const taken = await transaction
             .selectFrom('lesson_plan_places')
             .select('item_id')
@@ -1150,7 +1264,7 @@ export class PlansService {
   }
 
   /** The places of a plan's items in one journal. */
-  private async placesOf(
+  async placesOf(
     transaction: Transaction,
     planId: string,
     journalId: string,

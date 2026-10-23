@@ -13,7 +13,15 @@ import { Audit } from '../audit/audit.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
-import { movePlaces, referenceDateOf, type PlanQuarter } from './plan-read.js';
+import {
+  lockJournals,
+  movePlaces,
+  planRows,
+  referenceDateOf,
+  type PlanQuarter,
+} from './plan-read.js';
+import { separateJournal, unitKeysOf } from './plan-separate.js';
+import { separations, type SharingJournal } from './plan-share.js';
 import { followQueue, type Absorbed, type FollowResult, type QueueRow } from './plan-queue.js';
 import { planReachOf, planReaderOf } from './plan-scope.js';
 
@@ -115,9 +123,155 @@ export class PlanFollow implements OnModuleInit {
       delete from lesson_plan_follow_marks where written_xact = pg_current_xact_id_if_assigned()
     `.execute(transaction);
     for (const [branchId, journalIds] of marks) {
-      const followed = await this.followBranch(transaction, branchId, journalIds);
+      // Task 7.1c: a journal of a shared plan that lost its teacher, language
+      // or grade leaves the plan first, then follows on its own.
+      const separated = await this.separateShared(transaction, branchId, journalIds);
+      const followed = await this.followBranch(
+        transaction,
+        branchId,
+        [...new Set([...journalIds, ...separated])].sort(),
+      );
       await this.write(transaction, branchId, followed);
     }
+  }
+
+  /**
+   * Task 7.1c, decisions 6 and 17: locks every journal of the shared plans
+   * of the marked journals (in the order of the id, the links read again
+   * until none is missing), then separates each journal whose owners of the
+   * rows not started, or whose kind, grades or language, part it from the
+   * plan (`separations`). Gives the journals separated.
+   */
+  private async separateShared(
+    transaction: Transaction,
+    branchId: string,
+    journalIds: readonly string[],
+  ): Promise<string[]> {
+    const linksOf = async () => {
+      const own = await transaction
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', 'in', [...journalIds])
+        .execute();
+      const planIds = [...new Set(own.map((row) => row.plan_id))];
+      if (planIds.length === 0) return [];
+      return transaction
+        .selectFrom('lesson_plan_journals')
+        .select(['plan_id', 'journal_id'])
+        .where('plan_id', 'in', planIds)
+        .orderBy('plan_id')
+        .orderBy('journal_id')
+        .execute();
+    };
+    const locked = new Set<string>();
+    let links = await linksOf();
+    for (;;) {
+      const missing = [...new Set(links.map((row) => row.journal_id))]
+        .filter((id) => !locked.has(id))
+        .sort();
+      if (missing.length === 0) break;
+      await lockJournals(transaction, missing);
+      for (const id of missing) locked.add(id);
+      links = await linksOf();
+    }
+    const byPlan = new Map<string, string[]>();
+    for (const row of links) byPlan.set(row.plan_id, [...(byPlan.get(row.plan_id) ?? []), row.journal_id]);
+    const shared = [...byPlan].filter(([, members]) => members.length > 1);
+    if (shared.length === 0) return [];
+    const { timeZone, now } = await this.clockOf(transaction, branchId);
+    const actor = await this.actorOf(transaction, branchId);
+    const separatedIds: string[] = [];
+    for (const [planId, members] of shared) {
+      const quarter = await transaction
+        .selectFrom('lesson_plans')
+        .innerJoin('quarters', 'quarters.id', 'lesson_plans.quarter_id')
+        .select([
+          'quarters.id',
+          'quarters.number',
+          sql<string | null>`quarters.start_date::text`.as('start_date'),
+          sql<string | null>`quarters.end_date::text`.as('end_date'),
+        ])
+        .where('lesson_plans.id', '=', planId)
+        .executeTakeFirstOrThrow();
+      if (quarter.start_date === null || quarter.end_date === null) continue;
+      const planQuarter: PlanQuarter = {
+        id: quarter.id,
+        number: quarter.number,
+        startDate: quarter.start_date,
+        endDate: quarter.end_date,
+      };
+      const journals: JournalRow[] = [];
+      for (const journalId of members) {
+        const [journal] = await journalRows(transaction, branchId, { journalId });
+        if (journal !== undefined) journals.push(journal);
+      }
+      const keys = await unitKeysOf(transaction, journals);
+      const facts = await this.factsOf(transaction, branchId, journals);
+      const ordered = [...journals].sort(
+        (a, b) =>
+          Number(a.classId === null) - Number(b.classId === null) ||
+          (a.grades[0] ?? 0) - (b.grades[0] ?? 0) ||
+          a.unitName.localeCompare(b.unitName, 'en') ||
+          a.id.localeCompare(b.id),
+      );
+      const sharing: SharingJournal[] = [];
+      for (const [index, journal] of ordered.entries()) {
+        const rows = await planRows(transaction, branchId, journal, planQuarter, timeZone, now);
+        sharing.push({
+          journalId: journal.id,
+          order: index,
+          unit: keys.get(journal.id) ?? '',
+          owners: rows
+            .filter((row) => !row.started)
+            .map((row) => {
+              const owner = ownerOn(
+                facts.runs.get(journal.id) ?? [],
+                facts.periods.get(journal.id) ?? [],
+                facts.out,
+                row.date,
+              );
+              return owner === null || owner.kind === 'none' ? null : owner.staffId;
+            }),
+        });
+      }
+      // The earlier owner: the snapshot's owner of the first row not started,
+      // read in the order of the units.
+      const snapshot = await transaction
+        .selectFrom('lesson_plan_rows')
+        .select(['journal_id', 'owner_staff_id'])
+        .where('plan_id', '=', planId)
+        .where('starts_at', '>', now)
+        .orderBy('journal_id')
+        .orderBy('position')
+        .execute();
+      let earlier: string | null | undefined;
+      for (const journal of ordered) {
+        const first = snapshot.find((row) => row.journal_id === journal.id);
+        if (first !== undefined) {
+          earlier = first.owner_staff_id;
+          break;
+        }
+      }
+      for (const leaving of separations(sharing, earlier)) {
+        const separated = await separateJournal(transaction, branchId, planId, leaving.journalId);
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: actor.actorId,
+          ...(actor.assignmentId === null ? {} : { assignmentId: actor.assignmentId }),
+          action: 'plan.separated',
+          record: { type: 'lesson_plan', id: planId },
+          newValue: {
+            journalId: leaving.journalId,
+            quarterId: planQuarter.id,
+            planId: separated.planId,
+            items: separated.items,
+            cause: leaving.cause,
+          },
+        });
+        separatedIds.push(leaving.journalId);
+      }
+    }
+    return separatedIds;
   }
 
   /**

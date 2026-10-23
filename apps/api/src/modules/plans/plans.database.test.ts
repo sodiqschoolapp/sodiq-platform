@@ -502,7 +502,7 @@ describe('lesson plans in the database', () => {
     );
   });
 
-  it('lets the application delete only works and places, and change no plan or quarter (7.1b moves the position)', async () => {
+  it('lets the application delete only works, and change no plan or quarter (7.1b moves the position)', async () => {
     const u = await unit(north, await yearOf(north));
     const planId = await plan(u);
     const { id } = await item(north, planId, 1);
@@ -510,8 +510,7 @@ describe('lesson plans in the database', () => {
     const fileId = (await file(north, id)).id;
     for (const [table, key, value] of [
       ['lesson_plans', 'id', planId],
-      // Task 7.1c (decision 5): the link of a journal that joins or leaves a
-      // plan is deleted, so `lesson_plan_journals` is no longer in this list.
+      ['lesson_plan_journals', 'plan_id', planId],
       ['lesson_plan_items', 'id', id],
       ['lesson_plan_files', 'id', fileId],
     ] as const) {
