@@ -289,6 +289,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 23 October 2026: shared plans (task 7.1c)
+
+Plan approved on pull request #214 with corrections 1 and 2; decisions 1 to 8 and 10 to 18 confirmed there, decision 9 changed. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a spec text that should change). A group split, merged or newly formed gets no automatic copy: its teacher copies the plan it came from with `part: 'remaining'`. Proposed `/spec-change` of `09`, When something else changes: "A group is split or merged, or a new group is formed \| The new group's teacher can copy the plan it came from, chosen from the plans of the same subject and grade; for a group formed mid-quarter only the remaining items are copied, attached to its own lessons. The old group's plan is archived with its journal." | Decision 1; groups keep no record of where they came from |
+| **Look first** (a schema change). The row of an item is kept per journal (`lesson_plan_places`, 0116); `lesson_plan_items.position` and `moved_from` moved there with the unique row (per plan and journal now) | Decision 2; one class's lesson cancelled after its date reorders that class only |
+| **Look first** (a pinned list widened). `plan-follow.database.test.ts`: the tables with a `lesson_plan_mark` trigger now include `classes`, `groups` and `group_classes` (a language, grade or class list change of a unit in a shared plan) | Correction 1 of #214; no student or membership table is marked |
+| A plan is shared by journals of one quarter and subject, all classes of one grade or all groups of the same grades, one language of instruction; held by the deferred `lesson_plan_share_check` | Decision 3; `05` |
+| A joining journal is laid from its first row not started; it joins only while its own plan has no item | Decision 4 |
+| A journal joins or leaves by an update of its link's `plan_id` (snapshot, absorbed shifts and request follow `on update cascade`); links are never deleted, so `lesson_plan_journals_key` stays | Decision 5; **build decision**: an update in place of the planned delete, because the prepared request's key made a delete-then-insert impossible |
+| The follow separates a journal whose future owners differ from the plan's earlier owner (the snapshot's), or whose unit no longer matches; the larger group keeps the plan, ties to the first by unit order; never taken back | Decisions 6 and 17 |
+| A new item in a shared plan: the same distance after the item before it, else right after it and the following items move up to the first empty row | Decision 8 |
+| A copy goes into a plan with no item on a row not started and none not covered; items on started rows stay; laid from the first row not started of each journal | Decision 9 as changed on #214 |
+| A copied file names the file whose bytes it shows; a copied item names its source item | Decisions 10 and 16 |
+| **Build decision.** The share checks the joining journal in this order: found (404), the same journal, year, subject, read by the reader (`plan_scope`), kind, grades and language, then owned | A state of a journal is told only to a reader |
+| **Build decision.** The share, separate and copy routes answer 200 with the plan of the path's journal | They change the plan, they create no record of their own |
+
 ## 23 October 2026: plan items follow the timetable (task 7.1b)
 
 Plan approved on pull request #213 with corrections 1 to 3; decisions 1 to 7 and 9 to 12 confirmed there, decision 8 changed. Flagged on issue #42.
