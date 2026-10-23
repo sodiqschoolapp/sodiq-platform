@@ -683,8 +683,14 @@ export type PlanEventDecision = z.infer<typeof planEventDecisionSchema>;
 
 export const planEventDecidedSchema = z.object({
   approved: z.array(z.uuid()),
-  /** The waiting requests of the event the reader may not decide (their own, another subject). */
+  /** The waiting requests of the event the reader may not decide: their own, or of a closed quarter. */
   skipped: z.array(z.uuid()),
+  /**
+   * The waiting requests of the event the reader does not oversee (another
+   * subject), counted and not named: `02`, a Head Teacher's scope is "own
+   * subjects in own branch" (review of the code of task 7.2, round 1).
+   */
+  others: z.int().min(0),
 });
 
 export type PlanEventDecided = z.infer<typeof planEventDecidedSchema>;

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
@@ -169,6 +170,7 @@ function Events({ events }: { events: PlanRequests['events'] }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [days, setDays] = useState('1');
+  const confirm = useConfirm();
   const approve = useMutation({
     mutationFn: (event: { eventId: string; subjectId?: string }) =>
       decidePlanEvent({ ...event, days: Number(days) }),
@@ -210,7 +212,18 @@ function Events({ events }: { events: PlanRequests['events'] }) {
               variant="secondary"
               disabled={approve.isPending}
               onClick={() => {
-                approve.mutate({ eventId: event.eventId });
+                // An approval by event decides every waiting request of it at once.
+                void (async () => {
+                  const sure = await confirm({
+                    title: t('plans.requests.approveAllTitle', {
+                      count: event.requests,
+                      date: momentDateText(i18n.language, event.at),
+                    }),
+                    text: t('plans.requests.approveText', { days }),
+                    action: t('plans.requests.approveAll'),
+                  });
+                  if (sure) approve.mutate({ eventId: event.eventId });
+                })();
               }}
             >
               {t('plans.requests.approveAll')}
@@ -222,7 +235,18 @@ function Events({ events }: { events: PlanRequests['events'] }) {
                   variant="ghost"
                   disabled={approve.isPending}
                   onClick={() => {
-                    approve.mutate({ eventId: event.eventId, subjectId: subject.id });
+                    void (async () => {
+                      const name = nameOf(subject.names, i18n.language);
+                      const sure = await confirm({
+                        title: t('plans.requests.approveSubjectTitle', {
+                          subject: name,
+                          date: momentDateText(i18n.language, event.at),
+                        }),
+                        text: t('plans.requests.approveText', { days }),
+                        action: t('plans.requests.approveSubject', { subject: name }),
+                      });
+                      if (sure) approve.mutate({ eventId: event.eventId, subjectId: subject.id });
+                    })();
                   }}
                 >
                   {t('plans.requests.approveSubject', {
@@ -237,7 +261,7 @@ function Events({ events }: { events: PlanRequests['events'] }) {
         <p className="text-sm">
           {t('plans.requests.eventDone', {
             approved: approve.data.approved.length,
-            skipped: approve.data.skipped.length,
+            skipped: approve.data.skipped.length + approve.data.others,
           })}
         </p>
       )}

@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MemoryPhotoStore } from '../people/photo-store.js';
 import { publishedScene, publishOf, QUARTERS } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon: the window of quarter 2 is opened. */
@@ -70,7 +71,7 @@ describe('the plan window and edit requests', () => {
   let names = 0;
 
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true });
+    t = await dayTemplatesKit({ jobs: true, photoStore: new MemoryPhotoStore() });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -668,6 +669,74 @@ describe('the plan window and edit requests', () => {
       ).toBe('plan_request_decided');
     });
 
+    it("marks a held lesson's item on a file added or removed and on an item created at its row through a Text request", async () => {
+      const x = await scene();
+      ok(await openWindow(x));
+      const [first, second] = await fill(x, [1, 2]);
+      if (first === undefined || second === undefined) throw new Error('no items');
+      const file = await t.database.migrator
+        .insertInto('lesson_plan_files')
+        .values({
+          branch_id: x.s.branch,
+          item_id: second.id,
+          name: 'notes.pdf',
+          type: 'application/pdf',
+          bytes: 64,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const plan = await planOf(x, THURSDAY);
+      // Rows 1 to 3 are held; row 3 is empty.
+      expect(plan.rows.slice(0, 3).map((row) => row.started)).toEqual([true, true, true]);
+      expect(plan.rows.slice(0, 3).map((row) => row.item?.editedAfterLesson ?? null)).toEqual([
+        false,
+        false,
+        null,
+      ]);
+      const asked = requestOf(
+        await at(THURSDAY, async () =>
+          ask(x, {
+            kind: 'text',
+            lessonIds: plan.rows.slice(0, 3).map((row) => row.lessonId),
+            reason: 'Materials',
+          }),
+        ),
+        201,
+      );
+      ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 2 })));
+      await at(THURSDAY, async () => {
+        ok(
+          await request(t.kit.server)
+            .put(`/api/plans/items/${first.id}/files?name=sheet.pdf`)
+            .set('Cookie', x.owner.cookie)
+            .set(BRANCH_HEADER, x.s.branch)
+            .set('Content-Type', 'application/pdf')
+            .send(Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(64, 0x20)])),
+        );
+      });
+      expect(
+        (await planOf(x, THURSDAY)).rows.map((row) => row.item?.editedAfterLesson ?? null),
+      ).toEqual([true, false, null, null, null, null, null, null]);
+      expect(
+        (
+          await at(THURSDAY, async () =>
+            send('delete', `/api/plans/files/${file.id}`, x.s.branch, x.owner.cookie),
+          )
+        ).status,
+      ).toBe(204);
+      expect(
+        (await planOf(x, THURSDAY)).rows.map((row) => row.item?.editedAfterLesson ?? null),
+      ).toEqual([true, true, null, null, null, null, null, null]);
+      // Decided without the owner (code round 1): an item created on a held row is marked.
+      const created = planItemSchema.parse(
+        ok(await at(THURSDAY, async () => create(x, plan, 3, 'Added later')), 201).body,
+      );
+      expect(created.editedAfterLesson).toBe(true);
+      expect(
+        (await planOf(x, THURSDAY)).rows.map((row) => row.item?.editedAfterLesson ?? null),
+      ).toEqual([true, true, true, null, null, null, null, null]);
+    });
+
     it("opens a Re-plan from its first lesson to the quarter's end for create, clear and the queue, never a held row, and locks again when finished", async () => {
       const x = await closedScene();
       const plan = await planOf(x, THURSDAY);
@@ -1185,6 +1254,39 @@ describe('the plan window and edit requests', () => {
           )
         ).status,
       ).toBe(404);
+      // Review of the code, round 1: a Head Teacher of another subject, by event
+      // without a subject, is told a count of the requests they do not oversee,
+      // never their ids, and approves nothing (`02`: "own subjects in own branch").
+      const outsider = await account();
+      await t.kit.giveRole(outsider.account.id, {
+        role: 'head_teacher',
+        branchId: x.s.branch,
+        subjectIds: [await load.classes.subject({ grades: [7] })],
+        validFrom: VALID_FROM,
+      });
+      expect(
+        planRequestsSchema.parse(
+          ok(
+            await at(THURSDAY, async () =>
+              send('get', '/api/plans/requests?view=deciding', x.s.branch, outsider.cookie),
+            ),
+          ).body,
+        ).events,
+      ).toEqual([]);
+      const before = await rowsOf(x.s.branch);
+      expect(
+        planEventDecidedSchema.parse(
+          ok(
+            await at(THURSDAY, async () =>
+              send('post', '/api/plans/requests/decide-event', x.s.branch, outsider.cookie, {
+                eventId: event?.eventId ?? '',
+                days: 2,
+              }),
+            ),
+          ).body,
+        ),
+      ).toEqual({ approved: [], skipped: [], others: 1 });
+      expect(await rowsOf(x.s.branch)).toEqual(before);
       const decided = planEventDecidedSchema.parse(
         ok(
           await at(THURSDAY, async () =>
@@ -1196,7 +1298,7 @@ describe('the plan window and edit requests', () => {
           ),
         ).body,
       );
-      expect(decided).toEqual({ approved: [sent.id], skipped: [] });
+      expect(decided).toEqual({ approved: [sent.id], skipped: [], others: 0 });
       expect(await noticesOf(x.owner.account.id, 'plans.request_approved')).toEqual([
         { unit: plan.unit.name, quarter: 2, until: '2026-11-27' },
       ]);
@@ -1827,10 +1929,17 @@ describe('the plan window and edit requests', () => {
       expect(await rowsOf(x.s.branch)).toEqual(before);
     });
 
-    it("answers 404 for another branch's or an unknown journal on the queue, and for another branch's lesson in a body", async () => {
+    it("answers 404 for another branch's or an unknown journal on the queue, for another branch's lesson or item in a body", async () => {
       const { x, asked } = await askedScene();
       const y = await scene();
+      expect(y.s.branch).not.toBe(x.s.branch);
       const theirs = (await planOf(y, THURSDAY)).rows[0]?.lessonId ?? '';
+      ok(await openWindow(y));
+      const [theirItem] = await fill(y, [5]);
+      if (theirItem === undefined) throw new Error('no item');
+      const queued = (await planOf(x, THURSDAY)).rows
+        .filter((row) => !row.started)
+        .map((row) => row.item?.id ?? null);
       const before = [await rowsOf(x.s.branch), await rowsOf(y.s.branch)];
       await at(THURSDAY, async () => {
         for (const journal of [y.journal, randomUUID()]) {
@@ -1846,6 +1955,22 @@ describe('the plan window and edit requests', () => {
             },
           );
           expect(queue.status).toBe(404);
+        }
+        // Review of the code, round 1: an item id of the body in `base` or `order`.
+        for (const item of [theirItem.id, randomUUID()]) {
+          for (const body of [
+            { base: [...queued, item], order: [...queued, item] },
+            { base: queued, order: [item, ...queued] },
+          ]) {
+            const queue = await send(
+              'put',
+              `/api/plans/journals/${x.journal}/queue`,
+              x.s.branch,
+              x.owner.cookie,
+              { quarterId: x.q2, ...body },
+            );
+            expect(codeOf(queue)).toBe('not_found');
+          }
         }
         for (const lesson of [theirs, randomUUID()]) {
           expect((await ask(x, { kind: 'text', lessonIds: [lesson], reason: 'Typo' })).status).toBe(
@@ -1934,7 +2059,7 @@ describe('the plan window and edit requests', () => {
           ),
         ).body,
       );
-      expect(decided).toEqual({ approved: [], skipped: [prepared?.id] });
+      expect(decided).toEqual({ approved: [], skipped: [prepared?.id], others: 0 });
       const stored = await t.database.migrator
         .selectFrom('lesson_plan_requests')
         .select('status')
@@ -2205,7 +2330,11 @@ describe('the plan window and edit requests', () => {
           }),
         ),
       );
-      expect(planEventDecidedSchema.parse(ok(answer).body)).toEqual({ approved: [], skipped: [] });
+      expect(planEventDecidedSchema.parse(ok(answer).body)).toEqual({
+        approved: [],
+        skipped: [],
+        others: 0,
+      });
       const stored = await t.database.migrator
         .selectFrom('lesson_plan_requests')
         .select('days')

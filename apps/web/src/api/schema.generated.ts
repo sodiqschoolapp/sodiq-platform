@@ -64177,6 +64177,7 @@ export interface operations {
                     "application/json": {
                         approved: string[];
                         skipped: string[];
+                        others: number;
                     };
                 };
             };

@@ -972,6 +972,28 @@ export class PlansService {
     return { ...scene, planId: target.planId, journalIds, position, pass, startedIn };
   }
 
+  /**
+   * Task 7.2: `09`, "If the item of a lesson already held is changed, it
+   * carries an \"edited after the lesson\" mark": a write let through by a
+   * request (after the window) marks the item's place in each journal whose
+   * row has started. A save, a file added or removed, and an item created on
+   * a held row all change the item of that lesson (review of the code, round 1).
+   */
+  async markEditedAfterLesson(
+    transaction: Transaction,
+    pass: GatePass,
+    itemId: string,
+    startedIn: readonly string[],
+  ): Promise<void> {
+    if (pass.via !== 'request' || startedIn.length === 0) return;
+    await transaction
+      .updateTable('lesson_plan_places')
+      .set({ edited_after_lesson: true })
+      .where('item_id', '=', itemId)
+      .where('journal_id', 'in', [...startedIn])
+      .execute();
+  }
+
   /** The row of an item in one journal, as the gate reads it; an item past the last row has none. */
   private async gateRowOf(
     transaction: Transaction,
@@ -1121,6 +1143,8 @@ export class PlansService {
           // Task 7.2: the window, else a period covering the row in every
           // journal (a new item moves the later ones of another journal).
           const own = rows[input.position - 1];
+          // The journals whose row of the new item is held (the mark, below).
+          const startedIn: string[] = own?.started === true ? [journalId] : [];
           const targets: GateTarget[] = [
             {
               journalId,
@@ -1139,6 +1163,7 @@ export class PlansService {
               places: await this.placesOf(transaction, planId, other),
             });
             const at = otherRows[placed.position - 1];
+            if (at?.started === true) startedIn.push(other);
             targets.push({
               journalId: other,
               rows: [
@@ -1215,6 +1240,9 @@ export class PlansService {
               })
               .execute();
           }
+          // Decided without the owner (code round 1): an item created on a held
+          // row through a request changes the item of a lesson already held.
+          await this.markEditedAfterLesson(transaction, pass, item.id, startedIn);
           const created = await this.itemOf(transaction, item.id, journalId);
           const row = rows[input.position - 1];
           await this.audit.record(transaction, {
@@ -1434,16 +1462,7 @@ export class PlansService {
               workEntry(work, change.kind, index + 1),
             );
           }
-          // Task 7.2: `09`, "If the item of a lesson already held is changed,
-          // it carries an \"edited after the lesson\" mark" (after the window).
-          if (scene.pass.via === 'request' && scene.startedIn.length > 0) {
-            await transaction
-              .updateTable('lesson_plan_places')
-              .set({ edited_after_lesson: true })
-              .where('item_id', '=', itemId)
-              .where('journal_id', 'in', [...scene.startedIn])
-              .execute();
-          }
+          await this.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
           const saved = await this.itemOf(transaction, itemId, scene.journal.id);
           for (const change of workChanges) {
             if (change.list in oldValue) {
@@ -1562,6 +1581,20 @@ export class PlansService {
       }
       const planId = await planIdOf(transaction, journalId, scene.quarter.id);
       if (planId === null) throw notFound();
+      // `.claude/rules/api.md`: an id in the body that is no item of the branch
+      // is 404, read before the stale check (review of the code, round 1).
+      const sent = [...new Set([...input.base, ...input.order])].filter(
+        (one): one is string => one !== null,
+      );
+      if (sent.length > 0) {
+        const known = await transaction
+          .selectFrom('lesson_plan_items')
+          .select('id')
+          .where('id', 'in', sent)
+          .where('branch_id', '=', branchId)
+          .execute();
+        if (known.length !== sent.length) throw notFound();
+      }
       const trim = (list: readonly (string | null)[]) => {
         const copy = [...list];
         while (copy.length > 0 && copy.at(-1) === null) copy.pop();

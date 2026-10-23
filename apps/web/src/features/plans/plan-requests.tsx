@@ -11,6 +11,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import {
   CHECKED,
@@ -90,6 +91,7 @@ export function RequestsSection({ plan }: { plan: Plan }) {
         : sendPlanRequest(request.id),
     onSuccess: () => invalidatePlans(queryClient),
   });
+  const confirm = useConfirm();
   const finish = useMutation({
     mutationFn: (id: string) => finishPlanRequest(id),
     onSuccess: () => invalidatePlans(queryClient),
@@ -187,7 +189,15 @@ export function RequestsSection({ plan }: { plan: Plan }) {
                     variant="ghost"
                     disabled={finish.isPending}
                     onClick={() => {
-                      finish.mutate(one.id);
+                      // `edge`: "press 'finished' to lock early": it cannot be undone.
+                      void (async () => {
+                        const sure = await confirm({
+                          title: t('plans.requests.finishTitle', { unit: plan.unit.name }),
+                          text: t('plans.requests.finishText'),
+                          action: t('plans.requests.finish'),
+                        });
+                        if (sure) finish.mutate(one.id);
+                      })();
                     }}
                   >
                     {t('plans.requests.finish')}
@@ -261,6 +271,10 @@ export function RequestLines({ request }: { request: PlanRequest }) {
   );
 }
 
+/** The lesson chosen when it is among `rows`, else the first of them. */
+const offered = (rows: Plan['rows'], lessonId: string): string =>
+  rows.some((row) => row.lessonId === lessonId) ? lessonId : (rows[0]?.lessonId ?? lessonId);
+
 type AskField = 'kind' | 'from' | 'to' | 'reason';
 
 /**
@@ -283,7 +297,7 @@ function AskDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
         return {
           kind: 'replan',
           quarterId: plan.quarterId,
-          fromLessonId: typed.from,
+          fromLessonId: offered(ahead, typed.from),
           reason: typed.reason,
         };
       }
@@ -305,6 +319,10 @@ function AskDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
     message: (field) => (field === 'reason' ? t('plans.requests.reasonNeeded') : undefined),
   });
   const kind = form.bind('kind').value;
+  // `.claude/rules/web.md`: a choice follows its options. Re-plan offers the
+  // lessons not yet held only, so a held first lesson kept from Text falls back.
+  const fromOptions = kind === 'replan' ? ahead : plan.rows;
+  const fromBinding = form.bind('from');
   const rowLabel = (row: Plan['rows'][number]) =>
     t('plans.requests.rowOption', {
       number: row.number,
@@ -346,11 +364,12 @@ function AskDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           />
           <SelectField
             label={t(kind === 'replan' ? 'plans.requests.fromLabel' : 'plans.requests.firstLabel')}
-            options={(kind === 'replan' ? ahead : plan.rows).map((row) => ({
+            options={fromOptions.map((row) => ({
               value: row.lessonId,
               label: rowLabel(row),
             }))}
-            {...form.bind('from')}
+            {...fromBinding}
+            value={offered(fromOptions, fromBinding.value)}
           />
           {kind !== 'replan' && (
             <SelectField

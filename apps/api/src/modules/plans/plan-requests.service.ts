@@ -1052,6 +1052,7 @@ export class PlanRequestsService {
       const { today } = await clockOf(transaction, branchId);
       const approved: string[] = [];
       const skipped: string[] = [];
+      let others = 0;
       const told = new Map<string, Set<string>>();
       let until = today;
       // Every journal first in the order of the id, then the requests.
@@ -1097,6 +1098,11 @@ export class PlanRequestsService {
           requester,
           found.scene.now,
         );
+        // A request the reader does not oversee is counted, never named.
+        if (reach === 'none') {
+          others += 1;
+          continue;
+        }
         if (reach !== 'decide' || found.scene.closed) {
           skipped.push(request.id);
           continue;
@@ -1133,7 +1139,7 @@ export class PlanRequestsService {
           },
         });
       }
-      return planEventDecidedSchema.parse({ approved, skipped });
+      return planEventDecidedSchema.parse({ approved, skipped, others });
     });
   }
 

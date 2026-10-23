@@ -519,6 +519,12 @@ describe('the plan window and edit requests', () => {
       expect(rows()).toHaveLength(3);
     });
     fireEvent.click(rows()[1]?.querySelector('a, button') ?? document.body);
+    // The panel first (review of the code, round 1): without it the check could not fail.
+    await waitFor(() => {
+      expect([...document.querySelectorAll('dl dt')].map((term) => term.textContent)).toContain(
+        en.plans.plan.topic,
+      );
+    });
     expect(screen.queryByRole('button', { name: en.plans.panel.fill })).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.ask }));
     const form = await screen.findByRole('form', { name: en.plans.requests.askTitle });
@@ -576,7 +582,8 @@ describe('the plan window and edit requests', () => {
     const form = await screen.findByRole('form', {
       name: en.plans.windows.formTitle.replace('{{number}}', '2'),
     });
-    fireEvent.click(within(form).getByRole('button', { name: en.plans.windows.open }));
+    // A record form (review of the code, round 1): Save, the shared button.
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog.textContent).toContain(
       '4 lessons will be held before the window ends without a plan.',
@@ -592,6 +599,52 @@ describe('the plan window and edit requests', () => {
         { startDate: '2026-11-09', endDate: '2026-12-28', confirm: true },
       ]);
     });
+  });
+
+  it('keeps the typed dates and sends nothing more when the confirmation is declined', async () => {
+    const calls = open({
+      role: 'academic_vice_principal',
+      path: '/plans/windows',
+      routes: {
+        'GET /api/plans/windows': () => json(WINDOWS),
+        [`PUT /api/plans/windows/${Q2}`]: () =>
+          json(
+            {
+              error: {
+                code: 'plan_window_confirm',
+                message: 'Lessons will be held without a plan.',
+                requestId: uid(98),
+                details: [
+                  {
+                    path: 'endDate',
+                    code: 'plan_window_confirm',
+                    message: 'Lessons will be held without a plan.',
+                    lessonsWithoutPlan: 4,
+                  },
+                ],
+              },
+            },
+            409,
+          ),
+      },
+    });
+    const form = await screen.findByRole('form', {
+      name: en.plans.windows.formTitle.replace('{{number}}', '2'),
+    });
+    const end = within(form).getByLabelText(en.plans.windows.end);
+    fireEvent.change(end, { target: { value: '2026-12-21' } });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(
+      calls
+        .filter((call) => call.route === `PUT /api/plans/windows/${Q2}`)
+        .map((call) => call.body),
+    ).toEqual([{ startDate: '2026-11-09', endDate: '2026-12-21' }]);
+    expect(end).toHaveProperty('value', '2026-12-21');
   });
 
   it('keeps the typed text in the form when a save arrives after the window, and says to ask', async () => {
@@ -624,6 +677,102 @@ describe('the plan window and edit requests', () => {
     );
   });
 
+  // Review of the code, round 1: the states of the approved plan's tests.
+  it.each([
+    {
+      flag: 'window_not_opened' as const,
+      window: { state: 'not_opened' as const, startDate: null, endDate: null },
+      text: 'not opened',
+    },
+    {
+      flag: 'vacancy' as const,
+      window: { state: 'open' as const, startDate: '2026-09-01', endDate: '2026-10-31' },
+      text: 'open until',
+    },
+  ])('shows the window and the flag $flag on the plan page', async ({ flag, window, text }) => {
+    open({ path: `/plans/${JOURNAL}`, plan: { ...planOf(false), window, flag } });
+    const line = await waitFor(() => {
+      const found = document.querySelector(`[data-plan-window="${window.state}"]`);
+      if (found === null) throw new Error('no window line');
+      return found;
+    });
+    expect(line.textContent).toContain(text);
+    expect(line.querySelector('.font-semibold')?.textContent).toBe(en.plans.flag[flag]);
+  });
+
+  it('shows the flag of each quarter in the plans list', async () => {
+    const [first] = LIST.plans;
+    if (first === undefined) throw new Error('no plan');
+    open({
+      routes: {
+        'GET /api/plans': () =>
+          json({
+            ...LIST,
+            plans: [
+              {
+                ...first,
+                quarters: [
+                  { quarterId: Q1, state: 'incomplete', rows: 3, empty: 2, flag: 'vacancy' },
+                  {
+                    quarterId: Q2,
+                    state: 'not_started',
+                    rows: 8,
+                    empty: 8,
+                    flag: 'window_not_opened',
+                  },
+                ],
+              },
+            ],
+          }),
+      },
+    });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+    const cells = [...(rows()[0]?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent);
+    expect(cells).toContain(`2 rows without a topic · ${en.plans.flag.vacancy}`);
+    expect(cells).toContain(`${en.plans.state.not_started} · ${en.plans.flag.window_not_opened}`);
+  });
+
+  it('falls back to the first lesson not yet held when the kind turns to Re-plan', async () => {
+    const calls = open({
+      path: `/plans/${JOURNAL}`,
+      plan: ended(planOf(true)),
+      routes: {
+        [`POST /api/plans/journals/${JOURNAL}/requests`]: () =>
+          json({ ...REQUEST, kind: 'replan', status: 'sent' }, 201),
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.ask }));
+    const form = await screen.findByRole('form', { name: en.plans.requests.askTitle });
+    // Text starts at the first row, a held lesson; Re-plan does not offer it.
+    expect(
+      within(form).getByRole<HTMLSelectElement>('combobox', {
+        name: en.plans.requests.firstLabel,
+      }).value,
+    ).toBe(LESSONS[0]);
+    fireEvent.change(within(form).getByRole('combobox', { name: en.plans.requests.kindLabel }), {
+      target: { value: 'replan' },
+    });
+    expect(
+      within(form).getByRole<HTMLSelectElement>('combobox', {
+        name: en.plans.requests.fromLabel,
+      }).value,
+    ).toBe(LESSONS[1]);
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.requests.reasonLabel }), {
+      target: { value: 'Merge two topics' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.requests.send }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/requests'))?.body).toEqual({
+        kind: 'replan',
+        quarterId: Q1,
+        fromLessonId: LESSONS[1],
+        reason: 'Merge two topics',
+      });
+    });
+  });
+
   it('marks an item edited after its lesson', async () => {
     const plan = planOf(false, { ...ITEM, editedAfterLesson: true });
     open({ path: `/plans/${JOURNAL}`, plan });
@@ -631,6 +780,101 @@ describe('the plan window and edit requests', () => {
       expect(rows()).toHaveLength(3);
     });
     expect(rows()[0]?.textContent).toContain(en.plans.plan.editedAfterLesson);
+  });
+
+  // Review of the code, round 1: what cannot be undone asks first (`.claude/rules/web.md`).
+  it('asks before Finished locks the opened lessons for good: a decline sends nothing', async () => {
+    const calls = open({
+      path: `/plans/${JOURNAL}`,
+      plan: {
+        ...ended(planOf(true)),
+        requests: [
+          {
+            ...REQUEST,
+            status: 'approved',
+            open: true,
+            openUntil: '2026-10-23T18:59:59.999Z',
+            canDecide: false,
+          },
+        ],
+      },
+      routes: {
+        [`POST /api/plans/requests/${REQUEST.id}/finish`]: () =>
+          json({ ...REQUEST, status: 'approved', open: false, canDecide: false }),
+      },
+    });
+    const finished = () =>
+      calls.filter((call) => call.route === `POST /api/plans/requests/${REQUEST.id}/finish`);
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.finish }));
+    let dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain(
+      en.plans.requests.finishTitle.replace('{{unit}}', '7 Oxford'),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(finished()).toEqual([]);
+    fireEvent.click(screen.getByRole('button', { name: en.plans.requests.finish }));
+    dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.plans.requests.finish }));
+    await waitFor(() => {
+      expect(finished()).toHaveLength(1);
+    });
+  });
+
+  it('asks before approving by event, naming the count or the subject: a decline sends nothing', async () => {
+    const other = { ...subject, id: uid(9), names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' } };
+    const EVENT = uid(70);
+    const calls = open({
+      role: 'head_teacher',
+      path: '/plans/requests',
+      routes: {
+        'GET /api/plans/requests': () =>
+          json({
+            requests: [REQUEST],
+            events: [
+              {
+                eventId: EVENT,
+                at: '2026-10-20T10:00:00.000Z',
+                requests: 3,
+                subjects: [subject, other],
+              },
+            ],
+          }),
+        'POST /api/plans/requests/decide-event': () =>
+          json({ approved: [REQUEST.id], skipped: [], others: 2 }),
+      },
+    });
+    const decided = () =>
+      calls.filter((call) => call.route === 'POST /api/plans/requests/decide-event');
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.requests.approveAll }));
+    let dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Approve 3 requests from the change on');
+    expect(dialog.textContent).toContain('School days open: 1.');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    const physics = en.plans.requests.approveSubject.replace('{{subject}}', 'Physics');
+    fireEvent.click(screen.getByRole('button', { name: physics }));
+    dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Approve the requests of Physics from the change on');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(decided()).toEqual([]);
+    fireEvent.click(screen.getByRole('button', { name: physics }));
+    dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: physics }));
+    await waitFor(() => {
+      expect(decided().map((call) => call.body)).toEqual([
+        { eventId: EVENT, subjectId: other.id, days: 1 },
+      ]);
+    });
+    // The requests of another subject are counted with the reader's own skipped ones.
+    expect(await screen.findByText('Approved: 1. Not yours to decide: 2.')).toBeDefined();
   });
 
   it('lists the requests to decide, marks a late one, and approves with the days chosen, a lesson unticked', async () => {

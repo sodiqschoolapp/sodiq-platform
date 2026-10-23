@@ -85,6 +85,7 @@ export class PlanFiles {
               bytes: file.bytes.length,
             })
             .execute();
+          await this.plans.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
           const added = { id: fileId, name, type, bytes: file.bytes.length };
           await this.audit.record(transaction, {
             branchId,
@@ -139,6 +140,12 @@ export class PlanFiles {
         .set({ removed_at: await transactionMoment(transaction) })
         .where('id', '=', still.id)
         .execute();
+      await this.plans.markEditedAfterLesson(
+        transaction,
+        scene.pass,
+        still.item_id,
+        scene.startedIn,
+      );
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
