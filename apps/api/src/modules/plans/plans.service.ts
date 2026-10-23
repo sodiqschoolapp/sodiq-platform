@@ -478,7 +478,10 @@ export class PlansService {
       .selectFrom('journals')
       .select('id')
       .where('id', '=', journal.id)
-      .where(sql<boolean>`runs && datemultirange(daterange(${today}::date, null))`)
+      // Decision 9: a run day from the later of today and the quarter's first day.
+      .where(
+        sql<boolean>`runs && datemultirange(daterange(greatest(${today}::date, ${quarter.startDate}::date), null))`,
+      )
       .executeTakeFirst();
     return {
       branchId,
@@ -503,6 +506,11 @@ export class PlansService {
     quarterId: string,
   ): Promise<Scene & { readonly assignmentId: string }> {
     const scene = await this.sceneOf(transaction, access, branchId, journalId, quarterId);
+    // A closed plan has no owner from its closing on: a reader of it is told
+    // it is closed, anyone else is refused the scope.
+    if (!scene.open && scene.reach.read && !scene.closed) {
+      throw new ApiException('plan_closed', 409);
+    }
     if (!scene.reach.edit || scene.reach.assignmentId === null) throw scopeRefusal();
     if (scene.journal.subject.attendanceOnly) {
       throw new ApiException('plan_attendance_only', 409);

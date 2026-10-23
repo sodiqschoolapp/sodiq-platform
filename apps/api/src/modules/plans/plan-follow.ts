@@ -234,15 +234,21 @@ export class PlanFollow implements OnModuleInit {
       const [journal] = await journalRows(transaction, branchId, { journalId });
       if (journal !== undefined) journals.set(journalId, journal);
     }
+    // Decision 9: a plan is open while its journal has a run day from the
+    // later of today and its quarter's first day.
     const open = new Set(
       (
         await transaction
-          .selectFrom('journals')
-          .select('id')
-          .where('id', 'in', [...journals.keys()])
-          .where(sql<boolean>`runs && datemultirange(daterange(${today}::date, null))`)
+          .selectFrom('lesson_plan_journals')
+          .innerJoin('journals', 'journals.id', 'lesson_plan_journals.journal_id')
+          .innerJoin('quarters', 'quarters.id', 'lesson_plan_journals.quarter_id')
+          .select('lesson_plan_journals.plan_id')
+          .where('lesson_plan_journals.journal_id', 'in', [...journals.keys()])
+          .where(
+            sql<boolean>`journals.runs && datemultirange(daterange(greatest(${today}::date, quarters.start_date), null))`,
+          )
           .execute()
-      ).map((row) => row.id),
+      ).map((row) => row.plan_id),
     );
     const dated = plans.flatMap((plan) =>
       plan.start_date === null || plan.end_date === null
@@ -314,7 +320,7 @@ export class PlanFollow implements OnModuleInit {
         planId: plan.plan_id,
         journal,
         quarter,
-        open: open.has(journal.id),
+        open: open.has(plan.plan_id),
         before,
         after,
         items: items.filter((item) => item.plan_id === plan.plan_id),

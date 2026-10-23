@@ -1367,7 +1367,7 @@ describe('lesson plans and their items', () => {
     async function heldThen(
       branch: string,
       hold: (transaction: Transaction) => Promise<void>,
-      run: () => Test,
+      run: () => PromiseLike<Response>,
     ): Promise<Response> {
       let release: () => void = () => undefined;
       const released = new Promise<void>((resolve) => {
