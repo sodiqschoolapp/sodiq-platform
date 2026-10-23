@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 23 October 2026: task 7.2 The plan window and edit requests
+
+- 0117: `lesson_plan_windows` (one per quarter and branch, stored as moments) and `lesson_plan_window_extensions`; requests widened (Text, Re-plan, extension; prepared, sent, approved, refused, void; `open_until` from school days), `lesson_plan_request_lessons`, the event of each cause, `edited_after_lesson` on places, and a plan record for every journal of a graded subject and quarter (trigger on `journals`, backfill).
+- Every plan write passes the gate (`plan-gate.ts`): the writer's window or extension, else an open period covering the row in every journal of the plan. Routes for the windows, the requests (send, decide, decide by event, finish, the window-end request) and the queue edit; routing by the posts in force (`plan-request-routing.ts`); the follow voids the earlier owner's requests and adds `journal_added`.
+- Pages: Plan windows, Plan edit requests, and on the plan page the window, the flag, "Ask to edit", the requests and "Extend window".
+- Left out: timed reminders (9.2c), the home page lists (9.4b), the closed quarter (9.2a, 9.2b), the journal column of an added work and the minimums (8.8), the device draft (8.3c); a From line each.
+
+The next sessions must know:
+
+- A test that writes plans opens their window first (`openPlanWindows` of `apps/api/src/testing/plan-windows-kit.ts`); every journal has its plan records from its insert, so a fixture reads them, never inserts a plan.
+- A new plan write route calls `PlansService.gate` after `lockPlanOf`, with the rows it touches in every journal and the operation (`wording`, `create`, `move`), and puts `gateAudit(pass)` in its audit entry.
+- Requests are per plan and journal and follow a journal's link (`on update cascade`); a change of owner voids the sent ones (`PlanFollow.endEarlierOwners`).
+
 ## 23 October 2026: task 7.1c Shared plans
 
 - 0116: the row of an item per journal (`lesson_plan_places`, the position and "moved from" moved off the items), `copied_from` on items and files, the link moves by `update` with the snapshot, absorbed shifts and request cascading, and the deferred `lesson_plan_share_check` (one kind, grades and language) on links, classes, groups and group classes.
