@@ -691,6 +691,20 @@ export interface JournalEditExtensions {
   to_date: string;
 }
 
+export interface JournalOptionalCells {
+  branch_id: string;
+  branch_move_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  lesson_id: string;
+  move_id: string | null;
+  open_until: Timestamp;
+  opened_at: Timestamp;
+  return_status_id: string | null;
+  student_id: string;
+  withdrawn_at: Timestamp | null;
+}
+
 export interface JournalRatingEntries {
   branch_id: string;
   changed_at: Timestamp;
@@ -773,6 +787,32 @@ export interface JournalUnlocks {
   status: string;
   target: string;
   version: number;
+}
+
+export interface JournalVoids {
+  body: string | null;
+  branch_id: string;
+  branch_move_id: string | null;
+  cell_id: string | null;
+  comment_id: string | null;
+  created_at: Generated<Timestamp>;
+  given_back_at: Timestamp | null;
+  given_back_by: string | null;
+  id: Generated<string>;
+  leaving_id: string | null;
+  mark: number | null;
+  merge_id: string | null;
+  move_id: string | null;
+  rating_entry_id: string | null;
+  rating_kind: string | null;
+  reason: string | null;
+  return_status_id: string | null;
+  score: number | null;
+  student_id: string;
+  version: number;
+  visibility: string | null;
+  voided_at: Timestamp;
+  voided_by: string;
 }
 
 export interface JournalWorkHistory {
@@ -1864,10 +1904,12 @@ export interface DB {
   journal_comment_history: JournalCommentHistory;
   journal_comments: JournalComments;
   journal_edit_extensions: JournalEditExtensions;
+  journal_optional_cells: JournalOptionalCells;
   journal_rating_entries: JournalRatingEntries;
   journal_rating_exams: JournalRatingExams;
   journal_rating_history: JournalRatingHistory;
   journal_unlocks: JournalUnlocks;
+  journal_voids: JournalVoids;
   journal_work_history: JournalWorkHistory;
   journal_works: JournalWorks;
   journals: Journals;

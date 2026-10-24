@@ -262,6 +262,174 @@ describe('class and group transfers in the side panel', () => {
     });
   });
 
+  it('lists the journal entries a late move meets and sends it again with their void and the reason (task 8.6)', async () => {
+    const entry = {
+      path: 'journalEntries',
+      code: 'journal_entries',
+      message: 'The cell holds data.',
+      recordId: '01a00000-0000-7000-8000-00000000e001',
+      journalEntry: {
+        kind: 'cell',
+        version: 3,
+        date: '2026-10-06',
+        journalId: '01a00000-0000-7000-8000-00000000e002',
+        unitName: '7 Oxford',
+        subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        mark: 1,
+        score: null,
+        didNotSit: false,
+        voidable: true,
+      },
+    };
+    const calls = open(detailOf(), {
+      'POST /api/classes/transfers': (body) =>
+        (body as { journalEntries?: unknown }).journalEntries === undefined
+          ? json(
+              {
+                error: {
+                  code: 'journal_entries',
+                  message: 'The change meets journal entries.',
+                  requestId: 'r-1',
+                  details: [entry],
+                },
+              },
+              409,
+            )
+          : json(detailOf({ version: 4 })),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    const form = await edit(
+      panel,
+      en.people.students.moves.moveClass,
+      en.people.students.moves.moveClass,
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.students.moves.toClass), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', {
+      name: en.people.students.journalEntries.title_one.replace('{{count}}', '1'),
+    });
+    const line = dialog.querySelector(`[data-entry="${entry.recordId}"]`);
+    expect(line?.textContent).toBe(
+      `${schoolDateText('2026-10-06', 'en')} · 7 Oxford · Mathematics: present`,
+    );
+    fireEvent.change(within(dialog).getByLabelText(en.people.students.journalEntries.reason), {
+      target: { value: 'Entered in the old class by mistake' },
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: en.people.students.journalEntries.void_one.replace('{{count}}', '1'),
+      }),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'POST /api/classes/transfers')).toHaveLength(2);
+    });
+    expect(
+      (
+        calls.filter((call) => call.route === 'POST /api/classes/transfers')[1]?.body as {
+          journalEntries: unknown;
+        }
+      ).journalEntries,
+    ).toEqual({
+      reason: 'Entered in the old class by mistake',
+      seen: [{ id: entry.recordId, version: 3 }],
+    });
+  });
+
+  it('sends the move once more with no choice when the entries went meanwhile (task 8.6, review finding 9)', async () => {
+    const entry = {
+      path: 'journalEntries',
+      code: 'journal_entries',
+      message: 'The cell holds data.',
+      recordId: '01a00000-0000-7000-8000-00000000e011',
+      journalEntry: {
+        kind: 'cell',
+        version: 2,
+        date: '2026-10-06',
+        journalId: null,
+        unitName: '7 Oxford',
+        subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        mark: 1,
+        score: null,
+        didNotSit: false,
+        voidable: true,
+      },
+    };
+    let sent = 0;
+    const calls = open(detailOf(), {
+      'POST /api/classes/transfers': () => {
+        sent += 1;
+        if (sent === 1) {
+          return json(
+            {
+              error: {
+                code: 'journal_entries',
+                message: 'The change meets journal entries.',
+                requestId: 'r-1',
+                details: [entry],
+              },
+            },
+            409,
+          );
+        }
+        if (sent === 2) {
+          return json(
+            {
+              error: {
+                code: 'journal_entries',
+                message: 'The change meets journal entries.',
+                requestId: 'r-2',
+                details: [
+                  {
+                    path: 'journalEntries.seen',
+                    code: 'journal_entries',
+                    message: 'The entries sent are not the list now.',
+                    changed: true,
+                  },
+                ],
+              },
+            },
+            409,
+          );
+        }
+        return json(detailOf({ version: 4 }));
+      },
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    const form = await edit(
+      panel,
+      en.people.students.moves.moveClass,
+      en.people.students.moves.moveClass,
+    );
+    fireEvent.change(within(form).getByLabelText(en.people.students.moves.toClass), {
+      target: { value: YALE.id },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    const dialog = await screen.findByRole('dialog', {
+      name: en.people.students.journalEntries.title_one.replace('{{count}}', '1'),
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.people.students.journalEntries.reason), {
+      target: { value: 'Old class' },
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: en.people.students.journalEntries.void_one.replace('{{count}}', '1'),
+      }),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'POST /api/classes/transfers')).toHaveLength(3);
+    });
+    const third = calls.filter((call) => call.route === 'POST /api/classes/transfers')[2]?.body as {
+      journalEntries?: unknown;
+    };
+    expect(third.journalEntries).toBeUndefined();
+  });
+
   it('offers the change and the cancel of a scheduled move, and cancels it through its confirmation', async () => {
     const calls = open(detailOf({ scheduledMoves: [MOVE] }), {
       [`POST /api/classes/transfers/${MOVE.id}/cancel`]: () => json(detailOf({ version: 5 })),

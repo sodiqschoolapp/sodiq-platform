@@ -36,11 +36,11 @@ const MERGE_DOES: Readonly<
   exemption_move_offers: 'carried',
   exemptions: 'carried',
   group_memberships: 'carried',
-  // Task 6.1a, decision 9: a record with cells is not merged until 8.6 carries them.
-  journal_cells: 'refused',
-  // Task 8.2 (From 2.4b-1): rating entries and comments, not carried until 8.6 carries cells.
-  journal_comments: 'refused',
-  journal_rating_entries: 'refused',
+  // Task 8.6 (decision 8): the journal data goes to the kept record, each row staying in the
+  // branch of its lesson; data of both records on one key refuses the merge.
+  journal_cells: 'carried',
+  journal_comments: 'carried',
+  journal_rating_entries: 'carried',
   // Task 6.3, correction 2: the reasons of absence go to the kept record.
   student_absence_reasons: 'carried',
   student_accounts: 'left behind',

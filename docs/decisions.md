@@ -297,6 +297,42 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: transfers and leaving inside the journal (task 8.6)
+
+Plan approved on pull request #224 with corrections 1 to 6; decisions 1 to 14 confirmed there (3 and 10 changed by corrections 6 and 3), 15 to 24 taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a journal calculation reading). The journals that follow the student are the class and group journals of the same subject in the same branch and year; the same full result in each, each bottom row counting its members on the reference date | Decision 1; `07`, Transfers; `edge/calculation`, week 6 and between branches |
+| **Look first** (a journal calculation reading). `leftSubjectOn` is the last day of the last membership of the subject in the quarter while the student stays active in the branch; a leaving or a branch move gives `atLeaving` | Decision 2; 4.3 decision 12 |
+| **Look first** (a guard widened). The `changed_how` checks of cells, comments, comment history and rating entries gain `leaving` and (comments, rating entries) `transfer`; `journal_edit_judge` is not touched | Decision 3 as changed by correction 6 |
+| **Look first** (a journal reading). A void clears the value (a comment's body, a rating entry's score), keeps it in `journal_voids` and the history, and a take-back gives it back; a value the give-back cannot write stays voided, marked given back | Decision 4, correction 2 |
+| **Look first** (a calculation reading, a From line of 4.3 changed). The result at leaving is worked out on read and stored at the quarter's close by 9.2a | Decision 5 |
+| **Look first** (a journal reading). A leaving voids marks 0 and numbers 0 after the last day by itself; marks 1, 2 and 3, numbers above 0, comments and rating entries block until voided with a reason | Decision 6 |
+| **Look first** (personal data across branches). The old branch's journals name a former member who moved branch, names and UID only (`journal_former_member_names`); the receiving branch reads no result, cell or figure of the old branch, except the entries a late accept lists (the next line) | Decision 7, as the code review corrected it |
+| **Look first** (personal data across branches; widening what a role may do). A late accept of a branch move lists to the accepting branch's Academic Vice Principal the student's entries of the sending branch's journals on or after the date (date, class or group, subject, mark, number or rating score) and lets that person void them with a reason, also on the date itself, since the accept cannot move the date. Proposed `/spec-change` for `edge/students-classes-groups`, "A student moves to another branch": "On a late accept, the entries of the sending branch's journals on or after the date are listed to the receiving Academic Vice Principal, who voids them with a reason before the accept." | From 3.3c (decisions 6 and 19 of #97): "listed as for a late transfer (moved past or voided with a reason)"; permission and spec reviews of the code |
+| **Look first** (a merge rule). The merge carries cells, comments, rating entries, voids and optional cells by `student_id`, rewrites the forced-delete stores, refuses data of both records on one key and lists the entries on cut days until voided | Decision 8, correction 1 |
+| **Look first** (a test changed because the requirement changed). The 6.1a test that refused the merge of a record with a cell, the 6.1b-2 test that refused one with a mark in a forced-delete store and the grants test that refused any update of a cell's student now assert the carry and `journal_merge_carry` | Decision 8; nothing weakened: the carry passes only in a merge of the transaction |
+| "On or after the date" is by the lesson's date, a rating entry by its exam's date in force; for a leaving, after the last day | Decision 9 |
+| Optional cells until 00:00 of the day after the seventh day following the recording date | Decision 10 as changed by correction 3 |
+| A return into the same class needs nothing new; into another class it lists and opens as a transfer | Decision 11 |
+| Undo refused for data in the journals the move wrote rows for; a cancel of a scheduled move checks nothing | Decision 12 |
+| One refusal `journal_entries` with `voidable`, `seen` and `changed`, and `move_entries_today` for a move dated today (it cannot void, so the one text would not be true there); no preview route | Decision 13 as changed by the spec review of the code (`.claude/rules/web.md`: a code's text is true on every path) |
+| `leaving-results` is `students` `view`, each subject only for a reader of that journal whole on the last day | Decision 14, correction 4 |
+| **Build decision.** A branch-move accept can void entries on the release date itself: the accept cannot move the date the release set | `edge/students-classes-groups`, a week late |
+| **Build decision.** Data of both records of a merge on one comment or rating key refuses the merge, a cleared one too: a comment or a rating entry is never deleted | 0120 |
+| **Build decision.** An empty cell of the kept record on the key of a value the merged record carries is deleted (`journal_cells_delete`, 0128): the key is unique and not deferrable | 0108 |
+| **Build decision.** A writer locks the student's cells, comments and rating entries `for update`, then the class and group rows (`lockStudentEntries`): the comment and rating triggers take the memberships `for share`; five same-moment pairs are tested in both orders | `edge/system-behaviour` |
+| **Build decision.** A `seen` id the branch does not hold, or an unknown one, is 404 and rolls the change back | `.claude/rules/api.md` |
+| **Build decision.** The grid reads across journals only for the students whose rows do not cover the quarter; the rating entry is the one of the latest membership's journal | `12`, Speed targets |
+| **Build decision.** `carriedIn`, `leftSubjectOn` and `atLeaving` sit on the grid's student, empty for a reader of lessons only | The existing figure comparisons stay |
+| **Build decision.** The return form has no void dialog: a returning student holds no entry in the journals left | The leaving voided them |
+| **Build decision.** The web shows the optional marker; typing into an optional cell of a locked lesson in the browser comes with 8.7's lesson status (a From line there) | The server takes the write |
+| **Build decision.** Every writer locks the student's entries before its first write of a class or group row: the change of a scheduled move before its cancel, the cancel and undo of a leaving before their give-back | Spec review of the code, must-fix 1; `.claude/rules/journal.md` |
+| **Build decision.** `seen` names each entry once (the schema refuses a repeat), and the list is matched one to one | Spec review of the code, must-fix 2: `[A, A]` matched `[A, B]` |
+| **Build decision.** A backdated return into the same class opens the held lessons of the gap as optional cells, as a return into another class does | The student is a member of those lessons now; decision 11 needed nothing new for the grid |
+| **Build decision.** The result at leaving is answered for a student who left the school; a student who moved to another branch is of the new branch and the old one answers 404, so the old branch's result at leaving shows folded in its journals only | `.claude/rules/api.md`: 404 for another branch's record; 9.2a stores both |
+
 ## 24 October 2026: exemptions (task 8.5)
 
 Plan approved on pull request #223 with corrections 1 to 3; decisions 1 to 21 confirmed there, 22 to 32 taken in the build. Flagged on issue #42.

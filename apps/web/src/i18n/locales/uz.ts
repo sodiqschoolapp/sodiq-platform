@@ -717,6 +717,16 @@ export const uz: Texts<'one' | 'other'> = {
     exemption_file_type: 'Faqat PDF, JPEG va PNG fayllarni biriktirish mumkin.',
     exemption_offer_decided: 'Bu taklif allaqachon tasdiqlangan yoki rad etilgan.',
     exemption_batch_empty: 'Bu guruhda oʻzgartiriladigan ozod qilish qolmadi.',
+    journal_entries:
+      'Jurnallarda bu oʻzgarish ortda qoldiradigan oʻquvchi yozuvlari bor. Roʻyxatni tekshiring: ularni sabab bilan bekor qiling yoki formada sana boʻlsa, uni oʻzgartiring.',
+    move_entries_today:
+      'Oʻquvchi chiqayotgan jurnallarda bugungi yozuvlari bor. Koʻchirish sanasini ertangi kunga qoʻying.',
+    move_has_entries:
+      'Yangi jurnallarda koʻchirishdan keyin oʻquvchining yozuvlari bor, shuning uchun uni bekor qilib boʻlmaydi. Uning oʻrniga orqaga koʻchiring.',
+    student_merge_journal_overlap:
+      'Ikkala yozuvda bir xil dars boʻyicha jurnal maʼlumotlari bor. Avval ulardan birini tozalang.',
+    student_merge_journal_cut:
+      'Birlashtirilayotgan yozuvda birlashtirish kesib tashlaydigan kunlarda jurnal yozuvlari bor. Avval ularni sabab bilan bekor qiling.',
     student_status_exemption_overlap:
       'Chiqib ketishni bekor qilish keyin kiritilgan ozod qilish bilan ustma-ust tushadigan ozod qilishni qaytaradi. Avval uni tugating yoki bekor qiling, keyin qayta urinib koʻring.',
     student_merge_exemption_overlap:
@@ -2168,6 +2178,26 @@ export const uz: Texts<'one' | 'other'> = {
       uidTitle: 'UIDni tuzatish',
       uidLabel: '{{name}} UIDsi',
       reason: 'Sabab',
+      journalEntries: {
+        title_one: 'Jurnallarda bu oʻzgarish ortda qoldiradigan {{count}} ta yozuv bor',
+        title_other: 'Jurnallarda bu oʻzgarish ortda qoldiradigan {{count}} ta yozuv bor',
+        line: '{{date}} · {{unit}} · {{subject}}: {{what}}',
+        mark0: 'kelmagan',
+        mark1: 'qatnashgan',
+        mark2: 'kechikkan',
+        mark3: 'maktabda, darsga kirmagan',
+        number: 'son {{score}}',
+        comment: 'izoh',
+        rating: 'reyting imtihoni {{score}}',
+        didNotSit: 'reyting imtihoni: topshirmagan',
+        moveDate:
+          'Ularni saqlash uchun orqaga qayting va sanani {{date}} yoki undan keyin qoʻying.',
+        reason: 'Bekor qilish sababi',
+        reasonNeeded: 'Bu yozuvlar nima uchun bekor qilinayotganini yozing.',
+        back: 'Orqaga',
+        void_one: '{{count}} ta yozuvni bekor qilish',
+        void_other: '{{count}} ta yozuvni bekor qilish',
+      },
       moves: {
         moveClass: 'Boshqa sinfga koʻchirish',
         moveGroup: 'Boshqa guruhga koʻchirish',
@@ -5780,7 +5810,22 @@ export const uz: Texts<'one' | 'other'> = {
       lessonOf: '{{date}}, {{time}} darsi',
       journalColumn: 'Jurnal',
     },
+    // Task 8.6: oʻquvchi kartasidagi ketishdagi natijalar (edge/calculation).
+    leavingResults: {
+      title: 'Ketishdagi natijalar',
+      empty: 'Siz koʻra oladigan ketishdagi natija yoʻq.',
+      quarter: '{{number}}-chorak',
+      result: '{{shown}}, baho {{grade}}',
+      lastDay: '{{date}} gacha',
+    },
     grid: {
+      // Task 8.6: oʻquvchiga ergashadigan natijalar (07, Transfers; edge/calculation).
+      carriedIn: 'koʻchirilgan',
+      carriedInTitle: 'Bulardan ham hisoblangan: {{journals}}',
+      carriedInJournal: '{{unit}} ({{from}} – {{to}})',
+      leftSubjectOn: '{{date}} kuni fanni tark etgan',
+      resultAtLeaving: 'Ketishdagi natija ({{date}})',
+      optionalUntil: '{{date}} gacha ixtiyoriy',
       backFromExemption: 'ozod qilishdan qaytdi',
       exemptResult: 'Ozod',
       basedOn: '{{held}} darsdan {{expected}} tasi boʻyicha',

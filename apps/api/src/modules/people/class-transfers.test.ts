@@ -176,6 +176,10 @@ describe('class transfers', () => {
       t.database.migrator.selectFrom('student_moves').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('class_memberships').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('group_memberships').selectAll().orderBy('id').execute(),
+      // Task 8.6: the journal side of the change (`journal-entries.ts`).
+      t.database.migrator.selectFrom('journal_cells').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_voids').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_optional_cells').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 

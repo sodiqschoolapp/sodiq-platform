@@ -41,6 +41,7 @@ import { StudentForm, takenOf, takenText } from './student-form';
 import { GroupsPlacedNotice } from '@/features/classes/class-members';
 import { StudentPhotoSection } from './student-photo-section';
 import { StudentExemptions } from '@/features/journal/student-exemptions';
+import { StudentLeavingResults } from '@/features/journal/student-leaving-results';
 import { StudentRelativesTab } from './student-relatives';
 import {
   DeleteForm,
@@ -691,6 +692,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
               )}
               <GroupsPlacedNotice count={groupsPlaced} />
               <StatusSection student={student} panel={shown} />
+              <StudentLeavingResults studentId={student.id} left={student.status === 'inactive'} />
             </>
           ) : shownTab === 'relatives' ? (
             <StudentRelativesTab studentId={student.id} name={name} panel={shown} />

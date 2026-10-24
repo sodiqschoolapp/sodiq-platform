@@ -6,6 +6,7 @@ import {
   schoolDateSchema,
   type AuditAction,
   type SchoolDate,
+  type JournalEntriesChoice,
   type StudentMerge,
   type StudentMergeField,
   type StudentMergePreview,
@@ -20,6 +21,14 @@ import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  entriesFrom,
+  entriesLeft,
+  entryDetail,
+  lockStudentEntries,
+  voidEntries,
+  type MetEntry,
+} from '../journal/journal-entries.js';
 import { lockClassGroups } from '../classes/class-groups.js';
 import {
   classesInService,
@@ -252,7 +261,15 @@ export class StudentMerges {
           if (plan.refusal !== null) {
             throw plan.refusal;
           }
-          await this.write(transaction, access, assignmentId, plan, input.reason, requestId);
+          await this.write(
+            transaction,
+            access,
+            assignmentId,
+            plan,
+            input.reason,
+            requestId,
+            input.journalEntries,
+          );
           return { id: plan.kept.id, branchId: this.finalBranch(plan) };
         }),
       MERGE_REFUSALS,
@@ -905,10 +922,16 @@ export class StudentMerges {
     plan: MergePlan,
     reason: string,
     requestId: string,
+    journalEntries: JournalEntriesChoice | undefined,
   ): Promise<void> {
     const { kept, merged } = plan;
     const finalBranch = this.finalBranch(plan);
     const moment = await transactionMoment(transaction);
+    // Task 8.6: the journal entries of both records, then their class and
+    // group rows, before any row is cut (`journal-entries.ts`): a cell save
+    // updates its cell before its trigger takes the memberships.
+    await lockStudentEntries(transaction, [kept.id, merged.id]);
+    const mergedEntries = await entriesFrom(transaction, merged.id, '0001-01-01');
     // Correction 4: the classes, then the groups, before the first write.
     const classIds = plan.classRows.map((one) => one.row.ownerId);
     await classesInService(transaction, classIds);
@@ -1224,10 +1247,18 @@ export class StudentMerges {
       });
     }
 
+    const journal = await this.carryJournal(transaction, access, {
+      keptId: kept.id,
+      mergedId: merged.id,
+      mergeId: mergeRow.id,
+      entries: mergedEntries,
+      choice: journalEntries,
+    });
+
     // The merged record removed; its UIDs stay reserved, released (0033).
-    // Task 6.1a (decision 9): journal cells are not carried yet, so their key
-    // refuses the removal of a record that has any, whatever branch holds them;
-    // task 6.1b-2 (decision 7): so do its marks a forced delete keeps (0111).
+    // Task 8.6 carried the journal data above; a row the transaction could not
+    // see (a branch outside it) still refuses the removal by its key, as do
+    // the marks a forced delete keeps (0111, task 6.1b-2).
     try {
       await transaction.deleteFrom('students').where('id', '=', merged.id).execute();
     } catch (error) {
@@ -1268,6 +1299,7 @@ export class StudentMerges {
       },
       relativesLinked: linked,
       absenceReasons: reasons.map((row) => row.id),
+      journal,
       chained: chained.map((row) => row.id),
       filled: Object.fromEntries(
         plan.filled.map((field) => [field, textOf(merged.whole, FIELD_COLUMNS[field])]),
@@ -1300,6 +1332,178 @@ export class StudentMerges {
         requestId,
       });
     }
+  }
+
+  /**
+   * The journal side of a merge (task 8.6, decision 8 with correction 1;
+   * From 3.3d: "the entries of the merged record are carried to the kept
+   * record with its class and group rows; two records holding entries on
+   * common days ... are refused or resolved, the merge listing them"), run
+   * once the class and group rows are carried:
+   *
+   * - the merged record's entries on days the merge cut or left behind (the
+   *   kept record is no member of their lesson now) are listed
+   *   `student_merge_journal_cut` until voided with a reason;
+   * - data of both records on one key (a lesson and work, a comment target, a
+   *   rating exam) refuses the merge `student_merge_journal_overlap`;
+   * - the cells with a value, the comments, the rating entries, the voids and
+   *   the optional cells go to the kept record by `student_id` (each staying in
+   *   the branch of its lesson); an empty cell of the kept record on the key of
+   *   a carried value goes first (0128), and the merged record's delete takes
+   *   its own empty cells (0109); the histories stay under the merged id;
+   * - the cells and comments of the forced-delete stores name the kept record.
+   */
+  private async carryJournal(
+    transaction: Transaction,
+    access: Access,
+    input: {
+      keptId: string;
+      mergedId: string;
+      mergeId: string;
+      entries: readonly MetEntry[];
+      choice: JournalEntriesChoice | undefined;
+    },
+  ): Promise<Record<string, unknown>> {
+    if (input.choice !== undefined) {
+      // The transaction holds every branch: an id that is not an entry of the merged
+      // record (another branch's, another student's, or unknown) is 404
+      // (`.claude/rules/api.md`: the Super Admin's change still answers 404).
+      const ids = [...new Set(input.choice.seen.map((one) => one.id.toLowerCase()))];
+      const own = await sql<{ id: string }>`
+        select id from journal_cells where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+        union all
+        select id from journal_comments where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+        union all
+        select id from journal_rating_entries
+        where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+      `.execute(transaction);
+      if (own.rows.length !== ids.length) throw notFound();
+    }
+    const cut = await entriesLeft(transaction, input.keptId, input.entries);
+    if (cut.length > 0) {
+      const details = cut.map((entry) => entryDetail(entry, 'student_merge_journal_cut', true));
+      if (input.choice === undefined) {
+        throw new ApiException('student_merge_journal_cut', 409, undefined, details);
+      }
+      const seen = new Map(input.choice.seen.map((one) => [one.id.toLowerCase(), one.version]));
+      if (
+        seen.size !== cut.length ||
+        cut.some((entry) => seen.get(entry.id.toLowerCase()) !== entry.version)
+      ) {
+        throw new ApiException('student_merge_journal_cut', 409, undefined, [
+          ...details,
+          {
+            path: 'journalEntries.seen',
+            code: 'student_merge_journal_cut',
+            message: 'The entries sent are not the list now.',
+            changed: true,
+          },
+        ]);
+      }
+    } else if (input.choice !== undefined) {
+      throw new ApiException('student_merge_journal_cut', 409, undefined, [
+        {
+          path: 'journalEntries.seen',
+          code: 'student_merge_journal_cut',
+          message: 'The entries sent are not the list now.',
+          changed: true,
+        },
+      ]);
+    }
+    const voids = await voidEntries(transaction, {
+      studentId: input.mergedId,
+      source: { mergeId: input.mergeId },
+      actorId: access.accountId,
+      entries: cut.map((entry) => ({ entry, reason: input.choice?.reason ?? null })),
+    });
+    const overlap = await sql<{ lesson_id: string | null; rating_exam_id: string | null }>`
+      select a.lesson_id, null::uuid as rating_exam_id
+      from journal_cells a
+      join journal_cells b on b.branch_id = a.branch_id and b.lesson_id = a.lesson_id
+        and b.work_id is not distinct from a.work_id
+      where a.student_id = ${input.mergedId}::uuid and b.student_id = ${input.keptId}::uuid
+        and (a.mark is not null or a.score is not null)
+        and (b.mark is not null or b.score is not null)
+      union
+      select a.lesson_id, a.rating_exam_id
+      from journal_comments a
+      join journal_comments b on b.branch_id = a.branch_id and b.target = a.target
+        and b.lesson_id is not distinct from a.lesson_id
+        and b.work_id is not distinct from a.work_id
+        and b.rating_exam_id is not distinct from a.rating_exam_id
+      where a.student_id = ${input.mergedId}::uuid and b.student_id = ${input.keptId}::uuid
+      union
+      select null, a.rating_exam_id
+      from journal_rating_entries a
+      join journal_rating_entries b on b.branch_id = a.branch_id
+        and b.rating_exam_id = a.rating_exam_id
+      where a.student_id = ${input.mergedId}::uuid and b.student_id = ${input.keptId}::uuid
+    `.execute(transaction);
+    if (overlap.rows.length > 0) {
+      throw new ApiException(
+        'student_merge_journal_overlap',
+        409,
+        undefined,
+        overlap.rows.map((row) => ({
+          path: '',
+          code: 'student_merge_journal_overlap',
+          message: 'Both records hold journal data on this key.',
+          recordId: row.lesson_id ?? row.rating_exam_id ?? undefined,
+        })),
+      );
+    }
+    // The kept record's empty cells on the key of a value carried go first
+    // (`journal_cells_delete`, 0128); their history lines stay.
+    const swapped = await sql<{ id: string }>`
+      delete from journal_cells b
+      using journal_cells a
+      where a.student_id = ${input.mergedId}::uuid and b.student_id = ${input.keptId}::uuid
+        and b.branch_id = a.branch_id and b.lesson_id = a.lesson_id
+        and b.work_id is not distinct from a.work_id
+        and (a.mark is not null or a.score is not null)
+        and b.mark is null and b.score is null
+      returning b.id
+    `.execute(transaction);
+    const cells = await transaction
+      .updateTable('journal_cells')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .where((where) => where.or([where('mark', 'is not', null), where('score', 'is not', null)]))
+      .returning('id')
+      .execute();
+    const comments = await transaction
+      .updateTable('journal_comments')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .returning('id')
+      .execute();
+    const ratingEntries = await transaction
+      .updateTable('journal_rating_entries')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .returning('id')
+      .execute();
+    await transaction
+      .updateTable('journal_voids')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .execute();
+    await transaction
+      .updateTable('journal_optional_cells')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .execute();
+    const stores = await sql<{ changed: number }>`
+      select forced_deletes_merge_carry(${input.mergeId}::uuid) as changed
+    `.execute(transaction);
+    return {
+      cells: cells.map((row) => row.id),
+      comments: comments.map((row) => row.id),
+      ratingEntries: ratingEntries.map((row) => row.id),
+      emptyCellsLeft: swapped.rows.map((row) => row.id),
+      journalVoids: voids,
+      forcedStores: stores.rows[0]?.changed ?? 0,
+    };
   }
 
   private async record(

@@ -51,6 +51,9 @@ const student = (n: number, lastName: string, cells = [cell(null), cell(null)]) 
   quarter: null,
   months: null,
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
 });
 
 const lesson = (id: string, date: string, canEnter: boolean, lock: EditLock) => ({

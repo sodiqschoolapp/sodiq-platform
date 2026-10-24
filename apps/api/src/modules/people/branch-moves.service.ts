@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { exemptionsFollowBranchMove } from '../journal/exemption-follow.js';
+import { followJournal, settle } from '../journal/journal-entries.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import {
   PERMISSIONS,
@@ -390,6 +391,9 @@ export class BranchMoves {
           if (today < from) {
             throw new ApiException('branch_move_not_yet', 409);
           }
+          // Task 8.6: the journal entries of both branches are locked and read
+          // before the rows are cut (`journal-entries.ts`).
+          const follow = await followJournal(transaction, move.studentId, from);
           const student = await this.placementStudent(transaction, move.studentId);
           refuseUnmovable(
             student,
@@ -528,6 +532,20 @@ export class BranchMoves {
             },
             requestId,
           );
+          // Task 8.6 (From 3.3c, decisions 6 and 19: "a late accept cuts the old
+          // branch's class and group rows back to the date: the entries of the old
+          // journals on or after the date are listed as for a late transfer (moved
+          // past or voided with a reason)"): voided with the reason given, also on the
+          // date itself, since the accept cannot move the date the release set
+          // (decision 15, Look first: the accepting branch reads and voids them); the
+          // new branch's held lessons open as optional.
+          const journal = await settle(transaction, follow, {
+            source: { branchMoveId: moveId },
+            actorId: access.accountId,
+            choice: input.journalEntries,
+            voidable: true,
+            opensOptional: true,
+          });
           await this.record(
             transaction,
             access,
@@ -557,6 +575,7 @@ export class BranchMoves {
                     was: one.validUntil,
                   })),
                 },
+                journalVoids: journal.journalVoids,
               },
               requestId,
             },
@@ -570,6 +589,7 @@ export class BranchMoves {
               classMembershipId: membershipId,
               ...(languageDiffers ? { confirmLanguage: true } : {}),
               groupsChosen: chosen.length,
+              optionalCells: journal.optionalCells,
               groupsPlaced: covered.automatic.length,
               groupMemberships: {
                 written: [

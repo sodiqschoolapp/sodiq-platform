@@ -38,6 +38,7 @@ import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentsKey } from './people-api';
+import { useJournalEntries } from './journal-entries';
 
 /**
  * The move of a student to another branch (edge/students-classes-groups, "A
@@ -395,6 +396,7 @@ function AcceptGroupsForm({
   const { t } = useTranslation();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: false });
   const label = t('people.students.branchMoves.acceptTitle', { name: listName(move) });
   const form = useRecordForm<string, BranchMoveAccept>({
     schema: ACCEPT_SCHEMA,
@@ -425,12 +427,19 @@ function AcceptGroupsForm({
       if (!go) {
         throw new SaveCancelled();
       }
+      // Task 8.6: the sending branch's entries on or after the date are voided with a reason.
       const send = (confirmLanguage: boolean) =>
-        answerOf(
-          api.POST('/api/people/branch-moves/{id}/accept', {
-            params: { header: branchHeader(), path: { id: move.id } },
-            body: { ...input, ...(confirmLanguage ? { confirmLanguage } : {}) },
-          }),
+        withEntries((journalEntries) =>
+          answerOf(
+            api.POST('/api/people/branch-moves/{id}/accept', {
+              params: { header: branchHeader(), path: { id: move.id } },
+              body: {
+                ...input,
+                ...(confirmLanguage ? { confirmLanguage } : {}),
+                ...(journalEntries === undefined ? {} : { journalEntries }),
+              },
+            }),
+          ),
         );
       try {
         await send(false);
@@ -458,6 +467,7 @@ function AcceptGroupsForm({
   const classFullText = useClassFullText(form.failure);
   return (
     <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
+      {dialog}
       <p className="text-sm text-muted-foreground">
         {t('people.students.branchMoves.freeSeats', { count: freeSeats })}
       </p>

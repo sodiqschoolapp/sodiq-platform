@@ -174,6 +174,13 @@ describe('the merge of two student records', () => {
         .orderBy('lesson_id')
         .execute(),
       t.database.migrator.selectFrom('exemption_move_offers').selectAll().orderBy('id').execute(),
+      // Task 8.6: the journal data a merge carries or voids.
+      t.database.migrator.selectFrom('journal_cells').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_comments').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_rating_entries').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_voids').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_optional_cells').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('forced_deletes').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 
@@ -468,31 +475,188 @@ describe('the merge of two student records', () => {
     });
   });
 
-  describe('journal cells (task 6.1a, decision 9)', () => {
-    it('refuses the merge of a record with a cell, and changes nothing', async () => {
-      // A branch and a year of their own: the lesson dates a quarter of its year.
+  // Task 8.6 (decision 8 with correction 1; From 3.3d): the journal data of the
+  // merged record goes to the kept record. The test of 6.1a that refused a
+  // record with a cell (`student_merge_has_cells`) is replaced: the
+  // requirement changed (Look first in the report).
+  describe('journal data (task 8.6, decision 8)', () => {
+    /** A branch and a year of their own: the lessons date a quarter of their year. */
+    async function eastWith(name: string) {
       const cells = await CellsKit.create(t.database.migrator);
-      const east = await insertBranch(t.database.migrator, 'East');
+      const east = await insertBranch(t.database.migrator, name);
       const eastYear = await classes.year(east);
       const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      return { cells, east, eastYear, classId };
+    }
+
+    it('carries a cell of the merged record to the kept record, with its history under the cell', async () => {
+      const { cells, east, eastYear, classId } = await eastWith('East journal carry');
       const first = await pupil({ branch: east, classId, from: '2026-09-02' });
       const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
       const lesson = await cells.lesson(east, eastYear, classId, '2026-10-12');
-      await cells.cell(east, {
+      const cellId = await cells.cell(east, {
         lessonId: lesson,
         studentId: twice.id,
         mark: 1,
         by: await classes.account(),
         at: t.clock.now().toISOString(),
       });
-      const before = await t.database.migrator.selectFrom('audit_log').select('id').execute();
+      const history = await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .select(['student_id', 'mark_after'])
+        .where('cell_id', '=', cellId)
+        .execute();
+      merged(await merge(first.id, twice.uid, east));
+      const cell = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['student_id', 'mark', 'version', 'changed_how'])
+        .where('id', '=', cellId)
+        .executeTakeFirstOrThrow();
+      expect(cell).toEqual({ student_id: first.id, mark: 1, version: 1, changed_how: 'entry' });
+      // The carry writes no history line; the lines stay under the merged id.
+      expect(
+        await t.database.migrator
+          .selectFrom('journal_cell_history')
+          .select(['student_id', 'mark_after'])
+          .where('cell_id', '=', cellId)
+          .execute(),
+      ).toEqual(history);
+      const [entry] = await t.entries('student.merged', first.id);
+      expect((entry?.new_value as { journal: { cells: string[] } }).journal.cells).toEqual([
+        cellId,
+      ]);
+    });
+
+    it('refuses data of both records on one lesson (student_merge_journal_overlap), and changes nothing', async () => {
+      const { cells, east, eastYear, classId } = await eastWith('East journal overlap');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const lesson = await cells.lesson(east, eastYear, classId, '2026-10-12');
+      const by = await classes.account();
+      await cells.cell(east, {
+        lessonId: lesson,
+        studentId: first.id,
+        mark: 1,
+        by,
+        at: t.clock.now().toISOString(),
+      });
+      await cells.cell(east, {
+        lessonId: lesson,
+        studentId: twice.id,
+        mark: 0,
+        by,
+        at: t.clock.now().toISOString(),
+      });
+      const before = await rowsOf();
       const response = await merge(first.id, twice.uid, east);
-      expect(response.status, JSON.stringify(response.body)).toBe(409);
-      expect(errorCode(response)).toBe('student_merge_has_cells');
-      expect((await fresh(twice.id, east)).id).toBe(twice.id);
-      expect(await t.database.migrator.selectFrom('audit_log').select('id').execute()).toHaveLength(
-        before.length,
+      refusedWith(response, 409, 'student_merge_journal_overlap');
+      expect(
+        (response.body as { error: { details: { recordId: string }[] } }).error.details.map(
+          (one) => one.recordId,
+        ),
+      ).toEqual([lesson]);
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it("takes the kept record's empty cell away when the merged record holds the value", async () => {
+      const { cells, east, eastYear, classId } = await eastWith('East journal empty');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const lesson = await cells.lesson(east, eastYear, classId, '2026-10-12');
+      const by = await classes.account();
+      const at = t.clock.now().toISOString();
+      const empty = await cells.cell(east, {
+        lessonId: lesson,
+        studentId: first.id,
+        mark: 1,
+        by,
+        at,
+      });
+      await cells.clear(empty, by, at);
+      const value = await cells.cell(east, {
+        lessonId: lesson,
+        studentId: twice.id,
+        mark: 2,
+        by,
+        at,
+      });
+      merged(await merge(first.id, twice.uid, east));
+      expect(
+        await t.database.migrator
+          .selectFrom('journal_cells')
+          .select(['id', 'mark'])
+          .where('lesson_id', '=', lesson)
+          .where('student_id', '=', first.id)
+          .execute(),
+      ).toEqual([{ id: value, mark: 2 }]);
+    });
+
+    it('lists an entry of the merged record on a day the merge leaves behind, then voids it with a reason', async () => {
+      const { cells, east, eastYear, classId } = await eastWith('East journal cut');
+      const keptClass = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const kept = await pupil({ branch: east, classId: keptClass, from: '2026-09-02' });
+      const later = await pupil({ branch: east, classId, from: '2026-09-12' });
+      const lesson = await cells.lesson(east, eastYear, classId, '2026-09-14');
+      const cellId = await cells.cell(east, {
+        lessonId: lesson,
+        studentId: later.id,
+        mark: 1,
+        by: await classes.account(),
+        at: t.clock.now().toISOString(),
+      });
+      const seen = await previewOf(kept.id, later.uid, east);
+      const before = await rowsOf();
+      const refused = await post(
+        kept.id,
+        { uid: later.uid, reason: 'Created twice by mistake', digest: seen.digest },
+        east,
       );
+      refusedWith(refused, 409, 'student_merge_journal_cut');
+      const details = (
+        refused.body as {
+          error: {
+            details: { recordId: string; journalEntry: { version: number; voidable: boolean } }[];
+          };
+        }
+      ).error.details;
+      expect(details.map((one) => [one.recordId, one.journalEntry.voidable])).toEqual([
+        [cellId, true],
+      ]);
+      expect(await rowsOf()).toEqual(before);
+      merged(
+        await post(
+          kept.id,
+          {
+            uid: later.uid,
+            reason: 'Created twice by mistake',
+            digest: seen.digest,
+            journalEntries: {
+              reason: 'Entered on the record created twice',
+              seen: [{ id: cellId, version: details[0]?.journalEntry.version ?? 0 }],
+            },
+          },
+          east,
+        ),
+      );
+      const cell = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['student_id', 'mark', 'changed_how'])
+        .where('id', '=', cellId)
+        .executeTakeFirst();
+      // Voided, and then taken away with the merged record as an empty cell.
+      expect(cell).toBeUndefined();
+      const line = await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .select(['mark_before', 'mark_after', 'changed_how', 'reason'])
+        .where('cell_id', '=', cellId)
+        .orderBy('version', 'desc')
+        .executeTakeFirstOrThrow();
+      expect(line).toEqual({
+        mark_before: 1,
+        mark_after: null,
+        changed_how: 'transfer',
+        reason: 'Entered on the record created twice',
+      });
     });
   });
 
@@ -623,7 +787,7 @@ describe('the merge of two student records', () => {
   });
 
   describe('marks kept by a forced delete (task 6.1b-2, decision 7)', () => {
-    it('refuses the merge of a record whose mark a forced delete keeps for its restore, and changes nothing', async () => {
+    it('carries a mark a forced delete keeps to the kept record (task 8.6)', async () => {
       const east = await insertBranch(t.database.migrator, 'East kept');
       const eastYear = await classes.year(east);
       const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
@@ -635,19 +799,16 @@ describe('the merge of two student records', () => {
         by: await classes.account(),
         at: t.clock.now().toISOString(),
       });
-      const before = await rowsOf();
-      const response = await merge(first.id, twice.uid, east);
-      expect(response.status, JSON.stringify(response.body)).toBe(409);
-      expect(errorCode(response)).toBe('student_merge_has_cells');
-      expect((await fresh(twice.id, east)).id).toBe(twice.id);
-      expect(await rowsOf()).toEqual(before);
-      // Its 30 days over: the mark can no longer come back, and the merge goes through.
-      await t.database.migrator
-        .updateTable('forced_deletes')
-        .set({ restore_until: t.clock.now() })
-        .where('id', '=', store)
-        .execute();
+      // Task 8.6 (correction 1 of the plan review): the kept mark names the
+      // kept record now, so a restore gives it back under it; the test of
+      // 6.1b-2 that refused the merge is replaced (the requirement changed).
       merged(await merge(first.id, twice.uid, east));
+      const kept = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select(sql<string>`rows -> 'cells' -> 0 ->> 'student_id'`.as('student'))
+        .where('id', '=', store)
+        .executeTakeFirstOrThrow();
+      expect(kept.student).toBe(first.id);
     });
   });
 

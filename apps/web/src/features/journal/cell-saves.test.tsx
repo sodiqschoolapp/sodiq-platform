@@ -74,6 +74,9 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
   quarter: null,
   months: null,
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
 });
 
 /** A double on 26 October: the second lesson copies attendance from the first and has a classwork. */

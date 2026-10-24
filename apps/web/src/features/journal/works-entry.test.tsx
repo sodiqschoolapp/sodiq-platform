@@ -89,6 +89,9 @@ const student = (n: number, lastName: string): JournalStudent => ({
   quarter: null,
   months: null,
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
 });
 
 const GRID: JournalGrid = {

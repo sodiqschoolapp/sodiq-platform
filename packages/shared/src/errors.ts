@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { quarterItemSchema } from './academic-year.js';
 import { heldDataSchema } from './held-data.js';
+import { journalEntryDetailSchema } from './journal-entries.js';
 
 /**
  * What an error answer can say. The web app translates the code; a new kind of
@@ -1085,6 +1086,16 @@ export const ERROR_CODES = [
   /** A merge would leave two overlapping exemptions on the kept record (task 8.5, From 3.3d). */
   'student_merge_exemption_overlap',
   'student_status_exemption_overlap',
+  /** The change meets journal entries of the student on or after its date: the details name them (`journalEntry`); a voidable list is voided with a reason in `journalEntries`, or the date is moved past it (edge/students-classes-groups; task 8.6). */
+  'journal_entries',
+  /** A move dated today meets entries of the student today in the journals it leaves: it is dated tomorrow (edge: "'Today' is allowed only if the student has no entries today in the old journals"; task 8.6). The details name them. */
+  'move_entries_today',
+  /** The journals the move wrote rows for hold entries of the student on or after its date: a transfer back is made instead (edge: "A transfer was a mistake"; task 8.6). */
+  'move_has_entries',
+  /** Both records hold journal data on one key (the same lesson and work, rating exam or comment target): the details name the lessons (From 3.3d; task 8.6). */
+  'student_merge_journal_overlap',
+  /** The merged record holds journal entries on days the merge cuts: they are voided with a reason first (From 3.3d; task 8.6). */
+  'student_merge_journal_cut',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -1296,6 +1307,10 @@ export const errorDetailSchema = z.object({
       version: z.int().min(1),
     })
     .optional(),
+  /** A journal entry met by a move, a return, a leaving or a merge (task 8.6). `recordId` is the entry. */
+  journalEntry: journalEntryDetailSchema.optional(),
+  /** The entries sent in `journalEntries.seen` are not the list now, on a `journal_entries` (task 8.6). */
+  changed: z.boolean().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

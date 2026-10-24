@@ -1122,7 +1122,7 @@ How to read the task lines:
   - From 8.2 (pull request #218, decision 6): `edge/calculation`, "A student is exempt on the exam day": "The cell shows 'exempt on exam day, pending'. The teacher may later enter a score; otherwise the Academic Vice Principal sets 'exempt'. A pending entry blocks closing." The rating exam cell of a student exempt on the date in force (`journal_rating_date`, 0120) shows "pending" and is passed to `packages/calc` as no entry; the grid's rating exam answer (`ratingExamOf`, `apps/api/src/modules/journal/rating.ts`) gains it.
   - From 8.4 (pull request #222): `edge/journal`, Locks: the cells reopened for 3 days after an exemption is shortened are an unlock of the edit period (`journal_lock_moment`, 0122, the lock worked out on each request from `branch_edit_days` and `journal_edit_extensions`); the system writes of an exemption (`changed_how` `exemption`) pass the guards of 0122 (`journal_edit_judge`, called by `journal_*_edit_guard`) after the lock, as `transfer` and `cancellation` do.
 
-- [ ] **8.6 Transfers and leaving inside the journal**
+- [x] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
   - Build: what a journal shows and counts when a student changes class or group, joins late, leaves or returns; results that follow the student; the "result at leaving".
   - Done when: a transfer made at the same moment as a cell save is tested.
@@ -1143,6 +1143,7 @@ How to read the task lines:
   - From 5.7b-1 (pull request #191, decision 10): `07`, "A substituted lesson counts for the substitute on that day"; the substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101).
   - From 8.4 (pull request #222): the orphan lessons list and "Locked incomplete" read the lock of each lesson from `journal_lesson_lock` (0122, worked out on each request, never stored); "lessons about to lock" in the reminders the same way. The discipline report counts the entries made under an unlock (`changed_how` `late_entry` of the histories, with `unlock_id`), never the corrections (`edge/journal`: "It does not count against the teacher").
   - From 8.5 (pull request #223): `07`, Lesson status: "Exempt and absent students are not waited for"; the expected students are `lesson_expected_students` (0123: members not exempt, kept blocks included), so reminders, the statuses and the discipline report leave exempt cells out. The cells reopened after an exemption is shortened or voided (`exemption_reopened_cells`, 0123) and a homework cell of a student exempt at the lesson the homework was given (`edge/journal`, row 15) are optional: no reminder, the lesson's status does not change.
+  - From 8.6 (pull request #224, decision 10): `edge/students-classes-groups`, a week late: "cells of lessons already held open as optional: they do not change the lesson's status". The cells of `journal_optional_cells` (0127, not withdrawn) are not waited for: no reminder, the lesson's status does not change, the discipline report does not count them. The grid lets a person type into such a cell of a locked lesson until its `open_until` (the server takes it as a late entry since 8.6; the grid of 8.6 only shows the marker, its entry still follows the lesson's `canEnter`): "can be filled for 7 days".
 
 - [ ] **8.8 Plans in the journal**
   - Read: `09` (In the journal, Reports), `edge/lesson-plans` (Plans and the journal).
@@ -1157,6 +1158,7 @@ How to read the task lines:
   - Build: Excel and PDF export of a journal; branch-wide export as a background job from one consistent moment; the support view of one student, journal and date showing every save and refusal.
   - Done when: an export link stops working after 24 hours and access is checked again at download.
   - From 8.5 (pull request #223, decision 21): an export shows an exempt cell as 4 or 5 (`lesson_student_exemption`, 0123) and the kind and dates only, never the reason's detail or document (`edge/exemptions`, the diagnosis row: "both are left out of exports"). The support view shows a stored mark an exemption hides as hidden by that exemption (`edge/journal`, "My grade disappeared": "also what hid it"; decision 2) and the clears and give-backs of `exemption_clears`.
+  - From 8.6 (pull request #224, decision 4): `edge/journal`, "My grade disappeared": the support view shows a value voided by a move, a leaving or a merge (`journal_voids`, 0127: the source, the reason, who and when, and its give-back), and the history lines with `changed_how` `transfer` and `leaving`.
 
 ## Phase 9. Results, closing and reports
 
@@ -1181,6 +1183,7 @@ How to read the task lines:
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, "The quarter is closed while plan periods are open or requests are waiting": "Open plan periods on that quarter's lessons block closing; the Academic Vice Principal can end them all from the checklist." A blocking item over the approved requests of the quarter whose period is open (`periodOpen`, `apps/api/src/modules/plans/plan-window.ts`), with "end them all" (`finished_at`).
   - From 8.4 (pull request #222): the blocking item "temporarily unlocked" reads the open approved unlocks (`journal_unlocks`, `status` `approved`, `open_until` after now) and the extensions (`journal_edit_extensions`); "lock now and close" ends them from stored moments, never by a job.
   - From 8.5 (pull request #223): `edge/calculation`, "A student is exempt on the exam day": "A pending entry blocks closing": the students of `pending` of the rating exam (`ratingExamOf`, exempt on the date in force with no entry) block closing until a score or "exempt" is entered; "Students with no result in a subject and no exemption" reads `exemptions` (0123).
+  - From 8.6 (pull request #224, decision 5, Look first): `edge/calculation`, "A student left the school before the quarter ended": the result at leaving is stored as a final record (`finalQuarterRecord(…, 'at_leaving')`) at the quarter's close, for every student who left the school or the branch in the quarter; until then it is worked out on read (`GET /api/people/students/:id/leaving-results`). The student is left out of the checklist and the class averages; the "left the subject on <date>" flag of a student still in the branch (`leftSubjectOn`, read with `subject-quarter-lessons.ts`) is decided here: keep or "Not assessed".
 
 - [ ] **9.2b Closing a quarter**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
@@ -1223,6 +1226,7 @@ How to read the task lines:
   - From 1.6 (pull request #49, decision 2): the thresholds are `branch_settings.low_result`, `result_drop`, `attendance_percent` and `absences_in_row`; "five graded works" stays fixed in code here (answer 19).
   - From 4.3 (pull request #104, row table): reads `edge/calculation`, "The early-warning list compares a mid-quarter figure without the exam against last quarter's final with the exam".
   - From 6.3 (pull request #211, decision 13, Look first): `edge/journal`, Attendance figures, "Three absences in a row": "Three held lessons in a row of one journal marked 0 or 3. Exempt and cancelled lessons neither break nor extend the run." A function of `packages/calc` (`CLAUDE.md`, Calculation in one place) over the attendance cells (0108), read by the list with the threshold `absences_in_row`.
+  - From 8.6 (pull request #224, review correction 5): `08`, Transfers: "A transferred student is judged on their own results, which follow them": a student's figures read the lessons of every journal of the subject the student belonged to in the quarter through `subject-quarter-lessons.ts` (`apps/api/src/modules/journal/`), never one journal's.
 
 - [ ] **9.4b Home pages**
   - Read: `08` (Home pages by role).

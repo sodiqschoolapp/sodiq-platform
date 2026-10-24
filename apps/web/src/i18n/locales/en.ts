@@ -705,6 +705,16 @@ export const en = {
     exemption_file_type: 'Only PDF, JPEG and PNG files can be attached.',
     exemption_offer_decided: 'This offer was already confirmed or dropped.',
     exemption_batch_empty: 'No exemption of this batch is left to change.',
+    journal_entries:
+      'The journals hold entries of the student that this change would leave behind. Check the list: void them with a reason, or change the date where the form has one.',
+    move_entries_today:
+      'The journals this move leaves hold entries of the student today. Date the move tomorrow.',
+    move_has_entries:
+      'The new journals already hold entries of the student since the move, so it cannot be undone. Make a transfer back instead.',
+    student_merge_journal_overlap:
+      'Both records hold journal entries for the same lesson. Clear one of them first.',
+    student_merge_journal_cut:
+      'The record being merged holds journal entries on days the merge cuts. Void them with a reason first.',
     student_status_exemption_overlap:
       'Taking the leaving back would give back an exemption that overlaps one entered since. End or void that one first, then try again.',
     student_merge_exemption_overlap:
@@ -2137,6 +2147,25 @@ export const en = {
       uidTitle: 'Correct the UID',
       uidLabel: 'UID of {{name}}',
       reason: 'Reason',
+      journalEntries: {
+        title_one: 'The journals hold {{count}} entry that this change leaves behind',
+        title_other: 'The journals hold {{count}} entries that this change leaves behind',
+        line: '{{date}} · {{unit}} · {{subject}}: {{what}}',
+        mark0: 'absent',
+        mark1: 'present',
+        mark2: 'late',
+        mark3: 'at school, missed the lesson',
+        number: 'number {{score}}',
+        comment: 'a comment',
+        rating: 'rating exam {{score}}',
+        didNotSit: 'rating exam: did not sit',
+        moveDate: 'To keep them, go back and set the date to {{date}} or later.',
+        reason: 'Reason for voiding them',
+        reasonNeeded: 'Write why these entries are voided.',
+        back: 'Back',
+        void_one: 'Void {{count}} entry',
+        void_other: 'Void {{count}} entries',
+      },
       moves: {
         moveClass: 'Move to another class',
         moveGroup: 'Move to another group',
@@ -5730,7 +5759,22 @@ export const en = {
       lessonOf: 'Lesson of {{date}}, {{time}}',
       journalColumn: 'Journal',
     },
+    // Task 8.6: the results at leaving on the student's record (edge/calculation).
+    leavingResults: {
+      title: 'Results at leaving',
+      empty: 'No result at leaving you can see.',
+      quarter: 'Quarter {{number}}',
+      result: '{{shown}}, grade {{grade}}',
+      lastDay: 'to {{date}}',
+    },
     grid: {
+      // Task 8.6: results that follow the student (07, Transfers; edge/calculation).
+      carriedIn: 'carried in',
+      carriedInTitle: 'Also counted from: {{journals}}',
+      carriedInJournal: '{{unit}} ({{from}} – {{to}})',
+      leftSubjectOn: 'Left the subject on {{date}}',
+      resultAtLeaving: 'Result at leaving ({{date}})',
+      optionalUntil: 'Optional until {{date}}',
       backFromExemption: 'back from exemption',
       exemptResult: 'Exempt',
       basedOn: 'based on {{expected}} of {{held}} lessons',

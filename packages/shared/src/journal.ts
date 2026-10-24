@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { absenceCategorySchema } from './attendance.js';
 import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
+import { carriedInSchema } from './journal-entries.js';
 import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
 import { subjectColourSchema } from './subjects.js';
 
@@ -257,6 +258,25 @@ export const journalStudentSchema = z.object({
    * 10: attendance marks only for a reader who sees attendance).
    */
   comments: z.array(journalCommentSchema),
+  /**
+   * Task 8.6 (`07`, Transfers: "The new journal shows the carried-in averages with a
+   * marker"): the other journals of the subject the student's quarter figures also come
+   * from, with the days of each membership in the quarter; empty when none, and for a
+   * reader who sees no figures.
+   */
+  carriedIn: z.array(carriedInSchema),
+  /**
+   * Task 8.6 (`edge/calculation`, "A student moved to a class that does not study the
+   * subject"): the last day of the student's last membership of the subject, "left the
+   * subject on <date>"; `null` otherwise, and when `atLeaving` is set (4.3 decision 12).
+   */
+  leftSubjectOn: schoolDateSchema.nullable(),
+  /**
+   * Task 8.6 (`edge/calculation`, a result at leaving, between branches): the last day of a
+   * leaving or of a move to another branch inside the quarter, the figures being a "result
+   * at leaving"; `null` otherwise.
+   */
+  atLeaving: schoolDateSchema.nullable(),
 });
 
 export type JournalStudent = z.infer<typeof journalStudentSchema>;

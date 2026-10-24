@@ -57,6 +57,9 @@ const STUDENT: JournalStudent = {
   quarter: null,
   months: null,
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
 };
 
 const LESSON_ROW = {

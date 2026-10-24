@@ -502,6 +502,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   student_merge_exemption_overlap: 'The merge would leave two overlapping exemptions.',
   student_status_exemption_overlap:
     'Taking the leaving back would give back an exemption that overlaps one entered since.',
+  journal_entries: 'The change meets journal entries of the student on or after its date.',
+  move_entries_today: 'The journals the move leaves hold entries of the student today.',
+  move_has_entries: 'The new journals hold entries of the student since the move.',
+  student_merge_journal_overlap: 'Both records hold journal data on the same lesson.',
+  student_merge_journal_cut: 'The merged record holds journal entries on days the merge cuts.',
   work_not_in_lesson: 'The work is not a column of this lesson.',
   lesson_has_plan_item: 'The lesson has a plan item; its works come from the plan.',
   journal_works_limit: 'A lesson has at most 10 works of a kind.',

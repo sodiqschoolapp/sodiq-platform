@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { classGradeSchema } from './classes.js';
+import { journalEntriesChoiceSchema } from './journal-entries.js';
 
 /**
  * Class and group transfers (docs/spec/04-people.md, Movements;
@@ -45,6 +46,8 @@ export const classTransferSchema = z.strictObject({
   toClassId: z.uuid(),
   from: schoolDateSchema,
   confirmLanguage: z.boolean().optional(),
+  /** The entries of the old journals on or after `from`, voided with a reason (task 8.6). */
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type ClassTransfer = z.infer<typeof classTransferSchema>;
@@ -55,6 +58,7 @@ export const classTransferChangeSchema = z.strictObject({
   toClassId: z.uuid(),
   from: schoolDateSchema,
   confirmLanguage: z.boolean().optional(),
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type ClassTransferChange = z.infer<typeof classTransferChangeSchema>;
@@ -80,6 +84,7 @@ export const groupTransferSchema = z.strictObject({
   memberId: z.uuid(),
   toGroupId: z.uuid(),
   from: schoolDateSchema,
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type GroupTransfer = z.infer<typeof groupTransferSchema>;
@@ -87,6 +92,7 @@ export type GroupTransfer = z.infer<typeof groupTransferSchema>;
 export const groupTransferChangeSchema = z.strictObject({
   toGroupId: z.uuid(),
   from: schoolDateSchema,
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type GroupTransferChange = z.infer<typeof groupTransferChangeSchema>;

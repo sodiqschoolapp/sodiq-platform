@@ -25,7 +25,7 @@ import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { schoolDateText, weekdayName } from '@/lib/dates';
+import { momentText, schoolDateText, weekdayName } from '@/lib/dates';
 import type { AttendanceEntry } from './attendance-entry';
 import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
@@ -105,12 +105,21 @@ interface HeaderAction {
  * a sign beside the value, its words in the label.
  */
 function MarkerSign({ marker }: { marker: CellMarker }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (marker === null) return null;
+  // Task 8.6: an optional cell of a late move, open until a moment (`edge/students-classes-groups`).
   const text =
-    marker.kind === 'late'
-      ? t('journal.locks.lateMarker', { name: marker.by ?? '—' })
-      : t('journal.locks.correctionMarker', { name: marker.by ?? '—' });
+    marker.kind === 'optional'
+      ? t('journal.grid.optionalUntil', {
+          // The last minute it is open, as the edit period shows its lock (`edit-period.tsx`).
+          date: momentText(
+            i18n.language,
+            new Date(Date.parse(marker.until) - 60_000).toISOString(),
+          ),
+        })
+      : marker.kind === 'late'
+        ? t('journal.locks.lateMarker', { name: marker.by ?? '—' })
+        : t('journal.locks.correctionMarker', { name: marker.by ?? '—' });
   return (
     <span
       className="ml-0.5 align-super text-xs font-semibold text-info"
@@ -119,7 +128,38 @@ function MarkerSign({ marker }: { marker: CellMarker }) {
       title={text}
       data-marker={marker.kind}
     >
-      {marker.kind === 'late' ? '*' : '†'}
+      {marker.kind === 'optional' ? '○' : marker.kind === 'late' ? '*' : '†'}
+    </span>
+  );
+}
+
+/**
+ * Task 8.6 (`07`, Transfers: "The new journal shows the carried-in averages with a
+ * marker"): a sign on the result naming the other journals the figures come from, with
+ * the days of each.
+ */
+function CarriedInSign({ student }: { student: JournalStudent }) {
+  const { t, i18n } = useTranslation();
+  const text = t('journal.grid.carriedInTitle', {
+    journals: student.carriedIn
+      .map((one) =>
+        t('journal.grid.carriedInJournal', {
+          unit: one.unitName,
+          from: schoolDateText(one.from, i18n.language, false),
+          to: schoolDateText(one.until, i18n.language, false),
+        }),
+      )
+      .join('; '),
+  });
+  return (
+    <span
+      className="ml-1 text-xs font-semibold text-info"
+      role="img"
+      aria-label={text}
+      title={text}
+      data-carried-in="true"
+    >
+      {t('journal.grid.carriedIn')}
     </span>
   );
 }
@@ -365,6 +405,21 @@ export function JournalGridView({
                   {t('journal.grid.backFromExemption')}
                 </span>
               )}
+              {/* Task 8.6 (edge/calculation): the labels of the folded section. */}
+              {row.student.folded && row.student.atLeaving !== null && (
+                <span className="ml-1 text-xs text-muted-foreground" data-at-leaving="true">
+                  {t('journal.grid.resultAtLeaving', {
+                    date: schoolDateText(row.student.atLeaving, language, false),
+                  })}
+                </span>
+              )}
+              {row.student.folded && row.student.leftSubjectOn !== null && (
+                <span className="ml-1 text-xs text-muted-foreground" data-left-subject="true">
+                  {t('journal.grid.leftSubjectOn', {
+                    date: schoolDateText(row.student.leftSubjectOn, language, false),
+                  })}
+                </span>
+              )}
             </span>
           );
         },
@@ -544,6 +599,8 @@ export function JournalGridView({
                     {t('journal.grid.leftOutShort')}
                   </span>
                 )}
+                {/* Task 8.6 (07, Transfers): "the carried-in averages with a marker". */}
+                {row.student.carriedIn.length > 0 && <CarriedInSign student={row.student} />}
               </span>
             );
           },
@@ -684,7 +741,19 @@ export function JournalGridView({
                 </span>
               );
             }
-            if (cell.mark === null) return cell.closed ? closedSign : savedSign || null;
+            if (cell.mark === null) {
+              if (cell.closed) return closedSign;
+              // Task 8.6: an empty optional cell shows its sign (a week late: "open as optional").
+              if (cell.marker?.kind === 'optional') {
+                return (
+                  <span>
+                    {savedSign}
+                    <MarkerSign marker={cell.marker} />
+                  </span>
+                );
+              }
+              return savedSign || null;
+            }
             const reason =
               cell.mark === 0 || cell.mark === 3
                 ? reasons.get(`${row.student.id}|${lesson.date}`)
@@ -813,8 +882,15 @@ export function JournalGridView({
             const typed = cell?.works[workIndex];
             const state =
               works === undefined ? undefined : works.stateOf(lesson.id, row.student.id, work);
-            if (typed === undefined || typed.score === null)
-              return cell?.closed === true ? closedSign : <SaveSign state={state} />;
+            if (typed === undefined || typed.score === null) {
+              if (cell?.closed === true) return closedSign;
+              return (
+                <span>
+                  <SaveSign state={state} />
+                  {typed?.marker?.kind === 'optional' && <MarkerSign marker={typed.marker} />}
+                </span>
+              );
+            }
             return (
               <span
                 className={struck}

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { classGradeSchema } from './classes.js';
 import { moveClassSchema } from './moves.js';
+import { journalEntriesChoiceSchema } from './journal-entries.js';
 
 /**
  * The move of a student to another branch (`edge/students-classes-groups`,
@@ -59,6 +60,8 @@ export const branchMoveAcceptSchema = z.strictObject({
       { message: 'One group per subject.' },
     ),
   confirmLanguage: z.boolean().optional(),
+  /** The entries of the sending branch's journals on or after the date, voided with a reason (task 8.6). */
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type BranchMoveAccept = z.infer<typeof branchMoveAcceptSchema>;

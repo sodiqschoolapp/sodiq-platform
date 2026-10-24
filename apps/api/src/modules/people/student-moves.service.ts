@@ -9,6 +9,7 @@ import type {
   GroupTransfer,
   GroupTransferChange,
   GroupTransferUndo,
+  JournalEntriesChoice,
   SchoolDate,
   StudentDetail,
 } from '@sodiq/shared';
@@ -18,6 +19,15 @@ import { ApiException } from '../../http/api-exception.js';
 import { inGroupScope } from '../access/group-scope.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
+import {
+  followJournal,
+  giveBack,
+  refuseEntriesLeftByUndo,
+  settle,
+  type JournalEffects,
+  type JournalFollow,
+  type JournalGiveBack,
+} from '../journal/journal-entries.js';
 import {
   CLASS_GROUP_REFUSALS,
   coverClassRows,
@@ -137,9 +147,11 @@ export class StudentMoves {
         this.transactions.run(access.branchIds, async (transaction) => {
           const student = await this.lockStudent(transaction, input.studentId, input.version);
           const today = await this.students.todayIn(transaction, branchId);
+          const follow = await followJournal(transaction, student.id, input.from);
           const moved = await this.moveClass(transaction, access, student, today, input, requestId);
+          const journal = await settleMove(transaction, access, follow, moved.moveId, today, input);
           await this.record(transaction, access, student.id, 'student.class_transferred', {
-            newValue: moved,
+            newValue: { ...moved, journal },
             requestId,
           });
           return this.students.readDetail(transaction, access, student.id);
@@ -166,6 +178,8 @@ export class StudentMoves {
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
           }
+          // Task 8.6: the entries and rows are locked before the cancel writes any row.
+          const follow = await followJournal(transaction, studentId, input.from);
           const cancelled = await this.takeBackClass(
             transaction,
             access,
@@ -192,9 +206,10 @@ export class StudentMoves {
             },
             requestId,
           );
+          const journal = await settleMove(transaction, access, follow, moved.moveId, today, input);
           await this.record(transaction, access, studentId, 'student.class_transfer_changed', {
             oldValue: cancelled,
-            newValue: moved,
+            newValue: { ...moved, journal },
             requestId,
           });
           return this.students.readDetail(transaction, access, studentId);
@@ -236,6 +251,7 @@ export class StudentMoves {
             throw notFound();
           }
           const today = await this.students.todayIn(transaction, branchId);
+          const follow = await followJournal(transaction, student.id, input.from);
           const { assignmentId, ...moved } = await this.moveGroup(
             transaction,
             access,
@@ -243,8 +259,9 @@ export class StudentMoves {
             today,
             { row, toGroupId: input.toGroupId, from: input.from, seen: true },
           );
+          const journal = await settleMove(transaction, access, follow, moved.moveId, today, input);
           await this.record(transaction, access, student.id, 'student.group_transferred', {
-            newValue: moved,
+            newValue: { ...moved, journal },
             requestId,
             assignmentId,
           });
@@ -273,6 +290,8 @@ export class StudentMoves {
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
           }
+          // Task 8.6: the entries and rows are locked before the cancel writes any row.
+          const follow = await followJournal(transaction, studentId, input.from);
           const cancelled = await this.takeBackGroup(transaction, student, move, 'cancel', null);
           const rows = await groupMembershipsOf(transaction, studentId);
           const row = rows.find(
@@ -298,9 +317,10 @@ export class StudentMoves {
               replacesMoveId: move.id,
             },
           );
+          const journal = await settleMove(transaction, access, follow, moved.moveId, today, input);
           await this.record(transaction, access, studentId, 'student.group_transfer_changed', {
             oldValue: cancelled,
-            newValue: moved,
+            newValue: { ...moved, journal },
             requestId,
             assignmentId,
           });
@@ -617,6 +637,7 @@ export class StudentMoves {
           if (cause === 'undo' && !undoable(move, today, await undoFacts(transaction, studentId))) {
             throw new ApiException('move_not_undoable', 409);
           }
+          const follow = await followJournal(transaction, studentId, move.effectiveOn);
           const taken = await this.takeBackClass(
             transaction,
             access,
@@ -626,6 +647,7 @@ export class StudentMoves {
             reason,
             requestId,
           );
+          const journal = await takeBackJournal(transaction, access, follow, move.id, cause);
           await this.record(
             transaction,
             access,
@@ -633,7 +655,7 @@ export class StudentMoves {
             cause === 'cancel'
               ? 'student.class_transfer_cancelled'
               : 'student.class_transfer_undone',
-            { newValue: taken, ...(reason === null ? {} : { reason }), requestId },
+            { newValue: { ...taken, journal }, ...(reason === null ? {} : { reason }), requestId },
           );
           return this.students.readDetail(transaction, access, studentId);
         }),
@@ -1058,7 +1080,9 @@ export class StudentMoves {
           if (cause === 'undo' && !undoable(move, today, await undoFacts(transaction, studentId))) {
             throw new ApiException('move_not_undoable', 409);
           }
+          const follow = await followJournal(transaction, studentId, move.effectiveOn);
           const taken = await this.takeBackGroup(transaction, student, move, cause, reason);
+          const journal = await takeBackJournal(transaction, access, follow, move.id, cause);
           await this.record(
             transaction,
             access,
@@ -1066,7 +1090,12 @@ export class StudentMoves {
             cause === 'cancel'
               ? 'student.group_transfer_cancelled'
               : 'student.group_transfer_undone',
-            { newValue: taken, ...(reason === null ? {} : { reason }), requestId, assignmentId },
+            {
+              newValue: { ...taken, journal },
+              ...(reason === null ? {} : { reason }),
+              requestId,
+              assignmentId,
+            },
           );
           return this.students.readDetail(transaction, access, studentId);
         }),
@@ -1278,4 +1307,51 @@ function endOf(row: StoredGroupMembership): {
     return { ended_by: 'transfer', leaving_id: null, ended_by_move_id: row.endedByMoveId };
   }
   return { ended_by: null, leaving_id: null, ended_by_move_id: null };
+}
+
+/**
+ * The journal side of a move (task 8.6, pull request #224; edge, the 11:00
+ * and a week late rows): the entries of the journals left on or after its
+ * date are refused for a move dated today, and voided with the reason given
+ * for a move dated before it; the held lessons of the journals joined open as
+ * optional cells (decision 10).
+ */
+async function settleMove(
+  transaction: Transaction,
+  access: Access,
+  follow: JournalFollow,
+  moveId: string,
+  today: SchoolDate,
+  input: { from: SchoolDate; journalEntries?: JournalEntriesChoice | undefined },
+): Promise<JournalEffects> {
+  return settle(transaction, follow, {
+    source: { moveId },
+    actorId: access.accountId,
+    choice: input.journalEntries,
+    voidable: input.from < today,
+    opensOptional: input.from <= today,
+  });
+}
+
+/**
+ * The journal side of a move taken back (decision 12): an undo is refused
+ * while the journals the move wrote rows for hold entries of the student on
+ * or after its date (edge, the mistake row); a cancel or an undo gives back
+ * what the move voided and withdraws its optional cells.
+ */
+async function takeBackJournal(
+  transaction: Transaction,
+  access: Access,
+  follow: JournalFollow,
+  moveId: string,
+  cause: 'cancel' | 'undo',
+): Promise<JournalGiveBack> {
+  if (cause === 'undo') {
+    await refuseEntriesLeftByUndo(transaction, follow);
+  }
+  return giveBack(transaction, {
+    studentId: follow.studentId,
+    source: { moveId },
+    actorId: access.accountId,
+  });
 }

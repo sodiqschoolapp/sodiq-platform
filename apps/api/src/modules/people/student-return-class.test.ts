@@ -223,6 +223,10 @@ describe('the class of a return and of a graduate restore', () => {
       t.database.migrator.selectFrom('student_statuses').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('student_contracts').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('students').selectAll().orderBy('id').execute(),
+      // Task 8.6: the journal side of the change (`journal-entries.ts`).
+      t.database.migrator.selectFrom('journal_cells').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_voids').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('journal_optional_cells').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 

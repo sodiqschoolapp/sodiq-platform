@@ -553,15 +553,26 @@ describe('journal cells in the database', () => {
   });
 
   describe('grants', () => {
-    it('refuses an update of the lesson, the student or the work of a cell', async () => {
+    // Task 8.6 (decision 8, Look first): a merge carries a cell to the kept record, so the
+    // student of a cell may change, and only through `journal_merge_carry` (0128), which
+    // refuses any change outside a merge of the transaction; the requirement changed.
+    it('refuses an update of the lesson or the work of a cell, and of its student outside a merge', async () => {
       const { lesson: id, student, classId } = await scene();
       const written = await cell(north, { lesson: id, student, mark: 1 });
       const otherLesson = await lesson(north, { classId });
-      for (const values of [
-        { lesson_id: otherLesson },
-        { student_id: student },
-        { work_id: await work(north, id, 5) },
-      ]) {
+      const [other] = await kit.pupils(north, classId, 1);
+      const carried = await refusal(
+        inBranch(north, async (transaction) => {
+          await audited(transaction, north);
+          await transaction
+            .updateTable('journal_cells')
+            .set({ student_id: other ?? '' })
+            .where('id', '=', written.id)
+            .execute();
+        }),
+      );
+      expect(carried).toMatchObject({ code: '23514', constraint: 'journal_merge_carry' });
+      for (const values of [{ lesson_id: otherLesson }, { work_id: await work(north, id, 5) }]) {
         const failed = await refusal(
           inBranch(north, (transaction) =>
             transaction
