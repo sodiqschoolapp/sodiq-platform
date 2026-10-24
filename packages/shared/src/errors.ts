@@ -1056,6 +1056,36 @@ export const ERROR_CODES = [
   'journal_extension_future',
   /** An extension's dates lie outside the branch's open academic year (task 8.4, decision 13). */
   'journal_extension_dates',
+  /** Another exemption of the student covers the same time for all subjects or a subject named in both (07, Problem cases; task 8.5). */
+  'exemption_overlap',
+  /** A lesson in the range holds a "present" or "late" mark or a number and the call gives no choice for it (07, Problem cases; task 8.5). */
+  'exemption_choice_missing',
+  /** A choice names a lesson that needs none (task 8.5). */
+  'exemption_choice_unknown',
+  /** The exemption has started: only its end date changes (edge/exemptions, row 4; task 8.5). */
+  'exemption_started',
+  /** The new end comes before the start: void it instead (task 8.5). */
+  'exemption_end_before_start',
+  /** The dates are not inside one academic year of the branch (edge/exemptions, row 7; task 8.5). */
+  'exemption_outside_year',
+  /** The academic year is closed (task 8.5). */
+  'exemption_closed_year',
+  /** The exemption is voided: nothing changes it (task 8.5). */
+  'exemption_voided',
+  /** The exemption was changed since it was read (task 8.5). */
+  'exemption_stale',
+  /** The student is not a member of a class of the branch on the first day (task 8.5). */
+  'exemption_not_member',
+  /** The document is larger than 10 MB (task 8.5, decision 17). */
+  'exemption_file_too_large',
+  /** The file is not a PDF, JPEG or PNG, or its content does not match its type (task 8.5, decision 17). */
+  'exemption_file_type',
+  /** The branch-move offer was decided meanwhile (task 8.5). */
+  'exemption_offer_decided',
+  /** The batch has no live exemption left (task 8.5). */
+  'exemption_batch_empty',
+  /** A merge would leave two overlapping exemptions on the kept record (task 8.5, From 3.3d). */
+  'student_merge_exemption_overlap',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -1255,6 +1285,18 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** The lock moment of the lesson or rating exam, on a `journal_locked` (task 8.4). */
   locksAt: z.string().optional(),
+  /**
+   * The exemption met, on an `exemption_overlap` (task 8.5): named only when the
+   * branch of the request holds it, so the screen can offer to extend it. `recordId` is the student.
+   */
+  exemption: z
+    .object({
+      id: z.uuid(),
+      startDate: z.string(),
+      endDate: z.string(),
+      version: z.int().min(1),
+    })
+    .optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

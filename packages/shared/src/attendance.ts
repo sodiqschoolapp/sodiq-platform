@@ -197,6 +197,13 @@ export const absenceReasonParamsSchema = z.object({
 
 export type AbsenceReasonParams = z.infer<typeof absenceReasonParamsSchema>;
 
+/** The name of the file of a reason, in the query of its upload (task 8.5). */
+export const absenceReasonFileQuerySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+});
+
+export type AbsenceReasonFileQuery = z.infer<typeof absenceReasonFileQuerySchema>;
+
 /** A reason as typed; no category clears it, and then the note is empty (decision 8). */
 export const absenceReasonRecordSchema = z
   .strictObject({
@@ -220,6 +227,8 @@ export const absenceReasonSchema = z.object({
   date: schoolDateSchema,
   category: absenceCategorySchema.nullable(),
   note: z.string(),
+  /** Task 8.5 (From 6.3, decision 10): the file attached, a medical certificate for example. */
+  file: z.object({ name: z.string(), type: z.string() }).nullable(),
   changedBy: accountNamedSchema,
   changedAt: z.iso.datetime(),
 });

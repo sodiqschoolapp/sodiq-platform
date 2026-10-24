@@ -1,4 +1,9 @@
 import { Module } from '@nestjs/common';
+import { type AppConfig } from '../../config/config.js';
+import { CONFIG } from '../../config/config.module.js';
+import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
+import { ExemptionsController } from './exemptions.controller.js';
+import { Exemptions } from './exemptions.service.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AttendanceController } from './attendance.controller.js';
 import { AttendanceService } from './attendance.service.js';
@@ -23,6 +28,8 @@ import { WorksService } from './works.service.js';
     // Task 8.4: before the controllers whose `lessons/:lessonId` and `journals/:journalId` paths
     // would take `unlocks`.
     UnlocksController,
+    // Task 8.5: the exemptions.
+    ExemptionsController,
     JournalsController,
     AttendanceController,
     StudentAbsencesController,
@@ -40,6 +47,14 @@ import { WorksService } from './works.service.js';
     CellActionsService,
     UnlocksService,
     ExtensionsService,
+    Exemptions,
+    // Task 8.5 (decision 17): the documents of exemptions and the files of reasons of absence go
+    // to the photos' store under `exemptions/` and `absences/`.
+    {
+      provide: PHOTO_STORE,
+      useFactory: (config: AppConfig) => photoStoreOf(config.photos),
+      inject: [CONFIG],
+    },
   ],
 })
 export class JournalModule {}

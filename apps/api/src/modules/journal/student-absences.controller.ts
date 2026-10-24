@@ -1,18 +1,23 @@
-import { Controller, Get, Put } from '@nestjs/common';
+import { Controller, Delete, Get, Put } from '@nestjs/common';
 import {
+  EXEMPTION_FILE_TYPES,
+  absenceReasonFileQuerySchema,
   absenceReasonParamsSchema,
   absenceReasonRecordSchema,
   absenceReasonSchema,
   studentAbsencesQuerySchema,
   studentAbsencesSchema,
   type AbsenceReason,
+  type AbsenceReasonFileQuery,
   type AbsenceReasonParams,
   type AbsenceReasonRecord,
   type StudentAbsences as StudentAbsencesAnswer,
   type StudentAbsencesQuery,
 } from '@sodiq/shared';
+import { ABSENCE_REASON_FILE_ROUTE, type UploadedFile } from '../../http/file-routes.js';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { Returns, ValidBody, ValidFile, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { ReturnsStoredFile, type StoredFile } from '../../http/stored-file.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { StudentAbsences } from './student-absences.service.js';
@@ -50,5 +55,45 @@ export class StudentAbsencesController {
     @RequestId() requestId: string,
   ): Promise<AbsenceReason> {
     return this.absences.set(access, params.studentId, params.date, input, requestId);
+  }
+
+  /**
+   * The file of a reason (task 8.5; From 6.3, decision 10, Look first): the
+   * Tutor of the class and the Academic Vice Principal attach and remove it, the
+   * readers of the class open it (a Teacher never does); every opening is logged.
+   */
+  @Put(':studentId/:date/file')
+  @Requires('absence_reasons', 'edit')
+  @Returns(absenceReasonSchema)
+  putFile(
+    @CurrentAccess() access: Access,
+    @ValidParams(absenceReasonParamsSchema) params: AbsenceReasonParams,
+    @ValidQuery(absenceReasonFileQuerySchema) query: AbsenceReasonFileQuery,
+    @ValidFile(ABSENCE_REASON_FILE_ROUTE) file: UploadedFile | null,
+    @RequestId() requestId: string,
+  ): Promise<AbsenceReason> {
+    return this.absences.putFile(access, params.studentId, params.date, query.name, file, requestId);
+  }
+
+  @Delete(':studentId/:date/file')
+  @Requires('absence_reasons', 'edit')
+  @Returns(absenceReasonSchema)
+  removeFile(
+    @CurrentAccess() access: Access,
+    @ValidParams(absenceReasonParamsSchema) params: AbsenceReasonParams,
+    @RequestId() requestId: string,
+  ): Promise<AbsenceReason> {
+    return this.absences.removeFile(access, params.studentId, params.date, requestId);
+  }
+
+  @Get(':studentId/:date/file')
+  @Requires('absence_reasons', 'view')
+  @ReturnsStoredFile(EXEMPTION_FILE_TYPES)
+  readFile(
+    @CurrentAccess() access: Access,
+    @ValidParams(absenceReasonParamsSchema) params: AbsenceReasonParams,
+    @RequestId() requestId: string,
+  ): Promise<StoredFile> {
+    return this.absences.readFile(access, params.studentId, params.date, requestId);
   }
 }

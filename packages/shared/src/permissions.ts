@@ -538,6 +538,19 @@ export const PERMISSIONS = freezeTable({
    * Moral Education, the Head Tutor) and the Tutor (own classes, decided in
    * the route); Teachers and Head Teachers see the category in the journal.
    */
+  /**
+   * Exemptions (task 8.5, pull request #223, decision 1, Look first): `07`,
+   * Granted by: "The Academic Vice Principal of the branch, and the Super
+   * Admin ... No other role can create, change or request an exemption";
+   * `edge/exemptions`: the detail and the document "are for the Academic Vice
+   * Principal, Principal and Super Admin". Teachers and Tutors read kind,
+   * dates and scope through the journal and the teaching home.
+   */
+  exemptions: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+  }),
   absence_reasons: rows({
     super_admin: ['view', 'edit'],
     principal: ['view'],
