@@ -5563,6 +5563,13 @@ export const en = {
       optional: 'Open until {{date}}',
     },
     reminders: {
+      kinds: {
+        no_attendance: 'No attendance',
+        numbers_missing: 'Numbers missing',
+        no_topic: 'No topic',
+        rating_missing: 'Rating exam',
+        about_to_lock: 'About to lock',
+      },
       title: 'Reminders',
       empty: 'Nothing waits for you.',
       lesson: '{{date}}, {{unit}} · {{subject}}',

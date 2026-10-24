@@ -72,6 +72,7 @@ async function openYearOn(
   transaction: Transaction,
   branchId: string,
   day: string,
+  closedToo = false,
 ): Promise<{ id: string; startDate: string; endDate: string } | null> {
   const year = await transaction
     .selectFrom('academic_years')
@@ -85,7 +86,7 @@ async function openYearOn(
     .where('start_date', '<=', day)
     .where('end_date', '>=', day)
     .executeTakeFirst();
-  if (year === undefined || year.status === 'closed') return null;
+  if (year === undefined || (year.status === 'closed' && !closedToo)) return null;
   return { id: year.id, startDate: year.start_date, endDate: year.end_date };
 }
 
@@ -326,7 +327,8 @@ export class LessonStatusService {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const { now, timeZone } = await clockOf(transaction, branchId);
-      const year = await openYearOn(transaction, branchId, query.from);
+      // Any academic year, a closed one too (spec review should-fix 1).
+      const year = await openYearOn(transaction, branchId, query.from, true);
       if (
         addDays(query.from, DISCIPLINE_DAYS_MAX - 1) < query.to ||
         year === null ||

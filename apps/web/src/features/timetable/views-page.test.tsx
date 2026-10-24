@@ -171,6 +171,17 @@ describe('the timetable views', () => {
     expect(screen.getAllByRole('link', { name: 'Mathematics' })).toHaveLength(1);
   });
 
+  it('shows the status of a held lesson in words (task 8.7, 07: "on the timetable")', async () => {
+    await openPage(
+      viewOf({ lessons: [lesson(1, { state: 'held', status: 'locked_incomplete' })] }),
+    );
+    await waitFor(() => {
+      expect(document.querySelector('tbody [data-status]')?.textContent).toBe(
+        en.journal.lessonStatus.locked_incomplete,
+      );
+    });
+  });
+
   it('marks a lesson kept for its data with its cause in words', async () => {
     await openPage(
       viewOf({ lessons: [lesson(1, { cancelCause: 'kept_data', state: 'cancelled' })] }),

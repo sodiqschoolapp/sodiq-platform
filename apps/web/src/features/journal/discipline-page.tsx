@@ -25,9 +25,10 @@ export function disciplineSearch(search: Record<string, unknown>): DisciplineSea
   return result;
 }
 
-/** A date of the browser's calendar `days` from today, as the default range of the page. */
-const localDate = (days: number): string => {
+/** A date of the browser's calendar `days` from today (or from the Monday of this week). */
+const localDate = (days: number, fromMonday = false): string => {
   const at = new Date();
+  if (fromMonday) at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
   at.setDate(at.getDate() + days);
   return `${String(at.getFullYear())}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
 };
@@ -52,14 +53,15 @@ const COUNTS: readonly Count[] = [
  * "Head Teachers and the Academic Vice Principal see the same counts per
  * teacher; they feed the journal discipline report"; `08`, Journal
  * discipline: department and date range). The server decides the scope and
- * every count; the range defaults to the last seven days.
+ * every count; the range defaults to this week.
  */
 export function DisciplinePage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const search: DisciplineSearch = useSearch({ from: '/app/journal/discipline' });
   const { branchId } = useView();
-  const from = search.from ?? localDate(-6);
+  // This week by default (plan: "default this week"), Monday to today.
+  const from = search.from ?? localDate(0, true);
   const to = search.to ?? localDate(0);
   const counts = useQuery(
     disciplineQuery(branchId, { from, to, departmentId: search.department ?? null }),

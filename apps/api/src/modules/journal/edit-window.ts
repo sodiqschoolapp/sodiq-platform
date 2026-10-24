@@ -194,6 +194,9 @@ export async function decideWrite(
   const now = await transactionMoment(transaction);
   const locksAt = await lockOf(transaction, input.target);
   if (locksAt === null || now.getTime() < locksAt.getTime()) return { how: 'entry' };
+  // Task 8.7: optional or reopened cells only: never under an unlock, so the entry counts
+  // against nobody (From 8.4); the cells guard writes it `late_entry`.
+  if (input.openCells === true) return { how: 'entry' };
   const window =
     input.staffId === null
       ? editWindowOf(locksAt, [], null, now)
@@ -211,7 +214,6 @@ export async function decideWrite(
           now,
         );
   if (window.kind !== 'unlocked') {
-    if (input.openCells === true) return { how: 'entry' };
     const assigned = input.orphanAssignmentId ?? null;
     if (assigned === null) throw lockedRefusal(locksAt);
     await sql`select set_config('app.orphan_assignment_id', ${assigned}, true)`.execute(

@@ -1460,15 +1460,35 @@ export class StudentMerges {
       where a.student_id = ${input.mergedId}::uuid and b.student_id = ${input.keptId}::uuid
         and b.branch_id = a.branch_id and b.lesson_id = a.lesson_id
         and b.work_id is not distinct from a.work_id
-        and (a.mark is not null or a.score is not null)
-        and b.mark is null and b.score is null
+        and (a.mark is not null or a.score is not null or a.not_graded)
+        and b.mark is null and b.score is null and not b.not_graded
       returning b.id
     `.execute(transaction);
     const cells = await transaction
       .updateTable('journal_cells')
       .set({ student_id: input.keptId })
       .where('student_id', '=', input.mergedId)
-      .where((where) => where.or([where('mark', 'is not', null), where('score', 'is not', null)]))
+      .where((where) =>
+        where.or([
+          where('mark', 'is not', null),
+          where('score', 'is not', null),
+          // Task 8.7: a "not graded" cell is carried where the kept record has no cell of its key.
+          where.and([
+            where('not_graded', '=', true),
+            where.not(
+              where.exists(
+                where
+                  .selectFrom('journal_cells as kept')
+                  .select('kept.id')
+                  .where('kept.student_id', '=', input.keptId)
+                  .whereRef('kept.branch_id', '=', 'journal_cells.branch_id')
+                  .whereRef('kept.lesson_id', '=', 'journal_cells.lesson_id')
+                  .where(sql<boolean>`kept.work_id is not distinct from journal_cells.work_id`),
+              ),
+            ),
+          ]),
+        ]),
+      )
       .returning('id')
       .execute();
     const comments = await transaction

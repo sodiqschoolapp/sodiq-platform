@@ -2,7 +2,9 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch, setEditDays } from '../../testing/branch-filter-sql.js';
+import { ActingKit } from '../../testing/acting-kit.js';
 import { workWithTotal } from '../../testing/cells-kit.js';
+import { lessonsCounted } from './lesson-counted.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { at, LessonsKit } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
@@ -437,6 +439,26 @@ describe('lesson status in the database', () => {
         { by: helper.accountId },
       );
       expect(written.changed_how).toBe('entry');
+    });
+  });
+
+  describe('who a lesson counts for (decision 13)', () => {
+    it('counts a lesson of a vacancy for nobody, and for the acting teacher while a period names them', async () => {
+      const east = await insertBranch(database.migrator, 'East counted');
+      const acting = new ActingKit(database.migrator);
+      const scene = await acting.scene(east);
+      // A lesson of the journal on a day of the vacancy, as the reader is given it.
+      const lesson = {
+        id: scene.version,
+        journalId: scene.journal,
+        date: '2026-10-14',
+        teacherId: scene.vacancy,
+      };
+      const counted = () =>
+        transactions.run([east], (transaction) => lessonsCounted(transaction, east, [lesson]));
+      expect((await counted()).get(lesson.id)).toBeNull();
+      await acting.period(scene, '2026-09-07');
+      expect((await counted()).get(lesson.id)).toBe(scene.person);
     });
   });
 });

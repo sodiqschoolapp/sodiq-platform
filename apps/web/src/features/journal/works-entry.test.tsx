@@ -416,7 +416,10 @@ describe('classwork and homework in the grid', () => {
         json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
       [`POST /api/journal/lessons/${PLANNED}/not-graded`]: () =>
-        json({ filled: [{ studentId: uid(102), workId: uid(80), version: 1 }], skipped: [] }),
+        json({
+          filled: [{ studentId: uid(102), workId: uid(80), version: 1 }],
+          skipped: [{ studentId: uid(101), workId: uid(80) }],
+        }),
     });
     renderApp(`/journal/${JOURNAL}`);
     // The lesson's status in its header (07: "in the journal header").
@@ -435,6 +438,45 @@ describe('classwork and homework in the grid', () => {
     await waitFor(() => {
       expect(sent(calls, `POST /api/journal/lessons/${PLANNED}/not-graded`)).toEqual([{}]);
     });
-    expect(await screen.findByText('1 cell set "not graded".')).not.toBeNull();
+    const notice = await waitFor(() => {
+      const found = document.querySelector('[data-not-graded-notice]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(notice?.textContent).toContain('1 cell set "not graded".');
+    expect(notice?.textContent).toContain('1 cell was typed meanwhile and kept.');
+  });
+
+  it('folds the journal’s reminders under their title, with the count of each kind (task 8.7, 07: "A panel on the journal")', async () => {
+    const reminder = {
+      kind: 'no_attendance' as const,
+      lesson: {
+        id: NO_PLAN,
+        journalId: JOURNAL,
+        date: '2026-10-26',
+        start: 480,
+        unit: UNIT,
+        subject: SUBJECT,
+        status: 'in_progress' as const,
+      },
+      count: 2,
+      locksAt: null,
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json({ ...GRID, reminders: [reminder] }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    const panel = await waitFor(() => {
+      const found = document.querySelector('details[data-reminders]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(panel?.querySelector('summary')?.textContent).toContain('Reminders (1)');
+    expect(panel?.querySelector('[data-reminder-kinds]')?.textContent).toBe('No attendance: 1');
+    expect(panel?.querySelector('[data-reminder="no_attendance"]')?.textContent).toContain(
+      '2 students without attendance',
+    );
   });
 });

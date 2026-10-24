@@ -5889,6 +5889,13 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       optional: 'Открыта до {{date}}',
     },
     reminders: {
+      kinds: {
+        no_attendance: 'Без посещаемости',
+        numbers_missing: 'Нет баллов',
+        no_topic: 'Нет темы',
+        rating_missing: 'Рейтинговый экзамен',
+        about_to_lock: 'Скоро закроется',
+      },
       title: 'Напоминания',
       empty: 'Ничего не ждёт вас.',
       lesson: '{{date}}, {{unit}} · {{subject}}',

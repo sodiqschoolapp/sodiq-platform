@@ -7,6 +7,14 @@ import { momentText, schoolDateText } from '@/lib/dates';
 
 type Language = 'uz' | 'ru' | 'en';
 
+const KINDS = [
+  'no_attendance',
+  'numbers_missing',
+  'no_topic',
+  'rating_missing',
+  'about_to_lock',
+] as const;
+
 const languageOf = (language: string): Language =>
   language === 'ru' || language === 'en' ? language : 'uz';
 
@@ -116,6 +124,19 @@ export function RemindersPanel({
       <details className={PANEL} data-reminders="true">
         <summary className="cursor-pointer font-semibold">
           {title} ({reminders?.length ?? 0})
+          {reminders !== undefined && reminders.length > 0 && (
+            <span
+              className="ml-2 text-sm font-normal text-muted-foreground"
+              data-reminder-kinds="true"
+            >
+              {KINDS.flatMap((kind) => {
+                const count = reminders.filter((one) => one.kind === kind).length;
+                return count === 0
+                  ? []
+                  : [`${t(`journal.reminders.kinds.${kind}`)}: ${String(count)}`];
+              }).join(' · ')}
+            </span>
+          )}
         </summary>
         <div className="mt-3">{body}</div>
       </details>

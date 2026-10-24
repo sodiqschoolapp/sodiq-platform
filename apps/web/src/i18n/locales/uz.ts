@@ -5613,6 +5613,13 @@ export const uz: Texts<'one' | 'other'> = {
       optional: '{{date}} gacha ochiq',
     },
     reminders: {
+      kinds: {
+        no_attendance: 'Davomat yoʻq',
+        numbers_missing: 'Ballar yoʻq',
+        no_topic: 'Mavzu yoʻq',
+        rating_missing: 'Reyting imtihoni',
+        about_to_lock: 'Tez orada yopiladi',
+      },
       title: 'Eslatmalar',
       empty: 'Sizni hech narsa kutmayapti.',
       lesson: '{{date}}, {{unit}} · {{subject}}',

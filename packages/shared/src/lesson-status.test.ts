@@ -157,7 +157,7 @@ describe('lessonStatusOf (07, Lesson status)', () => {
     expect(statusOf(at, new Date(NOW.getTime() - 1))).toBe('not_started');
   });
 
-  it('an entry never turns a lesson back to not started (every mark and number step)', () => {
+  it('is not started exactly when nothing is entered, over every mark and number of two students', () => {
     const marksOf = (a: number | null, b: number | null) =>
       new Map(
         (

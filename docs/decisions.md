@@ -323,7 +323,7 @@ Plan approved on pull request #225 with corrections 1 to 3; decisions 1 to 16 co
 | **Build decision.** The teaching home's reminders are those of the branch in use: the client sends the switcher's branch with every call | `apps/web/src/api/client.ts` |
 | **Build decision.** An open optional or reopened cell of a locked lesson takes its entry through the attendance and score routes when every cell the save names is such a cell; the database guard writes it `late_entry` | From 8.6; `edge/students-classes-groups`, a week late |
 | **Build decision.** The late entries counted are those of cells, works and comments of the lessons in the range; a rating exam's late entries are left to 9.3b's report | A rating exam is no lesson of the range |
-| **Build decision.** "Not graded" as a correction tells the teacher, as the other corrections do | 8.4 decision 10 |
+| **Build decision.** "Not graded" as a correction is written `correction` with its reason and audited; it sends no notice, since no mark or number changes (the notice of 8.4 names the value before and after) | 8.4 decision 10 |
 | **Build decision.** The 8.1 test of a work cell's shape gains `notGraded: false`; nothing weakened | The answer gained a field |
 
 ## 24 October 2026: transfers and leaving inside the journal (task 8.6)

@@ -843,6 +843,20 @@ export class WorksService {
       const skipped: { studentId: string; workId: string }[] = [];
       try {
         for (const cell of wanted) {
+          // The mark under the cell's lock order (the attendance cell comes first in `saveCells`):
+          // a student no longer marked present or late is skipped and reported.
+          const attendance = await transaction
+            .selectFrom('journal_cells')
+            .select('mark')
+            .where('lesson_id', '=', scene.lesson.id)
+            .where('student_id', '=', cell.studentId)
+            .where('work_id', 'is', null)
+            .forShare()
+            .executeTakeFirst();
+          if (attendance?.mark !== 1 && attendance?.mark !== 2) {
+            skipped.push(cell);
+            continue;
+          }
           const stored = await transaction
             .selectFrom('journal_cells')
             .select(['id', 'score', 'not_graded', 'version'])
@@ -915,14 +929,6 @@ export class WorksService {
           ...writeDetails(scene.write, scene.correction),
         },
       });
-      if (scene.correction !== undefined && sorted.length > 0) {
-        await noticeCellCorrections(transaction, this.notifications, {
-          branchId: scene.branchId,
-          lessonId: scene.lesson.id,
-          correctorId: access.accountId,
-          reason: scene.correction.reason,
-        });
-      }
       return {
         filled: byWork(sorted).map((one) => ({
           studentId: one.studentId,

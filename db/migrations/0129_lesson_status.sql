@@ -52,7 +52,9 @@ begin
   if new.work_id is null or not new.not_graded or (tg_op = 'UPDATE' and old.not_graded) then
     return new;
   end if;
-  if new.changed_how = 'restored' then
+  -- A restore of a forced delete gives back the cells as stored (0111).
+  if new.changed_how = 'restored'
+    or (tg_op = 'INSERT' and forced_restore_names('lesson', new.lesson_id)) then
     return new;
   end if;
   select * into work_row from journal_works w where w.id = new.work_id for share;
