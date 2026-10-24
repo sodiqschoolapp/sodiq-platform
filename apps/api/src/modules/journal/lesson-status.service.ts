@@ -480,14 +480,30 @@ export class LessonStatusService {
     });
   }
 
-  /** The persons out of the school now among the branch's staff (`staff_out_for_good`). */
-  private async outOfSchool(transaction: Transaction, now: Date): Promise<Set<string>> {
-    const rows = await transaction
-      .selectFrom('staff')
-      .select('id')
-      .where('kind', '=', 'person')
-      .where(sql<boolean>`staff_out_for_good(staff.id, ${now})`)
-      .execute();
+  /**
+   * The people out of the school now among the teachers of the branch's lessons of the year
+   * and the acting teachers of its journals (`staff_out_for_good`, which answers whatever
+   * the membership filter lets the request see: a person unlinked from the branch before
+   * leaving is found too, `.claude/rules/database.md`).
+   */
+  private async outOfSchool(
+    transaction: Transaction,
+    branchId: string,
+    year: { id: string; startDate: string; endDate: string },
+    now: Date,
+  ): Promise<Set<string>> {
+    const { rows } = await sql<{ id: string }>`
+      select distinct candidates.id from (
+        select l.teacher_id as id from lessons l
+        where l.branch_id = ${branchId}::uuid and l.teacher_id is not null
+          and l.lesson_date between ${year.startDate}::date and ${year.endDate}::date
+        union
+        select a.person_id from journal_acting_teachers a
+        join journals j on j.id = a.journal_id
+        where j.branch_id = ${branchId}::uuid and j.academic_year_id = ${year.id}::uuid
+      ) candidates
+      where staff_out_for_good(candidates.id, ${now})
+    `.execute(transaction);
     return new Set(rows.map((row) => row.id));
   }
 
@@ -499,7 +515,10 @@ export class LessonStatusService {
     lessonId?: string,
   ) {
     const year = await openYearOn(transaction, branchId, clock.today);
-    const out = await this.outOfSchool(transaction, clock.now);
+    const out =
+      year === null
+        ? new Set<string>()
+        : await this.outOfSchool(transaction, branchId, year, clock.now);
     if (year === null || out.size === 0)
       return {
         rows: [] as CandidateRow[],
@@ -690,6 +709,11 @@ export class LessonStatusService {
         .executeTakeFirst();
       if (staff === undefined) throw notFound();
       if (staff.kind !== 'person') throw new ApiException('orphan_teacher_inactive', 409);
+      // Nobody assigns the lesson to themselves: it would open a locked lesson to the person
+      // with no reason on each entry (`02`, Own requests; permission review should-fix 2).
+      if (staff.id === (await ownStaffOf(transaction, access.accountId))) {
+        throw new ApiException('own_request', 403);
+      }
       const clock = await clockOf(transaction, branchId);
       const { rows } = await this.orphansOf(transaction, branchId, clock, lesson.id);
       if (rows.length === 0) throw new ApiException('orphan_not_orphan', 409);

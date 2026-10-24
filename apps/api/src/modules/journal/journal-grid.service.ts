@@ -359,7 +359,21 @@ export class JournalGridReader {
       if (own !== null && ownerId === own) {
         reading = { kind: 'whole' };
       } else if (reading === null && own !== null) {
+        // Task 8.7 (decision 15): a lesson assigned to the reader as an orphan lesson, open now.
+        const assignedHere = new Set(
+          (
+            await transaction
+              .selectFrom('journal_orphan_assignments')
+              .select('lesson_id')
+              .where('staff_id', '=', own)
+              .where('withdrawn_at', 'is', null)
+              .where('assigned_at', '<=', now)
+              .where('open_until', '>', now)
+              .execute()
+          ).map((row) => row.lesson_id),
+        );
         ownLessons = (lesson) =>
+          assignedHere.has(lesson.id) ||
           lesson.teacherId === own ||
           (() => {
             const found = ownerOn(runs, periods, facts.out, lesson.date);

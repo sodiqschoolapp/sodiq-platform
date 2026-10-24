@@ -51,6 +51,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
   interface Calls {
     get: (path: string) => Promise<Response>;
     post: (path: string, body?: object) => Promise<Response>;
+    put: (path: string, body: object) => Promise<Response>;
   }
 
   const given = new Set<string>();
@@ -79,7 +80,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
         .set({ created_at: new Date(moment), last_used_at: new Date(moment) })
         .where('account_id', '=', browser.account.id)
         .execute();
-      const at = (method: 'get' | 'post', path: string) =>
+      const at = (method: 'get' | 'post' | 'put', path: string) =>
         request(t.kit.server)
           [method](path)
           .set('Cookie', browser.cookie)
@@ -88,6 +89,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
         get: (path) => at('get', path),
         post: (path, body = {}) =>
           at('post', path).set(REQUEST_KEY_HEADER, randomUUID()).send(body),
+        put: (path, body) => at('put', path).send(body),
       });
     } finally {
       t.clock.set(START);
@@ -700,9 +702,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
     await as(
       head,
       s.branch,
-      [
-        { role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] },
-      ],
+      [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
       async (calls) => {
         const counts = disciplineSchema.parse(
           ok(await calls.get('/api/journal/discipline?from=2026-10-12&to=2026-10-27')),
@@ -883,6 +883,14 @@ describe('lesson status, reminders and the counts per teacher', () => {
         expect(codeOf(await mark(calls, s.third, [{ studentId: s.ahmedov, mark: 1 }]))).toBe(
           'journal_entry_scope',
         );
+        // The grid shows the assignee the assigned lesson, enterable, and no other of the journal;
+        // the reminders name it.
+        const grid = await gridOf(calls, s);
+        expect(grid.lessons.map((one) => [one.id, one.canEnter])).toEqual([[s.first, true]]);
+        const own = remindersSchema.parse(ok(await calls.get('/api/journal/reminders')));
+        expect(
+          own.reminders.some((one) => one.kind !== 'rating_missing' && one.lesson.id === s.first),
+        ).toBe(true);
       });
       const line = await t.database.migrator
         .selectFrom('journal_cell_history')
@@ -935,28 +943,88 @@ describe('lesson status, reminders and the counts per teacher', () => {
           codeOf(await calls.post(`/api/journal/orphans/assignments/${assignment.id}/withdraw`)),
         ).toBe('orphan_assignment_withdrawn');
       });
-      // A withdrawn assignment, its open_until still ahead, lets the helper enter nothing.
+      // A withdrawn assignment, its open_until still ahead, lets the helper enter nothing,
+      // and its lesson leaves the helper's reminders.
       await as(helper, s.branch, teacherIn(s), async (calls) => {
         expect(codeOf(await mark(calls, s.third, [{ studentId: s.ahmedov, mark: 1 }]))).toBe(
           'journal_entry_scope',
         );
+        const own = remindersSchema.parse(ok(await calls.get('/api/journal/reminders')));
+        expect(own.reminders).toEqual([]);
       });
     });
 
-    it('refuses an inactive teacher, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row as it was', async () => {
+    it('refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was', async () => {
       const vice = await account();
-      const s = await scene();
+      const otherVice = await account();
+      const helper = await account();
+      const s = await scene({ spare: helper.account.id });
       const other = await scene();
       await left(s);
+      await left(other);
       await statusFrom(s.otherTeacher.staffId, 'inactive', '2026-10-20');
+      // An open assignment in each branch, so a wrong withdraw would show.
+      const open = await as(vice, s.branch, viceIn(s), async (calls) =>
+        orphanAssignmentSchema.parse(
+          ok(
+            await calls.post(`/api/journal/orphans/${s.third}/assign`, {
+              staffId: s.spareTeacher.staffId,
+              days: 3,
+              reason: 'Completes the lesson',
+            }),
+          ),
+        ),
+      );
+      const foreign = await as(
+        otherVice,
+        other.branch,
+        [{ role: 'academic_vice_principal', branchId: other.branch }],
+        async (calls) => {
+          const listed = orphanLessonsSchema.parse(ok(await calls.get('/api/journal/orphans')));
+          // Only its own branch's lessons.
+          expect(
+            listed.lessons.every((one) => [other.first, other.second, other.third].includes(one.lesson.id)),
+          ).toBe(true);
+          return orphanAssignmentSchema.parse(
+            ok(
+              await calls.post(`/api/journal/orphans/${other.third}/assign`, {
+                staffId: other.spareTeacher.staffId,
+                days: 3,
+                reason: 'Completes the lesson',
+              }),
+            ),
+          );
+        },
+      );
       const rows = () =>
-        t.database.migrator
-          .selectFrom('journal_orphan_assignments')
-          .selectAll()
-          .orderBy('id')
-          .execute();
+        Promise.all(
+          (['journal_orphan_assignments', 'audit_log'] as const).map((table) =>
+            t.database.migrator
+              .selectFrom(table)
+              .selectAll()
+              .where('branch_id', 'in', [s.branch, other.branch])
+              .orderBy('id')
+              .execute(),
+          ),
+        );
+      // Nobody assigns a lesson to themselves (02, Own requests).
+      await as(helper, s.branch, viceIn(s), async (calls) => {
+        expect(
+          codeOf(
+            await calls.post(`/api/journal/orphans/${s.first}/assign`, {
+              staffId: s.spareTeacher.staffId,
+              days: 1,
+              reason: 'Completes the lesson',
+            }),
+          ),
+        ).toBe('own_request');
+      });
       const before = await rows();
       await as(vice, s.branch, viceIn(s), async (calls) => {
+        const listed = orphanLessonsSchema.parse(ok(await calls.get('/api/journal/orphans')));
+        expect(listed.lessons.map((one) => one.lesson.id).sort()).toEqual(
+          [s.first, s.second, s.third].sort(),
+        );
         const assign = (lessonId: string, staffId: string) =>
           calls.post(`/api/journal/orphans/${lessonId}/assign`, {
             staffId,
@@ -970,11 +1038,83 @@ describe('lesson status, reminders and the counts per teacher', () => {
         expect(codeOf(await assign(other.first, s.spareTeacher.staffId))).toBe('not_found');
         expect(codeOf(await assign(s.first, randomUUID()))).toBe('not_found');
         expect(codeOf(await assign(s.first, other.spareTeacher.staffId))).toBe('not_found');
-        expect(
-          codeOf(await calls.post(`/api/journal/orphans/assignments/${randomUUID()}/withdraw`)),
-        ).toBe('not_found');
+        for (const id of [randomUUID(), foreign.id]) {
+          expect(codeOf(await calls.post(`/api/journal/orphans/assignments/${id}/withdraw`))).toBe(
+            'not_found',
+          );
+        }
       });
       expect(await rows()).toEqual(before);
+      void open;
+    });
+
+    it('lets the assignee in through every save route of the lesson, before and after the lock, and refuses another teacher', async () => {
+      const vice = await account();
+      const helper = await account();
+      const stranger = await account();
+      const s = await scene({ spare: helper.account.id });
+      await classworkAt(s, s.third);
+      await left(s);
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        for (const lessonId of [s.first, s.third]) {
+          ok(
+            await calls.post(`/api/journal/orphans/${lessonId}/assign`, {
+              staffId: s.spareTeacher.staffId,
+              days: 3,
+              reason: 'Completes the lesson',
+            }),
+          );
+        }
+      });
+      const planWork = await as(helper, s.branch, teacherIn(s), async (calls) => {
+        const grid = await gridOf(calls, s);
+        return grid.lessons.find((one) => one.id === s.third)?.works[0]?.planWorkId ?? '';
+      });
+      const column = { planWorkId: planWork, sourceLessonId: s.third };
+      // Each route of the journal's saves; the answer of each is what follows its scope check.
+      const routes = (lessonId: string): ['post' | 'put', string, object][] => [
+        [
+          'post',
+          `/api/journal/lessons/${lessonId}/attendance`,
+          { saves: [{ studentId: s.ahmedov, mark: 1, version: null }] },
+        ],
+        ['post', `/api/journal/lessons/${lessonId}/all-present`, {}],
+        ['post', `/api/journal/lessons/${lessonId}/copy-attendance`, {}],
+        [
+          'put',
+          `/api/journal/lessons/${lessonId}/works/total`,
+          { column, total: 5, version: null },
+        ],
+        [
+          'post',
+          `/api/journal/lessons/${lessonId}/scores`,
+          { saves: [{ studentId: s.ahmedov, column, score: 3, version: null }] },
+        ],
+        [
+          'put',
+          `/api/journal/lessons/${lessonId}/works/not-held`,
+          { column, notHeld: false, version: null },
+        ],
+        ['post', `/api/journal/lessons/${lessonId}/works/carry`, { column, version: null }],
+        ['post', `/api/journal/lessons/${lessonId}/works`, { kind: 'classwork' }],
+        ['post', `/api/journal/lessons/${lessonId}/not-graded`, {}],
+      ];
+      for (const lessonId of [s.third, s.first]) {
+        await as(stranger, s.branch, teacherIn(s), async (calls) => {
+          for (const [method, path, body] of routes(lessonId)) {
+            const answer =
+              method === 'post' ? await calls.post(path, body) : await calls.put(path, body);
+            expect(codeOf(answer), path).toBe('journal_entry_scope');
+          }
+        });
+        await as(helper, s.branch, teacherIn(s), async (calls) => {
+          for (const [method, path, body] of routes(lessonId)) {
+            const answer =
+              method === 'post' ? await calls.post(path, body) : await calls.put(path, body);
+            expect(['journal_entry_scope', 'journal_locked'], path).not.toContain(codeOf(answer));
+          }
+        });
+      }
     });
   });
 });
