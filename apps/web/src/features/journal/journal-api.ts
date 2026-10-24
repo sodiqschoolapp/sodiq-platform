@@ -1,5 +1,12 @@
 import {
   absenceReasonSchema,
+  disciplineSchema,
+  notGradedAnswerSchema,
+  orphanAssignmentSchema,
+  orphanLessonsSchema,
+  remindersSchema,
+  type NotGraded,
+  type OrphanAssign,
   REQUEST_KEY_HEADER,
   allPresentSchema,
   attendanceCopySchema,
@@ -233,6 +240,81 @@ export const setWorkNotHeld = (lessonId: string, body: WorkNotHeld) =>
       body,
     }),
   ).then((answer) => workSavedSchema.parse(answer));
+
+/** Task 8.7 (`07`, Lesson status): "not graded" for the empty cells of a lesson's works. */
+export const setNotGraded = (lessonId: string, body: NotGraded) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/not-graded', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => notGradedAnswerSchema.parse(answer));
+
+/** Task 8.7: the caller's own reminders in the branch in use (the branch switcher's). */
+export const remindersQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'reminders'],
+    queryFn: async () =>
+      remindersSchema.parse(
+        await answerOf(
+          api.GET('/api/journal/reminders', {
+            params: { header: branchHeader(), query: {} },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 8.7: the counts per teacher of a date range and department. */
+export const disciplineQuery = (
+  branchId: string | null,
+  range: { from: string; to: string; departmentId: string | null },
+) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'discipline', range.from, range.to, range.departmentId],
+    queryFn: async () =>
+      disciplineSchema.parse(
+        await answerOf(
+          api.GET('/api/journal/discipline', {
+            params: {
+              header: branchHeader(),
+              query: {
+                from: range.from,
+                to: range.to,
+                ...(range.departmentId === null ? {} : { departmentId: range.departmentId }),
+              },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 8.7: the orphan lessons of the branch. */
+export const orphansQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'orphans'],
+    queryFn: async () =>
+      orphanLessonsSchema.parse(
+        await answerOf(api.GET('/api/journal/orphans', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const assignOrphan = (lessonId: string, body: OrphanAssign) =>
+  answerOf(
+    api.POST('/api/journal/orphans/{lessonId}/assign', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => orphanAssignmentSchema.parse(answer));
+
+export const withdrawOrphan = (assignmentId: string) =>
+  answerOf(
+    api.POST('/api/journal/orphans/assignments/{assignmentId}/withdraw', {
+      params: { header: branchHeader(), path: { assignmentId } },
+    }),
+  );
 
 /** "Check at the next lesson" of a homework. */
 export const carryWork = (lessonId: string, body: WorkCarry) =>

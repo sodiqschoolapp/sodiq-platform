@@ -176,6 +176,11 @@ export async function decideWrite(
     readonly correction?: { readonly reason: string } | undefined;
     /** Task 8.7: the open orphan assignment of the person on the lesson, if any. */
     readonly orphanAssignmentId?: string | null;
+    /**
+     * Task 8.7 (From 8.6): every cell the write names is an optional or reopened cell open now;
+     * the cells guard takes such a write after the lock as a late entry (0123, 0127).
+     */
+    readonly openCells?: boolean;
   },
 ): Promise<WriteHow> {
   if (input.correction !== undefined) {
@@ -206,6 +211,7 @@ export async function decideWrite(
           now,
         );
   if (window.kind !== 'unlocked') {
+    if (input.openCells === true) return { how: 'entry' };
     const assigned = input.orphanAssignmentId ?? null;
     if (assigned === null) throw lockedRefusal(locksAt);
     await sql`select set_config('app.orphan_assignment_id', ${assigned}, true)`.execute(

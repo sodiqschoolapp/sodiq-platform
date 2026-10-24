@@ -174,6 +174,8 @@ export class WorksService {
     lessonId: string,
     requestId: string | undefined,
     correction?: Correction,
+    /** Task 8.7: the students a save of numbers names (optional cells of a locked lesson). */
+    students?: readonly string[],
   ): Promise<Scene> {
     const branchId = branchOf(access);
     const { lesson, now, timeZone, write } = await enterableLesson(
@@ -181,7 +183,7 @@ export class WorksService {
       access,
       branchId,
       lessonId,
-      { correction },
+      { correction, ...(students === undefined ? {} : { students }) },
     );
     if (lesson.journalId === null) throw new ApiException('lesson_attendance_only', 409);
     const [unlocked] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
@@ -714,7 +716,14 @@ export class WorksService {
     requestId?: string,
   ): Promise<ScoresSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        input.saves.map((save) => save.studentId),
+      );
       await refuseOtherStudents(
         transaction,
         input.saves.map((save) => save.studentId),

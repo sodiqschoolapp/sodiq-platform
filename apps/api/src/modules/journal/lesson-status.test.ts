@@ -748,6 +748,57 @@ describe('lesson status, reminders and the counts per teacher', () => {
     });
   });
 
+  it('lets the teacher type into an optional cell of a locked lesson until its end, as a late entry, and leaves it out of the status (From 8.6)', async () => {
+    const owner = await account();
+    const s = await scene({ teacher: owner.account.id });
+    const late = await student(s.branch, s.otherClass, 'Davronov');
+    // Recorded on the 27th from the 12th: the held lessons of the new class open as optional.
+    const vice = await account();
+    await as(vice, s.branch, viceIn(s), async (calls) => {
+      const detail = ok(await calls.get(`/api/people/students/${late}`)) as { version: number };
+      ok(
+        await calls.post('/api/classes/transfers', {
+          studentId: late,
+          version: detail.version,
+          toClassId: s.classId,
+          from: '2026-10-12',
+        }),
+      );
+    });
+    await as(owner, s.branch, teacherIn(s), async (calls) => {
+      const grid = await gridOf(calls, s);
+      const at = grid.lessons.findIndex((one) => one.id === s.first);
+      const row = grid.students.find((one) => one.id === late);
+      expect(row?.cells[at]?.open).toBe(true);
+      expect(grid.students.find((one) => one.id === s.ahmedov)?.cells[at]?.open).toBe(false);
+      // The 12th is locked: the optional cell takes the mark, another cell does not.
+      ok(await mark(calls, s.first, [{ studentId: late, mark: 1 }]));
+      expect(codeOf(await mark(calls, s.first, [{ studentId: s.ahmedov, mark: 1 }]))).toBe(
+        'journal_locked',
+      );
+      const cell = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select('changed_how')
+        .where('lesson_id', '=', s.first)
+        .where('student_id', '=', late)
+        .executeTakeFirstOrThrow();
+      expect(cell.changed_how).toBe('late_entry');
+      // Not waited for: the lesson's status is the same with the optional cell empty or filled.
+      expect(statusIn(await gridOf(calls, s), s.first)).toBe('locked_incomplete');
+    });
+    await as(
+      owner,
+      s.branch,
+      teacherIn(s),
+      async (calls) => {
+        expect(codeOf(await mark(calls, s.second, [{ studentId: late, mark: 1 }]))).toBe(
+          'journal_locked',
+        );
+      },
+      '2026-11-04T00:00:00+05:00',
+    );
+  });
+
   /** A status of a staff record from a day on, ending the open one (as the status routes do). */
   const statusFrom = async (staffId: string, status: 'left' | 'inactive', from: string) => {
     await t.database.migrator
