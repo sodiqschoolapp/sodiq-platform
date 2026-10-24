@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 October 2026: task 8.4 Edit period, unlocks and corrections
+
+- 0122: `branch_edit_days` (the log of the edit days and the time zone in force, by the triggers on `branch_settings` and `branches`), `journal_edit_extensions`, `journal_lock_moment` / `journal_lesson_lock` / `journal_rating_lock` (the lock worked out on each request, never stored), `journal_unlocks`, and the guards `journal_*_edit_guard` (through `journal_edit_judge`) on cells, works, comments, rating entries and the rating exam row; the histories keep the correction's reason and the unlock.
+- Routes: every journal write judges the edit period (`edit-window.ts`) and takes `correction`; `/api/journal/unlocks` (list, decide, withdraw), `.../lessons/:lessonId/unlocks`, `.../rating/:quarterId/unlocks`, `/api/journal/extensions`; the grid answers `lock` per lesson and the rating exam and a `marker` per cell; four notice kinds of a correction and three of unlocks. The routing moved to `access/request-routing.ts` with the Tutor's lesson.
+- Web: the Edit period panel and correction mode on the journal page, the cell markers, the Unlock requests page with the extension. Browser test: request, approve, late entry, correction.
+- Left out: the orphan lessons and "Locked incomplete" (8.7), cells reopened after an exemption (8.5), the offline entry attached to a request (8.3c), the closing checklist's unlocks and closed quarters (9.2a, 9.2b); each has a From line.
+
+The next sessions must know:
+
+- A lock is `journal_lesson_lock(lesson)` or `journal_rating_lock(journal, quarter)`; never store it. A new writer of entries writes a person's kind (`entry`) and lets the guard write `late_entry` or `correction`; it sets `app.unlock_id` or `app.correction_reason` through `decideWrite` only.
+- Test branches start with `LONG_EDIT_DAYS` (`insertBranch`); a test of the edit period sets its days with `setEditDays`.
+
 ## 24 October 2026: task 8.3a Saving and stale saves
 
 - Cell saves of attendance and numbers take `Idempotency-Key` (a repeat answers the first answer from the history lines; the stored answer holds ids and versions); a stale refusal names who changed the cell; keep-or-clear waits for the stale choice. New routes `POST /api/journal/lessons/:lessonId/undo` (grouped by student, at most 1260 cells) and `.../copy-attendance`; the grid answers `copyFrom`. Every write carries `X-App-Version` (`APP_VERSION` of `packages/shared`); an older one than `OLDEST_APP_VERSION` is refused `app_outdated` outside `/api/auth` and `/api/feedback`; 0121 stores the version on a feedback report.

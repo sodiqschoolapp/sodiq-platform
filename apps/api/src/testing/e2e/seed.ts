@@ -6089,7 +6089,7 @@ try {
     }),
   );
   const locksTeacher = await create('Nodir', 'Karimov');
-  const locksHead = await create('Feruza', 'Aminova');
+  const locksHead = await create('Gavhar', 'Yuldasheva');
   await transactions.run([locksBranch], (transaction) =>
     assignments.give(transaction, {
       accountId: locksTeacher.id,
@@ -6131,7 +6131,7 @@ try {
         const people: string[] = [];
         for (const [accountId, staffNumber, first, last, phone] of [
           [locksTeacher.id, 'S-777711', 'Nodir', 'Karimov', '+998935557411'],
-          [locksHead.id, 'S-777712', 'Feruza', 'Aminova', '+998935557412'],
+          [locksHead.id, 'S-777712', 'Gavhar', 'Yuldasheva', '+998935557412'],
         ] as const) {
           const person = await transaction
             .insertInto('staff')
