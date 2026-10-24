@@ -4,6 +4,7 @@ import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BRANCH_SETTING, MOMENT_SETTING, Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { at, LessonsKit } from '../../testing/lessons-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, moveStudentBranch, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
@@ -188,7 +189,11 @@ describe('results that follow the student (07, Transfers)', () => {
 
   describe('week 6 (edge/calculation: "A student moved from one group to another in week 6")', () => {
     it('uses both journals in both, folds the student in the old one and counts the student once in the new bottom row', async () => {
-      const scene = await publishedScene(t, load, { graded: true });
+      const substitute = await account();
+      const scene = await publishedScene(t, load, {
+        graded: true,
+        accounts: { spare: substitute.account.id },
+      });
       const [a12, a19, a26] = await lessonsOf(scene.classId, '2026-10-01', '2026-10-31');
       const [b12, b19, b26] = await lessonsOf(scene.otherClass, '2026-10-01', '2026-10-31');
       if (!a12 || !a19 || !a26 || !b12 || !b19 || !b26) throw new Error('Three lessons each.');
@@ -199,7 +204,7 @@ describe('results that follow the student (07, Transfers)', () => {
       const stayer = await student(scene.branch, { first: 'Dilshod', last: 'Ergashev' }, [
         { classId: scene.classId, from: '2026-09-01' },
       ]);
-      await student(scene.branch, { first: 'Shoira', last: 'Nazarova' }, [
+      const classmate = await student(scene.branch, { first: 'Shoira', last: 'Nazarova' }, [
         { classId: scene.otherClass, from: '2026-09-01' },
       ]);
       const cwA = await work(scene.branch, a12.id, 10);
@@ -215,6 +220,13 @@ describe('results that follow the student (07, Transfers)', () => {
         { lessonId: b19.id, studentId: moved, workId: cwB, value: 4 },
       ]);
       await saveOn(scene.branch, b26.date, [{ lessonId: b26.id, studentId: moved, value: 0 }]);
+      // The classmate in the new class: present at the three lessons, classwork 7 of 10:
+      // (20 × 100 + 40 × 70) ÷ 60 = 80, homework left out.
+      await present(scene.branch, classmate, [b12, b26]);
+      await saveOn(scene.branch, b19.date, [
+        { lessonId: b19.id, studentId: classmate, value: 1 },
+        { lessonId: b19.id, studentId: classmate, workId: cwB, value: 7 },
+      ]);
       const journalA = await journalOf(scene.classId);
       const journalB = await journalOf(scene.otherClass);
       const browser = await principal(scene.branch);
@@ -278,17 +290,38 @@ describe('results that follow the student (07, Transfers)', () => {
           [false, 1],
           [false, 0],
         ]);
-        // The old bottom row is the stayer's alone; the new one counts the student once
-        // (the classmate there has no result).
+        // The old bottom row is the stayer's alone; the new one counts the student once:
+        // the mean of 62.2 and 80 is 71.1, where a double count would give 68.1.
         const stayerResult = rowOf(gridA, stayer).quarter?.result;
         expect(stayerResult?.kind).toBe('number');
         expect(gridA.bottom?.quarter.result).toBe(
           stayerResult?.kind === 'number' ? stayerResult.shown : -1,
         );
         expect(gridA.bottom?.quarter.result).not.toBe(62);
-        expect(gridB.bottom?.quarter.result).toBe(62);
+        expect(rowOf(gridB, classmate).quarter?.result).toMatchObject({
+          kind: 'number',
+          shown: 80,
+        });
+        expect(gridB.bottom?.quarter.result).toBe(71);
         // A student whose rows cover the quarter has nothing carried in.
         expect(rowOf(gridA, stayer).carriedIn).toEqual([]);
+      });
+      // A Teacher of own lessons only (a substitute at the lesson of the 26th) reads the new
+      // journal in the shape 'lessons': the moved-in student's row carries no other journal,
+      // no leaving and no figures (journal-grid.service.ts, shape lessons).
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: scene.spareTeacher.staffId })
+        .where('id', '=', b26.id)
+        .execute();
+      await as(substitute, [{ role: 'teacher', branchId: scene.branch }], async (get) => {
+        const grid = gridOf(await get(scene.branch, `/api/journal/journals/${journalB}`));
+        expect(grid.shape).toBe('lessons');
+        expect(grid.lessons.map((one) => one.id)).toEqual([b26.id]);
+        const row = rowOf(grid, moved);
+        expect([row.carriedIn, row.leftSubjectOn, row.atLeaving]).toEqual([[], null, null]);
+        expect([row.quarter, row.months]).toEqual([null, null]);
+        expect(row.cells.map((cell) => cell.mark)).toEqual([0]);
       });
     });
   });
@@ -428,9 +461,161 @@ describe('results that follow the student (07, Transfers)', () => {
     });
   });
 
+  describe('a return in a later year (edge/students-classes-groups, "A student returns": "In a later year: nothing is carried into the journals")', () => {
+    it('a return in a later academic year carries nothing', async () => {
+      // The branch's earlier year 2025–2026, current while its lesson is written, then closed;
+      // the scene's year 2026–2027 is the current one after it. The same graded subject.
+      const branch = await t.newBranch();
+      const earlier = await load.classes.year(branch, 'current', '2025-09-01', '2026-05-31');
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: '2025-09-01', end_date: '2025-10-31' })
+        .where('academic_year_id', '=', earlier)
+        .where('number', '=', 1)
+        .execute();
+      const subject = await load.classes.subject({ grades: [7], journalType: 'graded' });
+      const earlierClass = await load.classes.schoolClass(branch, earlier, { grade: 7 });
+      const kit = await members();
+      const back = await kit.student(branch, { startsOn: '2025-09-01', grade: 7 });
+      await t.database.migrator
+        .updateTable('students')
+        .set({ first_name: 'Sardor', last_name: 'Mirzayev' })
+        .where('id', '=', back)
+        .execute();
+      const leavingId = await kit.leaving(t.database.migrator, branch, back, '2026-03-02');
+      await kit.member({
+        branch,
+        studentId: back,
+        classId: earlierClass,
+        from: '2025-09-01',
+        until: '2026-03-02',
+        ownUntil: '2026-06-01',
+        endedBy: 'leaving',
+        leavingId,
+      });
+      // A lesson of the subject on Monday 13 October 2025 in the earlier year, the student
+      // absent at it with a classwork 1 of 10: counted anywhere, they would lower the figures.
+      const lessonsKit = await LessonsKit.create(t.database.migrator);
+      const source = await lessonsKit.source(
+        branch,
+        earlier,
+        [{ classId: earlierClass, groupId: null, subjectId: subject }],
+        '2025-10-13',
+      );
+      const quarterEarlier = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', earlier)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const earlierLesson = await t.database.migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: branch,
+            academic_year_id: earlier,
+            quarter_id: quarterEarlier,
+            lesson_date: '2025-10-13',
+            starts_at: at('2025-10-13', '09:00'),
+            ends_at: at('2025-10-13', '09:45'),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        return (
+          await transaction
+            .insertInto('lessons')
+            .values({
+              branch_id: branch,
+              block_id: block.id,
+              lesson_date: block.lesson_date,
+              starts_at: block.starts_at,
+              ends_at: block.ends_at,
+              class_id: earlierClass,
+              group_id: null,
+              subject_id: subject,
+              load_row_id: source.lessons[0]?.loadRowId ?? '',
+              pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+      const earlierWork = await work(branch, earlierLesson, 10);
+      await saveOn(branch, '2025-10-13', [
+        { lessonId: earlierLesson, studentId: back, value: 0 },
+        { lessonId: earlierLesson, studentId: back, workId: earlierWork, value: 1 },
+      ]);
+      await load.classes.setYear(earlier, 'closed');
+
+      const scene = await publishedScene(t, load, { branch, graded: true, subject });
+      const [a12, a19, a26] = await lessonsOf(scene.classId, '2026-10-01', '2026-10-31');
+      if (!a12 || !a19 || !a26) throw new Error('Three lessons.');
+      // The return on Monday 19 October 2026, in the next year's class of the same subject.
+      await t.database.migrator
+        .updateTable('student_statuses')
+        .set({ valid_until: '2026-10-19' })
+        .where('id', '=', leavingId)
+        .execute();
+      await t.database.migrator
+        .insertInto('student_statuses')
+        .values({
+          student_id: back,
+          branch_id: branch,
+          status: 'active',
+          valid_from: '2026-10-19',
+          cause: 'return',
+        })
+        .execute();
+      await kit.member({
+        branch,
+        studentId: back,
+        classId: scene.classId,
+        from: '2026-10-19',
+        cause: 'return',
+      });
+      await present(branch, back, [a19, a26]);
+      const journal = await journalOf(scene.classId);
+      await as(await principal(branch), [], async (get) => {
+        const grid = gridOf(await get(branch, `/api/journal/journals/${journal}`));
+        const row = rowOf(grid, back);
+        expect(row.folded).toBe(false);
+        expect([row.carriedIn, row.leftSubjectOn, row.atLeaving]).toEqual([[], null, null]);
+        expect(row.cells.map((cell) => [cell.closed, cell.mark])).toEqual([
+          [true, null],
+          [false, 1],
+          [false, 1],
+        ]);
+        // Only the two lessons of this year: attendance 100, no classwork; the absence and
+        // the classwork 1 of 10 of the earlier year count nowhere (with them: 67 and 10).
+        expect(row.quarter).toEqual({
+          attendance: 100,
+          classwork: null,
+          homework: null,
+          ratingExam: null,
+          result: {
+            kind: 'number',
+            shown: 100,
+            grade: 5,
+            provisional: true,
+            leftOut: ['classwork', 'homework'],
+            basedOn: null,
+          },
+        });
+      });
+    });
+  });
+
   describe('between branches (edge/calculation: "A student moved between branches mid-quarter")', () => {
     it('keeps the student folded in the old journal with a result at leaving and counts the new branch alone', async () => {
-      const north = await publishedScene(t, load, { graded: true });
+      const substitute = await account();
+      const north = await publishedScene(t, load, {
+        graded: true,
+        accounts: { spare: substitute.account.id },
+      });
       const south = await publishedScene(t, load, { graded: true });
       const quarterNorth = await quarterOf(north, 2);
       const quarterSouth = await quarterOf(south, 2);
@@ -537,6 +722,66 @@ describe('results that follow the student (07, Transfers)', () => {
         },
         MOMENT_Q2,
       );
+      // The name from `journal_former_member_names` reaches every reader shape of the grid
+      // (decision 7): whole (the Academic Vice Principal), attendance (the Head Tutor and the
+      // Spiritual Vice Principal), the Tutor of the class (whole for a class journal) and a
+      // Teacher of own lessons only (a substitute at the third lesson, which the student had).
+      const third = northLessons[2];
+      if (third === undefined) throw new Error('Eight lessons.');
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: north.spareTeacher.staffId })
+        .where('id', '=', third.id)
+        .execute();
+      const tutor = await account();
+      await load.classes.person(north.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(north.branch, north.classId, tutor.account.id);
+      const readers: { browser: Browser; roles: Omit<Held, 'validFrom'>[]; shape: string }[] = [
+        {
+          browser: await account(),
+          roles: [{ role: 'academic_vice_principal', branchId: north.branch }],
+          shape: 'whole',
+        },
+        {
+          browser: await account(),
+          roles: [{ role: 'head_tutor', branchId: north.branch }],
+          shape: 'attendance',
+        },
+        {
+          browser: await account(),
+          roles: [{ role: 'spiritual_vice_principal', branchId: north.branch }],
+          shape: 'attendance',
+        },
+        { browser: tutor, roles: [], shape: 'whole' },
+        {
+          browser: substitute,
+          roles: [{ role: 'teacher', branchId: north.branch }],
+          shape: 'lessons',
+        },
+      ];
+      for (const reader of readers) {
+        await as(
+          reader.browser,
+          reader.roles,
+          async (get) => {
+            const grid = gridOf(
+              await get(
+                north.branch,
+                `/api/journal/journals/${northJournal}?quarterId=${quarterNorth}`,
+              ),
+            );
+            const label = `${reader.roles[0]?.role ?? 'tutor'} ${reader.shape}`;
+            expect(grid.shape, label).toBe(reader.shape);
+            const row = rowOf(grid, mover);
+            expect([row.lastName, row.firstName, row.folded], label).toEqual([
+              'Aliyev',
+              'Botir',
+              true,
+            ]);
+          },
+          MOMENT_Q2,
+        );
+      }
       await as(
         await principal(south.branch),
         [],
