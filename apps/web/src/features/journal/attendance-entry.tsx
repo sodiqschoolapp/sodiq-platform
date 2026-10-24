@@ -89,6 +89,8 @@ interface TypedMark {
 export function useAttendanceEntry(
   grid: JournalGrid,
   record: (action: LastAction) => void = () => undefined,
+  /** Task 8.4: the correction a save of a lesson carries, if any. */
+  correctionOf: (lessonId: string) => { reason: string } | undefined = () => undefined,
 ): {
   entry: AttendanceEntry;
   notices: React.JSX.Element;
@@ -122,6 +124,9 @@ export function useAttendanceEntry(
                 ...(numbers === undefined ? {} : { numbers }),
               },
             ],
+            ...(correctionOf(input.lessonId) === undefined
+              ? {}
+              : { correction: correctionOf(input.lessonId) }),
           },
           input.key,
         );

@@ -1092,7 +1092,7 @@ How to read the task lines:
   - From 6.3 (pull request #211, decision 14): `edge/journal`, Saving and working together, "Undo": "It covers the user's own last action on the page: one cell or one bulk action. It applies only to cells nobody changed since and only while the lesson is editable. It is recorded in history." The actions are the typed mark and "all present" of 6.3 (`attendance.service.ts`), with `changed_how` `undo` (0108).
   - From 6.3 (pull request #211, review correction 4): `edge/timetable`, Structure, "Double lessons": "They give two journal columns and two plan items, with a 'copy attendance' button." The copy fills only the empty attendance cells of the second lesson of the pair from the first and reports the ones it skipped, as "all present" does (`edge/journal`: "'All present' and 'not graded' fill only the cells that are empty at that moment and report the ones they skipped. They are one action, not thirty separate saves").
 
-- [ ] **8.4 Edit period, unlocks and corrections**
+- [x] **8.4 Edit period, unlocks and corrections**
   - Read: `07` (Editing rules and locks), `02` (Head Teachers and Senior Head Teachers), `edge/journal` (Locks, unlocks and corrections).
   - Build: the lock at 23:59 branch time on the lesson date plus the edit days, worked out on each request from stored moments; unlock requests routed to the Head Teacher of the subject, the Senior Head Teacher or the Academic Vice Principal; nobody approves their own; corrections by the Academic Vice Principal with a reason; branch-wide extension of the edit period.
   - Done when: tests at 23:59 and 00:00 pass with the injected clock.
@@ -1120,6 +1120,7 @@ How to read the task lines:
   - From 6.3 (pull request #211): "All present" fills the attendance cells of `lesson_expected_students` (0108); once the exemption joins it, an exempt student is skipped ("'All present' skips exempt students", `07`, Exemptions), with a route test of `all-present`.
 
   - From 8.2 (pull request #218, decision 6): `edge/calculation`, "A student is exempt on the exam day": "The cell shows 'exempt on exam day, pending'. The teacher may later enter a score; otherwise the Academic Vice Principal sets 'exempt'. A pending entry blocks closing." The rating exam cell of a student exempt on the date in force (`journal_rating_date`, 0120) shows "pending" and is passed to `packages/calc` as no entry; the grid's rating exam answer (`ratingExamOf`, `apps/api/src/modules/journal/rating.ts`) gains it.
+  - From 8.4 (pull request #222): `edge/journal`, Locks: the cells reopened for 3 days after an exemption is shortened are an unlock of the edit period (`journal_lock_moment`, 0122, the lock worked out on each request from `branch_edit_days` and `journal_edit_extensions`); the system writes of an exemption (`changed_how` `exemption`) pass the guard `journal_edit_guard` after the lock, as `transfer` and `cancellation` do.
 
 - [ ] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
@@ -1140,6 +1141,7 @@ How to read the task lines:
   - From 5.7a-1 (pull request #185, spec review should-fix 7): the `absent` that `lessonStateOf` takes is read through `absentLessons` of `apps/api/src/modules/timetable/absences-read.ts` (`absences_of_teachers`, 0096), never from the membership-filtered `absences` table, and a lesson with a `lesson_absence_taught` row is not absent.
   - From 5.7a-3c (pull request #190, decision 9): `edge/timetable`, "A vacancy lasts a quarter": the acting teacher "is counted in the discipline report; the vacancy is counted for nothing"; "Nothing is ever counted against a vacancy". The counts per teacher read the journal's owner per lesson date with `journalOwnerOn` (`apps/api/src/modules/timetable/journal-owners.ts`: the teacher of the journal's row in the published version in force that day; under a vacancy the acting teacher in force (`journal_acting_teachers`, 0100, counted only on days the row names the vacancy and the person is active in the branch), else `none`); a lesson whose owner is `none` counts for nobody (a substitute's lesson counts for the substitute).
   - From 5.7b-1 (pull request #191, decision 10): `07`, "A substituted lesson counts for the substitute on that day"; the substitute of a lesson is its teacher (`lessons.teacher_id`) while a substitution is in force (`substitutionsInForce`, `apps/api/src/modules/timetable/substitutions-read.ts`, 0101).
+  - From 8.4 (pull request #222): the orphan lessons list and "Locked incomplete" read the lock of each lesson from `journal_lesson_lock` (0122, worked out on each request, never stored); "lessons about to lock" in the reminders the same way. The discipline report counts the entries made under an unlock (`changed_how` `late_entry` of the histories, with `unlock_id`), never the corrections (`edge/journal`: "It does not count against the teacher").
 
 - [ ] **8.8 Plans in the journal**
   - Read: `09` (In the journal, Reports), `edge/lesson-plans` (Plans and the journal).
@@ -1175,6 +1177,7 @@ How to read the task lines:
   - From 5.7a-3c (pull request #190, decision 3, Look first): `edge/timetable`, "A vacancy lasts a quarter": "Without an acting teacher ... the closing checklist lists the journal as 'no teacher'". The item is a warning, not a blocking item; it lists the journals and days `journalsWithoutTeacher(transaction, branchId, from, until)` of `apps/api/src/modules/timetable/journal-owners.ts` gives for the quarter (proposed `/spec-change` on issue #42: a row of the `07` table, "A journal with days under a vacancy and no acting teacher ('no teacher') | Warning").
   - From 8.2 (pull request #218): `07`, Closing a quarter: "A rating exam entry is missing: no score, 'did not sit' or 'exempt' | Blocks closing". The entries are `journal_rating_entries` (0120) of the quarter's rating exam rows, a journal's exam marked "not held" needing none; the subjects with the rating exam in the quarter are those of `subject_quarter_switches`.
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, "The quarter is closed while plan periods are open or requests are waiting": "Open plan periods on that quarter's lessons block closing; the Academic Vice Principal can end them all from the checklist." A blocking item over the approved requests of the quarter whose period is open (`periodOpen`, `apps/api/src/modules/plans/plan-window.ts`), with "end them all" (`finished_at`).
+  - From 8.4 (pull request #222): the blocking item "temporarily unlocked" reads the open approved unlocks (`journal_unlocks`, `status` `approved`, `open_until` after now) and the extensions (`journal_edit_extensions`); "lock now and close" ends them from stored moments, never by a job.
 
 - [ ] **9.2b Closing a quarter**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
@@ -1193,6 +1196,7 @@ How to read the task lines:
   - From 6.3 (pull request #211, decision 11): `edge/journal`, "A Tutor records why a student was absent": "The class Tutor and the Academic Vice Principal can edit it until the quarter closes." A closed quarter refuses the set and the clear of a reason (`student_absence_reasons`, 0113) of a date inside it, in the database and through the route, with a test each.
   - From 7.1a (pull request #212, spec review of the plan, should-fix 6): `edge/lesson-plans`, Plans and the journal: "Nothing is possible in a closed quarter." The writes of a plan (`apps/api/src/modules/plans/plans.service.ts`, `plan-files.service.ts`) are refused in a closed quarter, with a route test; today only a closed year refuses them (`plan_year_closed`).
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, "The quarter is closed while plan periods are open or requests are waiting": "Waiting requests become void." The close sets the prepared and sent requests of the quarter (`lesson_plan_requests`, 0117) to `void`, in its transaction, with an audit entry.
+  - From 8.4 (pull request #222): a correction (`correction` of the cell, work, rating entry and comment saves) and an unlock request are refused in a closed quarter; the guard `journal_edit_guard` (0122) gains the closed quarter for every kind of a person, the correction included.
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
@@ -1308,6 +1312,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - Build: the unsent queue in the browser that survives reload and restart; judgement of each entry when the server receives it; the "not saved" list with reasons; lesson mode without a connection; the printable attendance sheet per class; the read-only switch.
   - Done when: an entry typed offline is saved after reconnect and one refused by a lock stays in the "not saved" list.
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, "The window's end date is changed after it opened; a save arrives at 00:03": "A save arriving later is refused and kept on the device as a draft to attach to a request." 7.2 refuses it (`plan_window_closed`) and keeps the typed values in the open form only; the draft kept on the device across reloads comes with the offline store.
+  - From 8.4 (pull request #222): an offline entry refused for the lock (`journal_locked`, with `locksAt`) is kept and attached to an unlock request (`POST /api/journal/lessons/:lessonId/unlocks`); `offline_entry` is judged by the guard of 0122 like a live entry and written `late_entry` under an open unlock.
 
 - [ ] **9.3b Analytics**
   - Read: `08` (Analytics in Release 1).

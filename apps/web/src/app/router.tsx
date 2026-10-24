@@ -76,6 +76,7 @@ import {
   StudentAbsencesPage,
   studentAbsencesSearch,
 } from '@/features/journal/student-absences-page';
+import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unlock-requests-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
 import { AppLayout } from './app-layout';
@@ -380,6 +381,14 @@ const studentAbsencesRoute = createRoute({
   component: guarded('absence_reasons', StudentAbsencesPage),
 });
 
+/** Unlock requests and the branch-wide extension of the edit period (task 8.4). */
+const unlockRequestsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/unlocks',
+  validateSearch: unlockRequestsSearch,
+  component: guarded('journal_unlocks', UnlockRequestsPage),
+});
+
 /** A journal for one quarter (task 6.2): the grid, or lesson mode. */
 const journalRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -652,6 +661,7 @@ const routeTree = rootRoute.addChildren([
     viewsRoute,
     journalsRoute,
     studentAbsencesRoute,
+    unlockRequestsRoute,
     journalRoute,
     plansRoute,
     planWindowsRoute,

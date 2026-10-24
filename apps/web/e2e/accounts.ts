@@ -97,6 +97,9 @@ export type AccountKey =
   | 'mastersHead'
   | 'requestsTeacher'
   | 'requestsHead'
+  | 'locksTeacher'
+  | 'locksHead'
+  | 'locksVice'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
 
