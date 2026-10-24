@@ -274,6 +274,37 @@ describe('the edit period in the database', () => {
       }
     });
 
+    it('keeps the time zone a lesson locks in when the branch changes its zone (decision 2)', async () => {
+      const west = await insertBranch(database.migrator, 'West');
+      await setEditDays(database.migrator, west, 7);
+      const westYear = await kit.year(west);
+      const classId = await kit.load.classes.schoolClass(west, westYear.year, { grade: 7 });
+      const keepYear = year;
+      year = westYear;
+      try {
+        const onDay = await lesson(west, classId, '2026-10-20');
+        const after = await lesson(west, classId, '2026-10-21');
+        await database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', '2026-10-20T12:00:00+05:00', true)`.execute(
+            transaction,
+          );
+          await transaction
+            .updateTable('branches')
+            .set({ time_zone: 'Asia/Dubai' })
+            .where('id', '=', west)
+            .execute();
+        });
+        expect((await lockOf(onDay))?.toISOString()).toBe(
+          new Date('2026-10-28T00:00:00+05:00').toISOString(),
+        );
+        expect((await lockOf(after))?.toISOString()).toBe(
+          new Date('2026-10-29T00:00:00+04:00').toISOString(),
+        );
+      } finally {
+        year = keepYear;
+      }
+    });
+
     it('moves with the lesson to its new date', async () => {
       const { lesson: id } = await scene();
       await database.migrator.transaction().execute(async (transaction) => {
@@ -537,8 +568,7 @@ describe('the edit period in the database', () => {
       );
 
     it('refuses a carry, a total and the delete of a work after the lock', async () => {
-      const { lesson: id, classId } = await scene();
-      const next = await lesson(north, classId, '2026-10-21');
+      const { lesson: id } = await scene();
       const homework = await work(BEFORE, id);
       const carry = await refusal(
         inBranch(north, LOCKED, (transaction) =>
@@ -570,8 +600,93 @@ describe('the edit period in the database', () => {
         ),
       );
       expect(removed.constraint).toBe('journal_locked');
-      // The next lesson is still open: the work's own lesson decides (should-fix 3).
-      expect(next).not.toBe(id);
+    });
+
+    it('judges a move of a person at the lesson it leaves, and lets the system move a work', async () => {
+      const { lesson: id, classId } = await scene();
+      // The next lesson is open on 22 October (dated the 21st): the work's own lesson decides.
+      const next = await lesson(north, classId, '2026-10-21');
+      const homework = await work(BEFORE, id);
+      const move = (how: string) =>
+        inBranch(north, LOCKED, (transaction) =>
+          transaction
+            .updateTable('journal_works')
+            .set({ lesson_id: next, changed_by: teacher.accountId, changed_how: how })
+            .where('id', '=', homework)
+            .returning('changed_how')
+            .executeTakeFirstOrThrow(),
+        );
+      expect((await refusal(move('entry'))).constraint).toBe('journal_locked');
+      expect((await move('move')).changed_how).toBe('move');
+    });
+
+    it('takes a total at 23:59:59 of the last day', async () => {
+      const { lesson: id } = await scene();
+      const homework = await work(BEFORE, id);
+      const saved = await inBranch(north, LAST_MINUTE, (transaction) =>
+        transaction
+          .updateTable('journal_works')
+          .set({ total: 10, changed_by: teacher.accountId, changed_how: 'entry' })
+          .where('id', '=', homework)
+          .returning('changed_how')
+          .executeTakeFirstOrThrow(),
+      );
+      expect(saved.changed_how).toBe('entry');
+    });
+
+    it('writes a note under an unlock as late_entry with the unlock in its line, and a corrected one with its reason', async () => {
+      const { lesson: id, student } = await scene();
+      const unlock = await unlocked(id);
+      const note = (options: {
+        unlock?: string;
+        reason?: string;
+        by: string;
+        body: string;
+        version: number | null;
+      }) =>
+        inBranch(north, '2026-10-23T10:00:00+05:00', async (transaction) => {
+          if (options.unlock !== undefined)
+            await setting(transaction, 'app.unlock_id', options.unlock);
+          if (options.reason !== undefined) {
+            await setting(transaction, 'app.correction_reason', options.reason);
+          }
+          if (options.version === null) {
+            return transaction
+              .insertInto('journal_comments')
+              .values({
+                branch_id: north,
+                student_id: student,
+                target: 'note',
+                lesson_id: id,
+                body: options.body,
+                visibility: 'staff',
+                version: 1,
+                changed_by: options.by,
+                changed_how: 'entry',
+                changed_at: new Date(0),
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow();
+          }
+          return transaction
+            .updateTable('journal_comments')
+            .set({ body: options.body, changed_by: options.by, changed_how: 'entry' })
+            .where('lesson_id', '=', id)
+            .returning('id')
+            .executeTakeFirstOrThrow();
+        });
+      const written = await note({ unlock, by: teacher.accountId, body: 'Helped', version: null });
+      await note({ reason: 'Wrong student', by: vice, body: 'Helped a lot', version: 1 });
+      const lines = await database.migrator
+        .selectFrom('journal_comment_history')
+        .select(['changed_how', 'unlock_id', 'reason'])
+        .where('comment_id', '=', written.id)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        { changed_how: 'late_entry', unlock_id: unlock, reason: null },
+        { changed_how: 'correction', unlock_id: null, reason: 'Wrong student' },
+      ]);
     });
 
     it('writes a carry under an unlock as late_entry with the unlock in its line', async () => {
@@ -726,6 +841,73 @@ describe('the edit period in the database', () => {
       ).toBe('entry');
     });
 
+    it('takes a rating entry under an unlock of its exam as late_entry, and judges a comment on it by the exam', async () => {
+      const one = await exam();
+      const row = await database.migrator
+        .selectFrom('journal_rating_exams')
+        .select(['journal_id', 'quarter_id'])
+        .where('id', '=', one.id)
+        .executeTakeFirstOrThrow();
+      const sent = await inBranch(north, BEFORE, (transaction) =>
+        transaction
+          .insertInto('journal_unlocks')
+          .values({
+            branch_id: north,
+            target: 'rating',
+            journal_id: row.journal_id,
+            quarter_id: row.quarter_id,
+            staff_id: teacher.staffId,
+            requested_by: teacher.accountId,
+            reason: 'A late sitting',
+            requested_at: new Date(0),
+            status: 'sent',
+            version: 1,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      );
+      await decide(sent.id, '2026-10-22T09:00:00+05:00', { status: 'approved', days: 2 });
+      const late = await inBranch(north, '2026-10-23T10:00:00+05:00', async (transaction) => {
+        await setting(transaction, 'app.unlock_id', sent.id);
+        return transaction
+          .insertInto('journal_rating_entries')
+          .values({
+            branch_id: north,
+            rating_exam_id: one.id,
+            student_id: one.student,
+            kind: 'score',
+            score: 60,
+            version: 1,
+            changed_by: teacher.accountId,
+            changed_how: 'entry',
+            changed_at: new Date(0),
+          })
+          .returning('changed_how')
+          .executeTakeFirstOrThrow();
+      });
+      expect(late.changed_how).toBe('late_entry');
+      const comment = await refusal(
+        inBranch(north, '2026-10-25T10:00:00+05:00', (transaction) =>
+          transaction
+            .insertInto('journal_comments')
+            .values({
+              branch_id: north,
+              student_id: one.student,
+              target: 'rating',
+              rating_exam_id: one.id,
+              body: 'Sat late',
+              visibility: 'staff',
+              version: 1,
+              changed_by: teacher.accountId,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .execute(),
+        ),
+      );
+      expect(comment.constraint).toBe('journal_locked');
+    });
+
     it('lets only the Academic Vice Principal change the date and "not held" once locked', async () => {
       const one = await exam();
       const setDate = (moment: string, by: string) =>
@@ -747,6 +929,16 @@ describe('the edit period in the database', () => {
         );
       // Decision 6 as the review changed it: "not held" is judged by the exam's window.
       expect((await refusal(notHeld(LOCKED, teacher.accountId))).constraint).toBe('journal_locked');
+      // ... and at 23:59 of the last day the guard takes it (the route keeps "not held" the
+      // Academic Vice Principal's, 8.2 decision 7).
+      const other = await exam();
+      await inBranch(north, LAST_MINUTE, (transaction) =>
+        transaction
+          .updateTable('journal_rating_exams')
+          .set({ not_held: true, changed_by: teacher.accountId })
+          .where('id', '=', other.id)
+          .execute(),
+      );
       await setDate(LAST_MINUTE, teacher.accountId);
       await notHeld('2026-10-30T10:00:00+05:00', vice);
       const row = await database.migrator

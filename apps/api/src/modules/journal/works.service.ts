@@ -30,7 +30,7 @@ import {
 } from './attendance-entry.js';
 import { saveCells, type SavedCell } from './cells.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { noticeCellCorrections } from './corrections.js';
+import { noticeCellCorrections, noticeLessonCorrection } from './corrections.js';
 import { decideWrite, writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
 import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
@@ -215,6 +215,22 @@ export class WorksService {
     lessonId: string,
   ): Promise<void> {
     await this.sceneOf(transaction, access, lessonId, undefined);
+  }
+
+  /** Task 8.4 (decision 10): the notice of a correction of the scene's lesson, if it is one. */
+  private async noticeCorrection(
+    transaction: Transaction,
+    scene: Scene,
+    total?: { before: number | null; after: number | null },
+  ): Promise<void> {
+    if (scene.correction === undefined) return;
+    await noticeLessonCorrection(transaction, this.notifications, {
+      branchId: scene.branchId,
+      lessonId: scene.lesson.id,
+      correctorId: scene.access.accountId,
+      reason: scene.correction.reason,
+      ...(total === undefined ? {} : { total }),
+    });
   }
 
   private actorOf(scene: Scene) {
@@ -444,6 +460,7 @@ export class WorksService {
         record: { type: 'lesson', id: scene.lesson.id },
         newValue: { workId: row.id, kind: input.kind, position },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(row);
     });
   }
@@ -565,6 +582,7 @@ export class WorksService {
         newValue: { workId: row.id, total: saved.total, version: saved.version },
         details: { ...writeDetails(scene.write, scene.correction), numbers: numbers.length },
       });
+      await this.noticeCorrection(transaction, scene, { before: row.total, after: saved.total });
       return savedOf(saved);
     });
   }
@@ -618,6 +636,7 @@ export class WorksService {
         newValue: { workId: row.id, notHeld: saved.not_held, version: saved.version },
         details: { ...writeDetails(scene.write, scene.correction), numbers: numbers.length },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(saved);
     });
   }
@@ -673,6 +692,7 @@ export class WorksService {
           version: saved.version,
         },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(saved);
     });
   }

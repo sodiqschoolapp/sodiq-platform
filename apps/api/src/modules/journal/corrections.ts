@@ -203,3 +203,77 @@ export async function noticeRatingCorrection(
     values: [{ studentId: input.studentId, before: input.before, after: input.after }],
   });
 }
+
+/**
+ * The notice of a correction of a lesson that is not a value of a cell: a total
+ * (with its old and new value), or a work added, removed, carried or marked "not
+ * held", or a comment (decision 10: every correction is told to the teacher).
+ */
+export async function noticeLessonCorrection(
+  transaction: Transaction,
+  notifications: Notifications,
+  input: {
+    readonly branchId: string;
+    readonly lessonId: string;
+    readonly correctorId: string;
+    readonly reason: string;
+    readonly total?: { readonly before: number | null; readonly after: number | null };
+  },
+): Promise<void> {
+  const lesson = await transaction
+    .selectFrom('lessons')
+    .select([
+      sql<string>`lesson_date::text`.as('date'),
+      'teacher_id',
+      'class_id',
+      'group_id',
+      'subject_id',
+    ])
+    .where('id', '=', input.lessonId)
+    .executeTakeFirstOrThrow();
+  let journal = transaction
+    .selectFrom('journals')
+    .select('id')
+    .where('branch_id', '=', input.branchId)
+    .where('subject_id', '=', lesson.subject_id);
+  journal =
+    lesson.class_id === null
+      ? journal.where('group_id', '=', lesson.group_id)
+      : journal.where('class_id', '=', lesson.class_id);
+  const found = await journal.executeTakeFirst();
+  const [row] =
+    found === undefined
+      ? []
+      : await journalRows(transaction, input.branchId, { journalId: found.id });
+  const accounts = await teachersTold(transaction, {
+    branchId: input.branchId,
+    journalId: found?.id ?? null,
+    date: lesson.date,
+    lessonTeacherId: lesson.teacher_id,
+    correctorId: input.correctorId,
+  });
+  if (accounts.length === 0) return;
+  const unit = row?.unitName || '—';
+  if (input.total !== undefined) {
+    if (input.total.before === input.total.after) return;
+    await notifications.send(transaction, {
+      kind: 'journal.correction_total',
+      branchId: input.branchId,
+      accountIds: accounts,
+      data: {
+        unit,
+        date: lesson.date,
+        before: shown(input.total.before),
+        after: shown(input.total.after),
+        reason: input.reason,
+      },
+    });
+    return;
+  }
+  await notifications.send(transaction, {
+    kind: 'journal.correction_lesson',
+    branchId: input.branchId,
+    accountIds: accounts,
+    data: { unit, date: lesson.date, reason: input.reason },
+  });
+}

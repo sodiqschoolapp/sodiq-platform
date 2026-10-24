@@ -246,7 +246,10 @@ export class UnlocksService {
       const facts = await journalFactsOf(transaction, branchId, lesson.journalId);
       if (
         staffId === null ||
-        !teachesOrOwns(lesson, facts, staffId, today) ||
+        // An unlock is for a lesson the person teaches or owns on its own date (From 5.7a-3c:
+        // the acting teacher's unlock path is for the lessons of the period); the owner today
+        // enters the lessons still open only.
+        !teachesOrOwns(lesson, facts, staffId, lesson.date) ||
         (await outToday(transaction, branchId, staffId, today))
       ) {
         throw new ApiException('journal_entry_scope', 403);

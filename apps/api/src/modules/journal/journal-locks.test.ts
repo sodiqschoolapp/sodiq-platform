@@ -1,4 +1,8 @@
+import request from 'supertest';
 import {
+  APP_VERSION,
+  APP_VERSION_HEADER,
+  BRANCH_HEADER,
   REQUEST_KEY_HEADER,
   attendanceSavedSchema,
   editExtensionSchema,
@@ -16,6 +20,8 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { ActingKit } from '../../testing/acting-kit.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12 and 19 October are locked, the 26th is open. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -53,6 +59,7 @@ describe('the edit period through the routes', () => {
     get: (path: string) => Promise<Response>;
     post: (path: string, body?: object) => Promise<Response>;
     put: (path: string, body: object) => Promise<Response>;
+    del: (path: string) => Promise<Response>;
   }
 
   const VALID_FROM = new Date('2026-09-01T00:00:00+05:00');
@@ -76,6 +83,12 @@ describe('the edit period through the routes', () => {
         post: (path, body) =>
           t.post(path, branch, body ?? {}, browser.cookie).set(REQUEST_KEY_HEADER, randomUUID()),
         put: (path, body) => t.put(path, branch, body, browser.cookie),
+        del: (path) =>
+          request(t.kit.server)
+            .delete(path)
+            .set('Cookie', browser.cookie)
+            .set(BRANCH_HEADER, branch)
+            .set(APP_VERSION_HEADER, String(APP_VERSION)),
       });
     } finally {
       t.clock.set(START);
@@ -332,7 +345,13 @@ describe('the edit period through the routes', () => {
         expect(grid.lessons[at]?.lock.window).toBe('unlocked');
         expect(grid.lessons[at]?.canEnter).toBe(true);
         const cell = grid.students.find((one) => one.id === x.ahmedov)?.cells[at];
-        expect(cell?.marker).toEqual({ kind: 'late', by: expect.any(String) as string });
+        const approver = await t.database.migrator
+          .selectFrom('accounts')
+          .select('login')
+          .where('id', '=', x.head.account.id)
+          .executeTakeFirstOrThrow();
+        // "with the approver's name": the Head Teacher has no staff record, so the login.
+        expect(cell?.marker).toEqual({ kind: 'late', by: approver.login });
         // The unlock covers that lesson only: the first is still locked.
         expect(codeOf(await save(calls, x.first, x.ahmedov, 1))).toBe('journal_locked');
       });
@@ -1052,6 +1071,301 @@ describe('the edit period through the routes', () => {
       expect(await noticesOf(x.owner.account.id, 'journal.correction')).toEqual([
         expect.objectContaining({ before: '—', after: '7' }),
       ]);
+      // Every correction is told (decision 10): the total with its values, the work and the note.
+      expect(await noticesOf(x.owner.account.id, 'journal.correction_total')).toEqual([
+        expect.objectContaining({ before: '—', after: '10', reason: 'The register says so' }),
+      ]);
+      expect(await noticesOf(x.owner.account.id, 'journal.correction_lesson')).toHaveLength(2);
+    });
+  });
+  describe('the acting teacher, the stored lesson of a work, the other entries and the moments', () => {
+    it('lets the acting teacher of a vacancy ask to unlock a lesson of the acting period and enter under it, never outside the period (correction 4)', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const acting = new ActingKit(t.database.migrator);
+      const branch = await t.newBranch();
+      await setEditDays(t.database.migrator, branch, 7);
+      const { year } = await cells.lessons.year(branch);
+      const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const vacancy = await load.vacancy(branch, {
+        languages: ['uz'],
+        subjects: [{ subject: cells.subject, grades: [7] }],
+      });
+      const actingBrowser = await account();
+      const person = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: actingBrowser.account.id,
+      });
+      await give(actingBrowser, { role: 'teacher', branchId: branch });
+      const vice = await account();
+      await give(vice, { role: 'academic_vice_principal', branchId: branch });
+      const inPeriod = await cells.lesson(branch, year, classId, '2026-10-19');
+      const before = await cells.lesson(branch, year, classId, '2026-10-12');
+      const scene = { branch, year, classId, subject: cells.subject };
+      // The newest version from 19 October names the vacancy (as attendance.test.ts does).
+      await acting.published(scene, '2026-10-19', vacancy);
+      const journal = await acting.journal(branch, year, classId, cells.subject);
+      await acting.period(
+        {
+          ...scene,
+          vacancy,
+          person: person.staffId,
+          personAccount: actingBrowser.account.id,
+          version: '',
+          journal,
+        },
+        '2026-10-19',
+      );
+      // Held by a substitute (the lesson's teacher); the acting teacher owns the journal.
+      const substitute = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+      });
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: substitute.staffId })
+        .where('id', 'in', [inPeriod, before])
+        .execute();
+      const ahmedov = await student(branch, classId, 'Ahmedov');
+      const sent = journalUnlockSchema.parse(
+        ok(
+          await as(actingBrowser, branch, (calls) =>
+            calls.post(`/api/journal/lessons/${inPeriod}/unlocks`, {
+              reason: 'Took the class late',
+            }),
+          ),
+          201,
+        ).body,
+      );
+      await as(actingBrowser, branch, async (calls) => {
+        const outside = await calls.post(`/api/journal/lessons/${before}/unlocks`, {
+          reason: 'Before',
+        });
+        expect(codeOf(outside)).toBe('journal_entry_scope');
+      });
+      ok(
+        await as(vice, branch, (calls) =>
+          calls.post(`/api/journal/unlocks/${sent.id}/decide`, {
+            decision: 'approve',
+            days: 1,
+            version: 1,
+          }),
+        ),
+      );
+      await as(actingBrowser, branch, async (calls) => {
+        ok(await save(calls, inPeriod, ahmedov, 1));
+        // The lesson before the period is locked, and no unlock of the person covers it.
+        expect(codeOf(await save(calls, before, ahmedov, 1))).toBe('journal_locked');
+      });
+      expect((await cellOf(inPeriod, ahmedov))?.changed_how).toBe('late_entry');
+    });
+
+    it('judges a homework removed through its check lesson at the lesson it is stored at', async () => {
+      const x = await scene();
+      const given = await as(
+        x.owner,
+        x.branch,
+        async (calls) =>
+          ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'homework' }))
+            .body as {
+            id: string;
+          },
+        LAST_MINUTE,
+      );
+      await as(x.owner, x.branch, async (calls) => {
+        // The check lesson of 26 October is open; the homework is stored at the 19th, locked.
+        const removed = await calls.del(`/api/journal/lessons/${x.third}/works/${given.id}`);
+        expect(codeOf(removed)).toBe('journal_locked');
+      });
+      expect(
+        await t.database.migrator
+          .selectFrom('journal_works')
+          .select('id')
+          .where('id', '=', given.id)
+          .executeTakeFirst(),
+      ).toBeDefined();
+    });
+
+    it('takes a total, a number and "all present" at 23:59 of the last day, and refuses them at 00:00', async () => {
+      const x = await scene();
+      const added = await as(
+        x.owner,
+        x.branch,
+        async (calls) => {
+          const work = ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }),
+          ).body as {
+            id: string;
+            version: number;
+          };
+          const total = ok(
+            await calls.put(`/api/journal/lessons/${x.second}/works/total`, {
+              column: { workId: work.id },
+              total: 10,
+              version: work.version,
+            }),
+          ).body as { version: number };
+          ok(
+            await calls.post(`/api/journal/lessons/${x.second}/scores`, {
+              saves: [
+                { studentId: x.ahmedov, column: { workId: work.id }, score: 5, version: null },
+              ],
+            }),
+          );
+          ok(await calls.post(`/api/journal/lessons/${x.second}/all-present`));
+          return { id: work.id, version: total.version };
+        },
+        LAST_MINUTE,
+      );
+      await as(
+        x.owner,
+        x.branch,
+        async (calls) => {
+          expect(
+            codeOf(
+              await calls.put(`/api/journal/lessons/${x.second}/works/total`, {
+                column: { workId: added.id },
+                total: 12,
+                version: added.version,
+              }),
+            ),
+          ).toBe('journal_locked');
+          expect(
+            codeOf(
+              await calls.post(`/api/journal/lessons/${x.second}/scores`, {
+                saves: [
+                  { studentId: x.ahmedov, column: { workId: added.id }, score: 6, version: 1 },
+                ],
+              }),
+            ),
+          ).toBe('journal_locked');
+          expect(
+            codeOf(
+              await calls.put(`/api/journal/lessons/${x.second}/works/not-held`, {
+                column: { workId: added.id },
+                notHeld: true,
+                version: added.version,
+              }),
+            ),
+          ).toBe('journal_locked');
+        },
+        LOCKED,
+      );
+    });
+
+    it('re-locks the lessons dated after a change of the edit days through the settings, and keeps the lesson of the change day', async () => {
+      const x = await scene();
+      const later = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', sql<string>`lesson_date::text`.as('date')])
+        .where('class_id', '=', x.classId)
+        .where('subject_id', '=', x.subject)
+        .where('lesson_date', '>', '2026-10-27')
+        .orderBy('lesson_date')
+        .executeTakeFirstOrThrow();
+      const lockOf = async (lessonId: string) =>
+        (
+          await sql<{ lock: Date }>`select journal_lesson_lock(${lessonId}::uuid) as lock`.execute(
+            t.database.migrator,
+          )
+        ).rows[0]?.lock.toISOString();
+      const before = await lockOf(x.third);
+      ok(
+        await as(x.vice, x.branch, (calls) =>
+          calls.put('/api/setup/settings/edit-days', { editDays: 2 }),
+        ),
+      );
+      expect(await lockOf(x.third)).toBe(before);
+      const day = new Date(`${later.date}T00:00:00+05:00`);
+      expect(await lockOf(later.id)).toBe(new Date(day.getTime() + 3 * 86_400_000).toISOString());
+    });
+
+    it('follows a change of the Head Teacher on its date with no job', async () => {
+      const x = await scene();
+      const sent = await requested(x);
+      const ended = await t.database.migrator
+        .updateTable('assignments')
+        .set({ valid_until: new Date(MOMENT) })
+        .where('account_id', '=', x.head.account.id)
+        .where('role', '=', 'head_teacher')
+        .returning('id')
+        .execute();
+      await t.database.migrator
+        .updateTable('assignment_subjects')
+        .set({ valid_until: new Date(MOMENT) })
+        .where(
+          'assignment_id',
+          'in',
+          ended.map((one) => one.id),
+        )
+        .execute();
+      // The post ended at noon: the former Head Teacher no longer decides, the next tier does.
+      expect(
+        codeOf(await decide(x, x.head, sent.id, { decision: 'approve', days: 1, version: 1 })),
+      ).toBe('permission_denied');
+      ok(await decide(x, x.senior, sent.id, { decision: 'approve', days: 1, version: 1 }));
+    });
+
+    it('orders an approval and a withdrawal at the same moment, both ways', async () => {
+      for (const first of ['approve', 'withdraw'] as const) {
+        const x = await scene();
+        const sent = await requested(x);
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let ready: () => void = () => undefined;
+        const isReady = new Promise<void>((resolve) => {
+          ready = resolve;
+        });
+        // The held side writes what its route writes on the request row.
+        const held = t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+          await transaction
+            .updateTable('journal_unlocks')
+            .set(
+              first === 'approve'
+                ? { status: 'approved', days: 1, decided_by: x.head.account.id }
+                : { status: 'withdrawn', decided_by: null },
+            )
+            .where('id', '=', sent.id)
+            .execute();
+          ready();
+          await released;
+        });
+        await isReady;
+        const browser = first === 'approve' ? x.owner : x.vice;
+        t.clock.set(MOMENT);
+        await t.database.migrator
+          .updateTable('sessions')
+          .set({ created_at: new Date(MOMENT), last_used_at: new Date(MOMENT) })
+          .where('account_id', '=', browser.account.id)
+          .execute();
+        const path =
+          first === 'approve'
+            ? `/api/journal/unlocks/${sent.id}/withdraw`
+            : `/api/journal/unlocks/${sent.id}/decide`;
+        const body =
+          first === 'approve' ? { version: 1 } : { decision: 'approve', days: 1, version: 1 };
+        const second = new Promise<Response>((resolve, reject) => {
+          t.post(path, x.branch, body, browser.cookie)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .then(resolve, reject);
+        });
+        let waited = false;
+        for (let attempt = 0; attempt < 100 && !waited; attempt += 1) {
+          const { rows } = await sql<{ waiting: number }>`
+            select count(*)::int as waiting from pg_stat_activity a
+            where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+          `.execute(t.database.migrator);
+          waited = (rows[0]?.waiting ?? 0) > 0;
+          if (!waited) await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        expect(waited).toBe(true);
+        release();
+        await held;
+        const answer = await second;
+        t.clock.set(START);
+        expect(codeOf(answer)).toBe('journal_unlock_decided');
+      }
     });
   });
 });

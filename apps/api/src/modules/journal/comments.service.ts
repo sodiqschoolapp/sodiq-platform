@@ -16,6 +16,8 @@ import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf } from '../timetable/journal-owners.js';
 import { enterableLesson, entryAssignment, ownStaffOf } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
+import { noticeLessonCorrection } from './corrections.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import {
   LOCK_REFUSALS,
   correctorAssignment,
@@ -60,6 +62,7 @@ export class CommentsService {
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
     @Inject(JournalGridReader) private readonly grids: JournalGridReader,
+    @Inject(Notifications) private readonly notifications: Notifications,
   ) {}
 
   /** Writes or clears the comment of a target (decision 10). */
@@ -155,6 +158,15 @@ export class CommentsService {
         },
         requestId,
       });
+      // Task 8.4 (decision 10): a corrected comment of a lesson is told to its teacher.
+      if (input.correction !== undefined && keys.lessonId !== null) {
+        await noticeLessonCorrection(transaction, this.notifications, {
+          branchId,
+          lessonId: keys.lessonId,
+          correctorId: access.accountId,
+          reason: input.correction.reason,
+        });
+      }
       return (await commentsAnswer(transaction, [saved]))[0] ?? notFoundOf();
     });
   }

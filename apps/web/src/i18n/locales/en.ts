@@ -677,7 +677,6 @@ export const en = {
       'This lesson is locked: its edit period has ended. Send an unlock request to change it.',
     journal_correction_role:
       'Only the Academic Vice Principal or the Super Admin can correct a mark.',
-    journal_correction_bulk: 'A correction is made one cell at a time.',
     journal_not_locked: 'This lesson is still open for you. No unlock is needed.',
     journal_unlock_waiting: 'You already have a waiting unlock request for this.',
     journal_unlock_scope: 'This request is not yours to decide.',
@@ -3780,6 +3779,10 @@ export const en = {
           'Your edit request for {{unit}}, quarter {{quarter}} is refused: {{reason}}.',
       },
       journal: {
+        correction_total:
+          'A total in {{unit}}, {{date}} was corrected: {{before}} → {{after}}. Reason: {{reason}}',
+        correction_lesson:
+          'The works or comments of {{unit}}, {{date}} were corrected. Reason: {{reason}}',
         unlock_requested: '{{name}} asks to unlock the journal of {{unit}} for {{date}}.',
         unlock_approved:
           'Your unlock request for {{unit}}, {{date}} is approved: open until the end of {{until}}.',
@@ -5509,6 +5512,7 @@ export const en = {
       extensionLine: '{{from}} – {{to}}: open until {{until}}, by {{name}}. {{reason}}',
       extensionsEmpty: 'No extension yet.',
       extended: 'The edit period is extended.',
+      dateNeeded: 'Choose the date.',
     },
     sheet: 'Class journal',
     open: 'Open the journal',

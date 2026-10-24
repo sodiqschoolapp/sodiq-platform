@@ -298,7 +298,7 @@ function Extensions() {
           label={t('journal.unlocks.fromDate')}
           name="fromDate"
           value={fromDate}
-          error={missing && fromDate === '' ? t('journal.locks.reasonNeeded') : undefined}
+          error={missing && fromDate === '' ? t('journal.unlocks.dateNeeded') : undefined}
           onChange={(event) => {
             setFromDate(event.target.value);
           }}
@@ -307,6 +307,7 @@ function Extensions() {
           label={t('journal.unlocks.toDate')}
           name="toDate"
           value={toDate}
+          error={missing && toDate === '' ? t('journal.unlocks.dateNeeded') : undefined}
           onChange={(event) => {
             setToDate(event.target.value);
           }}

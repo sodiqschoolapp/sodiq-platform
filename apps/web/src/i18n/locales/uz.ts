@@ -692,7 +692,6 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars yopilgan: tahrirlash muddati tugagan. Uni oʻzgartirish uchun ochish soʻrovini yuboring.',
     journal_correction_role:
       'Baholarni faqat oʻquv ishlari boʻyicha direktor oʻrinbosari yoki super administrator tuzata oladi.',
-    journal_correction_bulk: 'Tuzatish bitta katakdan kiritiladi.',
     journal_not_locked: 'Bu dars siz uchun hali ochiq. Ochish shart emas.',
     journal_unlock_waiting: 'Sizda bu uchun kutilayotgan ochish soʻrovi bor.',
     journal_unlock_scope: 'Bu soʻrovni siz hal qilmaysiz.',
@@ -3826,6 +3825,10 @@ export const uz: Texts<'one' | 'other'> = {
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz rad etildi: {{reason}}.',
       },
       journal: {
+        correction_total:
+          '{{unit}}, {{date}} dagi umumiy ball tuzatildi: {{before}} → {{after}}. Sabab: {{reason}}',
+        correction_lesson:
+          '{{unit}}, {{date}} dagi ishlar yoki izohlar tuzatildi. Sabab: {{reason}}',
         unlock_requested: '{{name}} {{unit}} jurnalini {{date}} uchun ochishni soʻramoqda.',
         unlock_approved:
           '{{unit}}, {{date}} boʻyicha ochish soʻrovingiz tasdiqlandi: {{until}} oxirigacha ochiq.',
@@ -5560,6 +5563,7 @@ export const uz: Texts<'one' | 'other'> = {
       extensionLine: '{{from}} – {{to}}: {{until}} gacha ochiq, uzaytirgan: {{name}}. {{reason}}',
       extensionsEmpty: 'Hali uzaytirish yoʻq.',
       extended: 'Tahrirlash muddati uzaytirildi.',
+      dateNeeded: 'Sanani tanlang.',
     },
     sheet: 'Sinf jurnali',
     open: 'Jurnalni ochish',

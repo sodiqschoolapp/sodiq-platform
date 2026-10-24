@@ -142,6 +142,7 @@ export interface BranchEditDays {
   changed_on: string;
   edit_days: number;
   id: Generated<string>;
+  time_zone: string;
 }
 
 export interface Branches {

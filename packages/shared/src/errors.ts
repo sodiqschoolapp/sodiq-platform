@@ -1040,8 +1040,6 @@ export const ERROR_CODES = [
   'journal_locked',
   /** Only the Academic Vice Principal of the branch or the Super Admin corrects a mark (edge/journal, Locks, unlocks and corrections; task 8.4). */
   'journal_correction_role',
-  /** A correction takes no bulk action, and an undo never undoes one (task 8.4, decision 9). */
-  'journal_correction_bulk',
   /** The lesson or rating exam is still open for the person: nothing to unlock (task 8.4). */
   'journal_not_locked',
   /** The person already has a waiting request for it (task 8.4). */

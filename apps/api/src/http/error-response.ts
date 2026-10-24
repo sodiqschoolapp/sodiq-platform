@@ -478,7 +478,6 @@ const MESSAGE: Record<ErrorCode, string> = {
   journal_locked: 'The edit period has ended and no open unlock covers the write.',
   journal_correction_role:
     'Only the Academic Vice Principal of the branch or the Super Admin corrects.',
-  journal_correction_bulk: 'A correction takes no bulk action.',
   journal_not_locked: 'The lesson is still open for the person.',
   journal_unlock_waiting: 'The person already has a waiting request for it.',
   journal_unlock_scope: 'The request is not routed to the reader.',

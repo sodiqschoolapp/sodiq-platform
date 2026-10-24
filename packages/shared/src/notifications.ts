@@ -428,6 +428,20 @@ export const NOTIFICATION_KINDS = {
     after: z.string().min(1).max(20),
     reason: z.string().min(1).max(500),
   }),
+  /** A corrected total of a work, with its old and new value. */
+  'journal.correction_total': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    before: z.string().min(1).max(20),
+    after: z.string().min(1).max(20),
+    reason: z.string().min(1).max(500),
+  }),
+  /** A work added, removed, carried or marked "not held", or a comment, corrected. */
+  'journal.correction_lesson': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    reason: z.string().min(1).max(500),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

@@ -672,7 +672,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Урок закрыт: срок редактирования истёк. Чтобы изменить его, отправьте запрос на открытие.',
     journal_correction_role:
       'Исправлять отметки может только заместитель директора по учебной работе или суперадминистратор.',
-    journal_correction_bulk: 'Исправление вносится по одной ячейке.',
     journal_not_locked: 'Этот урок ещё открыт для вас. Открывать его не нужно.',
     journal_unlock_waiting: 'У вас уже есть ожидающий запрос на открытие.',
     journal_unlock_scope: 'Этот запрос решаете не вы.',
@@ -3968,6 +3967,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         request_refused: 'Ваш запрос отклонён: {{unit}}, {{quarter}}-я четверть: {{reason}}.',
       },
       journal: {
+        correction_total:
+          'Максимальный балл в {{unit}}, {{date}} исправлен: {{before}} → {{after}}. Причина: {{reason}}',
+        correction_lesson:
+          'Работы или комментарии {{unit}}, {{date}} исправлены. Причина: {{reason}}',
         unlock_requested: '{{name}} просит открыть журнал {{unit}} за {{date}}.',
         unlock_approved:
           'Ваш запрос на открытие {{unit}}, {{date}} одобрен: открыто до конца {{until}}.',
@@ -5823,6 +5826,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       extensionLine: '{{from}} – {{to}}: открыто до {{until}}, продлил(а) {{name}}. {{reason}}',
       extensionsEmpty: 'Продлений пока нет.',
       extended: 'Срок редактирования продлён.',
+      dateNeeded: 'Выберите дату.',
     },
     sheet: 'Классный журнал',
     open: 'Открыть журнал',

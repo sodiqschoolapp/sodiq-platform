@@ -1,12 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  schoolDateOf,
-  type EditExtension,
-  type EditExtensionCreate,
-  type EditExtensions,
-} from '@sodiq/shared';
+import { type EditExtension, type EditExtensionCreate, type EditExtensions } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -42,12 +37,6 @@ export class ExtensionsService {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const branch = await transaction
-            .selectFrom('branches')
-            .select('time_zone')
-            .where('id', '=', branchId)
-            .executeTakeFirstOrThrow();
-          const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
           const year = await transaction
             .selectFrom('academic_years')
             .select([
@@ -64,7 +53,7 @@ export class ExtensionsService {
           ) {
             throw new ApiException('journal_extension_dates', 409);
           }
-          if (input.toDate > today) throw new ApiException('journal_extension_future', 409);
+          // A day after today is refused by journal_edit_extensions_write (0122), mapped below.
           const row = await transaction
             .insertInto('journal_edit_extensions')
             .values({

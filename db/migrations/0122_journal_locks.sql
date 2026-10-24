@@ -43,6 +43,9 @@ create table branch_edit_days (
   -- The setting is 1 to 30 (branch_settings); a fixture of the migrator may
   -- write a longer period to keep its lessons open.
   edit_days smallint not null constraint branch_edit_days_edit_days_check check (edit_days >= 1),
+  -- The branch's time zone in force for the days after the change (review of the code,
+  -- must-fix 1): a change of the time zone is logged too, so a lock never moves.
+  time_zone text not null,
   -- The transaction's moment (the injected clock); null for the first row.
   changed_at timestamptz,
   constraint branch_edit_days_day_key unique (branch_id, changed_on)
@@ -53,14 +56,16 @@ create policy branch_filter on branch_edit_days for all to sodiq_app
   using (branch_id = any ((select app_branch_ids())::uuid[]))
   with check (branch_id = any ((select app_branch_ids())::uuid[]));
 
-insert into branch_edit_days (branch_id, changed_on, edit_days)
-  select s.branch_id, '-infinity', s.edit_days from branch_settings s;
+insert into branch_edit_days (branch_id, changed_on, edit_days, time_zone)
+  select s.branch_id, '-infinity', s.edit_days, b.time_zone
+  from branch_settings s
+  join branches b on b.id = s.branch_id;
 
--- The trigger runs as the writer; a direct write of the application is
+-- The triggers run as the writer; a direct write of the application is
 -- refused (the depth guard of 0058, for the application only: a fixture of
 -- the migrator sets the edit days of its test branch here). No delete.
 grant select, insert on branch_edit_days to sodiq_app;
-grant update (edit_days, changed_at) on branch_edit_days to sodiq_app;
+grant update (edit_days, time_zone, changed_at) on branch_edit_days to sodiq_app;
 
 create function branch_edit_days_direct() returns trigger
 language plpgsql
@@ -79,36 +84,49 @@ create trigger branch_edit_days_direct
   before insert or update on branch_edit_days
   for each row execute function branch_edit_days_direct();
 
-create function branch_settings_edit_days_log() returns trigger
+-- The moment of a change of the log: the transaction's (the injected clock); a
+-- change by the migrator outside a request (a data fix) takes `now()`.
+create function branch_edit_days_moment() returns timestamptz
 language plpgsql
+stable
 set search_path = pg_catalog, public
 as $$
 declare
   moment timestamptz;
-  day date;
 begin
-  if tg_op = 'INSERT' then
-    insert into branch_edit_days (branch_id, changed_on, edit_days)
-      values (new.branch_id, '-infinity', new.edit_days)
-      on conflict (branch_id, changed_on) do nothing;
-    return null;
-  end if;
-  if new.edit_days = old.edit_days then
-    return null;
-  end if;
   moment := class_tutors_moment();
   if moment is null then
     if session_user = 'sodiq_app' then
       raise exception 'journal_cell_moment'
         using errcode = 'check_violation', constraint = 'journal_cell_moment';
     end if;
-    -- A change by the migrator outside a request (a data fix).
     moment := now();
   end if;
-  select (moment at time zone b.time_zone)::date into day
-    from branches b where b.id = new.branch_id;
-  insert into branch_edit_days (branch_id, changed_on, edit_days, changed_at)
-    values (new.branch_id, day, new.edit_days, moment)
+  return moment;
+end;
+$$;
+
+create function branch_settings_edit_days_log() returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+declare
+  moment timestamptz;
+  zone text;
+begin
+  select b.time_zone into zone from branches b where b.id = new.branch_id;
+  if tg_op = 'INSERT' then
+    insert into branch_edit_days (branch_id, changed_on, edit_days, time_zone)
+      values (new.branch_id, '-infinity', new.edit_days, zone)
+      on conflict (branch_id, changed_on) do nothing;
+    return null;
+  end if;
+  if new.edit_days = old.edit_days then
+    return null;
+  end if;
+  moment := branch_edit_days_moment();
+  insert into branch_edit_days (branch_id, changed_on, edit_days, time_zone, changed_at)
+    values (new.branch_id, (moment at time zone zone)::date, new.edit_days, zone, moment)
     on conflict (branch_id, changed_on)
       do update set edit_days = excluded.edit_days, changed_at = excluded.changed_at;
   return null;
@@ -118,6 +136,42 @@ $$;
 create trigger branch_settings_edit_days_log
   after insert or update of edit_days on branch_settings
   for each row execute function branch_settings_edit_days_log();
+
+-- A change of the branch's time zone is logged too (decision 2: "a change of the
+-- time zone re-stores nothing"): a lesson dated on or before the change day keeps
+-- the zone it locks in, a later one takes the new zone, with the edit days in force.
+create function branches_time_zone_log() returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+declare
+  moment timestamptz;
+  day date;
+  days smallint;
+begin
+  if new.time_zone = old.time_zone then
+    return null;
+  end if;
+  moment := branch_edit_days_moment();
+  day := (moment at time zone old.time_zone)::date;
+  select d.edit_days into days from branch_edit_days d
+    where d.branch_id = new.id and d.changed_on <= day
+    order by d.changed_on desc
+    limit 1;
+  if days is null then
+    return null;
+  end if;
+  insert into branch_edit_days (branch_id, changed_on, edit_days, time_zone, changed_at)
+    values (new.id, day, days, new.time_zone, moment)
+    on conflict (branch_id, changed_on)
+      do update set time_zone = excluded.time_zone, changed_at = excluded.changed_at;
+  return null;
+end;
+$$;
+
+create trigger branches_time_zone_log
+  after update of time_zone on branches
+  for each row execute function branches_time_zone_log();
 
 -- ---------------------------------------------------------------------------
 -- The branch-wide extension (decision 13): the Academic Vice Principal
@@ -187,9 +241,9 @@ create trigger journal_edit_extensions_write
 
 -- ---------------------------------------------------------------------------
 -- The lock moment of a day of a branch (decision 1): 00:00 of the branch day
--- after the day plus the edit days in force for that day, so 23:59 of the
--- last day is still open; never earlier than an extension whose range holds
--- the day. Run as the invoker: both tables are read through the branch filter.
+-- after the day plus the edit days in force for that day, in the time zone in
+-- force for it, so 23:59 of the last day is still open; never earlier than an
+-- extension whose range holds the day. Run as the invoker: both tables are read through the branch filter.
 
 create function journal_lock_moment(branch_ref uuid, day date) returns timestamptz
 language sql
@@ -197,21 +251,19 @@ stable
 set search_path = pg_catalog, public
 as $$
   select greatest(
-    (
-      (day + (
-        select d.edit_days from branch_edit_days d
-        where d.branch_id = branch_ref and d.changed_on < day
-        order by d.changed_on desc
-        limit 1
-      ) + 1)::timestamp at time zone b.time_zone
-    ),
+    ((day + d.edit_days + 1)::timestamp at time zone d.time_zone),
     (
       select max(x.open_until) from journal_edit_extensions x
       where x.branch_id = branch_ref and x.from_date <= day and day <= x.to_date
     )
   )
-  from branches b
-  where b.id = branch_ref and day is not null
+  from (
+    select e.edit_days, e.time_zone from branch_edit_days e
+    where e.branch_id = branch_ref and e.changed_on < day
+    order by e.changed_on desc
+    limit 1
+  ) d
+  where day is not null
 $$;
 
 -- The lock of a lesson, from its date.
