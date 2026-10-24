@@ -6762,10 +6762,14 @@ try {
     const source = await lessonsKit.source(
       transfersBranch,
       yearId,
-      [
-        { classId, groupId: null, subjectId: algebra, rowTeacherId: staffId },
-        { classId: leedsId, groupId: null, subjectId: algebra, rowTeacherId: staffId },
-      ],
+      [{ classId, groupId: null, subjectId: algebra, rowTeacherId: staffId }],
+      startDate,
+    );
+    // 7 Leeds of a source of its own: one pattern entry per teacher and time (`pattern_entries_teacher_excl`).
+    const leedsSource = await lessonsKit.source(
+      transfersBranch,
+      yearId,
+      [{ classId: leedsId, groupId: null, subjectId: algebra, rowTeacherId: staffId }],
       startDate,
     );
     for (const unit of [classId, leedsId]) {
@@ -6847,8 +6851,8 @@ try {
           lesson_date: leedsDay,
           starts_at: new Date(`${leedsDay}T08:00:00+05:00`),
           ends_at: new Date(`${leedsDay}T08:45:00+05:00`),
-          version_id: source.versionId,
-          pattern_block_id: source.patternBlockId,
+          version_id: leedsSource.versionId,
+          pattern_block_id: leedsSource.patternBlockId,
         })
         .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
         .executeTakeFirstOrThrow();
@@ -6863,8 +6867,8 @@ try {
           class_id: leedsId,
           subject_id: algebra,
           teacher_id: staffId,
-          load_row_id: source.lessons[1]?.loadRowId ?? '',
-          pattern_entry_id: source.lessons[1]?.patternEntryId ?? '',
+          load_row_id: leedsSource.lessons[0]?.loadRowId ?? '',
+          pattern_entry_id: leedsSource.lessons[0]?.patternEntryId ?? '',
         })
         .execute();
     });
