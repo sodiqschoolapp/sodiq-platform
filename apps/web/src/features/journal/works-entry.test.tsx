@@ -377,4 +377,64 @@ describe('classwork and homework in the grid', () => {
       ),
     ).toEqual([undefined, 'keep']);
   });
+
+  it('sets the empty cells of present students "not graded" in one click, with the count asked and the answer told (task 8.7)', async () => {
+    const stored: JournalWork = { ...TEST, id: uid(80), total: 30, version: 2 };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        lesson(PLANNED, '2026-10-19', { works: [stored], status: 'in_progress' }),
+        lesson(NO_PLAN, '2026-10-26', { planItem: false }),
+      ],
+      students: GRID.students.map((one, index) =>
+        index === 0
+          ? {
+              ...one,
+              cells: one.cells.map((cell, at) =>
+                at === 0
+                  ? {
+                      ...cell,
+                      works: [
+                        {
+                          score: 12,
+                          percent: 40,
+                          version: 1,
+                          onAbsent: false,
+                          marker: null,
+                          notGraded: false,
+                        },
+                      ],
+                    }
+                  : cell,
+              ),
+            }
+          : one,
+      ),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [`POST /api/journal/lessons/${PLANNED}/not-graded`]: () =>
+        json({ filled: [{ studentId: uid(102), workId: uid(80), version: 1 }], skipped: [] }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    // The lesson's status in its header (07: "in the journal header").
+    await waitFor(() => {
+      expect(document.body.textContent).toContain(en.journal.lessonStatus.in_progress);
+    });
+    const buttons = await screen.findAllByRole('button', { name: en.journal.works.button });
+    fireEvent.click(buttons[0] as HTMLElement);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.notGraded.button }));
+    const question = await screen.findByRole('alertdialog');
+    expect(question.textContent).toContain('1 empty cell of a present student');
+    fireEvent.click(
+      within(question).getByRole('button', { name: en.journal.notGraded.confirmAction }),
+    );
+    await waitFor(() => {
+      expect(sent(calls, `POST /api/journal/lessons/${PLANNED}/not-graded`)).toEqual([{}]);
+    });
+    expect(await screen.findByText('1 cell set "not graded".')).not.toBeNull();
+  });
 });

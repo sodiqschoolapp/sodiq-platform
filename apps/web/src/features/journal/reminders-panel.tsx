@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
-import { schoolDateText } from '@/lib/dates';
+import { momentText, schoolDateText } from '@/lib/dates';
 
 type Language = 'uz' | 'ru' | 'en';
 
@@ -77,7 +77,7 @@ export function RemindersPanel({
               ? t('journal.reminders.no_topic')
               : reminder.kind === 'about_to_lock'
                 ? t('journal.reminders.about_to_lock', {
-                    date: new Date(reminder.locksAt ?? '').toLocaleString(i18n.language),
+                    date: momentText(i18n.language, reminder.locksAt ?? ''),
                   })
                 : t(`journal.reminders.${reminder.kind}`, { count: reminder.count });
           return (

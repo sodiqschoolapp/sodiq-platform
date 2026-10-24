@@ -385,7 +385,11 @@ export function useWorksEntry(
       {graded !== null && (
         <p className="text-sm" data-not-graded-notice="true">
           {t('journal.notGraded.filled', { count: graded.filled })}
-          {graded.skipped > 0 && ` ${t('journal.notGraded.skipped', { count: graded.skipped })}`}
+          {graded.skipped > 0 && (
+            <span className="ml-1">
+              {t('journal.notGraded.skipped', { count: graded.skipped })}
+            </span>
+          )}
         </p>
       )}
       {aboveTotal.length > 0 && (
