@@ -1408,7 +1408,8 @@ export class TimetableCalendarLessons {
     if (!input.preview && keptGroups.length > 0) {
       const keptLessons = await transaction
         .selectFrom('lessons')
-        .innerJoin('branches', 'branches.id', 'lessons.branch_id')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .innerJoin('pattern_blocks', 'pattern_blocks.id', 'lesson_blocks.pattern_block_id')
         .select('lessons.id')
         .where('lessons.branch_id', '=', branchId)
         .where('lessons.cancel_cause', 'is', null)
@@ -1418,11 +1419,9 @@ export class TimetableCalendarLessons {
               where.and([
                 where('lessons.group_id', 'in', [...one.groupIds]),
                 where('lessons.lesson_date', '=', one.date),
-                where(
-                  sql<number>`extract(epoch from ((lessons.starts_at at time zone branches.time_zone) - lessons.lesson_date::timestamp)) / 60`,
-                  '=',
-                  one.start,
-                ),
+                // The block's weekly start, as the choice is stored (0126): the kept lesson's own
+                // start on the date follows the holding grade's template (review finding 1).
+                where('pattern_blocks.start_minutes', '=', one.start),
               ]),
             ),
           ),

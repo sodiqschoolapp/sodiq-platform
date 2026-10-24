@@ -549,6 +549,33 @@ describe('calendar entries after publishing', () => {
       const groupBlocks = (s: Scene, choice: 'keep' | 'cancel') => [
         { weekday: 1, start: 590, groupIds: [s.groupId ?? ''], choice },
       ];
+      /** One student of the grade-9 class and one of the grade-10 class in the group (task 8.5). */
+      const seatBoth = async (s: Scene) => {
+        const members = new MembersKit(t.database.migrator, await load.classes.account());
+        for (const [classId, grade] of [
+          [s.nineClassId ?? '', 9],
+          [s.seniorId, 10],
+        ] as const) {
+          const studentId = await members.student(s.branch, { startsOn: '2026-09-01', grade });
+          // The class row and the group row together: a class row needs its groups at the commit.
+          await t.database.migrator.transaction().execute(async (transaction) => {
+            await members.member(
+              { branch: s.branch, classId, studentId, from: '2026-09-01' },
+              transaction,
+            );
+            await members.groupMember(
+              {
+                branch: s.branch,
+                groupId: s.groupId ?? '',
+                subjectId: s.sportId ?? '',
+                studentId,
+                from: '2026-09-01',
+              },
+              transaction,
+            );
+          });
+        }
+      };
       const groupOn = async (s: Scene, date: string) =>
         (await lessonsOn(s.branch, date)).filter((one) => one.group_id === s.groupId);
       const choicesOf = (branch: string) =>
@@ -843,30 +870,7 @@ describe('calendar entries after publishing', () => {
       // is exempt from the kept block "as for an excursion"; the coach and its Tutor are told once.
       it('with "keep" tells the coach and the Tutor of the grade that is off, once', async () => {
         const s = await scene({ group: true });
-        const members = new MembersKit(t.database.migrator, await load.classes.account());
-        for (const [classId, grade] of [
-          [s.nineClassId ?? '', 9],
-          [s.seniorId, 10],
-        ] as const) {
-          const studentId = await members.student(s.branch, { startsOn: '2026-09-01', grade });
-          // The class row and the group row together: a class row needs its groups at the commit.
-          await t.database.migrator.transaction().execute(async (transaction) => {
-            await members.member(
-              { branch: s.branch, classId, studentId, from: '2026-09-01' },
-              transaction,
-            );
-            await members.groupMember(
-              {
-                branch: s.branch,
-                groupId: s.groupId ?? '',
-                subjectId: s.sportId ?? '',
-                studentId,
-                from: '2026-09-01',
-              },
-              transaction,
-            );
-          });
-        }
+        await seatBoth(s);
         const tutor = await load.classes.account();
         const assignment = await t.kit.giveRole(tutor, {
           role: 'tutor',
@@ -885,6 +889,37 @@ describe('calendar entries after publishing', () => {
           .execute();
         expect(told.map((one) => one.account_id).sort()).toEqual([s.coachAccount, tutor].sort());
         expect(told[0]?.data).toMatchObject({ date: OCT19 });
+      });
+
+      // Review of the code of 8.5, finding 1: the choice is stored at the block's weekly start
+      // (09:50); a special day of grade 10 moves the kept lesson to 10:30 on the date, and the
+      // kept lesson is still found by its block's weekly start.
+      it('with "keep" tells the coach when the kept lesson is at another time on the date than its weekly start', async () => {
+        const s = await scene({ group: true });
+        await seatBoth(s);
+        const pause = await t.createSlotType(s.branch, 'Long break', 'break', 30);
+        const late = await t.createTemplate(s.branch, 'Late', [
+          s.lessonType,
+          pause,
+          s.lessonType,
+          pause,
+          s.lessonType,
+        ]);
+        okay(
+          await create(s.branch, { ...specialDay(OCT19, OCT19, late), gradeFrom: 10, gradeTo: 10 }),
+          201,
+        );
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        const [kept] = await groupOn(s, OCT19);
+        expect(kept?.cancel_cause).toBeNull();
+        expect(kept?.starts_at).toEqual(new Date(`${OCT19}T10:30:00+05:00`));
+        const told = await t.database.migrator
+          .selectFrom('notifications')
+          .select('account_id')
+          .where('kind', '=', 'journal.exemption_kept_block')
+          .where('account_id', '=', s.coachAccount ?? '')
+          .execute();
+        expect(told).toHaveLength(1);
       });
 
       it('a later version\'s block of the group at another time is cancelled "day off" and offered unchosen', async () => {

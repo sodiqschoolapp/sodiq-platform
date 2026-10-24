@@ -590,8 +590,11 @@ describe('exemptions in the database', () => {
   });
 
   describe('the kept blocks (decision 12)', () => {
-    /** Classes A (grade 7) and B (grade 8), one student each, and a group of both with its lesson on the date. */
-    async function shared(date: string, withB = true) {
+    /**
+     * Classes A (grade 7) and B (grade 8), one student each, and a group of both (or of A alone
+     * with `feedB` false) with its lesson on the date.
+     */
+    async function shared(date: string, withB = true, feedB = true) {
       const classA = await cells.lessons.load.classes.schoolClass(north, northYear, { grade: 7 });
       const classB = await cells.lessons.load.classes.schoolClass(north, northYear, { grade: 8 });
       const [a] = await cells.lessons.pupils(north, classA, 1);
@@ -602,10 +605,12 @@ describe('exemptions in the database', () => {
         studentId: b,
         from: '2026-09-01',
       });
-      const group = await cells.lessons.load.classes.group(north, northYear, cells.subject, [
-        classA,
-        classB,
-      ]);
+      const group = await cells.lessons.load.classes.group(
+        north,
+        northYear,
+        cells.subject,
+        feedB ? [classA, classB] : [classA],
+      );
       for (const student of withB ? [a ?? '', b] : [a ?? '']) {
         await cells.lessons.inGroup(north, group, cells.subject, student);
       }
@@ -618,8 +623,11 @@ describe('exemptions in the database', () => {
       return { classA, classB, a: a ?? '', b, group, lesson, row };
     }
 
-    it('takes the chosen class out of a block a bulk cancel kept (From 5.6a-3)', async () => {
-      const { classA, a, b, lesson, row } = await shared('2026-10-20');
+    /** A bulk cancel of the date that chose the class for the lesson's time and kept its block. */
+    async function keptByBulkCancel(
+      row: { block_id: string; starts_at: Date; ends_at: Date; lesson_date: string },
+      classId: string,
+    ) {
       await database.migrator.transaction().execute(async (transaction) => {
         const cancel = await transaction
           .insertInto('bulk_cancels')
@@ -635,14 +643,14 @@ describe('exemptions in the database', () => {
           .executeTakeFirstOrThrow();
         await transaction
           .insertInto('bulk_cancel_classes')
-          .values({ branch_id: north, bulk_cancel_id: cancel.id, class_id: classA })
+          .values({ branch_id: north, bulk_cancel_id: cancel.id, class_id: classId })
           .execute();
         await transaction
           .insertInto('bulk_cancel_spans')
           .values({
             branch_id: north,
             bulk_cancel_id: cancel.id,
-            class_id: classA,
+            class_id: classId,
             lesson_number: 1,
             starts_at: row.starts_at,
             ends_at: row.ends_at,
@@ -661,59 +669,20 @@ describe('exemptions in the database', () => {
           })
           .execute();
       });
-      expect(await expected(lesson, a)).toEqual({ expected: false, kind: 'temporary' });
-      expect(await expected(lesson, b)).toEqual({ expected: true, kind: null });
-    });
+    }
 
-    it('takes nobody out of a lesson fed by the chosen classes alone (From 6.1b-2)', async () => {
-      const { classA, a, lesson, row } = await shared('2026-10-21', false);
-      // Only a student of class A is a member: the lesson is fed by class A alone.
-      await database.migrator.transaction().execute(async (transaction) => {
-        const cancel = await transaction
-          .insertInto('bulk_cancels')
-          .values({
-            branch_id: north,
-            cancel_date: row.lesson_date,
-            lesson_numbers: [1],
-            reason: 'Excursion',
-            changed_at: new Date(NOW),
-            changed_by: account,
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        await transaction
-          .insertInto('bulk_cancel_classes')
-          .values({ branch_id: north, bulk_cancel_id: cancel.id, class_id: classA })
-          .execute();
-        await transaction
-          .insertInto('bulk_cancel_spans')
-          .values({
-            branch_id: north,
-            bulk_cancel_id: cancel.id,
-            class_id: classA,
-            lesson_number: 1,
-            starts_at: row.starts_at,
-            ends_at: row.ends_at,
-          })
-          .execute();
-        await transaction
-          .insertInto('bulk_cancel_blocks')
-          .values({
-            branch_id: north,
-            bulk_cancel_id: cancel.id,
-            block_id: row.block_id,
-            choice: 'keep',
-            lesson_date: row.lesson_date,
-            starts_at: row.starts_at,
-            ends_at: row.ends_at,
-          })
-          .execute();
-      });
-      expect(await expected(lesson, a)).toEqual({ expected: true, kind: null });
-    });
+    /** The weekly start of the lesson's block, as a day off's choice of a group block stores it (0090). */
+    const weeklyStartOf = async (lesson: string) =>
+      await database.migrator
+        .selectFrom('lessons')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .innerJoin('pattern_blocks', 'pattern_blocks.id', 'lesson_blocks.pattern_block_id')
+        .select(['pattern_blocks.id', 'pattern_blocks.start_minutes'])
+        .where('lessons.id', '=', lesson)
+        .executeTakeFirstOrThrow();
 
-    it('takes the grade that is off out of a two-grade group kept on a day off (From 5.6b-3)', async () => {
-      const { a, b, lesson, row, group } = await shared('2026-10-22');
+    /** A day off of grade 8 on the date that keeps the group's block at its weekly start. */
+    async function keptOnDayOff(lessonDate: string, group: string, start: number) {
       await database.migrator.transaction().execute(async (transaction) => {
         await sql`select set_config('app.now', ${NOW}, true)`.execute(transaction);
         const entry = await transaction
@@ -722,24 +691,22 @@ describe('exemptions in the database', () => {
             branch_id: north,
             kind: 'day_off',
             name: 'Grade 8 trip',
-            first_date: row.lesson_date,
-            last_date: row.lesson_date,
+            first_date: lessonDate,
+            last_date: lessonDate,
             grade_from: 8,
             grade_to: 8,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
-        const local = new Date(row.starts_at);
-        const minutes = (local.getUTCHours() + 5) * 60 + local.getUTCMinutes();
         const kept = await transaction
           .insertInto('calendar_group_blocks')
           .values({
             branch_id: north,
             calendar_entry_id: entry.id,
-            lesson_date: row.lesson_date,
+            lesson_date: lessonDate,
             weekday: 4,
-            start_minutes: minutes,
-            end_minutes: minutes + 45,
+            start_minutes: start,
+            end_minutes: start + 45,
             choice: 'keep',
           })
           .returning('id')
@@ -751,11 +718,49 @@ describe('exemptions in the database', () => {
             block_id: kept.id,
             group_id: group,
             calendar_entry_id: entry.id,
-            lesson_date: row.lesson_date,
-            start_minutes: minutes,
+            lesson_date: lessonDate,
+            start_minutes: start,
           })
           .execute();
       });
+    }
+
+    it('takes the chosen class out of a block a bulk cancel kept (From 5.6a-3)', async () => {
+      const { classA, a, b, lesson, row } = await shared('2026-10-20');
+      await keptByBulkCancel(row, classA);
+      expect(await expected(lesson, a)).toEqual({ expected: false, kind: 'temporary' });
+      expect(await expected(lesson, b)).toEqual({ expected: true, kind: null });
+    });
+
+    it('takes nobody out of a lesson fed by the chosen classes alone (From 6.1b-2)', async () => {
+      // A group of class A alone (its feeder classes, as the bulk cancel's `chosenOnly` reads them).
+      const { classA, a, lesson, row } = await shared('2026-10-21', false, false);
+      await keptByBulkCancel(row, classA);
+      expect(await expected(lesson, a)).toEqual({ expected: true, kind: null });
+    });
+
+    it('takes the chosen class out of a two-class group whose members are all of it (review finding 2)', async () => {
+      // Fed by classes A and B, with members of A only: a shared block the cancel kept for B.
+      const { classA, a, lesson, row } = await shared('2026-10-19', false);
+      await keptByBulkCancel(row, classA);
+      expect(await expected(lesson, a)).toEqual({ expected: false, kind: 'temporary' });
+    });
+
+    it('takes the grade that is off out of a two-grade group kept on a day off (From 5.6b-3)', async () => {
+      const { a, b, lesson, row, group } = await shared('2026-10-22');
+      await keptOnDayOff(row.lesson_date, group, (await weeklyStartOf(lesson)).start_minutes);
+      expect(await expected(lesson, b)).toEqual({ expected: false, kind: 'temporary' });
+      expect(await expected(lesson, a)).toEqual({ expected: true, kind: null });
+    });
+
+    it('finds the kept block by its weekly start when the lesson is at another time on the date (review finding 1)', async () => {
+      const { a, b, lesson, row, group } = await shared('2026-10-16');
+      // The kit dates the lesson at a time of its own, apart from its pattern block's weekly start,
+      // as a slot choice or a special-day template places a kept lesson (`dated.ts`, `dayOn`).
+      const weekly = (await weeklyStartOf(lesson)).start_minutes;
+      const local = new Date(row.starts_at);
+      expect((local.getUTCHours() + 5) * 60 + local.getUTCMinutes()).not.toBe(weekly);
+      await keptOnDayOff(row.lesson_date, group, weekly);
       expect(await expected(lesson, b)).toEqual({ expected: false, kind: 'temporary' });
       expect(await expected(lesson, a)).toEqual({ expected: true, kind: null });
     });
