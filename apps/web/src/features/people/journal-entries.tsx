@@ -55,6 +55,19 @@ export function voidableEntries(error: unknown): MetEntry[] {
   return entries.length > 0 && entries.every((entry) => entry.detail.voidable) ? entries : [];
 }
 
+/**
+ * A refusal that only says the list sent is not the list now, with no entry left
+ * to void: the entries went meanwhile (review of the code, finding 9).
+ */
+export function listEmptied(error: unknown): boolean {
+  if (!(error instanceof ApiFailure) || !VOID_CODES.has(error.code)) return false;
+  const details = error.details ?? [];
+  return (
+    details.some((detail) => detail.changed === true) &&
+    details.every((detail) => detail.journalEntry === undefined)
+  );
+}
+
 /** What an entry holds, in words. */
 export function entryText(t: TFunction, entry: JournalEntryDetail): string {
   if (entry.kind === 'comment') return t('people.students.journalEntries.comment');
@@ -105,6 +118,11 @@ export function useJournalEntries(options: {
       try {
         return await send(choice);
       } catch (error) {
+        // The entries went meanwhile: the change is sent once more with no choice.
+        if (choice !== undefined && listEmptied(error)) {
+          choice = undefined;
+          continue;
+        }
         const entries = voidableEntries(error);
         if (entries.length === 0) throw error;
         const reason = await ask(entries);

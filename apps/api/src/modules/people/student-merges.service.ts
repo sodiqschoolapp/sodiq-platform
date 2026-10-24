@@ -26,7 +26,6 @@ import {
   entriesLeft,
   entryDetail,
   lockStudentEntries,
-  refuseForeignSeen,
   voidEntries,
   type MetEntry,
 } from '../journal/journal-entries.js';
@@ -1366,7 +1365,19 @@ export class StudentMerges {
     },
   ): Promise<Record<string, unknown>> {
     if (input.choice !== undefined) {
-      await refuseForeignSeen(transaction, input.choice.seen);
+      // The transaction holds every branch: an id that is not an entry of the merged
+      // record (another branch's, another student's, or unknown) is 404
+      // (`.claude/rules/api.md`: the Super Admin's change still answers 404).
+      const ids = [...new Set(input.choice.seen.map((one) => one.id.toLowerCase()))];
+      const own = await sql<{ id: string }>`
+        select id from journal_cells where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+        union all
+        select id from journal_comments where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+        union all
+        select id from journal_rating_entries
+        where id = any(${ids}::uuid[]) and student_id = ${input.mergedId}::uuid
+      `.execute(transaction);
+      if (own.rows.length !== ids.length) throw notFound();
     }
     const cut = await entriesLeft(transaction, input.keptId, input.entries);
     if (cut.length > 0) {

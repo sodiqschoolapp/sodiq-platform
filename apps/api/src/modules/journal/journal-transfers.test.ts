@@ -368,6 +368,85 @@ describe('transfers and leaving inside the journal', () => {
     });
   });
 
+  describe('a rating entry of the old journal (plan, Tests: transfer on rating entries)', () => {
+    it('lists it on a late move, voids it with transfer and the reason, and the undo gives it back', async () => {
+      const s = await scene('East late rating');
+      const student = await pupil(s.branch, s.oxford);
+      const lesson = await s.lesson(s.oxford, '2026-10-06');
+      await ratingEntryAndNote(
+        t,
+        { classes },
+        {
+          branch: s.branch,
+          year: s.year,
+          classId: s.oxford,
+          lessonId: lesson,
+          studentId: student.id,
+          accountId: s.by,
+          at: t.clock.now().toISOString(),
+          examDate: '2026-10-06',
+        },
+      );
+      const rating = await t.database.migrator
+        .selectFrom('journal_rating_entries')
+        .select('id')
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      const refused = await transfer(s.branch, student.id, s.yale, '2026-10-05');
+      refusedWith(refused, 409, 'journal_entries');
+      const listed = entriesOf(refused);
+      expect(listed.map((one) => one.id)).toContain(rating.id);
+      ok(
+        await transfer(s.branch, student.id, s.yale, '2026-10-05', {
+          journalEntries: {
+            reason: 'Recorded in the old class',
+            seen: listed.map(({ id, version }) => ({ id, version })),
+          },
+        }),
+      );
+      const entry = () =>
+        t.database.migrator
+          .selectFrom('journal_rating_entries')
+          .select(['kind', 'score', 'changed_how'])
+          .where('id', '=', rating.id)
+          .executeTakeFirstOrThrow();
+      expect(await entry()).toEqual({ kind: null, score: null, changed_how: 'transfer' });
+      const line = await t.database.migrator
+        .selectFrom('journal_rating_history')
+        .select(['kind_before', 'kind_after', 'score_before', 'changed_how', 'reason'])
+        .where('entry_id', '=', rating.id)
+        .orderBy('version', 'desc')
+        .executeTakeFirstOrThrow();
+      expect(line).toEqual({
+        kind_before: 'score',
+        kind_after: null,
+        score_before: 77,
+        changed_how: 'transfer',
+        reason: 'Recorded in the old class',
+      });
+      const kept = await t.database.migrator
+        .selectFrom('journal_voids')
+        .select(['score', 'rating_kind'])
+        .where('rating_entry_id', '=', rating.id)
+        .executeTakeFirstOrThrow();
+      expect(kept).toEqual({ score: 77, rating_kind: 'score' });
+      const moveId = (
+        await t.database.migrator
+          .selectFrom('student_moves')
+          .select('id')
+          .where('student_id', '=', student.id)
+          .executeTakeFirstOrThrow()
+      ).id;
+      ok(
+        await t.post(`/api/classes/transfers/${moveId}/undo`, s.branch, {
+          version: (await fresh(s.branch, student.id)).version,
+          reason: 'Moved by mistake',
+        }),
+      );
+      expect(await entry()).toEqual({ kind: 'score', score: 77, changed_how: 'transfer' });
+    });
+  });
+
   describe('a move taken back (edge, the "a mistake" row)', () => {
     it('refuses the undo while the new journal holds an entry of the student, and gives the voided values back after', async () => {
       const s = await scene('East undo');
@@ -915,17 +994,26 @@ describe('transfers and leaving inside the journal', () => {
       );
     });
 
-    it('on a merge, for an unknown entry', async () => {
+    it('on a merge, for an entry of a third branch, of another student and an unknown one', async () => {
       const s = await scene('East seen merge');
+      const third = await scene('West seen merge');
       const kept = await pupil(s.branch, s.oxford);
       const later = await pupil(s.branch, s.yale);
       const own = await s.mark(await s.lesson(s.yale, '2026-10-06'), later.id, 1);
+      const classmate = await pupil(s.branch, s.yale);
+      const other = await s.mark(await s.lesson(s.yale, '2026-10-07'), classmate.id, 1);
+      const thirdStudent = await pupil(third.branch, third.oxford);
+      const foreign = await third.mark(
+        await third.lesson(third.oxford, '2026-10-06'),
+        thirdStudent.id,
+        1,
+      );
       const preview = await t.get(
         `/api/people/students/${kept.id}/merge?uid=${later.uid}`,
         s.branch,
       );
       const digest = (preview.body as { digest: string }).digest;
-      await refusesEach([UNKNOWN], (id) =>
+      await refusesEach([foreign, other, UNKNOWN], (id) =>
         t.post(`/api/people/students/${kept.id}/merge`, s.branch, {
           uid: later.uid,
           reason: 'Created twice by mistake',
@@ -933,6 +1021,70 @@ describe('transfers and leaving inside the journal', () => {
           ...choice(own, id),
         }),
       );
+    });
+
+    it('on the cancel and undo of class and group moves and of a leaving, with journal rows in both branches', async () => {
+      // A late move with a voided entry and an optional cell, in each of two branches.
+      const voided = async (name: string) => {
+        const s = await scene(name);
+        const student = await pupil(s.branch, s.oxford);
+        await s.mark(await s.lesson(s.oxford, '2026-10-06'), student.id, 1);
+        await s.lesson(s.yale, '2026-10-07');
+        const refused = await transfer(s.branch, student.id, s.yale, '2026-10-05');
+        ok(
+          await transfer(s.branch, student.id, s.yale, '2026-10-05', {
+            journalEntries: {
+              reason: 'Old class',
+              seen: entriesOf(refused).map(({ id, version }) => ({ id, version })),
+            },
+          }),
+        );
+        const moveId = (
+          await t.database.migrator
+            .selectFrom('student_moves')
+            .select('id')
+            .where('student_id', '=', student.id)
+            .executeTakeFirstOrThrow()
+        ).id;
+        return { s, student, moveId };
+      };
+      const own = await voided('East take back');
+      const other = await voided('West take back');
+      const voids = await t.database.migrator.selectFrom('journal_voids').select('id').execute();
+      expect(voids.length).toBeGreaterThanOrEqual(2);
+      const version = async () => (await fresh(own.s.branch, own.student.id)).version;
+      for (const id of [other.moveId, UNKNOWN]) {
+        await refusesEach([id], async (moveId) =>
+          t.post(`/api/classes/transfers/${moveId}/undo`, own.s.branch, {
+            version: await version(),
+            reason: 'Moved by mistake',
+          }),
+        );
+        await refusesEach([id], async (moveId) =>
+          t.post(`/api/classes/transfers/${moveId}/cancel`, own.s.branch, {
+            version: await version(),
+          }),
+        );
+        await refusesEach([id], (moveId) =>
+          t.post(`/api/groups/transfers/${moveId}/undo`, own.s.branch, {
+            reason: 'Moved by mistake',
+          }),
+        );
+        await refusesEach([id], (moveId) =>
+          t.post(`/api/groups/transfers/${moveId}/cancel`, own.s.branch, {}),
+        );
+      }
+      for (const studentId of [other.student.id, UNKNOWN]) {
+        await refusesEach([studentId], (id) =>
+          t.post(`/api/people/students/${id}/leaving/undo`, own.s.branch, {
+            reason: 'Entered by mistake',
+            version: 1,
+          }),
+        );
+        await refusesEach([studentId], (id) =>
+          t.post(`/api/people/students/${id}/leaving/cancel`, own.s.branch, { version: 1 }),
+        );
+      }
     });
 
     it('refuses a Head Teacher of another subject a group move with 403, telling no entry', async () => {
@@ -973,6 +1125,7 @@ describe('transfers and leaving inside the journal', () => {
   });
 
   describe('at the same moment (edge/system-behaviour: "a transfer against a cell save")', () => {
+    /** Whether a backend of the test database waits on the transaction `pid`. */
     async function waitedOn(pid: number): Promise<boolean> {
       for (let tries = 0; tries < 800; tries += 1) {
         const found = await sql<{ n: number }>`
@@ -985,12 +1138,29 @@ describe('transfers and leaving inside the journal', () => {
       return false;
     }
 
+    /**
+     * Whether two backends of the test database wait for a lock: the change on the held
+     * row, and the save queued behind it (a later waiter of a row lock waits on the first
+     * one, so it does not name the held transaction).
+     */
+    async function twoWaiting(): Promise<boolean> {
+      for (let tries = 0; tries < 800; tries += 1) {
+        const found = await sql<{ n: number }>`
+          select count(*)::int as n from pg_stat_activity a
+          where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+        `.execute(t.database.migrator);
+        if ((found.rows[0]?.n ?? 0) >= 2) return true;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      return false;
+    }
+
     /** Holds `hold` open for the branch, starts `run`, waits until it waits on the hold, commits. */
     async function heldThen<T>(
       branch: string,
       hold: (transaction: Transaction) => Promise<void>,
       run: () => Promise<T>,
-      then?: () => Promise<void>,
+      then?: (heldPid: number) => Promise<void>,
     ): Promise<T> {
       let release: () => void = () => undefined;
       const released = new Promise<void>((resolve) => {
@@ -1016,7 +1186,7 @@ describe('transfers and leaving inside the journal', () => {
         run().then(resolve, reject);
       });
       expect(await waitedOn(heldPid), 'the route waited on the held transaction').toBe(true);
-      await then?.();
+      await then?.(heldPid);
       release();
       const heldError = await held;
       if (heldError !== undefined) {
@@ -1087,7 +1257,8 @@ describe('transfers and leaving inside the journal', () => {
               ]),
             )
             .catch((error: unknown) => error);
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Both the move and the save wait on the held cell before the release.
+          expect(await twoWaiting(), 'the save waited behind the change').toBe(true);
         },
       );
       ok(moved);
@@ -1135,7 +1306,8 @@ describe('transfers and leaving inside the journal', () => {
         input.change,
         async () => {
           saved = save(2);
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Both the change and the save wait on the held cell before the release.
+          expect(await twoWaiting(), 'the save waited behind the change').toBe(true);
         },
       );
       return { answer, saved: await saved };
