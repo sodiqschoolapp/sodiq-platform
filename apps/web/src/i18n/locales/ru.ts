@@ -3552,6 +3552,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         unlock_decide: 'Решение по запросу на открытие',
         unlock_withdraw: 'Запрос на открытие отозван',
         edit_extension: 'Срок редактирования продлён для филиала',
+        not_graded: 'Отмечено «без оценки»',
+        orphan_assign: 'Урок без учителя назначен',
+        orphan_withdraw: 'Назначение урока без учителя отозвано',
       },
       plan: {
         create: 'Начат план уроков',

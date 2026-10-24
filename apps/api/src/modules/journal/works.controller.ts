@@ -1,6 +1,10 @@
 import { Controller, Delete, HttpCode, Post, Put } from '@nestjs/common';
 import {
   journalLessonParamsSchema,
+  notGradedAnswerSchema,
+  notGradedSchema,
+  type NotGraded,
+  type NotGradedAnswer,
   journalWorkParamsSchema,
   scoresSaveSchema,
   scoresSavedSchema,
@@ -109,5 +113,22 @@ export class WorksController {
     @RequestId() requestId: string,
   ): Promise<ScoresSaved> {
     return this.works.saveScores(access, params.lessonId, input, key, requestId);
+  }
+
+  /**
+   * Task 8.7 (`07`, Lesson status): "the teacher can set those cells to 'not graded' in
+   * one click, which completes the lesson and leaves them out of the average".
+   */
+  @Post(':lessonId/not-graded')
+  @HttpCode(200)
+  @Requires('journal', 'edit')
+  @Returns(notGradedAnswerSchema)
+  notGraded(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
+    @ValidBody(notGradedSchema) input: NotGraded,
+    @RequestId() requestId: string,
+  ): Promise<NotGradedAnswer> {
+    return this.works.notGraded(access, params.lessonId, input, requestId);
   }
 }

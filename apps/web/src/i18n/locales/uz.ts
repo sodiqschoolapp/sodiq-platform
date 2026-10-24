@@ -3440,6 +3440,9 @@ export const uz: Texts<'one' | 'other'> = {
         unlock_decide: 'Ochish soʻrovi boʻyicha qaror',
         unlock_withdraw: 'Ochish soʻrovi qaytarib olindi',
         edit_extension: 'Filial uchun tahrirlash muddati uzaytirildi',
+        not_graded: '«Baholanmagan» belgilandi',
+        orphan_assign: 'O‘qituvchisiz dars biriktirildi',
+        orphan_withdraw: 'O‘qituvchisiz dars biriktiruvi bekor qilindi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',

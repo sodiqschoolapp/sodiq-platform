@@ -124,6 +124,8 @@ export async function saveCells(
       const values = {
         mark: save.workId === null ? save.value : null,
         score: save.workId === null ? null : save.value,
+        // Task 8.7: a number, or a person's clear, ends "not graded".
+        not_graded: false,
         changed_by: actor.accountId,
         changed_how: 'entry',
       };

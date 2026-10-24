@@ -4,6 +4,7 @@ import { absenceCategorySchema } from './attendance.js';
 import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
 import { carriedInSchema } from './journal-entries.js';
 import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
+import { lessonStatusSchema } from './lesson-status.js';
 import { subjectColourSchema } from './subjects.js';
 
 /**
@@ -155,6 +156,8 @@ export const journalLessonSchema = z.object({
   slot: z.int().min(1).nullable(),
   /** `edge/00-definitions`, Held lesson: started, not cancelled, with a teacher recorded. */
   held: z.boolean(),
+  /** Task 8.7 (`07`, Lesson status): the status of a held lesson, `null` otherwise. */
+  status: lessonStatusSchema.nullable(),
   cancelled: z.object({ cause: z.string(), reason: z.string().nullable() }).nullable(),
   /** The month whose figures count it, `YYYY-MM`. */
   month: z.string().regex(/^\d{4}-\d{2}$/),
@@ -204,6 +207,11 @@ const journalCellSchema = z.object({
   typedBy: z.string().nullable(),
   /** Task 8.4: "entered after the edit period" with the approver, or "corrected". */
   marker: cellMarkerSchema,
+  /**
+   * Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson that the reader
+   * may type into now, until its end ("can be filled for 7 days").
+   */
+  open: z.boolean(),
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
     z.object({
@@ -215,6 +223,8 @@ const journalCellSchema = z.object({
       onAbsent: z.boolean(),
       /** Task 8.4: as the attendance cell's `marker`. */
       marker: cellMarkerSchema,
+      /** Task 8.7 (`07`, Lesson status): set "not graded", left out of the average. */
+      notGraded: z.boolean(),
     }),
   ),
   /** The lesson score (AVG), `null` when blank or for an attendance-only subject. */

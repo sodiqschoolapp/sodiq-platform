@@ -3402,6 +3402,9 @@ export const en = {
         unlock_decide: 'Unlock request decided',
         unlock_withdraw: 'Unlock request withdrawn',
         edit_extension: 'Edit period extended for the branch',
+        not_graded: 'Not graded set',
+        orphan_assign: 'Orphan lesson assigned',
+        orphan_withdraw: 'Orphan lesson assignment withdrawn',
       },
       plan: {
         create: 'Lesson plan started',

@@ -40,7 +40,8 @@ import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
-import { markersOf, optionalCellsOf, shownMarker } from './cell-markers.js';
+import { markersOf, optionalCellsOf, reopenedCellsOf, shownMarker } from './cell-markers.js';
+import { lessonStatuses } from './lesson-status.query.js';
 import {
   correctorAssignment,
   editLockOf,
@@ -633,6 +634,7 @@ export class JournalGridReader {
       >();
       const scores = new Map<string, number | null>();
       const scoreIds = new Map<string, string>();
+      const notGraded = new Set<string>();
       for (const cell of cells) {
         if (cell.studentId !== student.id) continue;
         if (cell.workId === null) {
@@ -647,6 +649,7 @@ export class JournalGridReader {
           scores.set(cell.workId, cell.score);
           scoreVersions.set(cell.workId, cell.version);
           scoreIds.set(cell.workId, cell.id);
+          if (cell.notGraded) notGraded.add(cell.workId);
         }
       }
       const gridCells: JournalCell[] = lessons.map((lesson) => {
@@ -682,6 +685,8 @@ export class JournalGridReader {
             markers.get(attendanceCells.get(lesson.id)?.id ?? ''),
             optional.get(`${lesson.id}|${student.id}`),
           ),
+          // Set below, once the reader's edit period of each lesson is known.
+          open: false,
           works:
             shape === 'attendance'
               ? []
@@ -700,6 +705,7 @@ export class JournalGridReader {
                       markers.get(scoreIds.get(work.id) ?? ''),
                       optional.get(`${lesson.id}|${student.id}`),
                     ),
+                    notGraded: work.id !== '' && notGraded.has(work.id),
                   };
                 }),
           score,
@@ -921,8 +927,27 @@ export class JournalGridReader {
         staffId,
         today,
       );
+    // Task 8.7 (decision 15): the lessons assigned to the reader as orphan lessons, open now.
+    const assigned = new Set(
+      staffId === null || lessonIds.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('journal_orphan_assignments')
+              .select('lesson_id')
+              .where('lesson_id', 'in', lessonIds)
+              .where('staff_id', '=', staffId)
+              .where('withdrawn_at', 'is', null)
+              .where('assigned_at', '<=', now)
+              .where('open_until', '>', now)
+              .execute()
+          ).map((row) => row.lesson_id),
+    );
     const theirs = (lesson: GridLessonRow): boolean =>
-      entering && !outNow && held.get(lesson.id) === true && teachesIt(lesson);
+      entering &&
+      !outNow &&
+      held.get(lesson.id) === true &&
+      (teachesIt(lesson) || assigned.has(lesson.id));
     // Task 8.4: the edit period of each lesson for the reader (`edit-window.ts`).
     const locks = await locksOfLessons(transaction, lessonIds);
     const unlocks = await unlocksOfLessons(transaction, lessonIds, staffId);
@@ -949,7 +974,25 @@ export class JournalGridReader {
         },
       });
     const canEnter = (lesson: GridLessonRow): boolean =>
-      theirs(lesson) && lockOf(lesson).window !== 'locked';
+      theirs(lesson) && (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
+    // Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson takes the reader's
+    // entry until its end; the cells guard takes it as a late entry (0123, 0127).
+    const reopened = await reopenedCellsOf(transaction, lessonIds, now);
+    const openCell = (lesson: GridLessonRow, studentId: string): boolean =>
+      theirs(lesson) &&
+      lockOf(lesson).window === 'locked' &&
+      (optional.has(`${lesson.id}|${studentId}`) || reopened.has(`${lesson.id}|${studentId}`));
+    const shownStudents = gridStudents.map((student) => ({
+      ...student,
+      cells: student.cells.map((cell, index) => {
+        const lesson = lessons[index];
+        return lesson === undefined || cell.closed
+          ? cell
+          : { ...cell, open: openCell(lesson, student.id) };
+      }),
+    }));
+    // Task 8.7: the status of each held lesson, from the one reader of the status.
+    const statuses = await lessonStatuses(transaction, branchId, lessonIds, now);
     // The categories of absence of the students shown (decision 7), on the dates of the shown
     // lessons each student is expected at (permission review of the code, should-fix 4).
     const expectedOn = new Set(
@@ -1005,6 +1048,7 @@ export class JournalGridReader {
         end: lesson.end,
         slot: slots.get(lesson.id) ?? null,
         held: held.get(lesson.id) === true,
+        status: statuses.get(lesson.id)?.answer?.status ?? null,
         cancelled:
           lesson.cancelCause === null
             ? null
@@ -1028,7 +1072,7 @@ export class JournalGridReader {
                 ungraded: one.ungraded,
               })),
       })),
-      students: gridStudents,
+      students: shownStudents,
       lastTotal,
       bottom,
       absences,

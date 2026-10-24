@@ -151,6 +151,31 @@ export async function journalFactsOf(
   return ownerFactsOf(transaction, branchId, journals);
 }
 
+/**
+ * The open orphan assignment of a person on a lesson at `now` (task 8.7, decision 15;
+ * `edge/journal`: "The Academic Vice Principal assigns a teacher to complete them"),
+ * read FOR SHARE so that a withdraw held open makes the entry wait: the person enters
+ * that lesson as its teacher would, until the assignment's `open_until`.
+ */
+export async function orphanAssignmentOf(
+  transaction: Transaction,
+  lessonId: string,
+  staffId: string,
+  now: Date,
+): Promise<string | null> {
+  const found = await transaction
+    .selectFrom('journal_orphan_assignments')
+    .select('id')
+    .where('lesson_id', '=', lessonId)
+    .where('staff_id', '=', staffId)
+    .where('withdrawn_at', 'is', null)
+    .where('assigned_at', '<=', now)
+    .where('open_until', '>', now)
+    .forShare()
+    .executeTakeFirst();
+  return found?.id ?? null;
+}
+
 /** Whether the staff record teaches or owns the lesson (decision 3). */
 export function teachesOrOwns(
   lesson: Pick<EntryLesson, 'date' | 'teacherId' | 'journalId'>,
@@ -223,10 +248,13 @@ export async function enterableLesson(
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(now, branch.time_zone);
   const staffId = await ownStaffOf(transaction, access.accountId);
+  let orphanAssignmentId: string | null = null;
   if (options.correction === undefined) {
     const facts = await journalFactsOf(transaction, branchId, lesson.journalId);
+    orphanAssignmentId =
+      staffId === null ? null : await orphanAssignmentOf(transaction, lesson.id, staffId, now);
     if (
-      !teachesOrOwns(lesson, facts, staffId, today) ||
+      (!teachesOrOwns(lesson, facts, staffId, today) && orphanAssignmentId === null) ||
       staffId === null ||
       (await outToday(transaction, branchId, staffId, today))
     ) {
@@ -253,6 +281,7 @@ export async function enterableLesson(
     target: { kind: 'lesson', lessonId: lesson.id },
     staffId,
     correction: options.correction,
+    orphanAssignmentId,
   });
   return { lesson, now, timeZone: branch.time_zone, write };
 }
