@@ -19,3 +19,7 @@ allowBuilds:
 # keeps a CommonJS entry, so the override clears the finding without a fork.
 overrides:
   'uuid@<11.1.1': ^11.1.1
+  # @nestjs/platform-express 12.x pins multer at exactly 2.4.0, which has a high
+  # audit finding (GHSA-q7qp-rjg7-q26m, fixed in 2.5.0). Owner, 24 October 2026;
+  # remove once a release of @nestjs/platform-express takes multer 2.5.0 or later.
+  'multer@<2.5.0': ^2.5.0

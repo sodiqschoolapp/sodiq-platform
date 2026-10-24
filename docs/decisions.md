@@ -24,6 +24,10 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## 24 October 2026: multer 2.5.0 and body-parser 2.4.0 for two audit findings
+
+Decided by the owner on 24 October 2026. Two high advisories published on 22 October 2026 failed the step "Audit the production dependencies" on every head, `main` included (pull request #220): GHSA-q7qp-rjg7-q26m in `multer` below 2.5.0 and GHSA-27r3-jxmh-p828 in `body-parser` below 2.4.0, both reached through `@nestjs/platform-express`. `@nestjs/platform-express` 12.x pins `multer` at exactly 2.4.0, so an override in `pnpm-workspace.yaml` (`'multer@<2.5.0': ^2.5.0`, as for `uuid`) takes it to 2.5.0; it is removed once a release of `@nestjs/platform-express` takes 2.5.0 or later. `body-parser` moves to 2.4.0 in the lockfile only, the same change as #220's 3f76749. Neither changes an API: the uploads of photos and plan files, and every JSON body, are covered by the tests as before.
+
 ## 24 October 2026: Chromium is kept between CI runs
 
 Decided by the owner on 24 October 2026. Each browser-test part downloaded Chromium on every run: about 30 s on most runners, but 7 to 15 minutes on slow ones. On pull request #218 the part `e2e (1/3)` was cancelled twice at its 15-minute limit, once before any test ran and once with all 30 of its tests passed, and the loop stood still for hours. The browser is now kept in the GitHub Actions cache under the Playwright version (`actions/cache`, pinned by commit), so a run only checks the system packages; the part's limit is 20 minutes, and "Browser tests" keeps its own 10. The same tests run on every commit.
