@@ -5,6 +5,7 @@ import {
   type JournalEntriesChoice,
   type JournalEntryDetail,
 } from '@sodiq/shared';
+import type { TFunction } from 'i18next';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -55,15 +56,25 @@ export function voidableEntries(error: unknown): MetEntry[] {
 }
 
 /** What an entry holds, in words. */
-export function entryText(t: (key: string, values?: object) => string, entry: JournalEntryDetail) {
+export function entryText(t: TFunction, entry: JournalEntryDetail): string {
   if (entry.kind === 'comment') return t('people.students.journalEntries.comment');
   if (entry.kind === 'rating') {
     return entry.didNotSit
       ? t('people.students.journalEntries.didNotSit')
       : t('people.students.journalEntries.rating', { score: entry.score ?? 0 });
   }
-  if (entry.mark !== null) return t(`people.students.journalEntries.mark${String(entry.mark)}`);
-  return t('people.students.journalEntries.number', { score: entry.score ?? 0 });
+  switch (entry.mark) {
+    case 0:
+      return t('people.students.journalEntries.mark0');
+    case 1:
+      return t('people.students.journalEntries.mark1');
+    case 2:
+      return t('people.students.journalEntries.mark2');
+    case 3:
+      return t('people.students.journalEntries.mark3');
+    default:
+      return t('people.students.journalEntries.number', { score: entry.score ?? 0 });
+  }
 }
 
 /**

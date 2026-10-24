@@ -560,14 +560,16 @@ describe('journal cells in the database', () => {
       const { lesson: id, student, classId } = await scene();
       const written = await cell(north, { lesson: id, student, mark: 1 });
       const otherLesson = await lesson(north, { classId });
+      const [other] = await kit.pupils(north, classId, 1);
       const carried = await refusal(
-        inBranch(north, (transaction) =>
-          transaction
+        inBranch(north, async (transaction) => {
+          await audited(transaction, north);
+          await transaction
             .updateTable('journal_cells')
-            .set({ student_id: student })
+            .set({ student_id: other ?? '' })
             .where('id', '=', written.id)
-            .execute(),
-        ),
+            .execute();
+        }),
       );
       expect(carried).toMatchObject({ code: '23514', constraint: 'journal_merge_carry' });
       for (const values of [{ lesson_id: otherLesson }, { work_id: await work(north, id, 5) }]) {

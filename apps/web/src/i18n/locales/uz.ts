@@ -2193,7 +2193,7 @@ export const uz: Texts<'one' | 'other'> = {
         reason: 'Bekor qilish sababi',
         reasonNeeded: 'Bu yozuvlar nima uchun bekor qilinayotganini yozing.',
         back: 'Orqaga',
-        void_one: 'Yozuvni bekor qilish',
+        void_one: '{{count}} ta yozuvni bekor qilish',
         void_other: '{{count}} ta yozuvni bekor qilish',
       },
       moves: {

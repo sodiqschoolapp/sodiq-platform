@@ -2161,7 +2161,7 @@ export const en = {
         reason: 'Reason for voiding them',
         reasonNeeded: 'Write why these entries are voided.',
         back: 'Back',
-        void_one: 'Void the entry',
+        void_one: 'Void {{count}} entry',
         void_other: 'Void {{count}} entries',
       },
       moves: {

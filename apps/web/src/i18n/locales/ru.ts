@@ -2280,7 +2280,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         reason: 'Причина аннулирования',
         reasonNeeded: 'Напишите, почему эти записи аннулируются.',
         back: 'Назад',
-        void_one: 'Аннулировать запись',
+        void_one: 'Аннулировать {{count}} запись',
         void_few: 'Аннулировать {{count}} записи',
         void_many: 'Аннулировать {{count}} записей',
         void_other: 'Аннулировать {{count}} записи',

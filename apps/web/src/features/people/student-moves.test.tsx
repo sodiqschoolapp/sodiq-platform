@@ -320,7 +320,9 @@ describe('class and group transfers in the side panel', () => {
       target: { value: 'Entered in the old class by mistake' },
     });
     fireEvent.click(
-      within(dialog).getByRole('button', { name: en.people.students.journalEntries.void_one }),
+      within(dialog).getByRole('button', {
+        name: en.people.students.journalEntries.void_one.replace('{{count}}', '1'),
+      }),
     );
     await waitFor(() => {
       expect(calls.filter((call) => call.route === 'POST /api/classes/transfers')).toHaveLength(2);
