@@ -701,10 +701,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
       head,
       s.branch,
       [
-        { role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] } as Omit<
-          Held,
-          'validFrom'
-        >,
+        { role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] },
       ],
       async (calls) => {
         const counts = disciplineSchema.parse(

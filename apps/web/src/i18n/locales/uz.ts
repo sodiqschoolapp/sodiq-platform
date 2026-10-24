@@ -721,7 +721,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Jurnallarda bu oʻzgarish ortda qoldiradigan oʻquvchi yozuvlari bor. Roʻyxatni tekshiring: ularni sabab bilan bekor qiling yoki formada sana boʻlsa, uni oʻzgartiring.',
     move_entries_today:
       'Oʻquvchi chiqayotgan jurnallarda bugungi yozuvlari bor. Koʻchirish sanasini ertangi kunga qoʻying.',
-    orphan_not_orphan: 'Bu dars endi oʻqituvchisiz dars emas: u toʻldirilgan yoki uning oʻqituvchisi maktabda ishlaydi.',
+    orphan_not_orphan:
+      'Bu dars endi oʻqituvchisiz dars emas: u toʻldirilgan yoki uning oʻqituvchisi maktabda ishlaydi.',
     orphan_teacher_inactive: 'Hozir shu filialda ishlayotgan oʻqituvchini tanlang.',
     orphan_assignment_withdrawn: 'Bu biriktiruv allaqachon bekor qilingan.',
     discipline_range: 'Bitta oʻquv yili ichida koʻpi bilan 92 kunni tanlang.',

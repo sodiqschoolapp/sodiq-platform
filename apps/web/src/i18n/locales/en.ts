@@ -709,7 +709,8 @@ export const en = {
       'The journals hold entries of the student that this change would leave behind. Check the list: void them with a reason, or change the date where the form has one.',
     move_entries_today:
       'The journals this move leaves hold entries of the student today. Date the move tomorrow.',
-    orphan_not_orphan: 'This lesson is no longer an orphan lesson: it is complete, or its teacher is in the school.',
+    orphan_not_orphan:
+      'This lesson is no longer an orphan lesson: it is complete, or its teacher is in the school.',
     orphan_teacher_inactive: 'Choose a teacher who works in this branch now.',
     orphan_assignment_withdrawn: 'This assignment was already withdrawn.',
     discipline_range: 'Choose at most 92 days inside one academic year.',
