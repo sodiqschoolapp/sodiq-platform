@@ -532,10 +532,13 @@ export class BranchMoves {
             },
             requestId,
           );
-          // Task 8.6 (edge: "A late accept ... the entries of the old journals
-          // on or after the date are listed as for a late transfer"): voided
-          // with the reason given, also on the date itself, since the accept cannot
-          // move the date the release set; the new branch's held lessons open as optional.
+          // Task 8.6 (From 3.3c, decisions 6 and 19: "a late accept cuts the old
+          // branch's class and group rows back to the date: the entries of the old
+          // journals on or after the date are listed as for a late transfer (moved
+          // past or voided with a reason)"): voided with the reason given, also on the
+          // date itself, since the accept cannot move the date the release set
+          // (decision 15, Look first: the accepting branch reads and voids them); the
+          // new branch's held lessons open as optional.
           const journal = await settle(transaction, follow, {
             source: { branchMoveId: moveId },
             actorId: access.accountId,

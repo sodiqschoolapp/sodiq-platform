@@ -175,7 +175,9 @@ describe('transfers and leaving inside the journal', () => {
       t.database.migrator.selectFrom('journal_voids').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('journal_optional_cells').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('class_memberships').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('group_memberships').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('student_moves').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('student_branch_moves').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('student_statuses').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
@@ -612,12 +614,22 @@ describe('transfers and leaving inside the journal', () => {
         version: (await fresh(s.branch, student.id)).version,
       });
       const moveId = ok(release).branchMove?.id ?? '';
+      // The receiving branch's Academic Vice Principal accepts (decision 15, Look first).
+      const receiving = await t.kit.completeSession(
+        'Nodira',
+        `Saidova${String.fromCharCode(97 + (count % 26))}`,
+      );
+      await t.kit.giveRole(receiving.account.id, {
+        role: 'academic_vice_principal',
+        branchId: west,
+      });
       const accept = (extra: object = {}) =>
-        t.post(`/api/people/branch-moves/${moveId}/accept`, west, {
-          classId: westClass,
-          groups: [],
-          ...extra,
-        });
+        t.post(
+          `/api/people/branch-moves/${moveId}/accept`,
+          west,
+          { classId: westClass, groups: [], ...extra },
+          receiving.cookie,
+        );
       const before = await rowsOf();
       const refused = await accept();
       refusedWith(refused, 409, 'journal_entries');
@@ -635,6 +647,210 @@ describe('transfers and leaving inside the journal', () => {
         .where('cell_id', '=', onDate)
         .execute();
       expect(voids).toEqual([{ branch_id: s.branch, branch_move_id: moveId }]);
+    });
+  });
+
+  // .claude/rules/api.md: one 404 test per body id, for another branch's and an unknown one, with
+  // the rows of both branches and the audit log unchanged (permission review of the code, must-fix 1).
+  describe('the entries named in journalEntries.seen', () => {
+    /** A student with an entry after the date, and an entry of another branch's student. */
+    async function both(name: string, groups = false) {
+      const s = await scene(`East ${name}`);
+      const elsewhere = await scene(`West ${name}`);
+      // Groups of the class before the student, who is placed into one of them.
+      const made = groups
+        ? [
+            await classes.group(s.branch, s.year, s.cells.subject, [s.oxford]),
+            await classes.group(s.branch, s.year, s.cells.subject, [s.oxford]),
+          ]
+        : [];
+      const student = await pupil(s.branch, s.oxford);
+      const own = await s.mark(await s.lesson(s.oxford, '2026-10-06'), student.id, 1);
+      const foreignStudent = await pupil(elsewhere.branch, elsewhere.oxford);
+      const foreign = await elsewhere.mark(
+        await elsewhere.lesson(elsewhere.oxford, '2026-10-06'),
+        foreignStudent.id,
+        1,
+      );
+      return { s, elsewhere, student, own, foreign, first: made[0] ?? '', second: made[1] ?? '' };
+    }
+
+    const choice = (own: string, other: string) => ({
+      journalEntries: {
+        reason: 'Old class',
+        seen: [
+          { id: own, version: 1 },
+          { id: other, version: 1 },
+        ],
+      },
+    });
+
+    /** Each id refused 404, every row of both branches and the log unchanged. */
+    async function refusesEach(
+      ids: readonly string[],
+      send: (id: string) => Promise<Response>,
+    ): Promise<void> {
+      for (const id of ids) {
+        const before = await rowsOf();
+        refusedWith(await send(id), 404, 'not_found');
+        expect(await rowsOf()).toEqual(before);
+      }
+    }
+
+    it('on the change of a scheduled class move', async () => {
+      const { s, student, own, foreign } = await both('change');
+      ok(await transfer(s.branch, student.id, s.yale, '2026-10-12'));
+      const moveId = (await fresh(s.branch, student.id)).scheduledMoves[0]?.id ?? '';
+      await refusesEach([foreign, UNKNOWN], async (id) =>
+        t.post(`/api/classes/transfers/${moveId}/change`, s.branch, {
+          version: (await fresh(s.branch, student.id)).version,
+          toClassId: s.yale,
+          from: '2026-10-05',
+          ...choice(own, id),
+        }),
+      );
+    });
+
+    it('on a group move and the change of a scheduled one', async () => {
+      const { s, student, own, foreign, first, second } = await both('group', true);
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'group_id'])
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      const to = row.group_id === first ? second : first;
+      await refusesEach([foreign, UNKNOWN], (id) =>
+        t.post('/api/groups/transfers', s.branch, {
+          studentId: student.id,
+          memberId: row.id,
+          toGroupId: to,
+          from: '2026-10-05',
+          ...choice(own, id),
+        }),
+      );
+      ok(
+        await t.post('/api/groups/transfers', s.branch, {
+          studentId: student.id,
+          memberId: row.id,
+          toGroupId: to,
+          from: '2026-10-12',
+        }),
+      );
+      const moveId = (await fresh(s.branch, student.id)).scheduledMoves[0]?.id ?? '';
+      await refusesEach([foreign, UNKNOWN], (id) =>
+        t.post(`/api/groups/transfers/${moveId}/change`, s.branch, {
+          toGroupId: to,
+          from: '2026-10-05',
+          ...choice(own, id),
+        }),
+      );
+    });
+
+    it('on a leaving and a return', async () => {
+      const { s, student, own, foreign } = await both('leaving');
+      await refusesEach([foreign, UNKNOWN], async (id) =>
+        t.post(`/api/people/students/${student.id}/leaving`, s.branch, {
+          lastDay: '2026-10-05',
+          reason: 'The family moved',
+          version: (await fresh(s.branch, student.id)).version,
+          ...choice(own, id),
+        }),
+      );
+      ok(
+        await t.post(`/api/people/students/${student.id}/leaving`, s.branch, {
+          lastDay: '2026-09-30',
+          reason: 'The family moved',
+          version: (await fresh(s.branch, student.id)).version,
+          journalEntries: { reason: 'Not at school', seen: [{ id: own, version: 1 }] },
+        }),
+      );
+      await refusesEach([foreign, UNKNOWN], async (id) =>
+        t.post(`/api/people/students/${student.id}/return`, s.branch, {
+          from: '2026-10-05',
+          grade: 7,
+          classId: s.yale,
+          contract: { number: `JS-2026/${String(count)}`, signedOn: '2026-10-05' },
+          reason: null,
+          version: (await fresh(s.branch, student.id)).version,
+          ...choice(own, id),
+        }),
+      );
+    });
+
+    it("on a late accept, for a third branch's entry and an unknown one", async () => {
+      const { s, student, own, foreign } = await both('accept');
+      const west = await insertBranch(t.database.migrator, `West seen accept ${String(count)}`);
+      const westYear = await classes.year(west);
+      const westClass = await classes.schoolClass(west, westYear, { grade: 7 });
+      const release = await t.post(`/api/people/students/${student.id}/branch-move`, s.branch, {
+        toBranchId: west,
+        from: '2026-10-05',
+        version: (await fresh(s.branch, student.id)).version,
+      });
+      const moveId = ok(release).branchMove?.id ?? '';
+      await refusesEach([foreign, UNKNOWN], (id) =>
+        t.post(`/api/people/branch-moves/${moveId}/accept`, west, {
+          classId: westClass,
+          groups: [],
+          ...choice(own, id),
+        }),
+      );
+    });
+
+    it('on a merge, for an unknown entry', async () => {
+      const s = await scene('East seen merge');
+      const kept = await pupil(s.branch, s.oxford);
+      const later = await pupil(s.branch, s.yale);
+      const own = await s.mark(await s.lesson(s.yale, '2026-10-06'), later.id, 1);
+      const preview = await t.get(
+        `/api/people/students/${kept.id}/merge?uid=${later.uid}`,
+        s.branch,
+      );
+      const digest = (preview.body as { digest: string }).digest;
+      await refusesEach([UNKNOWN], (id) =>
+        t.post(`/api/people/students/${kept.id}/merge`, s.branch, {
+          uid: later.uid,
+          reason: 'Created twice by mistake',
+          digest,
+          ...choice(own, id),
+        }),
+      );
+    });
+
+    it('refuses a Head Teacher of another subject a group move with 403, telling no entry', async () => {
+      const { s, student, first, second } = await both('scope', true);
+      const lesson = await s.cells.groupLesson(s.branch, s.year, first, '2026-10-07');
+      const row = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['id', 'group_id'])
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      await s.mark(lesson, student.id, 1);
+      const other = await classes.subject({ grades: [7] });
+      const head = await t.kit.completeSession(
+        'Botir',
+        `Karimov${String.fromCharCode(97 + (count % 26))}`,
+      );
+      await t.kit.giveRole(head.account.id, {
+        role: 'head_teacher',
+        branchId: s.branch,
+        subjectIds: [other],
+      });
+      const before = await rowsOf();
+      const refused = await t.post(
+        '/api/groups/transfers',
+        s.branch,
+        {
+          studentId: student.id,
+          memberId: row.id,
+          toGroupId: row.group_id === first ? second : first,
+          from: '2026-10-05',
+        },
+        head.cookie,
+      );
+      expect(refused.status, JSON.stringify(refused.body)).toBe(403);
+      expect(entriesOf(refused)).toEqual([]);
+      expect(await rowsOf()).toEqual(before);
     });
   });
 

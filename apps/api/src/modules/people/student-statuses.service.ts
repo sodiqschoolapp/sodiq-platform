@@ -76,6 +76,7 @@ import {
   followJournal,
   giveBack,
   journalEntriesRefusal,
+  refuseForeignSeen,
   settle,
   voidedByLeaving,
   type JournalEffects,
@@ -945,6 +946,8 @@ export class StudentStatuses {
             });
     } else if (input.choice !== undefined) {
       // Nothing of the change can void: the choice names entries it never met.
+      // An id the branch does not hold, or an unknown one, is 404 first.
+      await refuseForeignSeen(transaction, input.choice.seen);
       throw journalEntriesRefusal([], true, true);
     }
     return {
