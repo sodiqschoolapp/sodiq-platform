@@ -41,6 +41,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter: true,
@@ -67,16 +68,27 @@ const student = (n: number, lastName: string): JournalStudent => ({
   cells: [
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: 1,
       version: 1,
       typedBy: null,
       marker: null,
-      works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
+      works: [
+        {
+          score: null,
+          percent: null,
+          version: null,
+          onAbsent: false,
+          marker: null,
+          notGraded: false,
+        },
+      ],
       score: null,
     },
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: null,
       version: null,
@@ -118,6 +130,7 @@ const GRID: JournalGrid = {
     lesson(NO_PLAN, '2026-10-26', { planItem: false }),
   ],
   students: [student(1, 'Zokirov'), student(2, 'Abdullayev')],
+  reminders: [],
   lastTotal: 30,
   absences: [],
   bottom: null,
@@ -266,7 +279,16 @@ describe('classwork and homework in the grid', () => {
           one.cells[0] as JournalStudent['cells'][number],
           {
             ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
           },
         ],
       })),

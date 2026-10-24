@@ -38,6 +38,7 @@ const lesson = (n: number, fields: Partial<ViewLesson> = {}): ViewLesson => ({
   lessonNumber: 1,
   replacedHere: false,
   journalId: null,
+  status: null,
   ...fields,
 });
 

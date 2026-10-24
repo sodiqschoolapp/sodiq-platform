@@ -1,3 +1,4 @@
+import { RemindersPanel } from './reminders-panel';
 import { GRADE_BANDS } from '@sodiq/calc';
 import {
   searchWords,
@@ -394,6 +395,8 @@ function JournalLoaded({
             setCorrecting(null);
           }}
         />
+        {/* Task 8.7 (`07`, Reminders): the panel of the journal, folded. */}
+        {data.reminders.length > 0 && <RemindersPanel reminders={data.reminders} folded />}
         {notices}
         {undo.notice}
         {dialogs}

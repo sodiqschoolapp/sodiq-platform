@@ -7,6 +7,8 @@ import {
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ExemptionCards } from '@/features/journal/exemption-cards';
+import { remindersQuery } from '@/features/journal/journal-api';
+import { RemindersPanel } from '@/features/journal/reminders-panel';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
@@ -74,6 +76,8 @@ export function TeachingHome(): React.JSX.Element {
   const { branchId } = useView();
   const language = languageOf(i18n.language);
   const home = useQuery(teachingHomeQuery(branchId));
+  // Task 8.7: the caller's reminders in the branch in use.
+  const reminders = useQuery(remindersQuery(branchId));
   if (home.isError) {
     return (
       <section className={PANEL}>
@@ -91,18 +95,35 @@ export function TeachingHome(): React.JSX.Element {
   const items = itemsOf(home.data);
   const branches = new Set(items.map((item) => item.at.branch.id));
   const named = branches.size > 1;
+  // Task 8.7 (`07`, Lesson status: "The home page sums it up, for example '3 of 5 lessons complete'").
+  const held = items.flatMap((item) =>
+    item.kind === 'lesson' && item.at.today && item.at.status !== null ? [item.at.status] : [],
+  );
   return (
     <div className="grid gap-6">
       <section className={`${PANEL} grid gap-4`} data-home-today="true">
         <h2 className={SECTION_TITLE}>
           {t('home.lessons.today')}, {schoolDateText(home.data.today, language)}
         </h2>
+        {held.length > 0 && (
+          <p className="text-sm font-semibold" data-home-summary="true">
+            {t('journal.lessonStatus.summary', {
+              count: held.length,
+              done: held.filter((one) => one === 'complete').length,
+            })}
+          </p>
+        )}
         <TodayList
           items={items.filter((item) => item.at.today)}
           named={named}
           language={language}
         />
       </section>
+      <RemindersPanel
+        reminders={reminders.data?.reminders}
+        error={reminders.isError ? reminders.error : undefined}
+        onRetry={() => void reminders.refetch()}
+      />
       {/* Task 8.5: exempt today and back from exemption. */}
       <ExemptionCards />
       <section className={`${PANEL} grid gap-4`} data-home-week="true">
@@ -142,6 +163,7 @@ function useItemText(language: Language) {
       lesson.room?.name ?? '',
       ...branch,
       ...marks(lesson),
+      ...(lesson.status === null ? [] : [t(`journal.lessonStatus.${lesson.status}`)]),
     ].filter((one) => one !== '');
   };
 }
@@ -218,7 +240,14 @@ function TodayList({
                 <TableCell>{lesson.subject.names[language]}</TableCell>
                 <TableCell>{lesson.room?.name ?? ''}</TableCell>
                 {branch}
-                <TableCell>{marks(lesson).join(' · ') || t('timetable.day.asPlanned')}</TableCell>
+                <TableCell>
+                  {marks(lesson).join(' · ') || t('timetable.day.asPlanned')}
+                  {lesson.status !== null && (
+                    <span className="ml-2 font-semibold" data-status={lesson.status}>
+                      {t(`journal.lessonStatus.${lesson.status}`)}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   {lesson.journalId !== null && (
                     <OpenJournal

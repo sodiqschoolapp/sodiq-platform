@@ -258,7 +258,7 @@ export const remindersQuery = (branchId: string | null) =>
       remindersSchema.parse(
         await answerOf(
           api.GET('/api/journal/reminders', {
-            params: { header: branchHeader(), query: {} },
+            params: { header: branchHeader() },
           }),
         ),
       ),

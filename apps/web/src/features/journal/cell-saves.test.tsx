@@ -52,6 +52,7 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
   cells: [
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: null,
       version: null,
@@ -62,12 +63,22 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
     },
     {
       closed: false,
+      open: false,
       exempt: null,
       mark,
       version: mark === null ? null : 1,
       typedBy: null,
       marker: null,
-      works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
+      works: [
+        {
+          score: null,
+          percent: null,
+          version: null,
+          onAbsent: false,
+          marker: null,
+          notGraded: false,
+        },
+      ],
       score: null,
     },
   ],
@@ -106,6 +117,7 @@ const GRID: JournalGrid = {
     end: index === 0 ? 525 : 580,
     slot: index + 1,
     held: true,
+    status: null,
     cancelled: null,
     month: '2026-10',
     canEnter: true,
@@ -118,6 +130,7 @@ const GRID: JournalGrid = {
     given: [],
   })),
   students: [student(1, 'Zokirov', null), student(2, 'Abdullayev', 2)],
+  reminders: [],
   lastTotal: 10,
   absences: [],
   bottom: null,

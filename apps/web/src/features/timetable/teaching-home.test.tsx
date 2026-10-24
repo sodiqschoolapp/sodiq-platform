@@ -33,6 +33,7 @@ const lesson = (n: number, fields: Partial<HomeLesson> = {}): HomeLesson => ({
   lessonNumber: 1,
   replacedHere: false,
   journalId: null,
+  status: null,
   branch: NORTH,
   startsAt: '2026-10-19T03:00:00.000Z',
   endsAt: '2026-10-19T03:45:00.000Z',

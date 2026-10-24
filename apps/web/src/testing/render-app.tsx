@@ -89,6 +89,8 @@ const SHELL_ANSWERS: Record<string, Handler> = {
     }),
   'GET /api/journal/exemptions-today': () =>
     json({ date: '2026-10-19', exemptToday: [], backToday: [] }),
+  // Task 8.7: the reminders of the teaching home.
+  'GET /api/journal/reminders': () => json({ today: '2026-10-19', reminders: [] }),
 };
 
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {

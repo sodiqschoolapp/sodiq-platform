@@ -811,6 +811,9 @@ export function JournalGridView({
         // The plan's title (09: "The titles come from the plan"); a work added by hand is numbered.
         const title = work.title ?? `${short} · ${t('journal.works.unplanned')}`;
         const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
+        // Task 8.7 (From 8.6): an optional cell of a locked lesson open now takes its number.
+        const openCell = (cell: JournalStudent['cells'][number] | undefined) =>
+          works !== undefined && work.total !== null && cell?.open === true;
         children.push({
           colId: `${lesson.id}:${workKey(work)}`,
           headerName: title,
@@ -838,9 +841,9 @@ export function JournalGridView({
           width: 112,
           suppressKeyboardEvent: dialogKey,
           editable: (params) =>
-            enterable &&
             params.data?.kind === 'student' &&
-            params.data.student.cells[index]?.closed !== true,
+            params.data.student.cells[index]?.closed !== true &&
+            (enterable || openCell(params.data.student.cells[index])),
           valueGetter: (params) =>
             params.data?.kind === 'student'
               ? (params.data.student.cells[index]?.works[workIndex]?.score ?? null)
@@ -884,6 +887,20 @@ export function JournalGridView({
               works === undefined ? undefined : works.stateOf(lesson.id, row.student.id, work);
             if (typed === undefined || typed.score === null) {
               if (cell?.closed === true) return closedSign;
+              // Task 8.7: "not graded", left out of the average (`07`, Lesson status).
+              if (typed?.notGraded === true) {
+                return (
+                  <span
+                    data-not-graded="true"
+                    className="text-muted-foreground"
+                    title={t('journal.notGraded.sign')}
+                    aria-label={t('journal.notGraded.sign')}
+                  >
+                    —
+                    <SaveSign state={state} />
+                  </span>
+                );
+              }
               return (
                 <span>
                   <SaveSign state={state} />
@@ -935,9 +952,13 @@ export function JournalGridView({
       // "No plan" on a held lesson with no plan item (edge/journal).
       const noPlan =
         graded && lesson.held && !lesson.planItem ? ` · ${t('journal.works.noPlan')}` : '';
+      // Task 8.7 (`07`, Lesson status: "in the journal header"), in words.
+      const status =
+        lesson.status === null ? '' : ` · ${t(`journal.lessonStatus.${lesson.status}`)}`;
       return {
         groupId: lesson.id,
-        headerName: reason === null ? `${date}${slot}${noPlan}` : `${date}${slot} · ${reason}`,
+        headerName:
+          reason === null ? `${date}${slot}${noPlan}${status}` : `${date}${slot} · ${reason}`,
         headerTooltip: reason ?? undefined,
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
         children: children.map((child) => ({
@@ -1040,7 +1061,7 @@ export function JournalGridView({
         return;
       }
       const cell = row.student.cells[index];
-      if (!lesson.canEnter || cell === undefined || cell.closed) return;
+      if (cell === undefined || cell.closed || (!lesson.canEnter && !cell.open)) return;
       const mark = MARK_KEYS[key];
       if (mark !== undefined || key === 'Delete' || key === 'Backspace') {
         current.mark(lessonId, row.student, mark ?? null);
