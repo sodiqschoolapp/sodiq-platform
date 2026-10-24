@@ -4,22 +4,20 @@ import { accountOf } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
-async function signedIn(page: Page, key: 'transfersTeacher' | 'transfersVice') {
-  const account = accountOf(key);
+async function signedIn(page: Page) {
+  const account = accountOf('transfersVice');
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
-  if (key === 'transfersVice') {
-    // The role requires a second step at sign-in (task 0.7b): set up as audit.spec.ts does.
-    await expect(heading(page, en.setUp.title)).toBeVisible();
-    await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
-    const secret = await page.locator('dd').innerText();
-    await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(secret));
-    await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
-    await page.getByRole('checkbox', { name: en.setUp.saved }).check();
-    await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
-  }
+  // The role requires a second step at sign-in (task 0.7b): set up as audit.spec.ts does.
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const secret = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(secret));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
   await expect(heading(page, en.home.title)).toBeVisible();
 }
 
@@ -38,10 +36,9 @@ function daysAgo(days: number): string {
 // days ago, and 7 Leeds has a lesson four days ago. All names are invented.
 test('the Academic Vice Principal records a late class move, voids the old journal entry, and the new journal shows the carried-in figures and the optional cell', async ({
   page,
-  browser,
 }) => {
   test.setTimeout(120_000);
-  await signedIn(page, 'transfersVice');
+  await signedIn(page);
   const texts = en.people.students;
   await page.goto('/people/students');
   await expect(heading(page, texts.title)).toBeVisible();
@@ -71,20 +68,12 @@ test('the Academic Vice Principal records a late class move, voids the old journ
     .click();
   await expect(panel.getByText(/From 7 Kent,/)).toBeVisible();
 
-  // The teacher opens 7 Leeds: the result is carried in from 7 Kent, the held lesson is optional.
-  const context = await browser.newContext();
-  const teacher = await context.newPage();
-  await signedIn(teacher, 'transfersTeacher');
-  await teacher.goto('/journal');
-  await teacher
-    .locator('tbody tr')
-    .filter({ hasText: '7 Leeds' })
-    .getByRole('button')
-    .first()
-    .click();
-  await expect(heading(teacher, en.journal.sheet)).toBeVisible();
-  const row = teacher.locator('.ag-row').filter({ hasText: 'Qodirova Dilfuza' });
+  // 7 Leeds, read whole by the Academic Vice Principal: the result is carried in from 7 Kent,
+  // and the held lesson is an optional cell.
+  await page.goto('/journal');
+  await page.locator('tbody tr').filter({ hasText: '7 Leeds' }).getByRole('button').first().click();
+  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  const row = page.locator('.ag-row').filter({ hasText: 'Qodirova Dilfuza' });
   await expect(row.locator('[data-carried-in="true"]').first()).toBeVisible();
   await expect(row.locator('[data-marker="optional"]').first()).toBeVisible();
-  await context.close();
 });
