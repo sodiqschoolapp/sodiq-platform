@@ -9,6 +9,7 @@ import {
   journalGridSchema,
   journalUnlockSchema,
   journalUnlocksSchema,
+  ratingExamSchema,
   type JournalGrid,
 } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
@@ -1004,6 +1005,72 @@ describe('the edit period through the routes', () => {
       ]);
       expect(await noticesOf(x.owner.account.id, 'journal.correction')).toEqual([
         expect.objectContaining({ before: '72', after: '75', reason: 'Marked again' }),
+      ]);
+    });
+
+    it('takes "exempt" replaced by a score after the lock only as a correction, marked and told to the teacher (code review 1, finding 1)', async () => {
+      const x = await scene({ rating: true });
+      const ratingBase = `/api/journal/journals/${x.journal}/rating/${x.q1}`;
+      await as(
+        x.owner,
+        x.branch,
+        async (calls) => {
+          ok(await calls.put(`${ratingBase}/date`, { date: '2026-10-19', version: null }));
+        },
+        LAST_MINUTE,
+      );
+      await as(
+        x.vice,
+        x.branch,
+        async (calls) => {
+          ok(
+            await calls.post(`${ratingBase}/entries`, {
+              studentId: x.ahmedov,
+              entry: { kind: 'exempt' },
+              reason: null,
+              version: null,
+            }),
+          );
+        },
+        LAST_MINUTE,
+      );
+      await as(x.vice, x.branch, async (calls) => {
+        // Past the lock, "exempt" replaced by a mark without the correction is refused.
+        const plain = await calls.post(`${ratingBase}/entries`, {
+          studentId: x.ahmedov,
+          entry: { kind: 'score', score: 68 },
+          reason: 'Sat the exam after all',
+          version: 1,
+        });
+        expect(codeOf(plain)).toBe('journal_locked');
+        const corrected = ratingExamSchema.parse(
+          ok(
+            await calls.post(`${ratingBase}/entries`, {
+              studentId: x.ahmedov,
+              entry: { kind: 'score', score: 68 },
+              reason: 'Sat the exam after all',
+              version: 1,
+              correction: true,
+            }),
+          ).body,
+        );
+        const mine = corrected.entries.find((one) => one.studentId === x.ahmedov);
+        expect(mine?.entry).toEqual({ kind: 'score', score: 68 });
+        expect(mine?.marker?.kind).toBe('correction');
+      });
+      const lines = await t.database.migrator
+        .selectFrom('journal_rating_history')
+        .select(['changed_how', 'reason'])
+        .where('journal_id', '=', x.journal)
+        .where('student_id', '=', x.ahmedov)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        { changed_how: 'entry', reason: null },
+        { changed_how: 'correction', reason: 'Sat the exam after all' },
+      ]);
+      expect(await noticesOf(x.owner.account.id, 'journal.correction')).toEqual([
+        expect.objectContaining({ before: '—', after: '68', reason: 'Sat the exam after all' }),
       ]);
     });
 

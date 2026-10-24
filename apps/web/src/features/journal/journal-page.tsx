@@ -30,7 +30,13 @@ import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
 import { useWorksEntry } from './works-entry';
-import { correctionOf, EditPeriodPanel, withCorrection, type Correcting } from './edit-period';
+import {
+  correctionOf,
+  EditPeriodPanel,
+  ratingCorrectionOf,
+  withCorrection,
+  type Correcting,
+} from './edit-period';
 import { journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
@@ -154,7 +160,8 @@ function JournalLoaded({
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
-  // with the reason asked once for the visit; its saves carry it.
+  // or the rating exam, with the reason asked once for the visit; its saves carry it, the
+  // comments on it included (code review 1, finding 2).
   const [correcting, setCorrecting] = useState<Correcting | null>(null);
   const data = withCorrection(read, correcting);
   // Lesson mode on a phone (`12`, Devices), or by the switch.
@@ -190,8 +197,12 @@ function JournalLoaded({
     };
   }, [canUndo, undoLast]);
   // Task 8.2: the rating exam and comments.
-  const { rating, dialogs: ratingDialogs } = useRatingEntry(data);
-  const { comments, dialogs: commentDialogs } = useComments(data);
+  const { rating, dialogs: ratingDialogs } = useRatingEntry(data, ratingCorrectionOf(correcting));
+  const { comments, dialogs: commentDialogs } = useComments(data, (cell) =>
+    cell.target === 'rating'
+      ? ratingCorrectionOf(correcting)
+      : correctionOf(correcting)(cell.lessonId),
+  );
   const [refusedNumber, setRefusedNumber] = useState<number | null>(null);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;

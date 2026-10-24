@@ -705,8 +705,9 @@ create trigger journal_comments_edit_guard
 
 -- A rating entry is judged at the lock of its exam's date in force; a
 -- correction carries the entry's own reason (correction 2). "Exempt", set or
--- taken back by the Academic Vice Principal (or the Super Admin), needs no
--- correction (decision 6).
+-- taken back to empty by the Academic Vice Principal (or the Super Admin),
+-- needs no correction (decision 6); "exempt" replaced by a score or "did not
+-- sit" is a mark, judged like any other (code review 1, finding 1).
 create function journal_rating_entries_edit_guard() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -721,7 +722,8 @@ begin
   select * into exam_row from journal_rating_exams x where x.id = new.rating_exam_id;
   moment := class_tutors_moment();
   if new.changed_how <> 'correction' and moment is not null
-    and (new.kind is not distinct from 'exempt' or (tg_op = 'UPDATE' and old.kind is not distinct from 'exempt'))
+    and (new.kind is not distinct from 'exempt'
+      or (tg_op = 'UPDATE' and old.kind is not distinct from 'exempt' and new.kind is null))
     and journal_corrector(new.changed_by, new.branch_id, moment) then
     return new;
   end if;

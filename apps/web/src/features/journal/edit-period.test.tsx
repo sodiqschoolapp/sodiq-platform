@@ -151,6 +151,29 @@ describe('the edit period on the journal page', () => {
     expect(posts(calls, `POST /api/journal/lessons/${OLD}/attendance`)).toHaveLength(0);
   });
 
+  it('keeps a reason typed while the dialog is closed, and checks it with the shared schema (code review 1, finding 3)', async () => {
+    const calls = open(gridOf(LOCKED), 'teacher');
+    const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.request }));
+    let dialog = await screen.findByRole('form', { name: /^Request unlock:/ });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: en.journal.locks.reason }), {
+      target: { value: 'I was ill' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.locks.back }));
+    await waitFor(() => {
+      expect(screen.queryByRole('form', { name: /^Request unlock:/ })).toBeNull();
+    });
+    fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.request }));
+    dialog = await screen.findByRole('form', { name: /^Request unlock:/ });
+    const field = within(dialog).getByRole('textbox', { name: en.journal.locks.reason });
+    expect((field as HTMLTextAreaElement).value).toBe('I was ill');
+    // Only spaces: the schema's trimmed reason is empty, and nothing is sent.
+    fireEvent.change(field, { target: { value: '   ' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.locks.send }));
+    expect(await within(dialog).findByText(en.journal.locks.reasonNeeded)).toBeDefined();
+    expect(posts(calls, `POST /api/journal/lessons/${OLD}/unlocks`)).toHaveLength(0);
+  });
+
   it('lets the Academic Vice Principal correct a locked lesson: the reason once, then each save carries it', async () => {
     const calls = open(
       gridOf({ ...LOCKED, canRequest: false, canCorrect: true }),

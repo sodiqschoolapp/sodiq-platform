@@ -218,7 +218,13 @@ export class RatingService {
                 .where('rating_exam_id', '=', existing.id)
                 .where('student_id', '=', input.studentId)
                 .executeTakeFirst();
-        const touchesExempt = input.entry?.kind === 'exempt' || storedBefore?.kind === 'exempt';
+        // "Exempt" set or taken back to empty is the Academic Vice Principal's and takes no edit
+        // period; "exempt" replaced by a mark is the Academic Vice Principal's too, but is a mark,
+        // judged by the exam's lock: from it, only as a correction (code review 1, finding 1).
+        const setsExempt =
+          input.entry?.kind === 'exempt' ||
+          (storedBefore?.kind === 'exempt' && input.entry === null);
+        const touchesExempt = setsExempt || storedBefore?.kind === 'exempt';
         // Task 8.4: a correction of the Academic Vice Principal or the Super Admin carries the
         // entry's own reason (review correction 2) and takes no unlock.
         const corrector = input.correction
@@ -266,10 +272,11 @@ export class RatingService {
         const before = stored === undefined ? null : entryOf(stored);
         if (sameEntry(before, input.entry)) return;
         // The edit period (task 8.4): "exempt" of the Academic Vice Principal and a correction
-        // take none; the teacher's entry is judged by the exam's lock.
+        // take none; every mark (the teacher's, or the vice's over "exempt") is judged by the
+        // exam's lock.
         const write = input.correction
           ? ({ how: 'correction', assignmentId } as const)
-          : touchesExempt
+          : setsExempt
             ? ({ how: 'entry' } as const)
             : await decideWrite(transaction, {
                 access: scene.access,

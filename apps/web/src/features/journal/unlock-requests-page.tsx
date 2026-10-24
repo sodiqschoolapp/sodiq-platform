@@ -20,7 +20,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { useMayView, useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText, schoolDateText } from '@/lib/dates';
-import { DecideUnlockDialog } from './edit-period';
+import { DecideUnlockDialog, useDrafts } from './edit-period';
 import {
   extendEditPeriod,
   extensionsQuery,
@@ -174,6 +174,8 @@ function UnlockPanel({ request }: { request: JournalUnlock }) {
   const navigate = useNavigate();
   const language = i18n.language;
   const [deciding, setDeciding] = useState(false);
+  // The reason of a refusal typed and the dialog closed is kept (code review 1, finding 3).
+  const drafts = useDrafts();
   const withdraw = useMutation({
     mutationFn: () => withdrawUnlock(request.id, request.version),
     onSuccess: () => invalidateUnlocks(queryClient),
@@ -247,6 +249,13 @@ function UnlockPanel({ request }: { request: JournalUnlock }) {
         <DecideUnlockDialog
           unlockId={request.id}
           version={request.version}
+          draft={drafts.draftOf(request.id)}
+          onTyped={(text) => {
+            drafts.keep(request.id, text);
+          }}
+          onSent={() => {
+            drafts.drop(request.id);
+          }}
           onClose={() => {
             setDeciding(false);
           }}

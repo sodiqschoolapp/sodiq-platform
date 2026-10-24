@@ -841,6 +841,50 @@ describe('the edit period in the database', () => {
       ).toBe('entry');
     });
 
+    it('judges "exempt" replaced by a score as a mark, and lets "exempt" be taken back to empty (code review 1, finding 1)', async () => {
+      const replace = (
+        examId: string,
+        student: string,
+        values: { kind: string | null; score?: number; how?: string; reason?: string },
+      ) =>
+        inBranch(north, LOCKED, (transaction) =>
+          transaction
+            .updateTable('journal_rating_entries')
+            .set({
+              kind: values.kind,
+              score: values.score ?? null,
+              reason: values.reason ?? 'Asked again',
+              changed_by: vice,
+              changed_how: values.how ?? 'entry',
+            })
+            .where('rating_exam_id', '=', examId)
+            .where('student_id', '=', student)
+            .returning('changed_how')
+            .executeTakeFirstOrThrow(),
+        );
+      const one = await exam();
+      await entry(LAST_MINUTE, one.id, one.student, { kind: 'exempt', by: vice });
+      expect(
+        (await refusal(replace(one.id, one.student, { kind: 'score', score: 68 }))).constraint,
+      ).toBe('journal_locked');
+      expect(
+        (await refusal(replace(one.id, one.student, { kind: 'did_not_sit' }))).constraint,
+      ).toBe('journal_locked');
+      expect(
+        (
+          await replace(one.id, one.student, {
+            kind: 'score',
+            score: 68,
+            how: 'correction',
+            reason: 'Sat after all',
+          })
+        ).changed_how,
+      ).toBe('correction');
+      const two = await exam();
+      await entry(LAST_MINUTE, two.id, two.student, { kind: 'exempt', by: vice });
+      expect((await replace(two.id, two.student, { kind: null })).changed_how).toBe('entry');
+    });
+
     it('takes a rating entry under an unlock of its exam as late_entry, and judges a comment on it by the exam', async () => {
       const one = await exam();
       const row = await database.migrator
