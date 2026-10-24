@@ -688,6 +688,19 @@ export const uz: Texts<'one' | 'other'> = {
     comment_scope: 'Faqat shu darsda kirita oladigan narsangizga izoh yozish mumkin.',
     comment_no_value: 'Avval baho yoki sonni kiriting, keyin izoh qoʻshing.',
     comment_stale: 'Bu izohni hozirgina kimdir oʻzgartirdi. Uni qayta oching.',
+    journal_locked:
+      'Bu dars yopilgan: tahrirlash muddati tugagan. Uni oʻzgartirish uchun ochish soʻrovini yuboring.',
+    journal_correction_role:
+      'Baholarni faqat oʻquv ishlari boʻyicha direktor oʻrinbosari yoki super administrator tuzata oladi.',
+    journal_correction_bulk: 'Tuzatish bitta katakdan kiritiladi.',
+    journal_not_locked: 'Bu dars siz uchun hali ochiq. Ochish shart emas.',
+    journal_unlock_waiting: 'Sizda bu uchun kutilayotgan ochish soʻrovi bor.',
+    journal_unlock_scope: 'Bu soʻrovni siz hal qilmaysiz.',
+    journal_unlock_decided: 'Bu soʻrov boʻyicha qaror qabul qilingan yoki u qaytarib olingan.',
+    journal_unlock_cancelled: 'Soʻrov bekor qilindi: oʻqituvchi endi filialda ishlamaydi.',
+    journal_unlock_stale: 'Bu soʻrovni hozirgina kimdir oʻzgartirdi. Uni qayta oching.',
+    journal_extension_future: 'Uzaytirish faqat bugungi kungacha boʻlgan kunlarni qamrab oladi.',
+    journal_extension_dates: 'Sanalar ochiq oʻquv yilida boʻlishi kerak.',
     work_not_in_lesson:
       'Bu ish endi bu darsning ustuni emas. Jurnalni yangilab, qayta urinib koʻring.',
     lesson_has_plan_item:
@@ -3807,6 +3820,14 @@ export const uz: Texts<'one' | 'other'> = {
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz tasdiqlandi: {{until}} gacha ochiq.',
         request_refused:
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz rad etildi: {{reason}}.',
+      },
+      journal: {
+        unlock_requested: '{{name}} {{unit}} jurnalini {{date}} uchun ochishni soʻramoqda.',
+        unlock_approved:
+          '{{unit}}, {{date}} boʻyicha ochish soʻrovingiz tasdiqlandi: {{until}} oxirigacha ochiq.',
+        unlock_refused: '{{unit}}, {{date}} boʻyicha ochish soʻrovingiz rad etildi. {{reason}}',
+        correction:
+          '{{student}} oʻquvchining {{unit}}, {{date}} dagi bahosi tuzatildi: {{before}} → {{after}}. Sabab: {{reason}}',
       },
       sample: {
         message: 'Namuna: {{text}}',

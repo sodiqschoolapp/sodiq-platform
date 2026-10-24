@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { correctionSchema } from './journal-correction.js';
 import {
   accountNamedSchema,
   cellChangeSchema,
@@ -61,6 +62,8 @@ export const attendanceSaveSchema = z
       )
       .min(1)
       .max(ATTENDANCE_SAVES_MAX),
+    /** Task 8.4: a correction of the Academic Vice Principal or the Super Admin, with its reason. */
+    correction: correctionSchema.optional(),
   })
   .superRefine((value, context) => {
     const seen = new Set<string>();

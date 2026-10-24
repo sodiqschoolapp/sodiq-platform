@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
-import type { Post, Posts } from './plan-request-routing.js';
+import type { Post, Posts } from './request-routing.js';
 
 /**
  * The posts in force at `now` that decide plan requests of one subject in one

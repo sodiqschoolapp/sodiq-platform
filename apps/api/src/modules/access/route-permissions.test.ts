@@ -181,7 +181,7 @@ const PLAN_WINDOW_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_prin
 /** Task 7.2, decision 1: who sends a plan request (the owner in the route). */
 const PLAN_REQUEST_SENDERS: readonly Role[] = ['super_admin', 'teacher'];
 
-/** Task 7.2, decision 1: who decides one (the routing in the route, plan-request-routing.ts). */
+/** Task 7.2, decision 1: who decides one (the routing in the route, access/request-routing.ts). */
 const PLAN_REQUEST_DECIDERS: readonly Role[] = [
   'super_admin',
   'academic_vice_principal',

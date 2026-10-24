@@ -668,6 +668,19 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     comment_scope: 'Комментировать можно только то, что вы можете вводить на этом уроке.',
     comment_no_value: 'Сначала введите отметку или число, затем добавьте комментарий.',
     comment_stale: 'Этот комментарий только что изменили. Откройте его снова.',
+    journal_locked:
+      'Урок закрыт: срок редактирования истёк. Чтобы изменить его, отправьте запрос на открытие.',
+    journal_correction_role:
+      'Исправлять отметки может только заместитель директора по учебной работе или суперадминистратор.',
+    journal_correction_bulk: 'Исправление вносится по одной ячейке.',
+    journal_not_locked: 'Этот урок ещё открыт для вас. Открывать его не нужно.',
+    journal_unlock_waiting: 'У вас уже есть ожидающий запрос на открытие.',
+    journal_unlock_scope: 'Этот запрос решаете не вы.',
+    journal_unlock_decided: 'По этому запросу уже принято решение, или он отозван.',
+    journal_unlock_cancelled: 'Запрос отменён: учитель больше не работает в филиале.',
+    journal_unlock_stale: 'Этот запрос только что изменили. Откройте его снова.',
+    journal_extension_future: 'Продление может охватывать дни только до сегодняшнего.',
+    journal_extension_dates: 'Даты должны быть в открытом учебном году.',
     work_not_in_lesson:
       'Эта работа больше не столбец этого урока. Обновите журнал и попробуйте снова.',
     lesson_has_plan_item:
@@ -3949,6 +3962,14 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         request_approved:
           'Ваш запрос одобрен: {{unit}}, {{quarter}}-я четверть, открыто до {{until}}.',
         request_refused: 'Ваш запрос отклонён: {{unit}}, {{quarter}}-я четверть: {{reason}}.',
+      },
+      journal: {
+        unlock_requested: '{{name}} просит открыть журнал {{unit}} за {{date}}.',
+        unlock_approved:
+          'Ваш запрос на открытие {{unit}}, {{date}} одобрен: открыто до конца {{until}}.',
+        unlock_refused: 'Ваш запрос на открытие {{unit}}, {{date}} отклонён. {{reason}}',
+        correction:
+          'Отметка ученика {{student}} в {{unit}}, {{date}} исправлена: {{before}} → {{after}}. Причина: {{reason}}',
       },
       sample: {
         message: 'Пример: {{text}}',

@@ -588,7 +588,7 @@ export const PERMISSIONS = freezeTable({
    * window, for those subjects", the Senior Head Teacher "Everything a Head
    * Teacher can do", the Academic Vice Principal "can approve any plan edit
    * request"; the Super Admin decides an Academic Vice Principal's own. The
-   * route routes and refuses the own (`plan-request-routing.ts`).
+   * route routes and refuses the own (`access/request-routing.ts`).
    */
   plan_requests: rows({
     super_admin: ['view', 'create', 'edit'],
@@ -613,6 +613,35 @@ export const PERMISSIONS = freezeTable({
     senior_head_teacher: ['view', 'create', 'edit'],
     head_teacher: ['view', 'create', 'edit'],
     teacher: ['view'],
+  }),
+  /**
+   * Unlock requests of the journal (task 8.4, pull request #222, decision 5,
+   * Look first): `07`, Editing rules and locks: "To change a locked lesson the
+   * teacher sends an unlock request"; `02`, Head Teachers: "Approves unlock
+   * requests", "Own requests" (an Academic Vice Principal's own go to the Super
+   * Admin); `edge/journal`: a Tutor's lesson is unlocked by the Academic Vice
+   * Principal. The Principal reads, as for plan requests. The route routes,
+   * scopes and refuses the own.
+   */
+  journal_unlocks: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+    senior_head_teacher: ['view', 'create', 'edit'],
+    head_teacher: ['view', 'create', 'edit'],
+    teacher: ['view', 'create'],
+    tutor: ['view', 'create'],
+  }),
+  /**
+   * The branch-wide extension of the edit period (task 8.4, decision 5, Look
+   * first): `edge/system-behaviour`: "The Academic Vice Principal extends the
+   * edit period for a date range for the whole branch in one logged action";
+   * `02`, Super Admin: every other action of the Academic Vice Principal.
+   */
+  journal_extensions: rows({
+    super_admin: ['view', 'create'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

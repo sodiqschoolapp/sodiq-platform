@@ -17,6 +17,14 @@ import { ownerFactsOf } from '../timetable/journal-owners.js';
 import { enterableLesson, entryAssignment, ownStaffOf } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
 import {
+  LOCK_REFUSALS,
+  correctorAssignment,
+  decideWrite,
+  writeAssignment,
+  writeDetails,
+  type WriteHow,
+} from './edit-window.js';
+import {
   COMMENT_COLUMNS,
   commentsAnswer,
   visibilityOf,
@@ -65,6 +73,7 @@ export class CommentsService {
       journal_comments_key: 'comment_stale',
       journal_cell_not_member: 'cell_closed',
       journal_cell_cancelled: 'lesson_cancelled_cell',
+      ...LOCK_REFUSALS,
     });
   }
 
@@ -75,7 +84,13 @@ export class CommentsService {
     requestId: string,
   ): Promise<JournalComment> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { keys, assignmentId } = await this.targetOf(transaction, access, branchId, input.on);
+      const { keys, assignmentId, write } = await this.targetOf(
+        transaction,
+        access,
+        branchId,
+        input.on,
+        input.correction,
+      );
       const stored = await this.storedOf(transaction, keys, true);
       if ((stored?.version ?? null) !== input.version) {
         throw new ApiException('comment_stale', 409);
@@ -136,6 +151,7 @@ export class CommentsService {
           ...(keys.lessonId === null ? {} : { lessonId: keys.lessonId }),
           ...(keys.workId === null ? {} : { workId: keys.workId }),
           ...(keys.ratingExamId === null ? {} : { ratingExamId: keys.ratingExamId }),
+          ...writeDetails(write, input.correction),
         },
         requestId,
       });
@@ -265,7 +281,8 @@ export class CommentsService {
     access: Access,
     branchId: string,
     on: CommentSave['on'],
-  ): Promise<{ keys: TargetKeys; assignmentId: string }> {
+    correction: CommentSave['correction'],
+  ): Promise<{ keys: TargetKeys; assignmentId: string; write: WriteHow }> {
     await refuseOtherStudents(transaction, [on.studentId]);
     if (on.target === 'rating') {
       const [journal] = await journalRows(transaction, branchId, { journalId: on.journalId });
@@ -299,16 +316,30 @@ export class CommentsService {
               .where('student_id', '=', on.studentId)
               .executeTakeFirst();
       // Whoever may enter the entry (decision 10): "exempt" is the Academic Vice
-      // Principal's, a score and "did not sit" the journal teacher's.
+      // Principal's, a score and "did not sit" the journal teacher's. Task 8.4: a
+      // correction is the Academic Vice Principal's or the Super Admin's.
+      if (correction !== undefined && correctorAssignment(access, branchId) === null) {
+        throw new ApiException('journal_correction_role', 403);
+      }
       const assignmentId =
-        entry?.kind === 'exempt'
-          ? rights.vicePrincipal
-          : rights.teacher
-            ? entryAssignment(access)
-            : null;
+        correction !== undefined
+          ? correctorAssignment(access, branchId)
+          : entry?.kind === 'exempt'
+            ? rights.vicePrincipal
+            : rights.teacher
+              ? entryAssignment(access)
+              : null;
       if (assignmentId === null) throw new ApiException('comment_scope', 403);
       if (row === null || entry?.kind == null) throw new ApiException('comment_no_value', 409);
+      const write = await decideWrite(transaction, {
+        access,
+        branchId,
+        target: { kind: 'rating', journalId: journal.id, quarterId: on.quarterId },
+        staffId,
+        correction,
+      });
       return {
+        write,
         keys: {
           target: 'rating',
           studentId: on.studentId,
@@ -330,8 +361,11 @@ export class CommentsService {
             .executeTakeFirst()
         : undefined;
     if (on.target === 'work' && work === undefined) throw notFound();
+    let write: WriteHow;
     try {
-      await enterableLesson(transaction, access, branchId, on.lessonId);
+      ({ write } = await enterableLesson(transaction, access, branchId, on.lessonId, {
+        correction,
+      }));
     } catch (error) {
       if (error instanceof ApiException && error.code === 'journal_entry_scope') {
         throw new ApiException('comment_scope', 403);
@@ -373,7 +407,8 @@ export class CommentsService {
         workId: on.target === 'work' ? on.workId : null,
         ratingExamId: null,
       },
-      assignmentId: entryAssignment(access),
+      assignmentId: writeAssignment(write, entryAssignment(access)),
+      write,
     };
   }
 

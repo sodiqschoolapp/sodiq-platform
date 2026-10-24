@@ -32,6 +32,8 @@ export interface CellActor {
   accountId: string;
   assignmentId?: string;
   requestId?: string;
+  /** Task 8.4: how the write was made, in the audit entry (`writeDetails` of `edit-window.ts`). */
+  details?: Readonly<Record<string, string>>;
 }
 
 export interface SavedCell {
@@ -210,7 +212,7 @@ export async function saveCells(
       ...(actor.assignmentId === undefined ? {} : { assignmentId: actor.assignmentId }),
       action: 'journal.cells_save',
       newValue: { cells: cells.map((cell) => ({ id: cell.id, version: cell.version })) },
-      details: { count: cells.length },
+      details: { count: cells.length, ...actor.details },
       ...(actor.requestId === undefined ? {} : { requestId: actor.requestId }),
     });
   }

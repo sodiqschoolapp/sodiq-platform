@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { absenceCategorySchema } from './attendance.js';
+import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
 import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
 import { subjectColourSchema } from './subjects.js';
 
@@ -14,14 +15,14 @@ import { subjectColourSchema } from './subjects.js';
 
 const subjectNames = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
 
-const journalUnitSchema = z.object({
+export const journalUnitSchema = z.object({
   kind: z.enum(['class', 'group']),
   id: z.uuid(),
   /** The class shown with its grade ("7 Oxford"), or the group's name. */
   name: z.string(),
 });
 
-const journalSubjectSchema = z.object({
+export const journalSubjectSchema = z.object({
   id: z.uuid(),
   names: subjectNames,
   /** The subject colour, drawn as in the timetable (review correction 3). */
@@ -154,6 +155,12 @@ export const journalLessonSchema = z.object({
   canEnter: z.boolean(),
   /** The reader may add works and type numbers now: `canEnter`, a graded subject and a journal teacher that day (task 8.1). */
   canEnterWorks: z.boolean(),
+  /**
+   * The edit period of the lesson for the reader (task 8.4; `07`, Editing rules and locks):
+   * its lock moment, the reader's window, an open unlock, a waiting request, and whether the
+   * reader corrects (the Academic Vice Principal and the Super Admin).
+   */
+  lock: editLockSchema,
   /** The first lesson of the double this lesson is the second of, for "copy attendance" (task 8.3a); `null` otherwise. */
   copyFrom: z.uuid().nullable(),
   /** The lesson's row has a plan item; `false` shows "No plan" (`edge/journal`, "A lesson is held with no plan item"; task 8.1). */
@@ -182,6 +189,8 @@ const journalCellSchema = z.object({
   version: z.int().min(1).nullable(),
   /** Who typed the attendance cell last (task 6.3, decision 16: "Every entry shows who typed it"). */
   typedBy: z.string().nullable(),
+  /** Task 8.4: "entered after the edit period" with the approver, or "corrected". */
+  marker: cellMarkerSchema,
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
     z.object({
@@ -191,6 +200,8 @@ const journalCellSchema = z.object({
       version: z.int().min(1).nullable(),
       /** A number on a student marked 0 or 3 (`edge/journal`: "marked 'score on an absent student'"). */
       onAbsent: z.boolean(),
+      /** Task 8.4: as the attendance cell's `marker`. */
+      marker: cellMarkerSchema,
     }),
   ),
   /** The lesson score (AVG), `null` when blank or for an attendance-only subject. */

@@ -5,6 +5,7 @@ import type { Access } from '../access/permission.guard.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
+import { correctorAssignment, decideWrite, outToday, type WriteHow } from './edit-window.js';
 
 /**
  * Who enters the attendance of a lesson (task 6.3, pull request #211;
@@ -198,14 +199,21 @@ export function refuseState(state: LessonState): void {
 
 /**
  * Locks the lesson and decides the entry (decisions 3 and 15): 404, then 403
- * `journal_entry_scope`, then the state. Called before any write.
+ * `journal_entry_scope`, then the state, then the edit period (task 8.4,
+ * `edit-window.ts`): 409 `journal_locked` from the lock without an open
+ * unlock of the person. A person no longer active in the branch enters
+ * nothing (task 8.4, spec review must-fix 7: "while their account is
+ * active"). A correction (task 8.4) is made by the Academic Vice Principal or
+ * the Super Admin with no scope of the lesson ("No unlock is needed"), else
+ * 403 `journal_correction_role`. Called before any write.
  */
 export async function enterableLesson(
   transaction: Transaction,
   access: Access,
   branchId: string,
   lessonId: string,
-): Promise<{ lesson: EntryLesson; now: Date; timeZone: string }> {
+  options: { readonly correction?: { readonly reason: string } | undefined } = {},
+): Promise<{ lesson: EntryLesson; now: Date; timeZone: string; write: WriteHow }> {
   const lesson = await lockedLesson(transaction, branchId, lessonId);
   const now = await transactionMoment(transaction);
   const branch = await transaction
@@ -215,10 +223,25 @@ export async function enterableLesson(
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(now, branch.time_zone);
   const staffId = await ownStaffOf(transaction, access.accountId);
-  const facts = await journalFactsOf(transaction, branchId, lesson.journalId);
-  if (!teachesOrOwns(lesson, facts, staffId, today)) {
-    throw new ApiException('journal_entry_scope', 403);
+  if (options.correction === undefined) {
+    const facts = await journalFactsOf(transaction, branchId, lesson.journalId);
+    if (
+      !teachesOrOwns(lesson, facts, staffId, today) ||
+      staffId === null ||
+      (await outToday(transaction, branchId, staffId, today))
+    ) {
+      throw new ApiException('journal_entry_scope', 403);
+    }
+  } else if (correctorAssignment(access, branchId) === null) {
+    throw new ApiException('journal_correction_role', 403);
   }
   refuseState(await entryStateOf(transaction, lesson, now));
-  return { lesson, now, timeZone: branch.time_zone };
+  const write = await decideWrite(transaction, {
+    access,
+    branchId,
+    target: { kind: 'lesson', lessonId: lesson.id },
+    staffId,
+    correction: options.correction,
+  });
+  return { lesson, now, timeZone: branch.time_zone, write };
 }

@@ -395,7 +395,7 @@ describe('classwork and homework', () => {
         const ahmedov = grid.students.find((one) => one.id === s.ahmedov);
         const at = grid.lessons.findIndex((one) => one.id === s.first);
         expect(ahmedov?.cells[at]?.works).toEqual([
-          { score: 12, percent: 40, version: 1, onAbsent: false },
+          { score: 12, percent: 40, version: 1, onAbsent: false, marker: null },
         ]);
         expect(grid.lastTotal).toBe(30);
       });

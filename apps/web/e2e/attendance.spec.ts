@@ -22,6 +22,9 @@ test('a teacher marks all present and an absence, and the Tutor records its reas
   page,
   browser,
 }) => {
+  // Three sign-ins (the teacher, the same teacher on a second device, the Tutor) pass the
+  // default 30 s on CI, as in the other tests with several sessions.
+  test.setTimeout(90_000);
   await signedIn(page, 'attendanceTeacher');
   await page.goto('/journal');
   await page

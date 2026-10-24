@@ -29,7 +29,7 @@ import {
   startYearOf,
   type MasterRow,
 } from './plan-masters-read.js';
-import { postHolders, postsOf } from './plan-posts.js';
+import { postHolders, postsOf } from '../access/request-posts.js';
 import { clockOf } from './plan-read.js';
 import { planReaderOf, type PlanReader } from './plan-scope.js';
 import { unitKeysOf } from './plan-separate.js';
@@ -67,7 +67,7 @@ export class PlanMastersService {
   /**
    * The assignment that keeps the masters of a subject in a scope now, or
    * `null` (decision 3). Read from the posts in force at the transaction's
-   * moment (`plan-posts.ts`) and named from the assignments that permit the
+   * moment (`access/request-posts.ts`) and named from the assignments that permit the
    * route.
    */
   async keeperOf(

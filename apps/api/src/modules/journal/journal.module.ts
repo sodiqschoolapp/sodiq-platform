@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AttendanceController } from './attendance.controller.js';
 import { AttendanceService } from './attendance.service.js';
 import { CellActionsService } from './cell-actions.service.js';
@@ -14,6 +15,7 @@ import { WorksController } from './works.controller.js';
 import { WorksService } from './works.service.js';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [
     JournalsController,
     AttendanceController,

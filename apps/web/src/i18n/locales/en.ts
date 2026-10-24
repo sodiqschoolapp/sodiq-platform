@@ -673,6 +673,20 @@ export const en = {
     comment_scope: 'You can comment only on what you may enter in this lesson.',
     comment_no_value: 'Type the mark or the number first, then add the comment.',
     comment_stale: 'Someone changed this comment a moment ago. Open it again.',
+    journal_locked:
+      'This lesson is locked: its edit period has ended. Send an unlock request to change it.',
+    journal_correction_role:
+      'Only the Academic Vice Principal or the Super Admin can correct a mark.',
+    journal_correction_bulk: 'A correction is made one cell at a time.',
+    journal_not_locked: 'This lesson is still open for you. No unlock is needed.',
+    journal_unlock_waiting: 'You already have a waiting unlock request for this.',
+    journal_unlock_scope: 'This request is not yours to decide.',
+    journal_unlock_decided: 'This request was already decided or withdrawn.',
+    journal_unlock_cancelled:
+      'This request is cancelled: its teacher no longer works in the branch.',
+    journal_unlock_stale: 'Someone changed this request a moment ago. Open it again.',
+    journal_extension_future: 'An extension can only cover days up to today.',
+    journal_extension_dates: 'The dates must lie in the open academic year.',
     work_not_in_lesson:
       'This work is not a column of this lesson any more. Reload the journal and try again.',
     lesson_has_plan_item:
@@ -3760,6 +3774,14 @@ export const en = {
           'Your edit request is approved for {{unit}}, quarter {{quarter}}: open until {{until}}.',
         request_refused:
           'Your edit request for {{unit}}, quarter {{quarter}} is refused: {{reason}}.',
+      },
+      journal: {
+        unlock_requested: '{{name}} asks to unlock the journal of {{unit}} for {{date}}.',
+        unlock_approved:
+          'Your unlock request for {{unit}}, {{date}} is approved: open until the end of {{until}}.',
+        unlock_refused: 'Your unlock request for {{unit}}, {{date}} is refused. {{reason}}',
+        correction:
+          'A mark of {{student}} in {{unit}}, {{date}} was corrected: {{before}} → {{after}}. Reason: {{reason}}',
       },
       sample: {
         message: 'Sample: {{text}}',
