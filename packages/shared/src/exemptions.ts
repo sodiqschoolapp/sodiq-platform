@@ -320,6 +320,8 @@ export const exemptionSchema = z.strictObject({
 export type Exemption = z.infer<typeof exemptionSchema>;
 
 export const exemptionListSchema = z.strictObject({
+  /** Today in the branch: the page's "ending this week" reads it, never the browser's clock. */
+  today: schoolDateSchema,
   items: z.array(exemptionSchema),
   /** The rows found beyond the 500 listed. */
   more: z.int().min(0),

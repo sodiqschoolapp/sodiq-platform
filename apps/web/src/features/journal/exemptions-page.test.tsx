@@ -87,7 +87,7 @@ const CLASS = {
 function open(role: 'academic_vice_principal' | 'principal') {
   const calls = fakeApi({
     'GET /api/auth/session': () => json(sessionOf({ assignments: [{ role, branchId: NORTH.id }] })),
-    'GET /api/exemptions': () => json({ items: [EXEMPTION], more: 0 }),
+    'GET /api/exemptions': () => json({ today: '2026-10-21', items: [EXEMPTION], more: 0 }),
     [`GET /api/exemptions/${EXEMPTION.id}/reason`]: () =>
       json({ id: EXEMPTION.id, category: 'illness', detail: 'A certificate from the clinic' }),
     'GET /api/classes': () => json({ classes: [CLASS] }),
@@ -122,6 +122,67 @@ const posts = (calls: ReturnType<typeof fakeApi>, route: string) =>
 // docs/spec/07-journal.md, Exemptions and Problem cases; docs/spec/edge-cases/exemptions.md
 // (task 8.5).
 describe('the Exemptions page', () => {
+  // `07`, Problem cases: "lists all of them with filters (class, kind, subject, in force, ending
+  // this week)" (spec review of the code, should-fix 9). Today is Wednesday 21 October.
+  it('filters by class, subject and ending this week', async () => {
+    const PE = {
+      id: uid(50),
+      name: { uz: 'Jismoniy tarbiya', ru: 'Физкультура', en: 'Physical education' },
+    };
+    const MATHS = { id: uid(51), name: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } };
+    const items: Exemption[] = [
+      EXEMPTION,
+      {
+        ...EXEMPTION,
+        id: uid(3),
+        student: { ...EXEMPTION.student, id: uid(11), lastName: 'Karimov', className: '7 Kent' },
+        subjects: [PE],
+        startDate: '2026-10-19',
+        endDate: '2026-10-23',
+        state: 'in_force',
+      },
+      {
+        ...EXEMPTION,
+        id: uid(4),
+        student: { ...EXEMPTION.student, id: uid(12), lastName: 'Saidov' },
+        subjects: [MATHS],
+        startDate: '2026-10-26',
+        endDate: '2026-10-30',
+        state: 'coming',
+      },
+    ];
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+      'GET /api/exemptions': () => json({ today: '2026-10-21', items, more: 0 }),
+    });
+    renderApp('/journal/exemptions', 'en');
+    const names = () =>
+      [...document.querySelectorAll('tbody tr')].map(
+        (row) => /(Rahimova|Karimov|Saidov)/.exec(row.textContent ?? '')?.[1],
+      );
+    await waitFor(() => {
+      expect(names()).toHaveLength(3);
+    });
+    const choose = (label: string, value: string) => {
+      fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } });
+    };
+    choose(en.journal.exemptions.class, '7 Kent');
+    await waitFor(() => {
+      expect(names()).toEqual(['Karimov']);
+    });
+    choose(en.journal.exemptions.class, '');
+    choose(en.journal.exemptions.scope, MATHS.id);
+    await waitFor(() => {
+      expect(names().sort()).toEqual(['Rahimova', 'Saidov']);
+    });
+    choose(en.journal.exemptions.scope, '');
+    choose(en.journal.exemptions.state, 'ending_this_week');
+    await waitFor(() => {
+      expect(names()).toEqual(['Karimov']);
+    });
+  });
+
   it('lists the exemptions and opens the reason on a click only', async () => {
     const calls = open('principal');
     expect(await screen.findByRole('heading', { name: en.journal.exemptions.title })).toBeDefined();

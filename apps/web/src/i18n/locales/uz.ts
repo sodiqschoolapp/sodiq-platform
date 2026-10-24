@@ -5633,6 +5633,7 @@ export const uz: Texts<'one' | 'other'> = {
       states: {
         coming: 'Kutilmoqda',
         in_force: 'Amalda',
+        ending_this_week: 'Shu hafta tugaydi',
         ended: 'Tugagan',
         voided: 'Bekor qilingan',
       },

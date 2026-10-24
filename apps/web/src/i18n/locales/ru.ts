@@ -5896,6 +5896,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       states: {
         coming: 'Предстоит',
         in_force: 'Действует',
+        ending_this_week: 'Заканчиваются на этой неделе',
         ended: 'Завершено',
         voided: 'Аннулировано',
       },

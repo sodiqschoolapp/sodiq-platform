@@ -5584,6 +5584,7 @@ export const en = {
       states: {
         coming: 'Coming',
         in_force: 'In force',
+        ending_this_week: 'Ending this week',
         ended: 'Ended',
         voided: 'Voided',
       },

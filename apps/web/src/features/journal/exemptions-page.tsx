@@ -114,6 +114,13 @@ function useDatesText() {
  * it"; `edge/exemptions`, rows 8 to 10 and 12). The Academic Vice Principal and
  * the Super Admin enter and change them, the Principal reads.
  */
+/** The Sunday of the week of a school date (Monday to Sunday), by its text alone. */
+function sundayOf(date: string): string {
+  const day = new Date(`${date}T00:00:00Z`);
+  const weekday = day.getUTCDay() === 0 ? 7 : day.getUTCDay();
+  return new Date(day.getTime() + (7 - weekday) * 86_400_000).toISOString().slice(0, 10);
+}
+
 export function ExemptionsPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -186,16 +193,52 @@ export function ExemptionsPage(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `datesText` follows `t` and `language`.
     [t, language],
   );
+  const today = list.data?.today ?? null;
+  const rows = list.data?.items;
   const filters = useMemo(
     () => [
       {
+        key: 'class',
+        label: t('journal.exemptions.class'),
+        options: [...new Set((rows ?? []).flatMap((row) => row.student.className ?? []))]
+          .sort((one, other) => one.localeCompare(other, language))
+          .map((value) => ({ value, label: value })),
+        matches: (row: Exemption, value: string) => row.student.className === value,
+      },
+      {
+        key: 'subject',
+        label: t('journal.exemptions.scope'),
+        options: [
+          ...new Map(
+            (rows ?? []).flatMap((row) =>
+              (row.subjects ?? []).map((one) => [one.id, nameOf(one.name, language)] as const),
+            ),
+          ),
+        ]
+          .sort(([, one], [, other]) => one.localeCompare(other, language))
+          .map(([value, label]) => ({ value, label })),
+        // An exemption of all subjects covers every subject, as the server's filter reads it.
+        matches: (row: Exemption, value: string) =>
+          row.subjects === null || row.subjects.some((one) => one.id === value),
+      },
+      {
         key: 'state',
         label: t('journal.exemptions.state'),
-        options: (['in_force', 'coming', 'ended', 'voided'] as const).map((value) => ({
-          value,
-          label: t(`journal.exemptions.states.${value}`),
-        })),
-        matches: (row: Exemption, value: string) => row.state === value,
+        options: (['in_force', 'ending_this_week', 'coming', 'ended', 'voided'] as const).map(
+          (value) => ({
+            value,
+            label: t(`journal.exemptions.states.${value}`),
+          }),
+        ),
+        // `07`, Problem cases: "ending this week": not voided, ending from today to Sunday
+        // (the server's `ending_this_week`), today being the branch's.
+        matches: (row: Exemption, value: string) =>
+          value === 'ending_this_week'
+            ? today !== null &&
+              row.voided === null &&
+              row.endDate >= today &&
+              row.endDate <= sundayOf(today)
+            : row.state === value,
       },
       {
         key: 'kind',
@@ -207,7 +250,7 @@ export function ExemptionsPage(): React.JSX.Element {
         matches: (row: Exemption, value: string) => row.kind === value,
       },
     ],
-    [t],
+    [t, language, rows, today],
   );
   return (
     <>
