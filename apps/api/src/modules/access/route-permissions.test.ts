@@ -721,6 +721,12 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // cell (within the reader's grid) and the reasons of absence (student-absences.test.ts).
   'POST /api/journal/lessons/:lessonId/attendance': { branch: 'request', roles: JOURNAL_WRITERS },
   'POST /api/journal/lessons/:lessonId/all-present': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.3a: undo and "copy attendance" (scope in the route, journal-saves.test.ts).
+  'POST /api/journal/lessons/:lessonId/undo': { branch: 'request', roles: JOURNAL_WRITERS },
+  'POST /api/journal/lessons/:lessonId/copy-attendance': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
   // Task 8.1: classwork and homework (scope in the route, journal-works.test.ts).
   'POST /api/journal/lessons/:lessonId/works': { branch: 'request', roles: JOURNAL_WRITERS },
   'DELETE /api/journal/lessons/:lessonId/works/:workId': {

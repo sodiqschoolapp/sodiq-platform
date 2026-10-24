@@ -25,7 +25,22 @@ import {
 import { useView } from '@/features/access/use-view';
 import { accountText, cellKindText, cellValueText } from '@/features/people/cell-lines';
 import { momentText } from '@/lib/dates';
-import { cellHistoryQuery, invalidateJournal, markAllPresent, saveAttendance } from './journal-api';
+import {
+  StaleDialog,
+  storedOf,
+  useSaveStates,
+  type LastAction,
+  type SaveState,
+  type StaleCell,
+} from './cell-saves';
+import {
+  cellHistoryQuery,
+  copyAttendance,
+  invalidateJournal,
+  markAllPresent,
+  saveAttendance,
+  showTyped,
+} from './journal-api';
 
 /**
  * Attendance entry in the journal (task 6.3, pull request #211; `07`,
@@ -44,28 +59,45 @@ export interface AttendanceEntry {
   /** Saves a mark (or clears the cell with `null`) on the version the grid read. */
   mark: (lessonId: string, student: JournalStudent, mark: AttendanceMark | null) => void;
   allPresent: (lessonId: string) => void;
+  /** "Copy attendance" into the second lesson of a double (task 8.3a). */
+  copy: (lessonId: string) => void;
   openHistory: (lessonId: string, student: JournalStudent) => void;
-  /** The cells saved in this visit, for the saved sign. */
-  saved: ReadonlySet<string>;
+  /** Where each cell typed in this visit stands, for its sign (task 8.3a). */
+  stateOf: (lessonId: string, studentId: string) => SaveState | undefined;
   /** A save or "all present" is on its way. */
   busy: boolean;
 }
 
 interface Notice {
-  readonly kind: 'allPresent' | 'presentEarlier';
+  readonly kind: 'allPresent' | 'copy' | 'presentEarlier';
   readonly filled?: number;
   readonly skipped?: number;
   readonly names?: string;
 }
 
-export function useAttendanceEntry(grid: JournalGrid): {
+/** A typed mark on its way: the key is made once and sent again on a retry. */
+interface TypedMark {
+  lessonId: string;
+  studentId: string;
+  mark: AttendanceMark | null;
+  version: number | null;
+  key: string;
+  /** The keep-or-clear answer once given: a retry sends the body last sent (spec review should-fix 6). */
+  numbers?: 'keep' | 'clear';
+}
+
+export function useAttendanceEntry(
+  grid: JournalGrid,
+  record: (action: LastAction) => void = () => undefined,
+): {
   entry: AttendanceEntry;
   notices: React.JSX.Element;
 } {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [saved, setSaved] = useState<ReadonlySet<string>>(new Set());
+  const saves = useSaveStates();
+  const [stale, setStale] = useState<{ input: TypedMark; cell: StaleCell } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
   const [history, setHistory] = useState<{ lessonId: string; student: JournalStudent } | null>(
@@ -77,23 +109,23 @@ export function useAttendanceEntry(grid: JournalGrid): {
   };
 
   const save = useMutation({
-    mutationFn: async (input: {
-      lessonId: string;
-      studentId: string;
-      mark: AttendanceMark | null;
-      version: number | null;
-    }) => {
+    mutationFn: async (input: TypedMark) => {
       const send = (numbers?: 'keep' | 'clear') =>
-        saveAttendance(input.lessonId, {
-          saves: [
-            {
-              studentId: input.studentId,
-              mark: input.mark,
-              version: input.version,
-              ...(numbers === undefined ? {} : { numbers }),
-            },
-          ],
-        });
+        saveAttendance(
+          input.lessonId,
+          {
+            saves: [
+              {
+                studentId: input.studentId,
+                mark: input.mark,
+                version: input.version,
+                ...(numbers === undefined ? {} : { numbers }),
+              },
+            ],
+          },
+          input.key,
+        );
+      if (input.numbers !== undefined) return send(input.numbers);
       try {
         return await send();
       } catch (error) {
@@ -107,14 +139,29 @@ export function useAttendanceEntry(grid: JournalGrid): {
           cancel: t('journal.works.keep'),
           destructive: true,
         });
-        return send(clear ? 'clear' : 'keep');
+        input.numbers = clear ? 'clear' : 'keep';
+        return send(input.numbers);
       }
     },
-    onMutate: () => {
+    onMutate: (input) => {
       setFailure(null);
+      // Shown at once (`12`: "Save a journal cell: shown at once").
+      showTyped(queryClient, {
+        lessonId: input.lessonId,
+        studentId: input.studentId,
+        workIndex: null,
+        value: input.mark,
+      });
+      saves.set(cellKey(input.lessonId, input.studentId), 'saving');
     },
     onSuccess: async (answer, input) => {
-      setSaved((before) => new Set([...before, cellKey(input.lessonId, input.studentId)]));
+      const key = cellKey(input.lessonId, input.studentId);
+      saves.set(key, 'saved');
+      saves.keepUnsent(key, null);
+      record({
+        lessonId: input.lessonId,
+        cells: [...answer.cells.map((one) => ({ ...one, workId: null })), ...answer.cleared],
+      });
       setNotice(
         answer.presentEarlier.length === 0
           ? null
@@ -122,9 +169,36 @@ export function useAttendanceEntry(grid: JournalGrid): {
       );
       await invalidateJournal(queryClient);
     },
-    onError: async (error) => {
-      setFailure(error);
-      // A stale cell: the stored value is read again (the choice of both is 8.3a's).
+    onError: async (error, input) => {
+      const key = cellKey(input.lessonId, input.studentId);
+      // No answer, or a page too old for the server (edge/system-behaviour: "the page asks
+      // to reload and keeps the unsent entries"): the typed value stays, "not saved".
+      if (
+        error instanceof ApiFailure &&
+        (error.code === 'no_answer' || error.code === 'app_outdated')
+      ) {
+        // No answer: the typed value stays, "not saved", until the retry with the same key.
+        saves.set(key, 'failed');
+        saves.keepUnsent(key, { retry: () => save.mutate(input) });
+        return;
+      }
+      saves.set(key, null);
+      saves.keepUnsent(key, null);
+      if (error instanceof ApiFailure && error.code === 'cell_stale') {
+        // Both values, for the person to choose (edge/journal); the stored one is kept meanwhile.
+        setStale({
+          input,
+          cell: {
+            student: nameOf(input.studentId),
+            attendance: true,
+            workKind: null,
+            mine: input.mark,
+            stored: storedOf(error),
+          },
+        });
+      } else {
+        setFailure(error);
+      }
       await invalidateJournal(queryClient);
     },
   });
@@ -135,10 +209,8 @@ export function useAttendanceEntry(grid: JournalGrid): {
       setFailure(null);
     },
     onSuccess: async (answer, lessonId) => {
-      setSaved(
-        (before) =>
-          new Set([...before, ...answer.filled.map((one) => cellKey(lessonId, one.studentId))]),
-      );
+      for (const one of answer.filled) saves.set(cellKey(lessonId, one.studentId), 'saved');
+      record({ lessonId, cells: answer.filled.map((one) => ({ ...one, workId: null })) });
       setNotice({
         kind: 'allPresent',
         filled: answer.filled.length,
@@ -151,8 +223,27 @@ export function useAttendanceEntry(grid: JournalGrid): {
     },
   });
 
+  // Task 8.3a: "copy attendance" (From 6.3, review correction 4), reported as "all present" is.
+  const copy = useMutation({
+    mutationFn: (lessonId: string) => copyAttendance(lessonId),
+    onMutate: () => {
+      setFailure(null);
+    },
+    onSuccess: async (answer, lessonId) => {
+      for (const one of answer.filled) saves.set(cellKey(lessonId, one.studentId), 'saved');
+      record({ lessonId, cells: answer.filled.map((one) => ({ ...one, workId: null })) });
+      setNotice({ kind: 'copy', filled: answer.filled.length, skipped: answer.skipped.length });
+      await invalidateJournal(queryClient);
+    },
+    onError: (error) => {
+      setFailure(error);
+    },
+  });
+
   const { mutate: saveMark, isPending: saving } = save;
   const { mutate: fillAll, isPending: filling } = all;
+  const { mutate: copyMarks, isPending: copying } = copy;
+  const { states } = saves;
   const entry = useMemo(
     (): AttendanceEntry => ({
       mark: (lessonId, student, mark) => {
@@ -162,18 +253,22 @@ export function useAttendanceEntry(grid: JournalGrid): {
           studentId: student.id,
           mark,
           version: student.cells[index]?.version ?? null,
+          key: crypto.randomUUID(),
         });
       },
       allPresent: (lessonId) => {
         fillAll(lessonId);
       },
+      copy: (lessonId) => {
+        copyMarks(lessonId);
+      },
       openHistory: (lessonId, student) => {
         setHistory({ lessonId, student });
       },
-      saved,
-      busy: saving || filling,
+      stateOf: (lessonId, studentId) => states.get(cellKey(lessonId, studentId)),
+      busy: saving || filling || copying,
     }),
-    [grid.lessons, saveMark, fillAll, saved, saving, filling],
+    [grid.lessons, saveMark, fillAll, copyMarks, states, saving, filling, copying],
   );
 
   const notices = (
@@ -187,13 +282,39 @@ export function useAttendanceEntry(grid: JournalGrid): {
             )}
           </p>
         )}
+        {notice?.kind === 'copy' && (
+          <p className="flex flex-wrap gap-x-1" data-copy-attendance="true">
+            <span>{t('journal.saving.copied', { count: notice.filled ?? 0 })}</span>
+            {(notice.skipped ?? 0) > 0 && (
+              <span>{t('journal.saving.copySkipped', { count: notice.skipped ?? 0 })}</span>
+            )}
+          </p>
+        )}
         {notice?.kind === 'presentEarlier' && (
           <p data-present-earlier="true">
             {t('journal.entry.presentEarlier', { names: notice.names ?? '' })}
           </p>
         )}
       </div>
+      {saves.notice}
       <FailureAlert error={failure} />
+      {stale !== null && (
+        <StaleDialog
+          cells={[stale.cell]}
+          onKeep={() => {
+            setStale(null);
+          }}
+          onMine={() => {
+            const { input, cell } = stale;
+            setStale(null);
+            saveMark({
+              ...input,
+              version: cell.stored?.version ?? null,
+              key: crypto.randomUUID(),
+            });
+          }}
+        />
+      )}
       {history !== null && (
         <CellHistoryDialog
           lessonId={history.lessonId}

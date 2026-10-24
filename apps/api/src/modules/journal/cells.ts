@@ -2,11 +2,12 @@ import type { ErrorCode, ErrorDetail } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
+import { namedAccounts } from './cell-lines.query.js';
 
 const CHECK_VIOLATION = '23514';
 
 /** The refusals of `journal_cells_write` (0108), as error codes. */
-const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+export const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   journal_cell_not_member: 'cell_closed',
   journal_cell_cancelled: 'lesson_cancelled_cell',
   // Task 8.1 (0119): the rules of a number.
@@ -249,6 +250,10 @@ async function staleDetails(
   const byKey = new Map(
     stored.map((row) => [`${row.lesson_id}/${row.student_id}/${row.work_id ?? ''}`, row]),
   );
+  const named = await namedAccounts(
+    transaction,
+    stored.map((row) => row.changed_by),
+  );
   const staleKeys = new Set(stale.map(keyOf));
   const details: ErrorDetail[] = [];
   saves.forEach((save, index) => {
@@ -266,6 +271,8 @@ async function staleDetails(
               value: valueOf(row),
               version: row.version,
               changedBy: row.changed_by,
+              changedByLogin: named.get(row.changed_by)?.login ?? null,
+              changedByName: named.get(row.changed_by)?.name ?? null,
               changedAt: new Date(row.changed_at).toISOString(),
             },
           }),

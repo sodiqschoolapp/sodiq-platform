@@ -10,7 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field, SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
@@ -24,7 +24,9 @@ import { monthsText, schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
+import { UndoIcon } from '@/components/icons';
 import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
+import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
 import { useWorksEntry } from './works-entry';
@@ -152,9 +154,36 @@ function JournalLoaded({
   const [foldedOpen, setFoldedOpen] = useState(false);
   // Lesson mode on a phone (`12`, Devices), or by the switch.
   const narrow = !useMinWidth(SM);
-  const { entry, notices } = useAttendanceEntry(data);
+  // Task 8.3a: the undo of the person's own last action on the page (edge/journal, Undo).
+  const undo = useUndo();
+  const { entry, notices } = useAttendanceEntry(data, undo.record);
   // Task 8.1: works and numbers.
-  const { works, dialogs } = useWorksEntry(data);
+  const { works, dialogs } = useWorksEntry(data, undo.record);
+  const { undo: undoLast, available: canUndo } = undo;
+  useEffect(() => {
+    // Ctrl+Z (or Cmd+Z) outside a field and a dialog undoes the last action of the page.
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]') !==
+          null ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!canUndo) return;
+      event.preventDefault();
+      undoLast();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [canUndo, undoLast]);
   // Task 8.2: the rating exam and comments.
   const { rating, dialogs: ratingDialogs } = useRatingEntry(data);
   const { comments, dialogs: commentDialogs } = useComments(data);
@@ -315,12 +344,24 @@ function JournalLoaded({
                 }}
               />
             )}
+            {data.lessons.some((one) => one.canEnter) && (
+              <Button
+                variant="secondary"
+                disabled={!undo.available || undo.busy}
+                onClick={undo.undo}
+                title={t('journal.saving.undoHint')}
+              >
+                <UndoIcon aria-hidden="true" />
+                {t('journal.saving.undo')}
+              </Button>
+            )}
             <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
               {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
             </Link>
           </div>
         </div>
         {notices}
+        {undo.notice}
         {dialogs}
         {ratingDialogs}
         {commentDialogs}

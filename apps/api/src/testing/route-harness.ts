@@ -239,15 +239,21 @@ async function compare(
     let kept = false;
     // Every `:parameter` of the path becomes an id that names nothing.
     const path = route.path.replace(/:[A-Za-z0-9_]+/g, () => randomUUID());
-    for (const caller of callers) {
-      for (const branch of [home, other]) {
-        let call = request(server)
+    // The calls of one route go out together (task 8.3a: one by one the walk passed its
+    // time limit on a CI runner); their outcomes are read in the order of the callers.
+    const pairs = callers.flatMap((caller) => [home, other].map((branch) => ({ caller, branch })));
+    const responses = await Promise.all(
+      pairs.map(({ caller, branch }) => {
+        const call = request(server)
           [route.method.toLowerCase() as 'get'](path)
           .set(BRANCH_HEADER, branch);
-        if (caller.cookies !== undefined) {
-          call = call.set('Cookie', caller.cookies);
-        }
-        const response = await call;
+        return caller.cookies === undefined ? call : call.set('Cookie', caller.cookies);
+      }),
+    );
+    for (const [index, { caller, branch }] of pairs.entries()) {
+      const response = responses[index];
+      if (response === undefined) continue;
+      {
         const code = apiErrorSchema.safeParse(response.body).data?.error.code;
         const outcome: string =
           response.headers[REACHED_HEADER.toLowerCase()] === '1'

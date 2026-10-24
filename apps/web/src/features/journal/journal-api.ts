@@ -1,6 +1,11 @@
 import {
   absenceReasonSchema,
+  REQUEST_KEY_HEADER,
   allPresentSchema,
+  attendanceCopySchema,
+  undoneSchema,
+  type JournalGrid,
+  type Undo,
   attendanceSavedSchema,
   cellHistorySchema,
   commentHistorySchema,
@@ -76,13 +81,70 @@ export const invalidateJournal = (queryClient: QueryClient): Promise<unknown> =>
   queryClient.invalidateQueries({ queryKey: journalKey() });
 
 /** Typed attendance marks of one lesson (task 6.3); `mark: null` clears a cell. */
-export const saveAttendance = (lessonId: string, body: AttendanceSave) =>
+export const saveAttendance = (lessonId: string, body: AttendanceSave, key: string) =>
   answerOf(
     api.POST('/api/journal/lessons/{lessonId}/attendance', {
-      params: { header: branchHeader(), path: { lessonId } },
+      // Task 8.3a: one key per typed entry, sent again on a retry ("counted once").
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { lessonId } },
       body,
     }),
   ).then((answer) => attendanceSavedSchema.parse(answer));
+
+/** Undo of the person's own last action on the page (task 8.3a; `edge/journal`, Undo). */
+export const undoCells = (lessonId: string, body: Undo) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/undo', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => undoneSchema.parse(answer));
+
+/** "Copy attendance" into the second lesson of a double (task 8.3a). */
+export const copyAttendance = (lessonId: string) =>
+  answerOf(
+    api.POST('/api/journal/lessons/{lessonId}/copy-attendance', {
+      params: { header: branchHeader(), path: { lessonId } },
+    }),
+  ).then((answer) => attendanceCopySchema.parse(answer));
+
+/**
+ * Shows a typed value in every journal grid that holds the cell before the
+ * server answers (task 8.3a: "save per cell with optimistic display"; `12`:
+ * "Save a journal cell: shown at once"). The number's percent waits for the
+ * answer: only `packages/calc` on the server works it out. `workIndex`
+ * `null` is the attendance cell.
+ */
+export function showTyped(
+  queryClient: QueryClient,
+  cell: { lessonId: string; studentId: string; workIndex: number | null; value: number | null },
+): void {
+  queryClient.setQueriesData<JournalGrid>({ queryKey: journalKey() }, (grid) => {
+    if (grid === undefined || !('lessons' in grid) || !('students' in grid)) return grid;
+    const index = grid.lessons.findIndex((one) => one.id === cell.lessonId);
+    if (index < 0) return grid;
+    return {
+      ...grid,
+      students: grid.students.map((student) => {
+        if (student.id !== cell.studentId) return student;
+        return {
+          ...student,
+          cells: student.cells.map((one, at) => {
+            if (at !== index) return one;
+            if (cell.workIndex === null) {
+              return { ...one, mark: cell.value };
+            }
+            return {
+              ...one,
+              works: one.works.map((work, workAt) =>
+                workAt === cell.workIndex ? { ...work, score: cell.value, percent: null } : work,
+              ),
+            };
+          }),
+        };
+      }),
+    };
+  });
+}
 
 /** "All present" for one lesson (task 6.3, decision 4). */
 export const markAllPresent = (lessonId: string) =>
@@ -182,10 +244,10 @@ export const carryWork = (lessonId: string, body: WorkCarry) =>
   ).then((answer) => workSavedSchema.parse(answer));
 
 /** Numbers typed for works of one lesson; `score: null` clears a cell. */
-export const saveScores = (lessonId: string, body: ScoresSave) =>
+export const saveScores = (lessonId: string, body: ScoresSave, key: string) =>
   answerOf(
     api.POST('/api/journal/lessons/{lessonId}/scores', {
-      params: { header: branchHeader(), path: { lessonId } },
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { lessonId } },
       body,
     }),
   ).then((answer) => scoresSavedSchema.parse(answer));

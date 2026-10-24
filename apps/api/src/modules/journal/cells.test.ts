@@ -142,6 +142,8 @@ describe('saveCells', () => {
             value: 2,
             version: 2,
             changedBy: teacher,
+            changedByLogin: expect.any(String) as string,
+            changedByName: null,
             changedAt: new Date(NOW).toISOString(),
           },
         },

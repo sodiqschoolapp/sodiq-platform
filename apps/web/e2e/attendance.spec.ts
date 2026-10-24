@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { accountOf } from './accounts';
+import { accountOf, NEW_PASSWORD } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 async function signedIn(page: Page, key: 'attendanceTeacher' | 'attendanceTutor') {
@@ -82,4 +82,34 @@ test('a teacher marks all present and an absence, and the Tutor records its reas
   await page.reload();
   await expect(toshmatov.locator('[data-reason="illness"]')).toBeVisible();
   await expect(page.getByText('Fever')).toHaveCount(0);
+
+  // Task 8.3a, the Done when: two saves of one cell from two sessions. The same teacher on a
+  // second device saves Toshmatov's cell first; this page, read before, types on the old
+  // version, is told and sees both values (edge/journal, Saving and working together).
+  const second = await browser.newContext();
+  const phone = await second.newPage();
+  await phone.goto('/sign-in');
+  await languageChooser(phone).selectOption('en');
+  await signIn(phone, en, accountOf('attendanceTeacher').login, NEW_PASSWORD);
+  await expect(heading(phone, en.home.title)).toBeVisible();
+  await phone.goto(page.url());
+  const phoneCell = phone
+    .locator('.ag-row')
+    .filter({ hasText: 'Toshmatov Jasur' })
+    .first()
+    .locator('[col-id$=":a"]')
+    .last();
+  await phoneCell.click();
+  await phone.keyboard.press('2');
+  await expect(phoneCell.locator('[data-save-state="saved"]')).toBeVisible();
+  await second.close();
+
+  await toshmatov.click();
+  await page.keyboard.press('3');
+  const dialog = page.getByRole('dialog', { name: en.journal.saving.staleTitle });
+  await expect(dialog.locator('[data-stale-stored]')).toContainText('2 (Late)');
+  await expect(dialog.locator('[data-stale-mine]')).toContainText('3 (');
+  await dialog.getByRole('button', { name: en.journal.saving.useMine, exact: true }).click();
+  await expect(toshmatov.locator('[data-mark]')).toHaveText('3');
+  await expect(toshmatov.locator('[data-save-state="saved"]')).toBeVisible();
 });

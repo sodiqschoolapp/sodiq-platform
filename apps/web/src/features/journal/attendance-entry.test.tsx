@@ -56,6 +56,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   works: [],
   canEnterWorks: false,
   planItem: true,
+  copyFrom: null,
   notHeldWorks: [],
   given: [],
 });
@@ -112,6 +113,7 @@ function open(path = `/journal/${JOURNAL}`, language: 'en' | 'ru' = 'en', grid =
       const saves = (body as { saves: { studentId: string; mark: number | null }[] }).saves;
       return json({
         cells: saves.map((one) => ({ studentId: one.studentId, mark: one.mark, version: 1 })),
+        cleared: [],
         presentEarlier: saves.filter((one) => one.mark === 0).map((one) => one.studentId),
       });
     },
@@ -251,7 +253,7 @@ describe('attendance entry in the grid', () => {
       'GET /api/auth/session': () =>
         json(sessionOf({ language: 'en', assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
-      [`POST /api/journal/lessons/${LESSON}/attendance`]: () => refusal('cell_stale', 409),
+      [`POST /api/journal/lessons/${LESSON}/attendance`]: () => refusal('cell_closed', 409),
     });
     renderApp(`/journal/${JOURNAL}`, 'en');
     const target = await waitFor(() => {
@@ -261,7 +263,7 @@ describe('attendance entry in the grid', () => {
     });
     fireEvent.click(target);
     fireEvent.keyDown(target, { key: '1' });
-    await screen.findByText(en.errors.cell_stale);
+    await screen.findByText(en.errors.cell_closed);
     expect(posts(calls, `POST /api/journal/lessons/${LESSON}/attendance`)).toHaveLength(1);
   });
 });

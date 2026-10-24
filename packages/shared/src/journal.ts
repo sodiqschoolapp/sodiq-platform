@@ -154,6 +154,8 @@ export const journalLessonSchema = z.object({
   canEnter: z.boolean(),
   /** The reader may add works and type numbers now: `canEnter`, a graded subject and a journal teacher that day (task 8.1). */
   canEnterWorks: z.boolean(),
+  /** The first lesson of the double this lesson is the second of, for "copy attendance" (task 8.3a); `null` otherwise. */
+  copyFrom: z.uuid().nullable(),
   /** The lesson's row has a plan item; `false` shows "No plan" (`edge/journal`, "A lesson is held with no plan item"; task 8.1). */
   planItem: z.boolean(),
   /** The works of the lesson marked "not held": out of the columns, listed for the undo (`09`: "its column is removed from that lesson"). */

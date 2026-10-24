@@ -1,4 +1,4 @@
-import { BRANCH_HEADER } from '@sodiq/shared';
+import { APP_VERSION, APP_VERSION_HEADER, BRANCH_HEADER } from '@sodiq/shared';
 import createClient from 'openapi-fetch';
 import { getBranchInUse } from './branch-in-use';
 import type { paths } from './schema.generated';
@@ -32,6 +32,8 @@ api.use({
     if (branchId !== null) {
       request.headers.set(BRANCH_HEADER, branchId);
     }
+    // Task 8.3a (`edge/system-behaviour`): "Every request carries the application version".
+    request.headers.set(APP_VERSION_HEADER, String(APP_VERSION));
     return request;
   },
 });

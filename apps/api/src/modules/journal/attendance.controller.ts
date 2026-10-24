@@ -3,6 +3,12 @@ import {
   allPresentSchema,
   attendanceSaveSchema,
   attendanceSavedSchema,
+  attendanceCopySchema,
+  undoSchema,
+  undoneSchema,
+  type AttendanceCopy,
+  type Undo,
+  type Undone,
   cellHistorySchema,
   journalLessonParamsSchema,
   lessonStudentParamsSchema,
@@ -14,10 +20,11 @@ import {
   type LessonStudentParams,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
+import { RequestKey, Returns, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { AttendanceService } from './attendance.service.js';
+import { CellActionsService } from './cell-actions.service.js';
 
 /**
  * Attendance entry and the history of a cell (task 6.3, pull request #211;
@@ -30,7 +37,10 @@ import { AttendanceService } from './attendance.service.js';
  */
 @Controller('journal/lessons')
 export class AttendanceController {
-  constructor(private readonly attendance: AttendanceService) {}
+  constructor(
+    private readonly attendance: AttendanceService,
+    private readonly actions: CellActionsService,
+  ) {}
 
   @Post(':lessonId/attendance')
   @HttpCode(200)
@@ -40,9 +50,10 @@ export class AttendanceController {
     @CurrentAccess() access: Access,
     @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
     @ValidBody(attendanceSaveSchema) input: AttendanceSave,
+    @RequestKey() key: string,
     @RequestId() requestId: string,
   ): Promise<AttendanceSaved> {
-    return this.attendance.save(access, params.lessonId, input, requestId);
+    return this.attendance.save(access, params.lessonId, input, key, requestId);
   }
 
   @Post(':lessonId/all-present')
@@ -55,6 +66,33 @@ export class AttendanceController {
     @RequestId() requestId: string,
   ): Promise<AllPresent> {
     return this.attendance.allPresent(access, params.lessonId, requestId);
+  }
+
+  /** Task 8.3a: undo of the person's own last action on the page (`edge/journal`, Undo). */
+  @Post(':lessonId/undo')
+  @HttpCode(200)
+  @Requires('journal', 'edit')
+  @Returns(undoneSchema)
+  undo(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
+    @ValidBody(undoSchema) input: Undo,
+    @RequestId() requestId: string,
+  ): Promise<Undone> {
+    return this.actions.undo(access, params.lessonId, input, requestId);
+  }
+
+  /** Task 8.3a: "copy attendance" into the second lesson of a double (`edge/timetable`, Double lessons). */
+  @Post(':lessonId/copy-attendance')
+  @HttpCode(200)
+  @Requires('journal', 'edit')
+  @Returns(attendanceCopySchema)
+  copyAttendance(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
+    @RequestId() requestId: string,
+  ): Promise<AttendanceCopy> {
+    return this.actions.copyAttendance(access, params.lessonId, requestId);
   }
 
   @Get(':lessonId/students/:studentId/history')

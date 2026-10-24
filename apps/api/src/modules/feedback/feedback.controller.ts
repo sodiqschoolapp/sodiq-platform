@@ -1,7 +1,7 @@
 import { Controller, Post } from '@nestjs/common';
 import { feedbackReportSchema, type FeedbackReport } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { ReturnsNothing, ValidBody } from '../../http/schemas.js';
+import { AppVersion, ReturnsNothing, ValidBody } from '../../http/schemas.js';
 import { AnySignedIn } from '../access/access.decorators.js';
 import { CurrentSession } from '../auth/session.guard.js';
 import type { ActiveSession } from '../auth/sessions.service.js';
@@ -25,7 +25,8 @@ export class FeedbackController {
     @CurrentSession() session: ActiveSession,
     @ValidBody(feedbackReportSchema) body: FeedbackReport,
     @RequestId() requestId: string,
+    @AppVersion() appVersion: number | undefined,
   ): Promise<void> {
-    await this.reports.record(session, body, requestId);
+    await this.reports.record(session, body, requestId, appVersion);
   }
 }

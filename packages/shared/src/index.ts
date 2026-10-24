@@ -1959,3 +1959,18 @@ export {
   type WorkChange,
   type WorkLine,
 } from './reset-entries.js';
+export {
+  APP_VERSION,
+  APP_VERSION_HEADER,
+  OLDEST_APP_VERSION,
+  UNDO_CELLS_MAX,
+  UNDO_SKIPS,
+  appVersionSchema,
+  attendanceCopySchema,
+  undoCellsOf,
+  undoSchema,
+  undoneSchema,
+  type AttendanceCopy,
+  type Undo,
+  type Undone,
+} from './journal-saves.js';

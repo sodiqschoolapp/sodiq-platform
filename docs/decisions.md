@@ -297,6 +297,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: saving and stale saves (task 8.3a)
+
+Plan approved on pull request #220 with corrections 1 to 5; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a required header on existing routes). The cell saves (attendance, scores) require `Idempotency-Key`; the other journal writes get keys with the offline queue (8.3c) | Decision 1, correction 1; `edge/journal`: "The same entry sent twice is counted once" |
+| **Look first** (who copies). "Copy attendance" needs the right to enter the second lesson; the server reads the first lesson's marks, also when another person held it | Decision 2; `edge/timetable`, Double lessons |
+| Undo covers a typed mark, a typed number, "all present", "copy attendance" and a keep-or-clear change with its cleared numbers; a cell is undone only when its version is the one sent and its line of that version is the person's own `entry`; an undo is not undone again; a restore the database refuses is skipped with its code under a savepoint | Decision 3, correction 3 |
+| `APP_VERSION` and `OLDEST_APP_VERSION = APP_VERSION - 1`; a request without the header passes; reads, `/api/auth` and `/api/feedback` are never refused for it | Decisions 4 and 9; feedback added by the permission review of the code |
+| The stale refusal names who changed the cell by login and name | Decision 5 |
+| A save with no answer stays "not saved" with Retry (same key) for the page visit, in the unsent store | Decision 6 |
+| Undo and copy are judged by the entry check of the save; the edit period is 8.4's | Decision 7 |
+| One audit entry per call (`journal.cells_undo`, `journal.attendance_copy`) in place of `journal.cells_save` | Decision 8 |
+| "All present", undo and copy take no request key: a repeat writes nothing | Decision 10 |
+| **Build decision.** The undo body is grouped by student (`students: [{ studentId, cells }]`): a flat list of 1260 cells passed the request body limit of 100 kB | Spec review of the plan, must-fix 2 |
+| **Build decision.** A save on an old version is refused stale before keep-or-clear is asked: the question belongs to a save on the current version | `edge/journal`: "A save based on an old version is refused" |
+| **Build decision.** The feedback report stores the page's version (0121, `feedback_reports.app_version`, null without the header) | Correction 5; `docs/progress.md`, task 0.8b-3 |
+| **Build decision.** "Copy attendance" writes as "all present" does (insert on conflict nothing, update where empty) and reports a cell typed meanwhile as skipped; its audit entry counts filled and skipped | Spec review of the code, must-fix 3; From 6.3, correction 4 |
+| **Build decision.** An undo locks its cells one by one in the order `saveCells` writes them, and writes on the version it read | Spec review of the code, must-fix 2 |
+| **Build decision.** An entry refused `app_outdated` stays "not saved" in the page and the unsent store, as one with no answer | Spec review of the code, must-fix 1; `edge/system-behaviour` |
+| **Build decision.** The route walk of `route-permissions.test.ts` sends the 34 calls of a route at the same time (`route-harness.ts`); the same calls and checks | CI part api 3/3 passed its time limit on this pull request |
+
 ## 23 October 2026: rating exam and comments (task 8.2)
 
 Plan approved on pull request #218 with corrections 1 to 4; decisions 1 to 18 confirmed or changed there. Flagged on issue #42.

@@ -9,6 +9,7 @@ import {
   type ErrorDetail,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
+import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -18,6 +19,7 @@ import { notFound } from '../setup/setup-refusals.js';
 import { enterableLesson, entryAssignment, type EntryLesson } from './attendance-entry.js';
 import { cellChange, lineValues, namedAccounts } from './cell-lines.query.js';
 import { saveCells, type CellSave } from './cells.js';
+import { cellsAsSaved, storedCells } from './saved-cells.js';
 import { refuseOtherStudents } from './students-of-branch.js';
 import { workLines, withoutBranch } from './work-lines.query.js';
 import { JournalGridReader } from './journal-grid.service.js';
@@ -39,7 +41,7 @@ async function keepOrClear(
   const ids = input.saves.map((save) => save.studentId.toLowerCase());
   const marks = await transaction
     .selectFrom('journal_cells')
-    .select(['student_id', 'mark'])
+    .select(['student_id', 'mark', 'version'])
     .where('lesson_id', '=', lessonId)
     .where('work_id', 'is', null)
     .where('student_id', 'in', ids)
@@ -53,17 +55,25 @@ async function keepOrClear(
     .where('student_id', 'in', ids)
     .orderBy('work_id')
     .execute();
-  const markOf = new Map(marks.map((row) => [row.student_id, row.mark]));
+  const markOf = new Map(marks.map((row) => [row.student_id, row]));
   const missing: ErrorDetail[] = [];
   const clears: CellSave[] = [];
   input.saves.forEach((save, index) => {
     const studentId = save.studentId.toLowerCase();
-    const before = markOf.get(studentId) ?? null;
+    const stored = markOf.get(studentId);
+    const before = stored?.mark ?? null;
     const own = numbers.filter((row) => row.student_id === studentId);
+    // Task 8.3a: a save on an old version is stale whatever it changes; `saveCells`
+    // refuses it with both values, and the question comes after the choice.
+    const current = (stored?.version ?? null) === save.version;
     const asks =
-      (before === 1 || before === 2) && (save.mark === 0 || save.mark === 3) && own.length > 0;
+      current &&
+      (before === 1 || before === 2) &&
+      (save.mark === 0 || save.mark === 3) &&
+      own.length > 0;
     if (!asks) {
-      if (save.numbers !== undefined) {
+      // A stale save is left to `saveCells`, which refuses it with both values.
+      if (save.numbers !== undefined && current) {
         throw new ApiException('validation_failed', 400, undefined, [
           {
             path: `saves.${String(index)}.numbers`,
@@ -101,7 +111,7 @@ async function keepOrClear(
 }
 
 /** The students in the order of the grid (`compareStudentNames`, 6.2 decision 15). */
-async function inGridOrder<T extends { studentId: string }>(
+export async function inGridOrder<T extends { studentId: string }>(
   transaction: Transaction,
   rows: readonly T[],
 ): Promise<T[]> {
@@ -174,12 +184,20 @@ export class AttendanceService {
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
     @Inject(JournalGridReader) private readonly grids: JournalGridReader,
+    @Inject(RequestKeys) private readonly requestKeys: RequestKeys,
   ) {}
 
+  /**
+   * Task 8.3a: the save is repeat-safe (`edge/journal`: "The same entry sent
+   * twice is counted once"). Who enters and the students are checked on every
+   * request, before the key (`.claude/rules/api.md`); a repeat answers the
+   * cells as the first request saved them, from their history lines.
+   */
   save(
     access: Access,
     lessonId: string,
     input: AttendanceSave,
+    key: string,
     requestId: string | undefined,
   ): Promise<AttendanceSaved> {
     const branchId = branchOf(access);
@@ -189,39 +207,72 @@ export class AttendanceService {
         transaction,
         input.saves.map((save) => save.studentId),
       );
-      const clears = await keepOrClear(transaction, lesson.id, input);
-      const saved = await saveCells(
+      const once = await this.requestKeys.runOnce(
         transaction,
-        this.audit,
         {
+          key,
+          scope: 'journal.attendance',
           accountId: access.accountId,
-          assignmentId: entryAssignment(access),
-          ...(requestId === undefined ? {} : { requestId }),
+          input: { lessonId: lesson.id, ...input },
         },
-        [
-          ...input.saves.map((save) => ({
-            lessonId: lesson.id,
-            studentId: save.studentId.toLowerCase(),
-            workId: null,
-            value: save.mark,
-            version: save.version,
-          })),
-          ...clears,
-        ],
+        async () => {
+          const saved = await this.write(transaction, access, lesson.id, input, requestId);
+          const marks = saved.filter((cell) => cell.workId === null);
+          const zeros = marks.filter((cell) => cell.value === 0).map((cell) => cell.studentId);
+          return {
+            cells: storedCells(saved),
+            presentEarlier: await presentEarlierOf(transaction, lesson, zeros),
+          };
+        },
       );
+      const saved = await cellsAsSaved(transaction, once.result.cells);
       const cells = await inGridOrder(
         transaction,
         saved
-          .flatMap((cell) => (cell.workId === null ? [cell] : []))
+          .filter((cell) => cell.workId === null)
           .map((cell) => ({
             studentId: cell.studentId,
             mark: cell.value === null ? null : attendanceMarkSchema.parse(cell.value),
             version: cell.version,
           })),
       );
-      const zeros = cells.filter((cell) => cell.mark === 0).map((cell) => cell.studentId);
-      return { cells, presentEarlier: await presentEarlierOf(transaction, lesson, zeros) };
+      const cleared = saved.flatMap((cell) =>
+        cell.workId === null
+          ? []
+          : [{ studentId: cell.studentId, workId: cell.workId, version: cell.version }],
+      );
+      return { cells, cleared, presentEarlier: once.result.presentEarlier };
     });
+  }
+
+  /** The typed marks and the numbers keep-or-clear clears, in one `saveCells` call. */
+  private async write(
+    transaction: Transaction,
+    access: Access,
+    lessonId: string,
+    input: AttendanceSave,
+    requestId: string | undefined,
+  ) {
+    const clears = await keepOrClear(transaction, lessonId, input);
+    return saveCells(
+      transaction,
+      this.audit,
+      {
+        accountId: access.accountId,
+        assignmentId: entryAssignment(access),
+        ...(requestId === undefined ? {} : { requestId }),
+      },
+      [
+        ...input.saves.map((save) => ({
+          lessonId,
+          studentId: save.studentId.toLowerCase(),
+          workId: null,
+          value: save.mark,
+          version: save.version,
+        })),
+        ...clears,
+      ],
+    );
   }
 
   /**

@@ -36,6 +36,8 @@ import SearchSvg from '@material-symbols/svg-500/rounded/search-fill.svg?react';
 import UnfoldMoreSvg from '@material-symbols/svg-500/rounded/unfold_more-fill.svg?react';
 import ViewColumnSvg from '@material-symbols/svg-500/rounded/view_column-fill.svg?react';
 import WarningSvg from '@material-symbols/svg-500/rounded/warning-fill.svg?react';
+import ContentCopySvg from '@material-symbols/svg-500/rounded/content_copy-fill.svg?react';
+import UndoSvg from '@material-symbols/svg-500/rounded/undo-fill.svg?react';
 
 /** What an icon takes: the props of an `svg` without children. */
 export type IconProps = Omit<ComponentProps<'svg'>, 'children'>;
@@ -100,3 +102,5 @@ export const SearchIcon = icon(SearchSvg);
 export const UnfoldMoreIcon = icon(UnfoldMoreSvg);
 export const ViewColumnIcon = icon(ViewColumnSvg);
 export const WarningIcon = icon(WarningSvg);
+export const ContentCopyIcon = icon(ContentCopySvg);
+export const UndoIcon = icon(UndoSvg);

@@ -45,6 +45,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   canEnter: true,
   canEnterWorks: true,
   planItem: true,
+  copyFrom: null,
   works: [],
   notHeldWorks: [],
   given: [],
@@ -309,7 +310,11 @@ describe('classwork and homework in the grid', () => {
             409,
           );
         }
-        return json({ cells: [{ studentId: uid(101), mark: 0, version: 2 }], presentEarlier: [] });
+        return json({
+          cells: [{ studentId: uid(101), mark: 0, version: 2 }],
+          cleared: [],
+          presentEarlier: [],
+        });
       },
     });
     const target = await waitFor(() => {

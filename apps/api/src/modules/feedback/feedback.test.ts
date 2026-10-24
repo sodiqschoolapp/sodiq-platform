@@ -1,6 +1,11 @@
 import type { Server } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
-import { FEEDBACK_REPORTS_PER_DAY, FEEDBACK_WINDOW_MS } from '@sodiq/shared';
+import {
+  FEEDBACK_REPORTS_PER_DAY,
+  FEEDBACK_WINDOW_MS,
+  APP_VERSION,
+  APP_VERSION_HEADER,
+} from '@sodiq/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
@@ -103,6 +108,20 @@ describe('a feedback report', () => {
         request_id: response.headers['x-request-id'],
       });
       expect(rows[0]?.created_at.toISOString()).toBe(new Date(START).toISOString());
+    });
+
+    it('with the application version of the page, and none when the request carries none (task 8.3a, review correction 5)', async () => {
+      clock.set(START);
+      const browser = await kit.fullSession('Nodira', 'Saidova');
+      const versioned = await request(server)
+        .post('/api/feedback')
+        .set('Cookie', browser.cookie)
+        .set(APP_VERSION_HEADER, String(APP_VERSION))
+        .send(REPORT);
+      expect(versioned.status).toBe(204);
+      expect((await send(browser.cookie)).status).toBe(204);
+      const rows = await reportsOf(browser.account.id);
+      expect(rows.map((row) => row.app_version)).toEqual([APP_VERSION, null]);
     });
 
     it('with no roles for an account that holds none', async () => {

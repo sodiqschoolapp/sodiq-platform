@@ -44,7 +44,12 @@ export class FeedbackReports {
    * `too_many_attempts` and `Retry-After` says when the oldest of them is 24
    * hours old. Nothing is stored for a refused report.
    */
-  async record(session: ActiveSession, report: FeedbackReport, requestId: string): Promise<void> {
+  async record(
+    session: ActiveSession,
+    report: FeedbackReport,
+    requestId: string,
+    appVersion?: number,
+  ): Promise<void> {
     const now = this.clock.now();
     const windowStart = new Date(now.getTime() - FEEDBACK_WINDOW_MS);
     const roles = rolesOfReport(session.assignments);
@@ -83,6 +88,8 @@ export class FeedbackReports {
           text: report.text,
           created_at: now,
           request_id: requestId,
+          // Task 8.3a: the version of the page that sent it.
+          app_version: appVersion ?? null,
         })
         .execute();
     });

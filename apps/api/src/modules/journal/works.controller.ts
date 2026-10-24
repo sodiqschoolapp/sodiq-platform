@@ -19,7 +19,7 @@ import {
 } from '@sodiq/shared';
 import type { z } from 'zod';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsNothing, ValidBody, ValidParams } from '../../http/schemas.js';
+import { RequestKey, Returns, ReturnsNothing, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { WorksService } from './works.service.js';
@@ -105,8 +105,9 @@ export class WorksController {
     @CurrentAccess() access: Access,
     @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
     @ValidBody(scoresSaveSchema) input: ScoresSave,
+    @RequestKey() key: string,
     @RequestId() requestId: string,
   ): Promise<ScoresSaved> {
-    return this.works.saveScores(access, params.lessonId, input, requestId);
+    return this.works.saveScores(access, params.lessonId, input, key, requestId);
   }
 }

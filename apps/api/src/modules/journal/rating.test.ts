@@ -1,4 +1,5 @@
 import {
+  REQUEST_KEY_HEADER,
   BRANCH_HEADER,
   commentHistorySchema,
   journalCommentSchema,
@@ -88,7 +89,8 @@ describe('the rating exam and comments', () => {
           .set(BRANCH_HEADER, branch);
       return await work({
         get: (path) => at('get', path),
-        post: (path, body = {}) => at('post', path).send(body),
+        post: (path, body = {}) =>
+          at('post', path).set(REQUEST_KEY_HEADER, randomUUID()).send(body),
         put: (path, body) => at('put', path).send(body),
       });
     } finally {

@@ -1,4 +1,4 @@
-import { absenceReasonSchema, studentAbsencesSchema } from '@sodiq/shared';
+import { REQUEST_KEY_HEADER, absenceReasonSchema, studentAbsencesSchema } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -57,7 +57,8 @@ describe('the reasons of absence', () => {
       return await work({
         get: (path) => t.get(path, branch, browser.cookie),
         put: (path, body) => t.put(path, branch, body, browser.cookie),
-        post: (path, body) => t.post(path, branch, body ?? {}, browser.cookie),
+        post: (path, body) =>
+          t.post(path, branch, body ?? {}, browser.cookie).set(REQUEST_KEY_HEADER, randomUUID()),
       });
     } finally {
       t.clock.set(START);
