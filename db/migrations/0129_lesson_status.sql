@@ -48,7 +48,8 @@ begin
     new.not_graded := false;
     return new;
   end if;
-  if not new.not_graded or (tg_op = 'UPDATE' and old.not_graded) then
+  -- An attendance cell is refused by journal_cells_not_graded_check.
+  if new.work_id is null or not new.not_graded or (tg_op = 'UPDATE' and old.not_graded) then
     return new;
   end if;
   if new.changed_how = 'restored' then

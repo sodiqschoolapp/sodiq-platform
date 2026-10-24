@@ -715,6 +715,39 @@ describe('lesson status, reminders and the counts per teacher', () => {
     );
   });
 
+  it('gives the Head Tutor the lessons of the Tutor subjects only, also of a Tutor who teaches another department', async () => {
+    const owner = await account();
+    const headTutor = await account();
+    const s = await publishedScene(t, load, {
+      graded: true,
+      accounts: { teacher: owner.account.id },
+      secondSubject: true,
+    });
+    // The scene's maths moved into the Tutors department (0055): the teacher's second
+    // subject stays in STEAM.
+    const tutors = await t.database.migrator
+      .selectFrom('departments')
+      .select('id')
+      .where('tutors', '=', true)
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ department_id: tutors.id })
+      .where('id', '=', s.subject)
+      .execute();
+    await as(headTutor, s.branch, [{ role: 'head_tutor', branchId: s.branch }], async (calls) => {
+      const counts = disciplineSchema.parse(
+        ok(await calls.get('/api/journal/discipline?from=2026-10-26&to=2026-10-26')),
+      );
+      // Maths of both classes (the teacher's and the other teacher's), not the second subject.
+      const teacher = counts.teachers.find((one) => one.teacher.id === s.teacher.staffId);
+      expect(teacher?.held).toBe(1);
+      expect(counts.teachers.map((one) => one.teacher.id).sort()).toEqual(
+        [s.teacher.staffId, s.otherTeacher.staffId].sort(),
+      );
+    });
+  });
+
   /** A status of a staff record from a day on, ending the open one (as the status routes do). */
   const statusFrom = async (staffId: string, status: 'left' | 'inactive', from: string) => {
     await t.database.migrator
@@ -839,10 +872,26 @@ describe('lesson status, reminders and the counts per teacher', () => {
         '2026-10-30T00:00:00+05:00',
       );
       await as(vice, s.branch, viceIn(s), async (calls) => {
+        const again = orphanAssignmentSchema.parse(
+          ok(
+            await calls.post(`/api/journal/orphans/${s.third}/assign`, {
+              staffId: s.spareTeacher.staffId,
+              days: 7,
+              reason: 'Completes the lesson',
+            }),
+          ),
+        );
+        ok(await calls.post(`/api/journal/orphans/assignments/${again.id}/withdraw`), 204);
         ok(await calls.post(`/api/journal/orphans/assignments/${assignment.id}/withdraw`), 204);
         expect(
           codeOf(await calls.post(`/api/journal/orphans/assignments/${assignment.id}/withdraw`)),
         ).toBe('orphan_assignment_withdrawn');
+      });
+      // A withdrawn assignment, its open_until still ahead, lets the helper enter nothing.
+      await as(helper, s.branch, teacherIn(s), async (calls) => {
+        expect(codeOf(await mark(calls, s.third, [{ studentId: s.ahmedov, mark: 1 }]))).toBe(
+          'journal_entry_scope',
+        );
       });
     });
 
