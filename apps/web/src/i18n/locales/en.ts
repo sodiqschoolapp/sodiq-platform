@@ -3837,7 +3837,7 @@ export const en = {
         exemption_changed:
           '{{student}}: the $t(notifications.exemptionKinds.{{kind}}) was $t(notifications.exemptionChanges.{{change}}); now {{from}} – {{until}} {{times}}.',
         exemption_reopened:
-          'Reopened after exemption: {{students}}, {{lessons}} locked lesson(s). These cells are open for 3 days.',
+          'Reopened after exemption: {{students}}, locked lessons: {{lessons}}. These cells are open for 3 days.',
         exemption_kept_block:
           '{{unit}}, {{date}} {{start}} is held; the students of {{classes}} are exempt from it.',
         exemption_offer:

@@ -3,7 +3,10 @@ import {
   EXEMPTION_DETAIL_MAX,
   EXEMPTION_FILE_TYPES,
   EXEMPTION_VOID_REASON_MAX,
+  exemptionBatchVoidSchema,
   exemptionCreateSchema,
+  exemptionEndSchema,
+  exemptionVoidSchema,
   type Exemption,
   type ExemptionAbsence,
   type ExemptionChoice,
@@ -25,6 +28,7 @@ import {
   TextAreaField,
   listValues,
 } from '@/components/field';
+import type { FormSchema } from '@/components/form/form-messages';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
@@ -812,6 +816,13 @@ function ExemptionFormDialog({
                       })),
                     ]}
                     {...classId}
+                    onChange={(event) => {
+                      classId.onChange(event);
+                      // The students ticked belong to the class left: Save sends only those shown
+                      // (review of the code of 8.5, finding 4).
+                      const students = form.bind('studentIds');
+                      if (students.value !== '') students.onChange({ target: { value: '' } });
+                    }}
                   />
                   {classId.value !== '' &&
                     (members.isError ? (
@@ -959,39 +970,53 @@ function ChangeDialog({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [value, setValue] = useState(change === 'end' ? exemption.endDate : '');
   const [preview, setPreview] = useState<ExemptionPreview | null>(null);
   const { choices, choose, list, missing } = useChoices();
-  const ask = useMutation({
-    mutationFn: () =>
+  // Review of the code of 8.5, finding 8: the field is checked with the schema the route checks.
+  const schema: FormSchema<{ endDate?: string; reason?: string }> =
+    change === 'end'
+      ? exemptionEndSchema
+      : change === 'void'
+        ? exemptionVoidSchema
+        : exemptionBatchVoidSchema;
+  const form = useRecordForm<'endDate' | 'reason', { endDate?: string; reason?: string }>({
+    schema,
+    initial: { endDate: change === 'end' ? exemption.endDate : '', reason: '' },
+    read: (typed) =>
       change === 'end'
-        ? previewEnd(exemption.id, value, exemption.version)
+        ? { endDate: typed.endDate, version: exemption.version, choices: [] }
         : change === 'void'
-          ? previewVoid(exemption.id, exemption.version)
-          : Promise.resolve(null),
-    onSuccess: (answer) => {
-      setPreview(answer ?? { students: [], yearEnd: exemption.endDate });
-    },
-  });
-  const send = useMutation({
-    mutationFn: async () => {
-      if (change === 'end') {
-        await endExemption(exemption.id, value, exemption.version, list(preview));
-      } else if (change === 'void') {
-        await voidExemption(exemption.id, value, exemption.version);
-      } else {
-        await voidBatch(exemption.batchId, value);
+          ? { reason: typed.reason, version: exemption.version }
+          : { reason: typed.reason },
+    save: async (values) => {
+      const endDate = values.endDate ?? '';
+      const reason = values.reason ?? '';
+      if (preview === null) {
+        const answer =
+          change === 'end'
+            ? await previewEnd(exemption.id, endDate, exemption.version)
+            : change === 'void'
+              ? await previewVoid(exemption.id, exemption.version)
+              : null;
+        setPreview(answer ?? { students: [], yearEnd: exemption.endDate });
+        return;
       }
-    },
-    onSuccess: async () => {
+      if (change === 'end') {
+        await endExemption(exemption.id, endDate, exemption.version, list(preview));
+      } else if (change === 'void') {
+        await voidExemption(exemption.id, reason, exemption.version);
+      } else {
+        await voidBatch(exemption.batchId, reason);
+      }
       await invalidateExemptions(queryClient);
       onClose();
     },
   });
+  const endDate = form.bind('endDate');
+  const reason = form.bind('reason');
   const title = t(
     `journal.exemptions.${change === 'end' ? 'end' : change === 'void' ? 'void' : 'voidBatch'}`,
   );
-  const ready = change === 'end' ? value !== '' : value.trim() !== '';
   return (
     <Dialog
       open
@@ -1008,32 +1033,23 @@ function ChangeDialog({
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!ready) return;
-            if (preview === null) ask.mutate();
-            else send.mutate();
+            void form.submit();
           }}
         >
           {change === 'end' ? (
             <DateField
               label={t('journal.exemptions.endDate')}
-              name="endDate"
-              value={value}
-              error={undefined}
+              {...endDate}
               onChange={(event) => {
-                setValue(event.target.value);
+                endDate.onChange(event);
                 setPreview(null);
               }}
             />
           ) : (
             <TextAreaField
               label={t('journal.exemptions.voidReason')}
-              name="reason"
               maxLength={EXEMPTION_VOID_REASON_MAX}
-              value={value}
-              error={undefined}
-              onChange={(event) => {
-                setValue(event.target.value);
-              }}
+              {...reason}
             />
           )}
           {preview !== null && (
@@ -1044,16 +1060,14 @@ function ChangeDialog({
               onChoose={choose}
             />
           )}
-          <FailureAlert error={ask.error ?? send.error} />
+          <FailureAlert error={form.failure} />
           <DialogFooter>
             <DialogClose render={<Button variant="ghost" />}>
               {t('journal.exemptions.back')}
             </DialogClose>
             <Button
               type="submit"
-              disabled={
-                !ready || ask.isPending || send.isPending || (preview !== null && missing(preview))
-              }
+              disabled={form.status === 'saving' || (preview !== null && missing(preview))}
             >
               {preview === null ? t('journal.exemptions.check') : title}
             </Button>
@@ -1245,9 +1259,22 @@ function OfferPanel({ offer }: { offer: ExemptionMoveOffer }) {
     mutationFn: () => confirmOffer(offer.id, list(preview)),
     onSuccess: () => invalidateExemptions(queryClient),
   });
+  const confirm = useConfirm();
+  // Review of the code of 8.5, finding 8: a drop decides the offer for good, so it asks first.
   const dropped = useMutation({
-    mutationFn: () => dropOffer(offer.id),
-    onSuccess: () => invalidateExemptions(queryClient),
+    mutationFn: async () => {
+      const went = await confirm({
+        title: t('journal.exemptions.drop'),
+        names: [`${studentName(offer.student)} · ${datesText(offer)}`],
+        action: t('journal.exemptions.drop'),
+        destructive: true,
+      });
+      if (!went) return null;
+      return dropOffer(offer.id);
+    },
+    onSuccess: async (answer) => {
+      if (answer !== null) await invalidateExemptions(queryClient);
+    },
   });
   const [reason, setReason] = useState<string | null>(null);
   const opened = useMutation({

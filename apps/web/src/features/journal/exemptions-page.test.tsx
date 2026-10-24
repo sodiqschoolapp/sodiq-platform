@@ -84,13 +84,37 @@ const CLASS = {
   version: 0,
 };
 
-function open(role: 'academic_vice_principal' | 'principal') {
+const CLASS_TWO = { ...CLASS, id: uid(32), name: 'Kent' };
+
+function open(
+  role: 'academic_vice_principal' | 'principal',
+  more: Parameters<typeof fakeApi>[0] = {},
+  path = '/journal/exemptions',
+) {
   const calls = fakeApi({
     'GET /api/auth/session': () => json(sessionOf({ assignments: [{ role, branchId: NORTH.id }] })),
     'GET /api/exemptions': () => json({ today: '2026-10-21', items: [EXEMPTION], more: 0 }),
     [`GET /api/exemptions/${EXEMPTION.id}/reason`]: () =>
       json({ id: EXEMPTION.id, category: 'illness', detail: 'A certificate from the clinic' }),
-    'GET /api/classes': () => json({ classes: [CLASS] }),
+    'GET /api/classes': () => json({ classes: [CLASS, CLASS_TWO] }),
+    [`GET /api/classes/${CLASS_TWO.id}/members`]: () =>
+      json({
+        members: [
+          {
+            id: uid(41),
+            studentId: uid(11),
+            uid: '2600008',
+            firstName: 'Bobur',
+            lastName: 'Karimov',
+            from: '2026-09-01',
+            until: '2027-06-01',
+            state: 'current',
+          },
+        ],
+        freeToday: 24,
+        freeLeast: 24,
+        today: '2026-10-21',
+      }),
     [`GET /api/classes/${CLASS.id}/members`]: () =>
       json({
         members: [
@@ -111,8 +135,9 @@ function open(role: 'academic_vice_principal' | 'principal') {
       }),
     'POST /api/exemptions/preview': () => json(PREVIEW),
     'POST /api/exemptions': () => json({ batchId: uid(2), exemptions: [EXEMPTION] }),
+    ...more,
   });
-  renderApp('/journal/exemptions', 'en');
+  renderApp(path, 'en');
   return calls;
 }
 
@@ -244,5 +269,138 @@ describe('the Exemptions page', () => {
       choices: [{ studentId: uid(10), lessonId: uid(21), choice: 'exempt' }],
     });
     expect(await screen.findByText(en.journal.exemptions.created)).toBeDefined();
+  });
+
+  // Review of the code of 8.5, finding 4: a student ticked under one class is not sent once the
+  // class changes.
+  it('clears the students ticked when the class changes', async () => {
+    const calls = open('academic_vice_principal');
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.exemptions.new }));
+    const dialog = await screen.findByRole('form', { name: en.journal.exemptions.new });
+    const classField = await within(dialog).findByRole('combobox', {
+      name: en.journal.exemptions.class,
+    });
+    fireEvent.change(classField, { target: { value: CLASS.id } });
+    fireEvent.click(await within(dialog).findByRole('checkbox', { name: 'Rahimova Malika' }));
+    fireEvent.change(classField, { target: { value: CLASS_TWO.id } });
+    const other = await within(dialog).findByRole('checkbox', { name: 'Karimov Bobur' });
+    expect((other as HTMLInputElement).checked).toBe(false);
+    fireEvent.change(within(dialog).getByLabelText(en.journal.exemptions.startDate), {
+      target: { value: '2026-10-12' },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.journal.exemptions.endDate), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.journal.exemptions.detail), {
+      target: { value: 'A certificate from the clinic' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.exemptions.check }));
+    expect(await within(dialog).findByText(en.form.chooseOne)).toBeDefined();
+    expect(posts(calls, 'POST /api/exemptions/preview')).toHaveLength(0);
+    fireEvent.click(other);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.exemptions.check }));
+    await waitFor(() => {
+      expect(posts(calls, 'POST /api/exemptions/preview')).toHaveLength(1);
+    });
+    expect(posts(calls, 'POST /api/exemptions/preview')[0]?.body).toMatchObject({
+      studentIds: [uid(11)],
+    });
+  });
+
+  // Review of the code of 8.5, finding 8: the end date and the void reason are checked with the
+  // schemas of the routes before anything is sent.
+  it('checks the end date and the void reason before the preview', async () => {
+    const calls = open('academic_vice_principal');
+    const row = await waitFor(() => {
+      const found = [...document.querySelectorAll('tbody tr')].find((one) =>
+        one.textContent?.includes('Rahimova'),
+      );
+      expect(found).toBeDefined();
+      return found as HTMLElement;
+    });
+    fireEvent.click(within(row).getAllByRole('button')[0] as HTMLElement);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.exemptions.void }));
+    const voiding = await screen.findByRole('form', { name: en.journal.exemptions.void });
+    fireEvent.click(within(voiding).getByRole('button', { name: en.journal.exemptions.check }));
+    await waitFor(() => {
+      expect(
+        within(voiding)
+          .getByLabelText(en.journal.exemptions.voidReason)
+          .getAttribute('aria-invalid'),
+      ).toBe('true');
+    });
+    expect(posts(calls, `POST /api/exemptions/${EXEMPTION.id}/void/preview`)).toHaveLength(0);
+    fireEvent.click(within(voiding).getByRole('button', { name: en.journal.exemptions.back }));
+    await waitFor(() => {
+      expect(screen.queryByRole('form', { name: en.journal.exemptions.void })).toBeNull();
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.journal.exemptions.end }));
+    const ending = await screen.findByRole('form', { name: en.journal.exemptions.end });
+    fireEvent.change(within(ending).getByLabelText(en.journal.exemptions.endDate), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(ending).getByRole('button', { name: en.journal.exemptions.check }));
+    await waitFor(() => {
+      expect(
+        within(ending).getByLabelText(en.journal.exemptions.endDate).getAttribute('aria-invalid'),
+      ).toBe('true');
+    });
+    expect(posts(calls, `POST /api/exemptions/${EXEMPTION.id}/end/preview`)).toHaveLength(0);
+  });
+
+  // Review of the code of 8.5, finding 8: a drop decides the offer for good, so it asks first.
+  it('asks before it drops a move offer', async () => {
+    const offer = {
+      id: uid(60),
+      student: EXEMPTION.student,
+      fromBranch: 'South',
+      movedOn: '2026-10-19',
+      kind: 'temporary',
+      subjects: null,
+      startDate: '2026-10-19',
+      endDate: '2026-10-30',
+      slots: null,
+      category: 'illness',
+      hasDocument: false,
+      decision: null,
+      decidedAt: null,
+      exemptionId: null,
+    };
+    const calls = open(
+      'academic_vice_principal',
+      {
+        'GET /api/exemptions/move-offers': () => json({ items: [offer] }),
+        [`POST /api/exemptions/move-offers/${offer.id}/drop`]: () =>
+          json({ ...offer, decision: 'drop', decidedAt: '2026-10-21T05:00:00.000Z' }),
+      },
+      '/journal/exemptions?view=offers',
+    );
+    const row = await waitFor(() => {
+      const found = [...document.querySelectorAll('tbody tr')].find((one) =>
+        one.textContent?.includes('Rahimova'),
+      );
+      expect(found).toBeDefined();
+      return found as HTMLElement;
+    });
+    fireEvent.click(within(row).getAllByRole('button')[0] as HTMLElement);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.exemptions.drop }));
+    let dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(/Rahimova Malika/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(posts(calls, `POST /api/exemptions/move-offers/${offer.id}/drop`)).toHaveLength(0);
+    // The declined drop answers nothing; the button is back once its mutation is over.
+    const again = screen.getByRole('button', { name: en.journal.exemptions.drop });
+    await waitFor(() => {
+      expect((again as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(again);
+    dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.exemptions.drop }));
+    await waitFor(() => {
+      expect(posts(calls, `POST /api/exemptions/move-offers/${offer.id}/drop`)).toHaveLength(1);
+    });
   });
 });
