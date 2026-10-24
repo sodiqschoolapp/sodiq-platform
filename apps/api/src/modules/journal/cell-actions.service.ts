@@ -272,6 +272,8 @@ export class CellActionsService {
         .where('work_id', 'is', null)
         .where('mark', 'is not', null)
         .where('student_id', 'in', students)
+        // Task 8.5 (decision 2): a mark an exemption hides in the first lesson is not copied.
+        .where(sql<boolean>`lesson_student_expected(lesson_id, student_id)`)
         .execute();
       const fromFirst = new Map(marks.map((cell) => [cell.student_id, cell.mark]));
       const copied = students.filter((studentId) => fromFirst.has(studentId));

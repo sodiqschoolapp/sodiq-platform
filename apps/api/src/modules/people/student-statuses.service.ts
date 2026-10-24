@@ -70,6 +70,7 @@ import { cancelledOf, MOVE_REFUSALS, movesOf } from '../classes/student-moves.js
 import { linkValueOf, RelativeWrites } from './relative-writes.js';
 import { BRANCH_MOVE_REFUSALS, branchMovesOf } from './branch-moves.js';
 import { Students } from './students.service.js';
+import { exemptionsFollowLeaving } from '../journal/exemption-follow.js';
 
 const CHECK_VIOLATION = '23514';
 const EXCLUSION_VIOLATION = '23P01';
@@ -88,6 +89,10 @@ const DATA_KEYS: Readonly<Record<string, true>> = {
   // Task 8.2: rating entries and comments (0120).
   journal_rating_entries_student_fkey: true,
   journal_comments_student_fkey: true,
+  // Task 8.5: exemptions and their branch-move offers (0123; edge/students-classes-groups,
+  // "A student is created twice by mistake": no delete with an exemption).
+  exemptions_student_fkey: true,
+  exemption_move_offers_student_fkey: true,
 };
 
 /** The database guards of 0033 and 0045 and the refusal each gives. */
@@ -886,6 +891,25 @@ export class StudentStatuses {
     if (takenBack === undefined && leaving === undefined) {
       return null;
     }
+    // Task 8.5 (decision 14): the student's exemptions follow the leaving.
+    await exemptionsFollowLeaving(
+      transaction,
+      this.audit,
+      {
+        branchId: branchOf(access),
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        requestId,
+      },
+      {
+        studentId: id,
+        takenBack: takenBack?.id ?? null,
+        leaving:
+          leaving === undefined || leavingId === null
+            ? null
+            : { id: leavingId, firstInactiveDay: leaving.validFrom },
+      },
+    );
     const inService = await classesInService(
       transaction,
       memberships.map((row) => row.classId),

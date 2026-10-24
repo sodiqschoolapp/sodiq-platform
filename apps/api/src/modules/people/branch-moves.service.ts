@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { exemptionsFollowBranchMove } from '../journal/exemption-follow.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import {
   PERMISSIONS,
   type AuditAction,
@@ -144,6 +146,7 @@ export class BranchMoves {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     private readonly students: Students,
+    private readonly notifications: Notifications,
   ) {}
 
   /** The release of a student of the branch of the request (decisions 9 and 11). */
@@ -462,6 +465,14 @@ export class BranchMoves {
               .where('id', '=', row.id)
               .execute();
           }
+          // Task 8.5 (decision 3): the exemptions of the sending branch end there and are offered.
+          await exemptionsFollowBranchMove(
+            transaction,
+            this.audit,
+            this.notifications,
+            { branchId, actorId: access.accountId, assignmentId: access.assignmentId, requestId },
+            { moveId, studentId: move.studentId, fromBranchId: move.fromBranchId, from },
+          );
           await transaction
             .updateTable('students')
             .set({ branch_id: branchId })

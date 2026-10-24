@@ -1169,6 +1169,61 @@ export class StudentMerges {
       }
     }
 
+    // Task 8.5 (From 3.3d): the exemptions go to the kept record, each staying in the branch of
+    // its lessons, with what names the student beside them; two that overlap refuse the merge by
+    // the exclusion of their spans (`exemption_spans_no_overlap`, 0123).
+    const exemptions = await transaction
+      .selectFrom('exemptions')
+      .select(['id', 'branch_id'])
+      .where('student_id', '=', merged.id)
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    try {
+      if (exemptions.length > 0) {
+        await transaction
+          .updateTable('exemptions')
+          .set({ student_id: kept.id })
+          .where('student_id', '=', merged.id)
+          .execute();
+      }
+      await transaction
+        .updateTable('exemption_clears')
+        .set({ student_id: kept.id })
+        .where('student_id', '=', merged.id)
+        .execute();
+      await transaction
+        .updateTable('exemption_reopened_cells')
+        .set({ student_id: kept.id })
+        .where('student_id', '=', merged.id)
+        .execute();
+      await transaction
+        .updateTable('exemption_move_offers')
+        .set({ student_id: kept.id })
+        .where('student_id', '=', merged.id)
+        .execute();
+    } catch (error) {
+      const failure = error as { code?: unknown; constraint?: unknown };
+      if (failure.code === '23P01' && failure.constraint === 'exemption_spans_no_overlap') {
+        throw new ApiException('student_merge_exemption_overlap', 409);
+      }
+      throw error;
+    }
+    for (const branch of [...new Set(exemptions.map((row) => row.branch_id))].sort()) {
+      await this.audit.record(transaction, {
+        branchId: branch,
+        actorId: access.accountId,
+        assignmentId,
+        action: 'exemption.merge',
+        record: { type: 'student', id: kept.id },
+        newValue: {
+          mergedId: merged.id,
+          exemptionIds: exemptions.filter((row) => row.branch_id === branch).map((row) => row.id),
+        },
+        requestId,
+      });
+    }
+
     // The merged record removed; its UIDs stay reserved, released (0033).
     // Task 6.1a (decision 9): journal cells are not carried yet, so their key
     // refuses the removal of a record that has any, whatever branch holds them;

@@ -174,6 +174,16 @@ describe('exemptions', () => {
     return admin;
   };
 
+  /** The clock at the moment, with the Super Admin's session in use then. */
+  const adminAt = async (moment: string) => {
+    t.clock.set(moment);
+    await t.database.migrator
+      .updateTable('sessions')
+      .set({ created_at: new Date(moment), last_used_at: new Date(moment) })
+      .where('account_id', '=', await accountOfAdmin())
+      .execute();
+  };
+
   const cellOf = (lessonId: string, studentId: string) =>
     t.database.migrator
       .selectFrom('journal_cells')
@@ -968,6 +978,174 @@ describe('exemptions', () => {
           .find((one) => one.id === s.ahmedov)
           ?.exemptions.map((one) => one.category),
       ).toEqual(['illness', 'illness']);
+    });
+  });
+
+  describe('the readers of marks (decision 2)', () => {
+    it("leaves a hidden absence off the Tutor's absences page", async () => {
+      const s = await scene();
+      const [first] = s.lessons;
+      if (first === undefined) throw new Error('A held lesson.');
+      await mark(s.branch, first.id, s.ahmedov, 0);
+      await mark(s.branch, first.id, s.boboyev, 0);
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        expect(
+          (await post('/api/exemptions', body({ studentIds: [s.ahmedov], endDate: '2026-10-12' })))
+            .status,
+        ).toBe(200);
+      });
+      const tutor = await tutorOf(s.branch, s.classId);
+      await as(s.branch, tutor, [], async ({ get }) => {
+        const page = await get(
+          `/api/journal/student-absences?classId=${s.classId}&from=2026-10-12&to=2026-10-12`,
+        );
+        expect(page.status, JSON.stringify(page.body)).toBe(200);
+        const days = (page.body as { days: { student: { id: string } }[] }).days;
+        expect(days.map((one) => one.student.id)).toEqual([s.boboyev]);
+      });
+    });
+
+    it('refuses the delete of a student with an exemption (edge/students-classes-groups, row 22)', async () => {
+      const s = await scene();
+      const fresh = await student(s.branch, s.classId, 'Yusupov');
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({ studentIds: [fresh], startDate: '2026-11-16', endDate: '2026-11-17' }),
+            )
+          ).status,
+        ).toBe(200);
+      });
+      const read = await t.get(`/api/people/students/${fresh}`, s.branch, t.admin);
+      const version = { version: (read.body as { version: number }).version };
+      const refused = await t.post(
+        `/api/people/students/${fresh}/delete`,
+        s.branch,
+        { reason: 'Created twice by mistake.', version: version.version },
+        t.admin,
+      );
+      expect(codeOf(refused)).toBe('student_has_data');
+    });
+  });
+
+  describe('a leaving and a branch move (edge/exemptions, row 12)', () => {
+    const stateOf = (id: string) =>
+      t.database.migrator
+        .selectFrom('exemptions')
+        .select([sql<string>`end_date::text`.as('end'), 'voided_at', 'void_cause', 'leaving_id'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    it('ends an exemption on the last day, voids a later one, and gives both back when the leaving is cancelled', async () => {
+      const s = await scene();
+      const [running, later] = await as(s.branch, s.vice, [], async ({ post }) => {
+        const one = await post(
+          '/api/exemptions',
+          body({ studentIds: [s.other], startDate: '2026-10-28', endDate: '2026-11-20' }),
+        );
+        const two = await post(
+          '/api/exemptions',
+          body({ studentIds: [s.other], startDate: '2026-11-25', endDate: '2026-11-27' }),
+        );
+        return [
+          exemptionCreatedSchema.parse(one.body).exemptions[0]?.id ?? '',
+          exemptionCreatedSchema.parse(two.body).exemptions[0]?.id ?? '',
+        ];
+      });
+      await adminAt(MOMENT);
+      const read = await t.get(`/api/people/students/${s.other}`, s.branch, t.admin);
+      const left = await t.post(
+        `/api/people/students/${s.other}/leaving`,
+        s.branch,
+        {
+          lastDay: '2026-11-10',
+          reason: 'Moved to another city',
+          version: (read.body as { version: number }).version,
+        },
+        t.admin,
+      );
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      expect(await stateOf(running)).toMatchObject({ end: '2026-11-10', voided_at: null });
+      expect(await stateOf(later)).toMatchObject({ void_cause: 'leaving' });
+      expect(await t.entries('exemption.leaving', s.other)).toHaveLength(1);
+      const cancelled = await t.post(
+        `/api/people/students/${s.other}/leaving/cancel`,
+        s.branch,
+        { version: (left.body as { version: number }).version },
+        t.admin,
+      );
+      await adminAt(START);
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      expect(await stateOf(running)).toMatchObject({ end: '2026-11-20', leaving_id: null });
+      expect(await stateOf(later)).toMatchObject({ voided_at: null, leaving_id: null });
+    });
+
+    it('ends the exemption in the sending branch and offers it to the receiving one, which confirms it', async () => {
+      const s = await scene();
+      const target = await scene();
+      const id = await as(s.branch, s.vice, [], async ({ post }) => {
+        const made = await post(
+          '/api/exemptions',
+          body({ studentIds: [s.other], startDate: '2026-10-19', endDate: '2026-11-20' }),
+        );
+        return exemptionCreatedSchema.parse(made.body).exemptions[0]?.id ?? '';
+      });
+      await adminAt(MOMENT);
+      const read = await t.get(`/api/people/students/${s.other}`, s.branch, t.admin);
+      const released = await t.post(
+        `/api/people/students/${s.other}/branch-move`,
+        s.branch,
+        {
+          toBranchId: target.branch,
+          from: '2026-10-27',
+          version: (read.body as { version: number }).version,
+        },
+        t.admin,
+      );
+      expect(released.status, JSON.stringify(released.body)).toBe(200);
+      const move = await t.database.migrator
+        .selectFrom('student_branch_moves')
+        .select('id')
+        .where('student_id', '=', s.other)
+        .executeTakeFirstOrThrow();
+      const accepted = await t.post(
+        `/api/people/branch-moves/${move.id}/accept`,
+        target.branch,
+        { classId: target.otherClass, groups: [] },
+        t.admin,
+      );
+      await adminAt(START);
+      expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+      expect(await stateOf(id)).toMatchObject({ end: '2026-10-26', voided_at: null });
+      const offers = await as(
+        target.branch,
+        target.vice,
+        [],
+        async ({ get }) =>
+          (await get('/api/exemptions/move-offers')).body as {
+            items: { id: string; startDate: string; endDate: string }[];
+          },
+      );
+      expect(offers.items).toHaveLength(1);
+      expect(offers.items[0]).toMatchObject({ startDate: '2026-10-27', endDate: '2026-11-20' });
+      await as(target.branch, target.vice, [], async ({ post }) => {
+        const confirmed = await post(
+          `/api/exemptions/move-offers/${offers.items[0]?.id ?? ''}/confirm`,
+          {
+            choices: [],
+          },
+        );
+        expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+        expect(exemptionSchema.parse(confirmed.body)).toMatchObject({
+          startDate: '2026-10-27',
+          endDate: '2026-11-20',
+          movedFrom: true,
+        });
+        const again = await post(`/api/exemptions/move-offers/${offers.items[0]?.id ?? ''}/drop`);
+        expect(codeOf(again)).toBe('exemption_offer_decided');
+      });
     });
   });
 });
