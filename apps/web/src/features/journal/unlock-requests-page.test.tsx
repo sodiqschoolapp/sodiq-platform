@@ -35,7 +35,10 @@ const REQUEST: JournalUnlock = {
   canWithdraw: false,
 };
 
-function open(role: 'head_teacher' | 'teacher', request: JournalUnlock) {
+function open(
+  role: 'head_teacher' | 'teacher' | 'academic_vice_principal',
+  request: JournalUnlock,
+) {
   const calls = fakeApi({
     'GET /api/auth/session': () =>
       json(
@@ -48,6 +51,18 @@ function open(role: 'head_teacher' | 'teacher', request: JournalUnlock) {
       json({ ...request, status: 'approved', canDecide: false }),
     [`POST /api/journal/unlocks/${request.id}/withdraw`]: () =>
       json({ ...request, status: 'withdrawn', canWithdraw: false }),
+    'GET /api/journal/extensions': () => json({ extensions: [] }),
+    'POST /api/journal/extensions': (body) =>
+      json(
+        {
+          ...(body as object),
+          id: uid(9),
+          openUntil: '2026-10-28T19:00:00.000Z',
+          createdBy: 'Ismoilova Shahlo',
+          createdAt: '2026-10-27T07:00:00.000Z',
+        },
+        201,
+      ),
   });
   renderApp('/journal/unlocks', 'en');
   return calls;
@@ -127,5 +142,36 @@ describe('the Unlock requests page', () => {
         version: 1,
       });
     });
+  });
+
+  it('checks a new extension with the shared schema: a last day before the first is said and nothing is sent (code review 2, finding 2)', async () => {
+    const calls = open('academic_vice_principal', REQUEST);
+    const form = await screen.findByRole('form', { name: en.journal.unlocks.extensionsTitle });
+    fireEvent.change(within(form).getByLabelText(en.journal.unlocks.fromDate), {
+      target: { value: '2026-10-20' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.journal.unlocks.toDate), {
+      target: { value: '2026-10-19' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.journal.unlocks.reason), {
+      target: { value: 'The server was down' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText(en.journal.unlocks.toBeforeFrom)).toBeDefined();
+    expect(posts(calls, 'POST /api/journal/extensions')).toHaveLength(0);
+    fireEvent.change(within(form).getByLabelText(en.journal.unlocks.toDate), {
+      target: { value: '2026-10-21' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(posts(calls, 'POST /api/journal/extensions')).toHaveLength(1);
+    });
+    expect(posts(calls, 'POST /api/journal/extensions')[0]?.body).toEqual({
+      fromDate: '2026-10-20',
+      toDate: '2026-10-21',
+      days: 1,
+      reason: 'The server was down',
+    });
+    expect(await screen.findByText(en.journal.unlocks.extended)).toBeDefined();
   });
 });

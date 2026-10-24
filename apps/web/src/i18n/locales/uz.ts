@@ -5564,6 +5564,7 @@ export const uz: Texts<'one' | 'other'> = {
       extensionsEmpty: 'Hali uzaytirish yoʻq.',
       extended: 'Tahrirlash muddati uzaytirildi.',
       dateNeeded: 'Sanani tanlang.',
+      toBeforeFrom: 'Oxirgi kun birinchi kundan oldin boʻlishi mumkin emas.',
     },
     sheet: 'Sinf jurnali',
     open: 'Jurnalni ochish',

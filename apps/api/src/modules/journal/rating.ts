@@ -209,7 +209,8 @@ export async function ratingExamOf(
     now: input.now,
     enters: rights.teacher && date !== null && today >= date && row?.notHeld !== true,
     requests: input.requests,
-    corrects: rights.vicePrincipal !== null && date !== null && today >= date,
+    // The journal's teacher corrects nothing of their own: the unlock path (decision 17).
+    corrects: rights.vicePrincipal !== null && !rights.teacher && date !== null && today >= date,
     nameOf: (accountId) => {
       const found = accountId === null ? undefined : approvers.get(accountId);
       return found?.name ?? found?.login ?? null;

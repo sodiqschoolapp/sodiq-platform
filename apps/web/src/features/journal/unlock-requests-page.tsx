@@ -2,14 +2,19 @@ import {
   UNLOCK_DAYS_MAX,
   UNLOCK_REASON_MAX_LENGTH,
   UNLOCK_VIEWS,
+  editExtensionCreateSchema,
+  type EditExtensionCreate,
   type JournalUnlock,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, SelectField, TextAreaField } from '@/components/field';
+import { wholeNumber } from '@/components/form/form-messages';
+import { RecordForm } from '@/components/form/record-form';
+import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
@@ -272,88 +277,24 @@ function Extensions() {
   const { branchId } = useView();
   const list = useQuery(extensionsQuery(branchId));
   const language = i18n.language;
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [days, setDays] = useState('1');
-  const [reason, setReason] = useState('');
-  const [missing, setMissing] = useState(false);
-  const extend = useMutation({
-    mutationFn: () =>
-      extendEditPeriod({ fromDate, toDate, days: Number(days), reason: reason.trim() }),
-    onSuccess: async () => {
-      setReason('');
-      await invalidateUnlocks(queryClient);
-    },
-  });
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (fromDate === '' || toDate === '' || reason.trim() === '') {
-      setMissing(true);
-      return;
-    }
-    extend.mutate();
-  };
+  // Each extension made gives a new, empty form (code review 2, finding 2).
+  const [made, setMade] = useState(0);
   return (
     <section className={`${PANEL} grid gap-4`} aria-labelledby="edit-extensions">
       <h2 id="edit-extensions" className={SECTION_TITLE}>
         {t('journal.unlocks.extensionsTitle')}
       </h2>
-      <form
-        aria-label={t('journal.unlocks.extensionsTitle')}
-        className="grid gap-4 sm:grid-cols-4"
-        onSubmit={submit}
-      >
-        <DateField
-          label={t('journal.unlocks.fromDate')}
-          name="fromDate"
-          value={fromDate}
-          error={missing && fromDate === '' ? t('journal.unlocks.dateNeeded') : undefined}
-          onChange={(event) => {
-            setFromDate(event.target.value);
-          }}
-        />
-        <DateField
-          label={t('journal.unlocks.toDate')}
-          name="toDate"
-          value={toDate}
-          error={missing && toDate === '' ? t('journal.unlocks.dateNeeded') : undefined}
-          onChange={(event) => {
-            setToDate(event.target.value);
-          }}
-        />
-        <SelectField
-          label={t('journal.unlocks.days')}
-          name="days"
-          value={days}
-          options={Array.from({ length: UNLOCK_DAYS_MAX }, (_, index) => ({
-            value: String(index + 1),
-            label: String(index + 1),
-          }))}
-          onChange={(event) => {
-            setDays(event.target.value);
-          }}
-        />
-        <div className="sm:col-span-4">
-          <TextAreaField
-            label={t('journal.unlocks.reason')}
-            name="reason"
-            value={reason}
-            maxLength={UNLOCK_REASON_MAX_LENGTH}
-            error={missing && reason.trim() === '' ? t('journal.locks.reasonNeeded') : undefined}
-            onChange={(event) => {
-              setReason(event.target.value);
-              setMissing(false);
-            }}
-          />
-        </div>
-        <div className="sm:col-span-4">
-          <Button type="submit" disabled={extend.isPending}>
-            {t('journal.unlocks.extend')}
-          </Button>
-        </div>
-      </form>
-      <FailureAlert error={extend.error} />
-      {extend.isSuccess && <p role="status">{t('journal.unlocks.extended')}</p>}
+      <ExtensionForm
+        key={made}
+        onSave={async (extension) => {
+          await extendEditPeriod(extension);
+          await invalidateUnlocks(queryClient);
+        }}
+        onSaved={() => {
+          setMade((count) => count + 1);
+        }}
+      />
+      {made > 0 && <p role="status">{t('journal.unlocks.extended')}</p>}
       {list.isError ? (
         <ErrorState
           error={list.error}
@@ -381,5 +322,66 @@ function Extensions() {
         </ul>
       )}
     </section>
+  );
+}
+
+type ExtensionField = 'fromDate' | 'toDate' | 'days' | 'reason';
+
+/**
+ * The form of a new extension: a record form (`useRecordForm` with
+ * `editExtensionCreateSchema`, the schema the server checks, and
+ * `RecordForm`), so the dates, the days, the reason and "the first day comes
+ * before the last" are checked as typed (code review 2, finding 2).
+ */
+function ExtensionForm({
+  onSave,
+  onSaved,
+}: {
+  onSave: (extension: EditExtensionCreate) => Promise<void>;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const read = useCallback(
+    (typed: Record<ExtensionField, string>): unknown => ({
+      ...typed,
+      days: wholeNumber(typed.days),
+    }),
+    [],
+  );
+  const form = useRecordForm<ExtensionField, EditExtensionCreate>({
+    schema: editExtensionCreateSchema,
+    initial: { fromDate: '', toDate: '', days: '1', reason: '' },
+    read,
+    message: (field, issue) =>
+      field === 'toDate' && issue.code === 'custom'
+        ? t('journal.unlocks.toBeforeFrom')
+        : field === 'fromDate' || field === 'toDate'
+          ? t('journal.unlocks.dateNeeded')
+          : field === 'reason' && issue.code === 'too_small'
+            ? t('journal.locks.reasonNeeded')
+            : undefined,
+    save: async (extension) => {
+      await onSave(extension);
+      onSaved();
+    },
+  });
+  return (
+    <RecordForm form={form} label={t('journal.unlocks.extensionsTitle')}>
+      <DateField label={t('journal.unlocks.fromDate')} {...form.bind('fromDate')} />
+      <DateField label={t('journal.unlocks.toDate')} {...form.bind('toDate')} />
+      <SelectField
+        label={t('journal.unlocks.days')}
+        options={Array.from({ length: UNLOCK_DAYS_MAX }, (_, index) => ({
+          value: String(index + 1),
+          label: String(index + 1),
+        }))}
+        {...form.bind('days')}
+      />
+      <TextAreaField
+        label={t('journal.unlocks.reason')}
+        maxLength={UNLOCK_REASON_MAX_LENGTH}
+        {...form.bind('reason')}
+      />
+    </RecordForm>
   );
 }

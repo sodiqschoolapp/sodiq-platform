@@ -333,6 +333,11 @@ export class CommentsService {
       if (correction !== undefined && correctorAssignment(access, branchId) === null) {
         throw new ApiException('journal_correction_role', 403);
       }
+      // The journal's teacher corrects nothing of their own (decision 17; code review 2,
+      // finding 1): the unlock path, as on a lesson.
+      if (correction !== undefined && rights.teacher) {
+        throw new ApiException('own_request', 403);
+      }
       const assignmentId =
         correction !== undefined
           ? correctorAssignment(access, branchId)

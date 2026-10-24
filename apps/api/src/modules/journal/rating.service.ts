@@ -233,6 +233,11 @@ export class RatingService {
         if (input.correction && corrector === null) {
           throw new ApiException('journal_correction_role', 403);
         }
+        // Nobody approves their own (`02`, Own requests; decision 17): the journal's teacher
+        // takes the unlock path for their own entries (code review 2, finding 1).
+        if (input.correction && scene.rights.teacher) {
+          throw new ApiException('own_request', 403);
+        }
         const assignmentId =
           corrector ??
           (touchesExempt

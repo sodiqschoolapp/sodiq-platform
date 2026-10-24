@@ -5513,6 +5513,7 @@ export const en = {
       extensionsEmpty: 'No extension yet.',
       extended: 'The edit period is extended.',
       dateNeeded: 'Choose the date.',
+      toBeforeFrom: 'The last day cannot be before the first.',
     },
     sheet: 'Class journal',
     open: 'Open the journal',

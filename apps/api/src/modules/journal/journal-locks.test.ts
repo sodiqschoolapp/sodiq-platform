@@ -1087,6 +1087,126 @@ describe('the edit period through the routes', () => {
       ]);
     });
 
+    it("refuses an Academic Vice Principal's correction of their own lesson and rating exam (own_request) and sends them to the unlock path, while another corrects (decision 17; code review 2, finding 1)", async () => {
+      const x = await scene({ rating: true });
+      // The journal's teacher is an Academic Vice Principal of the branch too.
+      await give(x.owner, { role: 'academic_vice_principal', branchId: x.branch });
+      const ratingBase = `/api/journal/journals/${x.journal}/rating/${x.q1}`;
+      await as(
+        x.owner,
+        x.branch,
+        async (calls) => {
+          ok(await calls.put(`${ratingBase}/date`, { date: '2026-10-19', version: null }));
+          ok(
+            await calls.post(`${ratingBase}/entries`, {
+              studentId: x.ahmedov,
+              entry: { kind: 'score', score: 70 },
+              reason: null,
+              version: null,
+            }),
+          );
+        },
+        LAST_MINUTE,
+      );
+      const correction = { reason: 'The register says so' };
+      const note = (version: number | null) => ({
+        on: { target: 'note', lessonId: x.second, studentId: x.ahmedov },
+        body: 'Worked well',
+        visibility: 'staff',
+        version,
+        correction,
+      });
+      await as(x.owner, x.branch, async (calls) => {
+        expect(codeOf(await save(calls, x.second, x.ahmedov, 1, { correction }))).toBe(
+          'own_request',
+        );
+        expect(
+          codeOf(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              correction,
+            }),
+          ),
+        ).toBe('own_request');
+        expect(codeOf(await calls.put('/api/journal/comments', note(null)))).toBe('own_request');
+        expect(
+          codeOf(
+            await calls.post(`${ratingBase}/entries`, {
+              studentId: x.ahmedov,
+              entry: { kind: 'score', score: 75 },
+              reason: 'Marked again',
+              version: 1,
+              correction: true,
+            }),
+          ),
+        ).toBe('own_request');
+        expect(
+          codeOf(
+            await calls.put('/api/journal/comments', {
+              on: { target: 'rating', journalId: x.journal, quarterId: x.q1, studentId: x.ahmedov },
+              body: 'Retake asked',
+              visibility: 'staff',
+              version: null,
+              correction,
+            }),
+          ),
+        ).toBe('own_request');
+        // The grid offers them the unlock, never "Correct", on both.
+        const grid = await gridOf(calls, x);
+        const lesson = grid.lessons.find((one) => one.id === x.second);
+        expect(lesson?.lock).toMatchObject({ canCorrect: false, canRequest: true });
+        expect(grid.rating?.lock).toMatchObject({ canCorrect: false, canRequest: true });
+      });
+      // The unlock path: an Academic Vice Principal's own goes to the Super Admin.
+      const sent = journalUnlockSchema.parse(
+        ok(
+          await as(x.owner, x.branch, (calls) =>
+            calls.post(`${ratingBase}/unlocks`, { reason: 'Retake day' }),
+          ),
+          201,
+        ).body,
+      );
+      ok(
+        await decide(x, await superAdmin(), sent.id, { decision: 'approve', days: 1, version: 1 }),
+      );
+      await as(x.owner, x.branch, async (calls) => {
+        ok(
+          await calls.post(`${ratingBase}/entries`, {
+            studentId: x.ahmedov,
+            entry: { kind: 'score', score: 75 },
+            reason: 'Retake',
+            version: 1,
+          }),
+        );
+      });
+      // The Academic Vice Principal who does not teach the lesson corrects it.
+      await as(x.vice, x.branch, async (calls) => {
+        ok(await save(calls, x.second, x.ahmedov, 1, { correction }));
+        ok(
+          await calls.post(`/api/journal/lessons/${x.second}/works`, {
+            kind: 'classwork',
+            correction,
+          }),
+        );
+        ok(await calls.put('/api/journal/comments', note(null)));
+        const grid = await gridOf(calls, x);
+        expect(grid.lessons.find((one) => one.id === x.second)?.lock.canCorrect).toBe(true);
+        expect(grid.rating?.lock.canCorrect).toBe(true);
+      });
+      expect(await cellOf(x.second, x.ahmedov)).toMatchObject({
+        mark: 1,
+        changed_how: 'correction',
+      });
+      const rating = await t.database.migrator
+        .selectFrom('journal_rating_history')
+        .select('changed_how')
+        .where('journal_id', '=', x.journal)
+        .where('student_id', '=', x.ahmedov)
+        .orderBy('version')
+        .execute();
+      expect(rating.map((one) => one.changed_how)).toEqual(['entry', 'late_entry']);
+    });
+
     it('takes a correction of a work, a total, a number and a note from the Academic Vice Principal and the Super Admin, never a teacher or an Academic Vice Principal of another branch', async () => {
       const x = await scene();
       const other = await scene();

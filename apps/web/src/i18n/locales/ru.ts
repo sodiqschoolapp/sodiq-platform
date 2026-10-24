@@ -5827,6 +5827,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       extensionsEmpty: 'Продлений пока нет.',
       extended: 'Срок редактирования продлён.',
       dateNeeded: 'Выберите дату.',
+      toBeforeFrom: 'Последний день не может быть раньше первого.',
     },
     sheet: 'Классный журнал',
     open: 'Открыть журнал',

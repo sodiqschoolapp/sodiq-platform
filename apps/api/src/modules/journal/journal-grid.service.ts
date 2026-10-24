@@ -760,16 +760,15 @@ export class JournalGridReader {
     const lastTotal = await lastTotalOf(transaction, access.accountId, works.lessons);
     // Task 8.4: a person no longer active in the branch enters nothing (must-fix 7).
     const outNow = staffId !== null && (await outToday(transaction, branchId, staffId, today));
-    const theirs = (lesson: GridLessonRow): boolean =>
-      entering &&
-      !outNow &&
-      held.get(lesson.id) === true &&
+    const teachesIt = (lesson: GridLessonRow): boolean =>
       teachesOrOwns(
         { date: lesson.date, teacherId: lesson.teacherId, journalId: journal.id },
         facts,
         staffId,
         today,
       );
+    const theirs = (lesson: GridLessonRow): boolean =>
+      entering && !outNow && held.get(lesson.id) === true && teachesIt(lesson);
     // Task 8.4: the edit period of each lesson for the reader (`edit-window.ts`).
     const locks = await locksOfLessons(transaction, lessonIds);
     const unlocks = await unlocksOfLessons(transaction, lessonIds, staffId);
@@ -787,7 +786,9 @@ export class JournalGridReader {
         now,
         enters: theirs(lesson),
         requests,
-        corrects: corrects && held.get(lesson.id) === true && shape === 'whole',
+        // A corrector's own lesson takes the unlock path (decision 17; code review 2, finding 1).
+        corrects:
+          corrects && held.get(lesson.id) === true && shape === 'whole' && !teachesIt(lesson),
         nameOf: (accountId) => {
           const found = accountId === null ? undefined : approvers.get(accountId);
           return found?.name ?? found?.login ?? null;
