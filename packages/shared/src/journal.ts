@@ -5,7 +5,8 @@ import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
 import { carriedInSchema } from './journal-entries.js';
 import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
 import { lessonStatusSchema } from './lesson-status.js';
-import { subjectColourSchema } from './subjects.js';
+import { journalSubjectSchema, journalUnitSchema } from './journal-units.js';
+import { reminderSchema } from './journal-status.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -15,21 +16,7 @@ import { subjectColourSchema } from './subjects.js';
  * is shown (decision 7): whole numbers, grades and markers, never a fraction.
  */
 
-const subjectNames = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
-
-export const journalUnitSchema = z.object({
-  kind: z.enum(['class', 'group']),
-  id: z.uuid(),
-  /** The class shown with its grade ("7 Oxford"), or the group's name. */
-  name: z.string(),
-});
-
-export const journalSubjectSchema = z.object({
-  id: z.uuid(),
-  names: subjectNames,
-  /** The subject colour, drawn as in the timetable (review correction 3). */
-  colour: subjectColourSchema,
-});
+export { journalSubjectSchema, journalUnitSchema };
 
 /** Without a year: the year of today in the branch, or the latest one. */
 export const journalListQuerySchema = z.strictObject({ yearId: z.uuid().optional() });
@@ -353,6 +340,11 @@ export const journalGridSchema = z.object({
   /** The months that hold a lesson of the quarter, `YYYY-MM`, in order. */
   months: z.array(z.string().regex(/^\d{4}-\d{2}$/)),
   lessons: z.array(journalLessonSchema),
+  /**
+   * Task 8.7 (`07`, Reminders): the panel of the journal, over the year's held lessons up to
+   * now that the reader sees (decision 12); empty for a reader of attendance only.
+   */
+  reminders: z.array(reminderSchema),
   students: z.array(journalStudentSchema),
   /** The last total the reader set in this journal, offered for the next work (`07`, The total; task 8.1, decision 9). */
   lastTotal: z.int().min(1).max(1000).nullable(),

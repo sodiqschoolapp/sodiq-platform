@@ -51,9 +51,9 @@ describe('lessonStatusOf (07, Lesson status)', () => {
   });
 
   it('numbers typed with attendance empty: in progress (edge/journal, row 3)', () => {
-    expect(
-      statusOf(facts({ works: [work({ numbered: ['a', 'b'] })], data: true })),
-    ).toBe('in_progress');
+    expect(statusOf(facts({ works: [work({ numbered: ['a', 'b'] })], data: true }))).toBe(
+      'in_progress',
+    );
   });
 
   it('a 0 or 3 student without a number does not keep it in progress (row 1)', () => {

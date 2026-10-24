@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { lessonStatusSchema } from './lesson-status.js';
 import { schoolDateSchema, type SchoolDate } from './academic-year.js';
 import { dayLessonSchema, daySlotSchema } from './day-changes.js';
 
@@ -94,6 +95,8 @@ export const viewLessonSchema = dayLessonSchema
     replacedHere: z.boolean(),
     /** Task 6.2: the journal of its class or group and subject in its year, opened from the lesson; `null` when none is open. */
     journalId: z.uuid().nullable(),
+    /** Task 8.7 (`07`, Lesson status: "on the timetable"): the status of a held lesson, `null` otherwise. */
+    status: lessonStatusSchema.nullable(),
   });
 
 export type ViewLesson = z.infer<typeof viewLessonSchema>;

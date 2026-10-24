@@ -42,6 +42,7 @@ import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-own
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
 import { markersOf, optionalCellsOf, reopenedCellsOf, shownMarker } from './cell-markers.js';
 import { lessonStatuses } from './lesson-status.query.js';
+import { lessonReminders, ratingReminder } from './reminders.js';
 import {
   correctorAssignment,
   editLockOf,
@@ -991,8 +992,55 @@ export class JournalGridReader {
           : { ...cell, open: openCell(lesson, student.id) };
       }),
     }));
-    // Task 8.7: the status of each held lesson, from the one reader of the status.
-    const statuses = await lessonStatuses(transaction, branchId, lessonIds, now);
+    // Task 8.7: the status of each held lesson, from the one reader of the status, over the
+    // year's lessons the reader sees up to now, for the reminders panel too (decision 12).
+    const yearShown = works.lessons.filter(
+      (lesson) =>
+        lesson.startsAt.getTime() <= now.getTime() && (ownLessons === null || ownLessons(lesson)),
+    );
+    const statuses = await lessonStatuses(
+      transaction,
+      branchId,
+      [...new Set([...lessonIds, ...yearShown.map((lesson) => lesson.id)])],
+      now,
+    );
+    // Checked by the answer's schema (the subject colour is a stored text here).
+    const reminders: unknown[] = [];
+    if (shape !== 'attendance') {
+      reminders.push(
+        ...lessonReminders(
+          yearShown.flatMap((lesson) => {
+            const row = statuses.get(lesson.id);
+            return row === undefined
+              ? []
+              : [
+                  {
+                    lesson: {
+                      id: lesson.id,
+                      journalId: journal.id,
+                      date: lesson.date,
+                      start: lesson.start,
+                      unit: unitOf(journal),
+                      subject: subjectOf(journal),
+                    },
+                    row,
+                  },
+                ];
+          }),
+          now,
+        ),
+      );
+      if (shape === 'whole') {
+        const rated = await ratingReminder(
+          transaction,
+          journal,
+          today,
+          (one) => ({ id: one.id, unit: unitOf(one), subject: subjectOf(one) }),
+          reading?.kind === 'tutor' ? students.map((student) => student.id) : null,
+        );
+        if (rated !== null) reminders.push(rated);
+      }
+    }
     // The categories of absence of the students shown (decision 7), on the dates of the shown
     // lessons each student is expected at (permission review of the code, should-fix 4).
     const expectedOn = new Set(
@@ -1072,6 +1120,7 @@ export class JournalGridReader {
                 ungraded: one.ungraded,
               })),
       })),
+      reminders,
       students: shownStudents,
       lastTotal,
       bottom,
@@ -1132,13 +1181,13 @@ export class JournalGridReader {
   }
 }
 
-const unitOf = (journal: JournalRow) => ({
+export const unitOf = (journal: JournalRow) => ({
   kind: journal.classId === null ? ('group' as const) : ('class' as const),
   id: journal.classId ?? journal.groupId ?? '',
   name: journal.unitName,
 });
 
-const subjectOf = (journal: JournalRow) => ({
+export const subjectOf = (journal: JournalRow) => ({
   id: journal.subjectId,
   names: journal.subject.names,
   colour: journal.subject.colour,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { journalSubjectSchema, journalUnitSchema } from './journal.js';
+import { journalSubjectSchema, journalUnitSchema } from './journal-units.js';
 import { correctionSchema } from './journal-correction.js';
 import { lessonStatusSchema } from './lesson-status.js';
 
@@ -154,7 +154,9 @@ export const disciplineSchema = z.object({
   from: schoolDateSchema,
   to: schoolDateSchema,
   /** The departments the reader may filter by. */
-  departments: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  departments: z.array(
+    z.object({ id: z.uuid(), names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }) }),
+  ),
   teachers: z.array(disciplineRowSchema),
 });
 
