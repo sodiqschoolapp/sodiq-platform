@@ -31,6 +31,10 @@ const MERGE_DOES: Readonly<
   Record<string, 'carried' | 'left behind' | 'follows' | 'released' | 'refused'>
 > = {
   class_memberships: 'carried',
+  // Task 8.5: exemptions and their move offers go to the kept record, each staying
+  // in the branch of its lessons; two that overlap refuse the merge by their exclusion.
+  exemption_move_offers: 'carried',
+  exemptions: 'carried',
   group_memberships: 'carried',
   // Task 6.1a, decision 9: a record with cells is not merged until 8.6 carries them.
   journal_cells: 'refused',
