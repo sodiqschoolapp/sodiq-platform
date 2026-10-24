@@ -524,7 +524,11 @@ describe('lesson status, reminders and the counts per teacher', () => {
         .where('student_id', '=', s.boboyev)
         .executeTakeFirstOrThrow()
     ).id;
-    /** A transaction that holds Boboyev's cell after a write of its own, until released. */
+    /**
+     * A transaction that holds Boboyev's cell after a write of its own, until released. Both
+     * routes take the work `for update` before any cell (`writeScores`, and the fill since
+     * code round 1 of #225), so the held side does too.
+     */
     const holding = async (write: { score: number | null; notGraded: boolean }) => {
       let release: () => void = () => undefined;
       const released = new Promise<void>((resolve) => {
@@ -539,6 +543,12 @@ describe('lesson status, reminders and the counts per teacher', () => {
         await transaction
           .insertInto('audit_log')
           .values({ occurred_at: new Date(MOMENT), branch_id: s.branch, action: 'test.status' })
+          .execute();
+        await transaction
+          .selectFrom('journal_works')
+          .select('id')
+          .where('id', '=', workId)
+          .forUpdate()
           .execute();
         await transaction
           .updateTable('journal_cells')
@@ -572,8 +582,8 @@ describe('lesson status, reminders and the counts per teacher', () => {
         work().then(resolve, reject);
       });
     try {
-      // The save first (held after its write of a number): "not graded" read the cell empty,
-      // waits on it, then skips and reports it.
+      // The save first (held after its write of a number): "not graded" waits on the work,
+      // then reads the cell numbered, and fills only the other.
       const save = await holding({ score: 3, notGraded: false });
       const fill = started(() =>
         as(owner, s.branch, teacherIn(s), (calls) =>
@@ -584,7 +594,7 @@ describe('lesson status, reminders and the counts per teacher', () => {
       save.release();
       await save.done;
       const answer = notGradedAnswerSchema.parse(ok(await fill));
-      expect(answer.skipped).toEqual([{ studentId: s.boboyev, workId }]);
+      expect(answer.skipped).toEqual([]);
       expect(answer.filled.map((one) => one.studentId)).toEqual([s.ahmedov]);
     } finally {
       t.clock.set(START);
@@ -836,9 +846,29 @@ describe('lesson status, reminders and the counts per teacher', () => {
   it('"Not graded" refuses a work with no total, a locked lesson without an unlock, another teacher, and ids it does not know; a typed number and a clear end it', async () => {
     const owner = await account();
     const stranger = await account();
+    const otherOwner = await account();
     const s = await scene({ teacher: owner.account.id, spare: stranger.account.id });
-    const other = await scene();
+    const other = await scene({ teacher: otherOwner.account.id });
     await classworkAt(s, s.third);
+    await classworkAt(other, other.third);
+    // Another branch's work, with a total and both students present: a fill would write it.
+    const otherWork = await as(otherOwner, other.branch, teacherIn(other), (calls) =>
+      presentWithWork(calls, other),
+    );
+    /** Every row of the tables the route writes, in both branches, and the audit log. */
+    const rowsOf = async () => ({
+      cells: await t.database.migrator
+        .selectFrom('journal_cells')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      history: await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      audit: await t.database.migrator.selectFrom('audit_log').selectAll().orderBy('id').execute(),
+    });
     await as(owner, s.branch, teacherIn(s), async (calls) => {
       ok(
         await mark(calls, s.third, [
@@ -868,19 +898,30 @@ describe('lesson status, reminders and the counts per teacher', () => {
       expect(codeOf(await calls.post(`/api/journal/lessons/${s.second}/not-graded`))).toBe(
         'journal_locked',
       );
+      // Another branch's and an unknown id, in the path and in `workIds`: 404, with the cells
+      // of both branches (the third's both waiting for a fill), their history and the log unchanged.
+      const before = await rowsOf();
       expect(codeOf(await calls.post(`/api/journal/lessons/${randomUUID()}/not-graded`))).toBe(
         'not_found',
       );
       expect(codeOf(await calls.post(`/api/journal/lessons/${other.third}/not-graded`))).toBe(
         'not_found',
       );
-      expect(
-        codeOf(
-          await calls.post(`/api/journal/lessons/${s.third}/not-graded`, {
-            workIds: [randomUUID()],
-          }),
-        ),
-      ).toBe('not_found');
+      for (const workId of [randomUUID(), otherWork]) {
+        expect(
+          codeOf(
+            await calls.post(`/api/journal/lessons/${s.third}/not-graded`, { workIds: [workId] }),
+          ),
+        ).toBe('not_found');
+        expect(
+          codeOf(
+            await calls.post(`/api/journal/lessons/${s.third}/not-graded`, {
+              workIds: [total.id, workId],
+            }),
+          ),
+        ).toBe('not_found');
+      }
+      expect(await rowsOf()).toEqual(before);
       const filled = notGradedAnswerSchema.parse(
         ok(await calls.post(`/api/journal/lessons/${s.third}/not-graded`, { workIds: [total.id] })),
       );
@@ -942,7 +983,13 @@ describe('lesson status, reminders and the counts per teacher', () => {
     });
   });
 
-  it('"Not graded" against a save of numbers sent in the other order never deadlocks: the one that waits finds the other’s change', async () => {
+  /**
+   * "Not graded" against a save of numbers sent in the other order, the real routes in a
+   * fixed order (`inOrderOnLesson`): both take the lesson `for share`, so the hold is a row
+   * both lock `for update`. The fill first: `ahead`'s cell, which the fill reaches after the
+   * work; the save first: the work, which both now take before any cell.
+   */
+  async function fillAgainstSave(first: 'fill' | 'save') {
     const owner = await account();
     const s = await scene({ teacher: owner.account.id });
     await classworkAt(s, s.third);
@@ -970,48 +1017,114 @@ describe('lesson status, reminders and the counts per teacher', () => {
       ).id;
     });
     const [ahead, behind] = [s.ahmedov, s.boboyev].sort();
+    if (ahead === undefined || behind === undefined) throw new Error('Two students.');
+    // Both cells typed and cleared: stored rows the fill fills (version 2), so that one of
+    // them can be held.
+    const cleared = await as(owner, s.branch, teacherIn(s), async (calls) => {
+      for (const score of [4, null]) {
+        ok(
+          await calls.post(`/api/journal/lessons/${s.third}/scores`, {
+            saves: [ahead, behind].map((studentId) => ({
+              studentId,
+              column: { workId },
+              score,
+              version: score === null ? 1 : null,
+            })),
+          }),
+        );
+      }
+      return t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['id', 'student_id', 'version', 'score'])
+        .where('work_id', '=', workId)
+        .execute();
+    });
+    const held = cleared.find((one) => one.student_id === ahead);
+    expect(cleared.map((one) => [one.version, one.score])).toEqual([
+      [2, null],
+      [2, null],
+    ]);
     t.clock.set(MOMENT);
     try {
-      const [graded, saved] = await inOrderOnLesson({
+      const fill = () =>
+        t
+          .post(`/api/journal/lessons/${s.third}/not-graded`, s.branch, {}, owner.cookie)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .then((response) => response);
+      const save = () =>
+        t
+          .post(
+            `/api/journal/lessons/${s.third}/scores`,
+            s.branch,
+            {
+              saves: [
+                { studentId: behind, column: { workId }, score: 3, version: 2 },
+                { studentId: ahead, column: { workId }, score: 2, version: 2 },
+              ],
+            },
+            owner.cookie,
+          )
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .then((response) => response);
+      const shared = {
         app: t.app,
         migrator: t.database.migrator,
         branchId: s.branch,
         lessonId: s.third,
-        first: () =>
-          t
-            .post(`/api/journal/lessons/${s.third}/not-graded`, s.branch, {}, owner.cookie)
-            .set(REQUEST_KEY_HEADER, randomUUID())
-            .then((response) => response),
-        second: () =>
-          t
-            .post(
-              `/api/journal/lessons/${s.third}/scores`,
-              s.branch,
-              {
-                saves: [
-                  { studentId: behind, column: { workId }, score: 3, version: null },
-                  { studentId: ahead, column: { workId }, score: 2, version: null },
-                ],
-              },
-              owner.cookie,
-            )
-            .set(REQUEST_KEY_HEADER, randomUUID())
-            .then((response) => response),
-      });
-      const fill = graded as Response;
-      const save = saved as Response;
-      expect(fill.status, JSON.stringify(fill.body)).toBe(200);
-      const answer = notGradedAnswerSchema.parse(fill.body);
-      if (answer.filled.length === 2) {
-        // The fill went first: the save of cells it wrote is stale.
-        expect(codeOf(save)).toBe('cell_stale');
+      };
+      const cells = () =>
+        t.database.migrator
+          .selectFrom('journal_cells')
+          .select(['student_id', 'score', 'not_graded'])
+          .where('work_id', '=', workId)
+          .orderBy('student_id')
+          .execute();
+      if (first === 'fill') {
+        const [graded, saved] = await inOrderOnLesson({
+          ...shared,
+          row: { table: 'journal_cells', id: held?.id ?? '' },
+          first: fill,
+          second: save,
+        });
+        // The fill writes both cells; the save, sent with the versions it read before the
+        // fill, is stale.
+        const answer = notGradedAnswerSchema.parse(ok(graded as Response));
+        expect(answer.filled.map((one) => one.studentId)).toEqual([ahead, behind]);
+        expect(answer.skipped).toEqual([]);
+        expect(codeOf(saved as Response)).toBe('cell_stale');
+        expect(await cells()).toEqual([
+          { student_id: ahead, score: null, not_graded: true },
+          { student_id: behind, score: null, not_graded: true },
+        ]);
       } else {
-        expect(save.status, JSON.stringify(save.body)).toBe(200);
-        expect(answer.filled).toEqual([]);
+        const [saved, graded] = await inOrderOnLesson({
+          ...shared,
+          row: { table: 'journal_works', id: workId },
+          first: save,
+          second: fill,
+        });
+        // The save writes both numbers; the fill, reading after it, finds nothing to fill.
+        ok(saved as Response);
+        expect(notGradedAnswerSchema.parse(ok(graded as Response))).toEqual({
+          filled: [],
+          skipped: [],
+        });
+        expect(await cells()).toEqual([
+          { student_id: ahead, score: 2, not_graded: false },
+          { student_id: behind, score: 3, not_graded: false },
+        ]);
       }
     } finally {
       t.clock.set(START);
     }
+  }
+
+  it('"Not graded" first against a save of numbers sent in the other order: the save waits and is stale, never a deadlock', async () => {
+    await fillAgainstSave('fill');
+  });
+
+  it('a save of numbers first against "Not graded": the fill waits and finds nothing to fill, never a deadlock', async () => {
+    await fillAgainstSave('save');
   });
 
   it('lists a lesson about to lock 48 hours before its lock, not before, also in the next quarter', async () => {
@@ -1125,6 +1238,102 @@ describe('lesson status, reminders and the counts per teacher', () => {
     expect(await ids(owner)).not.toContain(s.third);
   });
 
+  it('lists the lessons of a vacancy’s journal for nobody, and for the acting teacher while a period names them', async () => {
+    const owner = await account();
+    const spare = await account();
+    const vice = await account();
+    const s = await scene({ teacher: owner.account.id, spare: spare.account.id });
+    // A version published from the 19th names a vacancy for the class: the 12th stays the
+    // teacher's; from the 19th the journal's owner is the vacancy's acting teacher, or nobody.
+    // The dated lessons keep their teacher, as a publish leaves lessons already dated.
+    const vacancy = await load.vacancy(s.branch, {
+      subjects: [{ subject: s.subject, grades: [7] }],
+    });
+    const version = await load.version(s.branch, s.year, { startsOn: '2026-10-19' });
+    await load.row({
+      branch_id: s.branch,
+      version_id: version,
+      class_id: s.classId,
+      subject_id: s.subject,
+      teacher_id: vacancy,
+      lessons_per_week: 1,
+    });
+    await load.row({
+      branch_id: s.branch,
+      version_id: version,
+      class_id: s.otherClass,
+      subject_id: s.subject,
+      teacher_id: s.otherTeacher.staffId,
+      lessons_per_week: 1,
+    });
+    await load.setVersion(version, 'published');
+    const ids = async (browser: Browser) =>
+      as(browser, s.branch, teacherIn(s), async (calls) =>
+        remindersSchema
+          .parse(ok(await calls.get('/api/journal/reminders')))
+          .reminders.flatMap((one) => (one.kind === 'rating_missing' ? [] : [one.lesson.id])),
+      );
+    const held = async () =>
+      as(vice, s.branch, viceIn(s), async (calls) =>
+        disciplineSchema
+          .parse(ok(await calls.get('/api/journal/discipline?from=2026-10-12&to=2026-10-26')))
+          .teachers.map((one) => [one.teacher.id, one.held])
+          .sort(),
+      );
+    /** The class's three lessons in a list of reminders. */
+    const ofClass = (list: string[]) =>
+      [s.first, s.second, s.third].filter((lesson) => list.includes(lesson));
+    // The owner is `none` on the 19th and the 26th: nobody counts them, the teacher whose
+    // id the lessons still carry included.
+    expect(ofClass(await ids(owner))).toEqual([s.first]);
+    expect(ofClass(await ids(spare))).toEqual([]);
+    expect(await held()).toEqual(
+      [
+        [s.otherTeacher.staffId, 3],
+        [s.teacher.staffId, 1],
+      ].sort(),
+    );
+    // The spare teacher acts for the vacancy until the 19th included: the 19th is theirs; the
+    // 26th is nobody's, though the period makes it a candidate of their reminders.
+    const period = await t.database.migrator
+      .insertInto('journal_acting_teachers')
+      .values({
+        branch_id: s.branch,
+        journal_id: s.journal,
+        vacancy_id: vacancy,
+        person_id: s.spareTeacher.staffId,
+        valid_from: '2026-10-19',
+        valid_until: '2026-10-20',
+        given_by: vice.account.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    expect(ofClass(await ids(spare))).toEqual([s.second]);
+    expect(ofClass(await ids(owner))).toEqual([s.first]);
+    expect(await held()).toEqual(
+      [
+        [s.otherTeacher.staffId, 3],
+        [s.spareTeacher.staffId, 1],
+        [s.teacher.staffId, 1],
+      ].sort(),
+    );
+    // With no end, the 19th and the 26th are the acting teacher's.
+    await t.database.migrator
+      .updateTable('journal_acting_teachers')
+      .set({ valid_until: null })
+      .where('id', '=', period.id)
+      .execute();
+    expect(ofClass(await ids(spare))).toEqual([s.second, s.third]);
+    expect(ofClass(await ids(owner))).toEqual([s.first]);
+    expect(await held()).toEqual(
+      [
+        [s.otherTeacher.staffId, 3],
+        [s.spareTeacher.staffId, 2],
+        [s.teacher.staffId, 1],
+      ].sort(),
+    );
+  });
+
   it('refuses a range of more than 92 days or outside one year, and an unknown department; a Head Teacher of another subject sees nobody', async () => {
     const vice = await account();
     const head = await account();
@@ -1192,6 +1401,40 @@ describe('lesson status, reminders and the counts per teacher', () => {
     });
   });
 
+  it('gives the Senior Head Teacher the teachers of own subjects in a branch without an appointment there, not those of another subject', async () => {
+    const owner = await account();
+    const senior = await account();
+    const otherSenior = await account();
+    // The teacher has maths in the class and the second subject in the other class; the
+    // other teacher has maths in the other class.
+    const s = await publishedScene(t, load, {
+      graded: true,
+      accounts: { teacher: owner.account.id },
+      secondSubject: true,
+    });
+    const second = s.secondSubject;
+    if (second === null) throw new Error('The scene has a second subject.');
+    const teachersOf = async (browser: Browser, subjectIds: string[]) =>
+      as(
+        browser,
+        s.branch,
+        // A Senior Head Teacher's subjects hold in every branch: no branch on the assignment.
+        [{ role: 'senior_head_teacher', subjectIds }],
+        async (calls) =>
+          disciplineSchema
+            .parse(ok(await calls.get('/api/journal/discipline?from=2026-10-26&to=2026-10-26')))
+            .teachers.map((one) => [one.teacher.id, one.held])
+            .sort(),
+      );
+    expect(await teachersOf(senior, [second])).toEqual([[s.teacher.staffId, 1]]);
+    expect(await teachersOf(otherSenior, [s.subject])).toEqual(
+      [
+        [s.teacher.staffId, 1],
+        [s.otherTeacher.staffId, 1],
+      ].sort(),
+    );
+  });
+
   it('lets the teacher type into an optional cell of a locked lesson until its end, as a late entry, and leaves it out of the status (From 8.6)', async () => {
     const owner = await account();
     const s = await scene({ teacher: owner.account.id });
@@ -1247,6 +1490,24 @@ describe('lesson status, reminders and the counts per teacher', () => {
       expect(cell.changed_how).toBe('late_entry');
       // Filled, it changes nothing either.
       expect(statusIn(await gridOf(calls, s), s.first)).toBe('complete');
+    });
+    // The late entry is in the history, made under no unlock: the counts leave it out.
+    const lines = await t.database.migrator
+      .selectFrom('journal_cell_history')
+      .select(['changed_how', 'unlock_id'])
+      .where('lesson_id', '=', s.first)
+      .where('student_id', '=', late)
+      .execute();
+    expect(lines).toEqual([{ changed_how: 'late_entry', unlock_id: null }]);
+    await as(vice, s.branch, viceIn(s), async (calls) => {
+      const counts = disciplineSchema.parse(
+        ok(await calls.get('/api/journal/discipline?from=2026-10-12&to=2026-10-12')),
+      );
+      expect(counts.teachers.find((one) => one.teacher.id === s.teacher.staffId)).toMatchObject({
+        held: 1,
+        complete: 1,
+        lateEntries: 0,
+      });
     });
     await as(
       owner,

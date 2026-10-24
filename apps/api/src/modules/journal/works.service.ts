@@ -822,6 +822,20 @@ export class WorksService {
       for (const column of chosen) {
         if (column.total === null) throw new ApiException('work_total_missing', 409);
       }
+      // The works' rows before any cell, `for update` in the order of their id, as a save of
+      // numbers takes them (`writeScores`): the cell trigger takes a work `for share`, so a
+      // fill that wrote a cell first and a save that holds the work deadlocked (code round 1).
+      const workIds = [
+        ...new Set(chosen.flatMap((column) => (column.workId === null ? [] : [column.workId]))),
+      ].sort((a, b) => a.localeCompare(b));
+      for (const workId of workIds) {
+        await transaction
+          .selectFrom('journal_works')
+          .select('id')
+          .where('id', '=', workId)
+          .forUpdate()
+          .execute();
+      }
       const now = await transactionMoment(transaction);
       const status = (
         await lessonStatuses(transaction, scene.branchId, [scene.lesson.id], now)

@@ -1,6 +1,6 @@
 # Journal
 
-Not written yet for most of the journal: the journal grid, attendance, marks, works and totals, exemptions, locks and unlock requests (tasks 6.1a to 8.6) are described by task 9.6. This page holds the parts that task 8.7 added.
+Not written yet for most of the journal: the journal grid, attendance, marks, works and totals, exemptions, locks and unlock requests (tasks 6.1a to 8.6) have no page here yet; where they are written is the owner's to decide (issue #42). This page holds the parts that task 8.7 added.
 
 ## Lesson status
 
@@ -79,7 +79,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 **Rules.**
 
 - "About to lock" means an incomplete lesson that locks within the next 48 hours.
-- Rating exam scores are reminded from 14 days before the quarter's last day to that day. A score that is "pending" (exempt on the exam day) is the Academic Vice Principal's to decide and is not reminded.
+- Rating exam scores are reminded in the last 14 days of the quarter, its last day included. A score that is "pending" (exempt on the exam day) is the Academic Vice Principal's to decide and is not reminded.
 - "No topic" means the plan row of the lesson has no item or an empty topic.
 - Reminders cover every lesson of the year held so far, also of a quarter that has ended: a lesson of the last week of a quarter locks in the next one.
 - Optional cells and exempt students are never reminded.
@@ -124,7 +124,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 **How it works.**
 
 1. Journal → **Orphan lessons** (**Oʻqituvchisiz darslar**). Open a lesson.
-2. Choose the teacher, the number of days (1 to 7) and the reason, and press **Assign**.
+2. Choose the teacher, the number of days (1 to 7) and the reason, and press **Save**.
 3. The assigned teacher enters that lesson as its own teacher would, until 00:00 of the day after the last day. After the edit period the entries are marked "entered after the edit period".
 4. **Withdraw** ends the assignment at once.
 

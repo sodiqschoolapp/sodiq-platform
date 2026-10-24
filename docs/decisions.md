@@ -312,7 +312,7 @@ Plan approved on pull request #225 with corrections 1 to 3; decisions 1 to 16 co
 | Locked incomplete holds from the lock while incomplete, an open unlock included | Decision 7 |
 | Not started: no data on the lesson (a mark, a number, a total, "not held", a comment) | Decision 8 |
 | About to lock: incomplete, lock within 48 hours | Decision 9 |
-| Rating exam scores missing: from 14 days before the quarter's last day; "pending" is not missing | Decision 10 |
+| Rating exam scores missing: in the last 14 days of the quarter, its last day included; "pending" is not missing | Decision 10 |
 | No topic: a held lesson of a graded quarter whose plan row has no item or an empty topic | Decision 11 |
 | Reminders over the held lessons of the open year up to now; counts and lessons, no student names | Decision 12 |
 | A lesson counts for the substitute in force, else the journal owner on the date; `none` for nobody | Decision 13 |
