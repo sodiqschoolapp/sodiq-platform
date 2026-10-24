@@ -5,6 +5,8 @@ import type { Access } from '../access/permission.guard.js';
 import { ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
+import { markersOf } from './cell-markers.js';
+import { editLockOf, lockOf, unlocksOfRating } from './edit-window.js';
 import { switchesIn, type JournalRow } from './journal-grid.query.js';
 
 /**
@@ -34,6 +36,8 @@ export interface RatingRow {
 
 /** A stored entry with its author. */
 export interface EntryRow {
+  readonly id: string;
+  readonly changedHow: string;
   readonly studentId: string;
   readonly entry: RatingEntryValue | null;
   readonly version: number;
@@ -132,7 +136,16 @@ export async function entriesOf(
 ): Promise<EntryRow[]> {
   let query = transaction
     .selectFrom('journal_rating_entries')
-    .select(['student_id', 'kind', 'score', 'version', 'changed_by', 'changed_at'])
+    .select([
+      'id',
+      'student_id',
+      'kind',
+      'score',
+      'version',
+      'changed_by',
+      'changed_how',
+      'changed_at',
+    ])
     .where('rating_exam_id', '=', ratingExamId);
   if (studentIds !== null) {
     if (studentIds.length === 0) return [];
@@ -140,6 +153,8 @@ export async function entriesOf(
   }
   const rows = await query.orderBy('student_id').execute();
   return rows.map((row) => ({
+    id: row.id,
+    changedHow: row.changed_how,
     studentId: row.student_id,
     entry: entryOf(row),
     version: row.version,
@@ -161,6 +176,10 @@ export async function ratingExamOf(
     readonly rights: RatingRights;
     readonly today: string;
     readonly studentIds: readonly string[] | null;
+    /** Task 8.4: the reader's staff record, the transaction's moment and whether the reader may request unlocks. */
+    readonly staffId: string | null;
+    readonly now: Date;
+    readonly requests: boolean;
   },
 ): Promise<RatingExam | null> {
   const { journal, quarterId, rights, today } = input;
@@ -172,6 +191,31 @@ export async function ratingExamOf(
     transaction,
     entries.map((one) => one.changedBy),
   );
+  const markers = await markersOf(
+    transaction,
+    'journal_rating_history',
+    entries.map((one) => ({ ...one, changedBy: one.changedBy })),
+  );
+  // Task 8.4: the edit period of the exam, from its date in force.
+  const unlocks = await unlocksOfRating(transaction, journal.id, quarterId, input.staffId);
+  const approvers = await namedAccounts(
+    transaction,
+    unlocks.approved.map((one) => one.decidedBy),
+  );
+  const lock = editLockOf({
+    locksAt: await lockOf(transaction, { kind: 'rating', journalId: journal.id, quarterId }),
+    unlocks,
+    staffId: input.staffId,
+    now: input.now,
+    enters: rights.teacher && date !== null && today >= date && row?.notHeld !== true,
+    requests: input.requests,
+    // The journal's teacher corrects nothing of their own: the unlock path (decision 17).
+    corrects: rights.vicePrincipal !== null && !rights.teacher && date !== null && today >= date,
+    nameOf: (accountId) => {
+      const found = accountId === null ? undefined : approvers.get(accountId);
+      return found?.name ?? found?.login ?? null;
+    },
+  });
   const open = date !== null && today >= date && row?.notHeld !== true;
   return {
     journalId: journal.id,
@@ -180,10 +224,13 @@ export async function ratingExamOf(
     fromExam,
     notHeld: row?.notHeld ?? false,
     version: row?.version ?? null,
-    canSetDate: (rights.teacher || rights.vicePrincipal !== null) && !fromExam,
+    // Task 8.4 (decision 6): the teacher's date waits for no unlock; it is refused once locked.
+    canSetDate:
+      ((rights.teacher && lock.window === 'open') || rights.vicePrincipal !== null) && !fromExam,
     canSetNotHeld: rights.vicePrincipal !== null,
-    canEnter: rights.teacher && open,
+    canEnter: rights.teacher && open && lock.window !== 'locked',
     canExempt: rights.vicePrincipal !== null && open,
+    lock,
     entries: entries.map((one) => {
       const named = names.get(one.changedBy);
       return {
@@ -192,6 +239,7 @@ export async function ratingExamOf(
         version: one.version,
         changedBy: named?.name ?? named?.login ?? null,
         changedAt: one.changedAt.toISOString(),
+        marker: markers.get(one.id) ?? null,
       };
     }),
   };

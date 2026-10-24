@@ -15,6 +15,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { enterableLesson, entryAssignment } from './attendance-entry.js';
+import { writeDetails } from './edit-window.js';
 import { inGridOrder } from './attendance.service.js';
 import { CELL_REFUSALS } from './cells.js';
 import { firstsOfDoubles } from './doubles.query.js';
@@ -69,7 +70,7 @@ export class CellActionsService {
     const branchId = branchOf(access);
     const cells = undoCellsOf(input);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { lesson } = await enterableLesson(transaction, access, branchId, lessonId);
+      const { lesson, write } = await enterableLesson(transaction, access, branchId, lessonId);
       await refuseOtherStudents(
         transaction,
         cells.map((cell) => cell.studentId),
@@ -156,7 +157,12 @@ export class CellActionsService {
       const undoable = new Set<string>();
       for (const { cell, row } of candidates) {
         const line = lineOf.get(`${row.id}/${String(row.version)}`);
-        if (line?.changed_by === access.accountId && line.changed_how === 'entry') {
+        // Task 8.4: an entry under an unlock is the person's own too; a correction never is
+        // undone (decision 9).
+        if (
+          line?.changed_by === access.accountId &&
+          (line.changed_how === 'entry' || line.changed_how === 'late_entry')
+        ) {
           undoable.add(keyOf(cell.studentId, cell.workId));
           const before = row.work_id === null ? line.mark_before : line.score_before;
           await sql`savepoint cell_undo`.execute(transaction);
@@ -215,7 +221,7 @@ export class CellActionsService {
         newValue: {
           cells: undone.map((one) => ({ id: one.cellId, version: one.version })),
         },
-        details: { undone: undone.length, skipped: skipped.length },
+        details: { undone: undone.length, skipped: skipped.length, ...writeDetails(write) },
         ...(requestId === undefined ? {} : { requestId }),
       });
       return {
@@ -243,7 +249,7 @@ export class CellActionsService {
   ): Promise<AttendanceCopy> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { lesson } = await enterableLesson(transaction, access, branchId, lessonId);
+      const { lesson, write } = await enterableLesson(transaction, access, branchId, lessonId);
       const first = (await firstsOfDoubles(transaction, [lesson.id])).get(lesson.id) ?? null;
       if (first === null) throw new ApiException('lesson_not_double', 409);
       // The first lesson FOR SHARE too (decision 2): a cancel of it waits for the copy.
@@ -351,7 +357,11 @@ export class CellActionsService {
           filled: filledSorted.map((one) => ({ id: one.cellId, version: one.version })),
           skipped: skippedSorted.map((one) => one.studentId),
         },
-        details: { filled: filledSorted.length, skipped: skippedSorted.length },
+        details: {
+          filled: filledSorted.length,
+          skipped: skippedSorted.length,
+          ...writeDetails(write),
+        },
         ...(requestId === undefined ? {} : { requestId }),
       });
       return {

@@ -29,7 +29,7 @@ import { journalRows, staffNames, type JournalRow } from '../journal/journal-gri
 import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
-import { accountOfStaff, postHolders, postsOf } from './plan-posts.js';
+import { accountOfStaff, postHolders, postsOf } from '../access/request-posts.js';
 import {
   clockOf,
   datedQuarters,
@@ -38,7 +38,7 @@ import {
   referenceDateOf,
   type PlanRowLesson,
 } from './plan-read.js';
-import { decisionReach, firstTier } from './plan-request-routing.js';
+import { decisionReach, firstTier } from '../access/request-routing.js';
 import { ownerIdOn } from './plan-scope.js';
 import { periodLastDay, periodOpen, windowStateOf } from './plan-window.js';
 import { answerOf, calendarOf, requestRows, type RequestRow } from './plan-request-read.js';
@@ -121,7 +121,7 @@ export class PlanRequestsService {
     return accountOfStaff(transaction, owner);
   }
 
-  /** What the reader may do with a request (`plan-request-routing.ts`). */
+  /** What the reader may do with a request (`access/request-routing.ts`). */
   private async reachOf(
     transaction: Transaction,
     access: Access,

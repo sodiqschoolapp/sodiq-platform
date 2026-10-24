@@ -297,6 +297,23 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: edit period, unlocks and corrections (task 8.4)
+
+Plan approved on pull request #222 with corrections 1 to 5; decisions 1 to 14 confirmed or changed there, 15 to 23 taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a reading of a journal rule). 23:59 of the last day is open; a lesson locks at 00:00 of the next branch day | Decision 1; `edge/00-definitions`, Lock moment |
+| **Look first** (a change of the approved plan). The lock is worked out on each request (`journal_lock_moment`, 0122) from `branch_edit_days` (the edit days and the time zone in force, logged on each change of either) and the extensions; never stored on `lessons` | Decision 15: an update of `lessons` runs the timetable claims for every row; the log fixes the lock per lesson, and correction 1 (a SECURITY DEFINER re-store) has nothing to name |
+| **Look first** (triggers added, lists widened). The guards `journal_*_edit_guard` through `journal_edit_judge` judge a person's write at the lock of its lesson or rating exam; `late_entry` and `correction` join the kinds of works and comments | Decision 3; `CLAUDE.md`, The database guards the rules |
+| **Look first** (two permission areas). `journal_unlocks` and `journal_extensions` | Decision 5 |
+| **Look first** (tests changed by a requirement). Test branches start with 3650 edit days (`insertBranch`); a test of the edit period sets its days (`setEditDays`) | Decision 16 |
+| **Look first** (a reading of `02`, Own requests). A corrector who teaches or owns the lesson is refused a correction (`own_request`) and asks an unlock | Decision 17 |
+| An unlock request is for a lesson the person teaches or owns on its own date; the owner today enters every lesson not yet locked | Decision 18; From 5.7a-3c |
+| Every correction is told: cells and rating entries one notice per value (at most 50), a total with its values, other corrections of a lesson one notice | Decisions 10 and 19; `edge/journal` |
+| Under an unlock the guard writes `late_entry` (an undo and a delete keep their kind); a correction is `correction` and is never undone | Decisions 9 and 20 |
+| The extension's "after today" is refused by the database only, mapped | Decision 22 |
+
 ## 24 October 2026: saving and stale saves (task 8.3a)
 
 Plan approved on pull request #220 with corrections 1 to 5; decisions 1 to 10 confirmed there. Flagged on issue #42.

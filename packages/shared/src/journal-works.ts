@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { correctionSchema } from './journal-correction.js';
 import { cellWorkKindSchema } from './reset-entries.js';
 
 /**
@@ -30,7 +31,10 @@ export const journalWorkParamsSchema = z.object({ lessonId: z.uuid(), workId: z.
 export type JournalWorkParams = z.infer<typeof journalWorkParamsSchema>;
 
 /** A work added by hand at a lesson with no plan item: a classwork or a "homework given". */
-export const workAddSchema = z.strictObject({ kind: cellWorkKindSchema });
+export const workAddSchema = z.strictObject({
+  kind: cellWorkKindSchema,
+  correction: correctionSchema.optional(),
+});
 
 export type WorkAdd = z.infer<typeof workAddSchema>;
 
@@ -43,6 +47,8 @@ export const workTotalSchema = z.strictObject({
   version: workVersionSchema,
   /** Sent after a `total_confirm`: the change of a total with numbers. */
   confirm: z.boolean().default(false),
+  /** Task 8.4: a correction with its reason. */
+  correction: correctionSchema.optional(),
 });
 
 export type WorkTotal = z.input<typeof workTotalSchema>;
@@ -53,6 +59,8 @@ export const workNotHeldSchema = z.strictObject({
   version: workVersionSchema,
   /** Sent after a `not_held_confirm`. */
   confirm: z.boolean().default(false),
+  /** Task 8.4: a correction with its reason. */
+  correction: correctionSchema.optional(),
 });
 
 export type WorkNotHeld = z.input<typeof workNotHeldSchema>;
@@ -60,6 +68,8 @@ export type WorkNotHeld = z.input<typeof workNotHeldSchema>;
 export const workCarrySchema = z.strictObject({
   column: workColumnSchema,
   version: workVersionSchema,
+  /** Task 8.4: a correction with its reason. */
+  correction: correctionSchema.optional(),
 });
 
 export type WorkCarry = z.infer<typeof workCarrySchema>;
@@ -91,6 +101,8 @@ export const scoresSaveSchema = z
       )
       .min(1)
       .max(SCORES_SAVES_MAX),
+    /** Task 8.4: a correction with its reason. */
+    correction: correctionSchema.optional(),
   })
   .superRefine((value, context) => {
     const seen = new Set<string>();

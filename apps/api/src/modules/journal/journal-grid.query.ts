@@ -317,6 +317,7 @@ export async function lessonWorks(
 }
 
 export interface GridCellRow {
+  readonly id: string;
   readonly lessonId: string;
   readonly studentId: string;
   readonly workId: string | null;
@@ -325,6 +326,8 @@ export interface GridCellRow {
   readonly version: number;
   /** The account that wrote the value last (task 6.3, decision 16). */
   readonly changedBy: string;
+  /** How (task 8.4: `late_entry` and `correction` show a marker). */
+  readonly changedHow: string;
 }
 
 export async function lessonCells(
@@ -334,10 +337,22 @@ export async function lessonCells(
   if (lessonIds.length === 0) return [];
   const rows = await transaction
     .selectFrom('journal_cells')
-    .select(['lesson_id', 'student_id', 'work_id', 'mark', 'score', 'version', 'changed_by'])
+    .select([
+      'id',
+      'lesson_id',
+      'student_id',
+      'work_id',
+      'mark',
+      'score',
+      'version',
+      'changed_by',
+      'changed_how',
+    ])
     .where('lesson_id', 'in', [...lessonIds])
     .execute();
   return rows.map((row) => ({
+    id: row.id,
+    changedHow: row.changed_how,
     lessonId: row.lesson_id,
     studentId: row.student_id,
     workId: row.work_id,

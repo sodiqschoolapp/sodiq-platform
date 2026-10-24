@@ -110,6 +110,8 @@ const confirmCode = (error: unknown, code: string): error is ApiFailure =>
 export function useWorksEntry(
   grid: JournalGrid,
   record: (action: LastAction) => void = () => undefined,
+  /** Task 8.4: the correction a save of a lesson carries, if any. */
+  correctionOf: (lessonId: string) => { reason: string } | undefined = () => undefined,
 ): {
   works: WorksEntry;
   dialogs: React.JSX.Element;
@@ -149,6 +151,9 @@ export function useWorksEntry(
               version: input.version,
             },
           ],
+          ...(correctionOf(input.lessonId) === undefined
+            ? {}
+            : { correction: correctionOf(input.lessonId) }),
         },
         input.key,
       ),
@@ -282,6 +287,7 @@ export function useWorksEntry(
           total,
           version: chosen.version,
           confirm: confirmed,
+          ...(correctionOf(target.id) === undefined ? {} : { correction: correctionOf(target.id) }),
         }),
       ask: (error) =>
         confirm({

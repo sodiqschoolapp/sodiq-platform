@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { cellMarkerSchema, correctionSchema, editLockSchema } from './journal-correction.js';
 
 /**
  * The rating exam and comments of the journal (task 8.2, pull request #218).
@@ -71,9 +72,11 @@ export const ratingEntrySaveSchema = z.strictObject({
   entry: ratingEntryValueSchema.nullable(),
   reason: reasonSchema.nullable(),
   version: versionSchema,
+  /** Task 8.4: a correction of the Academic Vice Principal or the Super Admin; its reason is `reason` (review correction 2). */
+  correction: z.boolean().default(false),
 });
 
-export type RatingEntrySave = z.infer<typeof ratingEntrySaveSchema>;
+export type RatingEntrySave = z.input<typeof ratingEntrySaveSchema>;
 
 export const ratingEntrySchema = z.object({
   studentId: z.uuid(),
@@ -82,6 +85,8 @@ export const ratingEntrySchema = z.object({
   version: z.int().min(1),
   changedBy: z.string().nullable(),
   changedAt: z.iso.datetime(),
+  /** Task 8.4: "entered after the edit period" with the approver, or "corrected". */
+  marker: cellMarkerSchema,
 });
 
 export type RatingEntry = z.infer<typeof ratingEntrySchema>;
@@ -107,6 +112,8 @@ export const ratingExamSchema = z.object({
   canEnter: z.boolean(),
   /** The reader may set "exempt": the Academic Vice Principal, from the date. */
   canExempt: z.boolean(),
+  /** Task 8.4: the edit period of the exam, from its date in force. */
+  lock: editLockSchema,
   entries: z.array(ratingEntrySchema),
 });
 
@@ -164,6 +171,8 @@ export const commentSaveSchema = z.strictObject({
   body: z.string().trim().min(1).max(COMMENT_MAX_LENGTH).nullable(),
   visibility: z.enum(COMMENT_VISIBILITIES),
   version: versionSchema,
+  /** Task 8.4: a correction with its reason. */
+  correction: correctionSchema.optional(),
 });
 
 export type CommentSave = z.infer<typeof commentSaveSchema>;

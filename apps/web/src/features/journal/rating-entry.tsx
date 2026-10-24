@@ -39,7 +39,11 @@ import {
  * a dialog for a student's entry ("did not sit", "exempt", the reason of a
  * late sitting or a retake, the history) and one for the exam (its date and
  * "not held"). The server decides who may do what (`canEnter`, `canExempt`,
- * `canSetDate`, `canSetNotHeld`); nothing is calculated here.
+ * `canSetDate`, `canSetNotHeld`); nothing is calculated here. Task 8.4: in
+ * the correction of the exam (the Academic Vice Principal or the Super Admin,
+ * code review 1, finding 2) every save carries `correction` with the reason
+ * asked once, which is the reason of the entry (review correction 2), and
+ * "exempt" may be replaced by a mark.
  */
 
 /** What the grid calls to enter rating scores and open the dialogs. */
@@ -67,7 +71,10 @@ export function useEntryText(): (entry: RatingEntryValue | null) => string {
         : t(`journal.rating.kinds.${entry.kind}`);
 }
 
-export function useRatingEntry(grid: JournalGrid): {
+export function useRatingEntry(
+  grid: JournalGrid,
+  correction?: { readonly reason: string },
+): {
   rating: RatingInput | undefined;
   dialogs: React.JSX.Element;
 } {
@@ -104,6 +111,19 @@ export function useRatingEntry(grid: JournalGrid): {
       exam,
       score: (student, value) => {
         const stored = ratingEntryOf(exam, student.id);
+        if (correction !== undefined) {
+          if (stored === null && value === null) return;
+          mutate(() =>
+            saveRatingEntry(exam.journalId, exam.quarterId, {
+              studentId: student.id,
+              entry: value === null ? null : { kind: 'score', score: value },
+              reason: correction.reason,
+              version: stored?.version ?? null,
+              correction: true,
+            }),
+          );
+          return;
+        }
         if (stored !== null) {
           // A write over an entry needs its reason (decision 9): the dialog asks it.
           setEntryOpen({ studentId: student.id, typed: value });
@@ -127,7 +147,7 @@ export function useRatingEntry(grid: JournalGrid): {
       },
       busy: isPending,
     };
-  }, [exam, mutate, isPending]);
+  }, [exam, mutate, isPending, correction]);
 
   const student =
     entryOpen === null ? undefined : grid.students.find((one) => one.id === entryOpen.studentId);
@@ -140,6 +160,7 @@ export function useRatingEntry(grid: JournalGrid): {
           exam={exam}
           student={student}
           typed={entryOpen.typed}
+          correction={correction}
           busy={isPending}
           failure={failure}
           onSave={(entry, reason) => {
@@ -149,8 +170,9 @@ export function useRatingEntry(grid: JournalGrid): {
                 saveRatingEntry(exam.journalId, exam.quarterId, {
                   studentId: student.id,
                   entry,
-                  reason,
+                  reason: reason ?? correction?.reason ?? null,
                   version: stored?.version ?? null,
+                  ...(correction === undefined ? {} : { correction: true }),
                 }),
               {
                 onSuccess: () => {
@@ -218,6 +240,7 @@ function EntryDialog({
   exam,
   student,
   typed,
+  correction,
   busy,
   failure,
   onSave,
@@ -226,6 +249,7 @@ function EntryDialog({
   exam: RatingExam;
   student: JournalStudent;
   typed: number | null;
+  correction: { readonly reason: string } | undefined;
   busy: boolean;
   failure: unknown;
   onSave: (entry: RatingEntryValue | null, reason: string | null) => void;
@@ -245,7 +269,10 @@ function EntryDialog({
   const [reason, setReason] = useState('');
   const read = wholeNumber(score);
   const valid = typeof read === 'number' && read >= 0 && read <= RATING_SCORE_MAX;
-  const needsReason = stored !== null;
+  // A correction's reason, asked once, is the reason of every entry it writes.
+  const needsReason = stored !== null && correction === undefined;
+  // Under a correction, "exempt" may be replaced by a mark (code review 1, finding 1).
+  const entersOver = stored?.entry?.kind !== 'exempt' || correction !== undefined;
   const reasonText = reason.trim() === '' ? null : reason.trim();
   const ready = !needsReason || reasonText !== null;
   const history = useQuery(
@@ -294,7 +321,7 @@ function EntryDialog({
           )}
           {failure !== null && <FailureAlert error={failure} />}
           <div className="flex flex-wrap gap-2">
-            {exam.canEnter && stored?.entry?.kind !== 'exempt' && (
+            {exam.canEnter && entersOver && (
               <>
                 <Button
                   disabled={busy || !valid || !ready}

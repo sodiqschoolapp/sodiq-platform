@@ -9,6 +9,7 @@ import {
   type WorkCarry,
   type WorkColumn,
   type WorkSaved,
+  type Correction,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
@@ -24,9 +25,13 @@ import {
   enterableLesson,
   entryAssignment,
   journalFactsOf,
+  ownStaffOf,
   type EntryLesson,
 } from './attendance-entry.js';
 import { saveCells, type SavedCell } from './cells.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import { noticeCellCorrections, noticeLessonCorrection } from './corrections.js';
+import { decideWrite, writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
 import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
@@ -53,6 +58,9 @@ const WORK_REFUSALS = {
   journal_work_carry_once: 'work_carried',
   journal_works_limit: 'journal_works_limit',
   journal_cell_delete: 'work_holds_data',
+  // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
+  journal_locked: 'journal_locked',
+  journal_correction_role: 'journal_correction_role',
 } as const;
 
 function mapWorkRefusal(error: unknown): never {
@@ -75,6 +83,9 @@ interface Scene {
   readonly journal: JournalRow;
   readonly columns: JournalColumns;
   readonly requestId: string | undefined;
+  /** Task 8.4: how the write is made, and the correction asked for. */
+  readonly write: WriteHow;
+  readonly correction: Correction | undefined;
 }
 
 interface WorkRow {
@@ -145,6 +156,7 @@ export class WorksService {
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
     @Inject(RequestKeys) private readonly requestKeys: RequestKeys,
+    @Inject(Notifications) private readonly notifications: Notifications,
   ) {}
 
   /**
@@ -157,13 +169,15 @@ export class WorksService {
     access: Access,
     lessonId: string,
     requestId: string | undefined,
+    correction?: Correction,
   ): Promise<Scene> {
     const branchId = branchOf(access);
-    const { lesson, now, timeZone } = await enterableLesson(
+    const { lesson, now, timeZone, write } = await enterableLesson(
       transaction,
       access,
       branchId,
       lessonId,
+      { correction },
     );
     if (lesson.journalId === null) throw new ApiException('lesson_attendance_only', 409);
     const [unlocked] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
@@ -188,7 +202,7 @@ export class WorksService {
           );
     if (owner?.kind === 'none') throw new ApiException('lesson_attendance_only', 409);
     const columns = await journalColumns(transaction, journal, timeZone, now);
-    return { access, branchId, lesson, journal, columns, requestId };
+    return { access, branchId, lesson, journal, columns, requestId, write, correction };
   }
 
   /**
@@ -203,11 +217,28 @@ export class WorksService {
     await this.sceneOf(transaction, access, lessonId, undefined);
   }
 
+  /** Task 8.4 (decision 10): the notice of a correction of the scene's lesson, if it is one. */
+  private async noticeCorrection(
+    transaction: Transaction,
+    scene: Scene,
+    total?: { before: number | null; after: number | null },
+  ): Promise<void> {
+    if (scene.correction === undefined) return;
+    await noticeLessonCorrection(transaction, this.notifications, {
+      branchId: scene.branchId,
+      lessonId: scene.lesson.id,
+      correctorId: scene.access.accountId,
+      reason: scene.correction.reason,
+      ...(total === undefined ? {} : { total }),
+    });
+  }
+
   private actorOf(scene: Scene) {
     return {
       branchId: scene.branchId,
       actorId: scene.access.accountId,
-      assignmentId: entryAssignment(scene.access),
+      assignmentId: writeAssignment(scene.write, entryAssignment(scene.access)),
+      details: writeDetails(scene.write, scene.correction),
       ...(scene.requestId === undefined ? {} : { requestId: scene.requestId }),
     };
   }
@@ -382,7 +413,7 @@ export class WorksService {
   /** Add a work by hand at a lesson with no plan item (`edge/journal`, "A lesson is held with no plan item"). */
   add(access: Access, lessonId: string, input: WorkAdd, requestId?: string): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
       // The lock of `journal_works_limit` (0119), which the takeover of a plan item takes too
       // (code review, should-fix 3): the plan item and the free place are read after it.
       await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${scene.lesson.id}`}, 0))`.execute(
@@ -429,6 +460,7 @@ export class WorksService {
         record: { type: 'lesson', id: scene.lesson.id },
         newValue: { workId: row.id, kind: input.kind, position },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(row);
     });
   }
@@ -455,12 +487,26 @@ export class WorksService {
       if (row.plan_work_id !== null || row.total !== null || row.not_held || numbers.length > 0) {
         throw new ApiException('work_holds_data', 409);
       }
+      // Task 8.4: the work is judged at the lesson it is stored at too, as the guard of 0122
+      // judges it (a homework removed through the lesson that shows it).
+      if (row.lesson_id !== scene.lesson.id) {
+        await decideWrite(transaction, {
+          access,
+          branchId: scene.branchId,
+          target: { kind: 'lesson', lessonId: row.lesson_id },
+          staffId: await ownStaffOf(transaction, access.accountId),
+        });
+      }
       // The line of the delete names the person who removed it.
-      await transaction
-        .updateTable('journal_works')
-        .set({ changed_by: access.accountId, changed_how: 'deleted' })
-        .where('id', '=', row.id)
-        .execute();
+      try {
+        await transaction
+          .updateTable('journal_works')
+          .set({ changed_by: access.accountId, changed_how: 'deleted' })
+          .where('id', '=', row.id)
+          .execute();
+      } catch (error) {
+        mapWorkRefusal(error);
+      }
       try {
         await transaction.deleteFrom('journal_works').where('id', '=', row.id).execute();
       } catch (error) {
@@ -483,11 +529,17 @@ export class WorksService {
   setTotal(
     access: Access,
     lessonId: string,
-    input: { column: WorkColumn; total: number; version: number | null; confirm: boolean },
+    input: {
+      column: WorkColumn;
+      total: number;
+      version: number | null;
+      confirm: boolean;
+      correction?: Correction | undefined;
+    },
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       const { row } = await this.rowOf(transaction, scene, column, input.version);
@@ -528,8 +580,9 @@ export class WorksService {
         record: { type: 'lesson', id: scene.lesson.id },
         oldValue: { workId: row.id, total: row.total, lessonId: row.lesson_id },
         newValue: { workId: row.id, total: saved.total, version: saved.version },
-        details: { numbers: numbers.length },
+        details: { ...writeDetails(scene.write, scene.correction), numbers: numbers.length },
       });
+      await this.noticeCorrection(transaction, scene, { before: row.total, after: saved.total });
       return savedOf(saved);
     });
   }
@@ -542,11 +595,17 @@ export class WorksService {
   setNotHeld(
     access: Access,
     lessonId: string,
-    input: { column: WorkColumn; notHeld: boolean; version: number | null; confirm: boolean },
+    input: {
+      column: WorkColumn;
+      notHeld: boolean;
+      version: number | null;
+      confirm: boolean;
+      correction?: Correction | undefined;
+    },
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       const { row } = await this.rowOf(transaction, scene, column, input.version);
@@ -575,8 +634,9 @@ export class WorksService {
         record: { type: 'lesson', id: scene.lesson.id },
         oldValue: { workId: row.id, notHeld: row.not_held, lessonId: row.lesson_id },
         newValue: { workId: row.id, notHeld: saved.not_held, version: saved.version },
-        details: { numbers: numbers.length },
+        details: { ...writeDetails(scene.write, scene.correction), numbers: numbers.length },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(saved);
     });
   }
@@ -594,7 +654,7 @@ export class WorksService {
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       if (column.kind !== 'homework') throw new ApiException('work_not_in_lesson', 409);
@@ -632,6 +692,7 @@ export class WorksService {
           version: saved.version,
         },
       });
+      await this.noticeCorrection(transaction, scene);
       return savedOf(saved);
     });
   }
@@ -649,7 +710,7 @@ export class WorksService {
     requestId?: string,
   ): Promise<ScoresSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
       await refuseOtherStudents(
         transaction,
         input.saves.map((save) => save.studentId),
@@ -668,6 +729,14 @@ export class WorksService {
         },
         async () => {
           const written = await this.writeScores(transaction, access, scene, input, requestId);
+          if (scene.correction !== undefined) {
+            await noticeCellCorrections(transaction, this.notifications, {
+              branchId: scene.branchId,
+              lessonId: scene.lesson.id,
+              correctorId: access.accountId,
+              reason: scene.correction.reason,
+            });
+          }
           return { cells: storedCells(written.saved), works: written.works };
         },
       );
@@ -740,7 +809,8 @@ export class WorksService {
       this.audit,
       {
         accountId: access.accountId,
-        assignmentId: entryAssignment(access),
+        assignmentId: writeAssignment(scene.write, entryAssignment(access)),
+        details: writeDetails(scene.write, scene.correction),
         ...(requestId === undefined ? {} : { requestId }),
       },
       input.saves.map((save, index) => {

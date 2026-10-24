@@ -30,6 +30,13 @@ import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
 import { useWorksEntry } from './works-entry';
+import {
+  correctionOf,
+  EditPeriodPanel,
+  ratingCorrectionOf,
+  withCorrection,
+  type Correcting,
+} from './edit-period';
 import { journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
@@ -138,7 +145,7 @@ export function JournalPage(): React.JSX.Element {
 
 /** The journal once read: the header, the selectors, the grid or lesson mode, and entry (task 6.3). */
 function JournalLoaded({
-  grid: data,
+  grid: read,
   search,
   go,
   breadcrumbs,
@@ -152,13 +159,18 @@ function JournalLoaded({
   const language = i18n.language;
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
+  // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
+  // or the rating exam, with the reason asked once for the visit; its saves carry it, the
+  // comments on it included (code review 1, finding 2).
+  const [correcting, setCorrecting] = useState<Correcting | null>(null);
+  const data = withCorrection(read, correcting);
   // Lesson mode on a phone (`12`, Devices), or by the switch.
   const narrow = !useMinWidth(SM);
   // Task 8.3a: the undo of the person's own last action on the page (edge/journal, Undo).
   const undo = useUndo();
-  const { entry, notices } = useAttendanceEntry(data, undo.record);
+  const { entry, notices } = useAttendanceEntry(data, undo.record, correctionOf(correcting));
   // Task 8.1: works and numbers.
-  const { works, dialogs } = useWorksEntry(data, undo.record);
+  const { works, dialogs } = useWorksEntry(data, undo.record, correctionOf(correcting));
   const { undo: undoLast, available: canUndo } = undo;
   useEffect(() => {
     // Ctrl+Z (or Cmd+Z) outside a field and a dialog undoes the last action of the page.
@@ -185,8 +197,12 @@ function JournalLoaded({
     };
   }, [canUndo, undoLast]);
   // Task 8.2: the rating exam and comments.
-  const { rating, dialogs: ratingDialogs } = useRatingEntry(data);
-  const { comments, dialogs: commentDialogs } = useComments(data);
+  const { rating, dialogs: ratingDialogs } = useRatingEntry(data, ratingCorrectionOf(correcting));
+  const { comments, dialogs: commentDialogs } = useComments(data, (cell) =>
+    cell.target === 'rating'
+      ? ratingCorrectionOf(correcting)
+      : correctionOf(correcting)(cell.lessonId),
+  );
   const [refusedNumber, setRefusedNumber] = useState<number | null>(null);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;
@@ -360,6 +376,14 @@ function JournalLoaded({
             </Link>
           </div>
         </div>
+        <EditPeriodPanel
+          grid={read}
+          correcting={correcting}
+          onCorrect={setCorrecting}
+          onStopCorrecting={() => {
+            setCorrecting(null);
+          }}
+        />
         {notices}
         {undo.notice}
         {dialogs}

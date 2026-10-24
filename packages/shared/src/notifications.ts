@@ -393,6 +393,55 @@ export const NOTIFICATION_KINDS = {
     quarter: z.int().min(1).max(4),
     reason: z.string().min(1).max(1000),
   }),
+  /**
+   * Task 8.4 (`10`, "Lesson unlock requested or granted"; review correction 3):
+   * a request sent, to the first tier of its deciders; `date` is the lesson's,
+   * or the rating exam's.
+   */
+  'journal.unlock_requested': z.strictObject({
+    name: z.string().min(1).max(200),
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+  }),
+  /** The approval, to the requester: open through `until`, branch time. */
+  'journal.unlock_approved': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    until: schoolDateSchema,
+  }),
+  /** The refusal, to the requester; `reason` is empty when the decider gave none. */
+  'journal.unlock_refused': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    reason: z.string().max(500),
+  }),
+  /**
+   * A correction (`edge/journal`: "notifies the teacher with the old and new
+   * value"): one notice per value corrected, to the lesson's teacher and the
+   * journal's teacher on the date; an empty value is `—`.
+   */
+  'journal.correction': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    student: z.string().min(1).max(200),
+    before: z.string().min(1).max(20),
+    after: z.string().min(1).max(20),
+    reason: z.string().min(1).max(500),
+  }),
+  /** A corrected total of a work, with its old and new value. */
+  'journal.correction_total': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    before: z.string().min(1).max(20),
+    after: z.string().min(1).max(20),
+    reason: z.string().min(1).max(500),
+  }),
+  /** A work added, removed, carried or marked "not held", or a comment, corrected. */
+  'journal.correction_lesson': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+    reason: z.string().min(1).max(500),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

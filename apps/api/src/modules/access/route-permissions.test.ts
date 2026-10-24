@@ -181,8 +181,37 @@ const PLAN_WINDOW_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_prin
 /** Task 7.2, decision 1: who sends a plan request (the owner in the route). */
 const PLAN_REQUEST_SENDERS: readonly Role[] = ['super_admin', 'teacher'];
 
-/** Task 7.2, decision 1: who decides one (the routing in the route, plan-request-routing.ts). */
+/** Task 7.2, decision 1: who decides one (the routing in the route, access/request-routing.ts). */
 const PLAN_REQUEST_DECIDERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
+
+/** Task 8.4, decision 5: who reads unlock requests (the view in the route). */
+const UNLOCK_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+  'tutor',
+];
+
+/** Task 8.4, decision 5: who sends one (the person's own lesson or rating exam, in the route). */
+const UNLOCK_SENDERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+  'tutor',
+];
+
+/** Task 8.4, decision 5: who decides one (the routing in the route, access/request-routing.ts). */
+const UNLOCK_DECIDERS: readonly Role[] = [
   'super_admin',
   'academic_vice_principal',
   'senior_head_teacher',
@@ -758,6 +787,23 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: VIEW_READERS,
   },
   'PUT /api/journal/comments': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.4: unlock requests and the branch-wide extension of the edit period.
+  'GET /api/journal/unlocks': { branch: 'request', roles: UNLOCK_READERS },
+  'POST /api/journal/lessons/:lessonId/unlocks': { branch: 'request', roles: UNLOCK_SENDERS },
+  'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks': {
+    branch: 'request',
+    roles: UNLOCK_SENDERS,
+  },
+  'POST /api/journal/unlocks/:unlockId/decide': { branch: 'request', roles: UNLOCK_DECIDERS },
+  'POST /api/journal/unlocks/:unlockId/withdraw': { branch: 'request', roles: UNLOCK_SENDERS },
+  'GET /api/journal/extensions': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/journal/extensions': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/journal/comments/history': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',

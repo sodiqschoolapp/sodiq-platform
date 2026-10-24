@@ -38,6 +38,15 @@ import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
+import { markersOf } from './cell-markers.js';
+import {
+  correctorAssignment,
+  editLockOf,
+  locksOfLessons,
+  outToday,
+  requestsUnlocks,
+  unlocksOfLessons,
+} from './edit-window.js';
 import { namedAccounts } from './cell-lines.query.js';
 import { expectedStudents } from './expected-students.js';
 import { journalColumns } from './journal-works.query.js';
@@ -492,6 +501,9 @@ export class JournalGridReader {
             }),
             today,
             studentIds: students.map((student) => student.id),
+            staffId: ratingStaffId,
+            now,
+            requests: requestsUnlocks(access, branchId),
           });
     /** The student's rating entry as `packages/calc` takes it (`null` while empty). */
     const ratingEntryOf = (studentId: string): RatingExamEntry | null => {
@@ -516,23 +528,31 @@ export class JournalGridReader {
       transaction,
       cells.flatMap((cell) => (cell.workId === null ? [cell.changedBy] : [])),
     );
+    // Task 8.4: "entered after the edit period" and "corrected".
+    const markers = await markersOf(transaction, 'journal_cell_history', cells);
     const gridStudents: JournalStudent[] = students.map((student, index) => {
       const marks = new Map<string, number | null>();
       const scoreVersions = new Map<string, number>();
-      const attendanceCells = new Map<string, { version: number; typedBy: string | null }>();
+      const attendanceCells = new Map<
+        string,
+        { id: string; version: number; typedBy: string | null }
+      >();
       const scores = new Map<string, number | null>();
+      const scoreIds = new Map<string, string>();
       for (const cell of cells) {
         if (cell.studentId !== student.id) continue;
         if (cell.workId === null) {
           marks.set(cell.lessonId, cell.mark);
           const typist = typists.get(cell.changedBy);
           attendanceCells.set(cell.lessonId, {
+            id: cell.id,
             version: cell.version,
             typedBy: typist?.name ?? typist?.login ?? null,
           });
         } else {
           scores.set(cell.workId, cell.score);
           scoreVersions.set(cell.workId, cell.version);
+          scoreIds.set(cell.workId, cell.id);
         }
       }
       const gridCells: JournalCell[] = lessons.map((lesson) => {
@@ -561,6 +581,7 @@ export class JournalGridReader {
           mark,
           version: attendanceCells.get(lesson.id)?.version ?? null,
           typedBy: attendanceCells.get(lesson.id)?.typedBy ?? null,
+          marker: markers.get(attendanceCells.get(lesson.id)?.id ?? '') ?? null,
           works:
             shape === 'attendance'
               ? []
@@ -575,6 +596,7 @@ export class JournalGridReader {
                     version: work.id === '' ? null : (scoreVersions.get(work.id) ?? null),
                     // edge/journal: "marked 'score on an absent student'".
                     onAbsent: typed !== null && (mark === 0 || mark === 3),
+                    marker: markers.get(scoreIds.get(work.id) ?? '') ?? null,
                   };
                 }),
           score,
@@ -736,15 +758,44 @@ export class JournalGridReader {
       return found === null || found.kind !== 'none';
     };
     const lastTotal = await lastTotalOf(transaction, access.accountId, works.lessons);
-    const canEnter = (lesson: GridLessonRow): boolean =>
-      entering &&
-      held.get(lesson.id) === true &&
+    // Task 8.4: a person no longer active in the branch enters nothing (must-fix 7).
+    const outNow = staffId !== null && (await outToday(transaction, branchId, staffId, today));
+    const teachesIt = (lesson: GridLessonRow): boolean =>
       teachesOrOwns(
         { date: lesson.date, teacherId: lesson.teacherId, journalId: journal.id },
         facts,
         staffId,
         today,
       );
+    const theirs = (lesson: GridLessonRow): boolean =>
+      entering && !outNow && held.get(lesson.id) === true && teachesIt(lesson);
+    // Task 8.4: the edit period of each lesson for the reader (`edit-window.ts`).
+    const locks = await locksOfLessons(transaction, lessonIds);
+    const unlocks = await unlocksOfLessons(transaction, lessonIds, staffId);
+    const approvers = await namedAccounts(
+      transaction,
+      [...unlocks.values()].flatMap((one) => one.approved.map((unlock) => unlock.decidedBy)),
+    );
+    const corrects = correctorAssignment(access, branchId) !== null;
+    const requests = requestsUnlocks(access, branchId);
+    const lockOf = (lesson: GridLessonRow) =>
+      editLockOf({
+        locksAt: locks.get(lesson.id) ?? null,
+        unlocks: unlocks.get(lesson.id) ?? { approved: [], waiting: null },
+        staffId,
+        now,
+        enters: theirs(lesson),
+        requests,
+        // A corrector's own lesson takes the unlock path (decision 17; code review 2, finding 1).
+        corrects:
+          corrects && held.get(lesson.id) === true && shape === 'whole' && !teachesIt(lesson),
+        nameOf: (accountId) => {
+          const found = accountId === null ? undefined : approvers.get(accountId);
+          return found?.name ?? found?.login ?? null;
+        },
+      });
+    const canEnter = (lesson: GridLessonRow): boolean =>
+      theirs(lesson) && lockOf(lesson).window !== 'locked';
     // The categories of absence of the students shown (decision 7), on the dates of the shown
     // lessons each student is expected at (permission review of the code, should-fix 4).
     const expectedOn = new Set(
@@ -807,6 +858,7 @@ export class JournalGridReader {
         month: lesson.date.slice(0, 7),
         canEnter: canEnter(lesson),
         canEnterWorks: canEnter(lesson) && worksTaken(lesson),
+        lock: lockOf(lesson),
         copyFrom: copyFroms.get(lesson.id) ?? null,
         planItem: columnsOf.get(lesson.id)?.planItem ?? false,
         works:

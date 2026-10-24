@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { typedScore } from './journal-grid';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -46,6 +47,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   canEnterWorks: true,
   planItem: true,
   copyFrom: null,
+  lock: OPEN_LOCK,
   works: [],
   notHeldWorks: [],
   given: [],
@@ -67,10 +69,19 @@ const student = (n: number, lastName: string): JournalStudent => ({
       mark: 1,
       version: 1,
       typedBy: null,
-      works: [{ score: null, percent: null, version: null, onAbsent: false }],
+      marker: null,
+      works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
       score: null,
     },
-    { closed: false, mark: null, version: null, typedBy: null, works: [], score: null },
+    {
+      closed: false,
+      mark: null,
+      version: null,
+      typedBy: null,
+      marker: null,
+      works: [],
+      score: null,
+    },
   ],
   quarter: null,
   months: null,
@@ -249,7 +260,7 @@ describe('classwork and homework in the grid', () => {
           one.cells[0] as JournalStudent['cells'][number],
           {
             ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [{ score: null, percent: null, version: null, onAbsent: false }],
+            works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
           },
         ],
       })),

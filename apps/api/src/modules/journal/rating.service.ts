@@ -30,6 +30,17 @@ import {
   type RatingRow,
 } from './rating.js';
 import { refuseOtherStudents } from './students-of-branch.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import { noticeRatingCorrection } from './corrections.js';
+import {
+  LOCK_REFUSALS,
+  correctorAssignment,
+  decideWrite,
+  lockOf,
+  lockedRefusal,
+  requestsUnlocks,
+  writeDetails,
+} from './edit-window.js';
 
 /**
  * The rating exam routes (task 8.2, pull request #218): the hand-set date,
@@ -47,6 +58,7 @@ const RATING_REFUSALS = {
   journal_rating_not_member: 'rating_exam_not_member',
   journal_rating_reason: 'rating_exam_reason',
   journal_rating_date_quarter: 'rating_exam_date_quarter',
+  ...LOCK_REFUSALS,
 } as const;
 
 interface Scene {
@@ -57,6 +69,7 @@ interface Scene {
   readonly today: string;
   readonly rights: RatingRights;
   readonly requestId: string;
+  readonly staffId: string | null;
 }
 
 const scopeRefusal = () => new ApiException('rating_exam_scope', 403);
@@ -70,6 +83,7 @@ export class RatingService {
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
     @Inject(JournalGridReader) private readonly grids: JournalGridReader,
+    @Inject(Notifications) private readonly notifications: Notifications,
   ) {}
 
   /** The hand-set date: the journal's teacher today or the Academic Vice Principal (decision 5). */
@@ -89,6 +103,18 @@ export class RatingService {
         throw new ApiException('rating_exam_stale', 409);
       }
       if (row.examDate === input.date) return;
+      // Task 8.4 (decision 6): the teacher's date is refused once the exam is locked; the
+      // Academic Vice Principal's takes no unlock.
+      if (scene.rights.vicePrincipal === null) {
+        const locksAt = await lockOf(transaction, {
+          kind: 'rating',
+          journalId: scene.journal.id,
+          quarterId,
+        });
+        if (locksAt !== null && (await transactionMoment(transaction)) >= locksAt) {
+          throw lockedRefusal(locksAt);
+        }
+      }
       await transaction
         .updateTable('journal_rating_exams')
         .set({ exam_date: input.date, changed_by: scene.access.accountId })
@@ -192,13 +218,37 @@ export class RatingService {
                 .where('rating_exam_id', '=', existing.id)
                 .where('student_id', '=', input.studentId)
                 .executeTakeFirst();
-        const touchesExempt = input.entry?.kind === 'exempt' || storedBefore?.kind === 'exempt';
-        const assignmentId = touchesExempt
-          ? scene.rights.vicePrincipal
-          : scene.rights.teacher
-            ? entryAssignment(scene.access)
-            : null;
+        // "Exempt" set or taken back to empty is the Academic Vice Principal's and takes no edit
+        // period; "exempt" replaced by a mark is the Academic Vice Principal's too, but is a mark,
+        // judged by the exam's lock: from it, only as a correction (code review 1, finding 1).
+        const setsExempt =
+          input.entry?.kind === 'exempt' ||
+          (storedBefore?.kind === 'exempt' && input.entry === null);
+        const touchesExempt = setsExempt || storedBefore?.kind === 'exempt';
+        // Task 8.4: a correction of the Academic Vice Principal or the Super Admin carries the
+        // entry's own reason (review correction 2) and takes no unlock.
+        const corrector = input.correction
+          ? correctorAssignment(scene.access, scene.branchId)
+          : null;
+        if (input.correction && corrector === null) {
+          throw new ApiException('journal_correction_role', 403);
+        }
+        // Nobody approves their own (`02`, Own requests; decision 17): the journal's teacher
+        // takes the unlock path for their own entries (code review 2, finding 1).
+        if (input.correction && scene.rights.teacher) {
+          throw new ApiException('own_request', 403);
+        }
+        const assignmentId =
+          corrector ??
+          (touchesExempt
+            ? scene.rights.vicePrincipal
+            : scene.rights.teacher
+              ? entryAssignment(scene.access)
+              : null);
         if (assignmentId === null) throw scopeRefusal();
+        if (input.correction && input.reason === null) {
+          throw new ApiException('rating_exam_reason', 409);
+        }
         if (input.entry === null && existing === null) {
           if (input.version !== null) throw new ApiException('rating_exam_stale', 409);
           return;
@@ -226,6 +276,19 @@ export class RatingService {
         }
         const before = stored === undefined ? null : entryOf(stored);
         if (sameEntry(before, input.entry)) return;
+        // The edit period (task 8.4): "exempt" of the Academic Vice Principal and a correction
+        // take none; every mark (the teacher's, or the vice's over "exempt") is judged by the
+        // exam's lock.
+        const write = input.correction
+          ? ({ how: 'correction', assignmentId } as const)
+          : setsExempt
+            ? ({ how: 'entry' } as const)
+            : await decideWrite(transaction, {
+                access: scene.access,
+                branchId: scene.branchId,
+                target: { kind: 'rating', journalId: scene.journal.id, quarterId },
+                staffId: scene.staffId,
+              });
         if (stored !== undefined && input.reason === null) {
           throw new ApiException('rating_exam_reason', 409);
         }
@@ -240,7 +303,7 @@ export class RatingService {
           score: input.entry?.kind === 'score' ? input.entry.score : null,
           reason: input.reason,
           changed_by: scene.access.accountId,
-          changed_how: 'entry',
+          changed_how: input.correction ? 'correction' : 'entry',
         };
         if (stored === undefined) {
           const moment = await transactionMoment(transaction);
@@ -271,9 +334,35 @@ export class RatingService {
           record: { type: 'journal', id: journalId },
           oldValue: { entry: before },
           newValue: { entry: input.entry, reason: input.reason },
-          details: { quarterId, studentId: input.studentId },
+          details: {
+            quarterId,
+            studentId: input.studentId,
+            ...writeDetails(write, input.reason === null ? undefined : { reason: input.reason }),
+          },
           requestId,
         });
+        if (input.correction && input.reason !== null) {
+          const shown = (value: RatingEntryValue | null): number | null =>
+            value === null || value.kind === 'exempt'
+              ? null
+              : value.kind === 'did_not_sit'
+                ? 0
+                : value.score;
+          const { date } = await ratingDateOf(transaction, journalId, quarterId);
+          if (date !== null) {
+            await noticeRatingCorrection(transaction, this.notifications, {
+              branchId: scene.branchId,
+              journalId,
+              unit: scene.journal.unitName,
+              date,
+              correctorId: scene.access.accountId,
+              reason: input.reason,
+              studentId: input.studentId,
+              before: shown(before),
+              after: shown(input.entry),
+            });
+          }
+        }
       },
       [input.studentId],
     );
@@ -398,7 +487,16 @@ export class RatingService {
           if (switchesIn(journal, quarterId)?.ratingExam !== true) {
             throw new ApiException('rating_exam_off', 409);
           }
-          const scene: Scene = { access, branchId, journal, quarterId, today, rights, requestId };
+          const scene: Scene = {
+            access,
+            branchId,
+            journal,
+            quarterId,
+            today,
+            rights,
+            requestId,
+            staffId,
+          };
           await work(transaction, scene);
           const answer = await ratingExamOf(transaction, {
             journal,
@@ -406,6 +504,9 @@ export class RatingService {
             rights,
             today,
             studentIds: null,
+            staffId,
+            now: await transactionMoment(transaction),
+            requests: requestsUnlocks(access, branchId),
           });
           if (answer === null) throw new ApiException('rating_exam_off', 409);
           return answer;

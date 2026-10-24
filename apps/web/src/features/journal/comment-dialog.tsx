@@ -32,7 +32,9 @@ import { commentHistoryQuery, invalidateJournal, saveComment } from './journal-a
  * or 'visible to parents'"; Keyboard: "a key opens the comment"). The grid
  * opens the dialog of a cell with the key at `KeyC` (decision 11); a lesson's
  * cell also shows the student's note of the lesson. The server decides who
- * may write (decision 10: whoever may enter the target).
+ * may write (decision 10: whoever may enter the target). Task 8.4: a comment
+ * saved while its lesson or the rating exam is being corrected carries the
+ * correction (code review 1, finding 2).
  */
 
 /** A cell of the grid a comment is on; `rating` is the quarter's rating entry. */
@@ -45,6 +47,9 @@ export type CommentCell =
       readonly studentId: string;
     }
   | { readonly target: 'rating'; readonly studentId: string };
+
+/** The correction a save on a cell carries, if its lesson or the rating exam is being corrected. */
+export type CommentCorrectionOf = (cell: CommentCell) => { reason: string } | undefined;
 
 /** What the grid calls: the comment stored on a cell, and the dialog. */
 export interface CommentsInput {
@@ -60,7 +65,10 @@ const matches = (comment: JournalComment, cell: CommentCell): boolean =>
     : comment.lessonId === cell.lessonId &&
       (cell.target !== 'work' || comment.workId === cell.workId));
 
-export function useComments(grid: JournalGrid): {
+export function useComments(
+  grid: JournalGrid,
+  correctionOf: CommentCorrectionOf = () => undefined,
+): {
   comments: CommentsInput;
   dialogs: React.JSX.Element;
 } {
@@ -83,6 +91,7 @@ export function useComments(grid: JournalGrid): {
         grid={grid}
         cell={opened}
         stored={all}
+        correctionOf={correctionOf}
         onClose={() => {
           setOpened(null);
         }}
@@ -134,11 +143,13 @@ function CommentsDialog({
   grid,
   cell,
   stored,
+  correctionOf,
   onClose,
 }: {
   grid: JournalGrid;
   cell: CommentCell;
   stored: readonly JournalComment[];
+  correctionOf: CommentCorrectionOf;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -168,6 +179,7 @@ function CommentsDialog({
               grid={grid}
               cell={one}
               comment={stored.find((comment) => matches(comment, one))}
+              correction={correctionOf(one)}
             />
           ))}
         </div>
@@ -185,10 +197,12 @@ function CommentSection({
   grid,
   cell,
   comment,
+  correction,
 }: {
   grid: JournalGrid;
   cell: CommentCell;
   comment: JournalComment | undefined;
+  correction: { reason: string } | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const { branchId } = useView();
@@ -203,6 +217,7 @@ function CommentSection({
         body: text,
         visibility,
         version: comment?.version ?? null,
+        ...(correction === undefined ? {} : { correction }),
       }),
     onSettled: async () => {
       await invalidateJournal(queryClient);

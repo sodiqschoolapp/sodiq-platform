@@ -21,7 +21,7 @@ import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
-import { accountOfStaff } from './plan-posts.js';
+import { accountOfStaff } from '../access/request-posts.js';
 import {
   clockOf,
   datedQuarters,

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { reloadPage } from '@/app/outdated-alert';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -48,13 +49,22 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
   uid: `S-${String(n)}`,
   folded: false,
   cells: [
-    { closed: false, mark: null, version: null, typedBy: null, works: [], score: null },
+    {
+      closed: false,
+      mark: null,
+      version: null,
+      typedBy: null,
+      marker: null,
+      works: [],
+      score: null,
+    },
     {
       closed: false,
       mark,
       version: mark === null ? null : 1,
       typedBy: null,
-      works: [{ score: null, percent: null, version: null, onAbsent: false }],
+      marker: null,
+      works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
       score: null,
     },
   ],
@@ -96,6 +106,7 @@ const GRID: JournalGrid = {
     canEnterWorks: index === 1,
     planItem: true,
     copyFrom: index === 1 ? FIRST : null,
+    lock: OPEN_LOCK,
     works: index === 1 ? [TEST] : [],
     notHeldWorks: [],
     given: [],

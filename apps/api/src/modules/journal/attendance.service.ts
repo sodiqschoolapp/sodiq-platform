@@ -16,7 +16,10 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { Notifications } from '../notifications/notifications.service.js';
 import { enterableLesson, entryAssignment, type EntryLesson } from './attendance-entry.js';
+import { noticeCellCorrections } from './corrections.js';
+import { writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
 import { cellChange, lineValues, namedAccounts } from './cell-lines.query.js';
 import { saveCells, type CellSave } from './cells.js';
 import { cellsAsSaved, storedCells } from './saved-cells.js';
@@ -185,6 +188,7 @@ export class AttendanceService {
     @Inject(Audit) private readonly audit: Audit,
     @Inject(JournalGridReader) private readonly grids: JournalGridReader,
     @Inject(RequestKeys) private readonly requestKeys: RequestKeys,
+    @Inject(Notifications) private readonly notifications: Notifications,
   ) {}
 
   /**
@@ -202,7 +206,9 @@ export class AttendanceService {
   ): Promise<AttendanceSaved> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { lesson } = await enterableLesson(transaction, access, branchId, lessonId);
+      const { lesson, write } = await enterableLesson(transaction, access, branchId, lessonId, {
+        correction: input.correction,
+      });
       await refuseOtherStudents(
         transaction,
         input.saves.map((save) => save.studentId),
@@ -216,7 +222,15 @@ export class AttendanceService {
           input: { lessonId: lesson.id, ...input },
         },
         async () => {
-          const saved = await this.write(transaction, access, lesson.id, input, requestId);
+          const saved = await this.write(transaction, access, lesson.id, input, requestId, write);
+          if (input.correction !== undefined) {
+            await noticeCellCorrections(transaction, this.notifications, {
+              branchId,
+              lessonId: lesson.id,
+              correctorId: access.accountId,
+              reason: input.correction.reason,
+            });
+          }
           const marks = saved.filter((cell) => cell.workId === null);
           const zeros = marks.filter((cell) => cell.value === 0).map((cell) => cell.studentId);
           return {
@@ -252,6 +266,7 @@ export class AttendanceService {
     lessonId: string,
     input: AttendanceSave,
     requestId: string | undefined,
+    write: WriteHow,
   ) {
     const clears = await keepOrClear(transaction, lessonId, input);
     return saveCells(
@@ -259,7 +274,8 @@ export class AttendanceService {
       this.audit,
       {
         accountId: access.accountId,
-        assignmentId: entryAssignment(access),
+        assignmentId: writeAssignment(write, entryAssignment(access)),
+        details: writeDetails(write, input.correction),
         ...(requestId === undefined ? {} : { requestId }),
       },
       [
@@ -285,7 +301,7 @@ export class AttendanceService {
   allPresent(access: Access, lessonId: string, requestId: string | undefined): Promise<AllPresent> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { lesson } = await enterableLesson(transaction, access, branchId, lessonId);
+      const { lesson, write } = await enterableLesson(transaction, access, branchId, lessonId);
       const expected = await sql<{ student_id: string }>`
         select s as student_id from lesson_expected_students(${lesson.id}::uuid) s order by s
       `.execute(transaction);
@@ -354,7 +370,11 @@ export class AttendanceService {
           filled: filledSorted.map((one) => ({ id: one.cellId, version: one.version })),
           skipped: skippedSorted.map((one) => one.studentId),
         },
-        details: { filled: filledSorted.length, skipped: skippedSorted.length },
+        details: {
+          filled: filledSorted.length,
+          skipped: skippedSorted.length,
+          ...writeDetails(write),
+        },
         ...(requestId === undefined ? {} : { requestId }),
       });
       return {

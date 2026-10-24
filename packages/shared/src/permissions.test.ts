@@ -489,6 +489,27 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('lets the teachers and Tutors request unlocks, the Head Teachers and the Academic Vice Principal decide them, and the Academic Vice Principal extend the edit period (task 8.4, decision 5)', () => {
+    const unlocks: Record<string, readonly string[]> = {
+      super_admin: ['view', 'create', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'create', 'edit'],
+      senior_head_teacher: ['view', 'create', 'edit'],
+      head_teacher: ['view', 'create', 'edit'],
+      teacher: ['view', 'create'],
+      tutor: ['view', 'create'],
+    };
+    const extensions: Record<string, readonly string[]> = {
+      super_admin: ['view', 'create'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'create'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.journal_unlocks[role], role).toEqual(unlocks[role] ?? []);
+      expect(PERMISSIONS.journal_extensions[role], role).toEqual(extensions[role] ?? []);
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -516,6 +537,8 @@ describe('a frozen permission table', () => {
       'groups',
       'head_teachers',
       'journal',
+      'journal_extensions',
+      'journal_unlocks',
       'personal_data_report',
       'plan_masters',
       'plan_requests',

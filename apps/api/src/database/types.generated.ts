@@ -136,6 +136,15 @@ export interface AuditLogSchool {
   request_id: string | null;
 }
 
+export interface BranchEditDays {
+  branch_id: string;
+  changed_at: Timestamp | null;
+  changed_on: string;
+  edit_days: number;
+  id: Generated<string>;
+  time_zone: string;
+}
+
 export interface Branches {
   address: string | null;
   created_at: Generated<Timestamp>;
@@ -505,9 +514,11 @@ export interface JournalCellHistory {
   lesson_id: string;
   mark_after: number | null;
   mark_before: number | null;
+  reason: string | null;
   score_after: number | null;
   score_before: number | null;
   student_id: string;
+  unlock_id: string | null;
   version: number;
   work_id: string | null;
   written_xact: Generated<string>;
@@ -539,8 +550,10 @@ export interface JournalCommentHistory {
   id: Generated<string>;
   lesson_id: string | null;
   rating_exam_id: string | null;
+  reason: string | null;
   student_id: string;
   target: string;
+  unlock_id: string | null;
   version: number;
   visibility_after: string | null;
   visibility_before: string | null;
@@ -563,6 +576,18 @@ export interface JournalComments {
   version: number;
   visibility: string;
   work_id: string | null;
+}
+
+export interface JournalEditExtensions {
+  branch_id: string;
+  created_at: Timestamp;
+  created_by: string;
+  days: number;
+  from_date: string;
+  id: Generated<string>;
+  open_until: Timestamp;
+  reason: string;
+  to_date: string;
 }
 
 export interface JournalRatingEntries {
@@ -613,6 +638,7 @@ export interface JournalRatingHistory {
   score_after: number | null;
   score_before: number | null;
   student_id: string | null;
+  unlock_id: string | null;
   version: number;
   written_xact: Generated<string>;
 }
@@ -626,6 +652,26 @@ export interface Journals {
   id: Generated<string>;
   runs: string;
   subject_id: string;
+}
+
+export interface JournalUnlocks {
+  branch_id: string;
+  days: number | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  id: Generated<string>;
+  journal_id: string | null;
+  lesson_id: string | null;
+  open_until: Timestamp | null;
+  quarter_id: string | null;
+  reason: string;
+  refuse_reason: string | null;
+  requested_at: Timestamp;
+  requested_by: string;
+  staff_id: string;
+  status: string;
+  target: string;
+  version: number;
 }
 
 export interface JournalWorkHistory {
@@ -642,9 +688,11 @@ export interface JournalWorkHistory {
   not_held_before: boolean | null;
   plan_work_after: string | null;
   plan_work_before: string | null;
+  reason: string | null;
   source_lesson_id: string | null;
   total_after: number | null;
   total_before: number | null;
+  unlock_id: string | null;
   version: number;
   work_id: string;
   written_xact: Generated<string>;
@@ -1668,6 +1716,7 @@ export interface DB {
   assignments: Assignments;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
+  branch_edit_days: BranchEditDays;
   branch_settings: BranchSettings;
   branches: Branches;
   buildings: Buildings;
@@ -1703,9 +1752,11 @@ export interface DB {
   journal_cells: JournalCells;
   journal_comment_history: JournalCommentHistory;
   journal_comments: JournalComments;
+  journal_edit_extensions: JournalEditExtensions;
   journal_rating_entries: JournalRatingEntries;
   journal_rating_exams: JournalRatingExams;
   journal_rating_history: JournalRatingHistory;
+  journal_unlocks: JournalUnlocks;
   journal_work_history: JournalWorkHistory;
   journal_works: JournalWorks;
   journals: Journals;

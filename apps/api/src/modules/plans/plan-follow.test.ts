@@ -2306,12 +2306,18 @@ describe('plan items follow the timetable', () => {
         const shared = started(() => shareOf(x));
         await waitingOn(held.pid, 1);
         const edited = started(edit);
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        const waits = await sql<{ count: number }>`
-          select count(*)::int as count from pg_stat_activity a
-          where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
-        `.execute(t.database.migrator);
-        expect(waits.rows[0]?.count).toBe(2);
+        // Polled, not a fixed pause: on a slow runner the edit's request reaches the class row
+        // later than 200 ms (CI of #222).
+        let waiting = 0;
+        for (let tries = 0; tries < 400 && waiting < 2; tries += 1) {
+          if (tries > 0) await new Promise((resolve) => setTimeout(resolve, 25));
+          const waits = await sql<{ count: number }>`
+            select count(*)::int as count from pg_stat_activity a
+            where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+          `.execute(t.database.migrator);
+          waiting = waits.rows[0]?.count ?? 0;
+        }
+        expect(waiting).toBe(2);
         await held.release();
         ok(await shared);
         ok(await edited);

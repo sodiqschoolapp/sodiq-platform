@@ -33,6 +33,8 @@ export function JournalsPage(): React.JSX.Element {
   const { branchId } = useView();
   // Task 6.3: the roles that read the reasons of absence reach their page from here.
   const absences = useMayView('absence_reasons');
+  // Task 8.4: the unlock requests and the branch-wide extension.
+  const unlocks = useMayView('journal_unlocks');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
   const tab = search.tab ?? 'class';
@@ -94,10 +96,19 @@ export function JournalsPage(): React.JSX.Element {
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          absences ? (
-            <Link to="/journal/student-absences" className="text-link">
-              {t('journal.absences.title')}
-            </Link>
+          absences || unlocks ? (
+            <span className="flex flex-wrap gap-4">
+              {absences && (
+                <Link to="/journal/student-absences" className="text-link">
+                  {t('journal.absences.title')}
+                </Link>
+              )}
+              {unlocks && (
+                <Link to="/journal/unlocks" className="text-link">
+                  {t('journal.unlocks.title')}
+                </Link>
+              )}
+            </span>
           ) : undefined
         }
       />

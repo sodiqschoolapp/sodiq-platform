@@ -34,7 +34,7 @@ import { PlanRequestsService } from './plan-requests.service.js';
 /**
  * Plan edit requests (task 7.2, pull request #215, decision 1, Look first):
  * the area `plan_requests`. `create` is the plan's owner's (send, finish);
- * `edit` decides, routed by the posts in force (`plan-request-routing.ts`),
+ * `edit` decides, routed by the posts in force (`access/request-routing.ts`),
  * never the reader's own.
  */
 @Controller('plans')

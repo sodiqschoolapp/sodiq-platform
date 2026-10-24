@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -23,6 +24,7 @@ const cell = (mark: number | null, version: number | null = mark === null ? null
   mark,
   version,
   typedBy: mark === null ? null : 'Karimova Aziza',
+  marker: null,
   works: [],
   score: null,
 });
@@ -57,6 +59,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   canEnterWorks: false,
   planItem: true,
   copyFrom: null,
+  lock: OPEN_LOCK,
   notHeldWorks: [],
   given: [],
 });

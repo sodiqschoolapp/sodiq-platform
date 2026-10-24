@@ -1,5 +1,5 @@
 /**
- * Who decides a plan edit request (task 7.2, pull request #215, review
+ * Who decides a plan edit request or a journal unlock request (task 7.2, pull request #215, review
  * decision 23; `02`, Head Teachers and Senior Head Teachers, "Who approves":
  * "A teacher's unlock or plan request goes to the Head Teacher of the subject
  * in that branch. The Senior Head Teacher of the subject and the Academic Vice
@@ -28,13 +28,25 @@ export type Post =
   'head_teacher' | 'senior_head_teacher' | 'academic_vice_principal' | 'super_admin';
 
 /**
+ * What a request is on, besides its subject: a Tutor's own Ma'naviyat soati or
+ * Homework slot lesson (task 8.4, decision 11; `edge/journal`: "A Tutor's own
+ * Ma'naviyat soati lesson locks incomplete. The Academic Vice Principal
+ * unlocks it") goes past the subject's Head Teachers.
+ */
+export interface RequestOn {
+  readonly tutorLesson?: boolean;
+}
+
+/**
  * The tiers of deciders for a request whose requester holds `requester`, in
  * the order a request goes to them (the first tier is told). Every post of
  * a tier may decide; so may every later tier.
  */
-export function tiersFor(requester: Posts): readonly (readonly Post[])[] {
+export function tiersFor(requester: Posts, on: RequestOn = {}): readonly (readonly Post[])[] {
   if (requester.academicVicePrincipal) return [['super_admin']];
-  if (requester.seniorHeadTeacher) return [['academic_vice_principal'], ['super_admin']];
+  if (requester.seniorHeadTeacher || on.tutorLesson === true) {
+    return [['academic_vice_principal'], ['super_admin']];
+  }
   if (requester.headTeacher) {
     return [['senior_head_teacher', 'academic_vice_principal'], ['super_admin']];
   }
@@ -54,9 +66,10 @@ const holds = (posts: Posts, post: Post): boolean =>
 export function decisionReach(
   reader: { readonly accountId: string; readonly posts: Posts },
   requester: { readonly accountId: string | null; readonly posts: Posts },
+  on: RequestOn = {},
 ): 'decide' | 'own' | 'none' {
   if (requester.accountId !== null && reader.accountId === requester.accountId) return 'own';
-  const allowed = tiersFor(requester.posts).flat();
+  const allowed = tiersFor(requester.posts, on).flat();
   return allowed.some((post) => holds(reader.posts, post)) ? 'decide' : 'none';
 }
 
@@ -64,8 +77,9 @@ export function decisionReach(
 export function firstTier<Holder extends { readonly accountId: string; readonly post: Post }>(
   requester: { readonly accountId: string | null; readonly posts: Posts },
   holders: readonly Holder[],
+  on: RequestOn = {},
 ): string[] {
-  for (const tier of tiersFor(requester.posts)) {
+  for (const tier of tiersFor(requester.posts, on)) {
     const found = holders
       .filter((holder) => tier.includes(holder.post) && holder.accountId !== requester.accountId)
       .map((holder) => holder.accountId);

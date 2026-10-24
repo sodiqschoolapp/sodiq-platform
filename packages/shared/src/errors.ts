@@ -1036,6 +1036,26 @@ export const ERROR_CODES = [
   'comment_no_value',
   /** The comment was changed since it was read (task 8.2). */
   'comment_stale',
+  /** The lesson or rating exam is locked: its edit period has passed and no open unlock of the person covers it (07, Editing rules and locks; task 8.4). */
+  'journal_locked',
+  /** Only the Academic Vice Principal of the branch or the Super Admin corrects a mark (edge/journal, Locks, unlocks and corrections; task 8.4). */
+  'journal_correction_role',
+  /** The lesson or rating exam is still open for the person: nothing to unlock (task 8.4). */
+  'journal_not_locked',
+  /** The person already has a waiting request for it (task 8.4). */
+  'journal_unlock_waiting',
+  /** The reader may not decide this request: it is not routed to their post (02, Who approves; task 8.4). */
+  'journal_unlock_scope',
+  /** The request was decided or withdrawn meanwhile (task 8.4). */
+  'journal_unlock_decided',
+  /** The request's person is no longer active in the branch, so it is cancelled (edge/people-roles-accounts, row 25; task 8.4, decision 7). */
+  'journal_unlock_cancelled',
+  /** The request was changed since it was read (task 8.4). */
+  'journal_unlock_stale',
+  /** An extension reaches a day after today (task 8.4, decision 13). */
+  'journal_extension_future',
+  /** An extension's dates lie outside the branch's open academic year (task 8.4, decision 13). */
+  'journal_extension_dates',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
@@ -1233,6 +1253,8 @@ export const errorDetailSchema = z.object({
   storedWork: z
     .object({ total: z.int().nullable(), notHeld: z.boolean(), version: z.int().min(1) })
     .optional(),
+  /** The lock moment of the lesson or rating exam, on a `journal_locked` (task 8.4). */
+  locksAt: z.string().optional(),
 });
 
 export type ErrorDetail = z.infer<typeof errorDetailSchema>;

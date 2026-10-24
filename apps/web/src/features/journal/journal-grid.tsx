@@ -2,6 +2,7 @@ import type {
   AttendanceMark,
   JournalBottom,
   JournalFigures,
+  CellMarker,
   JournalGrid as Grid,
   JournalLesson,
   JournalStudent,
@@ -95,6 +96,30 @@ interface HeaderAction {
 }
 
 /** A header of two lines: the title, and "Soni" with the total under a work, or an action. */
+/**
+ * Task 8.4: "entered after the edit period" with the approver, or "corrected" (`edge/journal`):
+ * a sign beside the value, its words in the label.
+ */
+function MarkerSign({ marker }: { marker: CellMarker }) {
+  const { t } = useTranslation();
+  if (marker === null) return null;
+  const text =
+    marker.kind === 'late'
+      ? t('journal.locks.lateMarker', { name: marker.by ?? '—' })
+      : t('journal.locks.correctionMarker', { name: marker.by ?? '—' });
+  return (
+    <span
+      className="ml-0.5 align-super text-xs font-semibold text-info"
+      role="img"
+      aria-label={text}
+      title={text}
+      data-marker={marker.kind}
+    >
+      {marker.kind === 'late' ? '*' : '†'}
+    </span>
+  );
+}
+
 function TwoLineHeader(
   props: IHeaderParams & {
     second?: string;
@@ -495,6 +520,12 @@ export function JournalGridView({
           headerName: t('journal.grid.attendanceShort'),
           headerComponentParams: {
             label: t('journal.grid.attendance'),
+            // Task 8.4: the lock of the lesson for the reader, under the A.
+            ...(lesson.held && lesson.lock.window === 'locked'
+              ? { second: t('journal.locks.lockedShort') }
+              : lesson.lock.window === 'unlocked'
+                ? { second: t('journal.locks.unlockedShort') }
+                : {}),
             ...(entering && lesson.canEnter
               ? {
                   action: {
@@ -593,6 +624,7 @@ export function JournalGridView({
                 >
                   {cell.mark}
                 </span>
+                <MarkerSign marker={cell.marker} />
                 {reasonText !== undefined && (
                   <span
                     className="ml-0.5 inline-flex align-middle text-info"
@@ -701,6 +733,7 @@ export function JournalGridView({
                 {typed.percent !== null && (
                   <span className="ml-1 text-xs text-muted-foreground">{typed.percent}%</span>
                 )}
+                <MarkerSign marker={typed.marker} />
                 {typed.onAbsent && (
                   <span
                     className="ml-0.5 inline-flex align-middle text-warning"

@@ -1,10 +1,18 @@
-import type { JournalGrid, JournalLesson, JournalStudent, RatingExam } from '@sodiq/shared';
+import type {
+  EditLock,
+  JournalGrid,
+  JournalLesson,
+  JournalStudent,
+  RatingEntry,
+  RatingExam,
+} from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { typedScore } from './journal-grid';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -31,6 +39,7 @@ const lesson: JournalLesson = {
   canEnterWorks: true,
   planItem: true,
   copyFrom: null,
+  lock: OPEN_LOCK,
   works: [],
   notHeldWorks: [],
   given: [],
@@ -45,7 +54,9 @@ const student = (n: number, lastName: string): JournalStudent => ({
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
-  cells: [{ closed: false, mark: 1, version: 1, typedBy: null, works: [], score: null }],
+  cells: [
+    { closed: false, mark: 1, version: 1, typedBy: null, marker: null, works: [], score: null },
+  ],
   quarter: null,
   months: null,
   comments: [],
@@ -62,6 +73,7 @@ const EXAM: RatingExam = {
   canSetNotHeld: false,
   canEnter: true,
   canExempt: false,
+  lock: OPEN_LOCK,
   entries: [
     {
       studentId: uid(101),
@@ -69,6 +81,7 @@ const EXAM: RatingExam = {
       version: 1,
       changedBy: 'Karimova Aziza',
       changedAt: '2026-10-26T05:00:00.000Z',
+      marker: null,
     },
   ],
 };
@@ -108,10 +121,14 @@ const GRID: JournalGrid = {
 
 const ENTRIES = `POST /api/journal/journals/${JOURNAL}/rating/${QUARTER.id}/entries`;
 
-function open(language: 'en' | 'ru' = 'en', grid: JournalGrid = GRID) {
+function open(
+  language: 'en' | 'ru' = 'en',
+  grid: JournalGrid = GRID,
+  role: 'teacher' | 'academic_vice_principal' = 'teacher',
+) {
   const calls = fakeApi({
     'GET /api/auth/session': () =>
-      json(sessionOf({ language, assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      json(sessionOf({ language, assignments: [{ role, branchId: NORTH.id }] })),
     [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
     [ENTRIES]: () => json(EXAM),
     [`PUT /api/journal/journals/${JOURNAL}/rating/${QUARTER.id}/date`]: () => json(EXAM),
@@ -308,6 +325,100 @@ describe('the rating exam and comments in the grid', () => {
           body: 'Came late again',
           visibility: 'staff',
           version: 2,
+        },
+      ]);
+    });
+  });
+
+  // Task 8.4, code review 1, finding 2: the correction mode covers the rating column and the
+  // comments (edge/journal, Locks, unlocks and corrections; edge/calculation, The rating exam).
+  const CORRECTABLE: EditLock = {
+    ...OPEN_LOCK,
+    locksAt: '2026-10-26T19:00:00.000Z',
+    window: 'locked',
+    canCorrect: true,
+  };
+
+  const startCorrecting = async (reason: string) => {
+    const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.correct }));
+    const dialog = await screen.findByRole('form', { name: /^Correct:/ });
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: en.journal.locks.correctReason }),
+      { target: { value: reason } },
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.locks.startCorrecting }));
+    await within(panel).findByRole('button', { name: en.journal.locks.stopCorrecting });
+  };
+
+  it('lets the Academic Vice Principal correct the rating exam: "exempt" replaced by a score, sent with the reason asked once', async () => {
+    const calls = open(
+      'en',
+      {
+        ...GRID,
+        rating: {
+          ...EXAM,
+          canEnter: false,
+          canExempt: true,
+          canSetDate: false,
+          lock: CORRECTABLE,
+          entries: [{ ...(EXAM.entries[0] as RatingEntry), entry: { kind: 'exempt' } }],
+        },
+      },
+      'academic_vice_principal',
+    );
+    await startCorrecting('Sat the exam after all');
+    const cell = await cellOf(uid(101), 'ratingExam');
+    fireEvent.click(cell);
+    fireEvent.keyDown(cell, { key: 'e', code: 'KeyE' });
+    const dialog = await screen.findByRole('dialog', { name: 'Rating exam: Zokirov Ali' });
+    // The reason of the correction is the entry's reason: no second field.
+    expect(within(dialog).queryByLabelText(en.journal.rating.reason)).toBeNull();
+    fireEvent.change(within(dialog).getByLabelText(en.journal.rating.score), {
+      target: { value: '68' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.rating.saveScore }));
+    await waitFor(() => {
+      expect(sent(calls, ENTRIES)).toEqual([
+        {
+          studentId: uid(101),
+          entry: { kind: 'score', score: 68 },
+          reason: 'Sat the exam after all',
+          version: 1,
+          correction: true,
+        },
+      ]);
+    });
+  });
+
+  it('sends the correction with a comment saved on the lesson being corrected', async () => {
+    const calls = open(
+      'en',
+      {
+        ...GRID,
+        rating: { ...EXAM, canEnter: false },
+        lessons: [{ ...lesson, canEnter: false, canEnterWorks: false, lock: CORRECTABLE }],
+      },
+      'academic_vice_principal',
+    );
+    await startCorrecting('The register shows a late arrival');
+    const cell = await cellOf(uid(101), `${LESSON}:a`);
+    fireEvent.click(cell);
+    fireEvent.keyDown(cell, { key: 'c', code: 'KeyC' });
+    const dialog = await screen.findByRole('dialog', { name: 'Comments: Zokirov Ali' });
+    const mark = within(dialog).getByRole('region', { name: en.journal.comments.targets.mark });
+    fireEvent.change(within(mark).getByLabelText(en.journal.comments.body), {
+      target: { value: 'Came late' },
+    });
+    fireEvent.click(within(mark).getByRole('button', { name: en.journal.comments.save }));
+    await waitFor(() => {
+      expect(sent(calls, 'PUT /api/journal/comments')).toEqual([
+        {
+          on: { target: 'mark', lessonId: LESSON, studentId: uid(101) },
+          body: 'Came late',
+          visibility: 'staff',
+          version: null,
+          correction: { reason: 'The register shows a late arrival' },
         },
       ]);
     });
