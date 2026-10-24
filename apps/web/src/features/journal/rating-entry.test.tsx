@@ -5,6 +5,7 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { typedScore } from './journal-grid';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -31,6 +32,7 @@ const lesson: JournalLesson = {
   canEnterWorks: true,
   planItem: true,
   copyFrom: null,
+  lock: OPEN_LOCK,
   works: [],
   notHeldWorks: [],
   given: [],
@@ -45,7 +47,9 @@ const student = (n: number, lastName: string): JournalStudent => ({
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
-  cells: [{ closed: false, mark: 1, version: 1, typedBy: null, works: [], score: null }],
+  cells: [
+    { closed: false, mark: 1, version: 1, typedBy: null, marker: null, works: [], score: null },
+  ],
   quarter: null,
   months: null,
   comments: [],
@@ -62,6 +66,7 @@ const EXAM: RatingExam = {
   canSetNotHeld: false,
   canEnter: true,
   canExempt: false,
+  lock: OPEN_LOCK,
   entries: [
     {
       studentId: uid(101),
@@ -69,6 +74,7 @@ const EXAM: RatingExam = {
       version: 1,
       changedBy: 'Karimova Aziza',
       changedAt: '2026-10-26T05:00:00.000Z',
+      marker: null,
     },
   ],
 };

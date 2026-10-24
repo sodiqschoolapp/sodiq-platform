@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -28,7 +29,13 @@ const cell = (
   mark,
   version,
   typedBy: mark === null ? null : 'Karimova Aziza',
-  works: works.map((one) => ({ ...one, version: one.score === null ? null : 1, onAbsent: false })),
+  marker: null,
+  works: works.map((one) => ({
+    ...one,
+    version: one.score === null ? null : 1,
+    onAbsent: false,
+    marker: null,
+  })),
   score,
 });
 
@@ -114,6 +121,7 @@ const GRID: JournalGrid = {
       canEnterWorks: false,
       planItem: true,
       copyFrom: null,
+      lock: OPEN_LOCK,
       notHeldWorks: [],
       given: [],
     },
@@ -131,6 +139,7 @@ const GRID: JournalGrid = {
       canEnterWorks: false,
       planItem: true,
       copyFrom: null,
+      lock: OPEN_LOCK,
       notHeldWorks: [],
       given: [],
     },
@@ -148,6 +157,7 @@ const GRID: JournalGrid = {
       canEnterWorks: false,
       planItem: true,
       copyFrom: null,
+      lock: OPEN_LOCK,
       notHeldWorks: [],
       given: [],
     },

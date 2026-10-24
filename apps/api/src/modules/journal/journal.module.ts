@@ -9,6 +9,9 @@ import { JournalGridReader } from './journal-grid.service.js';
 import { JournalsController } from './journals.controller.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
+import { ExtensionsService } from './extensions.service.js';
+import { UnlocksController } from './unlocks.controller.js';
+import { UnlocksService } from './unlocks.service.js';
 import { StudentAbsencesController } from './student-absences.controller.js';
 import { StudentAbsences } from './student-absences.service.js';
 import { WorksController } from './works.controller.js';
@@ -17,6 +20,9 @@ import { WorksService } from './works.service.js';
 @Module({
   imports: [NotificationsModule],
   controllers: [
+    // Task 8.4: before the controllers whose `lessons/:lessonId` and `journals/:journalId` paths
+    // would take `unlocks`.
+    UnlocksController,
     JournalsController,
     AttendanceController,
     StudentAbsencesController,
@@ -32,6 +38,8 @@ import { WorksService } from './works.service.js';
     RatingService,
     CommentsService,
     CellActionsService,
+    UnlocksService,
+    ExtensionsService,
   ],
 })
 export class JournalModule {}

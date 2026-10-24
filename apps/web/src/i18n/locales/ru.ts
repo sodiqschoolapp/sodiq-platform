@@ -3495,6 +3495,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         rating_not_held: 'Рейтинговый экзамен отмечен как не проведённый',
         rating_entry: 'Запись рейтингового экзамена',
         comment: 'Комментарий в журнале',
+        unlock_request: 'Запрошено открытие',
+        unlock_decide: 'Решение по запросу на открытие',
+        unlock_withdraw: 'Запрос на открытие отозван',
+        edit_extension: 'Срок редактирования продлён для филиала',
       },
       plan: {
         create: 'Начат план уроков',

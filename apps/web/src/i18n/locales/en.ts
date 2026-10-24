@@ -3347,6 +3347,10 @@ export const en = {
         rating_not_held: 'Rating exam marked not held',
         rating_entry: 'Rating exam entry',
         comment: 'Journal comment',
+        unlock_request: 'Unlock requested',
+        unlock_decide: 'Unlock request decided',
+        unlock_withdraw: 'Unlock request withdrawn',
+        edit_extension: 'Edit period extended for the branch',
       },
       plan: {
         create: 'Lesson plan started',

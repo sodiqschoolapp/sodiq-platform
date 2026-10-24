@@ -281,6 +281,12 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.rating_not_held',
     'journal.rating_entry',
     'journal.comment',
+    // Task 8.4: unlock requests, their decision and withdrawal, and the branch-wide extension
+    // of the edit period; a correction is the entry of its write with `how` and the reason.
+    'journal.unlock_request',
+    'journal.unlock_decide',
+    'journal.unlock_withdraw',
+    'journal.edit_extension',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).

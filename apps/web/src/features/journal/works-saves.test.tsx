@@ -9,6 +9,7 @@ import { en } from '@/i18n/locales/en';
 import { fakeApi, json, refusal } from '@/testing/render-app';
 import { journalKey } from './journal-api';
 import { useWorksEntry, type WorksEntry } from './works-entry';
+import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -46,7 +47,8 @@ const STUDENT: JournalStudent = {
       mark: 1,
       version: 1,
       typedBy: null,
-      works: [{ score: 2, percent: 20, version: 1, onAbsent: false }],
+      marker: null,
+      works: [{ score: 2, percent: 20, version: 1, onAbsent: false, marker: null }],
       score: null,
     },
   ],
@@ -68,6 +70,7 @@ const LESSON_ROW = {
   canEnterWorks: true,
   planItem: true,
   copyFrom: null,
+  lock: OPEN_LOCK,
   works: [TEST],
   notHeldWorks: [],
   given: [],

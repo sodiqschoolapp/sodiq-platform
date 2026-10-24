@@ -3386,6 +3386,10 @@ export const uz: Texts<'one' | 'other'> = {
         rating_not_held: 'Reyting imtihoni oʻtkazilmagan deb belgilandi',
         rating_entry: 'Reyting imtihoni yozuvi',
         comment: 'Jurnaldagi izoh',
+        unlock_request: 'Ochish soʻraldi',
+        unlock_decide: 'Ochish soʻrovi boʻyicha qaror',
+        unlock_withdraw: 'Ochish soʻrovi qaytarib olindi',
+        edit_extension: 'Filial uchun tahrirlash muddati uzaytirildi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',
