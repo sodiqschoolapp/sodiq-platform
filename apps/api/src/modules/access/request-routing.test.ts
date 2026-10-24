@@ -94,3 +94,27 @@ describe('the routing of a plan request', () => {
     expect(firstTier(teacher, [])).toEqual([]);
   });
 });
+
+describe("the routing of an unlock request on a Tutor's lesson (task 8.4, decision 11)", () => {
+  const tutorLesson = { tutorLesson: true };
+
+  it('goes past the Head Teachers to the Academic Vice Principal, then the Super Admin', () => {
+    expect(decisionReach(reader('head_teacher'), teacher, tutorLesson)).toBe('none');
+    expect(decisionReach(reader('senior_head_teacher'), teacher, tutorLesson)).toBe('none');
+    expect(decisionReach(reader('academic_vice_principal'), teacher, tutorLesson)).toBe('decide');
+    expect(decisionReach(reader('super_admin'), teacher, tutorLesson)).toBe('decide');
+    const holders = [
+      { accountId: 'head', post: 'head_teacher' as const },
+      { accountId: 'vice', post: 'academic_vice_principal' as const },
+      { accountId: 'admin', post: 'super_admin' as const },
+    ];
+    expect(firstTier(teacher, holders, tutorLesson)).toEqual(['vice']);
+    expect(firstTier(teacher, holders)).toEqual(['head']);
+  });
+
+  it("sends an Academic Vice Principal's own to the Super Admin alone", () => {
+    const vice = { accountId: 'vice', posts: with_('academic_vice_principal') };
+    expect(decisionReach(reader('academic_vice_principal'), vice, tutorLesson)).toBe('none');
+    expect(decisionReach(reader('super_admin'), vice, tutorLesson)).toBe('decide');
+  });
+});
