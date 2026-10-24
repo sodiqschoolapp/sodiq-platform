@@ -297,6 +297,66 @@ describe('a journal', () => {
     });
   });
 
+  // Task 8.5 (07, In the journal; Effect on totals).
+  it('shows exempt cells as 4 or 5, "Exempt" with no grade, and folds a student exempt for every lesson', async () => {
+    const exemptCell = (kind: 'temporary' | 'full') => ({
+      ...cell(null, [], null, true),
+      exempt: kind,
+    });
+    open({
+      ...GRID,
+      students: [
+        student(1, 'Zokirov', {
+          cells: [exemptCell('temporary'), cell(2, [], null), cell(1)],
+          exemptions: [
+            {
+              kind: 'temporary',
+              startDate: '2026-10-12',
+              endDate: '2026-10-12',
+              slots: null,
+              category: null,
+            },
+          ],
+          quarter: {
+            ...figures(59, 3),
+            result: {
+              kind: 'number',
+              shown: 59,
+              grade: 3,
+              provisional: false,
+              leftOut: [],
+              basedOn: { expected: 2, held: 7 },
+            },
+          },
+        }),
+        student(2, 'Oʻktamov', {
+          cells: [exemptCell('temporary'), exemptCell('full'), exemptCell('full')],
+          quarter: {
+            attendance: null,
+            classwork: null,
+            homework: null,
+            ratingExam: null,
+            result: { kind: 'exempt' },
+          },
+        }),
+      ],
+    });
+    await waitFor(() => {
+      expect(cellOf(uid(101), `${uid(60)}:a`)?.querySelector('[data-exempt]')?.textContent).toBe(
+        '4',
+      );
+    });
+    expect(cellOf(uid(101), 'result')?.textContent).toContain('based on 2 of 7 lessons');
+    expect(cellOf(uid(101), 'name')?.querySelector('[data-exemption]')).not.toBeNull();
+    const fold = await screen.findByRole('button', { name: 'Exempt: 1 student' });
+    expect(document.querySelector(`[row-id="${uid(102)}"]`)).toBeNull();
+    fireEvent.click(fold);
+    await waitFor(() => {
+      expect(cellOf(uid(102), 'result')?.textContent).toBe(en.journal.grid.exemptResult);
+    });
+    expect(cellOf(uid(102), `${uid(61)}:a`)?.querySelector('[data-exempt]')?.textContent).toBe('5');
+  });
+
   it('finds a student by any apostrophe', async () => {
     open(GRID, `/journal/${JOURNAL}?q=O'ktamov`);
     await waitFor(() => {

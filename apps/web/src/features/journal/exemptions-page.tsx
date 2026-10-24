@@ -739,8 +739,10 @@ function ExemptionFormDialog({
                 }
               });
             }}
-            onChange={() => {
-              // A change of the form asks the preview again.
+            onChange={(event) => {
+              // A change of the form asks the preview again; a choice of the preview does not.
+              const target = event.target as HTMLInputElement;
+              if (target.type === 'radio') return;
               if (preview !== null) setPreview(null);
             }}
           >
