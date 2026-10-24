@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   REQUEST_KEY_HEADER,
+  journalGridSchema,
   exemptionCreatedSchema,
   exemptionListSchema,
   exemptionPreviewSchema,
@@ -890,6 +891,83 @@ describe('exemptions', () => {
       expect(waited, 'the create waited on the held save').toBe(true);
       expect(await held).toBeUndefined();
       expect(codeOf(await answer)).toBe('exemption_choice_missing');
+    });
+  });
+
+  describe('the journal grid (07, In the journal; Effect on totals)', () => {
+    const journalOf = async (classId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', classId)
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    it('shows exempt cells as 4 or 5, hides the mark, gives "Exempt" when no lesson remains, and the category only to the Tutor', async () => {
+      const s = await scene();
+      const [first, second, third] = s.lessons;
+      if (first === undefined || second === undefined || third === undefined) {
+        throw new Error('Three held lessons.');
+      }
+      await mark(s.branch, first.id, s.ahmedov, 0);
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        // Ahmedov: every held lesson exempt, the last one fully (a subject exemption to the year's end).
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({ studentIds: [s.ahmedov], startDate: '2026-10-12', endDate: '2026-10-24' }),
+            )
+          ).status,
+        ).toBe(200);
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({
+                studentIds: [s.ahmedov],
+                kind: 'full',
+                endDate: null,
+                startDate: '2026-10-25',
+                subjectIds: [s.subject],
+              }),
+            )
+          ).status,
+        ).toBe(200);
+      });
+      const journal = await journalOf(s.classId);
+      const teacherGrid = await as(
+        s.branch,
+        s.owner,
+        [{ role: 'teacher', branchId: s.branch }],
+        async ({ get }) =>
+          journalGridSchema.parse((await get(`/api/journal/journals/${journal}`)).body),
+      );
+      const ahmedov = teacherGrid.students.find((one) => one.id === s.ahmedov);
+      expect(
+        ahmedov?.cells.slice(0, 3).map((cell) => [cell.closed, cell.exempt, cell.mark]),
+      ).toEqual([
+        [true, 'temporary', null],
+        [true, 'temporary', null],
+        [true, 'full', null],
+      ]);
+      expect(ahmedov?.quarter?.result).toEqual({ kind: 'exempt' });
+      expect(ahmedov?.exemptions.map((one) => [one.kind, one.category])).toEqual([
+        ['temporary', null],
+        ['full', null],
+      ]);
+      const boboyev = teacherGrid.students.find((one) => one.id === s.boboyev);
+      expect(boboyev?.cells[0]?.exempt).toBeNull();
+      const tutor = await tutorOf(s.branch, s.classId);
+      const tutorGrid = await as(s.branch, tutor, [], async ({ get }) =>
+        journalGridSchema.parse((await get(`/api/journal/journals/${journal}`)).body),
+      );
+      expect(
+        tutorGrid.students
+          .find((one) => one.id === s.ahmedov)
+          ?.exemptions.map((one) => one.category),
+      ).toEqual(['illness', 'illness']);
     });
   });
 });

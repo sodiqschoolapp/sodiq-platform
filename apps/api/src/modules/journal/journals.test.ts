@@ -302,7 +302,14 @@ describe('the journal grid', () => {
         classwork: 60,
         homework: 50,
         ratingExam: null,
-        result: { kind: 'number', shown: 59, grade: 3, provisional: false, leftOut: [] },
+        result: {
+          kind: 'number',
+          shown: 59,
+          grade: 3,
+          provisional: false,
+          leftOut: [],
+          basedOn: null,
+        },
       });
       expect(zokirov?.months?.['2026-10']).toEqual(zokirov?.quarter);
 
@@ -328,6 +335,7 @@ describe('the journal grid', () => {
         grade: 2,
         provisional: true,
         leftOut: ['classwork', 'homework'],
+        basedOn: null,
       });
 
       // Left and came back: the gap is closed cells, not absences (edge/calculation).
@@ -375,7 +383,14 @@ describe('the journal grid', () => {
         classwork: 40,
         homework: null,
         ratingExam: null,
-        result: { kind: 'number', shown: 60, grade: 3, provisional: true, leftOut: ['homework'] },
+        result: {
+          kind: 'number',
+          shown: 60,
+          grade: 3,
+          provisional: true,
+          leftOut: ['homework'],
+          basedOn: null,
+        },
       });
     });
     // On Monday 19 October at 07:00 the lesson of 08:00 has not started: closed, not held.
@@ -395,7 +410,14 @@ describe('the journal grid', () => {
           classwork: 40,
           homework: null,
           ratingExam: null,
-          result: { kind: 'number', shown: 60, grade: 3, provisional: true, leftOut: ['homework'] },
+          result: {
+            kind: 'number',
+            shown: 60,
+            grade: 3,
+            provisional: true,
+            leftOut: ['homework'],
+            basedOn: null,
+          },
         });
       },
       '2026-10-19T07:00:00+05:00',
@@ -437,7 +459,14 @@ describe('the journal grid', () => {
         classwork: 50,
         homework: 36,
         ratingExam: null,
-        result: { kind: 'number', shown: 50, grade: 3, provisional: false, leftOut: [] },
+        result: {
+          kind: 'number',
+          shown: 50,
+          grade: 3,
+          provisional: false,
+          leftOut: [],
+          basedOn: null,
+        },
       });
     });
   });
@@ -466,6 +495,7 @@ describe('the journal grid', () => {
         grade: 3,
         provisional: true,
         leftOut: ['ratingExam'],
+        basedOn: null,
       });
       // The month uses the quarter's weights without the exam, labelled so (decision 23).
       expect(zokirov?.months?.['2026-10']?.result).toEqual({
@@ -474,6 +504,7 @@ describe('the journal grid', () => {
         grade: 3,
         provisional: false,
         leftOut: [],
+        basedOn: null,
       });
     });
   });

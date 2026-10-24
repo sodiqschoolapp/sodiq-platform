@@ -80,7 +80,14 @@ const shownResultSchema = z.discriminatedUnion('kind', [
     provisional: z.boolean(),
     /** `edge/calculation`: the "part left out" marker, with the parts. */
     leftOut: z.array(z.enum(JOURNAL_PARTS)),
+    /**
+     * Task 8.5 (`07`, Effect on totals): "based on 8 of 40 lessons" when fewer than
+     * one third of the quarter's lessons remain; `null` otherwise. A quarter figure only.
+     */
+    basedOn: z.object({ expected: z.int().min(0), held: z.int().min(0) }).nullable(),
   }),
+  /** Task 8.5: every lesson of the student was exempt: no number and no grade. */
+  z.object({ kind: z.literal('exempt') }),
   z.object({ kind: z.literal('no_result') }),
 ]);
 
@@ -184,6 +191,11 @@ export type JournalLesson = z.infer<typeof journalLessonSchema>;
 const journalCellSchema = z.object({
   /** Outside the student's membership, or before the lesson starts (`07`, Editing rules). */
   closed: z.boolean(),
+  /**
+   * Task 8.5: the student is exempt for the lesson: shown 4 (`temporary`) or 5
+   * (`full`), closed, and `mark` is `null` (a mark the exemption hides is not shown).
+   */
+  exempt: z.enum(['temporary', 'full']).nullable(),
   mark: z.int().min(0).max(3).nullable(),
   /** The attendance cell's version, `null` while never saved (task 6.3: the version a typed mark is sent with). */
   version: z.int().min(1).nullable(),
@@ -220,6 +232,20 @@ export const journalStudentSchema = z.object({
   uid: z.string(),
   /** Left or moved before the reference date: the folded section (`07`, Layout). */
   folded: z.boolean(),
+  /**
+   * Task 8.5 (`07`, In the journal: "The teacher sees the kind and the dates"): the
+   * exemptions of the student touching the quarter; `category` for the class Tutor and
+   * the readers of exemptions only (`edge/exemptions`, row 10).
+   */
+  exemptions: z.array(
+    z.object({
+      kind: z.enum(['temporary', 'full']),
+      startDate: schoolDateSchema,
+      endDate: schoolDateSchema,
+      slots: z.object({ start: z.string(), end: z.string() }).nullable(),
+      category: z.enum(['illness', 'competition', 'family', 'school_event', 'other']).nullable(),
+    }),
+  ),
   cells: z.array(journalCellSchema),
   /** `null` for a reader who sees no figures (a substitute, a former owner). */
   quarter: figuresSchema.nullable(),
