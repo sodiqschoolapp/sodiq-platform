@@ -6840,6 +6840,62 @@ try {
             .execute();
         });
     });
+    // A Kent lesson eight days ago, before the move's date, with Qodirova present: her
+    // result is carried into 7 Leeds (07, Transfers).
+    const earlierDay = isoDate(new Date(tashkentToday.getTime() - 8 * dayMs));
+    await migrator.transaction().execute(async (transaction) => {
+      const block = await transaction
+        .insertInto('lesson_blocks')
+        .values({
+          branch_id: transfersBranch,
+          academic_year_id: yearId,
+          quarter_id: quarterId,
+          lesson_date: earlierDay,
+          starts_at: new Date(`${earlierDay}T08:00:00+05:00`),
+          ends_at: new Date(`${earlierDay}T08:45:00+05:00`),
+          version_id: source.versionId,
+          pattern_block_id: source.patternBlockId,
+        })
+        .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+        .executeTakeFirstOrThrow();
+      const lesson = await transaction
+        .insertInto('lessons')
+        .values({
+          branch_id: transfersBranch,
+          block_id: block.id,
+          lesson_date: block.lesson_date,
+          starts_at: block.starts_at,
+          ends_at: block.ends_at,
+          class_id: classId,
+          subject_id: algebra,
+          teacher_id: staffId,
+          load_row_id: source.lessons[0]?.loadRowId ?? '',
+          pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const qodirova = await transaction
+        .selectFrom('students')
+        .select('id')
+        .where('uid', '=', '9999881')
+        .executeTakeFirstOrThrow();
+      await sql`select set_config('app.now', ${`${earlierDay}T09:00:00+05:00`}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .insertInto('journal_cells')
+        .values({
+          branch_id: transfersBranch,
+          lesson_id: lesson.id,
+          student_id: qodirova.id,
+          mark: 1,
+          version: 1,
+          changed_by: transfersTeacher.id,
+          changed_how: 'entry',
+          changed_at: new Date(0),
+        })
+        .execute();
+    });
     const leedsDay = isoDate(new Date(tashkentToday.getTime() - 4 * dayMs));
     await migrator.transaction().execute(async (transaction) => {
       const block = await transaction

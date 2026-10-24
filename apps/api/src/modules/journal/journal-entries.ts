@@ -373,9 +373,9 @@ const howOf = (source: JournalSource): 'transfer' | 'leaving' =>
 
 /** The same entries, each with the same version. */
 function sameList(needs: readonly MetEntry[], seen: JournalEntriesChoice['seen']): boolean {
-  if (needs.length !== seen.length) return false;
-  const wanted = new Map(needs.map((entry) => [entry.id.toLowerCase(), entry.version]));
-  return seen.every((one) => wanted.get(one.id.toLowerCase()) === one.version);
+  const sent = new Map(seen.map((one) => [one.id.toLowerCase(), one.version]));
+  if (needs.length !== seen.length || sent.size !== seen.length) return false;
+  return needs.every((entry) => sent.get(entry.id.toLowerCase()) === entry.version);
 }
 
 /**
@@ -510,7 +510,12 @@ export async function settle(
   const own = left.filter(byItself);
   const needs = left.filter((entry) => !byItself(entry));
   if (needs.length > 0 && !input.voidable) {
-    throw journalEntriesRefusal(needs, false, false);
+    throw new ApiException(
+      'move_entries_today',
+      409,
+      undefined,
+      needs.map((entry) => entryDetail(entry, 'move_entries_today', false)),
+    );
   }
   if (needs.length > 0 && input.choice === undefined) {
     throw journalEntriesRefusal(needs, true, false);

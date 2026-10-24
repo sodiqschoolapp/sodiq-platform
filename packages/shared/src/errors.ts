@@ -1088,6 +1088,8 @@ export const ERROR_CODES = [
   'student_status_exemption_overlap',
   /** The change meets journal entries of the student on or after its date: the details name them (`journalEntry`); a voidable list is voided with a reason in `journalEntries`, or the date is moved past it (edge/students-classes-groups; task 8.6). */
   'journal_entries',
+  /** A move dated today meets entries of the student today in the journals it leaves: it is dated tomorrow (edge: "'Today' is allowed only if the student has no entries today in the old journals"; task 8.6). The details name them. */
+  'move_entries_today',
   /** The journals the move wrote rows for hold entries of the student on or after its date: a transfer back is made instead (edge: "A transfer was a mistake"; task 8.6). */
   'move_has_entries',
   /** Both records hold journal data on one key (the same lesson and work, rating exam or comment target): the details name the lessons (From 3.3d; task 8.6). */

@@ -5,10 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
-import { CellsKit } from '../../testing/cells-kit.js';
+import { CellsKit, workWithTotal } from '../../testing/cells-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
+import { ratingEntryAndNote } from '../../testing/rating-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { saveCells } from './cells.js';
@@ -190,7 +191,7 @@ describe('transfers and leaving inside the journal', () => {
       const cell = await s.mark(today, student.id, 1);
       const before = await rowsOf();
       const refused = await transfer(s.branch, student.id, s.yale, '2026-10-10');
-      refusedWith(refused, 409, 'journal_entries');
+      refusedWith(refused, 409, 'move_entries_today');
       expect(entriesOf(refused)).toEqual([{ id: cell, version: 1, voidable: false }]);
       expect(await rowsOf()).toEqual(before);
       // A choice cannot void it either: the date is moved to tomorrow.
@@ -199,7 +200,7 @@ describe('transfers and leaving inside the journal', () => {
           journalEntries: { reason: 'Moved today', seen: [{ id: cell, version: 1 }] },
         }),
         409,
-        'journal_entries',
+        'move_entries_today',
       );
       ok(await transfer(s.branch, student.id, s.yale, '2026-10-11'));
       expect((await cellOf(cell)).mark).toBe(1);
@@ -523,6 +524,123 @@ describe('transfers and leaving inside the journal', () => {
           ...marks.map((id) => ({ cell_id: id, reason: 'Checked with the Tutor: not at school' })),
         ].sort((a, b) => a.cell_id.localeCompare(b.cell_id)),
       );
+    });
+
+    it('voids a number 0 by itself, blocks on a number above 0, a comment and a rating entry, and gives each back on the undo', async () => {
+      const s = await scene('East leaving data');
+      const student = await pupil(s.branch, s.oxford);
+      const lesson = await s.lesson(s.oxford, '2026-10-06');
+      const number = async (value: number) => {
+        const work = await workWithTotal(t.database.migrator, {
+          branchId: s.branch,
+          lessonId: lesson,
+          total: 10,
+        });
+        return t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+            transaction,
+          );
+          const row = await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: s.branch,
+              lesson_id: lesson,
+              student_id: student.id,
+              work_id: work,
+              score: value,
+              version: 1,
+              changed_by: s.by,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          return row.id;
+        });
+      };
+      const zero = await number(0);
+      const three = await number(3);
+      await ratingEntryAndNote(
+        t,
+        { classes },
+        {
+          branch: s.branch,
+          year: s.year,
+          classId: s.oxford,
+          lessonId: lesson,
+          studentId: student.id,
+          accountId: s.by,
+          at: t.clock.now().toISOString(),
+          examDate: '2026-10-06',
+        },
+      );
+      const comment = await t.database.migrator
+        .selectFrom('journal_comments')
+        .select('id')
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      const rating = await t.database.migrator
+        .selectFrom('journal_rating_entries')
+        .select('id')
+        .where('student_id', '=', student.id)
+        .executeTakeFirstOrThrow();
+      const before = await rowsOf();
+      const refused = await leave(s.branch, student.id, '2026-10-05');
+      refusedWith(refused, 409, 'journal_entries');
+      const listed = entriesOf(refused);
+      expect(listed.map((one) => one.id).sort()).toEqual([three, comment.id, rating.id].sort());
+      expect(await rowsOf()).toEqual(before);
+      ok(
+        await leave(s.branch, student.id, '2026-10-05', {
+          journalEntries: {
+            reason: 'Checked with the Tutor',
+            seen: listed.map(({ id, version }) => ({ id, version })),
+          },
+        }),
+      );
+      expect(await cellOf(zero)).toMatchObject({ score: null, changed_how: 'leaving' });
+      expect(await cellOf(three)).toMatchObject({ score: null, changed_how: 'leaving' });
+      const commentAfter = () =>
+        t.database.migrator
+          .selectFrom('journal_comments')
+          .select(['body', 'changed_how'])
+          .where('id', '=', comment.id)
+          .executeTakeFirstOrThrow();
+      const ratingAfter = () =>
+        t.database.migrator
+          .selectFrom('journal_rating_entries')
+          .select(['kind', 'score', 'changed_how'])
+          .where('id', '=', rating.id)
+          .executeTakeFirstOrThrow();
+      expect(await commentAfter()).toMatchObject({ body: null, changed_how: 'leaving' });
+      expect(await ratingAfter()).toEqual({ kind: null, score: null, changed_how: 'leaving' });
+      ok(
+        await t.post(`/api/people/students/${student.id}/leaving/undo`, s.branch, {
+          reason: 'Entered by mistake',
+          version: (await fresh(s.branch, student.id)).version,
+        }),
+      );
+      expect((await cellOf(zero)).score).toBe(0);
+      expect((await cellOf(three)).score).toBe(3);
+      expect((await commentAfter()).body).not.toBeNull();
+      expect(await ratingAfter()).toEqual({ kind: 'score', score: 77, changed_how: 'leaving' });
+    });
+
+    it('refuses an entry seen twice: the list is matched one to one', async () => {
+      const s = await scene('East leaving twice');
+      const student = await pupil(s.branch, s.oxford);
+      const first = await s.mark(await s.lesson(s.oxford, '2026-10-06'), student.id, 1);
+      await s.mark(await s.lesson(s.oxford, '2026-10-07'), student.id, 1);
+      const refused = await leave(s.branch, student.id, '2026-10-05', {
+        journalEntries: {
+          reason: 'Checked',
+          seen: [
+            { id: first, version: 1 },
+            { id: first, version: 1 },
+          ],
+        },
+      });
+      expect(refused.status, JSON.stringify(refused.body)).toBe(400);
     });
 
     it('gives the voided values back on the undo of the leaving', async () => {
@@ -928,7 +1046,7 @@ describe('transfers and leaving inside the journal', () => {
             from: '2026-10-10',
           }),
       );
-      refusedWith(answer, 409, 'journal_entries');
+      refusedWith(answer, 409, 'move_entries_today');
       expect(entriesOf(answer).map((one) => one.voidable)).toEqual([false]);
     });
 
@@ -1206,8 +1324,9 @@ describe('transfers and leaving inside the journal', () => {
         change: merge,
       });
       expect(answer.status, JSON.stringify(answer.body)).toBe(200);
-      // The merged record is gone with its empty cell: the waiting save finds no member.
-      expect(saved).toBeInstanceOf(Error);
+      // The merged record is gone with its empty cell: the waiting save finds the cell it
+      // saw no more and is refused as stale.
+      expect((saved as { code?: string }).code).toBe('cell_stale');
     });
   });
 });

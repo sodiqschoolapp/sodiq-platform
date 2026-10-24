@@ -38,7 +38,10 @@ export const journalEntriesChoiceSchema = z.strictObject({
   seen: z
     .array(z.strictObject({ id: z.uuid(), version: z.int().min(1) }))
     .min(1)
-    .max(JOURNAL_ENTRIES_MAX),
+    .max(JOURNAL_ENTRIES_MAX)
+    .refine((seen) => new Set(seen.map((one) => one.id.toLowerCase())).size === seen.length, {
+      message: 'Each entry once.',
+    }),
 });
 
 export type JournalEntriesChoice = z.infer<typeof journalEntriesChoiceSchema>;

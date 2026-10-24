@@ -706,7 +706,9 @@ export const en = {
     exemption_offer_decided: 'This offer was already confirmed or dropped.',
     exemption_batch_empty: 'No exemption of this batch is left to change.',
     journal_entries:
-      'The journals hold entries of the student on or after this date. Move the date past them, or void them with a reason.',
+      'The journals hold entries of the student that this change would leave behind. Check the list: void them with a reason, or change the date where the form has one.',
+    move_entries_today:
+      'The journals this move leaves hold entries of the student today. Date the move tomorrow.',
     move_has_entries:
       'The new journals already hold entries of the student since the move, so it cannot be undone. Make a transfer back instead.',
     student_merge_journal_overlap:
@@ -2146,8 +2148,8 @@ export const en = {
       uidLabel: 'UID of {{name}}',
       reason: 'Reason',
       journalEntries: {
-        title_one: 'The journals hold {{count}} entry on or after this date',
-        title_other: 'The journals hold {{count}} entries on or after this date',
+        title_one: 'The journals hold {{count}} entry that this change leaves behind',
+        title_other: 'The journals hold {{count}} entries that this change leaves behind',
         line: '{{date}} · {{unit}} · {{subject}}: {{what}}',
         mark0: 'absent',
         mark1: 'present',

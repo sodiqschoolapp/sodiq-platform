@@ -396,7 +396,7 @@ function AcceptGroupsForm({
   const { t } = useTranslation();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
-  const { withEntries, dialog } = useJournalEntries();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: false });
   const label = t('people.students.branchMoves.acceptTitle', { name: listName(move) });
   const form = useRecordForm<string, BranchMoveAccept>({
     schema: ACCEPT_SCHEMA,

@@ -366,7 +366,7 @@ export function MergeForm({
   const { t } = useTranslation();
   const { branchId } = useView();
   const confirm = useConfirm();
-  const { withEntries, dialog } = useJournalEntries();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: false });
   const [asked, setAsked] = useState('');
   const preview = useQuery(previewQuery(branchId, student.id, asked));
   const form = useRecordForm<MergeField, StudentMerge>({

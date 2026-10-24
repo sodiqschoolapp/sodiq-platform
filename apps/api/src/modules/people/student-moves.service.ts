@@ -178,6 +178,8 @@ export class StudentMoves {
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
           }
+          // Task 8.6: the entries and rows are locked before the cancel writes any row.
+          const follow = await followJournal(transaction, studentId, input.from);
           const cancelled = await this.takeBackClass(
             transaction,
             access,
@@ -188,7 +190,6 @@ export class StudentMoves {
             requestId,
           );
           const again = await this.lockStudent(transaction, studentId, null);
-          const follow = await followJournal(transaction, studentId, input.from);
           const moved = await this.moveClass(
             transaction,
             access,
@@ -289,8 +290,9 @@ export class StudentMoves {
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
           }
-          const cancelled = await this.takeBackGroup(transaction, student, move, 'cancel', null);
+          // Task 8.6: the entries and rows are locked before the cancel writes any row.
           const follow = await followJournal(transaction, studentId, input.from);
+          const cancelled = await this.takeBackGroup(transaction, student, move, 'cancel', null);
           const rows = await groupMembershipsOf(transaction, studentId);
           const row = rows.find(
             (one) =>

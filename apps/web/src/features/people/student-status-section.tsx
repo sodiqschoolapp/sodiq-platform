@@ -301,7 +301,7 @@ export function LeavingForm({ student, label, onChanged, onStale, onCancel }: Ch
   const { t } = useTranslation();
   const confirm = useConfirm();
   // Task 8.6: a "present" mark or a real score after the last day is checked and voided first.
-  const { withEntries, dialog } = useJournalEntries();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: true });
   const form = useRecordForm<'lastDay' | 'reason', StudentLeaving>({
     schema: LEAVING_SCHEMA,
     initial: { lastDay: '', reason: '' },

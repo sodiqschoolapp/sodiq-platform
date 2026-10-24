@@ -148,7 +148,7 @@ export function ClassMoveForm({
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null });
   const withLanguage = useLanguageConfirm(label);
   // Task 8.6: the entries of the journals left on or after the date.
-  const { withEntries, dialog } = useJournalEntries();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: true });
   const options = (classes.data?.classes ?? [])
     .filter(
       (one) =>
@@ -274,7 +274,7 @@ export function GroupMoveForm({
   const { branchId } = useView();
   const groups = useQuery({ ...groupsQuery(branchId), enabled: branchId !== null });
   const own = student.groups.filter((one) => student.groupMoveSubjects.includes(one.subjectId));
-  const { withEntries, dialog } = useJournalEntries();
+  const { withEntries, dialog } = useJournalEntries({ movesDate: true });
   const form = useRecordForm<GroupMoveField, GroupTransfer | GroupTransferChange>({
     schema: move === null ? GROUP_MOVE_SCHEMA : GROUP_CHANGE_SCHEMA,
     initial: {

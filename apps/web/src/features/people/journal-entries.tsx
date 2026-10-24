@@ -82,7 +82,10 @@ export function entryText(t: TFunction, entry: JournalEntryDetail): string {
  * choice; on a voidable list the dialog asks, and the send goes again with
  * the entries seen and the reason. Cancelling the dialog cancels the save.
  */
-export function useJournalEntries(): {
+export function useJournalEntries(options: {
+  /** The form has a date the person can move past the entries (a move, a leaving). */
+  readonly movesDate: boolean;
+}): {
   withEntries: <T>(send: (choice: JournalEntriesChoice | undefined) => Promise<T>) => Promise<T>;
   dialog: ReactNode;
 } {
@@ -118,6 +121,7 @@ export function useJournalEntries(): {
     asked === null ? null : (
       <JournalEntriesDialog
         entries={asked.entries}
+        movesDate={options.movesDate}
         onVoid={(reason) => {
           asked.answer(reason);
         }}
@@ -137,10 +141,12 @@ const REASON_SCHEMA = asFormSchema<{ reason: string }>(journalVoidReasonSchema, 
 /** The list of entries, the first date past them, and the reason of their void. */
 function JournalEntriesDialog({
   entries,
+  movesDate,
   onVoid,
   onClose,
 }: {
   entries: readonly MetEntry[];
+  movesDate: boolean;
   onVoid: (reason: string) => void;
   onClose: () => void;
 }) {
@@ -202,7 +208,7 @@ function JournalEntriesDialog({
               </li>
             ))}
           </ul>
-          {last !== '' && (
+          {movesDate && last !== '' && (
             <p className="text-sm">
               {t('people.students.journalEntries.moveDate', {
                 date: schoolDateText(nextDay(last), i18n.language),

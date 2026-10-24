@@ -76,6 +76,7 @@ import {
   followJournal,
   giveBack,
   journalEntriesRefusal,
+  lockStudentEntries,
   refuseForeignSeen,
   settle,
   voidedByLeaving,
@@ -817,6 +818,9 @@ export class StudentStatuses {
         )?.validFrom;
         const follow =
           journalFrom === undefined ? null : await followJournal(transaction, id, journalFrom);
+        // A cancel or an undo of a leaving gives values back: its cells first, then
+        // the rows, before any write (`.claude/rules/journal.md`).
+        if (follow === null) await lockStudentEntries(transaction, [id]);
         const written = await this.apply(transaction, branchId, id, outcome);
         const classes = await this.followLeaving(
           transaction,
