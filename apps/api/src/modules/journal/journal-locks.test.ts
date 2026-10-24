@@ -117,7 +117,7 @@ describe('the edit period through the routes', () => {
    * 26 October at 08:00, owned by its teacher; the Head Teacher, the Senior Head Teacher and
    * the Academic Vice Principal of the subject, and a Head Teacher of another subject.
    */
-  async function scene(options: { rating?: boolean } = {}) {
+  async function scene(options: { rating?: boolean; subject?: string; senior?: boolean } = {}) {
     const owner = await account();
     const spare = await account();
     const head = await account();
@@ -127,6 +127,7 @@ describe('the edit period through the routes', () => {
     const s = await publishedScene(t, load, {
       graded: true,
       accounts: { teacher: owner.account.id, spare: spare.account.id },
+      ...(options.subject === undefined ? {} : { subject: options.subject }),
     });
     await setEditDays(t.database.migrator, s.branch, 7);
     if (options.rating === true) {
@@ -153,7 +154,10 @@ describe('the edit period through the routes', () => {
     for (const browser of [owner, spare])
       await give(browser, { role: 'teacher', branchId: s.branch });
     await give(head, { role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] });
-    await give(senior, { role: 'senior_head_teacher', subjectIds: [s.subject] });
+    // A subject has one Senior Head Teacher in the school: a second scene of it gives none.
+    if (options.senior !== false) {
+      await give(senior, { role: 'senior_head_teacher', subjectIds: [s.subject] });
+    }
     await give(vice, { role: 'academic_vice_principal', branchId: s.branch });
     await give(otherHead, {
       role: 'head_teacher',
@@ -672,6 +676,15 @@ describe('the edit period through the routes', () => {
         async (calls) => {
           ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }));
           ok(await save(calls, x.second, x.ahmedov, 2));
+          // The note at 23:59 of the last day is taken (code review 1, finding 4).
+          ok(
+            await calls.put('/api/journal/comments', {
+              on: { target: 'note', lessonId: x.second, studentId: x.ahmedov },
+              body: 'Answered well',
+              visibility: 'staff',
+              version: null,
+            }),
+          );
         },
         LAST_MINUTE,
       );
@@ -688,7 +701,7 @@ describe('the edit period through the routes', () => {
             on: { target: 'note', lessonId: x.second, studentId: x.ahmedov },
             body: 'Helped a classmate',
             visibility: 'staff',
-            version: null,
+            version: 1,
           });
           expect(codeOf(note)).toBe('journal_locked');
           const undo = await calls.post(`/api/journal/lessons/${x.second}/undo`, {
@@ -1433,6 +1446,275 @@ describe('the edit period through the routes', () => {
         t.clock.set(START);
         expect(codeOf(answer)).toBe('journal_unlock_decided');
       }
+    });
+  });
+
+  // Code review 1, finding 4: the planned tests left out of the first round.
+  describe('copy attendance, a teacher replaced, a substitute, a second branch and a repeated correction', () => {
+    it('takes copy attendance at 23:59 of the last day, and refuses it at 00:00', async () => {
+      const owner = await account();
+      const s = await publishedScene(t, load, {
+        graded: true,
+        double: true,
+        accounts: { teacher: owner.account.id },
+      });
+      await setEditDays(t.database.migrator, s.branch, 7);
+      await give(owner, { role: 'teacher', branchId: s.branch });
+      const ofDay = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'block_id'])
+        .where('class_id', '=', s.classId)
+        .where('lesson_date', '=', '2026-10-19')
+        .orderBy('starts_at')
+        .execute();
+      const [first, second] = ofDay;
+      if (first === undefined || second === undefined) throw new Error('Two lessons on the 19th.');
+      await t.database.migrator
+        .updateTable('lesson_blocks')
+        .set({ double_pair_id: randomUUID() })
+        .where('id', 'in', [first.block_id, second.block_id])
+        .execute();
+      const ahmedov = await student(s.branch, s.classId, 'Ahmedov');
+      const boboyev = await student(s.branch, s.classId, 'Boboyev');
+      await as(
+        owner,
+        s.branch,
+        async (calls) => {
+          ok(
+            await calls.post(`/api/journal/lessons/${first.id}/attendance`, {
+              saves: [
+                { studentId: ahmedov, mark: 2, version: null },
+                { studentId: boboyev, mark: 0, version: null },
+              ],
+            }),
+          );
+          ok(
+            await calls.post(`/api/journal/lessons/${second.id}/attendance`, {
+              saves: [{ studentId: boboyev, mark: 1, version: null }],
+            }),
+          );
+          ok(await calls.post(`/api/journal/lessons/${second.id}/copy-attendance`));
+        },
+        LAST_MINUTE,
+      );
+      expect(await cellOf(second.id, ahmedov)).toMatchObject({ mark: 2, changed_how: 'entry' });
+      // A cell cleared before the lock is left for the copy to fill at 00:00, and is not filled.
+      await as(
+        owner,
+        s.branch,
+        async (calls) => {
+          ok(
+            await calls.post(`/api/journal/lessons/${second.id}/attendance`, {
+              saves: [{ studentId: ahmedov, mark: null, version: 1 }],
+            }),
+          );
+        },
+        LAST_MINUTE,
+      );
+      await as(
+        owner,
+        s.branch,
+        async (calls) => {
+          expect(
+            codeOf(await calls.post(`/api/journal/lessons/${second.id}/copy-attendance`)),
+          ).toBe('journal_locked');
+        },
+        LOCKED,
+      );
+      expect(await cellOf(second.id, ahmedov)).toMatchObject({ mark: null });
+    });
+
+    it('lets the new teacher enter a lesson of the earlier one until it locks, and the earlier teacher keep it until then (edge/journal: "A teacher is replaced from Monday")', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      const acting = new ActingKit(t.database.migrator);
+      const branch = await t.newBranch();
+      await setEditDays(t.database.migrator, branch, 7);
+      const { year } = await cells.lessons.year(branch);
+      const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+      const before = await account();
+      const after = await account();
+      const earlier = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: before.account.id,
+      });
+      const later = await load.teacher(branch, {
+        subjects: [{ subject: cells.subject, grades: [7] }],
+        accountId: after.account.id,
+      });
+      for (const browser of [before, after])
+        await give(browser, { role: 'teacher', branchId: branch });
+      const unit = { branch, year, classId, subject: cells.subject };
+      // The earlier teacher's lessons of the 12th (locked from the 20th) and of the 19th
+      // (locked from the 27th); the new teacher owns the journal from Tuesday the 20th.
+      const older = await cells.lesson(branch, year, classId, '2026-10-12');
+      const last = await cells.lesson(branch, year, classId, '2026-10-19');
+      await acting.published(unit, '2026-09-07', earlier.staffId);
+      await acting.published(unit, '2026-10-20', later.staffId);
+      await acting.journal(branch, year, classId, cells.subject);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: earlier.staffId })
+        .where('id', 'in', [older, last])
+        .execute();
+      const ahmedov = await student(branch, classId, 'Ahmedov');
+      const boboyev = await student(branch, classId, 'Boboyev');
+      await as(
+        after,
+        branch,
+        async (calls) => {
+          ok(await save(calls, last, ahmedov, 2));
+          expect(codeOf(await save(calls, older, ahmedov, 2))).toBe('journal_locked');
+        },
+        LAST_MINUTE,
+      );
+      await as(
+        before,
+        branch,
+        async (calls) => {
+          ok(await save(calls, last, boboyev, 1));
+          expect(codeOf(await save(calls, older, boboyev, 1))).toBe('journal_locked');
+        },
+        LAST_MINUTE,
+      );
+      for (const browser of [before, after]) {
+        await as(
+          browser,
+          branch,
+          async (calls) => {
+            const refused = await calls.post(`/api/journal/lessons/${last}/attendance`, {
+              saves: [{ studentId: ahmedov, mark: 0, version: 1 }],
+            });
+            expect(codeOf(refused)).toBe('journal_locked');
+          },
+          LOCKED,
+        );
+      }
+      expect(await cellOf(last, ahmedov)).toMatchObject({ mark: 2, changed_how: 'entry' });
+    });
+
+    it("follows the substitute's own window: the lock of the lesson, an unlock of their own, never the owner's", async () => {
+      const x = await scene();
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: x.spareTeacher.staffId })
+        .where('id', '=', x.second)
+        .execute();
+      await as(
+        x.spare,
+        x.branch,
+        async (calls) => {
+          ok(await save(calls, x.second, x.ahmedov, 2));
+        },
+        LAST_MINUTE,
+      );
+      // The owner's unlock of the lesson opens it for the owner only.
+      const owners = await requested(x);
+      ok(await decide(x, x.head, owners.id, { decision: 'approve', days: 2, version: 1 }));
+      await as(x.spare, x.branch, async (calls) => {
+        const refused = await calls.post(`/api/journal/lessons/${x.second}/attendance`, {
+          saves: [{ studentId: x.ahmedov, mark: 1, version: 1 }],
+        });
+        expect(codeOf(refused)).toBe('journal_locked');
+      });
+      const own = journalUnlockSchema.parse(
+        ok(
+          await as(x.spare, x.branch, (calls) =>
+            calls.post(`/api/journal/lessons/${x.second}/unlocks`, {
+              reason: 'Finishing the numbers',
+            }),
+          ),
+          201,
+        ).body,
+      );
+      ok(await decide(x, x.head, own.id, { decision: 'approve', days: 1, version: 1 }));
+      await as(x.spare, x.branch, async (calls) => {
+        ok(
+          await calls.post(`/api/journal/lessons/${x.second}/attendance`, {
+            saves: [{ studentId: x.ahmedov, mark: 1, version: 1 }],
+          }),
+        );
+      });
+      expect(await cellOf(x.second, x.ahmedov)).toMatchObject({
+        mark: 1,
+        changed_how: 'late_entry',
+      });
+    });
+
+    it('lets a Senior Head Teacher of the subject decide a request in a second branch', async () => {
+      const x = await scene();
+      const y = await scene({ subject: x.subject, senior: false });
+      const sent = journalUnlockSchema.parse(
+        ok(
+          await as(y.owner, y.branch, (calls) =>
+            calls.post(`/api/journal/lessons/${y.second}/unlocks`, { reason: 'I was ill' }),
+          ),
+          201,
+        ).body,
+      );
+      await as(x.senior, y.branch, async (calls) => {
+        const list = journalUnlocksSchema.parse(
+          ok(await calls.get('/api/journal/unlocks?view=deciding')).body,
+        );
+        expect(list.requests.map((one) => one.id)).toContain(sent.id);
+      });
+      const decided = journalUnlockSchema.parse(
+        ok(await decide(y, x.senior, sent.id, { decision: 'approve', days: 1, version: 1 })).body,
+      );
+      const senior = await t.database.migrator
+        .selectFrom('accounts')
+        .select('login')
+        .where('id', '=', x.senior.account.id)
+        .executeTakeFirstOrThrow();
+      expect(decided).toMatchObject({ status: 'approved', decidedBy: senior.login });
+      await as(y.owner, y.branch, async (calls) => {
+        ok(await save(calls, y.second, y.ahmedov, 2));
+      });
+      expect(await cellOf(y.second, y.ahmedov)).toMatchObject({ changed_how: 'late_entry' });
+    });
+
+    it('answers a repeated correction from its key once, and refuses the key for other input, another account and a role that may not correct', async () => {
+      const x = await scene();
+      const key = randomUUID();
+      const body = {
+        saves: [{ studentId: x.ahmedov, mark: 0, version: null }],
+        correction: { reason: 'The register shows an absence' },
+      };
+      const send = (browser: Browser, sent: object) =>
+        as(browser, x.branch, () =>
+          t
+            .post(`/api/journal/lessons/${x.second}/attendance`, x.branch, sent, browser.cookie)
+            .set(REQUEST_KEY_HEADER, key),
+        );
+      ok(await send(x.vice, body));
+      const lines = async () =>
+        t.database.migrator
+          .selectFrom('journal_cell_history')
+          .select(['changed_how', 'reason'])
+          .where('lesson_id', '=', x.second)
+          .where('student_id', '=', x.ahmedov)
+          .execute();
+      expect(await lines()).toEqual([
+        { changed_how: 'correction', reason: 'The register shows an absence' },
+      ]);
+      const notices = (await noticesOf(x.owner.account.id, 'journal.correction')).length;
+      expect(notices).toBe(1);
+      const audit = await t.auditCount();
+      // The repeat answers from the key: no second line, notice or audit entry.
+      ok(await send(x.vice, body));
+      expect(await lines()).toHaveLength(1);
+      expect(await noticesOf(x.owner.account.id, 'journal.correction')).toHaveLength(notices);
+      expect(await t.auditCount()).toBe(audit);
+      expect(
+        codeOf(await send(x.vice, { ...body, correction: { reason: 'Another reason' } })),
+      ).toBe('request_key_reused');
+      // Another account that may correct: the key is not theirs.
+      const superAdmin = await account();
+      await give(superAdmin, { role: 'super_admin' });
+      expect(codeOf(await send(superAdmin, body))).toBe('request_key_reused');
+      // A teacher's repeat of the key with the correction is refused for the role first.
+      expect(codeOf(await send(x.owner, body))).toBe('journal_correction_role');
+      expect(await lines()).toHaveLength(1);
+      expect(await t.auditCount()).toBe(audit);
     });
   });
 });
