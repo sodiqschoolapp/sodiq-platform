@@ -21,6 +21,7 @@ const QUARTER = { id: uid(30), number: 1, startDate: '2026-09-01', endDate: '202
 
 const cell = (mark: number | null, version: number | null = mark === null ? null : 1) => ({
   closed: false,
+  open: false,
   exempt: null,
   mark,
   version,
@@ -57,6 +58,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter,
@@ -92,6 +94,7 @@ const GRID: JournalGrid = {
   lessons: [lesson(LESSON, '2026-10-27', true), lesson(OLD, '2026-10-20', false)],
   students: [student(1, 'Zokirov'), student(2, 'Abdullayev', { cells: [cell(2), cell(0)] })],
   absences: [{ studentId: uid(101), date: '2026-10-20', category: 'illness' }],
+  reminders: [],
   lastTotal: null,
   bottom: null,
   legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },

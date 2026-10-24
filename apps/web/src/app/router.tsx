@@ -77,6 +77,8 @@ import {
   studentAbsencesSearch,
 } from '@/features/journal/student-absences-page';
 import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unlock-requests-page';
+import { DisciplinePage, disciplineSearch } from '@/features/journal/discipline-page';
+import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
 import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
@@ -390,6 +392,21 @@ const unlockRequestsRoute = createRoute({
   component: guarded('journal_unlocks', UnlockRequestsPage),
 });
 
+/** The counts per teacher and the orphan lessons (task 8.7). */
+const disciplineRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/discipline',
+  validateSearch: disciplineSearch,
+  component: guarded('journal_discipline', DisciplinePage),
+});
+
+const orphansRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/orphans',
+  validateSearch: orphansSearch,
+  component: guarded('journal_orphans', OrphansPage),
+});
+
 /** Exemptions (task 8.5). */
 const exemptionsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -671,6 +688,8 @@ const routeTree = rootRoute.addChildren([
     journalsRoute,
     studentAbsencesRoute,
     unlockRequestsRoute,
+    disciplineRoute,
+    orphansRoute,
     exemptionsRoute,
     journalRoute,
     plansRoute,

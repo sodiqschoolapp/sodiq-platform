@@ -28,6 +28,7 @@ const LOCKED: EditLock = {
 
 const cell = (mark: number | null, marker: JournalStudent['cells'][number]['marker'] = null) => ({
   closed: false,
+  open: false,
   exempt: null,
   mark,
   version: mark === null ? null : 1,
@@ -63,6 +64,7 @@ const lesson = (id: string, date: string, canEnter: boolean, lock: EditLock) => 
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter,
@@ -97,6 +99,7 @@ const gridOf = (old: EditLock, students = [student(1, 'Zokirov')]): JournalGrid 
   lessons: [lesson(OPEN, '2026-10-26', true, OPEN_LOCK), lesson(OLD, '2026-10-19', false, old)],
   students,
   absences: [],
+  reminders: [],
   lastTotal: null,
   bottom: null,
   legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },

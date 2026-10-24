@@ -1,9 +1,8 @@
 import { lessonStateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
-import { datedQuarters } from '../plans/plan-read.js';
 import { awayLessons } from '../timetable/away-read.js';
-import { journalLessons, type GridLessonRow, type JournalRow } from './journal-grid.query.js';
+import type { GridLessonRow, JournalRow } from './journal-grid.query.js';
 import {
   lessonColumns,
   type ColumnLesson,
@@ -24,22 +23,6 @@ export interface JournalColumns {
   readonly lessons: readonly GridLessonRow[];
   readonly columns: ReadonlyMap<string, LessonColumns>;
   readonly stored: readonly StoredWork[];
-}
-
-/** The year of a journal with its dates. */
-async function yearOf(
-  transaction: Transaction,
-  yearId: string,
-): Promise<{ startDate: string; endDate: string }> {
-  const year = await transaction
-    .selectFrom('academic_years')
-    .select([
-      sql<string>`start_date::text`.as('start_date'),
-      sql<string>`end_date::text`.as('end_date'),
-    ])
-    .where('id', '=', yearId)
-    .executeTakeFirstOrThrow();
-  return { startDate: year.start_date, endDate: year.end_date };
 }
 
 /** The stored works of lessons, with whether a cell of each holds a number. */
@@ -95,20 +78,37 @@ export async function storedWorks(
   }));
 }
 
+/** The item of a lesson's plan row: its topic and works (task 8.7: "lessons with no topic"). */
+export interface LessonItem {
+  readonly topic: string;
+  readonly works: readonly PlannedWork[];
+}
+
 /**
- * The works of the plan item of each lesson, `null` for a lesson whose row
- * has no item ("No plan"; `edge/journal`: "the plan is missing or that row is
- * still empty"). A cancelled lesson is no row.
+ * The item of the plan row of each lesson of journals, `null` for a lesson
+ * whose row has no item ("No plan"; `edge/journal`: "the plan is missing or
+ * that row is still empty"). A cancelled lesson is no row. One statement each
+ * for every journal named (task 8.7).
  */
-export async function plannedWorks(
+export async function planItemsOf(
   transaction: Transaction,
-  journal: JournalRow,
-  lessons: readonly GridLessonRow[],
-): Promise<Map<string, readonly PlannedWork[] | null>> {
-  const found = new Map<string, readonly PlannedWork[] | null>();
-  const quarters = await datedQuarters(transaction, journal.academicYearId);
+  journals: readonly JournalRow[],
+  lessonsOf: ReadonlyMap<string, readonly GridLessonRow[]>,
+): Promise<Map<string, LessonItem | null>> {
+  const found = new Map<string, LessonItem | null>();
+  const quartersOf = new Map(
+    journals.map((journal) => [
+      journal.id,
+      journal.quarters.flatMap((one) =>
+        one.startDate === null || one.endDate === null
+          ? []
+          : [{ id: one.id, startDate: one.startDate, endDate: one.endDate }],
+      ),
+    ]),
+  );
+  const quarterIds = [...new Set([...quartersOf.values()].flat().map((one) => one.id))];
   const plans =
-    quarters.length === 0
+    quarterIds.length === 0 || journals.length === 0
       ? []
       : await transaction
           .selectFrom('lesson_plan_journals')
@@ -118,73 +118,248 @@ export async function plannedWorks(
               .onRef('lesson_plan_places.journal_id', '=', 'lesson_plan_journals.journal_id'),
           )
           .select([
+            'lesson_plan_journals.journal_id',
             'lesson_plan_journals.quarter_id',
             'lesson_plan_places.position',
             'lesson_plan_places.item_id',
           ])
-          .where('lesson_plan_journals.journal_id', '=', journal.id)
           .where(
-            'lesson_plan_journals.quarter_id',
+            'lesson_plan_journals.journal_id',
             'in',
-            quarters.map((one) => one.id),
+            journals.map((one) => one.id),
           )
+          .where('lesson_plan_journals.quarter_id', 'in', quarterIds)
           .execute();
   const itemOf = new Map<string, string>();
   const lessonItem = new Map<string, string>();
-  for (const plan of plans) itemOf.set(`${plan.quarter_id}/${String(plan.position)}`, plan.item_id);
-  for (const quarter of quarters) {
-    const rows = lessons.filter(
-      (lesson) =>
-        lesson.cancelCause === null &&
-        quarter.startDate <= lesson.date &&
-        lesson.date <= quarter.endDate,
-    );
-    rows.forEach((lesson, index) => {
-      const item = itemOf.get(`${quarter.id}/${String(index + 1)}`);
-      if (item === undefined) found.set(lesson.id, null);
-      else lessonItem.set(lesson.id, item);
-    });
+  for (const plan of plans) {
+    itemOf.set(`${plan.journal_id}/${plan.quarter_id}/${String(plan.position)}`, plan.item_id);
+  }
+  for (const journal of journals) {
+    const lessons = lessonsOf.get(journal.id) ?? [];
+    for (const quarter of quartersOf.get(journal.id) ?? []) {
+      const rows = lessons.filter(
+        (lesson) =>
+          lesson.cancelCause === null &&
+          quarter.startDate <= lesson.date &&
+          lesson.date <= quarter.endDate,
+      );
+      rows.forEach((lesson, index) => {
+        const item = itemOf.get(`${journal.id}/${quarter.id}/${String(index + 1)}`);
+        if (item === undefined) found.set(lesson.id, null);
+        else lessonItem.set(lesson.id, item);
+      });
+    }
   }
   const itemIds = [...new Set(lessonItem.values())];
-  const works =
+  const [items, works] =
     itemIds.length === 0
-      ? []
-      : await transaction
-          .selectFrom('lesson_plan_works')
-          .select(['id', 'item_id', 'kind', 'title'])
-          .where('item_id', 'in', itemIds)
-          .orderBy('kind')
-          .orderBy('position')
-          .orderBy('id')
-          .execute();
+      ? [[], []]
+      : await Promise.all([
+          transaction
+            .selectFrom('lesson_plan_items')
+            .select(['id', 'topic'])
+            .where('id', 'in', itemIds)
+            .execute(),
+          transaction
+            .selectFrom('lesson_plan_works')
+            .select(['id', 'item_id', 'kind', 'title'])
+            .where('item_id', 'in', itemIds)
+            .orderBy('kind')
+            .orderBy('position')
+            .orderBy('id')
+            .execute(),
+        ]);
+  const topicOf = new Map(items.map((item) => [item.id, item.topic]));
+  const worksOf = new Map<string, PlannedWork[]>();
+  for (const work of works) {
+    const list = worksOf.get(work.item_id) ?? [];
+    list.push({
+      id: work.id,
+      kind: work.kind === 'homework' ? 'homework' : 'classwork',
+      title: work.title,
+    });
+    worksOf.set(work.item_id, list);
+  }
   for (const [lessonId, itemId] of lessonItem) {
-    found.set(
-      lessonId,
-      works
-        .filter((work) => work.item_id === itemId)
-        .map((work) => ({
-          id: work.id,
-          kind: work.kind === 'homework' ? 'homework' : 'classwork',
-          title: work.title,
-        })),
-    );
+    found.set(lessonId, { topic: topicOf.get(itemId) ?? '', works: worksOf.get(itemId) ?? [] });
   }
   return found;
 }
 
-/** Whether the journal has no run day left after its year's runs end early (7.1b decision 9). */
-async function journalClosedEarly(
+/** The works of the plan item of each lesson of one journal (`planItemsOf`). */
+export async function plannedWorks(
   transaction: Transaction,
-  journalId: string,
-  yearEnd: string,
-): Promise<boolean> {
+  journal: JournalRow,
+  lessons: readonly GridLessonRow[],
+): Promise<Map<string, readonly PlannedWork[] | null>> {
+  const items = await planItemsOf(transaction, [journal], new Map([[journal.id, lessons]]));
+  return new Map([...items].map(([lessonId, item]) => [lessonId, item?.works ?? null]));
+}
+
+/** The journals named whose runs end early in their year: no run day left (7.1b decision 9). */
+async function journalsClosedEarly(
+  transaction: Transaction,
+  journalIds: readonly string[],
+): Promise<Set<string>> {
+  if (journalIds.length === 0) return new Set();
   const found = await transaction
     .selectFrom('journals')
-    .select('id')
-    .where('id', '=', journalId)
-    .where(sql<boolean>`isempty(runs) or upper(runs) <= ${yearEnd}::date`)
-    .executeTakeFirst();
-  return found !== undefined;
+    .innerJoin('academic_years', 'academic_years.id', 'journals.academic_year_id')
+    .select('journals.id')
+    .where('journals.id', 'in', [...journalIds])
+    .where(sql<boolean>`isempty(journals.runs) or upper(journals.runs) <= academic_years.end_date`)
+    .execute();
+  return new Set(found.map((row) => row.id));
+}
+
+/** The dated lessons of each journal in its year, in date and time order (one statement). */
+export async function yearLessonsOf(
+  transaction: Transaction,
+  journals: readonly JournalRow[],
+  timeZone: string,
+): Promise<Map<string, GridLessonRow[]>> {
+  const found = new Map<string, GridLessonRow[]>(journals.map((one) => [one.id, []]));
+  if (journals.length === 0) return found;
+  const rows = await transaction
+    .selectFrom('journals')
+    .innerJoin('academic_years', 'academic_years.id', 'journals.academic_year_id')
+    .innerJoin('lessons', (join) =>
+      join
+        .onRef('lessons.subject_id', '=', 'journals.subject_id')
+        .on((eb) =>
+          eb.or([
+            eb('lessons.class_id', '=', eb.ref('journals.class_id')),
+            eb('lessons.group_id', '=', eb.ref('journals.group_id')),
+          ]),
+        )
+        .onRef('lessons.lesson_date', '>=', 'academic_years.start_date')
+        .onRef('lessons.lesson_date', '<=', 'academic_years.end_date'),
+    )
+    .leftJoin('staff', 'staff.id', 'lessons.teacher_id')
+    .select([
+      'journals.id as journal_id',
+      'lessons.id',
+      sql<string>`lessons.lesson_date::text`.as('lesson_date'),
+      'lessons.starts_at',
+      sql<number>`(extract(epoch from (lessons.starts_at at time zone ${timeZone})::time) / 60)::int`.as(
+        'start_minutes',
+      ),
+      sql<number>`(extract(epoch from (lessons.ends_at at time zone ${timeZone})::time) / 60)::int`.as(
+        'end_minutes',
+      ),
+      'lessons.teacher_id',
+      'staff.kind as teacher_kind',
+      'lessons.cancel_cause',
+      'lessons.cancel_reason',
+    ])
+    .where(
+      'journals.id',
+      'in',
+      journals.map((one) => one.id),
+    )
+    .orderBy('lessons.starts_at')
+    .orderBy('lessons.id')
+    .execute();
+  for (const row of rows) {
+    found.get(row.journal_id)?.push({
+      id: row.id,
+      date: row.lesson_date,
+      startsAt: row.starts_at,
+      start: row.start_minutes,
+      // A lesson ending at midnight reads 0: the end of the day.
+      end: row.end_minutes === 0 ? 24 * 60 : row.end_minutes,
+      teacherId: row.teacher_id,
+      teacherKind:
+        row.teacher_kind === null ? null : row.teacher_kind === 'vacancy' ? 'vacancy' : 'person',
+      cancelCause: row.cancel_cause,
+      cancelReason: row.cancel_reason,
+    });
+  }
+  return found;
+}
+
+/** The columns of every lesson of journals in their years at `now`, with each lesson's plan item. */
+export interface JournalsColumns {
+  readonly journals: ReadonlyMap<string, JournalColumns>;
+  readonly items: ReadonlyMap<string, LessonItem | null>;
+  /** Each lesson's `edge/00-definitions` Held lesson at `now`. */
+  readonly held: ReadonlySet<string>;
+}
+
+/**
+ * The columns of the lessons of many journals of one branch (task 8.7: the
+ * status of a branch's lessons), with the reads of `journalColumns` made once
+ * for all of them; `lessonColumns` decides each journal as for one.
+ */
+export async function journalsColumns(
+  transaction: Transaction,
+  journals: readonly JournalRow[],
+  timeZone: string,
+  now: Date,
+): Promise<JournalsColumns> {
+  const lessonsOf = await yearLessonsOf(transaction, journals, timeZone);
+  const all = [...lessonsOf.values()].flat();
+  const [away, items, stored, closed] = await Promise.all([
+    awayLessons(
+      transaction,
+      all.map((one) => ({ id: one.id, teacherId: one.teacherId, startsAt: one.startsAt })),
+    ),
+    planItemsOf(transaction, journals, lessonsOf),
+    storedWorks(
+      transaction,
+      all.map((one) => one.id),
+    ),
+    journalsClosedEarly(
+      transaction,
+      journals.map((one) => one.id),
+    ),
+  ]);
+  const held = new Set<string>();
+  const columnLessonOf = (lesson: GridLessonRow): ColumnLesson => {
+    const isHeld =
+      lessonStateOf(
+        {
+          startsAt: lesson.startsAt,
+          cancelled: lesson.cancelCause !== null,
+          teacher: lesson.teacherKind,
+          away: away.has(lesson.id),
+        },
+        now,
+      ) === 'held';
+    if (isHeld) held.add(lesson.id);
+    return {
+      id: lesson.id,
+      startsAt: lesson.startsAt,
+      cancelled: lesson.cancelCause !== null,
+      started: lesson.startsAt.getTime() <= now.getTime(),
+      held: isHeld,
+    };
+  };
+  const found = new Map<string, JournalColumns>();
+  for (const journal of journals) {
+    const lessons = lessonsOf.get(journal.id) ?? [];
+    const ids = new Set(lessons.map((one) => one.id));
+    const own = stored.filter(
+      (work) =>
+        ids.has(work.lessonId) || (work.sourceLessonId !== null && ids.has(work.sourceLessonId)),
+    );
+    const planned = new Map<string, readonly PlannedWork[] | null>();
+    for (const lesson of lessons) {
+      if (items.has(lesson.id)) planned.set(lesson.id, items.get(lesson.id)?.works ?? null);
+    }
+    found.set(journal.id, {
+      lessons,
+      columns: lessonColumns({
+        lessons: lessons.map(columnLessonOf),
+        planned,
+        stored: own,
+        journalClosed: closed.has(journal.id),
+      }),
+      stored: own,
+    });
+  }
+  return { journals: found, items, held };
 }
 
 /** The columns of every lesson of the journal in its year, at the moment `now`. */
@@ -194,45 +369,9 @@ export async function journalColumns(
   timeZone: string,
   now: Date,
 ): Promise<JournalColumns> {
-  const year = await yearOf(transaction, journal.academicYearId);
-  const lessons = await journalLessons(
-    transaction,
-    journal,
-    timeZone,
-    year.startDate,
-    year.endDate,
+  const found = (await journalsColumns(transaction, [journal], timeZone, now)).journals.get(
+    journal.id,
   );
-  const [away, planned, stored, closed] = await Promise.all([
-    awayLessons(
-      transaction,
-      lessons.map((one) => ({ id: one.id, teacherId: one.teacherId, startsAt: one.startsAt })),
-    ),
-    plannedWorks(transaction, journal, lessons),
-    storedWorks(
-      transaction,
-      lessons.map((one) => one.id),
-    ),
-    journalClosedEarly(transaction, journal.id, year.endDate),
-  ]);
-  const columnLessons: ColumnLesson[] = lessons.map((lesson) => ({
-    id: lesson.id,
-    startsAt: lesson.startsAt,
-    cancelled: lesson.cancelCause !== null,
-    started: lesson.startsAt.getTime() <= now.getTime(),
-    held:
-      lessonStateOf(
-        {
-          startsAt: lesson.startsAt,
-          cancelled: lesson.cancelCause !== null,
-          teacher: lesson.teacherKind,
-          away: away.has(lesson.id),
-        },
-        now,
-      ) === 'held',
-  }));
-  return {
-    lessons,
-    columns: lessonColumns({ lessons: columnLessons, planned, stored, journalClosed: closed }),
-    stored,
-  };
+  if (found === undefined) throw new Error('Every journal named has its columns.');
+  return found;
 }

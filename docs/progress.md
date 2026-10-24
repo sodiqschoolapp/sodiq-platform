@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 October 2026: task 8.7 Lesson status, reminders and the discipline report
+
+- 0129: `journal_cells.not_graded` (a work cell with no number, kept in the history before and after, ended by a number or a clear), `journal_orphan_assignments` (a teacher named for 1 to 7 days on an orphan lesson; `journal_edit_judge` takes that person's write after the lock as a late entry with `orphan_assignment_id` in the histories).
+- The status of a held lesson (`lessonStatusOf`, `packages/shared/src/lesson-status.ts`) from one reader, `lessonStatuses` (`journal/lesson-status.query.ts`, the columns of many journals in one pass, `journalsColumns`), and who a lesson counts for, `lessonsCounted` (`lesson-counted.ts`): on the grid, the teaching home, the timetable views, the reminders, the counts per teacher and the orphan lessons.
+- Routes: `POST /api/journal/lessons/:lessonId/not-graded` (undone by the page's undo), `GET /api/journal/reminders` (the grid carries its own `reminders`), `GET /api/journal/discipline` (area `journal_discipline`), `GET /api/journal/orphans`, `POST .../orphans/:lessonId/assign`, `POST .../orphans/assignments/:assignmentId/withdraw` (area `journal_orphans`). An open optional or reopened cell of a locked lesson now takes its mark or number through the routes (From 8.6). Web: the status in the journal header, on the home ("3 of 5 lessons complete") and the timetable; "Not graded" in the lesson's works; the reminders panel; the Journal discipline and Orphan lessons pages; handbook page `06-journal.md`.
+- Left out, with From lines: the notice "lesson about to lock" (9.2c), the Academic Vice Principal's home (9.4b), prepared totals, export and the lessons behind each count of the report (9.3b); the closing checklist's statuses (9.2a); plan reports (8.8).
+
+The next sessions must know:
+
+- A reader of the status calls `lessonStatuses`; never decides "complete" or "waited for" on its own.
+- A reader of "who a lesson counts for" calls `lessonsCounted` (the substitute, else the owner on the date, `none` for nobody).
+- A late entry under an orphan assignment has `unlock_id` null and `orphan_assignment_id` set; the counts per teacher take only lines with the teacher's own unlock.
+
 ## 24 October 2026: task 8.6 Transfers and leaving inside the journal
 
 - 0127: `journal_voids` (every value a move, a leaving, a branch-move accept, a return or a merge voided, with its reason, to give back), `journal_optional_cells` (the held lessons a late move, accept or return opens in the new journal until 00:00 after the seventh day; the cells guard takes a person's write there as a late entry), `changed_how` `leaving` (and `transfer` on comments and rating entries), the void's reason in the history line (`app.void_reason`), `lesson_student_member`, `journal_former_member_names` (SECURITY DEFINER, names and UID), the comment trigger takes the memberships `for share`. 0128: the merge carry of cells, comments and rating entries by `student_id` (the triggers split into insert and update parts; `journal_merge_carry`), the kept record's empty cell deleted under a carried value, the forced-delete stores rewritten (`forced_deletes_merge_carry`).

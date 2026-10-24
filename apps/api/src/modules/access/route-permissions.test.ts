@@ -806,6 +806,32 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 8.7: "not graded", the reminders, the counts per teacher and the orphan lessons.
+  'POST /api/journal/lessons/:lessonId/not-graded': { branch: 'request', roles: JOURNAL_WRITERS },
+  'GET /api/journal/reminders': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/journal/discipline': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+      'head_tutor',
+    ],
+  },
+  'GET /api/journal/orphans': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/journal/orphans/:lessonId/assign': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/journal/orphans/assignments/:assignmentId/withdraw': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/journal/comments/history': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',

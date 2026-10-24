@@ -142,6 +142,7 @@ export class CellActionsService {
                 'changed_how',
                 'mark_before',
                 'score_before',
+                'not_graded_before',
               ])
               .where(
                 'cell_id',
@@ -170,7 +171,10 @@ export class CellActionsService {
             const written = await transaction
               .updateTable('journal_cells')
               .set({
-                ...(row.work_id === null ? { mark: before } : { score: before }),
+                // Task 8.7: an undo of "not graded" gives the flag back as it was.
+                ...(row.work_id === null
+                  ? { mark: before }
+                  : { score: before, not_graded: line.not_graded_before }),
                 changed_by: access.accountId,
                 changed_how: 'undo',
               })

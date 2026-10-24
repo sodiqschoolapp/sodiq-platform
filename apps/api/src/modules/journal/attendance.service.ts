@@ -210,6 +210,7 @@ export class AttendanceService {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const { lesson, write } = await enterableLesson(transaction, access, branchId, lessonId, {
         correction: input.correction,
+        students: input.saves.map((save) => save.studentId),
       });
       await refuseOtherStudents(
         transaction,

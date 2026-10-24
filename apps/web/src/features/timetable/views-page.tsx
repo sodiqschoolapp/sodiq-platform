@@ -409,7 +409,15 @@ function DayTable({ items, language }: { items: Item[]; language: Language }) {
                     : (lesson.teacher?.name ?? '')}
                 </TableCell>
                 <TableCell>{lesson.room?.name ?? ''}</TableCell>
-                <TableCell>{marks(lesson).join(' · ') || t('timetable.day.asPlanned')}</TableCell>
+                <TableCell>
+                  {marks(lesson).join(' · ') || t('timetable.day.asPlanned')}
+                  {/* Task 8.7 (`07`, Lesson status: "on the timetable"). */}
+                  {lesson.status !== null && (
+                    <span className="ml-2 font-semibold" data-status={lesson.status}>
+                      {t(`journal.lessonStatus.${lesson.status}`)}
+                    </span>
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
@@ -439,6 +447,7 @@ function useCellText(kind: ViewKind, language: Language) {
       ...(kind === 'teacher' ? [] : [lesson.teacher?.name ?? '']),
       ...(kind === 'room' ? [] : [lesson.room?.name ?? '']),
       ...marks(lesson),
+      ...(lesson.status === null ? [] : [t(`journal.lessonStatus.${lesson.status}`)]),
     ]
       .filter((one) => one !== '')
       .join(' · ');

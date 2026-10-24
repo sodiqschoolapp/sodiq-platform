@@ -510,6 +510,26 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the counts per teacher to the Head Teachers, the Head Tutor and management, and the orphan lessons to the Academic Vice Principal (task 8.7, decision 1)', () => {
+    const discipline: Record<string, readonly string[]> = {
+      super_admin: ['view'],
+      principal: ['view'],
+      academic_vice_principal: ['view'],
+      senior_head_teacher: ['view'],
+      head_teacher: ['view'],
+      head_tutor: ['view'],
+    };
+    const orphans: Record<string, readonly string[]> = {
+      super_admin: ['view', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'edit'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.journal_discipline[role], role).toEqual(discipline[role] ?? []);
+      expect(PERMISSIONS.journal_orphans[role], role).toEqual(orphans[role] ?? []);
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -538,7 +558,9 @@ describe('a frozen permission table', () => {
       'groups',
       'head_teachers',
       'journal',
+      'journal_discipline',
       'journal_extensions',
+      'journal_orphans',
       'journal_unlocks',
       'personal_data_report',
       'plan_masters',

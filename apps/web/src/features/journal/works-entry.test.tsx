@@ -41,6 +41,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter: true,
@@ -67,16 +68,27 @@ const student = (n: number, lastName: string): JournalStudent => ({
   cells: [
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: 1,
       version: 1,
       typedBy: null,
       marker: null,
-      works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
+      works: [
+        {
+          score: null,
+          percent: null,
+          version: null,
+          onAbsent: false,
+          marker: null,
+          notGraded: false,
+        },
+      ],
       score: null,
     },
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: null,
       version: null,
@@ -118,6 +130,7 @@ const GRID: JournalGrid = {
     lesson(NO_PLAN, '2026-10-26', { planItem: false }),
   ],
   students: [student(1, 'Zokirov'), student(2, 'Abdullayev')],
+  reminders: [],
   lastTotal: 30,
   absences: [],
   bottom: null,
@@ -266,7 +279,16 @@ describe('classwork and homework in the grid', () => {
           one.cells[0] as JournalStudent['cells'][number],
           {
             ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [{ score: null, percent: null, version: null, onAbsent: false, marker: null }],
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
           },
         ],
       })),
@@ -354,5 +376,107 @@ describe('classwork and homework in the grid', () => {
         (body) => (body as { saves: { numbers?: string }[] }).saves[0]?.numbers,
       ),
     ).toEqual([undefined, 'keep']);
+  });
+
+  it('sets the empty cells of present students "not graded" in one click, with the count asked and the answer told (task 8.7)', async () => {
+    const stored: JournalWork = { ...TEST, id: uid(80), total: 30, version: 2 };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        lesson(PLANNED, '2026-10-19', { works: [stored], status: 'in_progress' }),
+        lesson(NO_PLAN, '2026-10-26', { planItem: false }),
+      ],
+      students: GRID.students.map((one, index) =>
+        index === 0
+          ? {
+              ...one,
+              cells: one.cells.map((cell, at) =>
+                at === 0
+                  ? {
+                      ...cell,
+                      works: [
+                        {
+                          score: 12,
+                          percent: 40,
+                          version: 1,
+                          onAbsent: false,
+                          marker: null,
+                          notGraded: false,
+                        },
+                      ],
+                    }
+                  : cell,
+              ),
+            }
+          : one,
+      ),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [`POST /api/journal/lessons/${PLANNED}/not-graded`]: () =>
+        json({
+          filled: [{ studentId: uid(102), workId: uid(80), version: 1 }],
+          skipped: [{ studentId: uid(101), workId: uid(80) }],
+        }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    // The lesson's status in its header (07: "in the journal header").
+    await waitFor(() => {
+      expect(document.body.textContent).toContain(en.journal.lessonStatus.in_progress);
+    });
+    const buttons = await screen.findAllByRole('button', { name: en.journal.works.button });
+    fireEvent.click(buttons[0] as HTMLElement);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.notGraded.button }));
+    const question = await screen.findByRole('alertdialog');
+    expect(question.textContent).toContain('1 empty cell of a present student');
+    fireEvent.click(
+      within(question).getByRole('button', { name: en.journal.notGraded.confirmAction }),
+    );
+    await waitFor(() => {
+      expect(sent(calls, `POST /api/journal/lessons/${PLANNED}/not-graded`)).toEqual([{}]);
+    });
+    const notice = await waitFor(() => {
+      const found = document.querySelector('[data-not-graded-notice]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(notice?.textContent).toContain('1 cell set "not graded".');
+    expect(notice?.textContent).toContain('1 cell was typed meanwhile and kept.');
+  });
+
+  it('folds the journal’s reminders under their title, with the count of each kind (task 8.7, 07: "A panel on the journal")', async () => {
+    const reminder = {
+      kind: 'no_attendance' as const,
+      lesson: {
+        id: NO_PLAN,
+        journalId: JOURNAL,
+        date: '2026-10-26',
+        start: 480,
+        unit: UNIT,
+        subject: SUBJECT,
+        status: 'in_progress' as const,
+      },
+      count: 2,
+      locksAt: null,
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json({ ...GRID, reminders: [reminder] }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    const panel = await waitFor(() => {
+      const found = document.querySelector('details[data-reminders]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(panel?.querySelector('summary')?.textContent).toContain('Reminders (1)');
+    expect(panel?.querySelector('[data-reminder-kinds]')?.textContent).toBe('No attendance: 1');
+    expect(panel?.querySelector('[data-reminder="no_attendance"]')?.textContent).toContain(
+      '2 students without attendance',
+    );
   });
 });

@@ -40,7 +40,9 @@ import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
-import { markersOf, optionalCellsOf, shownMarker } from './cell-markers.js';
+import { markersOf, optionalCellsOf, reopenedCellsOf, shownMarker } from './cell-markers.js';
+import { lessonStatuses } from './lesson-status.query.js';
+import { lessonReminders, ratingReminder } from './reminders.js';
 import {
   correctorAssignment,
   editLockOf,
@@ -357,7 +359,21 @@ export class JournalGridReader {
       if (own !== null && ownerId === own) {
         reading = { kind: 'whole' };
       } else if (reading === null && own !== null) {
+        // Task 8.7 (decision 15): a lesson assigned to the reader as an orphan lesson, open now.
+        const assignedHere = new Set(
+          (
+            await transaction
+              .selectFrom('journal_orphan_assignments')
+              .select('lesson_id')
+              .where('staff_id', '=', own)
+              .where('withdrawn_at', 'is', null)
+              .where('assigned_at', '<=', now)
+              .where('open_until', '>', now)
+              .execute()
+          ).map((row) => row.lesson_id),
+        );
         ownLessons = (lesson) =>
+          assignedHere.has(lesson.id) ||
           lesson.teacherId === own ||
           (() => {
             const found = ownerOn(runs, periods, facts.out, lesson.date);
@@ -633,6 +649,7 @@ export class JournalGridReader {
       >();
       const scores = new Map<string, number | null>();
       const scoreIds = new Map<string, string>();
+      const notGraded = new Set<string>();
       for (const cell of cells) {
         if (cell.studentId !== student.id) continue;
         if (cell.workId === null) {
@@ -647,6 +664,7 @@ export class JournalGridReader {
           scores.set(cell.workId, cell.score);
           scoreVersions.set(cell.workId, cell.version);
           scoreIds.set(cell.workId, cell.id);
+          if (cell.notGraded) notGraded.add(cell.workId);
         }
       }
       const gridCells: JournalCell[] = lessons.map((lesson) => {
@@ -682,6 +700,8 @@ export class JournalGridReader {
             markers.get(attendanceCells.get(lesson.id)?.id ?? ''),
             optional.get(`${lesson.id}|${student.id}`),
           ),
+          // Set below, once the reader's edit period of each lesson is known.
+          open: false,
           works:
             shape === 'attendance'
               ? []
@@ -700,6 +720,7 @@ export class JournalGridReader {
                       markers.get(scoreIds.get(work.id) ?? ''),
                       optional.get(`${lesson.id}|${student.id}`),
                     ),
+                    notGraded: work.id !== '' && notGraded.has(work.id),
                   };
                 }),
           score,
@@ -921,8 +942,27 @@ export class JournalGridReader {
         staffId,
         today,
       );
+    // Task 8.7 (decision 15): the lessons assigned to the reader as orphan lessons, open now.
+    const assigned = new Set(
+      staffId === null || lessonIds.length === 0
+        ? []
+        : (
+            await transaction
+              .selectFrom('journal_orphan_assignments')
+              .select('lesson_id')
+              .where('lesson_id', 'in', lessonIds)
+              .where('staff_id', '=', staffId)
+              .where('withdrawn_at', 'is', null)
+              .where('assigned_at', '<=', now)
+              .where('open_until', '>', now)
+              .execute()
+          ).map((row) => row.lesson_id),
+    );
     const theirs = (lesson: GridLessonRow): boolean =>
-      entering && !outNow && held.get(lesson.id) === true && teachesIt(lesson);
+      entering &&
+      !outNow &&
+      held.get(lesson.id) === true &&
+      (teachesIt(lesson) || assigned.has(lesson.id));
     // Task 8.4: the edit period of each lesson for the reader (`edit-window.ts`).
     const locks = await locksOfLessons(transaction, lessonIds);
     const unlocks = await unlocksOfLessons(transaction, lessonIds, staffId);
@@ -949,7 +989,72 @@ export class JournalGridReader {
         },
       });
     const canEnter = (lesson: GridLessonRow): boolean =>
-      theirs(lesson) && lockOf(lesson).window !== 'locked';
+      theirs(lesson) && (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
+    // Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson takes the reader's
+    // entry until its end; the cells guard takes it as a late entry (0123, 0127).
+    const reopened = await reopenedCellsOf(transaction, lessonIds, now);
+    const openCell = (lesson: GridLessonRow, studentId: string): boolean =>
+      theirs(lesson) &&
+      lockOf(lesson).window === 'locked' &&
+      (optional.has(`${lesson.id}|${studentId}`) || reopened.has(`${lesson.id}|${studentId}`));
+    const shownStudents = gridStudents.map((student) => ({
+      ...student,
+      cells: student.cells.map((cell, index) => {
+        const lesson = lessons[index];
+        return lesson === undefined || cell.closed
+          ? cell
+          : { ...cell, open: openCell(lesson, student.id) };
+      }),
+    }));
+    // Task 8.7: the status of each held lesson, from the one reader of the status, over the
+    // year's lessons the reader sees up to now, for the reminders panel too (decision 12).
+    const yearShown = works.lessons.filter(
+      (lesson) =>
+        lesson.startsAt.getTime() <= now.getTime() && (ownLessons === null || ownLessons(lesson)),
+    );
+    const statuses = await lessonStatuses(
+      transaction,
+      branchId,
+      [...new Set([...lessonIds, ...yearShown.map((lesson) => lesson.id)])],
+      now,
+    );
+    // Checked by the answer's schema (the subject colour is a stored text here).
+    const reminders: unknown[] = [];
+    if (shape !== 'attendance') {
+      reminders.push(
+        ...lessonReminders(
+          yearShown.flatMap((lesson) => {
+            const row = statuses.get(lesson.id);
+            return row === undefined
+              ? []
+              : [
+                  {
+                    lesson: {
+                      id: lesson.id,
+                      journalId: journal.id,
+                      date: lesson.date,
+                      start: lesson.start,
+                      unit: unitOf(journal),
+                      subject: subjectOf(journal),
+                    },
+                    row,
+                  },
+                ];
+          }),
+          now,
+        ),
+      );
+      if (shape === 'whole') {
+        const rated = await ratingReminder(
+          transaction,
+          journal,
+          today,
+          (one) => ({ id: one.id, unit: unitOf(one), subject: subjectOf(one) }),
+          reading?.kind === 'tutor' ? students.map((student) => student.id) : null,
+        );
+        if (rated !== null) reminders.push(rated);
+      }
+    }
     // The categories of absence of the students shown (decision 7), on the dates of the shown
     // lessons each student is expected at (permission review of the code, should-fix 4).
     const expectedOn = new Set(
@@ -1005,6 +1110,7 @@ export class JournalGridReader {
         end: lesson.end,
         slot: slots.get(lesson.id) ?? null,
         held: held.get(lesson.id) === true,
+        status: statuses.get(lesson.id)?.answer?.status ?? null,
         cancelled:
           lesson.cancelCause === null
             ? null
@@ -1028,7 +1134,8 @@ export class JournalGridReader {
                 ungraded: one.ungraded,
               })),
       })),
-      students: gridStudents,
+      reminders,
+      students: shownStudents,
       lastTotal,
       bottom,
       absences,
@@ -1088,13 +1195,13 @@ export class JournalGridReader {
   }
 }
 
-const unitOf = (journal: JournalRow) => ({
+export const unitOf = (journal: JournalRow) => ({
   kind: journal.classId === null ? ('group' as const) : ('class' as const),
   id: journal.classId ?? journal.groupId ?? '',
   name: journal.unitName,
 });
 
-const subjectOf = (journal: JournalRow) => ({
+export const subjectOf = (journal: JournalRow) => ({
   id: journal.subjectId,
   names: journal.subject.names,
   colour: journal.subject.colour,

@@ -4,7 +4,9 @@ import { absenceCategorySchema } from './attendance.js';
 import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
 import { carriedInSchema } from './journal-entries.js';
 import { journalCommentSchema, ratingExamSchema } from './journal-rating.js';
-import { subjectColourSchema } from './subjects.js';
+import { lessonStatusSchema } from './lesson-status.js';
+import { journalSubjectSchema, journalUnitSchema } from './journal-units.js';
+import { reminderSchema } from './journal-status.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -14,21 +16,7 @@ import { subjectColourSchema } from './subjects.js';
  * is shown (decision 7): whole numbers, grades and markers, never a fraction.
  */
 
-const subjectNames = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
-
-export const journalUnitSchema = z.object({
-  kind: z.enum(['class', 'group']),
-  id: z.uuid(),
-  /** The class shown with its grade ("7 Oxford"), or the group's name. */
-  name: z.string(),
-});
-
-export const journalSubjectSchema = z.object({
-  id: z.uuid(),
-  names: subjectNames,
-  /** The subject colour, drawn as in the timetable (review correction 3). */
-  colour: subjectColourSchema,
-});
+export { journalSubjectSchema, journalUnitSchema };
 
 /** Without a year: the year of today in the branch, or the latest one. */
 export const journalListQuerySchema = z.strictObject({ yearId: z.uuid().optional() });
@@ -155,6 +143,8 @@ export const journalLessonSchema = z.object({
   slot: z.int().min(1).nullable(),
   /** `edge/00-definitions`, Held lesson: started, not cancelled, with a teacher recorded. */
   held: z.boolean(),
+  /** Task 8.7 (`07`, Lesson status): the status of a held lesson, `null` otherwise. */
+  status: lessonStatusSchema.nullable(),
   cancelled: z.object({ cause: z.string(), reason: z.string().nullable() }).nullable(),
   /** The month whose figures count it, `YYYY-MM`. */
   month: z.string().regex(/^\d{4}-\d{2}$/),
@@ -204,6 +194,11 @@ const journalCellSchema = z.object({
   typedBy: z.string().nullable(),
   /** Task 8.4: "entered after the edit period" with the approver, or "corrected". */
   marker: cellMarkerSchema,
+  /**
+   * Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson that the reader
+   * may type into now, until its end ("can be filled for 7 days").
+   */
+  open: z.boolean(),
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
     z.object({
@@ -215,6 +210,8 @@ const journalCellSchema = z.object({
       onAbsent: z.boolean(),
       /** Task 8.4: as the attendance cell's `marker`. */
       marker: cellMarkerSchema,
+      /** Task 8.7 (`07`, Lesson status): set "not graded", left out of the average. */
+      notGraded: z.boolean(),
     }),
   ),
   /** The lesson score (AVG), `null` when blank or for an attendance-only subject. */
@@ -343,6 +340,11 @@ export const journalGridSchema = z.object({
   /** The months that hold a lesson of the quarter, `YYYY-MM`, in order. */
   months: z.array(z.string().regex(/^\d{4}-\d{2}$/)),
   lessons: z.array(journalLessonSchema),
+  /**
+   * Task 8.7 (`07`, Reminders): the panel of the journal, over the year's held lessons up to
+   * now that the reader sees (decision 12); empty for a reader of attendance only.
+   */
+  reminders: z.array(reminderSchema),
   students: z.array(journalStudentSchema),
   /** The last total the reader set in this journal, offered for the next work (`07`, The total; task 8.1, decision 9). */
   lastTotal: z.int().min(1).max(1000).nullable(),

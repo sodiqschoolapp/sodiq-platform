@@ -45,12 +45,15 @@ const STUDENT: JournalStudent = {
   cells: [
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: 1,
       version: 1,
       typedBy: null,
       marker: null,
-      works: [{ score: 2, percent: 20, version: 1, onAbsent: false, marker: null }],
+      works: [
+        { score: 2, percent: 20, version: 1, onAbsent: false, marker: null, notGraded: false },
+      ],
       score: null,
     },
   ],
@@ -69,6 +72,7 @@ const LESSON_ROW = {
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter: true,

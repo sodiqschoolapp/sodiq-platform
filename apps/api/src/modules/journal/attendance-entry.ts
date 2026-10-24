@@ -1,4 +1,5 @@
 import { PERMISSIONS, lessonStateOf, permits, schoolDateOf, type LessonState } from '@sodiq/shared';
+import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -151,6 +152,51 @@ export async function journalFactsOf(
   return ownerFactsOf(transaction, branchId, journals);
 }
 
+/**
+ * The open orphan assignment of a person on a lesson at `now` (task 8.7, decision 15;
+ * `edge/journal`: "The Academic Vice Principal assigns a teacher to complete them"),
+ * read FOR SHARE so that a withdraw held open makes the entry wait: the person enters
+ * that lesson as its teacher would, until the assignment's `open_until`.
+ */
+export async function orphanAssignmentOf(
+  transaction: Transaction,
+  lessonId: string,
+  staffId: string,
+  now: Date,
+): Promise<string | null> {
+  const found = await transaction
+    .selectFrom('journal_orphan_assignments')
+    .select('id')
+    .where('lesson_id', '=', lessonId)
+    .where('staff_id', '=', staffId)
+    .where('withdrawn_at', 'is', null)
+    .where('assigned_at', '<=', now)
+    .where('open_until', '>', now)
+    .forShare()
+    .executeTakeFirst();
+  return found?.id ?? null;
+}
+
+/**
+ * Whether every student named has an optional (0127) or reopened (0123) cell on the lesson
+ * open now (task 8.7, From 8.6: "can be filled for 7 days"); `false` for none named.
+ */
+export async function allCellsOpen(
+  transaction: Transaction,
+  lessonId: string,
+  studentIds: readonly string[],
+): Promise<boolean> {
+  const ids = [...new Set(studentIds.map((id) => id.toLowerCase()))];
+  if (ids.length === 0) return false;
+  const found = await sql<{ open: boolean }>`
+    select bool_and(
+      exemption_reopened_open(${lessonId}::uuid, s) or journal_optional_open(${lessonId}::uuid, s)
+    ) as open
+    from unnest(${ids}::uuid[]) as s
+  `.execute(transaction);
+  return found.rows[0]?.open === true;
+}
+
 /** Whether the staff record teaches or owns the lesson (decision 3). */
 export function teachesOrOwns(
   lesson: Pick<EntryLesson, 'date' | 'teacherId' | 'journalId'>,
@@ -212,7 +258,11 @@ export async function enterableLesson(
   access: Access,
   branchId: string,
   lessonId: string,
-  options: { readonly correction?: { readonly reason: string } | undefined } = {},
+  options: {
+    readonly correction?: { readonly reason: string } | undefined;
+    /** Task 8.7: the students whose cells the write names, for the optional cells of a locked lesson. */
+    readonly students?: readonly string[];
+  } = {},
 ): Promise<{ lesson: EntryLesson; now: Date; timeZone: string; write: WriteHow }> {
   const lesson = await lockedLesson(transaction, branchId, lessonId);
   const now = await transactionMoment(transaction);
@@ -223,10 +273,13 @@ export async function enterableLesson(
     .executeTakeFirstOrThrow();
   const today = schoolDateOf(now, branch.time_zone);
   const staffId = await ownStaffOf(transaction, access.accountId);
+  let orphanAssignmentId: string | null = null;
   if (options.correction === undefined) {
     const facts = await journalFactsOf(transaction, branchId, lesson.journalId);
+    orphanAssignmentId =
+      staffId === null ? null : await orphanAssignmentOf(transaction, lesson.id, staffId, now);
     if (
-      !teachesOrOwns(lesson, facts, staffId, today) ||
+      (!teachesOrOwns(lesson, facts, staffId, today) && orphanAssignmentId === null) ||
       staffId === null ||
       (await outToday(transaction, branchId, staffId, today))
     ) {
@@ -253,6 +306,8 @@ export async function enterableLesson(
     target: { kind: 'lesson', lessonId: lesson.id },
     staffId,
     correction: options.correction,
+    orphanAssignmentId,
+    openCells: await allCellsOpen(transaction, lesson.id, options.students ?? []),
   });
   return { lesson, now, timeZone: branch.time_zone, write };
 }

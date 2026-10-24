@@ -83,11 +83,14 @@ export const attendanceOnlyOn = (journal: Pick<JournalRow, 'quarters'>, date: st
 export const plannedJournal = (journal: Pick<JournalRow, 'quarters'>): boolean =>
   journal.quarters.some((one) => !one.attendanceOnly);
 
-/** The journals of a branch, one or every one of a year, with their units and subjects. */
+/** The journals of a branch, one, some or every one of a year, with their units and subjects. */
 export async function journalRows(
   transaction: Transaction,
   branchId: string,
-  filter: { readonly journalId: string } | { readonly yearId: string },
+  filter:
+    | { readonly journalId: string }
+    | { readonly journalIds: readonly string[] }
+    | { readonly yearId: string },
 ): Promise<JournalRow[]> {
   let query = transaction
     .selectFrom('journals')
@@ -109,10 +112,13 @@ export async function journalRows(
       'subjects.colour',
     ])
     .where('journals.branch_id', '=', branchId);
+  if ('journalIds' in filter && filter.journalIds.length === 0) return [];
   query =
     'journalId' in filter
       ? query.where('journals.id', '=', filter.journalId)
-      : query.where('journals.academic_year_id', '=', filter.yearId);
+      : 'journalIds' in filter
+        ? query.where('journals.id', 'in', [...filter.journalIds])
+        : query.where('journals.academic_year_id', '=', filter.yearId);
   const rows = await query.execute();
   const yearIds = [...new Set(rows.map((row) => row.academic_year_id))].sort();
   const quarters =
@@ -328,6 +334,8 @@ export interface GridCellRow {
   readonly changedBy: string;
   /** How (task 8.4: `late_entry` and `correction` show a marker). */
   readonly changedHow: string;
+  /** Task 8.7: a work's cell set "not graded". */
+  readonly notGraded: boolean;
 }
 
 export async function lessonCells(
@@ -347,6 +355,7 @@ export async function lessonCells(
       'version',
       'changed_by',
       'changed_how',
+      'not_graded',
     ])
     .where('lesson_id', 'in', [...lessonIds])
     .execute();
@@ -360,6 +369,7 @@ export async function lessonCells(
     score: row.score,
     version: row.version,
     changedBy: row.changed_by,
+    notGraded: row.not_graded,
   }));
 }
 
