@@ -76,7 +76,7 @@ export const ratingEntrySaveSchema = z.strictObject({
   correction: z.boolean().default(false),
 });
 
-export type RatingEntrySave = z.infer<typeof ratingEntrySaveSchema>;
+export type RatingEntrySave = z.input<typeof ratingEntrySaveSchema>;
 
 export const ratingEntrySchema = z.object({
   studentId: z.uuid(),
