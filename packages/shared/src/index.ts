@@ -2114,3 +2114,12 @@ export {
   type LeavingResult,
   type StudentLeavingResults,
 } from './leaving-results.js';
+export {
+  LESSON_STATUSES,
+  lessonStatusOf,
+  lessonStatusSchema,
+  type LessonStatus,
+  type StatusAnswer,
+  type StatusFacts,
+  type StatusWork,
+} from './lesson-status.js';
