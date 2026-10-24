@@ -278,7 +278,7 @@ export class Exemptions {
         branchId,
         found.slice(0, 500).map((row) => row.id),
       );
-      return { items, more: Math.max(0, found.length - 500) };
+      return { today, items, more: Math.max(0, found.length - 500) };
     });
   }
 

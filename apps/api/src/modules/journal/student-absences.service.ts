@@ -676,19 +676,17 @@ export class StudentAbsences {
   }
 }
 
-/** The assignment a reason is written under: every class for the vice and the Super Admin, a Tutor's own. */
 /**
- * The assignment named by the opening of a file: one that reads every class, else the Tutor
- * assignment that gives the own class (permission review 12, as `writerOf` does).
+ * The assignment named by the opening of a file: for the own class the Tutor assignment that
+ * gives it, also for an account that is Head Tutor too (permission review 12), else one that
+ * reads every class.
  */
 function readerOf(access: Access, ownClass: boolean) {
-  return isWhole(access, WHOLE_READERS)
-    ? access.permitting.find((one) => WHOLE_READERS.includes(one.role))
-    : ownClass
-      ? access.permitting.find((one) => one.role === 'tutor')
-      : undefined;
+  const tutor = ownClass ? access.permitting.find((one) => one.role === 'tutor') : undefined;
+  return tutor ?? access.permitting.find((one) => WHOLE_READERS.includes(one.role));
 }
 
+/** The assignment a reason is written under: every class for the vice and the Super Admin, a Tutor's own. */
 function writerOf(access: Access, ownClass: boolean) {
   return isWholeWriter(access)
     ? access.permitting.find((one) => WHOLE_WRITERS.includes(one.role))
