@@ -983,7 +983,9 @@ describe('lesson status, reminders and the counts per teacher', () => {
           const listed = orphanLessonsSchema.parse(ok(await calls.get('/api/journal/orphans')));
           // Only its own branch's lessons.
           expect(
-            listed.lessons.every((one) => [other.first, other.second, other.third].includes(one.lesson.id)),
+            listed.lessons.every((one) =>
+              [other.first, other.second, other.third].includes(one.lesson.id),
+            ),
           ).toBe(true);
           return orphanAssignmentSchema.parse(
             ok(
