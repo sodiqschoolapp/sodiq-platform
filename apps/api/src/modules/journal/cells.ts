@@ -14,6 +14,9 @@ export const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   journal_cell_no_total: 'work_total_missing',
   journal_cell_above_total: 'score_above_total',
   journal_cell_not_held: 'work_not_held',
+  // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
+  journal_locked: 'journal_locked',
+  journal_correction_role: 'journal_correction_role',
 };
 
 /** One cell to save: the attendance cell (`workId` null) or a work's cell. */

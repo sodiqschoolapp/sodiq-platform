@@ -321,7 +321,7 @@ grant insert (id, branch_id, target, lesson_id, journal_id, quarter_id, staff_id
 grant update (status, days, decided_by, refuse_reason) on journal_unlocks to sodiq_app;
 
 -- The moments, the version, the requester and the one way of a decision:
--- `sent` to `approved`, `refused` or `withdrawn`, once.
+-- `sent` to `approved`, `refused` or `withdrawn`, once, never decided by the requester.
 create function journal_unlocks_write() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -349,6 +349,11 @@ begin
   if old.status <> 'sent' or new.status = 'sent' then
     raise exception 'journal_unlock_decided'
       using errcode = 'check_violation', constraint = 'journal_unlock_decided';
+  end if;
+  -- Nobody approves their own (`02`, Own requests; permission review should-fix 1).
+  if new.decided_by = old.requested_by then
+    raise exception 'journal_unlock_own'
+      using errcode = 'check_violation', constraint = 'journal_unlock_own';
   end if;
   new.version := old.version + 1;
   new.decided_at := moment;

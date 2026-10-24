@@ -789,6 +789,21 @@ describe('the edit period in the database', () => {
       ).toBe('journal_unlock_decided');
     });
 
+    it('refuses a decision by the requester', async () => {
+      const { lesson: id } = await scene();
+      const sent = await request(id);
+      const failed = await refusal(
+        inBranch(north, BEFORE, (transaction) =>
+          transaction
+            .updateTable('journal_unlocks')
+            .set({ status: 'approved', days: 1, decided_by: teacher.accountId })
+            .where('id', '=', sent)
+            .execute(),
+        ),
+      );
+      expect(failed.constraint).toBe('journal_unlock_own');
+    });
+
     it('ties each status to its columns', async () => {
       const { lesson: id } = await scene();
       const sent = await request(id);

@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { codeNow } from './totp';
 
 async function signedIn(page: Page, key: 'locksTeacher' | 'locksHead' | 'locksVice') {
   const account = accountOf(key);
@@ -9,6 +10,16 @@ async function signedIn(page: Page, key: 'locksTeacher' | 'locksHead' | 'locksVi
   await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
+  if (key === 'locksVice') {
+    // The role requires a second step at sign-in (task 0.7b): set up as audit.spec.ts does.
+    await expect(heading(page, en.setUp.title)).toBeVisible();
+    await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+    const secret = await page.locator('dd').innerText();
+    await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(secret));
+    await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+    await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+    await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  }
   await expect(heading(page, en.home.title)).toBeVisible();
 }
 

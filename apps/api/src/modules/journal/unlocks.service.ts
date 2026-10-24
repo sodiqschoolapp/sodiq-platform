@@ -143,7 +143,9 @@ export class UnlocksService {
         .where('branch_id', '=', branchId);
       if (view === 'own') query = query.where('requested_by', '=', access.accountId);
       if (view === 'deciding') query = query.where('status', '=', 'sent');
-      const rows = await query.orderBy('requested_at', 'desc').orderBy('id').limit(500).execute();
+      // Every waiting request for "deciding" (the routing filters them); the newest 500 otherwise.
+      const ordered = query.orderBy('requested_at', 'desc').orderBy('id');
+      const rows = await (view === 'deciding' ? ordered : ordered.limit(500)).execute();
       const answered = await this.answersOf(transaction, access, branchId, rows);
       return {
         requests: view === 'deciding' ? answered.filter((one) => one.canDecide) : answered,

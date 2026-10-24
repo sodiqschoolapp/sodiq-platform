@@ -25,12 +25,13 @@ import {
   enterableLesson,
   entryAssignment,
   journalFactsOf,
+  ownStaffOf,
   type EntryLesson,
 } from './attendance-entry.js';
 import { saveCells, type SavedCell } from './cells.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { noticeCellCorrections } from './corrections.js';
-import { writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
+import { decideWrite, writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
 import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
@@ -57,6 +58,9 @@ const WORK_REFUSALS = {
   journal_work_carry_once: 'work_carried',
   journal_works_limit: 'journal_works_limit',
   journal_cell_delete: 'work_holds_data',
+  // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
+  journal_locked: 'journal_locked',
+  journal_correction_role: 'journal_correction_role',
 } as const;
 
 function mapWorkRefusal(error: unknown): never {
@@ -466,12 +470,26 @@ export class WorksService {
       if (row.plan_work_id !== null || row.total !== null || row.not_held || numbers.length > 0) {
         throw new ApiException('work_holds_data', 409);
       }
+      // Task 8.4: the work is judged at the lesson it is stored at too, as the guard of 0122
+      // judges it (a homework removed through the lesson that shows it).
+      if (row.lesson_id !== scene.lesson.id) {
+        await decideWrite(transaction, {
+          access,
+          branchId: scene.branchId,
+          target: { kind: 'lesson', lessonId: row.lesson_id },
+          staffId: await ownStaffOf(transaction, access.accountId),
+        });
+      }
       // The line of the delete names the person who removed it.
-      await transaction
-        .updateTable('journal_works')
-        .set({ changed_by: access.accountId, changed_how: 'deleted' })
-        .where('id', '=', row.id)
-        .execute();
+      try {
+        await transaction
+          .updateTable('journal_works')
+          .set({ changed_by: access.accountId, changed_how: 'deleted' })
+          .where('id', '=', row.id)
+          .execute();
+      } catch (error) {
+        mapWorkRefusal(error);
+      }
       try {
         await transaction.deleteFrom('journal_works').where('id', '=', row.id).execute();
       } catch (error) {

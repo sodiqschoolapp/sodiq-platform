@@ -234,6 +234,17 @@ export async function enterableLesson(
     }
   } else if (correctorAssignment(access, branchId) === null) {
     throw new ApiException('journal_correction_role', 403);
+  } else if (
+    teachesOrOwns(
+      lesson,
+      await journalFactsOf(transaction, branchId, lesson.journalId),
+      staffId,
+      today,
+    )
+  ) {
+    // Nobody approves their own (`02`, Own requests): a corrector's own lesson takes the
+    // unlock path, never a correction of their own.
+    throw new ApiException('own_request', 403);
   }
   refuseState(await entryStateOf(transaction, lesson, now));
   const write = await decideWrite(transaction, {
