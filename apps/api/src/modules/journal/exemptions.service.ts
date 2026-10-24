@@ -48,6 +48,7 @@ import {
   addDays,
   expectedIn,
   lockStudents,
+  refuseForeignChoices,
   noticeReopened,
   settle,
   todayIn,
@@ -174,6 +175,14 @@ const STORED_COLUMNS = [
   'voided_at',
   'version',
 ] as const;
+
+/** A decided offer keeps nothing of the reason (0125, permission review 7). */
+const CLEARED_REASON = {
+  detail: null,
+  document_key: null,
+  document_type: null,
+  document_name: null,
+} as const;
 
 @Injectable()
 export class Exemptions {
@@ -310,6 +319,38 @@ export class Exemptions {
     });
   }
 
+  /**
+   * The detail of a waiting move offer's reason (permission review 1): logged as the
+   * exemption's is; a decided offer keeps none (0125).
+   */
+  offerReason(access: Access, id: string, requestId: string | undefined): Promise<ExemptionReason> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const row = await transaction
+        .selectFrom('exemption_move_offers')
+        .select(['id', 'student_id', 'category', 'detail'])
+        .where('id', '=', id)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (row === undefined) throw notFound();
+      if (row.detail === null) throw new ApiException('exemption_offer_decided', 409);
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'exemption.offer_reason_open',
+        record: { type: 'student', id: row.student_id },
+        details: { offerId: row.id },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return {
+        id: row.id,
+        category: exemptionCategorySchema.parse(row.category),
+        detail: row.detail,
+      };
+    });
+  }
+
   /** The document; every opening is logged (`edge/exemptions`, row 10). */
   async document(access: Access, id: string, requestId: string | undefined): Promise<StoredFile> {
     const branchId = branchOf(access);
@@ -374,19 +415,19 @@ export class Exemptions {
         back: boolean;
       }>`
         with mine as (
-          select m.student_id, true as tutor
+          select m.student_id, true as tutor, null::uuid as subject_id
           from class_memberships m
           where m.class_id = any(${own}::uuid[])
             and m.valid_from <= ${today}::date and ${today}::date < m.valid_until
           union
-          select m.student_id, false
+          select m.student_id, false, l.subject_id
           from lessons l
           join class_memberships m on m.class_id = l.class_id
             and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
           where l.branch_id = ${branchId}::uuid and l.lesson_date = ${today}::date
             and l.cancel_cause is null and l.teacher_id = ${staff?.id ?? null}::uuid
           union
-          select m.student_id, false
+          select m.student_id, false, l.subject_id
           from lessons l
           join group_memberships m on m.group_id = l.group_id
             and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
@@ -394,7 +435,9 @@ export class Exemptions {
             and l.cancel_cause is null and l.teacher_id = ${staff?.id ?? null}::uuid
         ),
         readers as (
-          select student_id, bool_or(tutor) as tutor from mine group by student_id
+          select student_id, bool_or(tutor) as tutor,
+            array_remove(array_agg(distinct subject_id), null) as subjects
+          from mine group by student_id
         )
         select r.student_id, r.tutor, e.kind, e.start_date::text as start_date,
           e.end_date::text as end_date, to_char(e.start_time, 'HH24:MI') as start_time,
@@ -407,6 +450,16 @@ export class Exemptions {
             (r.tutor and e.start_date <= ${today}::date and e.end_date >= ${today}::date)
             or (
               e.end_date = ${today}::date - 1
+              -- A teacher sees the student back only from an exemption of a subject of the
+              -- teacher's lessons today (permission review 11): a PE exemption is not the
+              -- mathematics teacher's.
+              and (
+                r.tutor or e.all_subjects
+                or exists (
+                  select 1 from exemption_subjects s
+                  where s.exemption_id = e.id and s.subject_id = any(r.subjects)
+                )
+              )
               and not exists (
                 select 1 from exemptions o
                 where o.student_id = e.student_id and o.voided_at is null
@@ -565,6 +618,7 @@ export class Exemptions {
   ): Promise<{ batchId: string; ids: string[] }> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
+    await refuseForeignChoices(transaction, input.choices);
     await this.refuseForeign(transaction, input.studentIds, input.subjectIds);
     const year = await this.yearOf(transaction, branchId, input.startDate);
     const cover: Cover = {
@@ -738,6 +792,7 @@ export class Exemptions {
     cover: Cover,
     change: 'edited' | 'ended' | 'voided' | null,
     window: { from: string; until: string } = { from: cover.startDate, until: cover.endDate },
+    before: Cover = cover,
   ): Promise<void> {
     const branchId = branchOf(access);
     const accounts = await toldOf(transaction, {
@@ -746,6 +801,7 @@ export class Exemptions {
       from: window.from,
       until: window.until,
       actorId: access.accountId,
+      scopes: [before, cover],
     });
     if (accounts.length === 0) return;
     const base = {
@@ -849,6 +905,7 @@ export class Exemptions {
   ): Promise<void> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
+    await refuseForeignChoices(transaction, input.choices);
     const exists = await transaction
       .selectFrom('exemptions')
       .select(['student_id'])
@@ -885,7 +942,24 @@ export class Exemptions {
     const before = await expectedIn(transaction, branchId, [window]);
     const met = await this.overlapOf(transaction, row.student_id, cover, id);
     if (met !== undefined) throw overlapRefusal(row.student_id, met);
+    // The chosen subjects are written while the stored start is still ahead: they change only
+    // then (0123, `exemption_subjects_guard`), and an edit may move the start to today or
+    // earlier (a late certificate, correction 1; spec review of the code, must-fix 3). A switch
+    // from all subjects to chosen ones marks the row first, so the guard takes them.
     await transaction.deleteFrom('exemption_subjects').where('exemption_id', '=', id).execute();
+    if (cover.subjectIds.length > 0 && row.all_subjects) {
+      await transaction
+        .updateTable('exemptions')
+        .set({ all_subjects: false })
+        .where('id', '=', id)
+        .execute();
+    }
+    for (const subjectId of cover.subjectIds) {
+      await transaction
+        .insertInto('exemption_subjects')
+        .values({ branch_id: branchId, exemption_id: id, subject_id: subjectId })
+        .execute();
+    }
     await transaction
       .updateTable('exemptions')
       .set({
@@ -897,15 +971,11 @@ export class Exemptions {
         end_time: cover.endTime,
         category: input.category,
         detail: input.detail,
+        // An edit enters the end anew (0125, `exemption_full_end`).
+        end_cause: null,
       })
       .where('id', '=', id)
       .execute();
-    for (const subjectId of cover.subjectIds) {
-      await transaction
-        .insertInto('exemption_subjects')
-        .values({ branch_id: branchId, exemption_id: id, subject_id: subjectId })
-        .execute();
-    }
     const settled = await settle(transaction, {
       branchId,
       before,
@@ -927,7 +997,7 @@ export class Exemptions {
       details: { exemptionId: id, ...effectDetails(settled, row.student_id) },
       ...(requestId === undefined ? {} : { requestId }),
     });
-    await this.tell(transaction, access, row.student_id, names, cover, 'edited', window);
+    await this.tell(transaction, access, row.student_id, names, cover, 'edited', window, old);
     await noticeReopened(transaction, this.notifications, {
       branchId,
       reopened: settled.reopenedLocked,
@@ -993,6 +1063,7 @@ export class Exemptions {
   ): Promise<ExemptionPreview> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
+    await refuseForeignChoices(transaction, choices);
     const heads = await transaction
       .selectFrom('exemptions')
       .select(['id', 'student_id'])
@@ -1181,7 +1252,18 @@ export class Exemptions {
       exemptionOf: (studentId) => Promise.resolve(exemptionOfStudent.get(studentId) ?? null),
       preview,
     });
-    const yearEnd = rows[0]?.end_date ?? '';
+    // The last day of the year of the exemptions (one year per batch), not an exemption's end
+    // (spec review of the code, should-fix 6).
+    const yearEnd =
+      rows[0] === undefined
+        ? ''
+        : (
+            await transaction
+              .selectFrom('academic_years')
+              .select(sql<string>`end_date::text`.as('end'))
+              .where('id', '=', rows[0].year_id)
+              .executeTakeFirstOrThrow()
+          ).end;
     const answer = previewAnswer(
       settled,
       rows.map((row) => row.student_id),
@@ -1414,10 +1496,14 @@ export class Exemptions {
         from student_absence_reasons r
         where r.branch_id = ${branchId}::uuid
           and r.category in ('illness', 'family', 'school_permitted')
+          -- Accounted for only by an exemption of all subjects over the whole day: one of chosen
+          -- subjects or of chosen slots leaves the rest of the day's absence (spec review of the
+          -- code, should-fix 7).
           and not exists (
             select 1 from exemption_spans s
             where s.student_id = r.student_id and s.live
-              and s.span && tsrange(r.absence_date::timestamp, (r.absence_date + 1)::timestamp, '[)')
+              and s.subject_key = '00000000-0000-0000-0000-000000000000'::uuid
+              and s.span @> tsrange(r.absence_date::timestamp, (r.absence_date + 1)::timestamp, '[)')
           )
         order by r.absence_date desc, r.student_id
         limit 500
@@ -1473,8 +1559,11 @@ export class Exemptions {
       .forUpdate()
       .executeTakeFirst();
     if (row === undefined) throw notFound();
-    if (row.decision !== null) throw new ApiException('exemption_offer_decided', 409);
-    return row;
+    // A waiting offer holds its detail (0125, `exemption_move_offers_reason_check`).
+    if (row.decision !== null || row.detail === null) {
+      throw new ApiException('exemption_offer_decided', 409);
+    }
+    return { ...row, detail: row.detail };
   }
 
   confirmPreview(access: Access, id: string): Promise<ExemptionPreview> {
@@ -1517,6 +1606,7 @@ export class Exemptions {
   ): Promise<ExemptionPreview> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
+    await refuseForeignChoices(transaction, choices);
     const head = await transaction
       .selectFrom('exemption_move_offers')
       .select('student_id')
@@ -1524,6 +1614,9 @@ export class Exemptions {
       .where('branch_id', '=', branchId)
       .executeTakeFirst();
     if (head === undefined) throw notFound();
+    // A student who moved on or whose record this branch no longer reads is not offered (the
+    // list leaves the offer out), and nothing is written for them (permission review 8).
+    await this.refuseForeign(transaction, [head.student_id], null);
     await lockStudents(transaction, [head.student_id]);
     const offer = await this.lockedOffer(transaction, branchId, id);
     const year = await this.yearOf(transaction, branchId, offer.start_date);
@@ -1579,6 +1672,7 @@ export class Exemptions {
         decided_by: access.accountId,
         decided_at: await transactionMoment(transaction),
         exemption_id: exemptionId,
+        ...CLEARED_REASON,
       })
       .where('id', '=', id)
       .execute();
@@ -1608,6 +1702,7 @@ export class Exemptions {
           decision: 'drop',
           decided_by: access.accountId,
           decided_at: await transactionMoment(transaction),
+          ...CLEARED_REASON,
         })
         .where('id', '=', id)
         .execute();
@@ -1645,7 +1740,6 @@ async function offersIn(transaction: Transaction, branchId: string): Promise<Exe
       sql<string | null>`exemption_move_offers.start_time::text`.as('start_time'),
       sql<string | null>`exemption_move_offers.end_time::text`.as('end_time'),
       'exemption_move_offers.category',
-      'exemption_move_offers.detail',
       'exemption_move_offers.document_key',
       'exemption_move_offers.decision',
       'exemption_move_offers.decided_at',
@@ -1697,7 +1791,6 @@ async function offersIn(transaction: Transaction, branchId: string): Promise<Exe
           endDate: row.end_date,
           slots: slotsOf({ startTime: timeOf(row.start_time), endTime: timeOf(row.end_time) }),
           category: exemptionCategorySchema.parse(row.category),
-          detail: row.detail,
           hasDocument: row.document_key !== null,
           decision: row.decision === null ? null : (row.decision as 'confirm' | 'drop'),
           decidedAt: row.decided_at === null ? null : new Date(row.decided_at).toISOString(),

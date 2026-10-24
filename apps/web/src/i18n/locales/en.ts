@@ -705,6 +705,8 @@ export const en = {
     exemption_file_type: 'Only PDF, JPEG and PNG files can be attached.',
     exemption_offer_decided: 'This offer was already confirmed or dropped.',
     exemption_batch_empty: 'No exemption of this batch is left to change.',
+    student_status_exemption_overlap:
+      'Taking the leaving back would give back an exemption that overlaps one entered since. End or void that one first, then try again.',
     student_merge_exemption_overlap:
       'The two records have exemptions that overlap. End or void one of them before the merge.',
     work_not_in_lesson:
@@ -3413,6 +3415,7 @@ export const en = {
         end: 'End date of an exemption changed',
         void: 'Exemption voided',
         reason_open: 'Reason of an exemption opened',
+        offer_reason_open: 'Reason of an offered exemption opened',
         document_open: 'Document of an exemption opened',
         document_add: 'Document attached to an exemption',
         document_remove: 'Document of an exemption removed',
@@ -3834,7 +3837,7 @@ export const en = {
         exemption_changed:
           '{{student}}: the $t(notifications.exemptionKinds.{{kind}}) was $t(notifications.exemptionChanges.{{change}}); now {{from}} – {{until}} {{times}}.',
         exemption_reopened:
-          'Reopened after exemption: {{student}}, {{lessons}} locked lesson(s). These cells are open for 3 days.',
+          'Reopened after exemption: {{students}}, {{lessons}} locked lesson(s). These cells are open for 3 days.',
         exemption_kept_block:
           '{{unit}}, {{date}} {{start}} is held; the students of {{classes}} are exempt from it.',
         exemption_offer:
@@ -5727,7 +5730,6 @@ export const en = {
       journalColumn: 'Journal',
     },
     grid: {
-      exemptShort: 'exempt',
       backFromExemption: 'back from exemption',
       exemptResult: 'Exempt',
       basedOn: 'based on {{expected}} of {{held}} lessons',

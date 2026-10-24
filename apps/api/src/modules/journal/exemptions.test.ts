@@ -13,6 +13,8 @@ import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from './cells.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import {
   dayTemplatesKit,
@@ -864,7 +866,7 @@ describe('exemptions', () => {
             .values({
               branch_id: s.branch,
               lesson_id: first.id,
-              student_id: s.other === '' ? '' : s.ahmedov,
+              student_id: s.ahmedov,
               mark: 1,
               version: 1,
               changed_by: s.owner.account.id,
@@ -902,6 +904,92 @@ describe('exemptions', () => {
       expect(waited, 'the create waited on the held save').toBe(true);
       expect(await held).toBeUndefined();
       expect(codeOf(await answer)).toBe('exemption_choice_missing');
+    });
+
+    // Spec review of the code, must-fix 1: the create runs first. It takes the cells, then the
+    // memberships; a re-save of a present mark updates its cell, then its trigger takes the
+    // memberships. A third transaction holds a membership, so the create waits there having
+    // locked the cells, and the save waits on the cell, not on the membership: no deadlock.
+    it('runs first, and a re-save of the present mark waits on the cell and finds it cleared', async () => {
+      const s = await scene();
+      const lesson = s.lessons.find((one) => one.date >= '2026-10-12' && one.date <= '2026-10-20');
+      if (lesson === undefined) throw new Error('A held lesson in the dates.');
+      await mark(s.branch, lesson.id, s.ahmedov, 1);
+      const before = await cellOf(lesson.id, s.ahmedov);
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.app
+        .get(Transactions)
+        .run([s.branch], async (transaction: Transaction) => {
+          await transaction
+            .selectFrom('class_memberships')
+            .select('id')
+            .where('student_id', '=', s.ahmedov)
+            .forUpdate()
+            .execute();
+          ready();
+          await released;
+        })
+        .catch((error: unknown) => error);
+      await isReady;
+      const waiting = async () => {
+        const found = await sql<{ n: number }>`
+          select count(distinct l.pid)::int as n
+          from pg_locks l join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database() and not l.granted
+        `.execute(t.database.migrator);
+        return found.rows[0]?.n ?? 0;
+      };
+      const until = async (count: number) => {
+        for (let tries = 0; tries < 800; tries += 1) {
+          if ((await waiting()) >= count) return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error(`Fewer than ${String(count)} waited.`);
+      };
+      const [created, saved] = await as(s.branch, s.vice, [], async ({ post }) => {
+        const create = new Promise<Response>((resolve, reject) => {
+          post(
+            '/api/exemptions',
+            body({
+              studentIds: [s.ahmedov],
+              choices: [{ studentId: s.ahmedov, lessonId: lesson.id, choice: 'exempt' }],
+            }),
+          ).then(resolve, reject);
+        });
+        await until(1);
+        const save = t.app
+          .get(Transactions)
+          .run([s.branch], (transaction) =>
+            saveCells(transaction, t.app.get(Audit), { accountId: s.owner.account.id }, [
+              {
+                lessonId: lesson.id,
+                studentId: s.ahmedov,
+                workId: null,
+                value: 2,
+                version: before?.version ?? null,
+              },
+            ]),
+          )
+          .catch((error: unknown) => error);
+        await until(2);
+        release();
+        return Promise.all([create, save]);
+      });
+      expect(await held).toBeUndefined();
+      expect(created.status, JSON.stringify(created.body)).toBe(200);
+      // The cleared cell is a newer version: the save is refused as stale, never deadlocked.
+      expect((saved as { code?: string }).code).toBe('cell_stale');
+      expect(await cellOf(lesson.id, s.ahmedov)).toMatchObject({
+        mark: null,
+        changed_how: 'exemption',
+      });
     });
   });
 

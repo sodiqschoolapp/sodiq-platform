@@ -717,6 +717,8 @@ export const uz: Texts<'one' | 'other'> = {
     exemption_file_type: 'Faqat PDF, JPEG va PNG fayllarni biriktirish mumkin.',
     exemption_offer_decided: 'Bu taklif allaqachon tasdiqlangan yoki rad etilgan.',
     exemption_batch_empty: 'Bu guruhda oʻzgartiriladigan ozod qilish qolmadi.',
+    student_status_exemption_overlap:
+      'Chiqib ketishni bekor qilish keyin kiritilgan ozod qilish bilan ustma-ust tushadigan ozod qilishni qaytaradi. Avval uni tugating yoki bekor qiling, keyin qayta urinib koʻring.',
     student_merge_exemption_overlap:
       'Ikki yozuvning ozod qilishlari ustma-ust tushadi. Birlashtirishdan oldin bittasini tugating yoki bekor qiling.',
     work_not_in_lesson:
@@ -3450,6 +3452,7 @@ export const uz: Texts<'one' | 'other'> = {
         end: 'Ozod qilishning tugash sanasi oʻzgartirildi',
         void: 'Ozod qilish bekor qilindi',
         reason_open: 'Ozod qilish sababi ochildi',
+        offer_reason_open: 'Taklif qilingan ozod qilish sababi ochildi',
         document_open: 'Ozod qilish hujjati ochildi',
         document_add: 'Ozod qilishga hujjat biriktirildi',
         document_remove: 'Ozod qilish hujjati olib tashlandi',
@@ -3878,7 +3881,7 @@ export const uz: Texts<'one' | 'other'> = {
         exemption_changed:
           '{{student}}: $t(notifications.exemptionKinds.{{kind}}) $t(notifications.exemptionChanges.{{change}}); endi {{from}} – {{until}} {{times}}.',
         exemption_reopened:
-          'Ozod qilishdan keyin ochildi: {{student}}, qulflangan darslar: {{lessons}}. Bu kataklar 3 kun ochiq.',
+          'Ozod qilishdan keyin ochildi: {{students}}, qulflangan darslar: {{lessons}}. Bu kataklar 3 kun ochiq.',
         exemption_kept_block:
           '{{unit}}, {{date}} {{start}} oʻtkaziladi; {{classes}} oʻquvchilari undan ozod.',
         exemption_offer:
@@ -5777,7 +5780,6 @@ export const uz: Texts<'one' | 'other'> = {
       journalColumn: 'Jurnal',
     },
     grid: {
-      exemptShort: 'ozod',
       backFromExemption: 'ozod qilishdan qaytdi',
       exemptResult: 'Ozod',
       basedOn: '{{held}} darsdan {{expected}} tasi boʻyicha',

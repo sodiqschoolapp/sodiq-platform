@@ -55,6 +55,7 @@ import {
   exemptionOffersQuery,
   exemptionsQuery,
   invalidateExemptions,
+  openOfferReason,
   openReason,
   previewConfirm,
   previewCreate,
@@ -1205,6 +1206,13 @@ function OfferPanel({ offer }: { offer: ExemptionMoveOffer }) {
     mutationFn: () => dropOffer(offer.id),
     onSuccess: () => invalidateExemptions(queryClient),
   });
+  const [reason, setReason] = useState<string | null>(null);
+  const opened = useMutation({
+    mutationFn: () => openOfferReason(offer.id),
+    onSuccess: (answer) => {
+      setReason(answer.detail);
+    },
+  });
   return (
     <div className="grid gap-3 text-sm">
       <p>
@@ -1222,7 +1230,24 @@ function OfferPanel({ offer }: { offer: ExemptionMoveOffer }) {
           category: t(`journal.exemptions.categories.${offer.category}`),
         })}
       </p>
-      <p className="whitespace-pre-wrap">{offer.detail}</p>
+      {offer.decision === null && (
+        <div>
+          {reason === null ? (
+            <Button
+              variant="ghost"
+              disabled={opened.isPending}
+              onClick={() => {
+                opened.mutate();
+              }}
+            >
+              {t('journal.exemptions.showReason')}
+            </Button>
+          ) : (
+            <p className="whitespace-pre-wrap">{reason}</p>
+          )}
+          <FailureAlert error={opened.error} />
+        </div>
+      )}
       {preview !== null && (
         <PreviewLines
           preview={preview}

@@ -697,6 +697,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     exemption_file_type: 'Можно прикрепить только файлы PDF, JPEG и PNG.',
     exemption_offer_decided: 'Это предложение уже подтверждено или отклонено.',
     exemption_batch_empty: 'В этой группе не осталось освобождений для изменения.',
+    student_status_exemption_overlap:
+      'Отмена выбытия вернула бы освобождение, которое пересекается с освобождением, внесённым позже. Сначала завершите или аннулируйте его, затем повторите.',
     student_merge_exemption_overlap:
       'У двух записей пересекаются освобождения. Завершите или аннулируйте одно из них перед объединением.',
     work_not_in_lesson:
@@ -3559,6 +3561,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         end: 'Изменена дата окончания освобождения',
         void: 'Освобождение аннулировано',
         reason_open: 'Открыта причина освобождения',
+        offer_reason_open: 'Открыта причина предложенного освобождения',
         document_open: 'Открыт документ освобождения',
         document_add: 'К освобождению прикреплён документ',
         document_remove: 'Документ освобождения удалён',
@@ -4020,7 +4023,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         exemption_changed:
           '{{student}}: $t(notifications.exemptionKinds.{{kind}}) — $t(notifications.exemptionChanges.{{change}}); теперь {{from}} – {{until}} {{times}}.',
         exemption_reopened:
-          'Открыто после освобождения: {{student}}, заблокированных уроков: {{lessons}}. Эти ячейки открыты 3 дня.',
+          'Открыто после освобождения: {{students}}, заблокированных уроков: {{lessons}}. Эти ячейки открыты 3 дня.',
         exemption_kept_block:
           '{{unit}}, {{date}} {{start}} проводится; ученики {{classes}} от него освобождены.',
         exemption_offer:
@@ -6045,7 +6048,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       journalColumn: 'Журнал',
     },
     grid: {
-      exemptShort: 'освобождён',
       backFromExemption: 'вернулся после освобождения',
       exemptResult: 'Освобождён',
       basedOn: 'по {{expected}} из {{held}} уроков',

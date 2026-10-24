@@ -98,6 +98,18 @@ export class ExemptionsController {
     return this.exemptions.offers(access);
   }
 
+  /** The detail of a waiting offer's reason; every opening is logged (`edge/exemptions`, row 10). */
+  @Get('move-offers/:id/reason')
+  @Requires('exemptions', 'view')
+  @Returns(exemptionReasonSchema)
+  offerReason(
+    @CurrentAccess() access: Access,
+    @ValidParams(exemptionMoveOfferParamsSchema) params: ExemptionMoveOfferParams,
+    @RequestId() requestId: string,
+  ): Promise<ExemptionReason> {
+    return this.exemptions.offerReason(access, params.id, requestId);
+  }
+
   @Post('move-offers/:id/confirm/preview')
   @HttpCode(200)
   @Requires('exemptions', 'edit')

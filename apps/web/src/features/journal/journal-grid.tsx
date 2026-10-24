@@ -337,8 +337,9 @@ export function JournalGridView({
           if (row?.kind === 'bottom') return unitAverage;
           return null;
         },
-        // Task 8.5 (`07`: "The teacher sees the kind and the dates, not the reason"): the
-        // student's exemptions under the name; the category for the class Tutor only.
+        // Task 8.5 (`07`: "The teacher sees the kind and the dates, not the reason"; "a folded
+        // 'Exempt' section at the bottom, with the dates"): the student's exemptions beside the
+        // name, also in full on hover; the category for the class Tutor only.
         tooltipValueGetter: (params) => {
           const row = params.data;
           if (row?.kind !== 'student' || row.student.exemptions.length === 0) return null;
@@ -356,7 +357,7 @@ export function JournalGridView({
               {[row.student.lastName, row.student.firstName].join(' ')}
               {row.student.exemptions.length > 0 && (
                 <span className="ml-1 text-xs text-muted-foreground" data-exemption="true">
-                  {t('journal.grid.exemptShort')}
+                  {row.student.exemptions.map((one) => exemptionText(one)).join('; ')}
                 </span>
               )}
               {back && (

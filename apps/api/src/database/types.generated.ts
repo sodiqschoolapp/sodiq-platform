@@ -433,7 +433,7 @@ export interface ExemptionMoveOffers {
   decided_at: Timestamp | null;
   decided_by: string | null;
   decision: string | null;
-  detail: string;
+  detail: string | null;
   document_key: string | null;
   document_name: string | null;
   document_type: string | null;

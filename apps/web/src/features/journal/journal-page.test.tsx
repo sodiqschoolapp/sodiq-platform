@@ -347,7 +347,10 @@ describe('a journal', () => {
       );
     });
     expect(cellOf(uid(101), 'result')?.textContent).toContain('based on 2 of 7 lessons');
-    expect(cellOf(uid(101), 'name')?.querySelector('[data-exemption]')).not.toBeNull();
+    // The kind and the dates beside the name (`07`, In the journal: "with the dates").
+    expect(cellOf(uid(101), 'name')?.querySelector('[data-exemption]')?.textContent).toBe(
+      `${en.journal.exemptions.kinds.temporary} · 12 October`,
+    );
     const fold = await screen.findByRole('button', { name: 'Exempt: 1 student' });
     expect(document.querySelector(`[row-id="${uid(102)}"]`)).toBeNull();
     fireEvent.click(fold);

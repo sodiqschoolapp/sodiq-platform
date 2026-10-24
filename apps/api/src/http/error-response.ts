@@ -500,6 +500,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   exemption_offer_decided: 'The offer was decided meanwhile.',
   exemption_batch_empty: 'The batch has no exemption left in force.',
   student_merge_exemption_overlap: 'The merge would leave two overlapping exemptions.',
+  student_status_exemption_overlap:
+    'Taking the leaving back would give back an exemption that overlaps one entered since.',
   work_not_in_lesson: 'The work is not a column of this lesson.',
   lesson_has_plan_item: 'The lesson has a plan item; its works come from the plan.',
   journal_works_limit: 'A lesson has at most 10 works of a kind.',

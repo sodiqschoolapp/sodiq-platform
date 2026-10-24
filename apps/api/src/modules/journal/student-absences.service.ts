@@ -571,11 +571,7 @@ export class StudentAbsences {
       .executeTakeFirst();
     if (membership === undefined) throw notFound();
     const ownClass = tutorClassesOf(access).has(lower(membership.class_id));
-    const assignment = write
-      ? writerOf(access, ownClass)
-      : isWhole(access, WHOLE_READERS) || ownClass
-        ? access.permitting[0]
-        : undefined;
+    const assignment = write ? writerOf(access, ownClass) : readerOf(access, ownClass);
     if (assignment === undefined) throw new ApiException('absence_scope', 403);
     const reason = await transaction
       .selectFrom('student_absence_reasons')
@@ -681,6 +677,18 @@ export class StudentAbsences {
 }
 
 /** The assignment a reason is written under: every class for the vice and the Super Admin, a Tutor's own. */
+/**
+ * The assignment named by the opening of a file: one that reads every class, else the Tutor
+ * assignment that gives the own class (permission review 12, as `writerOf` does).
+ */
+function readerOf(access: Access, ownClass: boolean) {
+  return isWhole(access, WHOLE_READERS)
+    ? access.permitting.find((one) => WHOLE_READERS.includes(one.role))
+    : ownClass
+      ? access.permitting.find((one) => one.role === 'tutor')
+      : undefined;
+}
+
 function writerOf(access: Access, ownClass: boolean) {
   return isWholeWriter(access)
     ? access.permitting.find((one) => WHOLE_WRITERS.includes(one.role))

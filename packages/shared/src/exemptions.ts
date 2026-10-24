@@ -439,7 +439,7 @@ export const exemptionMoveOfferSchema = z.strictObject({
   endDate: schoolDateSchema,
   slots: exemptionSlotsSchema.nullable(),
   category: exemptionCategorySchema,
-  detail: z.string(),
+  // The detail is read through its logged route, and only while the offer waits (0125).
   hasDocument: z.boolean(),
   decision: z.enum(['confirm', 'drop']).nullable(),
   decidedAt: z.iso.datetime({ offset: true }).nullable(),

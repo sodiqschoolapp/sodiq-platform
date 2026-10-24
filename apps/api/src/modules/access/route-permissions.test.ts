@@ -823,6 +823,10 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
+  'GET /api/exemptions/move-offers/:id/reason': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
   'POST /api/exemptions/move-offers/:id/confirm/preview': {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],

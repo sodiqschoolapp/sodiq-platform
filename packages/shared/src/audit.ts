@@ -295,6 +295,7 @@ export const AUDIT_ACTION_GROUPS = {
     'exemption.end',
     'exemption.void',
     'exemption.reason_open',
+    'exemption.offer_reason_open',
     'exemption.document_open',
     'exemption.document_add',
     'exemption.document_remove',

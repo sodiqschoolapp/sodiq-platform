@@ -3,6 +3,7 @@ import { schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { notFound } from '../setup/setup-refusals.js';
 import { accountOfStaff } from '../access/request-posts.js';
 import type { Notifications } from '../notifications/notifications.service.js';
 
@@ -13,11 +14,14 @@ import type { Notifications } from '../notifications/notifications.service.js';
  * Every writer of exemptions (create, edit, end, void, a batch, a confirmed
  * move offer) runs its write between `lockStudents` and `settle`:
  *
- * - `lockStudents` takes the students' class and group rows `for no key
- *   update` in the order of the id, before anything is read: the cell trigger
- *   (`journal_cells_write`, 0108) takes them `for share`, so a cell save and an
- *   exemption write never pass each other (the plan's lock, spec review of the
- *   plan must-fix 4).
+ * - `lockStudents` takes the students' cells `for update` in the order of
+ *   `saveCells`, then their class and group rows `for no key update` in the
+ *   order of the id, before anything is read: a cell save updates its cell
+ *   first and its trigger (`journal_cells_write`, 0108) then takes the
+ *   memberships `for share`, so a cell save and an exemption write never pass
+ *   each other and never deadlock (the plan's lock, spec review of the plan
+ *   must-fix 4; spec review of the code, must-fix 1). A cell inserted meanwhile
+ *   waits at the memberships, and no writer here touches a cell it did not lock.
  * - `expectedIn` reads who is expected in the held lessons of the window,
  *   before the write and again after it (`lesson_student_expected`, 0123).
  * - `settle` compares the two: a lesson that stopped expecting the student and
@@ -76,7 +80,9 @@ export async function todayIn(transaction: Transaction, branchId: string): Promi
 }
 
 /**
- * Locks the class and group rows of the students `for no key update`, in the
+ * Locks the students' journal cells of the years not closed `for update`, in
+ * the order of `saveCells` (lesson, student, the attendance cell first, the
+ * works by id), then their class and group rows `for no key update` in the
  * order of the id, each table in a statement of its own (see the file's
  * comment).
  */
@@ -86,6 +92,18 @@ export async function lockStudents(
 ): Promise<void> {
   const ids = [...new Set(studentIds)].sort();
   if (ids.length === 0) return;
+  await sql`
+    select 1 from journal_cells c
+    join lessons l on l.id = c.lesson_id
+    where c.student_id = any(${ids}::uuid[])
+      and exists (
+        select 1 from academic_years y
+        where y.branch_id = l.branch_id and y.status <> 'closed'
+          and l.lesson_date between y.start_date and y.end_date
+      )
+    order by c.lesson_id, c.student_id, c.work_id nulls first
+    for update of c
+  `.execute(transaction);
   await sql`
     select 1 from class_memberships m
     where m.student_id = any(${ids}::uuid[])
@@ -98,6 +116,24 @@ export async function lockStudents(
     order by m.id
     for no key update
   `.execute(transaction);
+}
+
+/**
+ * A choice names a lesson by id in the body: one the branch does not hold, or an unknown one, is
+ * 404 before any lock or write (permission review 9; `.claude/rules/api.md`: one 404 per body id).
+ */
+export async function refuseForeignChoices(
+  transaction: Transaction,
+  choices: readonly ExemptionChoice[],
+): Promise<void> {
+  const ids = [...new Set(choices.map((one) => one.lessonId.toLowerCase()))];
+  if (ids.length === 0) return;
+  const found = await transaction
+    .selectFrom('lessons')
+    .select('id')
+    .where('id', 'in', ids)
+    .execute();
+  if (found.length !== ids.length) throw notFound();
 }
 
 /**
@@ -543,11 +579,21 @@ export async function withActor(transaction: Transaction, accountId: string): Pr
   await sql`select set_config('app.exemption_actor', ${accountId}, true)`.execute(transaction);
 }
 
+/** What an exemption covers, as the notice of a change sees it. */
+export interface ExemptionScope {
+  readonly allSubjects: boolean;
+  readonly subjectIds: readonly string[];
+  readonly startTime: string | null;
+  readonly endTime: string | null;
+}
+
 /**
- * The accounts told of an exemption (`edge/exemptions`: "The Tutor and the
- * teachers of the affected lessons"): the Tutors of the student's classes in
- * the window and the teachers of the student's lessons in it (held or to
- * come, not cancelled), never the person who made the change.
+ * Who is told of a grant or a change (`edge/exemptions`, row 11: "the
+ * student's Tutor and the teachers of the affected lessons"): the Tutors of
+ * the student's classes in the window and the teachers of the student's lessons
+ * there (held or to come, not cancelled) that the exemption meets, by subject
+ * and, for chosen slots, by time (permission review 11); never the person who
+ * made the change.
  */
 export async function toldOf(
   transaction: Transaction,
@@ -557,8 +603,16 @@ export async function toldOf(
     readonly from: string;
     readonly until: string;
     readonly actorId: string;
+    /** What the exemption covers (before and after a change): only lessons it meets are told. */
+    readonly scopes: readonly ExemptionScope[];
   },
 ): Promise<string[]> {
+  const scopes = input.scopes.map((scope) => ({
+    all: scope.allSubjects,
+    subjects: [...scope.subjectIds],
+    start: scope.startTime ?? '00:00',
+    end: scope.endTime ?? '24:00',
+  }));
   const tutors = await sql<{ account_id: string }>`
     select distinct a.account_id
     from class_memberships m
@@ -578,6 +632,14 @@ export async function toldOf(
       and l.lesson_date between ${input.from}::date and ${input.until}::date
       and l.cancel_cause is null
       and l.teacher_id is not null
+      and exists (
+        select 1 from branches b, jsonb_to_recordset(${JSON.stringify(scopes)}::jsonb)
+          as s("all" boolean, subjects uuid[], start text, "end" text)
+        where b.id = l.branch_id
+          and (s."all" or l.subject_id = any(s.subjects))
+          and (l.starts_at at time zone b.time_zone)::time < s."end"::time
+          and s.start::time < (l.ends_at at time zone b.time_zone)::time
+      )
       and (
         exists (
           select 1 from class_memberships m
@@ -624,13 +686,17 @@ export async function noticeReopened(
   for (const [account, students] of [...byTeacher].sort(([one], [other]) =>
     one.localeCompare(other),
   )) {
-    for (const [studentId, lessons] of students) {
-      await notifications.send(transaction, {
-        kind: 'journal.exemption_reopened',
-        branchId: input.branchId,
-        accountIds: [account],
-        data: { student: input.names.get(studentId) || '—', lessons: lessons.size },
-      });
-    }
+    // One notice per teacher and change (spec review of the code, must-fix 4): the students by
+    // name, the locked lessons counted once.
+    const lessons = new Set([...students.values()].flatMap((one) => [...one]));
+    const named = [...students.keys()]
+      .map((studentId) => input.names.get(studentId) || '—')
+      .sort((one, other) => one.localeCompare(other));
+    await notifications.send(transaction, {
+      kind: 'journal.exemption_reopened',
+      branchId: input.branchId,
+      accountIds: [account],
+      data: { students: named.join(', '), lessons: lessons.size },
+    });
   }
 }

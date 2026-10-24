@@ -85,6 +85,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/exemptions/:id/reason',
       'GET /api/exemptions/absences-without',
       'GET /api/exemptions/move-offers',
+      'GET /api/exemptions/move-offers/:id/reason',
       'GET /api/forced-deletes',
       'GET /api/groups',
       'GET /api/groups/:id',

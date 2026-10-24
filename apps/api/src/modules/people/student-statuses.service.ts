@@ -110,6 +110,9 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   // Task 3.3c: a leaving cancels an open release; no status of the new
   // branch is dated before the move (decision 12).
   ...BRANCH_MOVE_REFUSALS,
+  // Task 8.5 (decision 14): a leaving taken back gives back the exemptions it cut; one entered
+  // since over those days refuses it (spec review of the code, note 3).
+  exemption_spans_no_overlap: 'student_status_exemption_overlap',
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */

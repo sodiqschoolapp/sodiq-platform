@@ -15,6 +15,7 @@ import { addDays, patternIdOf, weekdayOf, type RuleResult } from '@sodiq/timetab
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { noticeKeptLessons } from '../journal/exemption-follow.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import {
   bulkKeyPartOf,
@@ -1400,6 +1401,38 @@ export class TimetableCalendarLessons {
           examsChanged,
         });
       }
+    }
+    // Task 8.5 (From 5.6b-3; spec review of the code, should-fix 2): the grade that is off is
+    // exempt from a group block kept on its day off; the Tutors and the teachers are told.
+    const keptGroups = groupAudit.filter((one) => one.after === 'keep');
+    if (!input.preview && keptGroups.length > 0) {
+      const keptLessons = await transaction
+        .selectFrom('lessons')
+        .innerJoin('branches', 'branches.id', 'lessons.branch_id')
+        .select('lessons.id')
+        .where('lessons.branch_id', '=', branchId)
+        .where('lessons.cancel_cause', 'is', null)
+        .where((where) =>
+          where.or(
+            keptGroups.map((one) =>
+              where.and([
+                where('lessons.group_id', 'in', [...one.groupIds]),
+                where('lessons.lesson_date', '=', one.date),
+                where(
+                  sql<number>`extract(epoch from ((lessons.starts_at at time zone branches.time_zone) - lessons.lesson_date::timestamp)) / 60`,
+                  '=',
+                  one.start,
+                ),
+              ]),
+            ),
+          ),
+        )
+        .execute();
+      await noticeKeptLessons(transaction, this.notifications, {
+        branchId,
+        lessonIds: keptLessons.map((one) => one.id),
+        actorId: input.accountId,
+      });
     }
     return {
       lessons,

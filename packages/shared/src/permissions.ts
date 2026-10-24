@@ -538,6 +538,14 @@ export const PERMISSIONS = freezeTable({
    * Moral Education, the Head Tutor) and the Tutor (own classes, decided in
    * the route); Teachers and Head Teachers see the category in the journal.
    */
+  absence_reasons: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view', 'edit'],
+  }),
   /**
    * Exemptions (task 8.5, pull request #223, decision 1, Look first): `07`,
    * Granted by: "The Academic Vice Principal of the branch, and the Super
@@ -550,14 +558,6 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],
     academic_vice_principal: ['view', 'create', 'edit'],
-  }),
-  absence_reasons: rows({
-    super_admin: ['view', 'edit'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'edit'],
-    spiritual_vice_principal: ['view'],
-    head_tutor: ['view'],
-    tutor: ['view', 'edit'],
   }),
   /**
    * Lesson plans (task 7.1a, pull request #212, decision 2, Look first):

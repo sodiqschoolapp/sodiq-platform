@@ -1084,6 +1084,7 @@ export const ERROR_CODES = [
   'exemption_batch_empty',
   /** A merge would leave two overlapping exemptions on the kept record (task 8.5, From 3.3d). */
   'student_merge_exemption_overlap',
+  'student_status_exemption_overlap',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

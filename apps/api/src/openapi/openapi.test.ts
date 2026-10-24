@@ -85,6 +85,7 @@ describe('OpenAPI document', () => {
         '/api/exemptions/move-offers/{id}/confirm',
         '/api/exemptions/move-offers/{id}/confirm/preview',
         '/api/exemptions/move-offers/{id}/drop',
+        '/api/exemptions/move-offers/{id}/reason',
         '/api/exemptions/preview',
         '/api/exemptions/{id}',
         '/api/exemptions/{id}/document',

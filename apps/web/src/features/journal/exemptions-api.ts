@@ -91,6 +91,14 @@ export const exemptionsTodayQuery = (branchId: string | null, enabled: boolean) 
     enabled: branchId !== null && enabled,
   });
 
+/** The detail of a waiting move offer's reason: every opening is logged on the server. */
+export const openOfferReason = (id: string) =>
+  answerOf(
+    api.GET('/api/exemptions/move-offers/{id}/reason', {
+      params: { header: branchHeader(), path: { id } },
+    }),
+  ).then((answer) => exemptionReasonSchema.parse(answer));
+
 /** The detail of the reason: every opening is logged on the server. */
 export const openReason = (id: string) =>
   answerOf(

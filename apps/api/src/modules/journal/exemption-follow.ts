@@ -281,6 +281,34 @@ export async function noticeKeptBlocks(
   },
 ): Promise<number> {
   if (input.blockIds.length === 0) return 0;
+  const lessons = await transaction
+    .selectFrom('lessons')
+    .select('id')
+    .where('block_id', 'in', [...input.blockIds])
+    .execute();
+  return noticeKeptLessons(transaction, notifications, {
+    branchId: input.branchId,
+    lessonIds: lessons.map((one) => one.id),
+    actorId: input.actorId,
+  });
+}
+
+/**
+ * The notice of kept lessons, of a bulk cancel's kept block, an exam's class
+ * kept out or a group block kept on a day off (spec review of the code,
+ * should-fix 2; `edge/timetable`: exempt "as for an excursion"): each held
+ * lesson that takes students out, as `noticeKeptBlocks` says.
+ */
+export async function noticeKeptLessons(
+  transaction: Transaction,
+  notifications: Notifications,
+  input: {
+    readonly branchId: string;
+    readonly lessonIds: readonly string[];
+    readonly actorId: string;
+  },
+): Promise<number> {
+  if (input.lessonIds.length === 0) return 0;
   const found = await sql<{
     lesson_id: string;
     date: string;
@@ -294,7 +322,7 @@ export async function noticeKeptBlocks(
       select l.id, l.lesson_date, l.starts_at, l.class_id, l.group_id, l.teacher_id, b.time_zone
       from lessons l
       join branches b on b.id = l.branch_id
-      where l.block_id = any(${[...input.blockIds]}::uuid[]) and l.cancel_cause is null
+      where l.id = any(${[...input.lessonIds]}::uuid[]) and l.cancel_cause is null
     ),
     out_classes as (
       select k.id as lesson_id, m.class_id

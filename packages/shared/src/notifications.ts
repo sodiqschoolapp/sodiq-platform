@@ -470,7 +470,8 @@ export const NOTIFICATION_KINDS = {
    * exemption'": one per teacher and change, with the lessons' count.
    */
   'journal.exemption_reopened': z.strictObject({
-    student: z.string().min(1).max(200),
+    // The students of the teacher's reopened lessons, by name: one notice per teacher and change.
+    students: z.string().min(1).max(4000),
     lessons: z.int().min(1),
   }),
   /**
