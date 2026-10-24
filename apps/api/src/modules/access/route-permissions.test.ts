@@ -834,6 +834,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/exemptions/:id/end': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
   'POST /api/exemptions/:id/void/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
   'POST /api/exemptions/:id/void': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
+  // Task 8.5: the teaching home's exemption cards, scope in the route.
+  'GET /api/journal/exemptions-today': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/student-absences': { branch: 'request', roles: ABSENCE_READERS },
   'PUT /api/journal/student-absences/:studentId/:date': {
     branch: 'request',

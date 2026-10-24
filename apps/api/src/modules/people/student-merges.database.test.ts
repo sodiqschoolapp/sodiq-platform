@@ -177,6 +177,77 @@ describe('student merges in the database', () => {
     expect(found.rows.map((row) => row.table)).toEqual(Object.keys(MERGE_DOES).sort());
   });
 
+  // Task 8.5 (From 3.3d): the exemptions go to the kept record, or two that overlap refuse the merge.
+  describe('the exemptions', () => {
+    const exemption = (transaction: Transaction, student: string, from: string, until: string) =>
+      transaction
+        .insertInto('exemptions')
+        .values({
+          branch_id: north,
+          student_id: student,
+          year_id: northYear,
+          batch_id: '019a0000-0000-7000-8000-000000000009',
+          kind: 'temporary',
+          all_subjects: true,
+          start_date: from,
+          end_date: until,
+          category: 'illness',
+          detail: 'A certificate',
+          granted_by: account,
+          granted_at: new Date(0),
+          version: 0,
+          changed_at: new Date(0),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+    const carry = (transaction: Transaction, kept: string, merged: string) =>
+      transaction
+        .updateTable('exemptions')
+        .set({ student_id: kept })
+        .where('student_id', '=', merged)
+        .execute();
+
+    it('carries an exemption to the kept record only with a merge of the two', async () => {
+      const kept = await members.student(north);
+      const merged = await members.student(north);
+      const row = await inBranches([north], (transaction) =>
+        exemption(transaction, merged, '2026-11-10', '2026-11-12'),
+      );
+      expect(
+        await refusal(inBranches([north], (transaction) => carry(transaction, kept, merged))),
+      ).toMatchObject({
+        constraint: 'exemption_student',
+      });
+      await everywhere(async (transaction) => {
+        await mergeRow(transaction, kept, merged);
+        await carry(transaction, kept, merged);
+      });
+      const stored = await database.migrator
+        .selectFrom('exemption_spans')
+        .select('student_id')
+        .where('exemption_id', '=', row.id)
+        .execute();
+      expect(stored.map((one) => one.student_id)).toEqual([kept]);
+    });
+
+    it('refuses a merge that would leave two overlapping exemptions', async () => {
+      const kept = await members.student(north);
+      const merged = await members.student(north);
+      await inBranches([north], async (transaction) => {
+        await exemption(transaction, kept, '2026-11-16', '2026-11-18');
+        await exemption(transaction, merged, '2026-11-18', '2026-11-20');
+      });
+      expect(
+        await refusal(
+          everywhere(async (transaction) => {
+            await mergeRow(transaction, kept, merged);
+            await carry(transaction, kept, merged);
+          }),
+        ),
+      ).toMatchObject({ constraint: 'exemption_spans_no_overlap' });
+    });
+  });
+
   describe('the merge row', () => {
     it('is written for two records with their current UIDs at the moment of the transaction', async () => {
       const kept = await members.student(north);

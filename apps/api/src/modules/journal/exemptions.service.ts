@@ -25,6 +25,7 @@ import {
   type ExemptionReason,
   type ExemptionsQuery,
   type ExemptionVoid,
+  type ExemptionsToday,
   type PlanFileType,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -337,6 +338,109 @@ export class Exemptions {
       row.document_type ?? '',
       row.document_name ?? '',
     );
+  }
+
+  /**
+   * The teaching home's cards (`edge/exemptions`: "The Tutor's home page shows 'exempt
+   * today'"; `07`, Problem cases: "The student's Tutor and teachers see 'back from
+   * exemption' on that day"): the students of the reader's own classes (rows of a Tutor in
+   * force now), with the category, and the students of the reader's lessons today.
+   */
+  today(access: Access): Promise<ExemptionsToday> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const today = await todayIn(transaction, branchId);
+      const own = [
+        ...new Set(
+          access.permitting
+            .filter((one) => one.role === 'tutor')
+            .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
+        ),
+      ];
+      const staff = await transaction
+        .selectFrom('staff')
+        .select('id')
+        .where('account_id', '=', access.accountId)
+        .executeTakeFirst();
+      const found = await sql<{
+        student_id: string;
+        tutor: boolean;
+        kind: 'temporary' | 'full';
+        start_date: string;
+        end_date: string;
+        start_time: string | null;
+        end_time: string | null;
+        category: string;
+        back: boolean;
+      }>`
+        with mine as (
+          select m.student_id, true as tutor
+          from class_memberships m
+          where m.class_id = any(${own}::uuid[])
+            and m.valid_from <= ${today}::date and ${today}::date < m.valid_until
+          union
+          select m.student_id, false
+          from lessons l
+          join class_memberships m on m.class_id = l.class_id
+            and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+          where l.branch_id = ${branchId}::uuid and l.lesson_date = ${today}::date
+            and l.cancel_cause is null and l.teacher_id = ${staff?.id ?? null}::uuid
+          union
+          select m.student_id, false
+          from lessons l
+          join group_memberships m on m.group_id = l.group_id
+            and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+          where l.branch_id = ${branchId}::uuid and l.lesson_date = ${today}::date
+            and l.cancel_cause is null and l.teacher_id = ${staff?.id ?? null}::uuid
+        ),
+        readers as (
+          select student_id, bool_or(tutor) as tutor from mine group by student_id
+        )
+        select r.student_id, r.tutor, e.kind, e.start_date::text as start_date,
+          e.end_date::text as end_date, to_char(e.start_time, 'HH24:MI') as start_time,
+          to_char(e.end_time, 'HH24:MI') as end_time, e.category,
+          e.end_date < ${today}::date as back
+        from readers r
+        join exemptions e on e.student_id = r.student_id and e.branch_id = ${branchId}::uuid
+          and e.voided_at is null
+          and (
+            (r.tutor and e.start_date <= ${today}::date and e.end_date >= ${today}::date)
+            or (
+              e.end_date = ${today}::date - 1
+              and not exists (
+                select 1 from exemptions o
+                where o.student_id = e.student_id and o.voided_at is null
+                  and o.start_date <= ${today}::date and o.end_date >= ${today}::date
+              )
+            )
+          )
+        order by e.start_date, e.id
+      `.execute(transaction);
+      const students = await studentsOf(
+        transaction,
+        found.rows.map((row) => ({ id: row.student_id, on: today })),
+      );
+      const lineOf = (row: (typeof found.rows)[number]) => {
+        const student = students.get(`${row.student_id}|${today}`);
+        return student === undefined
+          ? []
+          : [
+              {
+                student,
+                kind: row.kind,
+                startDate: row.start_date,
+                endDate: row.end_date,
+                slots: slotsOf({ startTime: row.start_time, endTime: row.end_time }),
+                category: row.tutor ? exemptionCategorySchema.parse(row.category) : null,
+              },
+            ];
+      };
+      return {
+        date: today,
+        exemptToday: found.rows.filter((row) => !row.back).flatMap(lineOf),
+        backToday: found.rows.filter((row) => row.back).flatMap(lineOf),
+      };
+    });
   }
 
   // ---------------------------------------------------------------------------

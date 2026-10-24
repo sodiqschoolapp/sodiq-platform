@@ -6,6 +6,7 @@ import {
   exemptionListSchema,
   exemptionPreviewSchema,
   exemptionSchema,
+  exemptionsTodaySchema,
   type ExemptionCreate,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -1145,6 +1146,54 @@ describe('exemptions', () => {
         });
         const again = await post(`/api/exemptions/move-offers/${offers.items[0]?.id ?? ''}/drop`);
         expect(codeOf(again)).toBe('exemption_offer_decided');
+      });
+    });
+  });
+
+  describe('the teaching home (edge/exemptions, row 11; 07, "An exemption ends")', () => {
+    it('shows the Tutor "exempt today" with the category and "back from exemption" the day after the end', async () => {
+      const s = await scene();
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({ studentIds: [s.ahmedov], startDate: '2026-10-20', endDate: '2026-10-26' }),
+            )
+          ).status,
+        ).toBe(200);
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({
+                studentIds: [s.boboyev],
+                startDate: '2026-10-27',
+                endDate: '2026-10-30',
+                category: 'family',
+              }),
+            )
+          ).status,
+        ).toBe(200);
+      });
+      const tutor = await tutorOf(s.branch, s.classId);
+      await as(s.branch, tutor, [], async ({ get }) => {
+        const cards = exemptionsTodaySchema.parse(
+          (await get('/api/journal/exemptions-today')).body,
+        );
+        expect(cards.date).toBe('2026-10-27');
+        expect(cards.exemptToday.map((one) => [one.student.id, one.category])).toEqual([
+          [s.boboyev, 'family'],
+        ]);
+        expect(cards.backToday.map((one) => one.student.id)).toEqual([s.ahmedov]);
+      });
+      const other = await tutorOf(s.branch, s.otherClass);
+      await as(s.branch, other, [], async ({ get }) => {
+        const cards = exemptionsTodaySchema.parse(
+          (await get('/api/journal/exemptions-today')).body,
+        );
+        expect(cards.exemptToday).toEqual([]);
+        expect(cards.backToday).toEqual([]);
       });
     });
   });

@@ -263,3 +263,75 @@ export async function exemptionsFollowBranchMove(
     });
   }
 }
+
+/**
+ * The notice of a kept block (From 5.6a-3: "sends the exemption notice to the
+ * Tutor and the teachers of the kept lessons"): for each held lesson of the
+ * blocks that takes students out (`lesson_kept_out_students`, 0123), one
+ * notice to the lesson's teacher and the Tutors of the classes taken out on
+ * the date, never to the person who made the change.
+ */
+export async function noticeKeptBlocks(
+  transaction: Transaction,
+  notifications: Notifications,
+  input: { readonly branchId: string; readonly blockIds: readonly string[]; readonly actorId: string },
+): Promise<number> {
+  if (input.blockIds.length === 0) return 0;
+  const found = await sql<{
+    lesson_id: string;
+    date: string;
+    start: string;
+    unit: string;
+    teacher_account: string | null;
+    classes: string;
+    tutors: string[] | null;
+  }>`
+    with lessons_kept as (
+      select l.id, l.lesson_date, l.starts_at, l.class_id, l.group_id, l.teacher_id, b.time_zone
+      from lessons l
+      join branches b on b.id = l.branch_id
+      where l.block_id = any(${[...input.blockIds]}::uuid[]) and l.cancel_cause is null
+    ),
+    out_classes as (
+      select k.id as lesson_id, m.class_id
+      from lessons_kept k
+      cross join lateral lesson_kept_out_students(k.id) as o(student_id)
+      join class_memberships m on m.student_id = o.student_id
+        and m.valid_from <= k.lesson_date and k.lesson_date < m.valid_until
+      group by k.id, m.class_id
+    )
+    select k.id as lesson_id, k.lesson_date::text as date,
+      to_char(k.starts_at at time zone k.time_zone, 'HH24:MI') as start,
+      coalesce(g.name, c.grade::text || ' ' || c.name) as unit,
+      st.account_id as teacher_account,
+      string_agg(distinct oc.grade::text || ' ' || oc.name, ', ') as classes,
+      array_remove(array_agg(distinct a.account_id), null) as tutors
+    from lessons_kept k
+    join out_classes o on o.lesson_id = k.id
+    join classes oc on oc.id = o.class_id
+    left join groups g on g.id = k.group_id
+    left join classes c on c.id = k.class_id
+    left join staff st on st.id = k.teacher_id
+    left join class_tutors t on t.class_id = o.class_id
+      and t.valid_from < ((k.lesson_date + 1)::timestamp at time zone k.time_zone)
+      and (t.valid_until is null or t.valid_until > (k.lesson_date::timestamp at time zone k.time_zone))
+    left join assignments a on a.id = t.assignment_id
+    group by k.id, k.lesson_date, k.starts_at, k.time_zone, g.name, c.grade, c.name, st.account_id
+    order by k.starts_at, k.id
+  `.execute(transaction);
+  let sent = 0;
+  for (const row of found.rows) {
+    const accounts = [
+      ...new Set([...(row.tutors ?? []), ...(row.teacher_account === null ? [] : [row.teacher_account])]),
+    ].filter((one) => one !== input.actorId);
+    if (accounts.length === 0) continue;
+    await notifications.send(transaction, {
+      kind: 'journal.exemption_kept_block',
+      branchId: input.branchId,
+      accountIds: accounts.sort(),
+      data: { unit: row.unit, date: row.date, start: row.start, classes: row.classes },
+    });
+    sent += 1;
+  }
+  return sent;
+}

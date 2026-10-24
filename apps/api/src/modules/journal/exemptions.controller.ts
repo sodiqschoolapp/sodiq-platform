@@ -22,6 +22,7 @@ import {
   exemptionsQuerySchema,
   exemptionVoidPreviewSchema,
   exemptionVoidSchema,
+  exemptionsTodaySchema,
   type Exemption,
   type ExemptionAbsences,
   type ExemptionBatchChanged,
@@ -43,6 +44,7 @@ import {
   type ExemptionsQuery,
   type ExemptionVoid,
   type ExemptionVoidPreview,
+  type ExemptionsToday,
 } from '@sodiq/shared';
 import { EXEMPTION_FILE_ROUTE, type UploadedFile } from '../../http/file-routes.js';
 import { RequestId } from '../../http/request-id.js';
@@ -338,5 +340,21 @@ export class ExemptionsController {
     @RequestId() requestId: string,
   ): Promise<Exemption> {
     return this.exemptions.void(access, params.id, input, requestId);
+  }
+}
+
+/**
+ * The teaching home's exemption cards (task 8.5): a reader of journals, scoped in the
+ * route to own classes and own lessons today.
+ */
+@Controller('journal/exemptions-today')
+export class ExemptionsTodayController {
+  constructor(private readonly exemptions: Exemptions) {}
+
+  @Get()
+  @Requires('journal', 'view')
+  @Returns(exemptionsTodaySchema)
+  today(@CurrentAccess() access: Access): Promise<ExemptionsToday> {
+    return this.exemptions.today(access);
   }
 }

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
 import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
-import { ExemptionsController } from './exemptions.controller.js';
+import { ExemptionsController, ExemptionsTodayController } from './exemptions.controller.js';
 import { Exemptions } from './exemptions.service.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AttendanceController } from './attendance.controller.js';
@@ -30,6 +30,7 @@ import { WorksService } from './works.service.js';
     UnlocksController,
     // Task 8.5: the exemptions.
     ExemptionsController,
+    ExemptionsTodayController,
     JournalsController,
     AttendanceController,
     StudentAbsencesController,
