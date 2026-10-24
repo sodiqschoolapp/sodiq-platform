@@ -18,6 +18,7 @@ import {
   START,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
 import { liveSubstitutionRowOf, substitutedIn } from '../../testing/substitutions-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -262,16 +263,24 @@ describe('calendar entries after publishing', () => {
     // grade-9 and a grade-10 class"), in slot 5 on Mondays.
     let groupId: string | null = null;
     let nineGroupId: string | null = null;
+    // Task 8.5: the grade-9 class, the subject and the coach's account, for the kept-block notice.
+    let nineClassId: string | null = null;
+    let sportId: string | null = null;
+    let coachAccount: string | null = null;
     if (input.group === true || input.nineGroup === true) {
       const nineId = await load.classes.schoolClass(branch, year, {
         grade: 9,
         room: await load.classes.room(branch),
       });
       const sport = await load.classes.subject({ grades: [9, 10], journalType: 'attendance_only' });
-      const coach = (
-        await load.teacher(branch, { subjects: [{ subject: sport, grades: [9, 10] }] })
-      ).staffId;
+      const coachOf = await load.teacher(branch, {
+        subjects: [{ subject: sport, grades: [9, 10] }],
+      });
+      const coach = coachOf.staffId;
       await hours(branch, coach);
+      nineClassId = nineId;
+      sportId = sport;
+      coachAccount = coachOf.accountId;
       groupId = await load.classes.group(branch, year, sport, [nineId, seniorId]);
       const groupRow = await load.row({
         branch_id: branch,
@@ -346,6 +355,9 @@ describe('calendar entries after publishing', () => {
       lessonType: lesson,
       groupId,
       nineGroupId,
+      nineClassId,
+      sportId,
+      coachAccount,
       art,
       music,
     };
@@ -537,6 +549,33 @@ describe('calendar entries after publishing', () => {
       const groupBlocks = (s: Scene, choice: 'keep' | 'cancel') => [
         { weekday: 1, start: 590, groupIds: [s.groupId ?? ''], choice },
       ];
+      /** One student of the grade-9 class and one of the grade-10 class in the group (task 8.5). */
+      const seatBoth = async (s: Scene) => {
+        const members = new MembersKit(t.database.migrator, await load.classes.account());
+        for (const [classId, grade] of [
+          [s.nineClassId ?? '', 9],
+          [s.seniorId, 10],
+        ] as const) {
+          const studentId = await members.student(s.branch, { startsOn: '2026-09-01', grade });
+          // The class row and the group row together: a class row needs its groups at the commit.
+          await t.database.migrator.transaction().execute(async (transaction) => {
+            await members.member(
+              { branch: s.branch, classId, studentId, from: '2026-09-01' },
+              transaction,
+            );
+            await members.groupMember(
+              {
+                branch: s.branch,
+                groupId: s.groupId ?? '',
+                subjectId: s.sportId ?? '',
+                studentId,
+                from: '2026-09-01',
+              },
+              transaction,
+            );
+          });
+        }
+      };
       const groupOn = async (s: Scene, date: string) =>
         (await lessonsOn(s.branch, date)).filter((one) => one.group_id === s.groupId);
       const choicesOf = (branch: string) =>
@@ -827,6 +866,62 @@ describe('calendar entries after publishing', () => {
       });
 
       // Code review must-fix 1 (plan test 9b, decision 2).
+      // Task 8.5 (From 5.6b-3; spec review of the code of 8.5, should-fix 2): the grade that is off
+      // is exempt from the kept block "as for an excursion"; the coach and its Tutor are told once.
+      it('with "keep" tells the coach and the Tutor of the grade that is off, once', async () => {
+        const s = await scene({ group: true });
+        await seatBoth(s);
+        const tutor = await load.classes.account();
+        const assignment = await t.kit.giveRole(tutor, {
+          role: 'tutor',
+          branchId: s.branch,
+          validFrom: new Date('2026-09-01T00:00:00+05:00'),
+        });
+        await load.classes.person(s.branch, ['uz'], { accountId: tutor });
+        await load.classes.tutorRow(s.branch, s.nineClassId ?? '', assignment.id);
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        const told = await t.database.migrator
+          .selectFrom('notifications')
+          .select(['account_id', 'data'])
+          .where('kind', '=', 'journal.exemption_kept_block')
+          .where('account_id', 'in', [s.coachAccount ?? '', tutor])
+          .orderBy('account_id')
+          .execute();
+        expect(told.map((one) => one.account_id).sort()).toEqual([s.coachAccount, tutor].sort());
+        expect(told[0]?.data).toMatchObject({ date: OCT19 });
+      });
+
+      // Review of the code of 8.5, finding 1: the choice is stored at the block's weekly start
+      // (09:50); a special day of grade 10 moves the kept lesson to 10:30 on the date, and the
+      // kept lesson is still found by its block's weekly start.
+      it('with "keep" tells the coach when the kept lesson is at another time on the date than its weekly start', async () => {
+        const s = await scene({ group: true });
+        await seatBoth(s);
+        const pause = await t.createSlotType(s.branch, 'Long break', 'break', 30);
+        const late = await t.createTemplate(s.branch, 'Late', [
+          s.lessonType,
+          pause,
+          s.lessonType,
+          pause,
+          s.lessonType,
+        ]);
+        okay(
+          await create(s.branch, { ...specialDay(OCT19, OCT19, late), gradeFrom: 10, gradeTo: 10 }),
+          201,
+        );
+        okay(await create(s.branch, { ...nineOff(), groupBlocks: groupBlocks(s, 'keep') }), 201);
+        const [kept] = await groupOn(s, OCT19);
+        expect(kept?.cancel_cause).toBeNull();
+        expect(kept?.starts_at).toEqual(new Date(`${OCT19}T10:30:00+05:00`));
+        const told = await t.database.migrator
+          .selectFrom('notifications')
+          .select('account_id')
+          .where('kind', '=', 'journal.exemption_kept_block')
+          .where('account_id', '=', s.coachAccount ?? '')
+          .execute();
+        expect(told).toHaveLength(1);
+      });
+
       it('a later version\'s block of the group at another time is cancelled "day off" and offered unchosen', async () => {
         const s = await scene({ group: true });
         const saved = okay(

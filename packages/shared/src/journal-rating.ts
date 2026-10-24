@@ -115,6 +115,12 @@ export const ratingExamSchema = z.object({
   /** Task 8.4: the edit period of the exam, from its date in force. */
   lock: editLockSchema,
   entries: z.array(ratingEntrySchema),
+  /**
+   * Task 8.5 (`edge/calculation`, "A student is exempt on the exam day": "The cell shows
+   * 'exempt on exam day, pending'"): the students exempt for the subject on the date in force
+   * with no entry; passed to `packages/calc` as no entry. "A pending entry blocks closing" (9.2a).
+   */
+  pending: z.array(z.uuid()),
 });
 
 export type RatingExam = z.infer<typeof ratingExamSchema>;

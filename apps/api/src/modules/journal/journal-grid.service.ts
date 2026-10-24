@@ -6,6 +6,7 @@ import {
   quarterAttendanceAverage,
   quarterResult,
   shownPercent,
+  studentQuarterOutcome,
   type AttendanceMark,
   type QuarterLesson,
   type QuarterResult,
@@ -28,6 +29,7 @@ import {
   type JournalPart,
   type JournalShape,
   type JournalStudent,
+  type Role,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -48,6 +50,7 @@ import {
   unlocksOfLessons,
 } from './edit-window.js';
 import { namedAccounts } from './cell-lines.query.js';
+import { exemptionMarksOf, studentExemptionsOf } from './exemption-read.js';
 import { expectedStudents } from './expected-students.js';
 import { journalColumns } from './journal-works.query.js';
 import type { Column } from './lesson-columns.js';
@@ -155,6 +158,9 @@ const NO_EXACT: Exact = {
   ratingExam: null,
   result: null,
 };
+
+/** The readers of an exemption's category besides the class Tutor (`edge/exemptions`, row 10). */
+const CATEGORY_READERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
 
 @Injectable()
 export class JournalGridReader {
@@ -425,6 +431,8 @@ export class JournalGridReader {
     const expectedOf = new Map(
       [...expected].map(([lessonId, students]) => [lessonId, new Set(students)]),
     );
+    // Task 8.5: the members exempt in each lesson, shown 4 or 5 (never stored).
+    const exemptOf = await exemptionMarksOf(transaction, lessonIds);
 
     // The students: everyone expected at a lesson of the quarter, and the members on the
     // reference date (07, Layout); the folded section holds those who left or moved.
@@ -474,6 +482,44 @@ export class JournalGridReader {
       }
       trimmed = students.some((student) => !ofOwn.has(student.id));
       students = students.filter((student) => ofOwn.has(student.id));
+    }
+
+    // Task 8.5: the students' exemptions of the subject touching the quarter; the category for
+    // the class Tutor and the readers of exemptions (`edge/exemptions`, row 10).
+    const allCategories = access.permitting.some((one) => CATEGORY_READERS.includes(one.role));
+    const tutorClassIds = new Set(
+      access.permitting
+        .filter((one) => one.role === 'tutor')
+        .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
+    );
+    const classesNow =
+      allCategories || tutorClassIds.size === 0
+        ? new Map<string, string[]>()
+        : await classesOfStudents(
+            transaction,
+            students.map((student) => student.id),
+            referenceDate,
+          );
+    const seesCategory = (studentId: string) =>
+      allCategories ||
+      (classesNow.get(studentId) ?? []).some((classId) => tutorClassIds.has(classId.toLowerCase()));
+    const exemptionsOf = new Map<string, JournalStudent['exemptions']>();
+    for (const one of await studentExemptionsOf(
+      transaction,
+      students.map((student) => student.id),
+      quarter.startDate,
+      quarter.endDate,
+    )) {
+      if (one.subjectIds !== null && !one.subjectIds.includes(journal.subjectId)) continue;
+      const list = exemptionsOf.get(one.studentId) ?? [];
+      list.push({
+        kind: one.kind,
+        startDate: one.startDate,
+        endDate: one.endDate,
+        slots: one.slots,
+        category: seesCategory(one.studentId) ? one.category : null,
+      });
+      exemptionsOf.set(one.studentId, list);
     }
 
     const attendanceValues = { lateValue: weights.lateValue, skippedValue: weights.skippedValue };
@@ -558,7 +604,9 @@ export class JournalGridReader {
       const gridCells: JournalCell[] = lessons.map((lesson) => {
         const isExpected = expectedOf.get(lesson.id)?.has(student.id) ?? false;
         const lessonWorksOf = worksOf.get(lesson.id) ?? [];
-        const mark = marks.get(lesson.id) ?? null;
+        const exempt = exemptOf.get(lesson.id)?.get(student.id) ?? null;
+        // A mark the exemption hides is not shown (decision 2).
+        const mark = exempt === null ? (marks.get(lesson.id) ?? null) : null;
         let score: number | null = null;
         if (
           shape !== 'attendance' &&
@@ -578,6 +626,7 @@ export class JournalGridReader {
         }
         return {
           closed: !isExpected || lesson.startsAt.getTime() > now.getTime(),
+          exempt,
           mark,
           version: attendanceCells.get(lesson.id)?.version ?? null,
           typedBy: attendanceCells.get(lesson.id)?.typedBy ?? null,
@@ -603,11 +652,17 @@ export class JournalGridReader {
         };
       });
 
+      // Task 8.5 (From 4.3): an exempt held lesson goes to `packages/calc` as mark 4 or 5 with no
+      // number, so the module leaves it out of every average and counts it for "Exempt".
       const countedLessons = (inMonth: string | null): QuarterLesson[] =>
-        lessons.flatMap((lesson) =>
-          held.get(lesson.id) === true &&
-          (expectedOf.get(lesson.id)?.has(student.id) ?? false) &&
-          (inMonth === null || lesson.date.startsWith(inMonth))
+        lessons.flatMap((lesson) => {
+          if (held.get(lesson.id) !== true) return [];
+          if (inMonth !== null && !lesson.date.startsWith(inMonth)) return [];
+          const exempt = exemptOf.get(lesson.id)?.get(student.id);
+          if (exempt !== undefined) {
+            return [{ mark: exempt === 'full' ? 5 : 4, classworks: [], homeworks: [] }];
+          }
+          return (expectedOf.get(lesson.id)?.has(student.id) ?? false)
             ? [
                 {
                   mark: (marks.get(lesson.id) ?? null) as AttendanceMark | null,
@@ -615,8 +670,8 @@ export class JournalGridReader {
                   homeworks: countedWorks(worksOf.get(lesson.id) ?? [], 'homework', scores),
                 },
               ]
-            : [],
-        );
+            : [];
+        });
 
       const figuresOf = (inMonth: string | null): { figures: JournalFigures; exact: Exact } => {
         const counted = countedLessons(inMonth);
@@ -641,6 +696,23 @@ export class JournalGridReader {
           ratingExam: inMonth === null ? ratingEntryOf(student.id) : null,
           quarterClosed: false,
         });
+        // Task 8.5: the quarter's outcome, for "Exempt" (no lesson remains) and "based on n of N
+        // lessons" (07, Effect on totals); N is the held lessons of this journal (8.6 follows the student).
+        const outcome =
+          inMonth === null
+            ? studentQuarterOutcome({
+                weights: quarterly,
+                attendanceValues,
+                lessons: counted,
+                ratingExam: ratingEntryOf(student.id),
+                quarterClosed: false,
+                heldInJournals: counted.length,
+                countsFrom: null,
+                leftSubjectOn: null,
+                atLeaving: null,
+                decision: null,
+              })
+            : null;
         const { averages } = result;
         const figures: JournalFigures = {
           attendance: shown(averages.attendance),
@@ -648,31 +720,37 @@ export class JournalGridReader {
           homework: shown(averages.homework),
           ratingExam: ratingShown ? shown(averages.ratingExam) : null,
           result:
-            result.kind === 'no_result'
-              ? { kind: 'no_result' }
-              : (() => {
-                  // A month leaves the rating exam out by the rule itself, labelled so,
-                  // never provisional for it (decision 23).
-                  const leftOut = result.leftOut.filter(
-                    (one) => inMonth === null || one.part !== 'ratingExam',
-                  );
-                  return {
-                    kind: 'number' as const,
-                    shown: Number(result.shown),
-                    grade: result.grade,
-                    provisional:
-                      inMonth === null
-                        ? result.provisional
-                        : leftOut.some((one) => one.reason === 'no_data'),
-                    leftOut: leftOut.map((one): JournalPart => one.part),
-                  };
-                })(),
+            outcome?.kind === 'exempt'
+              ? { kind: 'exempt' }
+              : result.kind === 'no_result'
+                ? { kind: 'no_result' }
+                : (() => {
+                    // A month leaves the rating exam out by the rule itself, labelled so,
+                    // never provisional for it (decision 23).
+                    const leftOut = result.leftOut.filter(
+                      (one) => inMonth === null || one.part !== 'ratingExam',
+                    );
+                    return {
+                      kind: 'number' as const,
+                      shown: Number(result.shown),
+                      grade: result.grade,
+                      provisional:
+                        inMonth === null
+                          ? result.provisional
+                          : leftOut.some((one) => one.reason === 'no_data'),
+                      leftOut: leftOut.map((one): JournalPart => one.part),
+                      basedOn:
+                        outcome?.kind === 'number' && outcome.flags.includes('few_lessons')
+                          ? outcome.basedOn
+                          : null,
+                    };
+                  })(),
         };
         return {
           figures,
           exact: {
             ...averages,
-            result: result.kind === 'number' ? result.value : null,
+            result: result.kind === 'number' && outcome?.kind !== 'exempt' ? result.value : null,
           },
         };
       };
@@ -702,6 +780,7 @@ export class JournalGridReader {
         cells: gridCells,
         quarter: quarterFigures,
         months: monthFigures,
+        exemptions: exemptionsOf.get(student.id) ?? [],
         comments: comments.filter((one) => one.studentId === student.id),
       };
     });

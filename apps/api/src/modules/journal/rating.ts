@@ -6,6 +6,7 @@ import { ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole } from './attendance-entry.js';
 import { namedAccounts } from './cell-lines.query.js';
 import { markersOf } from './cell-markers.js';
+import { exemptOnDate } from './exemption-read.js';
 import { editLockOf, lockOf, unlocksOfRating } from './edit-window.js';
 import { switchesIn, type JournalRow } from './journal-grid.query.js';
 
@@ -217,6 +218,13 @@ export async function ratingExamOf(
     },
   });
   const open = date !== null && today >= date && row?.notHeld !== true;
+  const entered = new Set(entries.flatMap((one) => (one.entry === null ? [] : [one.studentId])));
+  const pending =
+    date === null || row?.notHeld === true
+      ? []
+      : [...(await exemptOnDate(transaction, input.studentIds, journal.subjectId, date))]
+          .filter((studentId) => !entered.has(studentId))
+          .sort();
   return {
     journalId: journal.id,
     quarterId,
@@ -242,5 +250,6 @@ export async function ratingExamOf(
         marker: markers.get(one.id) ?? null,
       };
     }),
+    pending,
   };
 }

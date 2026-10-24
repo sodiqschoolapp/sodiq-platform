@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { noticeKeptBlocks } from '../journal/exemption-follow.js';
 import {
   bulkCancelAnswerSchema,
   bulkCancelCheckAnswerSchema,
@@ -371,6 +372,12 @@ export class TimetableBulkCancels {
     const kept = sharedItems
       .filter((item) => choiceOf.get(item.blockId) === 'keep')
       .flatMap((item) => item.blockIds);
+    // Task 8.5 (From 5.6a-3): the students of the chosen classes are exempt in the kept lessons.
+    const exemptionNotices = await noticeKeptBlocks(transaction, this.notifications, {
+      branchId,
+      blockIds: kept,
+      actorId: access.accountId,
+    });
     await this.audit.record(transaction, {
       branchId,
       actorId: access.accountId,
@@ -400,7 +407,7 @@ export class TimetableBulkCancels {
           .sort((a, b) => a.lessonId.localeCompare(b.lessonId))
           .map((one) => ({ lessonId: one.lessonId, choice: one.choice })),
         keptWithData: [...keptData].sort(),
-        notices: { ...notices },
+        notices: { ...notices, exemptionNotices },
       },
       requestId,
     });

@@ -6306,6 +6306,266 @@ try {
   seeded.locksHead = { login: locksHead.login, password: locksHead.firstPassword };
   seeded.locksVice = { login: locksVice.login, password: locksVice.firstPassword };
 
+  // Task 8.5: a branch of its own for exemptions, the shape of the 8.4 branch: a class of three
+  // students, a teacher of its "Measures" with one lesson five days ago, locked by one edit day,
+  // Alimova marked present in it, and the Academic Vice Principal, who enters a late exemption
+  // through the lock and chooses "Exempt and clear"; the teacher then sees 4 in the cell. All
+  // names are invented.
+  const exemptionsBranch = await insertBranch(migrator, 'Exemptions browser test branch');
+  await setEditDays(migrator, exemptionsBranch, 1);
+  const exemptionsVice = await create('Barno', 'Xolmatova');
+  await transactions.run([exemptionsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: exemptionsVice.id,
+      role: 'academic_vice_principal',
+      branchId: exemptionsBranch,
+      givenBy: null,
+    }),
+  );
+  const exemptionsTeacher = await create('Ulugbek', 'Tojiyev');
+  const exemptionsHead = await create('Kamola', 'Ergasheva');
+  await transactions.run([exemptionsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: exemptionsTeacher.id,
+      role: 'teacher',
+      branchId: exemptionsBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const lessonDay = isoDate(new Date(tashkentToday.getTime() - 5 * dayMs));
+    const lessonsKit = await LessonsKit.create(migrator);
+    const algebra = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Measures E',
+      journalType: 'graded',
+    });
+    await transactions.run([exemptionsBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: exemptionsHead.id,
+        role: 'head_teacher',
+        branchId: exemptionsBranch,
+        givenBy: null,
+        subjectIds: [algebra],
+      }),
+    );
+    const { yearId, classId, staffId, quarterId } = await migrator
+      .transaction()
+      .execute(async (transaction) => {
+        const academic = await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow();
+        const steam = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow();
+        const people: string[] = [];
+        for (const [accountId, staffNumber, first, last, phone] of [
+          [exemptionsTeacher.id, 'S-777721', 'Ulugbek', 'Tojiyev', '+998935557421'],
+          [exemptionsHead.id, 'S-777722', 'Kamola', 'Ergasheva', '+998935557422'],
+        ] as const) {
+          const person = await transaction
+            .insertInto('staff')
+            .values({
+              kind: 'person',
+              staff_id: staffNumber,
+              account_id: accountId,
+              first_name: first,
+              last_name: last,
+              sex: 'female',
+              birth_date: '1988-05-06',
+              phone,
+              admission_date: '2026-09-01',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('staff_branches')
+            .values({ staff_id: person.id, branch_id: exemptionsBranch, is_main: true })
+            .execute();
+          await transaction
+            .insertInto('staff_divisions')
+            .values({
+              staff_id: person.id,
+              division_id: academic.id,
+              department_id: steam.id,
+              is_main: true,
+            })
+            .execute();
+          await transaction
+            .insertInto('staff_languages')
+            .values({ staff_id: person.id, language: 'uz' })
+            .execute();
+          await transaction
+            .insertInto('staff_statuses')
+            .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+            .execute();
+          people.push(person.id);
+        }
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: people[0] ?? '', subject_id: algebra, grades: [7] })
+          .execute();
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({
+            branch_id: exemptionsBranch,
+            start_date: startDate,
+            end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+        const quarters = await transaction
+          .insertInto('quarters')
+          .values(
+            [
+              [startDate, plus(20)],
+              [plus(30), plus(90)],
+              [plus(100), plus(170)],
+              [plus(180), isoDate(new Date(yearStart.getTime() + 364 * dayMs))],
+            ].map(([start, end], index) => ({
+              branch_id: exemptionsBranch,
+              academic_year_id: year.id,
+              number: index + 1,
+              start_date: start,
+              end_date: end,
+            })),
+          )
+          .returning('id')
+          .execute();
+        const weights = { attendance: 20, classwork: 40, homework: 40 };
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({ branch_id: exemptionsBranch, subject_id: algebra, ...weights })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: exemptionsBranch,
+              subject_id: algebra,
+              quarter_id: quarter.id,
+              ...weights,
+            })),
+          )
+          .execute();
+        const cambridge = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: exemptionsBranch,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Kent',
+            language: 'uz',
+            max_size: 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [uid, first, last, phone] of [
+          ['9999871', 'Sevara', 'Alimova', '+998935553371'],
+          ['9999872', 'Bekzod', 'Rahimov', '+998935553372'],
+          ['9999873', 'Lola', 'Sobirova', '+998935553373'],
+        ] as const) {
+          await studentInClass(transaction, {
+            branch: exemptionsBranch,
+            classId: cambridge.id,
+            uid,
+            first,
+            last,
+            createdBy: exemptionsTeacher.id,
+            phone,
+          });
+        }
+        return {
+          yearId: year.id,
+          classId: cambridge.id,
+          staffId: people[0] ?? '',
+          quarterId: quarters[0]?.id ?? '',
+        };
+      });
+    const source = await lessonsKit.source(
+      exemptionsBranch,
+      yearId,
+      [{ classId, groupId: null, subjectId: algebra, rowTeacherId: staffId }],
+      startDate,
+    );
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: exemptionsBranch,
+        academic_year_id: yearId,
+        class_id: classId,
+        group_id: null,
+        subject_id: algebra,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    await migrator.transaction().execute(async (transaction) => {
+      const block = await transaction
+        .insertInto('lesson_blocks')
+        .values({
+          branch_id: exemptionsBranch,
+          academic_year_id: yearId,
+          quarter_id: quarterId,
+          lesson_date: lessonDay,
+          starts_at: new Date(`${lessonDay}T08:00:00+05:00`),
+          ends_at: new Date(`${lessonDay}T08:45:00+05:00`),
+          version_id: source.versionId,
+          pattern_block_id: source.patternBlockId,
+        })
+        .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('lessons')
+        .values({
+          branch_id: exemptionsBranch,
+          block_id: block.id,
+          lesson_date: block.lesson_date,
+          starts_at: block.starts_at,
+          ends_at: block.ends_at,
+          class_id: classId,
+          subject_id: algebra,
+          teacher_id: staffId,
+          load_row_id: source.lessons[0]?.loadRowId ?? '',
+          pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+        .then(async (lesson) => {
+          const alimova = await transaction
+            .selectFrom('students')
+            .select('id')
+            .where('uid', '=', '9999871')
+            .executeTakeFirstOrThrow();
+          await sql`select set_config('app.now', ${`${lessonDay}T09:00:00+05:00`}, true)`.execute(
+            transaction,
+          );
+          await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: exemptionsBranch,
+              lesson_id: lesson.id,
+              student_id: alimova.id,
+              mark: 1,
+              version: 1,
+              changed_by: exemptionsTeacher.id,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .execute();
+        });
+    });
+  }
+  seeded.exemptionsTeacher = {
+    login: exemptionsTeacher.login,
+    password: exemptionsTeacher.firstPassword,
+  };
+  seeded.exemptionsVice = { login: exemptionsVice.login, password: exemptionsVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')

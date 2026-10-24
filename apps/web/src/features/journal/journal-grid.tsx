@@ -45,10 +45,14 @@ import { workKey, type WorksEntry } from './works-entry';
 /** A row of the grid: a student, the line of the folded section, or the bottom row. */
 export type GridRow =
   | { readonly kind: 'student'; readonly student: JournalStudent }
-  | { readonly kind: 'section'; readonly count: number }
+  | { readonly kind: 'section'; readonly count: number; readonly which: 'left' | 'exempt' }
   | { readonly kind: 'bottom'; readonly bottom: JournalBottom };
 
 type Weekday = Parameters<typeof weekdayName>[1];
+
+/** The school date after `date`. */
+const dayAfter = (date: string): string =>
+  new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 const weekdayOf = (date: string): Weekday => {
   const day = new Date(`${date}T00:00:00Z`).getUTCDay();
@@ -193,6 +197,13 @@ interface GridProps {
   readonly foldedCount: number;
   readonly foldedOpen: boolean;
   readonly onToggleFolded: () => void;
+  /**
+   * Task 8.5 (`07`, In the journal): the students exempt for every lesson on screen, in a
+   * folded "Exempt" section with their dates.
+   */
+  readonly exempt?: readonly JournalStudent[];
+  readonly exemptOpen?: boolean;
+  readonly onToggleExempt?: () => void;
   /** The lesson to scroll to on opening. */
   readonly scrollTo: string | null;
   /** Attendance entry (task 6.3): a lesson with `canEnter` takes marks. */
@@ -226,6 +237,9 @@ export function JournalGridView({
   foldedCount,
   foldedOpen,
   onToggleFolded,
+  exempt = [],
+  exemptOpen = false,
+  onToggleExempt,
   scrollTo,
   entry,
   works,
@@ -270,15 +284,35 @@ export function JournalGridView({
 
   const rows = useMemo((): GridRow[] => {
     const shown: GridRow[] = members.map((student) => ({ kind: 'student', student }));
+    if (exempt.length > 0) {
+      shown.push({ kind: 'section', count: exempt.length, which: 'exempt' });
+      if (exemptOpen)
+        shown.push(...exempt.map((student) => ({ kind: 'student' as const, student })));
+    }
     if (foldedCount > 0) {
-      shown.push({ kind: 'section', count: foldedCount });
+      shown.push({ kind: 'section', count: foldedCount, which: 'left' });
       if (foldedOpen)
         shown.push(...folded.map((student) => ({ kind: 'student' as const, student })));
     }
     return shown;
-  }, [members, folded, foldedCount, foldedOpen]);
+  }, [members, folded, foldedCount, foldedOpen, exempt, exemptOpen]);
 
   const columnDefs = useMemo((): (ColDef<GridRow> | ColGroupDef<GridRow>)[] => {
+    // Task 8.5: an exemption as the teacher reads it: kind and dates (the category for the Tutor).
+    const exemptionText = (one: JournalStudent['exemptions'][number]): string =>
+      [
+        t(`journal.exemptions.kinds.${one.kind}`),
+        one.startDate === one.endDate
+          ? schoolDateText(one.startDate, language, false)
+          : t('journal.exemptions.datesLine', {
+              from: schoolDateText(one.startDate, language, false),
+              to: schoolDateText(one.endDate, language, false),
+            }),
+        one.slots === null ? null : `${one.slots.start}–${one.slots.end}`,
+        one.category === null ? null : t(`journal.exemptions.categories.${one.category}`),
+      ]
+        .filter((part) => part !== null)
+        .join(' · ');
     const unitAverage =
       grid.journal.unit.kind === 'class'
         ? t('journal.grid.classAverage')
@@ -302,6 +336,37 @@ export function JournalGridView({
           if (row?.kind === 'student') return `${row.student.lastName} ${row.student.firstName}`;
           if (row?.kind === 'bottom') return unitAverage;
           return null;
+        },
+        // Task 8.5 (`07`: "The teacher sees the kind and the dates, not the reason"; "a folded
+        // 'Exempt' section at the bottom, with the dates"): the student's exemptions beside the
+        // name, also in full on hover; the category for the class Tutor only.
+        tooltipValueGetter: (params) => {
+          const row = params.data;
+          if (row?.kind !== 'student' || row.student.exemptions.length === 0) return null;
+          return row.student.exemptions.map((one) => exemptionText(one)).join('; ');
+        },
+        cellRenderer: (params: ICellRendererParams<GridRow>) => {
+          const row = params.data;
+          if (row?.kind !== 'student')
+            return params.valueFormatted ?? (params.value as string | null);
+          const back = row.student.exemptions.some(
+            (one) => one.slots === null && dayAfter(one.endDate) === grid.today,
+          );
+          return (
+            <span>
+              {[row.student.lastName, row.student.firstName].join(' ')}
+              {row.student.exemptions.length > 0 && (
+                <span className="ml-1 text-xs text-muted-foreground" data-exemption="true">
+                  {row.student.exemptions.map((one) => exemptionText(one)).join('; ')}
+                </span>
+              )}
+              {back && (
+                <span className="ml-1 text-xs text-info" data-back="true">
+                  {t('journal.grid.backFromExemption')}
+                </span>
+              )}
+            </span>
+          );
         },
         cellClass: (params) => (params.data?.kind === 'bottom' ? 'font-semibold' : undefined),
       },
@@ -405,7 +470,10 @@ export function JournalGridView({
               if (row?.kind === 'bottom') return row.bottom.ratingExam;
               if (row?.kind !== 'student' || exam === null) return null;
               const stored = ratingEntryOf(exam, row.student.id)?.entry ?? null;
-              if (stored === null) return null;
+              // Task 8.5 (edge/calculation): "exempt on exam day, pending".
+              if (stored === null) {
+                return exam.pending.includes(row.student.id) ? t('journal.rating.pending') : null;
+              }
               return stored.kind === 'score' ? stored.score : entryText(stored);
             },
             // A score is saved when the cell is left; over an entry the dialog asks the reason.
@@ -448,12 +516,24 @@ export function JournalGridView({
             if (result.kind === 'no_result') {
               return <span className="sr-only">{t('journal.grid.noResult')}</span>;
             }
+            // Task 8.5 (07, Effect on totals): "Exempt": no number and no grade.
+            if (result.kind === 'exempt') {
+              return <span data-result="exempt">{t('journal.grid.exemptResult')}</span>;
+            }
             return (
               <span data-result={result.shown}>
                 {result.shown}
                 {result.provisional && (
                   <span className="ml-1 text-xs text-muted-foreground">
                     {t('journal.grid.provisionalShort')}
+                  </span>
+                )}
+                {result.basedOn !== null && (
+                  <span className="ml-1 text-xs text-muted-foreground" data-based-on="true">
+                    {t('journal.grid.basedOn', {
+                      expected: result.basedOn.expected,
+                      held: result.basedOn.held,
+                    })}
                   </span>
                 )}
                 {result.leftOut.length > 0 && (
@@ -592,6 +672,18 @@ export function JournalGridView({
             // Task 8.3a: saving, saved or not saved (07: "shows a saved sign").
             const state = entry?.stateOf(lesson.id, row.student.id);
             const savedSign = state !== undefined && <SaveSign state={state} />;
+            // Task 8.5: an exempt cell shows 4 or 5, set by the system and closed (07, In the journal).
+            if (cell.exempt !== null) {
+              return (
+                <span
+                  data-exempt={cell.exempt}
+                  className="rounded-sm bg-muted px-1.5 py-0.5 text-muted-foreground"
+                  title={t(`journal.grid.exemptCell.${cell.exempt}`)}
+                >
+                  {cell.exempt === 'full' ? 5 : 4}
+                </span>
+              );
+            }
             if (cell.mark === null) return cell.closed ? closedSign : savedSign || null;
             const reason =
               cell.mark === 0 || cell.mark === 3
@@ -920,20 +1012,31 @@ export function JournalGridView({
           params.data.kind === 'student'
             ? params.data.student.id
             : params.data.kind === 'section'
-              ? 'section'
+              ? `section:${params.data.which}`
               : 'bottom'
         }
         isFullWidthRow={(params) => params.rowNode.data?.kind === 'section'}
-        fullWidthCellRenderer={() => (
-          <button
-            type="button"
-            className="h-full w-full px-4 text-left font-semibold"
-            aria-expanded={foldedOpen}
-            onClick={onToggleFolded}
-          >
-            {t('journal.grid.folded', { count: foldedCount })}
-          </button>
-        )}
+        fullWidthCellRenderer={(params: ICellRendererParams<GridRow>) =>
+          params.data?.kind === 'section' && params.data.which === 'exempt' ? (
+            <button
+              type="button"
+              className="h-full w-full px-4 text-left font-semibold"
+              aria-expanded={exemptOpen}
+              onClick={onToggleExempt}
+            >
+              {t('journal.grid.exemptSection', { count: exempt.length })}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="h-full w-full px-4 text-left font-semibold"
+              aria-expanded={foldedOpen}
+              onClick={onToggleFolded}
+            >
+              {t('journal.grid.folded', { count: foldedCount })}
+            </button>
+          )
+        }
         // jsdom has no layout: every column is drawn there, as AG Grid cannot measure.
         suppressColumnVirtualisation={import.meta.env.MODE === 'test'}
         onCellKeyDown={onCellKeyDown}

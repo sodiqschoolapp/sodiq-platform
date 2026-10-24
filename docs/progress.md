@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 October 2026: task 8.5 Exemptions
+
+- 0123: `exemptions` (temporary or full, all or chosen subjects, whole days or one time range of a day, category, detail, document; a full one to the year's end), `exemption_subjects`, `exemption_spans` (written by triggers; the overlap is the exclusion `exemption_spans_no_overlap`), `exemption_skips` ("keep as attended"), `exemption_clears` ("exempt and clear", given back), `exemption_reopened_cells` (3 days after a shorten or void of a locked lesson), `exemption_move_offers`, the file of a reason of absence; `lesson_student_expected` takes the exemption and the three kept blocks (bulk cancel keep, exam out, calendar day-off keep); `lesson_student_exemption` gives 4 or 5; the cells guard opens a reopened cell as a late entry. 0124 keeps the readers fast (the real-size quarter journal: 5.6 s before, about 0.2 s after); 0125 lets an End or a leaving cut a full exemption before its start, a merge carry one of a closed year, and clears a decided move offer's reason.
+- Routes: `/api/exemptions` (list, one, reason and document openings logged, preview and create with the late-entry choices and a request key, edit before the start, end, void, batch end and void, document, absences with a reason and no exemption, branch-move offers confirm and drop), `/api/journal/exemptions-today`, the file of a reason of absence; area `exemptions`. A leaving ends or voids and its undo gives back; a branch move ends and offers; a merge carries; the three keeps (bulk cancel, exam, day off) tell the teachers of the kept lessons and the Tutors. Notices go to the teachers of the lessons the exemption meets; "reopened" is one per teacher.
+- Journal: the grid shows 4/5, hides a mark an exemption hides, passes 4/5 to `packages/calc` ("Exempt", "based on n of N"), the student's exemptions (the category for the Tutor), the folded "Exempt" section, "back from exemption"; the rating exam answers `pending`; the absences page, "present earlier" and copy attendance skip hidden marks.
+- Web: the Exemptions page with the form and the preview, the student's Exemptions tab, the teaching-home cards, the file of a reason. Browser test: the vice enters a late exemption over a locked lesson, chooses "Exempt and clear", the teacher sees 4.
+- Left out, with From lines: the closed quarter (9.2b), live cells (8.3b), optional cells, reminders and the discipline report (8.7), exports and the support view (8.9), the closing checklist's pending rating entries (9.2a), "to renew" (9.5b), the attendance reports (9.3b).
+
+The next sessions must know:
+
+- Who is expected is `lesson_student_expected` / `lesson_expected_students` (0123); never read exemptions on the side. A stored mark under an exemption is hidden, not cleared: every reader of `journal_cells` that counts marks filters with `lesson_student_expected`.
+- A writer of exemptions runs between `lockStudents` and `settle` (`exemption-effects.ts`): the students' cells `for update` in the order of `saveCells`, then the membership rows `for no key update`, then the change, then the comparison of who is expected before and after.
+- A read that asks `lesson_student_exemption` per member asks only the members that can be exempt (a live span, or a lesson `lesson_kept_out_possible` names), in a materialized step (`exemption-read.ts`).
+
 ## 24 October 2026: task 8.4 Edit period, unlocks and corrections
 
 - 0122: `branch_edit_days` (the log of the edit days and the time zone in force, by the triggers on `branch_settings` and `branches`), `journal_edit_extensions`, `journal_lock_moment` / `journal_lesson_lock` / `journal_rating_lock` (the lock worked out on each request, never stored), `journal_unlocks`, and the guards `journal_*_edit_guard` (through `journal_edit_judge`) on cells, works, comments, rating entries and the rating exam row; the histories keep the correction's reason and the unlock.

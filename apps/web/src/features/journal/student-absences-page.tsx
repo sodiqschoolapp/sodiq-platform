@@ -1,4 +1,5 @@
 import {
+  EXEMPTION_FILE_TYPES,
   ABSENCE_CATEGORIES,
   absenceReasonRecordSchema,
   listName,
@@ -8,9 +9,10 @@ import {
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
+import { FailureAlert } from '@/components/failure-alert';
 import { DateField, SelectField, TextAreaField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
@@ -28,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { accountText } from '@/features/people/cell-lines';
 import { schoolDateText } from '@/lib/dates';
+import { downloadAbsenceFile, putAbsenceFile, removeAbsenceFile } from './exemptions-api';
 import { invalidateJournal, setAbsenceReason, studentAbsencesQuery } from './journal-api';
 
 /** The address of the page: the class and the days, as the server reads them, and the list's own. */
@@ -292,6 +295,7 @@ function ReasonPanel({
           })}
         </p>
       )}
+      {set && panel.editing === null && <ReasonFile day={day} />}
       {day.canEdit && panel.editing === null && (
         <PanelActions
           primary={
@@ -321,6 +325,92 @@ function ReasonPanel({
           saved={panel.saved}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The file of a reason (task 8.5; From 6.3, decision 10, Look first): a
+ * medical certificate, for example. The Tutor of the class and the Academic
+ * Vice Principal attach and remove it; every opening is logged on the server.
+ */
+function ReasonFile({ day }: { day: StudentAbsenceDay }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const input = useRef<HTMLInputElement>(null);
+  const file = day.reason?.file ?? null;
+  const upload = useMutation({
+    mutationFn: (chosen: File) => putAbsenceFile(day.student.id, day.date, chosen),
+    onSuccess: () => invalidateJournal(queryClient),
+  });
+  const download = useMutation({
+    mutationFn: () => downloadAbsenceFile(day.student.id, day.date, file?.name ?? 'file'),
+  });
+  const remove = useMutation({
+    mutationFn: async () => {
+      const went = await confirm({
+        title: t('journal.absences.file.remove'),
+        names: [file?.name ?? ''],
+        action: t('journal.absences.file.remove'),
+        destructive: true,
+      });
+      if (went) await removeAbsenceFile(day.student.id, day.date);
+    },
+    onSuccess: () => invalidateJournal(queryClient),
+  });
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {file !== null && (
+          <Button
+            variant="ghost"
+            disabled={download.isPending}
+            onClick={() => {
+              download.mutate();
+            }}
+          >
+            {t('journal.absences.file.open', { name: file.name })}
+          </Button>
+        )}
+        {day.canEdit && (
+          <>
+            <input
+              ref={input}
+              type="file"
+              className="hidden"
+              accept={EXEMPTION_FILE_TYPES.join(',')}
+              aria-label={t('journal.absences.file.attach')}
+              onChange={(event) => {
+                const chosen = event.target.files?.[0];
+                if (chosen !== undefined) upload.mutate(chosen);
+                event.target.value = '';
+              }}
+            />
+            <Button
+              variant="secondary"
+              disabled={upload.isPending}
+              onClick={() => {
+                input.current?.click();
+              }}
+            >
+              {t('journal.absences.file.attach')}
+            </Button>
+            {file !== null && (
+              <Button
+                variant="ghost"
+                disabled={remove.isPending}
+                onClick={() => {
+                  remove.mutate();
+                }}
+              >
+                {t('journal.absences.file.remove')}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+      <FailureAlert error={upload.error ?? download.error ?? remove.error} />
     </div>
   );
 }

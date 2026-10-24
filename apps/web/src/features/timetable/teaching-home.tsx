@@ -6,6 +6,7 @@ import {
   type TeachingHome,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
+import { ExemptionCards } from '@/features/journal/exemption-cards';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
@@ -102,6 +103,8 @@ export function TeachingHome(): React.JSX.Element {
           language={language}
         />
       </section>
+      {/* Task 8.5: exempt today and back from exemption. */}
+      <ExemptionCards />
       <section className={`${PANEL} grid gap-4`} data-home-week="true">
         <h2 className={SECTION_TITLE}>
           {t('home.lessons.week')},{' '}

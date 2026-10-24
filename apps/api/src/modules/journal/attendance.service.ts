@@ -169,6 +169,8 @@ async function presentEarlierOf(
     .where('lessons.lesson_date', '=', lesson.date)
     .where('lessons.starts_at', '<', lesson.startsAt)
     .where('lessons.cancel_cause', 'is', null)
+    // Task 8.5 (decision 2): a mark an exemption hides was not there that day.
+    .where(sql<boolean>`lesson_student_expected(lessons.id, journal_cells.student_id)`)
     .execute();
   const found = new Set(rows.map((row) => row.student_id));
   return ids.filter((id) => found.has(id));

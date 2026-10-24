@@ -32,6 +32,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
+import { noticeKeptBlocks } from '../journal/exemption-follow.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import {
@@ -521,6 +522,14 @@ export class TimetableExams {
       action: stored === null ? 'created' : 'changed',
       before: stored,
       after,
+    });
+    // Task 8.5 (From 5.6c-1; spec review of the code, should-fix 2): a class kept out of a shared
+    // block for the exam is exempt from the block's held lessons; their teachers and the
+    // class's Tutors are told.
+    await noticeKeptBlocks(transaction, this.notifications, {
+      branchId,
+      blockIds: [...new Set(outs.added.map((one) => one.blockId))],
+      actorId: access.accountId,
     });
     await this.audit.record(transaction, {
       branchId,

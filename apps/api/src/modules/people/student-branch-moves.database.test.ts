@@ -42,6 +42,10 @@ const CARRIED = [
  */
 const KEPT = [
   'class_memberships',
+  // Task 8.5 (decision 3): an exemption stays in the branch of its lessons; the
+  // receiving branch gets an offer, written in its own branch at the accept.
+  'exemption_move_offers',
+  'exemptions',
   'group_memberships',
   'journal_cells',
   // Task 8.2: a comment stays in the branch of its lesson, a rating entry in its journal's.
@@ -319,7 +323,9 @@ describe('branch moves in the database', () => {
           one !== 'journal_cells' &&
           one !== 'journal_comments' &&
           one !== 'journal_rating_entries' &&
-          one !== 'student_absence_reasons',
+          one !== 'student_absence_reasons' &&
+          one !== 'exemptions' &&
+          one !== 'exemption_move_offers',
       )) {
         expect((await branchOf(table, student)).sort()).toEqual([north, south].sort());
       }

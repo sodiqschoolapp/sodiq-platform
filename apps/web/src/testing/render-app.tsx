@@ -71,7 +71,8 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
  * gives its own: the count of Super Admins of the banner (task 2.3a), two, so
  * that no banner shows; the branches without an Academic Vice Principal
  * (task 2.3b-2), none; the own lessons of the home page of a role that
- * teaches (task 5.9b), none, since the default session is a Teacher's.
+ * teaches (task 5.9b), none, since the default session is a Teacher's; its
+ * exemption cards (task 8.5), none.
  */
 const SHELL_ANSWERS: Record<string, Handler> = {
   'GET /api/access/super-admins': () => json({ active: 2 }),
@@ -86,6 +87,8 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       exams: [],
       busy: [],
     }),
+  'GET /api/journal/exemptions-today': () =>
+    json({ date: '2026-10-19', exemptToday: [], backToday: [] }),
 };
 
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {

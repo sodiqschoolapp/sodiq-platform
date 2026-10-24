@@ -297,6 +297,48 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: exemptions (task 8.5)
+
+Plan approved on pull request #223 with corrections 1 to 3; decisions 1 to 21 confirmed there, 22 to 32 taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new permission area). `exemptions`: Super Admin and Academic Vice Principal view, create, edit; Principal view | Decision 1; `07`, Granted by; `edge/exemptions`, the diagnosis row |
+| **Look first** (a journal reading). Absent, skipped and empty cells are hidden by an exemption, not cleared; "exempt and clear" clears with `changed_how` `exemption` and keeps the values in `exemption_clears` to give back | Decision 2; `edge/journal`, "My grade disappeared": "also what hid it"; `edge/exemptions`, row 4 |
+| **Look first** (personal data across branches). A branch move ends the sending branch's exemption and copies it into an offer of the receiving branch, confirmed or dropped there | Decision 3; From 3.3c |
+| **Look first** (a journal reading). A slot exemption is one continuous time range of one day | Decision 4; `edge/exemptions`, row 3 |
+| **Look first** (a new path in a guard). A reopened cell of a locked lesson takes a person's write as a late entry until 00:00 after the third day following the change | Decision 5; `edge/journal`, Locks |
+| **Look first** (a spec-row list). `exemption-spec-rows.test.ts` pins every row of `07` Problem cases and `edge/exemptions`; the closed-quarter rows name 9.2b | Decision 6 |
+| **Look first** (a reading of spec wording). Two exemptions conflict when their time spans overlap, not their dates | Decision 7; proposed `/spec-change` on issue #42 |
+| **Look first** (a pinned list widened). `FILE_ROUTES` gains the exemption's document and the reason of absence's file, one file kind | Decision 8; From 6.3 |
+| **Look first** (a reading of "State from stored moments"). Start and end are school dates of the branch, with local clock times for a slot one, compared on each request | Decision 9 |
+| **Look first** (a journal calculation reading). A homework given at an exempt lesson and checked at an expected one counts when typed | Decision 10; `edge/journal`, row 15 |
+| **Look first** (who is exempt). The students of a kept block are exempt (4) from its source rows, with no row of their own; a lesson fed by the left-out classes alone takes nobody out (kept as held for its data, From 6.1b-2): its class, or every feeder class of its group, as the bulk cancel's `chosenOnly` reads it; a lesson with no feeder class is never fed by them alone (0123, changed by 0126 in code round 1 of the review) | Decision 12; decision 23 |
+| **Look first** (a calculation reading). "Exempt on exam day, pending" counts any live exemption of the subject touching the date | Decision 15 |
+| A merge carries an exemption's student only; the exemption stays in the branch of its lessons, as a reason of absence does | Decision 22; changes the plan's "student and branch" (From 3.3d named both) |
+| The kept-block notice goes from all three keeps: the bulk cancel's keep, a class kept out of a shared block for an exam, a group block kept on a day off | Decision 24, changed by the spec review of the code (should-fix 2): `edge/timetable` exempts them "as for an excursion" and `edge/exemptions`, row 11 tells the teachers of affected lessons |
+| A notice's slot times are one text and its kind is translated by i18next nesting | Decision 25; the notification texts take their data raw |
+| A value the give-back cannot write (a lower total, "not held", a cell changed since) stays cleared, and its row is marked given back | Decision 26 |
+| The document can be attached or removed after the start; no other field changes then | Decision 27; `edge/exemptions`, row 4 is about the exemption's terms, a certificate arrives later |
+| An edit cannot move an exemption to another academic year | Decision 28 |
+| The grid's quarter outcome comes from `studentQuarterOutcome` with N the held lessons of this journal; 8.6 counts across journals | Decision 29; From 4.3, 6.2 decision 4 |
+| The category in the grid is for the Super Admin, the Principal, the Academic Vice Principal and the Tutor of the student's class now | Decision 30; `edge/exemptions`, row 10 |
+| The personal data report keeps hidden values (stored data about the student); the support view's "hidden by exemption" is 8.9's | Decision 31 |
+| `journals.test.ts` and the web fixtures gained the new answer fields (`basedOn`, `exempt`, `exemptions`, `pending`, `file`); `MERGE_DOES` and `KEPT` name the new tables | Decision 32; the answers changed, no check was weakened |
+| **Build decision.** `exemption_skips` and `exemption_clears` go with their lesson (`on delete cascade`): a lesson removed or force-deleted takes its choices with it, as its cells go | Plan review, correction 2 |
+| **Build decision.** Every writer of exemptions takes the students' cells of the years not closed `for update` in the order of `saveCells`, then their class and group rows: a cell save updates its cell before its trigger takes the memberships, so the other order deadlocked | Spec review of the code, must-fix 1 |
+| **Build decision.** A full exemption runs to the end of its year when it is entered or edited; an End or a leaving cuts it also before its start (0125). An edit clears `end_cause`; a leaving keeps it and is marked by `leaving_id` | Spec review of the code, must-fix 2 and note 2 |
+| **Build decision.** An edit writes the chosen subjects before the row, so a start moved to today or earlier (a late certificate) keeps them | Spec review of the code, must-fix 3 |
+| **Build decision.** "Reopened after exemption" is one notice per teacher and change, naming the students (`students`) | Spec review of the code, must-fix 4; `edge/journal`, row 48 |
+| **Build decision.** A notice of a grant or a change goes to the Tutors and to the teachers of the lessons the exemption meets, by subject and slot time; a teacher sees "back from exemption" only for a subject of the teacher's lessons that day | Permission review 11; `edge/exemptions`, row 11 |
+| **Build decision.** A move offer's detail is read through a logged route while it waits; a confirm or a drop clears the offer's detail and document (0125, a check) | Permission review 1 and 7; `edge/exemptions`, row 10 |
+| **Build decision.** A lesson of a choice outside the branch, or unknown, is 404; a confirm for a student the branch no longer reads is 404 | Permission review 8 and 9 |
+| **Build decision.** A merge's carry changes the student only and passes a closed year; taking back a leaving that would give back an exemption overlapping one entered since is refused `student_status_exemption_overlap` | Spec review of the code, should-fix 4 and note 3 |
+| **Build decision.** "Absences with a reason and no exemption" keeps a day that only an exemption of chosen subjects or slots touches | Spec review of the code, should-fix 7; `edge/exemptions`, row 9 |
+| **Build decision.** "Back from exemption" shows on the calendar day after the end, as `07` words it ("on that day"); after a Friday end that is Saturday | Spec review of the code, should-fix 10; flagged on issue #42 for the owner |
+| **Build decision.** The readers of exemptions are PL/pgSQL with a cheap test first (no live span, no kept-block source) and the grid asks only the members that can be exempt (0124): the real-size quarter journal took 5.6 s, now about 0.2 s | `12`, Speed targets; CI part api 2/3 |
+| **Build decision.** The list answer carries the branch's today, read by the page's "ending this week" | `07`, Problem cases: the list's filters |
+
 ## 24 October 2026: edit period, unlocks and corrections (task 8.4)
 
 Plan approved on pull request #222 with corrections 1 to 5; decisions 1 to 14 confirmed or changed there, 15 to 23 taken in the build. Flagged on issue #42.

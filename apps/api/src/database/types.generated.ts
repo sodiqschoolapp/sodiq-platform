@@ -413,6 +413,107 @@ export interface Exams {
   title: string;
 }
 
+export interface ExemptionClears {
+  branch_id: string;
+  cell_id: string;
+  cleared_version: number;
+  exemption_id: string;
+  given_back_at: Timestamp | null;
+  id: Generated<string>;
+  lesson_id: string;
+  mark: number | null;
+  score: number | null;
+  student_id: string;
+}
+
+export interface ExemptionMoveOffers {
+  all_subjects: boolean;
+  branch_id: string;
+  category: string;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision: string | null;
+  detail: string | null;
+  document_key: string | null;
+  document_name: string | null;
+  document_type: string | null;
+  end_date: string;
+  end_time: string | null;
+  exemption_id: string | null;
+  id: Generated<string>;
+  kind: string;
+  move_id: string;
+  offered_at: Timestamp;
+  source_id: string;
+  start_date: string;
+  start_time: string | null;
+  student_id: string;
+  subject_ids: string[];
+}
+
+export interface ExemptionReopenedCells {
+  branch_id: string;
+  exemption_id: string;
+  lesson_id: string;
+  open_until: Timestamp;
+  reopened_at: Timestamp;
+  student_id: string;
+}
+
+export interface Exemptions {
+  all_subjects: boolean;
+  assignment_id: string | null;
+  batch_id: string;
+  branch_id: string;
+  category: string;
+  changed_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  detail: string;
+  document_key: string | null;
+  document_name: string | null;
+  document_type: string | null;
+  end_before_leaving: string | null;
+  end_cause: string | null;
+  end_date: string;
+  end_time: string | null;
+  granted_at: Timestamp;
+  granted_by: string;
+  id: Generated<string>;
+  kind: string;
+  leaving_id: string | null;
+  moved_from_id: string | null;
+  start_date: string;
+  start_time: string | null;
+  student_id: string;
+  version: number;
+  void_cause: string | null;
+  void_reason: string | null;
+  voided_at: Timestamp | null;
+  voided_by: string | null;
+  year_id: string;
+}
+
+export interface ExemptionSkips {
+  branch_id: string;
+  exemption_id: string;
+  lesson_id: string;
+}
+
+export interface ExemptionSpans {
+  branch_id: string;
+  exemption_id: string;
+  live: boolean;
+  span: string;
+  student_id: string;
+  subject_key: string;
+}
+
+export interface ExemptionSubjects {
+  branch_id: string;
+  exemption_id: string;
+  subject_id: string;
+}
+
 export interface FeedbackReports {
   account_id: string;
   app_version: number | null;
@@ -1337,6 +1438,9 @@ export interface StudentAbsenceReasons {
   changed_at: Timestamp;
   changed_by: string;
   created_at: Generated<Timestamp>;
+  file_key: string | null;
+  file_name: string | null;
+  file_type: string | null;
   id: Generated<string>;
   note: Generated<string>;
   student_id: string;
@@ -1741,6 +1845,13 @@ export interface DB {
   exam_room_classes: ExamRoomClasses;
   exam_rooms: ExamRooms;
   exams: Exams;
+  exemption_clears: ExemptionClears;
+  exemption_move_offers: ExemptionMoveOffers;
+  exemption_reopened_cells: ExemptionReopenedCells;
+  exemption_skips: ExemptionSkips;
+  exemption_spans: ExemptionSpans;
+  exemption_subjects: ExemptionSubjects;
+  exemptions: Exemptions;
   feedback_reports: FeedbackReports;
   floors: Floors;
   forced_deletes: ForcedDeletes;

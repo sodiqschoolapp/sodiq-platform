@@ -77,9 +77,12 @@ describe('declared file routes', () => {
     );
     // The staff photo (2.2c-2), the own photo (2.3c-2, decision 2 of #66) and
     // the student photo (2.4b-2, decision 4 of #70) and the file of a plan
-    // item (7.1a, decision 1 of #212).
+    // item (7.1a, decision 1 of #212); the document of an exemption and the
+    // file of a reason of absence (8.5, decisions 8 and 17 of #223, Look first).
     expect(FILE_ROUTES.map((route) => route.path).sort()).toEqual([
       '/api/auth/photo',
+      '/api/exemptions/:id/document',
+      '/api/journal/student-absences/:studentId/:date/file',
       '/api/people/staff/:id/photo',
       '/api/people/students/:id/photo',
       '/api/plans/items/:itemId/files',

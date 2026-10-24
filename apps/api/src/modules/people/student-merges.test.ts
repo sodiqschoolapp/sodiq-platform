@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import {
+  exemptionCreatedSchema,
+  REQUEST_KEY_HEADER,
   studentDetailSchema,
   studentHistorySchema,
   studentMergePreviewSchema,
@@ -161,6 +164,16 @@ describe('the merge of two student records', () => {
       t.database.migrator.selectFrom('relatives').selectAll().orderBy('id').execute(),
       // Task 6.3: the reasons of absence a merge carries (permission review, must-fix 1).
       t.database.migrator.selectFrom('student_absence_reasons').selectAll().orderBy('id').execute(),
+      // Task 8.5: the exemptions and what names the student beside them (review finding 5).
+      t.database.migrator.selectFrom('exemptions').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('exemption_clears').selectAll().orderBy('id').execute(),
+      t.database.migrator
+        .selectFrom('exemption_reopened_cells')
+        .selectAll()
+        .orderBy('exemption_id')
+        .orderBy('lesson_id')
+        .execute(),
+      t.database.migrator.selectFrom('exemption_move_offers').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 
@@ -516,6 +529,96 @@ describe('the merge of two student records', () => {
         { student_id: one.id, category: 'illness' },
         { student_id: one.id, category: 'family' },
       ]);
+    });
+  });
+
+  // Task 8.5 (From 3.3d; review of the code, finding 5): the exemptions go to the kept record with
+  // what names the student beside them; two that overlap refuse the merge. A clear's carry is not
+  // reached through the route: a clear names a cell of the student, and a record with a cell is
+  // refused first (`student_merge_has_cells`, 'journal cells' above).
+  describe('exemptions (task 8.5)', () => {
+    /** An exemption of the student entered by the Super Admin through the route. */
+    async function exempt(branch: string, studentId: string, startDate: string, endDate: string) {
+      const response = await t
+        .post('/api/exemptions', branch, {
+          kind: 'temporary',
+          subjectIds: null,
+          studentIds: [studentId],
+          startDate,
+          endDate,
+          slots: null,
+          category: 'illness',
+          detail: 'A certificate from the clinic',
+          choices: [],
+        })
+        .set(REQUEST_KEY_HEADER, randomUUID());
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return exemptionCreatedSchema.parse(response.body).exemptions[0]?.id ?? '';
+    }
+
+    it('carries an exemption and its reopened cell to the kept record, and logs the carry', async () => {
+      // A branch and a year of their own: the lesson dates a quarter of its year.
+      const cells = await CellsKit.create(t.database.migrator);
+      const east = await insertBranch(t.database.migrator, 'East exemptions');
+      const eastYear = await classes.year(east);
+      const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const id = await exempt(east, twice.id, '2026-10-12', '2026-10-16');
+      const lesson = await cells.lesson(east, eastYear, classId, '2026-10-13');
+      // A cell reopened by the exemption's change (decision 5); it names the student and no cell.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .insertInto('exemption_reopened_cells')
+          .values({
+            branch_id: east,
+            exemption_id: id,
+            lesson_id: lesson,
+            student_id: twice.id,
+            reopened_at: t.clock.now(),
+            open_until: new Date('2026-10-20T00:00:00+05:00'),
+          })
+          .execute();
+      });
+      merged(await merge(first.id, twice.uid, east));
+      const exemption = await t.database.migrator
+        .selectFrom('exemptions')
+        .select(['student_id', 'branch_id'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(exemption).toEqual({ student_id: first.id, branch_id: east });
+      const reopened = await t.database.migrator
+        .selectFrom('exemption_reopened_cells')
+        .select('student_id')
+        .where('exemption_id', '=', id)
+        .execute();
+      expect(reopened).toEqual([{ student_id: first.id }]);
+      const [entry, ...more] = await t.entries('exemption.merge', first.id);
+      expect(more).toEqual([]);
+      expect(entry).toMatchObject({ branch_id: east });
+      expect(entry?.new_value).toEqual({ mergedId: twice.id, exemptionIds: [id] });
+    });
+
+    it('refuses two exemptions of the records that overlap (409), and changes nothing', async () => {
+      const east = await insertBranch(t.database.migrator, 'East exemption overlap');
+      const eastYear = await classes.year(east);
+      const classId = await classes.schoolClass(east, eastYear, { grade: 7 });
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      await exempt(east, first.id, '2026-10-12', '2026-10-16');
+      await exempt(east, twice.id, '2026-10-14', '2026-10-20');
+      const seen = await previewOf(first.id, twice.uid, east);
+      const before = await rowsOf();
+      const response = await post(
+        first.id,
+        { uid: twice.uid, reason: 'Created twice by mistake', digest: seen.digest },
+        east,
+      );
+      refusedWith(response, 409, 'student_merge_exemption_overlap');
+      expect(await rowsOf()).toEqual(before);
     });
   });
 

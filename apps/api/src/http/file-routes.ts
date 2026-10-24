@@ -1,4 +1,6 @@
 import {
+  EXEMPTION_FILE_MAX_BYTES,
+  EXEMPTION_FILE_TYPES,
   PHOTO_MAX_BYTES,
   PHOTO_TYPES,
   PLAN_FILE_MAX_BYTES,
@@ -76,11 +78,37 @@ export const PLAN_FILE_ROUTE: FileRoute = {
   tooLarge: 'plan_file_too_large',
 };
 
+/**
+ * The document of an exemption (task 8.5, pull request #223, decisions 8 and
+ * 17, Look first): PDF, JPEG or PNG up to 10 MB. The name travels in the query.
+ */
+export const EXEMPTION_FILE_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/exemptions/:id/document',
+  types: EXEMPTION_FILE_TYPES,
+  maxBytes: EXEMPTION_FILE_MAX_BYTES,
+  tooLarge: 'exemption_file_too_large',
+};
+
+/**
+ * The file of a reason of absence (task 6.3, decision 10, Look first; task
+ * 8.5): the same kind as the exemption's document.
+ */
+export const ABSENCE_REASON_FILE_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/journal/student-absences/:studentId/:date/file',
+  types: EXEMPTION_FILE_TYPES,
+  maxBytes: EXEMPTION_FILE_MAX_BYTES,
+  tooLarge: 'exemption_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
   STUDENT_PHOTO_ROUTE,
   PLAN_FILE_ROUTE,
+  EXEMPTION_FILE_ROUTE,
+  ABSENCE_REASON_FILE_ROUTE,
 ];
 
 /**

@@ -34,12 +34,13 @@ import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
 import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
 import { GroupsPlacedNotice } from '@/features/classes/class-members';
 import { StudentPhotoSection } from './student-photo-section';
+import { StudentExemptions } from '@/features/journal/student-exemptions';
 import { StudentRelativesTab } from './student-relatives';
 import {
   DeleteForm,
@@ -71,7 +72,7 @@ import { alsoUidRow, isMergeForm, MergeForm } from './student-merge';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
-type Tab = 'overview' | 'relatives' | 'contract' | 'history';
+type Tab = 'overview' | 'relatives' | 'contract' | 'history' | 'exemptions';
 
 /** The forms of the whole record: they take the place of the tabs and their content. */
 const RECORD_FORMS = ['record', 'uid'] as const;
@@ -103,6 +104,7 @@ interface StudentPanelProps {
 export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const { t } = useTranslation();
   const { branchId } = useView();
+  const readsExemptions = useMayView('exemptions');
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const leave = useLeave();
@@ -323,6 +325,10 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     // The History tab (task 3.3a) for its readers.
     ...(student.readsHistory
       ? [{ key: 'history' as const, title: t('people.students.tabs.history') }]
+      : []),
+    // Task 8.5: the Exemptions tab (`04`, Profile tabs) for the readers of exemptions.
+    ...(readsExemptions
+      ? [{ key: 'exemptions' as const, title: t('journal.exemptions.panelTitle') }]
       : []),
   ];
   const chosen = tab ?? (relatives.data?.relatives.length === 0 ? 'relatives' : 'overview');
@@ -688,6 +694,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
             </>
           ) : shownTab === 'relatives' ? (
             <StudentRelativesTab studentId={student.id} name={name} panel={shown} />
+          ) : shownTab === 'exemptions' ? (
+            <StudentExemptions studentId={student.id} />
           ) : shownTab === 'history' ? (
             <HistoryTab
               student={student}

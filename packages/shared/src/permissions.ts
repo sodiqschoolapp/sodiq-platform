@@ -547,6 +547,19 @@ export const PERMISSIONS = freezeTable({
     tutor: ['view', 'edit'],
   }),
   /**
+   * Exemptions (task 8.5, pull request #223, decision 1, Look first): `07`,
+   * Granted by: "The Academic Vice Principal of the branch, and the Super
+   * Admin ... No other role can create, change or request an exemption";
+   * `edge/exemptions`: the detail and the document "are for the Academic Vice
+   * Principal, Principal and Super Admin". Teachers and Tutors read kind,
+   * dates and scope through the journal and the teaching home.
+   */
+  exemptions: rows({
+    super_admin: ['view', 'create', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'create', 'edit'],
+  }),
+  /**
    * Lesson plans (task 7.1a, pull request #212, decision 2, Look first):
    * edge/lesson-plans, "Who may read a plan?": "The owner; teachers with the
    * same subject and grade in their profile; the subject's Head Teacher and

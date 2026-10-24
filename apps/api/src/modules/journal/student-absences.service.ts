@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   absenceCategorySchema,
@@ -20,7 +21,11 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
+import type { UploadedFile } from '../../http/file-routes.js';
+import type { StoredFile } from '../../http/stored-file.js';
+import { PHOTO_STORE, type PhotoStore } from '../people/photo-store.js';
 import { namedAccounts } from './cell-lines.query.js';
+import { checkedFile, putStored, readStored } from './exemptions.service.js';
 
 /** The readers of every class of the branch (decision 6); the Tutor reads own classes only. */
 const WHOLE_READERS: readonly Role[] = [
@@ -82,6 +87,7 @@ export class StudentAbsences {
   constructor(
     @Inject(Transactions) private readonly transactions: Transactions,
     @Inject(Audit) private readonly audit: Audit,
+    @Inject(PHOTO_STORE) private readonly store: PhotoStore,
   ) {}
 
   list(access: Access, query: StudentAbsencesQuery): Promise<StudentAbsencesAnswer> {
@@ -214,6 +220,9 @@ export class StudentAbsences {
       .where('lessons.lesson_date', '<=', to)
       .where('lessons.cancel_cause', 'is', null)
       .where('lessons.starts_at', '<=', now)
+      // Task 8.5 (decision 2): a mark an exemption hides is no absence (07, Effect on totals:
+      // "Exempt is its own category. It is never counted as absent").
+      .where(sql<boolean>`lesson_student_expected(lessons.id, journal_cells.student_id)`)
       .orderBy('lessons.starts_at')
       .orderBy('lessons.id')
       .execute();
@@ -255,6 +264,8 @@ export class StudentAbsences {
         sql<string>`absence_date::text`.as('date'),
         'category',
         'note',
+        'file_name',
+        'file_type',
         'changed_by',
         'changed_at',
       ])
@@ -317,6 +328,10 @@ export class StudentAbsences {
         date: row.date,
         category: row.category === null ? null : absenceCategorySchema.parse(row.category),
         note: row.note,
+        file:
+          row.file_name === null || row.file_type === null
+            ? null
+            : { name: row.file_name, type: row.file_type },
         changedBy: names.get(row.changed_by) ?? {
           accountId: row.changed_by,
           login: null,
@@ -403,11 +418,7 @@ export class StudentAbsences {
       const ownClass = tutorClassesOf(access).has(lower(membership.class_id));
       // The Tutor of the class (rows in force now) writes as the Tutor; the Academic Vice
       // Principal and the Super Admin write every class (decisions 6 and 8).
-      const writer = isWholeWriter(access)
-        ? access.permitting.find((one) => WHOLE_WRITERS.includes(one.role))
-        : ownClass
-          ? access.permitting.find((one) => one.role === 'tutor')
-          : undefined;
+      const writer = writerOf(access, ownClass);
       if (writer === undefined) throw new ApiException('absence_scope', 403);
       const readStored = () =>
         transaction
@@ -453,7 +464,13 @@ export class StudentAbsences {
       }
       await transaction
         .updateTable('student_absence_reasons')
-        .set({ category: input.category, note: input.note, changed_by: access.accountId })
+        .set({
+          category: input.category,
+          note: input.note,
+          changed_by: access.accountId,
+          // Task 8.5: a cleared reason takes its file with it (the check of 0123).
+          ...(input.category === null ? { file_key: null, file_type: null, file_name: null } : {}),
+        })
         .where('id', '=', stored.id)
         .execute();
       await this.audited(transaction, access, writer.id, branchId, student.id, stored.id, {
@@ -502,7 +519,7 @@ export class StudentAbsences {
   ): Promise<AbsenceReason> {
     const row = await transaction
       .selectFrom('student_absence_reasons')
-      .select(['category', 'note', 'changed_by', 'changed_at'])
+      .select(['category', 'note', 'changed_by', 'changed_at', 'file_name', 'file_type'])
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
     const names = await namedAccounts(transaction, [row.changed_by]);
@@ -511,6 +528,10 @@ export class StudentAbsences {
       date,
       category: row.category === null ? null : absenceCategorySchema.parse(row.category),
       note: row.note,
+      file:
+        row.file_name === null || row.file_type === null
+          ? null
+          : { name: row.file_name, type: row.file_type },
       changedBy: names.get(row.changed_by) ?? {
         accountId: row.changed_by,
         login: null,
@@ -519,6 +540,159 @@ export class StudentAbsences {
       changedAt: new Date(row.changed_at).toISOString(),
     };
   }
+
+  /**
+   * The reason's file and the writer's assignment: the stored reason of the
+   * branch, with a category, of a class the person writes (decision 6). For a
+   * read, a reader of the class (decision 6; a Teacher never reads it).
+   */
+  private async fileScene(
+    transaction: Transaction,
+    access: Access,
+    studentId: string,
+    date: string,
+    write: boolean,
+  ) {
+    const branchId = branchOf(access);
+    const student = await transaction
+      .selectFrom('students')
+      .select('id')
+      .where('id', '=', studentId)
+      .forShare()
+      .executeTakeFirst();
+    if (student === undefined) throw notFound();
+    const membership = await transaction
+      .selectFrom('class_memberships')
+      .select('class_id')
+      .where('student_id', '=', student.id)
+      .whereRef('valid_from', '<', 'valid_until')
+      .where('valid_from', '<=', date)
+      .where('valid_until', '>', date)
+      .executeTakeFirst();
+    if (membership === undefined) throw notFound();
+    const ownClass = tutorClassesOf(access).has(lower(membership.class_id));
+    const assignment = write ? writerOf(access, ownClass) : readerOf(access, ownClass);
+    if (assignment === undefined) throw new ApiException('absence_scope', 403);
+    const reason = await transaction
+      .selectFrom('student_absence_reasons')
+      .select(['id', 'category', 'file_key', 'file_type', 'file_name'])
+      .where('branch_id', '=', branchId)
+      .where('student_id', '=', student.id)
+      .where('absence_date', '=', date)
+      .forUpdate()
+      .executeTakeFirst();
+    if (reason?.category === null || reason === undefined) throw notFound();
+    return { branchId, assignmentId: assignment.id, reason };
+  }
+
+  /** Attaches the file of a reason (task 8.5; From 6.3, decision 10): the bytes first, then the row. */
+  async putFile(
+    access: Access,
+    studentId: string,
+    date: string,
+    name: string,
+    file: UploadedFile | null,
+    requestId: string | undefined,
+  ): Promise<AbsenceReason> {
+    await this.transactions.run(access.branchIds, (transaction) =>
+      this.fileScene(transaction, access, studentId, date, true),
+    );
+    const type = checkedFile(this.store, file);
+    const key = `absences/${studentId}/${date}/${randomUUID()}`;
+    await putStored(this.store, key, file, type);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.fileScene(transaction, access, studentId, date, true);
+      await transaction
+        .updateTable('student_absence_reasons')
+        .set({ file_key: key, file_type: type, file_name: name })
+        .where('id', '=', scene.reason.id)
+        .execute();
+      await this.audit.record(transaction, {
+        branchId: scene.branchId,
+        actorId: access.accountId,
+        assignmentId: scene.assignmentId,
+        action: 'absence_reason.file_add',
+        record: { type: 'student', id: studentId },
+        oldValue: scene.reason.file_name === null ? null : { date, name: scene.reason.file_name },
+        newValue: { date, name, type, bytes: file?.bytes.length ?? 0 },
+        details: { reasonId: scene.reason.id },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return this.answer(transaction, studentId, date, scene.reason.id);
+    });
+  }
+
+  removeFile(
+    access: Access,
+    studentId: string,
+    date: string,
+    requestId: string | undefined,
+  ): Promise<AbsenceReason> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.fileScene(transaction, access, studentId, date, true);
+      if (scene.reason.file_key === null) throw notFound();
+      await transaction
+        .updateTable('student_absence_reasons')
+        .set({ file_key: null, file_type: null, file_name: null })
+        .where('id', '=', scene.reason.id)
+        .execute();
+      await this.audit.record(transaction, {
+        branchId: scene.branchId,
+        actorId: access.accountId,
+        assignmentId: scene.assignmentId,
+        action: 'absence_reason.file_remove',
+        record: { type: 'student', id: studentId },
+        oldValue: { date, name: scene.reason.file_name },
+        newValue: null,
+        details: { reasonId: scene.reason.id },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return this.answer(transaction, studentId, date, scene.reason.id);
+    });
+  }
+
+  /** The file; every opening is logged, as an exemption's document (`edge/exemptions`, row 10). */
+  async readFile(
+    access: Access,
+    studentId: string,
+    date: string,
+    requestId: string | undefined,
+  ): Promise<StoredFile> {
+    const row = await this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.fileScene(transaction, access, studentId, date, false);
+      if (scene.reason.file_key === null) throw notFound();
+      await this.audit.record(transaction, {
+        branchId: scene.branchId,
+        actorId: access.accountId,
+        assignmentId: scene.assignmentId,
+        action: 'absence_reason.file_open',
+        record: { type: 'student', id: studentId },
+        details: { reasonId: scene.reason.id, date },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return scene.reason;
+    });
+    return readStored(this.store, row.file_key ?? '', row.file_type ?? '', row.file_name ?? '');
+  }
+}
+
+/**
+ * The assignment named by the opening of a file: for the own class the Tutor assignment that
+ * gives it, also for an account that is Head Tutor too (permission review 12), else one that
+ * reads every class.
+ */
+function readerOf(access: Access, ownClass: boolean) {
+  const tutor = ownClass ? access.permitting.find((one) => one.role === 'tutor') : undefined;
+  return tutor ?? access.permitting.find((one) => WHOLE_READERS.includes(one.role));
+}
+
+/** The assignment a reason is written under: every class for the vice and the Super Admin, a Tutor's own. */
+function writerOf(access: Access, ownClass: boolean) {
+  return isWholeWriter(access)
+    ? access.permitting.find((one) => WHOLE_WRITERS.includes(one.role))
+    : ownClass
+      ? access.permitting.find((one) => one.role === 'tutor')
+      : undefined;
 }
 
 /** Whether an assignment of every class writes reasons (the Super Admin, the Academic Vice Principal). */

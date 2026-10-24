@@ -54,8 +54,18 @@ const student = (n: number, lastName: string): JournalStudent => ({
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
+  exemptions: [],
   cells: [
-    { closed: false, mark: 1, version: 1, typedBy: null, marker: null, works: [], score: null },
+    {
+      closed: false,
+      exempt: null,
+      mark: 1,
+      version: 1,
+      typedBy: null,
+      marker: null,
+      works: [],
+      score: null,
+    },
   ],
   quarter: null,
   months: null,
@@ -74,6 +84,7 @@ const EXAM: RatingExam = {
   canEnter: true,
   canExempt: false,
   lock: OPEN_LOCK,
+  pending: [],
   entries: [
     {
       studentId: uid(101),

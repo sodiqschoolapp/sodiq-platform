@@ -442,6 +442,54 @@ export const NOTIFICATION_KINDS = {
     date: schoolDateSchema,
     reason: z.string().min(1).max(500),
   }),
+  /**
+   * Task 8.5 (`edge/exemptions`: "The Tutor and the teachers of the affected
+   * lessons are told the kind, dates and slots, without the reason"): an
+   * exemption granted, to the student's Tutor and the teachers of its lessons.
+   */
+  'journal.exemption_granted': z.strictObject({
+    student: z.string().min(1).max(200),
+    kind: z.enum(['temporary', 'full']),
+    from: schoolDateSchema,
+    until: schoolDateSchema,
+    /** `HH:MM–HH:MM` of a slot exemption, empty for whole days. */
+    times: z.string().max(11),
+  }),
+  /** An exemption edited, ended from a date or voided, to the same people. */
+  'journal.exemption_changed': z.strictObject({
+    student: z.string().min(1).max(200),
+    change: z.enum(['edited', 'ended', 'voided']),
+    kind: z.enum(['temporary', 'full']),
+    from: schoolDateSchema,
+    until: schoolDateSchema,
+    /** `HH:MM–HH:MM` of a slot exemption, empty for whole days. */
+    times: z.string().max(11),
+  }),
+  /**
+   * `edge/journal`, Locks: "The teacher gets one notice, 'reopened after
+   * exemption'": one per teacher and change, with the lessons' count.
+   */
+  'journal.exemption_reopened': z.strictObject({
+    // The students of the teacher's reopened lessons, by name: one notice per teacher and change.
+    students: z.string().min(1).max(4000),
+    lessons: z.int().min(1),
+  }),
+  /**
+   * A kept block exempts the students of the classes left out (From 5.6a-3):
+   * to the Tutors of those classes and the teachers of the kept lessons.
+   */
+  'journal.exemption_kept_block': z.strictObject({
+    unit: z.string().min(1).max(4000),
+    date: schoolDateSchema,
+    start: clockTime,
+    classes: z.string().min(1).max(4000),
+  }),
+  /** A branch move offers an exemption, to the receiving branch's Academic Vice Principal (decision 3). */
+  'journal.exemption_offer': z.strictObject({
+    student: z.string().min(1).max(200),
+    from: schoolDateSchema,
+    until: schoolDateSchema,
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

@@ -159,6 +159,7 @@ function JournalLoaded({
   const language = i18n.language;
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
+  const [exemptOpen, setExemptOpen] = useState(false);
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
   // or the rating exam, with the reason asked once for the visit; its saves carry it, the
   // comments on it included (code review 1, finding 2).
@@ -215,8 +216,17 @@ function JournalLoaded({
   const passes = (student: JournalStudent) =>
     found(student, words) &&
     (filter !== 'empty' || hasEmptyCell(student, data.lessons, shownLessons));
-  const members =
-    filter === 'left' ? [] : data.students.filter((one) => !one.folded && passes(one));
+  const listed = filter === 'left' ? [] : data.students.filter((one) => !one.folded && passes(one));
+  // Task 8.5 (07, In the journal): "A student who is exempt for the whole month on screen is
+  // moved to a folded 'Exempt' section at the bottom, with the dates."
+  const exemptAll = (student: JournalStudent) => {
+    const cells = data.lessons.flatMap((lesson, index) =>
+      shownLessons.has(lesson.id) ? [student.cells[index]] : [],
+    );
+    return cells.length > 0 && cells.every((cell) => cell !== undefined && cell.exempt !== null);
+  };
+  const members = listed.filter((one) => !exemptAll(one));
+  const exempt = listed.filter(exemptAll);
   const folded =
     filter === 'members' ? [] : data.students.filter((one) => one.folded && passes(one));
   const lessonMode = search.mode === 'lesson' || narrow;
@@ -402,7 +412,7 @@ function JournalLoaded({
           <LessonMode
             grid={data}
             lesson={nearest}
-            students={[...members, ...folded]}
+            students={[...members, ...exempt, ...folded]}
             entry={entry}
           />
         ) : (
@@ -416,6 +426,11 @@ function JournalLoaded({
               foldedOpen={foldedOpen}
               onToggleFolded={() => {
                 setFoldedOpen((open) => !open);
+              }}
+              exempt={exempt}
+              exemptOpen={exemptOpen}
+              onToggleExempt={() => {
+                setExemptOpen((open) => !open);
               }}
               scrollTo={nearest?.id ?? null}
               entry={entry}

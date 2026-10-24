@@ -57,6 +57,7 @@ const ANSWER: StudentAbsences = {
         date: '2026-10-26',
         category: 'family',
         note: 'Wedding',
+        file: null,
         changedBy: { accountId: uid(90), login: 'nodira.k', name: 'Karimova Nodira' },
         changedAt: '2026-10-26T05:00:00.000Z',
       },

@@ -651,6 +651,53 @@ describe('the bulk cancel', () => {
       expect(await noticesOf(s.englishTeachers[2]?.accountId ?? '')).toHaveLength(1);
     });
 
+    it('exempts the students of the chosen class in the kept lessons and tells their teacher (task 8.5, From 5.6a-3)', async () => {
+      const s = await scene();
+      const members = new MembersKit(t.database.migrator, await load.classes.account());
+      const placed: Record<string, string> = {};
+      for (const [name, classId] of [
+        ['oxford', s.oxford],
+        ['princeton', s.princeton],
+      ] as const) {
+        const studentId = await members.student(s.branch, { startsOn: '2026-09-01' });
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await members.member(
+            { branch: s.branch, classId, studentId, from: '2026-09-01' },
+            transaction,
+          );
+          await members.groupMember(
+            {
+              branch: s.branch,
+              groupId: s.groups[0] ?? '',
+              subjectId: s.english,
+              studentId,
+              from: '2026-09-01',
+            },
+            transaction,
+          );
+        });
+        placed[name] = studentId;
+      }
+      const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1, 2] };
+      await checkAndSave(s.branch, body, 'keep');
+      const kept = (await lessonsOf(s.branch, NEXT_MONDAY)).find(
+        (one) => one.subject_id === s.english && one.group_id === s.groups[0],
+      );
+      const expected = await sql<{ oxford: boolean; princeton: boolean }>`
+        select lesson_student_expected(${kept?.id ?? ''}::uuid, ${placed.oxford ?? ''}::uuid) as oxford,
+          lesson_student_expected(${kept?.id ?? ''}::uuid, ${placed.princeton ?? ''}::uuid) as princeton
+      `.execute(t.database.migrator);
+      expect(expected.rows[0]).toEqual({ oxford: false, princeton: true });
+      const told = await t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('account_id', '=', s.englishTeachers[0]?.accountId ?? '')
+        .where('kind', '=', 'journal.exemption_kept_block')
+        .execute();
+      expect(told).toHaveLength(1);
+      expect(told[0]?.data).toMatchObject({ date: NEXT_MONDAY });
+    });
+
     it('refuses a shared block without a choice, and a choice for a block that is not shared', async () => {
       const s = northScene;
       const body = { date: '2026-10-26', classIds: [s.oxford], lessonNumbers: [2] };

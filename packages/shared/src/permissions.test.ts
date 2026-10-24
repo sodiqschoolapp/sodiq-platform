@@ -532,6 +532,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'divisions',
+      'exemptions',
       'forced_deletes',
       'group_transfers',
       'groups',

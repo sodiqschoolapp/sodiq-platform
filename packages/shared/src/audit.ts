@@ -287,6 +287,28 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.unlock_decide',
     'journal.unlock_withdraw',
     'journal.edit_extension',
+    // Task 8.5: exemptions entered, edited, ended or voided, their reason and document opened,
+    // their document added or removed, a branch move's offer confirmed or dropped, the end a
+    // leaving or a branch move writes and its give-back, and the file of a reason of absence.
+    'exemption.create',
+    'exemption.edit',
+    'exemption.end',
+    'exemption.void',
+    'exemption.reason_open',
+    'exemption.offer_reason_open',
+    'exemption.document_open',
+    'exemption.document_add',
+    'exemption.document_remove',
+    'exemption.offer',
+    'exemption.offer_confirm',
+    'exemption.offer_drop',
+    'exemption.leaving',
+    'exemption.leaving_undo',
+    'exemption.branch_move',
+    'exemption.merge',
+    'absence_reason.file_add',
+    'absence_reason.file_remove',
+    'absence_reason.file_open',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).
