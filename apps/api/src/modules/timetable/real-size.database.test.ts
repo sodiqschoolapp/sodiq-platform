@@ -61,6 +61,7 @@ const MEASURES = [
   'the published week of a class',
   'the published week of a teacher',
   'open a journal for a quarter',
+  'the counts per teacher of a quarter',
 ] as const;
 const STEPS = ['templates', 'load', 'teachers', 'rooms', 'rules'] as const;
 
@@ -322,6 +323,32 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
               median(opened.runs),
               `${branch.name}: open a journal for a quarter`,
             ).toBeLessThan(1000);
+            // Task 8.7 (`08`: "Every report opens in under 2 seconds"): the counts per teacher
+            // of the branch over the quarter of that journal, worked out on read (decision 6).
+            const quarter = await t.database.migrator
+              .selectFrom('quarters')
+              .select([
+                sql<string>`start_date::text`.as('start_date'),
+                sql<string>`end_date::text`.as('end_date'),
+              ])
+              .where('id', '=', journal.quarterId)
+              .executeTakeFirstOrThrow();
+            const counted = await timed(size.repeats, async () => {
+              const response = await vice.get(
+                `/api/journal/discipline?from=${quarter.start_date}&to=${quarter.end_date}`,
+              );
+              expect(response.status, JSON.stringify(response.body)).toBe(200);
+              return response;
+            });
+            timings.push({
+              what: `${branch.name}: the counts per teacher of a quarter`,
+              target: 'under 2 s',
+              runs: counted.runs,
+            });
+            expect(
+              median(counted.runs),
+              `${branch.name}: the counts per teacher of a quarter`,
+            ).toBeLessThan(2000);
           } finally {
             t.clock.set(RUN_CLOCK);
             await t.database.migrator

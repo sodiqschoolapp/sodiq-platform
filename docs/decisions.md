@@ -297,6 +297,35 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: lesson status, reminders and the discipline report (task 8.7)
+
+Plan approved on pull request #225 with corrections 1 to 3; decisions 1 to 16 confirmed there (14 changed by correction 1), the build decisions taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (new permission areas). `journal_discipline`: view for the Super Admin, Principal, Academic Vice Principal, Senior Head Teacher, Head Teacher and Head Tutor; `journal_orphans`: view and edit for the Super Admin and the Academic Vice Principal, view for the Principal | Decision 1; `07`, Lesson status; `02`; `edge/journal`, Locks |
+| **Look first** (a journal rule reading). Waited for: the expected students without optional (0127) or reopened (0123) cells; numbers from those marked 1 or 2; a homework cell optional for a student not expected where it was given; every work column counts (planned, hand-added, carried), "not held" does not | Decision 2; `07`; `edge/journal` rows 1 to 3, 15 and 18 |
+| **Look first** (a new state of a cell). "Not graded" is a flag of a work cell with no number, in the cell history, left out of every average as an empty cell; not data on a lesson; `packages/calc` unchanged | Decision 3; `07`, rule 4 |
+| **Look first** (a guard widened). An orphan assignment (1 to 7 days, `open_until` as an unlock's) lets its person write on that lesson: the route scope of the lesson's teacher, and after the lock a late entry under `app.orphan_assignment_id`; its late entries count against nobody | Decisions 4 and 15 |
+| **Look first** (a From line names a function that does not exist). The `absent` of `lessonStateOf` is read from `awayLessons` (`away-read.ts`); `absences-read.ts` has no `absentLessons` | Decision 5 |
+| **Look first** (task boundary). 8.7 builds the counts per teacher of `07`, worked out on read (137 ms for a quarter of a branch in the small real-size run); the `08` report with prepared totals, export and the lessons behind each count is 9.3b's (From line) | Decision 6 |
+| Locked incomplete holds from the lock while incomplete, an open unlock included | Decision 7 |
+| Not started: no data on the lesson (a mark, a number, a total, "not held", a comment) | Decision 8 |
+| About to lock: incomplete, lock within 48 hours | Decision 9 |
+| Rating exam scores missing: from 14 days before the quarter's last day; "pending" is not missing | Decision 10 |
+| No topic: a held lesson of a graded quarter whose plan row has no item or an empty topic | Decision 11 |
+| Reminders over the held lessons of the open year up to now; counts and lessons, no student names | Decision 12 |
+| A lesson counts for the substitute in force, else the journal owner on the date; `none` for nobody | Decision 13 |
+| The counts: attendance not marked per lesson, works missing per work, unplanned per hand-added work, late entries per history line under the teacher's own unlock; at most 92 days in one year; the Head Tutor's scope and the department filter by the subject's department | Decision 14, correction 1 |
+| Orphan lessons: held, incomplete, counted for a person out of the school today; a new assignment withdraws the open one; no notice | Decision 15 |
+| The status on every timetable view's held lessons; the home sums up today's held lessons | Decision 16 |
+| **Build decision.** The journal's reminders come in the grid's answer (`reminders`), with the grid's scope, instead of a route of their own; empty for a reader of attendance only | One scope, one read |
+| **Build decision.** The teaching home's reminders are those of the branch in use: the client sends the switcher's branch with every call | `apps/web/src/api/client.ts` |
+| **Build decision.** An open optional or reopened cell of a locked lesson takes its entry through the attendance and score routes when every cell the save names is such a cell; the database guard writes it `late_entry` | From 8.6; `edge/students-classes-groups`, a week late |
+| **Build decision.** The late entries counted are those of cells, works and comments of the lessons in the range; a rating exam's late entries are left to 9.3b's report | A rating exam is no lesson of the range |
+| **Build decision.** "Not graded" as a correction tells the teacher, as the other corrections do | 8.4 decision 10 |
+| **Build decision.** The 8.1 test of a work cell's shape gains `notGraded: false`; nothing weakened | The answer gained a field |
+
 ## 24 October 2026: transfers and leaving inside the journal (task 8.6)
 
 Plan approved on pull request #224 with corrections 1 to 6; decisions 1 to 14 confirmed there (3 and 10 changed by corrections 6 and 3), 15 to 24 taken in the build. Flagged on issue #42.
