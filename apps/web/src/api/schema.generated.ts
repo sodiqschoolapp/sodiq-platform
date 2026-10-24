@@ -135563,6 +135563,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** Format: date */
+                        today: string;
                         items: {
                             /** Format: uuid */
                             id: string;
