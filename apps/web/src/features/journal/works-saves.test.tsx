@@ -41,9 +41,11 @@ const STUDENT: JournalStudent = {
   paternalName: null,
   uid: 'S-1',
   folded: false,
+  exemptions: [],
   cells: [
     {
       closed: false,
+      exempt: null,
       mark: 1,
       version: 1,
       typedBy: null,

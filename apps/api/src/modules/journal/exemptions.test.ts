@@ -629,7 +629,7 @@ describe('exemptions', () => {
         kind: 'temporary',
         from: '2026-10-27',
         until: '2026-11-03',
-        slots: null,
+        times: '',
       });
       expect(JSON.stringify(told)).not.toContain('certificate');
     });

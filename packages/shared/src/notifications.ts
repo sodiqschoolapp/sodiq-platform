@@ -452,7 +452,8 @@ export const NOTIFICATION_KINDS = {
     kind: z.enum(['temporary', 'full']),
     from: schoolDateSchema,
     until: schoolDateSchema,
-    slots: z.strictObject({ start: clockTime, end: clockTime }).nullable(),
+    /** `HH:MM–HH:MM` of a slot exemption, empty for whole days. */
+    times: z.string().max(11),
   }),
   /** An exemption edited, ended from a date or voided, to the same people. */
   'journal.exemption_changed': z.strictObject({
@@ -461,7 +462,8 @@ export const NOTIFICATION_KINDS = {
     kind: z.enum(['temporary', 'full']),
     from: schoolDateSchema,
     until: schoolDateSchema,
-    slots: z.strictObject({ start: clockTime, end: clockTime }).nullable(),
+    /** `HH:MM–HH:MM` of a slot exemption, empty for whole days. */
+    times: z.string().max(11),
   }),
   /**
    * `edge/journal`, Locks: "The teacher gets one notice, 'reopened after

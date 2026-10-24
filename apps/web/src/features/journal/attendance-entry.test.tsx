@@ -21,6 +21,7 @@ const QUARTER = { id: uid(30), number: 1, startDate: '2026-09-01', endDate: '202
 
 const cell = (mark: number | null, version: number | null = mark === null ? null : 1) => ({
   closed: false,
+  exempt: null,
   mark,
   version,
   typedBy: mark === null ? null : 'Karimova Aziza',
@@ -38,6 +39,7 @@ const student = (n: number, lastName: string, rest: Partial<JournalStudent> = {}
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
+  exemptions: [],
   cells: [cell(null), cell(0)],
   quarter: null,
   months: null,

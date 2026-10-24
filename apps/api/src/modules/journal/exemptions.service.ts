@@ -753,7 +753,10 @@ export class Exemptions {
       kind: cover.kind,
       from: cover.startDate,
       until: cover.endDate,
-      slots: slotsOf(cover),
+      times:
+        cover.startTime === null || cover.endTime === null
+          ? ''
+          : `${cover.startTime}–${cover.endTime}`,
     };
     if (change === null) {
       await this.notifications.send(transaction, {

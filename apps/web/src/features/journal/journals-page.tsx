@@ -35,6 +35,7 @@ export function JournalsPage(): React.JSX.Element {
   const absences = useMayView('absence_reasons');
   // Task 8.4: the unlock requests and the branch-wide extension.
   const unlocks = useMayView('journal_unlocks');
+  const exemptions = useMayView('exemptions');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
   const tab = search.tab ?? 'class';
@@ -96,7 +97,7 @@ export function JournalsPage(): React.JSX.Element {
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          absences || unlocks ? (
+          absences || unlocks || exemptions ? (
             <span className="flex flex-wrap gap-4">
               {absences && (
                 <Link to="/journal/student-absences" className="text-link">
@@ -106,6 +107,11 @@ export function JournalsPage(): React.JSX.Element {
               {unlocks && (
                 <Link to="/journal/unlocks" className="text-link">
                   {t('journal.unlocks.title')}
+                </Link>
+              )}
+              {exemptions && (
+                <Link to="/journal/exemptions" className="text-link">
+                  {t('journal.exemptions.title')}
                 </Link>
               )}
             </span>

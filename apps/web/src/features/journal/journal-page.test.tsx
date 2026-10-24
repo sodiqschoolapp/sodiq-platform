@@ -26,6 +26,7 @@ const cell = (
   version: number | null = mark === null ? null : 1,
 ) => ({
   closed,
+  exempt: null,
   mark,
   version,
   typedBy: mark === null ? null : 'Karimova Aziza',
@@ -44,7 +45,7 @@ const figures = (shown: number, grade: number) => ({
   classwork: 60,
   homework: 50,
   ratingExam: null,
-  result: { kind: 'number' as const, shown, grade, provisional: false, leftOut: [] },
+  result: { kind: 'number' as const, shown, grade, provisional: false, leftOut: [], basedOn: null },
 });
 
 // All names are invented.
@@ -60,6 +61,7 @@ const student = (
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
+  exemptions: [],
   cells: [cell(1, [{ score: 12, percent: 40 }], 60), cell(2, [], null), cell(1)],
   quarter: figures(59, 3),
   months: { '2026-10': figures(59, 3) },
@@ -176,6 +178,7 @@ const GRID: JournalGrid = {
     }),
     student(3, 'Abdullayev', {
       folded: true,
+      exemptions: [],
       cells: [cell(0), cell(null), cell(null, [], null, true)],
     }),
   ],

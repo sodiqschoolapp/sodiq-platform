@@ -77,6 +77,7 @@ import {
   studentAbsencesSearch,
 } from '@/features/journal/student-absences-page';
 import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unlock-requests-page';
+import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
 import { AppLayout } from './app-layout';
@@ -389,6 +390,14 @@ const unlockRequestsRoute = createRoute({
   component: guarded('journal_unlocks', UnlockRequestsPage),
 });
 
+/** Exemptions (task 8.5). */
+const exemptionsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/exemptions',
+  validateSearch: exemptionsSearch,
+  component: guarded('exemptions', ExemptionsPage),
+});
+
 /** A journal for one quarter (task 6.2): the grid, or lesson mode. */
 const journalRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -662,6 +671,7 @@ const routeTree = rootRoute.addChildren([
     journalsRoute,
     studentAbsencesRoute,
     unlockRequestsRoute,
+    exemptionsRoute,
     journalRoute,
     plansRoute,
     planWindowsRoute,

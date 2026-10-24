@@ -63,9 +63,11 @@ const student = (n: number, lastName: string): JournalStudent => ({
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
+  exemptions: [],
   cells: [
     {
       closed: false,
+      exempt: null,
       mark: 1,
       version: 1,
       typedBy: null,
@@ -75,6 +77,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
     },
     {
       closed: false,
+      exempt: null,
       mark: null,
       version: null,
       typedBy: null,

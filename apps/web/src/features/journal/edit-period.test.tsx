@@ -28,6 +28,7 @@ const LOCKED: EditLock = {
 
 const cell = (mark: number | null, marker: JournalStudent['cells'][number]['marker'] = null) => ({
   closed: false,
+  exempt: null,
   mark,
   version: mark === null ? null : 1,
   typedBy: null,
@@ -45,6 +46,7 @@ const student = (n: number, lastName: string, cells = [cell(null), cell(null)]) 
   paternalName: null,
   uid: `S-${String(n)}`,
   folded: false,
+  exemptions: [],
   cells,
   quarter: null,
   months: null,
