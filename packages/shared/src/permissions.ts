@@ -656,6 +656,34 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'create'],
   }),
+  /**
+   * The counts per teacher of the lesson status (task 8.7, pull request #225,
+   * decision 1, Look first): `07`, Lesson status: "Head Teachers and the
+   * Academic Vice Principal see the same counts per teacher; they feed the
+   * journal discipline report"; `02`: the Principal views the analytics, the
+   * Senior Head Teacher does what a Head Teacher does; `edge/journal`: "The
+   * Head Tutor sees the Tutors' journal discipline, read only". The route
+   * decides the scope: the branch, own subjects, the Tutor subjects.
+   */
+  journal_discipline: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    head_tutor: ['view'],
+  }),
+  /**
+   * Orphan lessons (task 8.7, decision 1, Look first): `edge/journal`, "A
+   * teacher leaves the school with incomplete lessons. They go to an 'orphan
+   * lessons' list. The Academic Vice Principal assigns a teacher to complete
+   * them, with a reason." The Principal reads, as for unlocks.
+   */
+  journal_orphans: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

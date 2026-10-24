@@ -5501,6 +5501,224 @@ try {
     password: attendanceTutor.firstPassword,
   };
 
+  // Task 8.7: a branch of its own for the lesson status: a class of two students, a teacher
+  // of its "Cartography" (graded) with one lesson today at 00:05 (held whatever the hour of
+  // the test) and a classwork of total 10 on it. The browser test marks attendance, types one
+  // number, sets the other "not graded" and reads the status on the journal and the home
+  // page. All names are invented.
+  const statusBranch = await insertBranch(migrator, 'Status browser test branch');
+  const statusTeacher = await create('Shahlo', 'Nazarova');
+  await transactions.run([statusBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: statusTeacher.id,
+      role: 'teacher',
+      branchId: statusBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const today = isoDate(tashkentToday);
+    const lessonsKit = await LessonsKit.create(migrator);
+    const cartography = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Cartography',
+      journalType: 'graded',
+    });
+    const { yearId, classId, staffId, quarterId } = await migrator
+      .transaction()
+      .execute(async (transaction) => {
+        const academic = await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow();
+        const steam = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow();
+        const person = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-778701',
+            account_id: statusTeacher.id,
+            first_name: 'Shahlo',
+            last_name: 'Nazarova',
+            sex: 'female',
+            birth_date: '1986-02-03',
+            phone: '+998935558701',
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: person.id, branch_id: statusBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: person.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: person.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: person.id, subject_id: cartography, grades: [7] })
+          .execute();
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({
+            branch_id: statusBranch,
+            start_date: startDate,
+            end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+        const quarters = await transaction
+          .insertInto('quarters')
+          .values(
+            [
+              [startDate, plus(20)],
+              [plus(30), plus(90)],
+              [plus(100), plus(170)],
+              [plus(180), isoDate(new Date(yearStart.getTime() + 364 * dayMs))],
+            ].map(([start, end], index) => ({
+              branch_id: statusBranch,
+              academic_year_id: year.id,
+              number: index + 1,
+              start_date: start,
+              end_date: end,
+            })),
+          )
+          .returning('id')
+          .execute();
+        const weights = { attendance: 20, classwork: 40, homework: 40 };
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({ branch_id: statusBranch, subject_id: cartography, ...weights })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: statusBranch,
+              subject_id: cartography,
+              quarter_id: quarter.id,
+              ...weights,
+            })),
+          )
+          .execute();
+        const leeds = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: statusBranch,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Leeds',
+            language: 'uz',
+            max_size: 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [uid, first, last, phone] of [
+          ['9999891', 'Sardor', 'Alimov', '+998935553391'],
+          ['9999892', 'Zarina', 'Botirova', '+998935553392'],
+        ] as const) {
+          await studentInClass(transaction, {
+            branch: statusBranch,
+            classId: leeds.id,
+            uid,
+            first,
+            last,
+            createdBy: statusTeacher.id,
+            phone,
+          });
+        }
+        return {
+          yearId: year.id,
+          classId: leeds.id,
+          staffId: person.id,
+          quarterId: quarters[0]?.id ?? '',
+        };
+      });
+    const source = await lessonsKit.source(
+      statusBranch,
+      yearId,
+      [{ classId, groupId: null, subjectId: cartography, rowTeacherId: staffId }],
+      startDate,
+    );
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: statusBranch,
+        academic_year_id: yearId,
+        class_id: classId,
+        group_id: null,
+        subject_id: cartography,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    await migrator.transaction().execute(async (transaction) => {
+      const block = await transaction
+        .insertInto('lesson_blocks')
+        .values({
+          branch_id: statusBranch,
+          academic_year_id: yearId,
+          quarter_id: quarterId,
+          lesson_date: today,
+          starts_at: new Date(`${today}T00:05:00+05:00`),
+          ends_at: new Date(`${today}T00:50:00+05:00`),
+          version_id: source.versionId,
+          pattern_block_id: source.patternBlockId,
+        })
+        .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+        .executeTakeFirstOrThrow();
+      const lesson = await transaction
+        .insertInto('lessons')
+        .values({
+          branch_id: statusBranch,
+          block_id: block.id,
+          lesson_date: block.lesson_date,
+          starts_at: block.starts_at,
+          ends_at: block.ends_at,
+          class_id: classId,
+          subject_id: cartography,
+          teacher_id: staffId,
+          load_row_id: source.lessons[0]?.loadRowId ?? '',
+          pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await sql`select set_config('app.now', ${`${today}T00:06:00+05:00`}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: statusBranch,
+          lesson_id: lesson.id,
+          source_lesson_id: lesson.id,
+          kind: 'classwork',
+          total: 10,
+        })
+        .execute();
+    });
+  }
+  seeded.statusTeacher = { login: statusTeacher.login, password: statusTeacher.firstPassword };
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.

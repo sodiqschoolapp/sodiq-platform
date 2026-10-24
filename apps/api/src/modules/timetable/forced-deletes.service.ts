@@ -404,6 +404,8 @@ export class LessonForcedDeletes implements OnModuleInit {
           'work_id',
           'mark',
           'score',
+          // Task 8.7: "not graded" goes and comes back with its cell.
+          'not_graded',
           'version',
           'changed_by',
           'changed_how',

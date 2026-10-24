@@ -615,6 +615,9 @@ export interface JournalCellHistory {
   lesson_id: string;
   mark_after: number | null;
   mark_before: number | null;
+  not_graded_after: Generated<boolean>;
+  not_graded_before: Generated<boolean>;
+  orphan_assignment_id: string | null;
   reason: string | null;
   score_after: number | null;
   score_before: number | null;
@@ -634,6 +637,7 @@ export interface JournalCells {
   id: Generated<string>;
   lesson_id: string;
   mark: number | null;
+  not_graded: Generated<boolean>;
   score: number | null;
   student_id: string;
   version: number;
@@ -650,6 +654,7 @@ export interface JournalCommentHistory {
   comment_id: string;
   id: Generated<string>;
   lesson_id: string | null;
+  orphan_assignment_id: string | null;
   rating_exam_id: string | null;
   reason: string | null;
   student_id: string;
@@ -703,6 +708,21 @@ export interface JournalOptionalCells {
   return_status_id: string | null;
   student_id: string;
   withdrawn_at: Timestamp | null;
+}
+
+export interface JournalOrphanAssignments {
+  assigned_at: Timestamp;
+  assigned_by: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  days: number;
+  id: Generated<string>;
+  lesson_id: string;
+  open_until: Timestamp;
+  reason: string;
+  staff_id: string;
+  withdrawn_at: Timestamp | null;
+  withdrawn_by: string | null;
 }
 
 export interface JournalRatingEntries {
@@ -827,6 +847,7 @@ export interface JournalWorkHistory {
   lesson_id: string;
   not_held_after: boolean | null;
   not_held_before: boolean | null;
+  orphan_assignment_id: string | null;
   plan_work_after: string | null;
   plan_work_before: string | null;
   reason: string | null;
@@ -1905,6 +1926,7 @@ export interface DB {
   journal_comments: JournalComments;
   journal_edit_extensions: JournalEditExtensions;
   journal_optional_cells: JournalOptionalCells;
+  journal_orphan_assignments: JournalOrphanAssignments;
   journal_rating_entries: JournalRatingEntries;
   journal_rating_exams: JournalRatingExams;
   journal_rating_history: JournalRatingHistory;

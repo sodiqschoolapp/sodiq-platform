@@ -33,6 +33,7 @@ const lesson = (n: number, fields: Partial<HomeLesson> = {}): HomeLesson => ({
   lessonNumber: 1,
   replacedHere: false,
   journalId: null,
+  status: null,
   branch: NORTH,
   startsAt: '2026-10-19T03:00:00.000Z',
   endsAt: '2026-10-19T03:45:00.000Z',
@@ -348,5 +349,80 @@ describe('the teaching home page', () => {
     renderApp('/');
     expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
     expect(calls.some((call) => call.route === 'GET /api/timetable/home')).toBe(false);
+  });
+
+  it('sums up today’s held lessons by their status and lists the reminders (task 8.7, 07: "3 of 5 lessons complete")', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [{ role: 'teacher', branchId: NORTH.id }],
+            branches: [NORTH],
+            language: 'en',
+          }),
+        ),
+      'GET /api/timetable/home': () =>
+        json(
+          homeOf({
+            lessons: [
+              lesson(1, { state: 'held', status: 'complete' }),
+              lesson(2, {
+                state: 'held',
+                status: 'in_progress',
+                start: 535,
+                end: 580,
+                startsAt: '2026-10-19T03:55:00.000Z',
+                endsAt: '2026-10-19T04:40:00.000Z',
+              }),
+              lesson(3, {
+                start: 900,
+                end: 945,
+                startsAt: '2026-10-19T10:00:00.000Z',
+                endsAt: '2026-10-19T10:45:00.000Z',
+              }),
+            ],
+          }),
+        ),
+      'GET /api/journal/reminders': () =>
+        json({
+          today: TODAY,
+          reminders: [
+            {
+              kind: 'no_attendance',
+              lesson: {
+                id: uid(302),
+                journalId: uid(900),
+                date: TODAY,
+                start: 535,
+                unit: { kind: 'class', id: uid(101), name: '7 Oxford' },
+                subject: {
+                  id: uid(200),
+                  names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+                  colour: 'blue',
+                },
+                status: 'in_progress',
+              },
+              count: 2,
+              locksAt: null,
+            },
+          ],
+        }),
+    });
+    renderApp('/', 'en');
+    const summary = await screen.findByText('1 of 2 lessons complete');
+    expect(summary.closest('[data-home-today]')).not.toBeNull();
+    await waitFor(() => {
+      const statuses = [...document.querySelectorAll('[data-home-today] [data-status]')].map(
+        (one) => one.textContent,
+      );
+      expect(statuses).toEqual(['Complete', 'In progress']);
+    });
+    const item = await waitFor(() => {
+      const found = document.querySelector('[data-reminders] [data-reminder="no_attendance"]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(item?.textContent).toContain('2 students without attendance');
+    expect(item?.querySelector('a')?.getAttribute('href')).toContain(uid(900));
   });
 });

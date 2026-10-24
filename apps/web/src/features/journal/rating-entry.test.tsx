@@ -33,6 +33,7 @@ const lesson: JournalLesson = {
   end: 525,
   slot: 1,
   held: true,
+  status: null,
   cancelled: null,
   month: '2026-10',
   canEnter: true,
@@ -58,6 +59,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
   cells: [
     {
       closed: false,
+      open: false,
       exempt: null,
       mark: 1,
       version: 1,
@@ -121,6 +123,7 @@ const GRID: JournalGrid = {
   months: ['2026-10'],
   lessons: [lesson],
   students: [student(1, 'Zokirov'), student(2, 'Abdullayev')],
+  reminders: [],
   lastTotal: null,
   absences: [],
   bottom: null,

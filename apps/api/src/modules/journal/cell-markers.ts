@@ -118,6 +118,27 @@ export async function optionalCellsOf(
 }
 
 /**
+ * The cells reopened after an exemption that are open now (task 8.7; `edge/journal`: "Those
+ * cells open for 3 days, for those cells only"; `exemption_reopened_open`, 0123), by
+ * `lessonId|studentId`.
+ */
+export async function reopenedCellsOf(
+  transaction: Transaction,
+  lessonIds: readonly string[],
+  now: Date,
+): Promise<Set<string>> {
+  if (lessonIds.length === 0) return new Set();
+  const rows = await transaction
+    .selectFrom('exemption_reopened_cells')
+    .select(['lesson_id', 'student_id'])
+    .where('lesson_id', 'in', [...lessonIds])
+    .where('reopened_at', '<=', now)
+    .where('open_until', '>', now)
+    .execute();
+  return new Set(rows.map((row) => `${row.lesson_id}|${row.student_id}`));
+}
+
+/**
  * The marker a cell shows: a correction stays shown; else an optional cell open now
  * shows "Optional until <date>" (a value typed there is a late entry with no unlock);
  * else the stored value's marker.

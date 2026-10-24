@@ -284,12 +284,18 @@ export async function markInStore(
  * `second` starts and queues behind it (a save of cells takes the lesson `for
  * share`), so the row goes to `first` when the hold is released. Each answers
  * its value or the error it threw.
+ *
+ * Task 8.7 (code round 1 of #225): two changes that both take the lesson `for
+ * share` (a "not graded" fill and a save of numbers) both get it on the
+ * release, so `row` holds a row of the lesson both lock `for update` (a
+ * cell, or a work) instead.
  */
 export async function inOrderOnLesson<A, B>(input: {
   readonly app: INestApplication;
   readonly migrator: Database;
   readonly branchId: string;
   readonly lessonId: string;
+  readonly row?: { readonly table: 'journal_cells' | 'journal_works'; readonly id: string };
   readonly first: () => Promise<A>;
   readonly second: () => Promise<B>;
 }): Promise<[unknown, unknown]> {
@@ -319,12 +325,22 @@ export async function inOrderOnLesson<A, B>(input: {
   const held = input.app
     .get(Transactions)
     .run([input.branchId], async (transaction) => {
-      await transaction
-        .selectFrom('lessons')
-        .select('id')
-        .where('id', '=', input.lessonId)
-        .forUpdate()
-        .execute();
+      if (input.row === undefined) {
+        await transaction
+          .selectFrom('lessons')
+          .select('id')
+          .where('id', '=', input.lessonId)
+          .forUpdate()
+          .execute();
+      } else {
+        await transaction
+          .selectFrom(input.row.table)
+          .select('id')
+          .where('id', '=', input.row.id)
+          .where('lesson_id', '=', input.lessonId)
+          .forUpdate()
+          .execute();
+      }
       ready();
       await released;
     })

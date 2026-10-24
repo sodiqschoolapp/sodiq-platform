@@ -38,6 +38,7 @@ import {
   invalidateJournal,
   removeWork,
   saveScores,
+  setNotGraded,
   setWorkNotHeld,
   setWorkTotal,
   showTyped,
@@ -211,6 +212,28 @@ export function useWorksEntry(
     },
   });
 
+  // Task 8.7 (`07`, Lesson status): "not graded" in one click, one action for the undo.
+  const [graded, setGraded] = useState<{ filled: number; skipped: number } | null>(null);
+  const notGraded = useMutation({
+    mutationFn: (lessonId: string) =>
+      setNotGraded(lessonId, {
+        ...(correctionOf(lessonId) === undefined ? {} : { correction: correctionOf(lessonId) }),
+      }).then((answer) => ({ lessonId, answer })),
+    onMutate: () => {
+      setFailure(null);
+      setGraded(null);
+    },
+    onSuccess: async ({ lessonId, answer }) => {
+      setGraded({ filled: answer.filled.length, skipped: answer.skipped.length });
+      record({ lessonId, cells: answer.filled });
+      await done();
+    },
+    onError: async (error) => {
+      setFailure(error);
+      await done();
+    },
+  });
+
   /** A change that may ask a confirmation first (a total with numbers, "not held" with numbers). */
   const change = useMutation({
     mutationFn: async (input: {
@@ -359,6 +382,16 @@ export function useWorksEntry(
           }}
         />
       )}
+      {graded !== null && (
+        <p className="text-sm" data-not-graded-notice="true">
+          {t('journal.notGraded.filled', { count: graded.filled })}
+          {graded.skipped > 0 && (
+            <span className="ml-1">
+              {t('journal.notGraded.skipped', { count: graded.skipped })}
+            </span>
+          )}
+        </p>
+      )}
       {aboveTotal.length > 0 && (
         <p className="text-sm" data-above-total="true">
           {t('journal.works.aboveTotal', { names: aboveTotal.join(', ') })}
@@ -369,13 +402,26 @@ export function useWorksEntry(
           lesson={lesson}
           grid={grid}
           language={i18n.language}
-          busy={changing}
+          busy={changing || notGraded.isPending}
           nameOfWork={nameOfWork}
           onAdd={(kind) => {
             run({ run: () => addWork(lesson.id, { kind }), ask: () => Promise.resolve(false) });
           }}
           onUndo={(chosen) => {
             setNotHeld(lesson, chosen, false);
+          }}
+          waiting={waitingCells(grid, lesson)}
+          onNotGraded={() => {
+            const count = waitingCells(grid, lesson);
+            void confirm({
+              title: t('journal.notGraded.confirmTitle'),
+              text: t('journal.notGraded.confirmText', { count }),
+              action: t('journal.notGraded.confirmAction'),
+            }).then((yes) => {
+              if (!yes) return;
+              setLessonOpen(null);
+              notGraded.mutate(lesson.id);
+            });
           }}
           onClose={() => {
             setLessonOpen(null);
@@ -419,6 +465,28 @@ export function useWorksEntry(
   return { works, dialogs };
 }
 
+/**
+ * The empty cells of the works with a total that a lesson waits for, as the grid shows
+ * them (`07`: "A present student left without a number"): students marked 1 or 2, not
+ * closed, not exempt. A count for the confirmation; the server decides which it fills.
+ */
+export function waitingCells(grid: JournalGrid, lesson: JournalLesson): number {
+  const index = grid.lessons.findIndex((one) => one.id === lesson.id);
+  let count = 0;
+  for (const student of grid.students) {
+    const cell = student.cells[index];
+    if (cell === undefined || cell.closed || cell.exempt !== null) continue;
+    if (cell.mark !== 1 && cell.mark !== 2) continue;
+    lesson.works.forEach((work, at) => {
+      const typed = cell.works[at];
+      if (work.id !== null && work.total !== null && typed?.score === null && !typed.notGraded) {
+        count += 1;
+      }
+    });
+  }
+  return count;
+}
+
 /** The works of a lesson: added by hand, marked "not held", and the homeworks given. */
 function LessonWorksDialog({
   lesson,
@@ -428,6 +496,8 @@ function LessonWorksDialog({
   nameOfWork,
   onAdd,
   onUndo,
+  waiting,
+  onNotGraded,
   onClose,
 }: {
   lesson: JournalLesson;
@@ -437,6 +507,9 @@ function LessonWorksDialog({
   nameOfWork: (work: JournalWork) => string;
   onAdd: (kind: 'classwork' | 'homework') => void;
   onUndo: (work: JournalWork) => void;
+  /** Task 8.7: the empty cells the lesson waits for, and "not graded" for them. */
+  waiting: number;
+  onNotGraded: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -457,6 +530,13 @@ function LessonWorksDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 text-sm">
+          {lesson.canEnterWorks && waiting > 0 && (
+            <div>
+              <Button variant="secondary" disabled={busy} onClick={onNotGraded}>
+                {t('journal.notGraded.button')}
+              </Button>
+            </div>
+          )}
           {!lesson.planItem && (
             <div className="grid gap-2" data-no-plan="true">
               <p className="font-semibold">{t('journal.works.noPlan')}</p>

@@ -287,6 +287,11 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.unlock_decide',
     'journal.unlock_withdraw',
     'journal.edit_extension',
+    // Task 8.7: "not graded" set on a lesson's cells, and an orphan lesson assigned or its
+    // assignment withdrawn.
+    'journal.not_graded',
+    'journal.orphan_assign',
+    'journal.orphan_withdraw',
     // Task 8.5: exemptions entered, edited, ended or voided, their reason and document opened,
     // their document added or removed, a branch move's offer confirmed or dropped, the end a
     // leaving or a branch move writes and its give-back, and the file of a reason of absence.

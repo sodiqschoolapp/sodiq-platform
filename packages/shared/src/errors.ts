@@ -1096,6 +1096,14 @@ export const ERROR_CODES = [
   'student_merge_journal_overlap',
   /** The merged record holds journal entries on days the merge cuts: they are voided with a reason first (From 3.3d; task 8.6). */
   'student_merge_journal_cut',
+  /** The lesson is no orphan lesson now: it is complete, not held, or the teacher it counts for is in the school (edge/journal; task 8.7). */
+  'orphan_not_orphan',
+  /** The teacher named is not a person active in the branch today (task 8.7). */
+  'orphan_teacher_inactive',
+  /** The orphan lesson's assignment is already withdrawn (task 8.7). */
+  'orphan_assignment_withdrawn',
+  /** The counts per teacher read at most 92 days inside one academic year (task 8.7, decision 14). */
+  'discipline_range',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

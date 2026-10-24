@@ -1,3 +1,4 @@
+import { lessonStatuses } from '../journal/lesson-status.query.js';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   classDisplayName,
@@ -563,6 +564,7 @@ export class TimetableViews {
           classIds,
           lessonNumber: null,
           journalId: journalOf.get(`${year.id}|${one.unit.id}|${one.subject.id}`) ?? null,
+          status: null,
           replacedHere:
             input.replacedOf !== undefined &&
             one.substitution?.replaced?.id === input.replacedOf &&
@@ -634,6 +636,14 @@ export class TimetableViews {
       exams.push(...dayExams);
       busy.push(...dayBusy);
     }
+    // Task 8.7 (decision 16): the status of each held lesson, from the one reader of the status.
+    const statuses = await lessonStatuses(
+      transaction,
+      branchId,
+      lessons.filter((one) => one.state === 'held').map((one) => one.id),
+      moment,
+    );
+    for (const one of lessons) one.status = statuses.get(one.id)?.answer?.status ?? null;
     const yearIds = new Set(days.flatMap((one) => yearOn(one.date)?.id ?? []));
     const schoolClasses =
       kind === 'branch'

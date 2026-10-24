@@ -36,6 +36,9 @@ export function JournalsPage(): React.JSX.Element {
   // Task 8.4: the unlock requests and the branch-wide extension.
   const unlocks = useMayView('journal_unlocks');
   const exemptions = useMayView('exemptions');
+  // Task 8.7: the counts per teacher and the orphan lessons.
+  const discipline = useMayView('journal_discipline');
+  const orphans = useMayView('journal_orphans');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
   const tab = search.tab ?? 'class';
@@ -97,7 +100,7 @@ export function JournalsPage(): React.JSX.Element {
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          absences || unlocks || exemptions ? (
+          absences || unlocks || exemptions || discipline || orphans ? (
             <span className="flex flex-wrap gap-4">
               {absences && (
                 <Link to="/journal/student-absences" className="text-link">
@@ -112,6 +115,16 @@ export function JournalsPage(): React.JSX.Element {
               {exemptions && (
                 <Link to="/journal/exemptions" className="text-link">
                   {t('journal.exemptions.title')}
+                </Link>
+              )}
+              {discipline && (
+                <Link to="/journal/discipline" className="text-link">
+                  {t('journal.discipline.title')}
+                </Link>
+              )}
+              {orphans && (
+                <Link to="/journal/orphans" className="text-link">
+                  {t('journal.orphans.title')}
                 </Link>
               )}
             </span>

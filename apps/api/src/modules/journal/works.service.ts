@@ -10,6 +10,8 @@ import {
   type WorkColumn,
   type WorkSaved,
   type Correction,
+  type NotGraded,
+  type NotGradedAnswer,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
@@ -28,7 +30,7 @@ import {
   ownStaffOf,
   type EntryLesson,
 } from './attendance-entry.js';
-import { saveCells, type SavedCell } from './cells.js';
+import { CELL_REFUSALS, saveCells, type SavedCell } from './cells.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { noticeCellCorrections, noticeLessonCorrection } from './corrections.js';
 import { decideWrite, writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
@@ -37,6 +39,8 @@ import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
 import { cellsAsSaved, storedCells } from './saved-cells.js';
 import { refuseOtherStudents } from './students-of-branch.js';
+import { lessonStatuses } from './lesson-status.query.js';
+import { inGridOrder } from './attendance.service.js';
 
 /**
  * Classwork and homework (task 8.1, pull request #217; `07`, Entering data,
@@ -170,6 +174,8 @@ export class WorksService {
     lessonId: string,
     requestId: string | undefined,
     correction?: Correction,
+    /** Task 8.7: the students a save of numbers names (optional cells of a locked lesson). */
+    students?: readonly string[],
   ): Promise<Scene> {
     const branchId = branchOf(access);
     const { lesson, now, timeZone, write } = await enterableLesson(
@@ -177,7 +183,7 @@ export class WorksService {
       access,
       branchId,
       lessonId,
-      { correction },
+      { correction, ...(students === undefined ? {} : { students }) },
     );
     if (lesson.journalId === null) throw new ApiException('lesson_attendance_only', 409);
     const [unlocked] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
@@ -710,7 +716,14 @@ export class WorksService {
     requestId?: string,
   ): Promise<ScoresSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        input.saves.map((save) => save.studentId),
+      );
       await refuseOtherStudents(
         transaction,
         input.saves.map((save) => save.studentId),
@@ -774,6 +787,169 @@ export class WorksService {
           version: cell.version,
         })),
         works: works.map(savedOf),
+      };
+    });
+  }
+
+  /**
+   * "Not graded" (task 8.7, decision 3; `07`, Lesson status): the empty cells of the
+   * students the lesson waits for (marked 1 or 2, expected, not optional) in the works
+   * named, or in every counted work with a total. The cells are locked one by one in the
+   * order `saveCells` writes them (student, then work); a cell typed between the read and
+   * the write is skipped and reported (`edge/journal`: "fill only the cells that are empty
+   * at that moment and report the ones they skipped"). One audit entry `journal.not_graded`.
+   */
+  notGraded(
+    access: Access,
+    lessonId: string,
+    input: NotGraded,
+    requestId?: string,
+  ): Promise<NotGradedAnswer> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const named = input.workIds?.map((id) => id.toLowerCase());
+      if (named !== undefined) {
+        await this.refuseUnknownColumns(
+          transaction,
+          named.map((workId) => ({ workId })),
+        );
+      }
+      const columns = scene.columns.columns.get(scene.lesson.id)?.columns ?? [];
+      const chosen =
+        named === undefined
+          ? columns.filter((column) => column.workId !== null && column.total !== null)
+          : named.map((workId) => this.columnOf(scene, { workId }));
+      for (const column of chosen) {
+        if (column.total === null) throw new ApiException('work_total_missing', 409);
+      }
+      // The works' rows before any cell, `for update` in the order of their id, as a save of
+      // numbers takes them (`writeScores`): the cell trigger takes a work `for share`, so a
+      // fill that wrote a cell first and a save that holds the work deadlocked (code round 1).
+      const workIds = [
+        ...new Set(chosen.flatMap((column) => (column.workId === null ? [] : [column.workId]))),
+      ].sort((a, b) => a.localeCompare(b));
+      for (const workId of workIds) {
+        await transaction
+          .selectFrom('journal_works')
+          .select('id')
+          .where('id', '=', workId)
+          .forUpdate()
+          .execute();
+      }
+      const now = await transactionMoment(transaction);
+      const status = (
+        await lessonStatuses(transaction, scene.branchId, [scene.lesson.id], now)
+      ).get(scene.lesson.id);
+      const wanted = chosen
+        .flatMap((column) =>
+          column.workId === null
+            ? []
+            : (status?.waiting.get(column.workId) ?? []).map((studentId) => ({
+                studentId,
+                workId: column.workId ?? '',
+              })),
+        )
+        .sort(
+          (one, other) =>
+            one.studentId.localeCompare(other.studentId) || one.workId.localeCompare(other.workId),
+        );
+      const filled: { studentId: string; workId: string; version: number; cellId: string }[] = [];
+      const skipped: { studentId: string; workId: string }[] = [];
+      try {
+        for (const cell of wanted) {
+          // The mark under the cell's lock order (the attendance cell comes first in `saveCells`):
+          // a student no longer marked present or late is skipped and reported.
+          const attendance = await transaction
+            .selectFrom('journal_cells')
+            .select('mark')
+            .where('lesson_id', '=', scene.lesson.id)
+            .where('student_id', '=', cell.studentId)
+            .where('work_id', 'is', null)
+            .forShare()
+            .executeTakeFirst();
+          if (attendance?.mark !== 1 && attendance?.mark !== 2) {
+            skipped.push(cell);
+            continue;
+          }
+          const stored = await transaction
+            .selectFrom('journal_cells')
+            .select(['id', 'score', 'not_graded', 'version'])
+            .where('lesson_id', '=', scene.lesson.id)
+            .where('student_id', '=', cell.studentId)
+            .where('work_id', '=', cell.workId)
+            .forUpdate()
+            .executeTakeFirst();
+          let written: { id: string; version: number } | undefined;
+          if (stored === undefined) {
+            written = await transaction
+              .insertInto('journal_cells')
+              .values({
+                branch_id: scene.branchId,
+                lesson_id: scene.lesson.id,
+                student_id: cell.studentId,
+                work_id: cell.workId,
+                not_graded: true,
+                changed_by: access.accountId,
+                changed_how: 'entry',
+                // Overwritten by journal_cells_write.
+                version: 1,
+                changed_at: new Date(0),
+              })
+              .onConflict((conflict) =>
+                conflict.columns(['branch_id', 'lesson_id', 'student_id', 'work_id']).doNothing(),
+              )
+              .returning(['id', 'version'])
+              .executeTakeFirst();
+          } else if (stored.score === null && !stored.not_graded) {
+            written = await transaction
+              .updateTable('journal_cells')
+              .set({ not_graded: true, changed_by: access.accountId, changed_how: 'entry' })
+              .where('id', '=', stored.id)
+              .where('version', '=', stored.version)
+              .returning(['id', 'version'])
+              .executeTakeFirst();
+          }
+          if (written === undefined) skipped.push(cell);
+          else filled.push({ ...cell, version: written.version, cellId: written.id });
+        }
+      } catch (error) {
+        const failure = error as { code?: unknown; constraint?: unknown };
+        if (
+          failure.code === CHECK_VIOLATION &&
+          typeof failure.constraint === 'string' &&
+          Object.hasOwn(CELL_REFUSALS, failure.constraint)
+        ) {
+          throw new ApiException(CELL_REFUSALS[failure.constraint] ?? 'cell_closed', 409);
+        }
+        throw error;
+      }
+      // Never in the order of the writes: the grid's (students), then the works' order.
+      const order = new Map(chosen.map((column, index) => [column.workId ?? '', index]));
+      const sorted = await inGridOrder(transaction, filled);
+      const skippedSorted = await inGridOrder(transaction, skipped);
+      const byWork = <T extends { workId: string }>(list: readonly T[]): T[] =>
+        [...list].sort((a, b) => (order.get(a.workId) ?? 0) - (order.get(b.workId) ?? 0));
+      await this.audit.record(transaction, {
+        ...this.actorOf(scene),
+        action: 'journal.not_graded',
+        record: { type: 'lesson', id: scene.lesson.id },
+        newValue: {
+          cells: sorted.map((one) => ({ id: one.cellId, version: one.version })),
+          skipped: skippedSorted.map((one) => ({ studentId: one.studentId, workId: one.workId })),
+        },
+        details: {
+          filled: sorted.length,
+          skipped: skippedSorted.length,
+          ...writeDetails(scene.write, scene.correction),
+        },
+      });
+      return {
+        filled: byWork(sorted).map((one) => ({
+          studentId: one.studentId,
+          workId: one.workId,
+          version: one.version,
+        })),
+        skipped: byWork(skippedSorted),
       };
     });
   }

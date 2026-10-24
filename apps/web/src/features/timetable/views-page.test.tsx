@@ -38,6 +38,7 @@ const lesson = (n: number, fields: Partial<ViewLesson> = {}): ViewLesson => ({
   lessonNumber: 1,
   replacedHere: false,
   journalId: null,
+  status: null,
   ...fields,
 });
 
@@ -168,6 +169,17 @@ describe('the timetable views', () => {
     expect(link.getAttribute('href')).toBe(`/journal/${uid(900)}?date=2026-10-12`);
     // A lesson with no journal names its subject without a link.
     expect(screen.getAllByRole('link', { name: 'Mathematics' })).toHaveLength(1);
+  });
+
+  it('shows the status of a held lesson in words (task 8.7, 07: "on the timetable")', async () => {
+    await openPage(
+      viewOf({ lessons: [lesson(1, { state: 'held', status: 'locked_incomplete' })] }),
+    );
+    await waitFor(() => {
+      expect(document.querySelector('tbody [data-status]')?.textContent).toBe(
+        en.journal.lessonStatus.locked_incomplete,
+      );
+    });
   });
 
   it('marks a lesson kept for its data with its cause in words', async () => {

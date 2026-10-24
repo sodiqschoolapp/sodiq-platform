@@ -59,6 +59,8 @@ export function editWindowOf(
 export type WriteHow =
   | { readonly how: 'entry' }
   | { readonly how: 'late_entry'; readonly unlockId: string }
+  /** Task 8.7 (decision 4): a late entry of the person an orphan lesson is assigned to. */
+  | { readonly how: 'assigned_entry'; readonly orphanAssignmentId: string }
   | { readonly how: 'correction'; readonly assignmentId: string };
 
 /**
@@ -172,6 +174,13 @@ export async function decideWrite(
     readonly target: LockTarget;
     readonly staffId: string | null;
     readonly correction?: { readonly reason: string } | undefined;
+    /** Task 8.7: the open orphan assignment of the person on the lesson, if any. */
+    readonly orphanAssignmentId?: string | null;
+    /**
+     * Task 8.7 (From 8.6): every cell the write names is an optional or reopened cell open now;
+     * the cells guard takes such a write after the lock as a late entry (0123, 0127).
+     */
+    readonly openCells?: boolean;
   },
 ): Promise<WriteHow> {
   if (input.correction !== undefined) {
@@ -185,6 +194,9 @@ export async function decideWrite(
   const now = await transactionMoment(transaction);
   const locksAt = await lockOf(transaction, input.target);
   if (locksAt === null || now.getTime() < locksAt.getTime()) return { how: 'entry' };
+  // Task 8.7: optional or reopened cells only: never under an unlock, so the entry counts
+  // against nobody (From 8.4); the cells guard writes it `late_entry`.
+  if (input.openCells === true) return { how: 'entry' };
   const window =
     input.staffId === null
       ? editWindowOf(locksAt, [], null, now)
@@ -201,7 +213,14 @@ export async function decideWrite(
           input.staffId,
           now,
         );
-  if (window.kind !== 'unlocked') throw lockedRefusal(locksAt);
+  if (window.kind !== 'unlocked') {
+    const assigned = input.orphanAssignmentId ?? null;
+    if (assigned === null) throw lockedRefusal(locksAt);
+    await sql`select set_config('app.orphan_assignment_id', ${assigned}, true)`.execute(
+      transaction,
+    );
+    return { how: 'assigned_entry', orphanAssignmentId: assigned };
+  }
   await sql`select set_config('app.unlock_id', ${window.unlock.id}, true)`.execute(transaction);
   return { how: 'late_entry', unlockId: window.unlock.id };
 }
@@ -212,6 +231,9 @@ export function writeDetails(
   correction?: { readonly reason: string },
 ): Record<string, string> {
   if (write.how === 'late_entry') return { how: 'late_entry', unlockId: write.unlockId };
+  if (write.how === 'assigned_entry') {
+    return { how: 'late_entry', orphanAssignmentId: write.orphanAssignmentId };
+  }
   if (write.how === 'correction') return { how: 'correction', reason: correction?.reason ?? '' };
   return {};
 }
