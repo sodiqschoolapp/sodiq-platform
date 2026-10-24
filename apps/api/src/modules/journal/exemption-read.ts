@@ -17,7 +17,7 @@ export async function exemptionMarksOf(
   const answer = new Map<string, Map<string, ExemptionKind>>();
   if (lessonIds.length === 0) return answer;
   const found = await sql<{ lesson_id: string; student_id: string; kind: ExemptionKind }>`
-    with members as (
+    with members as materialized (
       select l.id as lesson_id, m.student_id
       from unnest(${[...lessonIds]}::uuid[]) as x(id)
       join lessons l on l.id = x.id
@@ -29,11 +29,28 @@ export async function exemptionMarksOf(
       join lessons l on l.id = x.id
       join group_memberships m on m.group_id = l.group_id
         and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+    ),
+    -- Only a member with a live span, or of a lesson a kept block may touch, can be
+    -- exempt (0124): the others are not asked one by one. Materialized, so the filter runs
+    -- before the function (the planner orders the conditions of one level by cost).
+    kept as materialized (
+      select x.id as lesson_id, lesson_kept_out_possible(x.id) as possible
+      from unnest(${[...lessonIds]}::uuid[]) as x(id)
+    ),
+    spanned as materialized (
+      select distinct s.student_id from exemption_spans s
+      where s.live and s.student_id in (select student_id from members)
+    ),
+    asked as materialized (
+      select m.lesson_id, m.student_id
+      from members m
+      join kept k on k.lesson_id = m.lesson_id
+      where k.possible or m.student_id in (select student_id from spanned)
     )
     select lesson_id, student_id, kind
     from (
-      select lesson_id, student_id, lesson_student_exemption(lesson_id, student_id) as kind
-      from members
+      select a.lesson_id, a.student_id, lesson_student_exemption(a.lesson_id, a.student_id) as kind
+      from asked a
     ) k
     where kind is not null
   `.execute(transaction);
