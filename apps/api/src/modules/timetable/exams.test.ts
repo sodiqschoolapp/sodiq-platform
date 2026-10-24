@@ -899,6 +899,45 @@ describe('exams in the timetable', () => {
   });
 
   describe('a shared block (edge/timetable, Exams, second row)', () => {
+    // Task 8.5 (From 5.6c-1; spec review of the code of 8.5, should-fix 2): the sitting class kept
+    // out of the shared block is exempt from it; the block's teacher and the class's Tutor are told.
+    it('tells the teacher of the kept block and the Tutor of the class kept out, once', async () => {
+      const s = await ratingScene();
+      const [block] = await lessonsOf(THURSDAY, { groupId: s.art.group });
+      if (block === undefined) throw new Error('No art lesson.');
+      const tutor = await load.classes.account();
+      const assignment = await t.kit.giveRole(tutor, {
+        role: 'tutor',
+        branchId: s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor });
+      await load.classes.tutorRow(s.branch, s.classId, assignment.id);
+      const teacher = await t.database.migrator
+        .selectFrom('staff')
+        .select('account_id')
+        .where('id', '=', s.art.teacher)
+        .executeTakeFirstOrThrow();
+      saved(
+        await create(
+          s.branch,
+          examOf(s, {
+            date: THURSDAY,
+            classIds: [s.classId],
+            blockChoices: [{ classId: s.classId, blockId: block.block_id, choice: 'keep' }],
+          }),
+        ),
+      );
+      const told = await t.database.migrator
+        .selectFrom('notifications')
+        .select(['account_id', 'data'])
+        .where('kind', '=', 'journal.exemption_kept_block')
+        .where('account_id', 'in', [teacher.account_id ?? '', tutor])
+        .execute();
+      expect(told.map((one) => one.account_id).sort()).toEqual([teacher.account_id, tutor].sort());
+      expect(told[0]?.data).toMatchObject({ date: THURSDAY });
+    });
+
     it('asks a choice for a block shared with a class that does not sit; cancel takes the whole block, keep the sitting class out of it', async () => {
       const s = await scene({ art: true });
       const art = s.art;
