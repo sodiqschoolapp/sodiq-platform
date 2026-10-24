@@ -1169,6 +1169,69 @@ describe('exemptions', () => {
       expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
       expect(await stateOf(running)).toMatchObject({ end: '2026-11-20', leaving_id: null });
       expect(await stateOf(later)).toMatchObject({ voided_at: null, leaving_id: null });
+      // Review finding 6: the entries' content, not only that they are there.
+      const [leaving] = await t.entries('exemption.leaving', s.other);
+      const leavingId = (leaving?.new_value as { leavingId: string }).leavingId;
+      expect(leaving).toMatchObject({ branch_id: s.branch });
+      expect(leaving?.new_value).toEqual({
+        leavingId,
+        lastDay: '2026-11-10',
+        exemptions: [
+          { id: running, endBefore: '2026-11-20', voided: false },
+          { id: later, endBefore: '2026-11-27', voided: true },
+        ].sort((a, b) => a.id.localeCompare(b.id)),
+      });
+      const undone = await t.entries('exemption.leaving_undo', s.other);
+      expect(undone).toHaveLength(1);
+      expect(undone[0]).toMatchObject({ branch_id: s.branch });
+      expect(undone[0]?.new_value).toEqual({
+        exemptionIds: [running, later].sort(),
+        leavingId,
+      });
+    });
+
+    it('gives back a started full exemption the vice ended before the leaving cut it (review finding 3)', async () => {
+      const s = await scene();
+      const id = await as(s.branch, s.vice, [], async ({ post }) => {
+        const made = await post(
+          '/api/exemptions',
+          body({ studentIds: [s.other], kind: 'full', startDate: '2026-10-19', endDate: null }),
+        );
+        expect(made.status, JSON.stringify(made.body)).toBe(200);
+        return exemptionCreatedSchema.parse(made.body).exemptions[0]?.id ?? '';
+      });
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const ended = await post(`/api/exemptions/${id}/end`, {
+          version: 1,
+          endDate: '2026-11-20',
+          choices: [],
+        });
+        expect(ended.status, JSON.stringify(ended.body)).toBe(200);
+      });
+      // The leaving and its cancel on 27 October: the exemption started on the 19th.
+      await adminAt(MOMENT);
+      const read = await t.get(`/api/people/students/${s.other}`, s.branch, t.admin);
+      const left = await t.post(
+        `/api/people/students/${s.other}/leaving`,
+        s.branch,
+        {
+          lastDay: '2026-11-10',
+          reason: 'Moved to another city',
+          version: (read.body as { version: number }).version,
+        },
+        t.admin,
+      );
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      expect(await stateOf(id)).toMatchObject({ end: '2026-11-10' });
+      const cancelled = await t.post(
+        `/api/people/students/${s.other}/leaving/cancel`,
+        s.branch,
+        { version: (left.body as { version: number }).version },
+        t.admin,
+      );
+      await adminAt(START);
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      expect(await stateOf(id)).toMatchObject({ end: '2026-11-20', leaving_id: null });
     });
 
     it('ends the exemption in the sending branch and offers it to the receiving one, which confirms it', async () => {
@@ -1208,6 +1271,28 @@ describe('exemptions', () => {
       await adminAt(START);
       expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
       expect(await stateOf(id)).toMatchObject({ end: '2026-10-26', voided_at: null });
+      // Review finding 6: the sending branch's entry holds ids and dates only; the receiving
+      // branch's names the offers.
+      const sent = await t.entries('exemption.branch_move', s.other);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ branch_id: s.branch });
+      expect(sent[0]?.new_value).toEqual({
+        moveId: move.id,
+        from: '2026-10-27',
+        exemptions: [{ id, start: '2026-10-19', end: '2026-11-20' }],
+      });
+      const offered = await t.entries('exemption.offer', s.other);
+      expect(offered).toHaveLength(1);
+      expect(offered[0]).toMatchObject({ branch_id: target.branch });
+      const offerRows = await t.database.migrator
+        .selectFrom('exemption_move_offers')
+        .select('id')
+        .where('source_id', '=', id)
+        .execute();
+      expect(offered[0]?.new_value).toEqual({
+        moveId: move.id,
+        offerIds: offerRows.map((one) => one.id),
+      });
       const offers = await as(
         target.branch,
         target.vice,
