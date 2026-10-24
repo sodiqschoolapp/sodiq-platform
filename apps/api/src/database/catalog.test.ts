@@ -241,6 +241,10 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The open releases of students to one branch of the request, with the UID, name and grade of each student and nothing else of the record, for that branch's incoming list (task 3.3c, decision 2 of pull request #97, Look first): the student is still of the sending branch.",
   'branch_move_sending(uuid,uuid)':
     'The student and the sending branch of an open release to the branch of the request, ids and the date only, no lock, for Transactions.joinSendingBranch and the groups offered to the accept (task 3.3c, decision 1 of pull request #97, Look first): the release is a row of the sending branch.',
+  'forced_deletes_merge_carry(uuid)':
+    'The cells and comments a forced delete keeps of the merged record of a merge of this transaction are rewritten to name the kept record, in every store not restored, whatever branch holds it, and nothing else of a store changes (task 8.6, correction 1 of the plan review of pull request #224; From 3.3d): a restore gives them back under the kept record.',
+  'journal_former_member_names(uuid,uuid)':
+    "The id, names and UID of the students with a class or group row of a journal's unit in the branch of the request whose record is now of another branch, nothing else of the record, so that the old branch's journals keep naming a former member who moved away (task 8.6, decision 7 of pull request #224, Look first; From 3.3c: read past the row filter, names only).",
   'student_rows_elsewhere(uuid,uuid)':
     "The class rows, group rows and moves of a student of the request's branch in every other branch, ids, class and group names, dates, causes and links only, for the History tab after a move to another branch (task 3.3c, decision 3 of pull request #97, Look first).",
   'student_merged_uid_holder(text,uuid)':

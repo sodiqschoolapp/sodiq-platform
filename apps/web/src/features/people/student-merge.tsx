@@ -32,6 +32,7 @@ import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
 import { studentStatusText } from './status-cause';
 import { studentsKey } from './people-api';
+import { useJournalEntries } from './journal-entries';
 
 /**
  * The merge of two student records (`edge/students-classes-groups`, "The
@@ -365,6 +366,7 @@ export function MergeForm({
   const { t } = useTranslation();
   const { branchId } = useView();
   const confirm = useConfirm();
+  const { withEntries, dialog } = useJournalEntries();
   const [asked, setAsked] = useState('');
   const preview = useQuery(previewQuery(branchId, student.id, asked));
   const form = useRecordForm<MergeField, StudentMerge>({
@@ -400,11 +402,14 @@ export function MergeForm({
         throw new SaveCancelled();
       }
       try {
-        const answer = await answerOf(
-          api.POST('/api/people/students/{id}/merge', {
-            params: { header: branchHeader(), path: { id: student.id } },
-            body: input,
-          }),
+        // Task 8.6: the merged record's entries on days the merge cuts are voided with a reason.
+        const answer = await withEntries((journalEntries) =>
+          answerOf(
+            api.POST('/api/people/students/{id}/merge', {
+              params: { header: branchHeader(), path: { id: student.id } },
+              body: { ...input, ...(journalEntries === undefined ? {} : { journalEntries }) },
+            }),
+          ),
         );
         await onMerged(studentMergeResultSchema.parse(answer));
       } catch (error) {
@@ -422,6 +427,7 @@ export function MergeForm({
   const ready = studentUidSchema.safeParse(uid.value).success;
   return (
     <section className="grid gap-3">
+      {dialog}
       <h3 className={SECTION_TITLE}>{title}</h3>
       <RecordForm form={form} label={title} onCancel={onCancel}>
         <div className="grid gap-2">

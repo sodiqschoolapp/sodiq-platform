@@ -9,6 +9,7 @@ import { branchMoveLineSchema, studentBranchMoveSchema } from './branch-moves.js
 import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
+import { journalEntriesChoiceSchema } from './journal-entries.js';
 
 /**
  * Student records (docs/spec/04-people.md, Student record, UID sets; task
@@ -726,6 +727,8 @@ export const studentLeavingSchema = z.strictObject({
   lastDay: schoolDateSchema,
   reason: statusReasonSchema,
   version: versionSchema,
+  /** The entries after the last day that the leaving does not void by itself, voided with a reason (task 8.6). */
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type StudentLeaving = z.infer<typeof studentLeavingSchema>;
@@ -758,6 +761,8 @@ export const studentReturnSchema = z.strictObject({
   /** The class left teaches in another language: the return is confirmed (task 3.3b, decision 2). */
   confirmLanguage: z.boolean().optional(),
   version: versionSchema,
+  /** Into another class: the entries of the journals left on or after `from`, voided with a reason (task 8.6). */
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type StudentReturn = z.infer<typeof studentReturnSchema>;

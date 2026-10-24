@@ -122,6 +122,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/people/students',
       'GET /api/people/students/:id',
       'GET /api/people/students/:id/history',
+      'GET /api/people/students/:id/leaving-results',
       'GET /api/people/students/:id/merge',
       'GET /api/people/students/:id/photo',
       'GET /api/people/students/:id/relatives',

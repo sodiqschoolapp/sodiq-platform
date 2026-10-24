@@ -44,6 +44,9 @@ const student = (n: number, lastName: string, rest: Partial<JournalStudent> = {}
   quarter: null,
   months: null,
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
   ...rest,
 });
 

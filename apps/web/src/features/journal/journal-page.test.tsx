@@ -66,6 +66,9 @@ const student = (
   quarter: figures(59, 3),
   months: { '2026-10': figures(59, 3) },
   comments: [],
+  carriedIn: [],
+  leftSubjectOn: null,
+  atLeaving: null,
   ...rest,
 });
 
@@ -358,6 +361,52 @@ describe('a journal', () => {
       expect(cellOf(uid(102), 'result')?.textContent).toBe(en.journal.grid.exemptResult);
     });
     expect(cellOf(uid(102), `${uid(61)}:a`)?.querySelector('[data-exempt]')?.textContent).toBe('5');
+  });
+
+  // Task 8.6 (07, Transfers; edge/calculation; edge/students-classes-groups, a week late).
+  it('marks carried-in figures, labels the folded results at leaving and "left the subject", and shows an optional cell', async () => {
+    open({
+      ...GRID,
+      students: [
+        student(1, 'Zokirov', {
+          carriedIn: [
+            { journalId: uid(3), unitName: '7 Cambridge', from: '2026-09-01', until: '2026-10-18' },
+          ],
+          cells: [
+            {
+              ...cell(null),
+              marker: { kind: 'optional', until: '2026-11-02T19:00:00.000Z' },
+            },
+            cell(2, [], null),
+            cell(1),
+          ],
+        }),
+        student(2, 'Abdullayev', { folded: true, atLeaving: '2026-10-20' }),
+        student(3, 'Bakirova', { folded: true, leftSubjectOn: '2026-10-09' }),
+      ],
+    });
+    const carried = await waitFor(() => {
+      const found = cellOf(uid(101), 'result')?.querySelector('[data-carried-in]');
+      expect(found).toBeTruthy();
+      return found;
+    });
+    expect(carried?.textContent).toBe(en.journal.grid.carriedIn);
+    expect(carried?.getAttribute('title')).toBe(
+      'Also counted from: 7 Cambridge (1 September – 18 October)',
+    );
+    const optional = cellOf(uid(101), `${uid(60)}:a`)?.querySelector('[data-marker="optional"]');
+    expect(optional?.getAttribute('aria-label')).toBe('Optional until 2 Nov 2026, 18:59');
+    fireEvent.click(await screen.findByRole('button', { name: 'Left or moved: 2 students' }));
+    await waitFor(() => {
+      expect(cellOf(uid(102), 'name')?.querySelector('[data-at-leaving]')?.textContent).toBe(
+        'Result at leaving (20 October)',
+      );
+    });
+    expect(cellOf(uid(103), 'name')?.querySelector('[data-left-subject]')?.textContent).toBe(
+      'Left the subject on 9 October',
+    );
+    // A student whose figures come from this journal alone has no marker.
+    expect(cellOf(uid(102), 'result')?.querySelector('[data-carried-in]')).toBeNull();
   });
 
   it('finds a student by any apostrophe', async () => {

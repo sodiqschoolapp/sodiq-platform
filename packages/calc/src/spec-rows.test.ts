@@ -17,6 +17,12 @@ interface Row {
   readonly tasks: readonly string[];
 }
 
+// Task 8.6, pull request #224: the rows whose part is the journal's (the results that follow
+// the student across journals, the result at leaving) name the API tests of that task, from
+// this folder.
+const FOLLOW = '../../../apps/api/src/modules/journal/results-follow.test.ts';
+const LEAVING = '../../../apps/api/src/modules/journal/leaving-results.test.ts';
+
 const EXEMPTIONS: readonly Row[] = [
   {
     case: 'A student with a year-long physical education exemption falls ill for three days.',
@@ -141,7 +147,13 @@ const CALCULATION: readonly Row[] = [
   {
     case: 'A student joined late, returned, or started the subject mid-quarter and has few lessons.',
     rule: '0cd55d3e800d539b',
-    tests: [['outcome.test.ts', 'edge/calculation: few lessons']],
+    tests: [
+      ['outcome.test.ts', 'edge/calculation: few lessons'],
+      [
+        FOLLOW,
+        'few lessons (edge/calculation: "A student joined late, returned, or started the subject mid-quarter")',
+      ],
+    ],
     tasks: ['9.2a'],
   },
   {
@@ -186,32 +198,54 @@ const CALCULATION: readonly Row[] = [
     tests: [
       ['outcome.test.ts', 'edge/calculation: a result at leaving'],
       ['record.test.ts', 'finalQuarterRecord'],
+      [LEAVING, 'the results at leaving (edge/calculation, a result at leaving)'],
     ],
-    tasks: ['8.6', '9.3a'],
+    tasks: ['9.3a'],
   },
   {
     case: 'A student moved from one group to another in week 6.',
     rule: 'b7f2c00beea21144',
-    tests: [['quarter.test.ts']],
-    tasks: ['8.6'],
+    tests: [
+      ['quarter.test.ts'],
+      [FOLLOW, 'week 6 (edge/calculation: "A student moved from one group to another in week 6")'],
+    ],
+    tasks: [],
   },
   {
     case: 'A student moved to a class that does not study the subject.',
     rule: '02f48b8d176aa010',
-    tests: [['outcome.test.ts', 'edge/calculation: left the subject']],
+    tests: [
+      ['outcome.test.ts', 'edge/calculation: left the subject'],
+      [
+        FOLLOW,
+        'few lessons (edge/calculation: "A student joined late, returned, or started the subject mid-quarter")',
+      ],
+    ],
     tasks: ['9.2a'],
   },
   {
     case: 'A student moved between branches mid-quarter.',
     rule: 'c52890768004ab6d',
-    tests: [['outcome.test.ts', 'edge/calculation: a result at leaving']],
-    tasks: ['8.6'],
+    tests: [
+      ['outcome.test.ts', 'edge/calculation: a result at leaving'],
+      [
+        FOLLOW,
+        'between branches (edge/calculation: "A student moved between branches mid-quarter")',
+      ],
+    ],
+    tasks: [],
   },
   {
     case: 'A student left and came back in the same quarter.',
     rule: '4c98735163831736',
-    tests: [['outcome.test.ts', 'edge/calculation: left and came back']],
-    tasks: ['8.6'],
+    tests: [
+      ['outcome.test.ts', 'edge/calculation: left and came back'],
+      [
+        FOLLOW,
+        'left and came back (edge/calculation: "A student left and came back in the same quarter")',
+      ],
+    ],
+    tasks: [],
   },
   {
     case: 'Two students both show 84.',

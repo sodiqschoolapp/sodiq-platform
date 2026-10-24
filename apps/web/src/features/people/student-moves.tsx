@@ -37,6 +37,7 @@ import { classesQuery } from '@/features/classes/classes-api';
 import { groupsQuery } from '@/features/classes/groups-api';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
+import { useJournalEntries } from './journal-entries';
 import { branchMoveLineText } from './branch-move';
 import { mergedLineText } from './student-merge';
 import { studentHistoryQuery } from './people-api';
@@ -146,6 +147,8 @@ export function ClassMoveForm({
   const { branchId } = useView();
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null });
   const withLanguage = useLanguageConfirm(label);
+  // Task 8.6: the entries of the journals left on or after the date.
+  const { withEntries, dialog } = useJournalEntries();
   const options = (classes.data?.classes ?? [])
     .filter(
       (one) =>
@@ -184,28 +187,32 @@ export function ClassMoveForm({
             });
       const answer = await sending(
         () =>
-          withLanguage(
-            (confirmLanguage) =>
-              move === null
-                ? answerOf(
-                    api.POST('/api/classes/transfers', {
-                      params: { header: branchHeader() },
-                      body: {
-                        ...(input as ClassTransfer),
-                        ...(confirmLanguage ? { confirmLanguage } : {}),
-                      },
-                    }),
-                  )
-                : answerOf(
-                    api.POST('/api/classes/transfers/{id}/change', {
-                      params: { header: branchHeader(), path: { id: move.id } },
-                      body: {
-                        ...input,
-                        ...(confirmLanguage ? { confirmLanguage } : {}),
-                      },
-                    }),
-                  ),
-            named,
+          withEntries((journalEntries) =>
+            withLanguage(
+              (confirmLanguage) =>
+                move === null
+                  ? answerOf(
+                      api.POST('/api/classes/transfers', {
+                        params: { header: branchHeader() },
+                        body: {
+                          ...(input as ClassTransfer),
+                          ...(confirmLanguage ? { confirmLanguage } : {}),
+                          ...(journalEntries === undefined ? {} : { journalEntries }),
+                        },
+                      }),
+                    )
+                  : answerOf(
+                      api.POST('/api/classes/transfers/{id}/change', {
+                        params: { header: branchHeader(), path: { id: move.id } },
+                        body: {
+                          ...input,
+                          ...(confirmLanguage ? { confirmLanguage } : {}),
+                          ...(journalEntries === undefined ? {} : { journalEntries }),
+                        },
+                      }),
+                    ),
+              named,
+            ),
           ),
         onStale,
       );
@@ -218,6 +225,7 @@ export function ClassMoveForm({
   const classFullText = useClassFullText(form.failure);
   return (
     <section className="grid gap-3">
+      {dialog}
       <h3 className={SECTION_TITLE}>{title}</h3>
       {classes.isError ? (
         <ErrorState
@@ -266,6 +274,7 @@ export function GroupMoveForm({
   const { branchId } = useView();
   const groups = useQuery({ ...groupsQuery(branchId), enabled: branchId !== null });
   const own = student.groups.filter((one) => student.groupMoveSubjects.includes(one.subjectId));
+  const { withEntries, dialog } = useJournalEntries();
   const form = useRecordForm<GroupMoveField, GroupTransfer | GroupTransferChange>({
     schema: move === null ? GROUP_MOVE_SCHEMA : GROUP_CHANGE_SCHEMA,
     initial: {
@@ -285,19 +294,22 @@ export function GroupMoveForm({
     save: async (input) => {
       const answer = await sending(
         () =>
-          move === null
-            ? answerOf(
-                api.POST('/api/groups/transfers', {
-                  params: { header: branchHeader() },
-                  body: input as GroupTransfer,
-                }),
-              )
-            : answerOf(
-                api.POST('/api/groups/transfers/{id}/change', {
-                  params: { header: branchHeader(), path: { id: move.id } },
-                  body: input,
-                }),
-              ),
+          withEntries((journalEntries) => {
+            const extra = journalEntries === undefined ? {} : { journalEntries };
+            return move === null
+              ? answerOf(
+                  api.POST('/api/groups/transfers', {
+                    params: { header: branchHeader() },
+                    body: { ...(input as GroupTransfer), ...extra },
+                  }),
+                )
+              : answerOf(
+                  api.POST('/api/groups/transfers/{id}/change', {
+                    params: { header: branchHeader(), path: { id: move.id } },
+                    body: { ...input, ...extra },
+                  }),
+                );
+          }),
         onStale,
       );
       await onChanged(answer);
@@ -320,6 +332,7 @@ export function GroupMoveForm({
     move === null ? t('people.students.moves.moveGroup') : t('people.students.moves.changeTitle');
   return (
     <section className="grid gap-3">
+      {dialog}
       <h3 className={SECTION_TITLE}>{title}</h3>
       {groups.isError ? (
         <ErrorState

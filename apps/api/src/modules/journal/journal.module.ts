@@ -12,6 +12,8 @@ import { CommentsController } from './comments.controller.js';
 import { CommentsService } from './comments.service.js';
 import { JournalGridReader } from './journal-grid.service.js';
 import { JournalsController } from './journals.controller.js';
+import { LeavingResultsController } from './leaving-results.controller.js';
+import { LeavingResults } from './leaving-results.service.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
 import { ExtensionsService } from './extensions.service.js';
@@ -37,6 +39,8 @@ import { WorksService } from './works.service.js';
     WorksController,
     RatingController,
     CommentsController,
+    // Task 8.6: the results at leaving on the student's record.
+    LeavingResultsController,
   ],
   providers: [
     JournalGridReader,
@@ -49,6 +53,7 @@ import { WorksService } from './works.service.js';
     UnlocksService,
     ExtensionsService,
     Exemptions,
+    LeavingResults,
     // Task 8.5 (decision 17): the documents of exemptions and the files of reasons of absence go
     // to the photos' store under `exemptions/` and `absences/`.
     {

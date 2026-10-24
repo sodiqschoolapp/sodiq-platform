@@ -84,3 +84,49 @@ export async function markersOf(
     ]),
   );
 }
+
+/**
+ * The optional cells open now (task 8.6, decision 10; `edge/students-classes-groups`,
+ * a week late: "cells of lessons already held open as optional ... can be filled for
+ * 7 days"): a live row of `journal_optional_cells` (0127), not withdrawn, opened and
+ * before its `open_until`, compared with the transaction's moment as the cells guard
+ * does (`journal_optional_open`). By `lessonId|studentId`, the moment it closes.
+ */
+export async function optionalCellsOf(
+  transaction: Transaction,
+  lessonIds: readonly string[],
+  now: Date,
+): Promise<Map<string, Date>> {
+  const found = new Map<string, Date>();
+  if (lessonIds.length === 0) return found;
+  const rows = await transaction
+    .selectFrom('journal_optional_cells')
+    .select(['lesson_id', 'student_id', 'open_until'])
+    .where('lesson_id', 'in', [...lessonIds])
+    .where('withdrawn_at', 'is', null)
+    .where('opened_at', '<=', now)
+    .where('open_until', '>', now)
+    .execute();
+  for (const row of rows) {
+    const key = `${row.lesson_id}|${row.student_id}`;
+    const before = found.get(key);
+    if (before === undefined || before.getTime() < row.open_until.getTime()) {
+      found.set(key, row.open_until);
+    }
+  }
+  return found;
+}
+
+/**
+ * The marker a cell shows: a correction stays shown; else an optional cell open now
+ * shows "Optional until <date>" (a value typed there is a late entry with no unlock);
+ * else the stored value's marker.
+ */
+export function shownMarker(
+  stored: CellMarker | undefined,
+  optionalUntil: Date | undefined,
+): CellMarker {
+  if (stored?.kind === 'correction') return stored;
+  if (optionalUntil !== undefined) return { kind: 'optional', until: optionalUntil.toISOString() };
+  return stored ?? null;
+}

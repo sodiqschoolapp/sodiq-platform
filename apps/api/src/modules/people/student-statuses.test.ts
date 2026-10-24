@@ -149,6 +149,10 @@ describe('leaving, return and delete of a student', () => {
       // Task 3.3b: the return and the restore write class and group rows (permission review).
       'class_memberships',
       'group_memberships',
+      // Task 8.6: the leaving and the return void and open journal cells.
+      'journal_cells',
+      'journal_voids',
+      'journal_optional_cells',
     ] as const) {
       rows[table] = (
         await sql`select * from ${sql.table(table)} order by 1, 2`.execute(t.database.migrator)

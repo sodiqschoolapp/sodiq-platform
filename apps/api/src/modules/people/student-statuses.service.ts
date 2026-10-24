@@ -9,6 +9,7 @@ import {
   type StudentCancelReturn,
   type StudentDelete,
   type StudentDetail,
+  type JournalEntriesChoice,
   type StudentLeaving,
   type StudentRestore,
   type StudentReturn,
@@ -71,6 +72,16 @@ import { linkValueOf, RelativeWrites } from './relative-writes.js';
 import { BRANCH_MOVE_REFUSALS, branchMovesOf } from './branch-moves.js';
 import { Students } from './students.service.js';
 import { exemptionsFollowLeaving } from '../journal/exemption-follow.js';
+import {
+  followJournal,
+  giveBack,
+  journalEntriesRefusal,
+  settle,
+  voidedByLeaving,
+  type JournalEffects,
+  type JournalFollow,
+  type JournalGiveBack,
+} from '../journal/journal-entries.js';
 
 const CHECK_VIOLATION = '23514';
 const EXCLUSION_VIOLATION = '23P01';
@@ -181,6 +192,8 @@ interface StatusChange {
   reason: string | null;
   /** The assignment that allowed a part of the change, when it is not the first that permits the route. */
   allowedBy?: { id?: string };
+  /** The entries voided with a reason when the change leaves journal entries behind (task 8.6). */
+  journalEntries?: JournalEntriesChoice | undefined;
   /** Read before the student is locked and before any write (the class of a return, task 3.3b). */
   before?: (transaction: Transaction) => Promise<void>;
   /**
@@ -239,6 +252,7 @@ export class StudentStatuses {
       plan: (rows, today) => planLeaving(rows, input.lastDay, input.reason, today),
       newValue: { lastDay: input.lastDay },
       reason: input.reason,
+      journalEntries: input.journalEntries,
     });
   }
 
@@ -306,6 +320,7 @@ export class StudentStatuses {
             classId: input.classId,
           },
           reason: input.reason,
+          journalEntries: input.journalEntries,
           also: async (transaction, context) => {
             // The grade of a return is part of the return (`04`, Movements), under
             // `archive`; the Super Admin and the Academic Vice Principal hold both
@@ -795,6 +810,12 @@ export class StudentStatuses {
         if ('refusal' in outcome) {
           throw new ApiException(outcome.refusal, 409);
         }
+        // Task 8.6: the journal entries the change may leave are locked and read first.
+        const journalFrom = outcome.writes.find(
+          (write) => write.cause === 'leaving' || write.cause === 'return',
+        )?.validFrom;
+        const follow =
+          journalFrom === undefined ? null : await followJournal(transaction, id, journalFrom);
         const written = await this.apply(transaction, branchId, id, outcome);
         const classes = await this.followLeaving(
           transaction,
@@ -808,6 +829,15 @@ export class StudentStatuses {
           change.action === 'student.leave_undone' ? 'undo' : 'cancel',
         );
         const also = await change.also?.(transaction, { rows, outcome });
+        const journal = await this.followJournalOf(transaction, access, {
+          id,
+          rows,
+          outcome,
+          written,
+          follow,
+          choice: change.journalEntries,
+          today,
+        });
         await this.audit.record(transaction, {
           branchId,
           actorId: access.accountId,
@@ -821,6 +851,7 @@ export class StudentStatuses {
             ...also?.newValue,
             cuts: outcome.cuts,
             writes: outcome.writes,
+            ...journal,
             ...(classes === null
               ? {}
               : {
@@ -846,6 +877,80 @@ export class StudentStatuses {
           : { ...detail, classesNotRestored: classes.notRestored };
       }),
     );
+  }
+
+  /**
+   * The journal follows a change of status (task 8.6, pull request #224):
+   * a leaving taken back (its cancel, its undo, a replace) gives back what it
+   * voided; a leaving voids absences and zeros after its last day by itself
+   * and the other entries there with the reason given ("blocks the save until
+   * someone checks it", decision 6); a return into a class voids what it
+   * leaves with the reason given and opens the held lessons of its class as
+   * optional cells (decision 11).
+   */
+  private async followJournalOf(
+    transaction: Transaction,
+    access: Access,
+    input: {
+      id: string;
+      rows: readonly StoredStudentStatus[];
+      outcome: StudentStatusPlan;
+      written: readonly string[];
+      follow: JournalFollow | null;
+      choice: JournalEntriesChoice | undefined;
+      today: string;
+    },
+  ): Promise<Record<string, unknown>> {
+    const givenBack: JournalGiveBack[] = [];
+    for (const cut of input.outcome.cuts) {
+      const row = input.rows.find((one) => one.id === cut.id);
+      if (
+        row !== undefined &&
+        row.status === 'inactive' &&
+        row.cause === 'leaving' &&
+        cut.validUntil === row.validFrom
+      ) {
+        givenBack.push(
+          await giveBack(transaction, {
+            studentId: input.id,
+            source: { leavingId: row.id },
+            actorId: access.accountId,
+          }),
+        );
+      }
+    }
+    const index = input.outcome.writes.findIndex(
+      (write) => write.cause === 'leaving' || write.cause === 'return',
+    );
+    const write = input.outcome.writes[index];
+    const statusId = input.written[index];
+    let effects: JournalEffects | null = null;
+    if (input.follow !== null && write !== undefined && statusId !== undefined) {
+      effects =
+        write.cause === 'leaving'
+          ? await settle(transaction, input.follow, {
+              source: { leavingId: statusId },
+              actorId: access.accountId,
+              choice: input.choice,
+              voidable: true,
+              voidsByItself: voidedByLeaving,
+              opensOptional: false,
+            })
+          : await settle(transaction, input.follow, {
+              source: { returnStatusId: statusId },
+              actorId: access.accountId,
+              choice: input.choice,
+              voidable: true,
+              opensOptional: write.validFrom <= input.today,
+            });
+    } else if (input.choice !== undefined) {
+      // Nothing of the change can void: the choice names entries it never met.
+      throw journalEntriesRefusal([], true, true);
+    }
+    return {
+      ...(effects === null ? {} : { journal: effects }),
+      ...(givenBack.length === 0 ? {} : { journalGivenBack: givenBack }),
+    };
   }
 
   /**

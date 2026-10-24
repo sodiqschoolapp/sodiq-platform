@@ -40,7 +40,7 @@ import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { entersByRole, ownStaffOf, teachesOrOwns } from './attendance-entry.js';
-import { markersOf } from './cell-markers.js';
+import { markersOf, optionalCellsOf, shownMarker } from './cell-markers.js';
 import {
   correctorAssignment,
   editLockOf,
@@ -56,6 +56,7 @@ import { journalColumns } from './journal-works.query.js';
 import type { Column } from './lesson-columns.js';
 import {
   classesOfStudents,
+  formerMemberNames,
   gridWeights,
   absenceCategories,
   journalLessons,
@@ -77,6 +78,11 @@ import { gridComments } from './comments.query.js';
 import { firstsOfDoubles } from './doubles.query.js';
 import { ratingExamOf, ratingRightsOf } from './rating.js';
 import { roleReadingOf, shapeOf, teaches, type JournalScopeKey } from './journal-scope.js';
+import {
+  carriedInOf,
+  subjectQuarterLessons,
+  type StudentSubjectQuarter,
+} from './subject-quarter-lessons.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -450,7 +456,17 @@ export class JournalGridReader {
       for (const row of memberships)
         if (row.validFrom <= referenceDate) studentIds.add(row.studentId);
     }
-    let students = (await studentsOf(transaction, [...studentIds])).sort(compareStudentNames);
+    const ofBranch = await studentsOf(transaction, [...studentIds]);
+    // Task 8.6 (decision 7): a former member now of another branch keeps showing, folded,
+    // with names and UID only; the cells and figures are the old branch's own.
+    const shownIds = new Set(ofBranch.map((one) => one.id));
+    const former = await formerMemberNames(
+      transaction,
+      journal.id,
+      branchId,
+      [...studentIds].filter((id) => !shownIds.has(id)),
+    );
+    let students = [...ofBranch, ...former].sort(compareStudentNames);
     const folded = (studentId: string): boolean => {
       const rows = rowsOf.get(studentId) ?? [];
       return !memberOn(rows, referenceDate) && !rows.some((row) => row.validFrom > referenceDate);
@@ -568,6 +584,38 @@ export class JournalGridReader {
     });
     const months = [...new Set(lessons.map((one) => one.date.slice(0, 7)))];
 
+    // Task 8.6 (07, Transfers: "Results follow the student"): the figures of a student whose
+    // rows of this unit do not cover the quarter (moved in or out, joined late, left, came
+    // back) use the student's lessons of the subject across the journals of the branch
+    // (`subject-quarter-lessons.ts`); only those are asked, so the real-size grid stays fast.
+    const coversQuarter = (studentId: string): boolean =>
+      (rowsOf.get(studentId) ?? []).some(
+        (row) => row.validFrom <= quarter.startDate && row.validUntil > quarter.endDate,
+      );
+    const followed: ReadonlyMap<string, StudentSubjectQuarter> =
+      shape === 'lessons'
+        ? new Map()
+        : await subjectQuarterLessons(transaction, {
+            branchId,
+            timeZone,
+            now,
+            academicYearId: journal.academicYearId,
+            subjectId: journal.subjectId,
+            quarter,
+            studentIds: students.filter((one) => !coversQuarter(one.id)).map((one) => one.id),
+            known: {
+              journal,
+              lessons,
+              held,
+              worksOf,
+              cells,
+              expected: expectedOf,
+              exempt: exemptOf,
+            },
+          });
+    // Task 8.6 (decision 10): the optional cells open now.
+    const optional = await optionalCellsOf(transaction, lessonIds, now);
+
     const exactOf = new Map<string, { quarter: Exact; months: Map<string, Exact> }>();
     // Who typed each attendance cell (task 6.3, decision 16).
     const typists = await namedAccounts(
@@ -630,7 +678,10 @@ export class JournalGridReader {
           mark,
           version: attendanceCells.get(lesson.id)?.version ?? null,
           typedBy: attendanceCells.get(lesson.id)?.typedBy ?? null,
-          marker: markers.get(attendanceCells.get(lesson.id)?.id ?? '') ?? null,
+          marker: shownMarker(
+            markers.get(attendanceCells.get(lesson.id)?.id ?? ''),
+            optional.get(`${lesson.id}|${student.id}`),
+          ),
           works:
             shape === 'attendance'
               ? []
@@ -645,7 +696,10 @@ export class JournalGridReader {
                     version: work.id === '' ? null : (scoreVersions.get(work.id) ?? null),
                     // edge/journal: "marked 'score on an absent student'".
                     onAbsent: typed !== null && (mark === 0 || mark === 3),
-                    marker: markers.get(scoreIds.get(work.id) ?? '') ?? null,
+                    marker: shownMarker(
+                      markers.get(scoreIds.get(work.id) ?? ''),
+                      optional.get(`${lesson.id}|${student.id}`),
+                    ),
                   };
                 }),
           score,
@@ -673,8 +727,22 @@ export class JournalGridReader {
             : [];
         });
 
+      const across = followed.get(student.id);
+      const lessonsOf = (inMonth: string | null): QuarterLesson[] =>
+        across === undefined
+          ? countedLessons(inMonth)
+          : across.lessons
+              .filter((one) => inMonth === null || one.date.startsWith(inMonth))
+              .map((one) => one.lesson);
+      /** The rating entry: the student's across the journals followed (task 8.6), else this one's. */
+      const ratingOf = (): RatingExamEntry | null =>
+        across === undefined
+          ? ratingEntryOf(student.id)
+          : rating === null || !ratingShown
+            ? null
+            : across.ratingExam;
       const figuresOf = (inMonth: string | null): { figures: JournalFigures; exact: Exact } => {
-        const counted = countedLessons(inMonth);
+        const counted = lessonsOf(inMonth);
         if (attendanceOnly || quarterly === null || shape === 'attendance') {
           const attendance = quarterAttendanceAverage({ attendanceValues, lessons: counted });
           return {
@@ -693,23 +761,24 @@ export class JournalGridReader {
           attendanceValues,
           lessons: counted,
           // Task 8.2: the student's entry; a month leaves it out (From 4.3).
-          ratingExam: inMonth === null ? ratingEntryOf(student.id) : null,
+          ratingExam: inMonth === null ? ratingOf() : null,
           quarterClosed: false,
         });
         // Task 8.5: the quarter's outcome, for "Exempt" (no lesson remains) and "based on n of N
-        // lessons" (07, Effect on totals); N is the held lessons of this journal (8.6 follows the student).
+        // lessons" (07, Effect on totals); N is counted per school day across the journals
+        // that follow the student (task 8.6, 4.3 decision 10), else the held lessons here.
         const outcome =
           inMonth === null
             ? studentQuarterOutcome({
                 weights: quarterly,
                 attendanceValues,
                 lessons: counted,
-                ratingExam: ratingEntryOf(student.id),
+                ratingExam: ratingOf(),
                 quarterClosed: false,
-                heldInJournals: counted.length,
+                heldInJournals: across?.heldInJournals ?? counted.length,
                 countsFrom: null,
-                leftSubjectOn: null,
-                atLeaving: null,
+                leftSubjectOn: across?.leftSubjectOn ?? null,
+                atLeaving: across?.atLeaving ?? null,
                 decision: null,
               })
             : null;
@@ -739,8 +808,11 @@ export class JournalGridReader {
                           ? result.provisional
                           : leftOut.some((one) => one.reason === 'no_data'),
                       leftOut: leftOut.map((one): JournalPart => one.part),
+                      // A result at leaving is labelled with its lessons too (edge/calculation:
+                      // "partial, labelled, with the number of lessons").
                       basedOn:
-                        outcome?.kind === 'number' && outcome.flags.includes('few_lessons')
+                        outcome?.kind === 'number' &&
+                        (outcome.flags.includes('few_lessons') || outcome.atLeaving !== null)
                           ? outcome.basedOn
                           : null,
                     };
@@ -782,6 +854,9 @@ export class JournalGridReader {
         months: monthFigures,
         exemptions: exemptionsOf.get(student.id) ?? [],
         comments: comments.filter((one) => one.studentId === student.id),
+        carriedIn: across === undefined ? [] : carriedInOf(across.spans, journal.id),
+        leftSubjectOn: across?.leftSubjectOn ?? null,
+        atLeaving: across?.atLeaving ?? null,
       };
     });
 

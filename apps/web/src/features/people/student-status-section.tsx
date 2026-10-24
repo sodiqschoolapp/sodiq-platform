@@ -28,6 +28,7 @@ import { useRecordForm } from '@/components/form/use-record-form';
 import { asFormSchema } from './form-schema';
 import { statusCauseText } from './status-cause';
 import { takenOf, takenText } from './student-form';
+import { useJournalEntries } from './journal-entries';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 import type { PanelEditing } from '@/components/list/use-panel-editing';
@@ -299,6 +300,8 @@ async function sending(send: () => Promise<unknown>, onStale: () => Promise<void
 export function LeavingForm({ student, label, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  // Task 8.6: a "present" mark or a real score after the last day is checked and voided first.
+  const { withEntries, dialog } = useJournalEntries();
   const form = useRecordForm<'lastDay' | 'reason', StudentLeaving>({
     schema: LEAVING_SCHEMA,
     initial: { lastDay: '', reason: '' },
@@ -317,11 +320,13 @@ export function LeavingForm({ student, label, onChanged, onStale, onCancel }: Ch
       await onChanged(
         await sending(
           () =>
-            answerOf(
-              api.POST('/api/people/students/{id}/leaving', {
-                params: { header: branchHeader(), path: { id: student.id } },
-                body: input,
-              }),
+            withEntries((journalEntries) =>
+              answerOf(
+                api.POST('/api/people/students/{id}/leaving', {
+                  params: { header: branchHeader(), path: { id: student.id } },
+                  body: { ...input, ...(journalEntries === undefined ? {} : { journalEntries }) },
+                }),
+              ),
             ),
           onStale,
         ),
@@ -330,6 +335,7 @@ export function LeavingForm({ student, label, onChanged, onStale, onCancel }: Ch
   });
   return (
     <section className="grid gap-3">
+      {dialog}
       <h3 className={SECTION_TITLE}>{t('people.students.leaveTitle')}</h3>
       <RecordForm form={form} label={t('people.students.leaveTitle')} onCancel={onCancel}>
         <DateField label={t('people.students.lastDay')} {...form.bind('lastDay')} />

@@ -21,11 +21,22 @@ export type Correction = z.infer<typeof correctionSchema>;
 export const CELL_MARKERS = ['late', 'correction'] as const;
 
 export const cellMarkerSchema = z
-  .object({
-    kind: z.enum(CELL_MARKERS),
-    /** The approver of the unlock (`late`), or the corrector (`correction`). */
-    by: z.string().nullable(),
-  })
+  .union([
+    z.object({
+      kind: z.enum(CELL_MARKERS),
+      /** The approver of the unlock (`late`), or the corrector (`correction`). */
+      by: z.string().nullable(),
+    }),
+    /**
+     * Task 8.6 (`edge/students-classes-groups`, a week late: "In the new journal, cells of
+     * lessons already held open as optional ... can be filled for 7 days"): open as an
+     * optional cell until `until`, the moment from which it is closed (0127).
+     */
+    z.object({
+      kind: z.literal('optional'),
+      until: z.iso.datetime({ offset: true }),
+    }),
+  ])
   .nullable();
 
 export type CellMarker = z.infer<typeof cellMarkerSchema>;

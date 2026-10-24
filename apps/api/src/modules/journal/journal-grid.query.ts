@@ -594,3 +594,38 @@ export async function staffNames(
   }
   return found;
 }
+
+/**
+ * Task 8.6 (decision 7, Look first; From 3.3c: "read past the row filter,
+ * names only"): the former members of the journal's unit whose record is now
+ * of another branch, of `ids`, through `journal_former_member_names` (0127,
+ * SECURITY DEFINER): names and UID only. The branch is the request's.
+ */
+export async function formerMemberNames(
+  transaction: Transaction,
+  journalId: string,
+  branchId: string,
+  ids: readonly string[],
+): Promise<GridStudentRow[]> {
+  if (ids.length === 0) return [];
+  const wanted = new Set(ids.map((id) => id.toLowerCase()));
+  const found = await sql<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    paternal_name: string | null;
+    uid: string;
+  }>`
+    select id, first_name, last_name, paternal_name, uid
+    from journal_former_member_names(${journalId}::uuid, ${branchId}::uuid)
+  `.execute(transaction);
+  return found.rows
+    .filter((row) => wanted.has(row.id.toLowerCase()))
+    .map((row) => ({
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      paternalName: row.paternal_name,
+      uid: row.uid,
+    }));
+}

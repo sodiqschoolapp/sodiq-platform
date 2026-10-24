@@ -387,6 +387,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/people/students/:id': { branch: 'request', roles: STUDENT_EDITORS },
   'PUT /api/people/students/:id/uid': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/identity': { branch: 'request', roles: STUDENT_VIEWERS },
+  // Task 8.6 (correction 4 of the plan review): the readers of the record; the subjects by journal scope in the route.
+  'GET /api/people/students/:id/leaving-results': { branch: 'request', roles: STUDENT_VIEWERS },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

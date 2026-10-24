@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { relationshipSchema } from './relatives.js';
+import { journalEntriesChoiceSchema } from './journal-entries.js';
 import {
   scholarshipCoverageSchema,
   scholarshipTypeSchema,
@@ -36,6 +37,8 @@ export const studentMergeSchema = z.strictObject({
   uid: studentUidSchema,
   reason: z.string().trim().min(1).max(STUDENT_MERGE_REASON_MAX_LENGTH),
   digest: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The merged record's entries on the days the merge cuts, voided with a reason (task 8.6). */
+  journalEntries: journalEntriesChoiceSchema.optional(),
 });
 
 export type StudentMerge = z.infer<typeof studentMergeSchema>;

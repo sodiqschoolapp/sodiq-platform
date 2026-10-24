@@ -2092,3 +2092,25 @@ export {
   type ExemptionsQuery,
   type ExemptionsToday,
 } from './exemptions.js';
+export {
+  JOURNAL_ENTRIES_MAX,
+  JOURNAL_ENTRY_KINDS,
+  JOURNAL_VOID_REASON_MAX_LENGTH,
+  carriedInSchema,
+  journalEntriesChoiceSchema,
+  journalEntryDetailSchema,
+  journalEntryKindSchema,
+  journalVoidReasonSchema,
+  type CarriedIn,
+  type JournalEntriesChoice,
+  type JournalEntryDetail,
+  type JournalEntryKind,
+} from './journal-entries.js';
+export {
+  leavingOutcomeSchema,
+  leavingResultSchema,
+  studentLeavingResultsSchema,
+  type LeavingOutcome,
+  type LeavingResult,
+  type StudentLeavingResults,
+} from './leaving-results.js';
