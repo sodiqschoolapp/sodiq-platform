@@ -811,29 +811,95 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   // Task 8.5: the exemptions (decision 1): the Super Admin and the Academic Vice Principal write,
   // the Principal reads.
-  'GET /api/exemptions': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'GET /api/exemptions/absences-without': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'GET /api/exemptions/move-offers': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'POST /api/exemptions/move-offers/:id/confirm/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/move-offers/:id/confirm': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/move-offers/:id/drop': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
+  'GET /api/exemptions': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/exemptions/absences-without': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/exemptions/move-offers': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/move-offers/:id/confirm/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/move-offers/:id/confirm': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/move-offers/:id/drop': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'POST /api/exemptions': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/batches/:batchId/end/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/batches/:batchId/end': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/batches/:batchId/void/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/batches/:batchId/void': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'GET /api/exemptions/:id': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'GET /api/exemptions/:id/reason': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'GET /api/exemptions/:id/document': { branch: 'request', roles: ['super_admin', 'principal', 'academic_vice_principal'] },
-  'PUT /api/exemptions/:id/document': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'DELETE /api/exemptions/:id/document': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/:id/edit/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'PATCH /api/exemptions/:id': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/:id/end/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/:id/end': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/:id/void/preview': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/exemptions/:id/void': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
+  'POST /api/exemptions/batches/:batchId/end/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/batches/:batchId/end': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/batches/:batchId/void/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/batches/:batchId/void': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/exemptions/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/exemptions/:id/reason': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'GET /api/exemptions/:id/document': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'PUT /api/exemptions/:id/document': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'DELETE /api/exemptions/:id/document': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/:id/edit/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PATCH /api/exemptions/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/:id/end/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/:id/end': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/:id/void/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/exemptions/:id/void': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 8.5: the teaching home's exemption cards, scope in the route.
   'GET /api/journal/exemptions-today': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/student-absences': { branch: 'request', roles: ABSENCE_READERS },

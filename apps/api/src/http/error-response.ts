@@ -495,7 +495,6 @@ const MESSAGE: Record<ErrorCode, string> = {
   exemption_closed_year: 'The academic year is closed.',
   exemption_voided: 'The exemption is voided.',
   exemption_stale: 'The exemption was changed since it was read.',
-  exemption_not_member: 'The student is not in a class of the branch.',
   exemption_file_too_large: 'The file is larger than 10 MB.',
   exemption_file_type: 'The file is not a PDF, JPEG or PNG of its type.',
   exemption_offer_decided: 'The offer was decided meanwhile.',

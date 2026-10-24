@@ -72,7 +72,14 @@ export class StudentAbsencesController {
     @ValidFile(ABSENCE_REASON_FILE_ROUTE) file: UploadedFile | null,
     @RequestId() requestId: string,
   ): Promise<AbsenceReason> {
-    return this.absences.putFile(access, params.studentId, params.date, query.name, file, requestId);
+    return this.absences.putFile(
+      access,
+      params.studentId,
+      params.date,
+      query.name,
+      file,
+      requestId,
+    );
   }
 
   @Delete(':studentId/:date/file')

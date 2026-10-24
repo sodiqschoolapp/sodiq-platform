@@ -86,8 +86,7 @@ const CLASS = {
 
 function open(role: 'academic_vice_principal' | 'principal') {
   const calls = fakeApi({
-    'GET /api/auth/session': () =>
-      json(sessionOf({ assignments: [{ role, branchId: NORTH.id }] })),
+    'GET /api/auth/session': () => json(sessionOf({ assignments: [{ role, branchId: NORTH.id }] })),
     'GET /api/exemptions': () => json({ items: [EXEMPTION], more: 0 }),
     [`GET /api/exemptions/${EXEMPTION.id}/reason`]: () =>
       json({ id: EXEMPTION.id, category: 'illness', detail: 'A certificate from the clinic' }),

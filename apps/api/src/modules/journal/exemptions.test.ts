@@ -1197,4 +1197,50 @@ describe('exemptions', () => {
       });
     });
   });
+
+  describe('the absences with a reason and no exemption (edge/exemptions, row 9)', () => {
+    it("lists a Tutor's reason the vice may turn into an exemption, and leaves it once one covers the day", async () => {
+      const s = await scene();
+      const reason = (studentId: string, date: string, category: string) =>
+        t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config('app.now', '2026-10-27T09:00:00+05:00', true)`.execute(
+            transaction,
+          );
+          await transaction
+            .insertInto('student_absence_reasons')
+            .values({
+              branch_id: s.branch,
+              student_id: studentId,
+              absence_date: date,
+              category,
+              note: '',
+              changed_by: s.vice.account.id,
+              changed_at: new Date(0),
+            })
+            .execute();
+        });
+      await reason(s.ahmedov, '2026-10-26', 'illness');
+      await reason(s.boboyev, '2026-10-26', 'unexcused');
+      const listed = () =>
+        as(s.branch, s.vice, [], async ({ get }) => {
+          const answer = await get('/api/exemptions/absences-without');
+          expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+          return (answer.body as { items: { student: { id: string }; date: string }[] }).items;
+        });
+      expect((await listed()).map((one) => [one.student.id, one.date])).toEqual([
+        [s.ahmedov, '2026-10-26'],
+      ]);
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        expect(
+          (
+            await post(
+              '/api/exemptions',
+              body({ studentIds: [s.ahmedov], startDate: '2026-10-26', endDate: '2026-10-26' }),
+            )
+          ).status,
+        ).toBe(200);
+      });
+      expect(await listed()).toEqual([]);
+    });
+  });
 });

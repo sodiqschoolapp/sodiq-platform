@@ -723,28 +723,28 @@ export class JournalGridReader {
             outcome?.kind === 'exempt'
               ? { kind: 'exempt' }
               : result.kind === 'no_result'
-              ? { kind: 'no_result' }
-              : (() => {
-                  // A month leaves the rating exam out by the rule itself, labelled so,
-                  // never provisional for it (decision 23).
-                  const leftOut = result.leftOut.filter(
-                    (one) => inMonth === null || one.part !== 'ratingExam',
-                  );
-                  return {
-                    kind: 'number' as const,
-                    shown: Number(result.shown),
-                    grade: result.grade,
-                    provisional:
-                      inMonth === null
-                        ? result.provisional
-                        : leftOut.some((one) => one.reason === 'no_data'),
-                    leftOut: leftOut.map((one): JournalPart => one.part),
-                    basedOn:
-                      outcome?.kind === 'number' && outcome.flags.includes('few_lessons')
-                        ? outcome.basedOn
-                        : null,
-                  };
-                })(),
+                ? { kind: 'no_result' }
+                : (() => {
+                    // A month leaves the rating exam out by the rule itself, labelled so,
+                    // never provisional for it (decision 23).
+                    const leftOut = result.leftOut.filter(
+                      (one) => inMonth === null || one.part !== 'ratingExam',
+                    );
+                    return {
+                      kind: 'number' as const,
+                      shown: Number(result.shown),
+                      grade: result.grade,
+                      provisional:
+                        inMonth === null
+                          ? result.provisional
+                          : leftOut.some((one) => one.reason === 'no_data'),
+                      leftOut: leftOut.map((one): JournalPart => one.part),
+                      basedOn:
+                        outcome?.kind === 'number' && outcome.flags.includes('few_lessons')
+                          ? outcome.basedOn
+                          : null,
+                    };
+                  })(),
         };
         return {
           figures,

@@ -700,21 +700,25 @@ export const uz: Texts<'one' | 'other'> = {
     journal_unlock_stale: 'Bu soʻrovni hozirgina kimdir oʻzgartirdi. Uni qayta oching.',
     journal_extension_future: 'Uzaytirish faqat bugungi kungacha boʻlgan kunlarni qamrab oladi.',
     journal_extension_dates: 'Sanalar ochiq oʻquv yilida boʻlishi kerak.',
-    exemption_overlap: 'Oʻquvchining shu vaqtga barcha fanlar yoki shu fan boʻyicha boshqa ozod qilinishi bor. Uni uzaytiring yoki boshqa sanalarni tanlang.',
-    exemption_choice_missing: 'Davrdagi baʼzi darslarda «keldi» yoki «kechikdi» belgisi yoki baho bor. Har biri uchun tanlang: qatnashgan deb qoldirish yoki ozod qilib baholarni tozalash.',
+    exemption_overlap:
+      'Oʻquvchining shu vaqtga barcha fanlar yoki shu fan boʻyicha boshqa ozod qilinishi bor. Uni uzaytiring yoki boshqa sanalarni tanlang.',
+    exemption_choice_missing:
+      'Davrdagi baʼzi darslarda «keldi» yoki «kechikdi» belgisi yoki baho bor. Har biri uchun tanlang: qatnashgan deb qoldirish yoki ozod qilib baholarni tozalash.',
     exemption_choice_unknown: 'Tanlov kerak boʻlmagan dars uchun yuborildi. Qaytadan tekshiring.',
-    exemption_started: 'Ozod qilish boshlangan: endi faqat tugash sanasi oʻzgaradi. Boshqasini oʻzgartirish uchun uni bekor qilib, yangisini kiriting.',
-    exemption_end_before_start: 'Tugash sanasi boshlanishidan oldin. Ozod qilishni qaytarib olish uchun uni bekor qiling.',
+    exemption_started:
+      'Ozod qilish boshlangan: endi faqat tugash sanasi oʻzgaradi. Boshqasini oʻzgartirish uchun uni bekor qilib, yangisini kiriting.',
+    exemption_end_before_start:
+      'Tugash sanasi boshlanishidan oldin. Ozod qilishni qaytarib olish uchun uni bekor qiling.',
     exemption_outside_year: 'Sanalar filialning bitta oʻquv yili ichida boʻlishi kerak.',
     exemption_closed_year: 'Oʻquv yili yopilgan: uning ozod qilishlari oʻzgarmaydi.',
     exemption_voided: 'Bu ozod qilish bekor qilingan va oʻzgarmaydi.',
     exemption_stale: 'Bu ozod qilishni kimdir oʻzgartirdi. Uni qayta oching va takrorlang.',
-    exemption_not_member: 'Birinchi kuni oʻquvchi bu filialning sinfida emas.',
     exemption_file_too_large: 'Fayl 10 MB dan katta. Kichikroq faylni tanlang.',
     exemption_file_type: 'Faqat PDF, JPEG va PNG fayllarni biriktirish mumkin.',
     exemption_offer_decided: 'Bu taklif allaqachon tasdiqlangan yoki rad etilgan.',
     exemption_batch_empty: 'Bu guruhda oʻzgartiriladigan ozod qilish qolmadi.',
-    student_merge_exemption_overlap: 'Ikki yozuvning ozod qilishlari ustma-ust tushadi. Birlashtirishdan oldin bittasini tugating yoki bekor qiling.',
+    student_merge_exemption_overlap:
+      'Ikki yozuvning ozod qilishlari ustma-ust tushadi. Birlashtirishdan oldin bittasini tugating yoki bekor qiling.',
     work_not_in_lesson:
       'Bu ish endi bu darsning ustuni emas. Jurnalni yangilab, qayta urinib koʻring.',
     lesson_has_plan_item:
@@ -3869,11 +3873,16 @@ export const uz: Texts<'one' | 'other'> = {
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz rad etildi: {{reason}}.',
       },
       journal: {
-        exemption_granted: '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
-        exemption_changed: '{{student}}: $t(notifications.exemptionKinds.{{kind}}) $t(notifications.exemptionChanges.{{change}}); endi {{from}} – {{until}} {{times}}.',
-        exemption_reopened: 'Ozod qilishdan keyin ochildi: {{student}}, qulflangan darslar: {{lessons}}. Bu kataklar 3 kun ochiq.',
-        exemption_kept_block: '{{unit}}, {{date}} {{start}} oʻtkaziladi; {{classes}} oʻquvchilari undan ozod.',
-        exemption_offer: 'Boshqa filialdan koʻchishda {{student}} uchun ozod qilish taklif qilindi, {{from}} – {{until}}. Uni «Ozod qilishlar» sahifasida tasdiqlang yoki rad eting.',
+        exemption_granted:
+          '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
+        exemption_changed:
+          '{{student}}: $t(notifications.exemptionKinds.{{kind}}) $t(notifications.exemptionChanges.{{change}}); endi {{from}} – {{until}} {{times}}.',
+        exemption_reopened:
+          'Ozod qilishdan keyin ochildi: {{student}}, qulflangan darslar: {{lessons}}. Bu kataklar 3 kun ochiq.',
+        exemption_kept_block:
+          '{{unit}}, {{date}} {{start}} oʻtkaziladi; {{classes}} oʻquvchilari undan ozod.',
+        exemption_offer:
+          'Boshqa filialdan koʻchishda {{student}} uchun ozod qilish taklif qilindi, {{from}} – {{until}}. Uni «Ozod qilishlar» sahifasida tasdiqlang yoki rad eting.',
         correction_total:
           '{{unit}}, {{date}} dagi umumiy ball tuzatildi: {{before}} → {{after}}. Sabab: {{reason}}',
         correction_lesson:
@@ -5665,7 +5674,8 @@ export const uz: Texts<'one' | 'other'> = {
       overlap: 'Bu vaqtni boshqa ozod qilish qoplaydi: {{dates}}.',
       overlapElsewhere: 'Bu vaqtni oʻquvchining boshqa filialdagi ozod qilishi qoplaydi.',
       emptyTitle: 'Ozod qilishlar yoʻq',
-      empty: 'Oʻquv ishlari boʻyicha direktor oʻrinbosari kiritgan ozod qilishlar shu yerda chiqadi.',
+      empty:
+        'Oʻquv ishlari boʻyicha direktor oʻrinbosari kiritgan ozod qilishlar shu yerda chiqadi.',
       absenceReason: 'Tyutor sababi',
       createFrom: 'Ozod qilish yaratish',
       absencesEmptyTitle: 'Tekshiradigan narsa yoʻq',

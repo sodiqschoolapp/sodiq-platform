@@ -233,7 +233,6 @@ export const exemptionVoidPreviewSchema = z.strictObject({ version: z.int().min(
 
 export type ExemptionVoidPreview = z.infer<typeof exemptionVoidPreviewSchema>;
 
-
 /** The end of every live exemption of a batch, with the late-entry choices. */
 export const exemptionBatchEndSchema = z.strictObject({
   endDate: schoolDateSchema,

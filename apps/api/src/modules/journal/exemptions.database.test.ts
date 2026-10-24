@@ -436,7 +436,11 @@ describe('exemptions in the database', () => {
       const { student, lesson } = await scene('2026-10-30');
       const moveTo = (start: string, end: string) =>
         database.migrator.transaction().execute(async (transaction) => {
-          const block = await transaction.selectFrom('lessons').select('block_id').where('id', '=', lesson).executeTakeFirstOrThrow();
+          const block = await transaction
+            .selectFrom('lessons')
+            .select('block_id')
+            .where('id', '=', lesson)
+            .executeTakeFirstOrThrow();
           await transaction
             .updateTable('lesson_blocks')
             .set({ starts_at: at('2026-10-30', start), ends_at: at('2026-10-30', end) })
@@ -498,7 +502,6 @@ describe('exemptions in the database', () => {
           constraint: 'journal_cells_mark_check',
         });
       }
-
     });
 
     it('opens a reopened cell of a locked lesson as a late entry until its end, for that cell only (decision 5)', async () => {
@@ -593,8 +596,16 @@ describe('exemptions in the database', () => {
       const classB = await cells.lessons.load.classes.schoolClass(north, northYear, { grade: 8 });
       const [a] = await cells.lessons.pupils(north, classA, 1);
       const b = await cells.lessons.members.student(north, { grade: 8, startsOn: '2026-09-01' });
-      await cells.lessons.members.member({ branch: north, classId: classB, studentId: b, from: '2026-09-01' });
-      const group = await cells.lessons.load.classes.group(north, northYear, cells.subject, [classA, classB]);
+      await cells.lessons.members.member({
+        branch: north,
+        classId: classB,
+        studentId: b,
+        from: '2026-09-01',
+      });
+      const group = await cells.lessons.load.classes.group(north, northYear, cells.subject, [
+        classA,
+        classB,
+      ]);
       for (const student of withB ? [a ?? '', b] : [a ?? '']) {
         await cells.lessons.inGroup(north, group, cells.subject, student);
       }
@@ -771,7 +782,12 @@ describe('exemptions in the database', () => {
           .executeTakeFirstOrThrow();
         await transaction
           .insertInto('lesson_block_class_outs')
-          .values({ branch_id: north, block_id: row.block_id, class_id: classA, exam_id: written.id })
+          .values({
+            branch_id: north,
+            block_id: row.block_id,
+            class_id: classA,
+            exam_id: written.id,
+          })
           .execute();
         const examRoom = await transaction
           .insertInto('exam_rooms')
@@ -780,11 +796,21 @@ describe('exemptions in the database', () => {
           .executeTakeFirstOrThrow();
         await transaction
           .insertInto('exam_room_classes')
-          .values({ branch_id: north, exam_id: written.id, exam_room_id: examRoom.id, class_id: classA })
+          .values({
+            branch_id: north,
+            exam_id: written.id,
+            exam_room_id: examRoom.id,
+            class_id: classA,
+          })
           .execute();
         await transaction
           .insertInto('exam_invigilators')
-          .values({ branch_id: north, exam_id: written.id, exam_room_id: examRoom.id, staff_id: staff })
+          .values({
+            branch_id: north,
+            exam_id: written.id,
+            exam_room_id: examRoom.id,
+            staff_id: staff,
+          })
           .execute();
         return written.id;
       });

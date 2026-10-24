@@ -84,7 +84,7 @@ describe('exemption schemas', () => {
   });
 
   it('takes no student list in an edit, and a void needs its reason', () => {
-    const { studentIds: _studentIds, ...fields } = base;
+    const fields = Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'studentIds'));
     expect(exemptionEditSchema.safeParse({ ...fields, version: 1 }).success).toBe(true);
     expect(
       exemptionEditSchema.safeParse({ ...fields, version: 1, studentIds: [student] }).success,

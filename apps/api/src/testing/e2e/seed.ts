@@ -6560,7 +6560,10 @@ try {
         });
     });
   }
-  seeded.exemptionsTeacher = { login: exemptionsTeacher.login, password: exemptionsTeacher.firstPassword };
+  seeded.exemptionsTeacher = {
+    login: exemptionsTeacher.login,
+    password: exemptionsTeacher.firstPassword,
+  };
   seeded.exemptionsVice = { login: exemptionsVice.login, password: exemptionsVice.firstPassword };
 
   for (const branch of classBranches) {

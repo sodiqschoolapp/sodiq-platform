@@ -680,21 +680,25 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     journal_unlock_stale: 'Этот запрос только что изменили. Откройте его снова.',
     journal_extension_future: 'Продление может охватывать дни только до сегодняшнего.',
     journal_extension_dates: 'Даты должны быть в открытом учебном году.',
-    exemption_overlap: 'У ученика уже есть освобождение на это время по всем предметам или по тому же предмету. Продлите его или выберите другие даты.',
-    exemption_choice_missing: 'В некоторых уроках периода есть отметка «присутствовал» или «опоздал» либо оценка. Выберите для каждого: оставить как посещённый или освободить и очистить оценки.',
+    exemption_overlap:
+      'У ученика уже есть освобождение на это время по всем предметам или по тому же предмету. Продлите его или выберите другие даты.',
+    exemption_choice_missing:
+      'В некоторых уроках периода есть отметка «присутствовал» или «опоздал» либо оценка. Выберите для каждого: оставить как посещённый или освободить и очистить оценки.',
     exemption_choice_unknown: 'Выбор отправлен для урока, где он не нужен. Проверьте ещё раз.',
-    exemption_started: 'Освобождение уже началось: теперь меняется только дата окончания. Чтобы изменить другое, аннулируйте его и внесите новое.',
-    exemption_end_before_start: 'Дата окончания раньше начала. Чтобы отменить освобождение, аннулируйте его.',
+    exemption_started:
+      'Освобождение уже началось: теперь меняется только дата окончания. Чтобы изменить другое, аннулируйте его и внесите новое.',
+    exemption_end_before_start:
+      'Дата окончания раньше начала. Чтобы отменить освобождение, аннулируйте его.',
     exemption_outside_year: 'Даты должны быть внутри одного учебного года филиала.',
     exemption_closed_year: 'Учебный год закрыт: его освобождения не меняются.',
     exemption_voided: 'Это освобождение аннулировано и не меняется.',
     exemption_stale: 'Кто-то уже изменил это освобождение. Откройте его снова и повторите.',
-    exemption_not_member: 'В первый день ученик не состоит в классе этого филиала.',
     exemption_file_too_large: 'Файл больше 10 МБ. Выберите файл поменьше.',
     exemption_file_type: 'Можно прикрепить только файлы PDF, JPEG и PNG.',
     exemption_offer_decided: 'Это предложение уже подтверждено или отклонено.',
     exemption_batch_empty: 'В этой группе не осталось освобождений для изменения.',
-    student_merge_exemption_overlap: 'У двух записей пересекаются освобождения. Завершите или аннулируйте одно из них перед объединением.',
+    student_merge_exemption_overlap:
+      'У двух записей пересекаются освобождения. Завершите или аннулируйте одно из них перед объединением.',
     work_not_in_lesson:
       'Эта работа больше не столбец этого урока. Обновите журнал и попробуйте снова.',
     lesson_has_plan_item:
@@ -4011,11 +4015,16 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         request_refused: 'Ваш запрос отклонён: {{unit}}, {{quarter}}-я четверть: {{reason}}.',
       },
       journal: {
-        exemption_granted: '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
-        exemption_changed: '{{student}}: $t(notifications.exemptionKinds.{{kind}}) — $t(notifications.exemptionChanges.{{change}}); теперь {{from}} – {{until}} {{times}}.',
-        exemption_reopened: 'Открыто после освобождения: {{student}}, заблокированных уроков: {{lessons}}. Эти ячейки открыты 3 дня.',
-        exemption_kept_block: '{{unit}}, {{date}} {{start}} проводится; ученики {{classes}} от него освобождены.',
-        exemption_offer: 'При переводе из другого филиала предложено освобождение ученика {{student}}, {{from}} – {{until}}. Подтвердите или отклоните его на странице «Освобождения».',
+        exemption_granted:
+          '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
+        exemption_changed:
+          '{{student}}: $t(notifications.exemptionKinds.{{kind}}) — $t(notifications.exemptionChanges.{{change}}); теперь {{from}} – {{until}} {{times}}.',
+        exemption_reopened:
+          'Открыто после освобождения: {{student}}, заблокированных уроков: {{lessons}}. Эти ячейки открыты 3 дня.',
+        exemption_kept_block:
+          '{{unit}}, {{date}} {{start}} проводится; ученики {{classes}} от него освобождены.',
+        exemption_offer:
+          'При переводе из другого филиала предложено освобождение ученика {{student}}, {{from}} – {{until}}. Подтвердите или отклоните его на странице «Освобождения».',
         correction_total:
           'Максимальный балл в {{unit}}, {{date}} исправлен: {{before}} → {{after}}. Причина: {{reason}}',
         correction_lesson:

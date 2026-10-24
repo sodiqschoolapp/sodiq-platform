@@ -618,13 +618,13 @@ export class Exemptions {
       );
     }
     const settled = await settle(transaction, {
-        branchId,
-        before,
-        windows: windows.filter((one) => idOf.has(one.studentId)),
-        choices: input.choices,
-        exemptionOf: (studentId) => Promise.resolve(idOf.get(studentId) ?? null),
-        preview,
-      });
+      branchId,
+      before,
+      windows: windows.filter((one) => idOf.has(one.studentId)),
+      choices: input.choices,
+      exemptionOf: (studentId) => Promise.resolve(idOf.get(studentId) ?? null),
+      preview,
+    });
     if (preview) {
       throw new PreviewDone({
         yearEnd: year.end,
@@ -1442,7 +1442,9 @@ export class Exemptions {
 
   offers(access: Access): Promise<ExemptionMoveOffers> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, (transaction) => offersIn(transaction, branchId));
+    return this.transactions.run(access.branchIds, (transaction) =>
+      offersIn(transaction, branchId),
+    );
   }
 
   private async lockedOffer(transaction: Transaction, branchId: string, id: string) {
@@ -1631,11 +1633,7 @@ export class Exemptions {
 async function offersIn(transaction: Transaction, branchId: string): Promise<ExemptionMoveOffers> {
   const rows = await transaction
     .selectFrom('exemption_move_offers')
-    .innerJoin(
-      'student_branch_moves',
-      'student_branch_moves.id',
-      'exemption_move_offers.move_id',
-    )
+    .innerJoin('student_branch_moves', 'student_branch_moves.id', 'exemption_move_offers.move_id')
     .select([
       'exemption_move_offers.id',
       'exemption_move_offers.student_id',
@@ -1664,7 +1662,11 @@ async function offersIn(transaction: Transaction, branchId: string): Promise<Exe
   const fromNames =
     fromIds.length === 0
       ? []
-      : await transaction.selectFrom('branches').select(['id', 'name']).where('id', 'in', fromIds).execute();
+      : await transaction
+          .selectFrom('branches')
+          .select(['id', 'name'])
+          .where('id', 'in', fromIds)
+          .execute();
   const branchName = new Map(fromNames.map((row) => [row.id, row.name]));
   const subjects = await subjectNames(
     transaction,

@@ -274,7 +274,11 @@ export async function exemptionsFollowBranchMove(
 export async function noticeKeptBlocks(
   transaction: Transaction,
   notifications: Notifications,
-  input: { readonly branchId: string; readonly blockIds: readonly string[]; readonly actorId: string },
+  input: {
+    readonly branchId: string;
+    readonly blockIds: readonly string[];
+    readonly actorId: string;
+  },
 ): Promise<number> {
   if (input.blockIds.length === 0) return 0;
   const found = await sql<{
@@ -322,7 +326,10 @@ export async function noticeKeptBlocks(
   let sent = 0;
   for (const row of found.rows) {
     const accounts = [
-      ...new Set([...(row.tutors ?? []), ...(row.teacher_account === null ? [] : [row.teacher_account])]),
+      ...new Set([
+        ...(row.tutors ?? []),
+        ...(row.teacher_account === null ? [] : [row.teacher_account]),
+      ]),
     ].filter((one) => one !== input.actorId);
     if (accounts.length === 0) continue;
     await notifications.send(transaction, {

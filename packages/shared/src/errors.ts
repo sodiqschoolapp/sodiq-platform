@@ -1074,8 +1074,6 @@ export const ERROR_CODES = [
   'exemption_voided',
   /** The exemption was changed since it was read (task 8.5). */
   'exemption_stale',
-  /** The student is not a member of a class of the branch on the first day (task 8.5). */
-  'exemption_not_member',
   /** The document is larger than 10 MB (task 8.5, decision 17). */
   'exemption_file_too_large',
   /** The file is not a PDF, JPEG or PNG, or its content does not match its type (task 8.5, decision 17). */

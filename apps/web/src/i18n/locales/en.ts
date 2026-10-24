@@ -686,21 +686,27 @@ export const en = {
     journal_unlock_stale: 'Someone changed this request a moment ago. Open it again.',
     journal_extension_future: 'An extension can only cover days up to today.',
     journal_extension_dates: 'The dates must lie in the open academic year.',
-    exemption_overlap: 'Another exemption of this student already covers that time for all subjects or for the same subject. Extend that one, or choose other dates.',
-    exemption_choice_missing: 'Some lessons in the range have a present or late mark or a number. Choose for each one: keep it as attended, or exempt it and clear the numbers.',
-    exemption_choice_unknown: 'A choice was sent for a lesson that needs none. Check the preview again.',
-    exemption_started: 'The exemption has started: only its end date can change now. To change anything else, void it and enter a new one.',
-    exemption_end_before_start: 'The end date comes before the start. To take the exemption back, void it.',
+    exemption_overlap:
+      'Another exemption of this student already covers that time for all subjects or for the same subject. Extend that one, or choose other dates.',
+    exemption_choice_missing:
+      'Some lessons in the range have a present or late mark or a number. Choose for each one: keep it as attended, or exempt it and clear the numbers.',
+    exemption_choice_unknown:
+      'A choice was sent for a lesson that needs none. Check the preview again.',
+    exemption_started:
+      'The exemption has started: only its end date can change now. To change anything else, void it and enter a new one.',
+    exemption_end_before_start:
+      'The end date comes before the start. To take the exemption back, void it.',
     exemption_outside_year: 'The dates must lie inside one academic year of the branch.',
     exemption_closed_year: 'The academic year is closed: its exemptions cannot change.',
     exemption_voided: 'This exemption is voided and cannot change.',
-    exemption_stale: 'Someone changed this exemption meanwhile. Open it again and repeat the change.',
-    exemption_not_member: 'The student is not in a class of this branch on the first day.',
+    exemption_stale:
+      'Someone changed this exemption meanwhile. Open it again and repeat the change.',
     exemption_file_too_large: 'The file is larger than 10 MB. Choose a smaller one.',
     exemption_file_type: 'Only PDF, JPEG and PNG files can be attached.',
     exemption_offer_decided: 'This offer was already confirmed or dropped.',
     exemption_batch_empty: 'No exemption of this batch is left to change.',
-    student_merge_exemption_overlap: 'The two records have exemptions that overlap. End or void one of them before the merge.',
+    student_merge_exemption_overlap:
+      'The two records have exemptions that overlap. End or void one of them before the merge.',
     work_not_in_lesson:
       'This work is not a column of this lesson any more. Reload the journal and try again.',
     lesson_has_plan_item:
@@ -3823,11 +3829,16 @@ export const en = {
           'Your edit request for {{unit}}, quarter {{quarter}} is refused: {{reason}}.',
       },
       journal: {
-        exemption_granted: '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
-        exemption_changed: '{{student}}: the $t(notifications.exemptionKinds.{{kind}}) was $t(notifications.exemptionChanges.{{change}}); now {{from}} – {{until}} {{times}}.',
-        exemption_reopened: 'Reopened after exemption: {{student}}, {{lessons}} locked lesson(s). These cells are open for 3 days.',
-        exemption_kept_block: '{{unit}}, {{date}} {{start}} is held; the students of {{classes}} are exempt from it.',
-        exemption_offer: 'A branch move offers an exemption of {{student}}, {{from}} – {{until}}. Confirm or drop it on the Exemptions page.',
+        exemption_granted:
+          '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
+        exemption_changed:
+          '{{student}}: the $t(notifications.exemptionKinds.{{kind}}) was $t(notifications.exemptionChanges.{{change}}); now {{from}} – {{until}} {{times}}.',
+        exemption_reopened:
+          'Reopened after exemption: {{student}}, {{lessons}} locked lesson(s). These cells are open for 3 days.',
+        exemption_kept_block:
+          '{{unit}}, {{date}} {{start}} is held; the students of {{classes}} are exempt from it.',
+        exemption_offer:
+          'A branch move offers an exemption of {{student}}, {{from}} – {{until}}. Confirm or drop it on the Exemptions page.',
         correction_total:
           'A total in {{unit}}, {{date}} was corrected: {{before}} → {{after}}. Reason: {{reason}}',
         correction_lesson:
@@ -5575,7 +5586,7 @@ export const en = {
       },
       endCauses: {
         end: 'Ended from a date',
-        leaving: 'Ended by the student\'s leaving',
+        leaving: "Ended by the student's leaving",
         branch_move: 'Ended by a move to another branch',
       },
       granted: 'Granted by {{name}}, {{at}}',
@@ -5615,10 +5626,10 @@ export const en = {
       overlapElsewhere: 'Another exemption of this student, in another branch, covers that time.',
       emptyTitle: 'No exemptions',
       empty: 'Exemptions entered by the Academic Vice Principal appear here.',
-      absenceReason: 'Tutor\'s reason',
+      absenceReason: "Tutor's reason",
       createFrom: 'Create an exemption',
       absencesEmptyTitle: 'Nothing to check',
-      absencesEmpty: 'Absences with a Tutor\'s reason and no exemption appear here.',
+      absencesEmpty: "Absences with a Tutor's reason and no exemption appear here.",
       fromBranch: 'From branch',
       decision: 'Decision',
       undecided: 'Waiting',

@@ -56,9 +56,7 @@ test('the Academic Vice Principal enters a late exemption over a locked lesson, 
     .getByLabel(en.journal.exemptions.detail, { exact: true })
     .fill('A certificate from the clinic');
   await form.getByRole('button', { name: en.journal.exemptions.check, exact: true }).click();
-  await form
-    .getByRole('radio', { name: en.journal.exemptions.choice.exempt, exact: true })
-    .check();
+  await form.getByRole('radio', { name: en.journal.exemptions.choice.exempt, exact: true }).check();
   await form.getByRole('button', { name: en.journal.exemptions.save, exact: true }).click();
   await expect(page.getByText(en.journal.exemptions.created)).toBeVisible();
 

@@ -216,8 +216,7 @@ function JournalLoaded({
   const passes = (student: JournalStudent) =>
     found(student, words) &&
     (filter !== 'empty' || hasEmptyCell(student, data.lessons, shownLessons));
-  const listed =
-    filter === 'left' ? [] : data.students.filter((one) => !one.folded && passes(one));
+  const listed = filter === 'left' ? [] : data.students.filter((one) => !one.folded && passes(one));
   // Task 8.5 (07, In the journal): "A student who is exempt for the whole month on screen is
   // moved to a folded 'Exempt' section at the bottom, with the dates."
   const exemptAll = (student: JournalStudent) => {

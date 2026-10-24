@@ -297,6 +297,35 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 24 October 2026: exemptions (task 8.5)
+
+Plan approved on pull request #223 with corrections 1 to 3; decisions 1 to 21 confirmed there, 22 to 32 taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new permission area). `exemptions`: Super Admin and Academic Vice Principal view, create, edit; Principal view | Decision 1; `07`, Granted by; `edge/exemptions`, the diagnosis row |
+| **Look first** (a journal reading). Absent, skipped and empty cells are hidden by an exemption, not cleared; "exempt and clear" clears with `changed_how` `exemption` and keeps the values in `exemption_clears` to give back | Decision 2; `edge/journal`, "My grade disappeared": "also what hid it"; `edge/exemptions`, row 4 |
+| **Look first** (personal data across branches). A branch move ends the sending branch's exemption and copies it into an offer of the receiving branch, confirmed or dropped there | Decision 3; From 3.3c |
+| **Look first** (a journal reading). A slot exemption is one continuous time range of one day | Decision 4; `edge/exemptions`, row 3 |
+| **Look first** (a new path in a guard). A reopened cell of a locked lesson takes a person's write as a late entry until 00:00 after the third day following the change | Decision 5; `edge/journal`, Locks |
+| **Look first** (a spec-row list). `exemption-spec-rows.test.ts` pins every row of `07` Problem cases and `edge/exemptions`; the closed-quarter rows name 9.2b | Decision 6 |
+| **Look first** (a reading of spec wording). Two exemptions conflict when their time spans overlap, not their dates | Decision 7; proposed `/spec-change` on issue #42 |
+| **Look first** (a pinned list widened). `FILE_ROUTES` gains the exemption's document and the reason of absence's file, one file kind | Decision 8; From 6.3 |
+| **Look first** (a reading of "State from stored moments"). Start and end are school dates of the branch, with local clock times for a slot one, compared on each request | Decision 9 |
+| **Look first** (a journal calculation reading). A homework given at an exempt lesson and checked at an expected one counts when typed | Decision 10; `edge/journal`, row 15 |
+| **Look first** (who is exempt). The students of a kept block are exempt (4) from its source rows, with no row of their own; a lesson whose every member the block takes out takes nobody out (kept as held for its data, From 6.1b-2) | Decision 12; decision 23 |
+| **Look first** (a calculation reading). "Exempt on exam day, pending" counts any live exemption of the subject touching the date | Decision 15 |
+| A merge carries an exemption's student only; the exemption stays in the branch of its lessons, as a reason of absence does | Decision 22; changes the plan's "student and branch" (From 3.3d named both) |
+| Only the bulk cancel's keep sends the kept-block notice; the day-off and exam keeps send none | Decision 24; only From 5.6a-3 asks for the notice |
+| A notice's slot times are one text and its kind is translated by i18next nesting | Decision 25; the notification texts take their data raw |
+| A value the give-back cannot write (a lower total, "not held", a cell changed since) stays cleared, and its row is marked given back | Decision 26 |
+| The document can be attached or removed after the start; no other field changes then | Decision 27; `edge/exemptions`, row 4 is about the exemption's terms, a certificate arrives later |
+| An edit cannot move an exemption to another academic year | Decision 28 |
+| The grid's quarter outcome comes from `studentQuarterOutcome` with N the held lessons of this journal; 8.6 counts across journals | Decision 29; From 4.3, 6.2 decision 4 |
+| The category in the grid is for the Super Admin, the Principal, the Academic Vice Principal and the Tutor of the student's class now | Decision 30; `edge/exemptions`, row 10 |
+| The personal data report keeps hidden values (stored data about the student); the support view's "hidden by exemption" is 8.9's | Decision 31 |
+| `journals.test.ts` and the web fixtures gained the new answer fields (`basedOn`, `exempt`, `exemptions`, `pending`, `file`); `MERGE_DOES` and `KEPT` name the new tables | Decision 32; the answers changed, no check was weakened |
+
 ## 24 October 2026: edit period, unlocks and corrections (task 8.4)
 
 Plan approved on pull request #222 with corrections 1 to 5; decisions 1 to 14 confirmed or changed there, 15 to 23 taken in the build. Flagged on issue #42.
