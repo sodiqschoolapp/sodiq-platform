@@ -1122,7 +1122,7 @@ How to read the task lines:
   - From 8.2 (pull request #218, decision 6): `edge/calculation`, "A student is exempt on the exam day": "The cell shows 'exempt on exam day, pending'. The teacher may later enter a score; otherwise the Academic Vice Principal sets 'exempt'. A pending entry blocks closing." The rating exam cell of a student exempt on the date in force (`journal_rating_date`, 0120) shows "pending" and is passed to `packages/calc` as no entry; the grid's rating exam answer (`ratingExamOf`, `apps/api/src/modules/journal/rating.ts`) gains it.
   - From 8.4 (pull request #222): `edge/journal`, Locks: the cells reopened for 3 days after an exemption is shortened are an unlock of the edit period (`journal_lock_moment`, 0122, the lock worked out on each request from `branch_edit_days` and `journal_edit_extensions`); the system writes of an exemption (`changed_how` `exemption`) pass the guards of 0122 (`journal_edit_judge`, called by `journal_*_edit_guard`) after the lock, as `transfer` and `cancellation` do.
 
-- [ ] **8.6 Transfers and leaving inside the journal**
+- [x] **8.6 Transfers and leaving inside the journal**
   - Read: `07` (Transfers), `edge/students-classes-groups`, `edge/calculation`.
   - Build: what a journal shows and counts when a student changes class or group, joins late, leaves or returns; results that follow the student; the "result at leaving".
   - Done when: a transfer made at the same moment as a cell save is tested.

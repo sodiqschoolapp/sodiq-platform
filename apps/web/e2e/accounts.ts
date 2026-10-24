@@ -102,6 +102,8 @@ export type AccountKey =
   | 'locksVice'
   | 'exemptionsTeacher'
   | 'exemptionsVice'
+  | 'transfersTeacher'
+  | 'transfersVice'
   | 'whoHeadTutor'
   | 'whoHeadTeacher';
 
