@@ -16,7 +16,12 @@ import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
-import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import {
+  journalRows,
+  plannedJournal,
+  staffNames,
+  type JournalRow,
+} from '../journal/journal-grid.query.js';
 import { journalsColumns } from '../journal/journal-works.query.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -69,6 +74,8 @@ interface ReportBase {
   >;
   readonly departments: readonly { id: string; names: { uz: string; ru: string; en: string } }[];
   readonly list: PlanList;
+  /** The planned journals of the year of subjects outside the reader's scope. */
+  readonly otherSubjects: number;
 }
 
 const unitOf = (journal: JournalRow) => ({
@@ -110,14 +117,15 @@ export class PlanReportsService {
     }
     const subjects = reportSubjects(access);
     const listed = new Set(list.plans.map((plan) => plan.journalId));
-    const journals =
-      list.yearId === null
-        ? []
-        : (await journalRows(transaction, branchId, { yearId: list.yearId })).filter(
-            (journal) =>
-              listed.has(journal.id) &&
-              (subjects === null || subjects.has(journal.subjectId.toLowerCase())),
-          );
+    const yearJournals =
+      list.yearId === null ? [] : await journalRows(transaction, branchId, { yearId: list.yearId });
+    const inScope = (journal: JournalRow) =>
+      subjects === null || subjects.has(journal.subjectId.toLowerCase());
+    const journals = yearJournals.filter((journal) => listed.has(journal.id) && inScope(journal));
+    // Other subjects' plans are counted, never named (decision 1).
+    const otherSubjects = yearJournals.filter(
+      (journal) => plannedJournal(journal) && !inScope(journal),
+    ).length;
     const facts = await ownerFactsOf(
       transaction,
       branchId,
@@ -200,6 +208,7 @@ export class PlanReportsService {
       departmentOf,
       departments,
       list,
+      otherSubjects,
     };
   }
 
@@ -288,6 +297,7 @@ export class PlanReportsService {
         (department) => department?.id ?? '',
       ).map((entry) => ({ department: entry.key, counts: countsOf(entry.rows) })),
       branch: countsOf(plans),
+      otherSubjects: base.otherSubjects,
     });
   }
 
@@ -312,6 +322,7 @@ export class PlanReportsService {
         departments: base.departments,
         plans: [],
         teachers: [],
+        otherSubjects: base.otherSubjects,
       });
     }
     const all = await journalsColumns(transaction, base.journals, base.timeZone, base.now);
@@ -419,6 +430,7 @@ export class PlanReportsService {
           percentNotHeld: percentOf(counts.notHeld, counts.planned),
         }))
         .sort((a, b) => a.teacher.name.localeCompare(b.teacher.name, 'en')),
+      otherSubjects: base.otherSubjects,
     });
   }
 

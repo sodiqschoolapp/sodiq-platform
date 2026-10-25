@@ -8,7 +8,7 @@ import {
   type PlanMinimums,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
@@ -188,8 +188,15 @@ export class PlanMinimumsService {
               homeworks: input.homeworks,
               changed_by: access.accountId,
             })
-            .onConflict((conflict) => conflict.columns(['branch_id', 'subject_id']).doNothing())
-            .execute();
+            .execute()
+            .catch((error: unknown) => {
+              // Two first saves at the same moment: the second was made on a version gone.
+              const failure = error as { code?: unknown; constraint?: unknown };
+              if (failure.code === '23505' && failure.constraint === 'subject_plan_minimums_key') {
+                throw new ApiException('plan_minimum_stale', 409);
+              }
+              throw error;
+            });
         } else {
           await transaction
             .updateTable('subject_plan_minimums')
@@ -198,7 +205,7 @@ export class PlanMinimumsService {
               homeworks: input.homeworks,
               version: stored.version + 1,
               changed_by: access.accountId,
-              changed_at: sql<Date>`now()`,
+              changed_at: await transactionMoment(transaction),
             })
             .where('id', '=', stored.id)
             .execute();

@@ -97,6 +97,8 @@ export const planCompletenessSchema = z.object({
     z.object({ department: departmentSchema, counts: completenessCountsSchema }),
   ),
   branch: completenessCountsSchema,
+  /** The plans of the branch's other subjects, counted and never named (decision 1; `.claude/rules/api.md`). */
+  otherSubjects: z.int().min(0),
 });
 
 export type PlanCompleteness = z.infer<typeof planCompletenessSchema>;
@@ -134,6 +136,8 @@ export const planProgressSchema = z.object({
       percentNotHeld: z.int().min(0).max(100).nullable(),
     }),
   ),
+  /** The plans of the branch's other subjects, counted and never named. */
+  otherSubjects: z.int().min(0),
 });
 
 export type PlanProgress = z.infer<typeof planProgressSchema>;

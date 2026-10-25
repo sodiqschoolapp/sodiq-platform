@@ -48,7 +48,8 @@ create table journal_lesson_deliveries (
   constraint journal_lesson_deliveries_key unique (branch_id, lesson_id, journal_id),
   constraint journal_lesson_deliveries_lesson_fkey foreign key (lesson_id, branch_id)
     references lessons (id, branch_id) on delete cascade,
-  constraint journal_lesson_deliveries_journal_fkey foreign key (journal_id) references journals (id),
+  constraint journal_lesson_deliveries_journal_fkey foreign key (journal_id, branch_id)
+    references journals (id, branch_id),
   constraint journal_lesson_deliveries_item_fkey foreign key (item_id, branch_id)
     references lesson_plan_items (id, branch_id),
   constraint journal_lesson_deliveries_copy_fkey foreign key (copy_item_id, branch_id)
@@ -88,7 +89,8 @@ create table journal_homework_not_given (
   undone_at timestamptz,
   constraint journal_homework_not_given_lesson_fkey foreign key (lesson_id, branch_id)
     references lessons (id, branch_id) on delete cascade,
-  constraint journal_homework_not_given_journal_fkey foreign key (journal_id) references journals (id),
+  constraint journal_homework_not_given_journal_fkey foreign key (journal_id, branch_id)
+    references journals (id, branch_id),
   constraint journal_homework_not_given_work_fkey foreign key (plan_work_id, branch_id)
     references lesson_plan_works (id, branch_id) on delete cascade
 );
@@ -200,6 +202,18 @@ create trigger journal_delivery_history_direct
   before insert on journal_delivery_history
   for each row execute function timetable_trigger_only('journal_delivery_history_direct');
 
+-- `withdrawn` is the follow's undo of a mark on a lesson cancelled after its date (decision
+-- 5): any other lesson refuses it, so no writer passes the edit period with it (spec review of
+-- the code, should-fix 2).
+create function journal_mark_withdrawable(lesson_ref uuid) returns boolean
+language sql
+stable
+set search_path = pg_catalog, public
+as $fn$
+  select exists (select 1 from lessons l where l.id = lesson_ref and l.cancel_cause is not null)
+$fn$;
+grant execute on function journal_mark_withdrawable(uuid) to sodiq_app;
+
 -- ---------------------------------------------------------------------------
 -- The guards: the moment of the transaction, the edit period (0122: before
 -- the lock, or under the writer's open unlock of that lesson, `late_entry`),
@@ -232,6 +246,10 @@ begin
       using errcode = 'check_violation', constraint = 'journal_cell_moment';
   end if;
   new.changed_at := coalesce(moment, now());
+  if new.changed_how = 'withdrawn' and not journal_mark_withdrawable(new.lesson_id) then
+    raise exception 'journal_mark_withdrawn'
+      using errcode = 'check_violation', constraint = 'journal_mark_withdrawn';
+  end if;
   new.changed_how := journal_edit_judge(
     new.branch_id, journal_lesson_lock(new.lesson_id), new.changed_how, new.changed_by,
     journal_correction_reason(), new.lesson_id, null, null
@@ -268,10 +286,20 @@ as $$
 declare
   moment timestamptz;
 begin
-  -- A separation moves the mark to the copy of its plan work (`followSeparation`): no line.
+  -- A separation moves the mark to the copy of its plan work (`followSeparation`): no line;
+  -- only onto a work of the copy of the old work's item.
   if tg_op = 'UPDATE' and new.plan_work_id is distinct from old.plan_work_id
     and new.undone_at is not distinct from old.undone_at
     and new.changed_how = old.changed_how then
+    if not exists (
+      select 1 from lesson_plan_works nw
+      join lesson_plan_items ni on ni.id = nw.item_id
+      join lesson_plan_works ow on ow.id = old.plan_work_id
+      where nw.id = new.plan_work_id and ni.copied_from = ow.item_id
+    ) then
+      raise exception 'journal_not_given_final'
+        using errcode = 'check_violation', constraint = 'journal_not_given_final';
+    end if;
     return new;
   end if;
   if tg_op = 'UPDATE' and old.undone_at is not null then
@@ -301,6 +329,10 @@ begin
         using errcode = 'check_violation', constraint = 'journal_not_given_final';
     end if;
     new.undone_at := coalesce(moment, now());
+  end if;
+  if new.changed_how = 'withdrawn' and not journal_mark_withdrawable(new.lesson_id) then
+    raise exception 'journal_mark_withdrawn'
+      using errcode = 'check_violation', constraint = 'journal_mark_withdrawn';
   end if;
   new.changed_how := journal_edit_judge(
     new.branch_id, journal_lesson_lock(new.lesson_id), new.changed_how, new.changed_by,
@@ -383,7 +415,7 @@ grant insert (branch_id, plan_work_id, request_id) on lesson_plan_work_openings 
 -- lesson for the account at the moment: the request is approved and its
 -- period not ended, the plan work was added under it, and the account's
 -- person is the lesson's teacher (the owner, or the substitute in force;
--- correction 2). The request is read FOR SHARE: a "finished" held open makes
+-- correction 2), and the lesson is of the request's journal. The request is read FOR SHARE: a "finished" held open makes
 -- the entry wait.
 create function journal_plan_opening_covers(
   request_ref uuid,
@@ -416,6 +448,15 @@ begin
     and exists (
       select 1 from lessons l join staff s on s.id = l.teacher_id
       where l.id = lesson_ref and s.account_id = account_ref
+    )
+    -- The lesson is of the request's journal: one class's request of a shared plan
+    -- opens no column of another class (permission review of the code, must-fix 5).
+    and exists (
+      select 1 from lessons l join journals j on j.id = found_row.journal_id
+      where l.id = lesson_ref and l.subject_id = j.subject_id
+        and (l.class_id = j.class_id or l.group_id = j.group_id)
+        and l.lesson_date >= (select y.start_date from academic_years y where y.id = j.academic_year_id)
+        and l.lesson_date <= (select y.end_date from academic_years y where y.id = j.academic_year_id)
     );
 end;
 $$;

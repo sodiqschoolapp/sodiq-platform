@@ -203,23 +203,8 @@ export class PlanFollow implements OnModuleInit {
     for (const one of deliveries) {
       let copy: JsonValue = null;
       if (one.copy_item_id !== null) {
-        const rows = await sql<{ rows: number }>`
-          select count(*)::int as rows
-          from lesson_plan_journals pj
-          join quarters q on q.id = pj.quarter_id
-          join journals j on j.id = pj.journal_id
-          join lessons l on l.subject_id = j.subject_id
-            and (l.class_id = j.class_id or l.group_id = j.group_id)
-            and l.lesson_date between q.start_date and q.end_date
-            and l.cancel_cause is null
-          where pj.journal_id = ${one.journal_id}
-            and pj.plan_id = (select plan_id from lesson_plan_items where id = ${one.copy_item_id})
-        `.execute(transaction);
-        const cleared = await clearUntouchedCopy(
-          transaction,
-          rows.rows[0]?.rows ?? 0,
-          one.copy_item_id,
-        );
+        const rows = await this.rowsOfCopy(transaction, branchId, one.journal_id, one.copy_item_id);
+        const cleared = await clearUntouchedCopy(transaction, rows, one.copy_item_id);
         copy = cleared === 'used' ? 'kept' : cleared;
       }
       await transaction
@@ -265,6 +250,52 @@ export class PlanFollow implements OnModuleInit {
         },
       });
     }
+  }
+
+  /** Task 8.8: the number of rows of a copy's journal in its plan's quarter (`planRows`). */
+  private async rowsOfCopy(
+    transaction: Transaction,
+    branchId: string,
+    journalId: string,
+    copyId: string,
+  ): Promise<number> {
+    const link = await transaction
+      .selectFrom('lesson_plan_items')
+      .innerJoin(
+        'lesson_plan_journals',
+        'lesson_plan_journals.plan_id',
+        'lesson_plan_items.plan_id',
+      )
+      .innerJoin('quarters', 'quarters.id', 'lesson_plan_journals.quarter_id')
+      .select([
+        'quarters.id',
+        'quarters.number',
+        sql<string | null>`quarters.start_date::text`.as('start_date'),
+        sql<string | null>`quarters.end_date::text`.as('end_date'),
+      ])
+      .where('lesson_plan_items.id', '=', copyId)
+      .where('lesson_plan_journals.journal_id', '=', journalId)
+      .executeTakeFirst();
+    const [journal] = await journalRows(transaction, branchId, { journalId });
+    if (
+      link === undefined ||
+      journal === undefined ||
+      link.start_date === null ||
+      link.end_date === null
+    ) {
+      return 0;
+    }
+    const { timeZone, now } = await this.clockOf(transaction, branchId);
+    return (
+      await planRows(
+        transaction,
+        branchId,
+        journal,
+        { id: link.id, number: link.number, startDate: link.start_date, endDate: link.end_date },
+        timeZone,
+        now,
+      )
+    ).length;
   }
 
   /**
