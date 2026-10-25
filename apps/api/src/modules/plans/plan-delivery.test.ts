@@ -16,7 +16,7 @@ import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Transactions } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
@@ -1349,6 +1349,203 @@ describe('plans in the journal', () => {
         expect(refused.status).toBe(403);
       });
       expect(await entriesOf('plan.export')).toHaveLength(before);
+    });
+  });
+
+  describe('"not given" against a first entry at the same moment, and the database', () => {
+    /** Two real routes in a fixed order behind a hold of the plan work both lock first. */
+    async function inOrder(
+      planWorkId: string,
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+    ) {
+      const waiting = async () => {
+        const found = await sql<{ n: number }>`
+          select count(distinct l.pid)::int as n
+          from pg_locks l join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database() and not l.granted
+        `.execute(t.database.migrator);
+        return found.rows[0]?.n ?? 0;
+      };
+      const until = async (count: number) => {
+        for (let tries = 0; tries < 800; tries += 1) {
+          if ((await waiting()) >= count) return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error(`Fewer than ${String(count)} waited on the plan work.`);
+      };
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const held = t.database.migrator.transaction().execute(async (transaction) => {
+        await transaction
+          .selectFrom('lesson_plan_works')
+          .select('id')
+          .where('id', '=', planWorkId)
+          .forUpdate()
+          .execute();
+        ready();
+        await released;
+      });
+      await isReady;
+      const one = new Promise<Response>((resolve, reject) => {
+        first().then(resolve, reject);
+      });
+      await until(1);
+      const two = new Promise<Response>((resolve, reject) => {
+        second().then(resolve, reject);
+      });
+      await until(2);
+      release();
+      await held;
+      return Promise.all([one, two]);
+    }
+
+    const markOf = (cookie: string, s: Scene, planWorkId: string) => () =>
+      request(t.kit.server)
+        .put(`/api/journal/lessons/${s.first}/homework-given`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .send({ planWorkIds: [planWorkId], notGiven: true })
+        .then((response) => response);
+    const totalOf = (cookie: string, s: Scene, planWorkId: string) => () =>
+      request(t.kit.server)
+        .put(`/api/journal/lessons/${s.second}/works/total`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .send({
+          column: { planWorkId, sourceLessonId: s.first },
+          total: 10,
+          version: null,
+          confirm: false,
+        })
+        .then((response) => response);
+
+    it('refuses the total when "not given" came first, and "not given" when the total came first', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const first = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      await itemAt(s, s.second);
+      const [read, write] = first.homeworks;
+      if (read === undefined || write === undefined) throw new Error('Two homeworks.');
+      await as(owner, s.branch, teacherIn(s), async () => {
+        const [marked, total] = await inOrder(
+          read,
+          markOf(owner.cookie, s, read),
+          totalOf(owner.cookie, s, read),
+        );
+        expect(marked.status, JSON.stringify(marked.body)).toBe(200);
+        expect(codeOf(total)).toBe('journal_work_not_given');
+        const [totalFirst, markLater] = await inOrder(
+          write,
+          totalOf(owner.cookie, s, write),
+          markOf(owner.cookie, s, write),
+        );
+        expect(totalFirst.status, JSON.stringify(totalFirst.body)).toBe(200);
+        expect(codeOf(markLater)).toBe('homework_has_entries');
+      });
+      const live = await t.database.migrator
+        .selectFrom('journal_homework_not_given')
+        .select('plan_work_id')
+        .where('lesson_id', '=', s.first)
+        .where('undone_at', 'is', null)
+        .execute();
+      expect(live).toEqual([{ plan_work_id: read }]);
+    });
+
+    it('keeps the history of the marks append-only and written by its trigger only', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+      });
+      t.clock.set(MOMENT);
+      try {
+        const refusal = async (work: (transaction: Transaction) => Promise<unknown>) => {
+          try {
+            await t.app.get(Transactions).run([s.branch], work);
+          } catch (error) {
+            return error as { code?: string };
+          }
+          throw new Error('The database did not refuse it.');
+        };
+        expect(
+          (
+            await refusal((transaction) =>
+              transaction
+                .updateTable('journal_delivery_history')
+                .set({ marked_after: false })
+                .where('lesson_id', '=', s.first)
+                .execute(),
+            )
+          ).code,
+        ).toBe('42501');
+        expect(
+          (
+            await refusal((transaction) =>
+              transaction
+                .deleteFrom('journal_delivery_history')
+                .where('lesson_id', '=', s.first)
+                .execute(),
+            )
+          ).code,
+        ).toBe('42501');
+      } finally {
+        t.clock.set(START);
+      }
+    });
+
+    it('refuses a mark after the lock without an unlock, in the database too', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const first = await itemAt(s, s.first);
+      await setEditDays(t.database.migrator, s.branch, 7);
+      t.clock.set(MOMENT);
+      try {
+        const error = await t.app
+          .get(Transactions)
+          .run([s.branch], async (transaction) => {
+            await transaction
+              .insertInto('audit_log')
+              .values({
+                occurred_at: new Date(MOMENT),
+                branch_id: s.branch,
+                action: 'test.delivery',
+              })
+              .execute();
+            await transaction
+              .insertInto('journal_lesson_deliveries')
+              .values({
+                branch_id: s.branch,
+                lesson_id: s.first,
+                journal_id: s.journal,
+                item_id: first.itemId,
+                not_delivered: true,
+                changed_by: owner.account.id,
+                changed_how: 'entry',
+                changed_at: new Date(MOMENT),
+              })
+              .execute();
+          })
+          .then(
+            () => null,
+            (failure: unknown) => failure as { constraint?: string },
+          );
+        expect(error?.constraint).toBe('journal_locked');
+      } finally {
+        t.clock.set(START);
+      }
     });
   });
 });

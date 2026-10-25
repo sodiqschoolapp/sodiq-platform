@@ -297,6 +297,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: plans in the journal (task 8.8)
+
+Plan approved on pull request #226 with corrections 1 to 4; decisions 1 to 18 confirmed there (3, 5 and 7 as changed by corrections 2 and 3). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (new permission area). `plan_reports`: view and export for the Super Admin, Principal, Academic Vice Principal, Senior Head Teacher and Head Teacher (own subjects for the last two) | Decision 1; `09`, Reports |
+| **Look first** (widening what roles may do; a pinned test widened). `plans` gains `export` for the six readers; `permissions.test.ts` pins it | Decision 2; `edge/lesson-plans`: "Plans export to PDF and Excel with their marks" |
+| **Look first** (a journal guard widened). A work an approved request adds to a held lesson opens its column, wherever shown, for the lesson's teacher until the request's period ends (`journal_plan_opening_covers`), written `late_entry` | Decision 3, correction 2 |
+| **Look first** (a journal rule reading). "Not given" is refused once the column has a total, "not held", a carry or a number; a homework marked "not given" takes no entry; both in the database | Decision 4, correction 4 |
+| **Look first** (a journal rule reading). A lesson cancelled after its date loses both marks and its untouched copy (cleared, never deleted) | Decision 5, correction 3 |
+| Only the lesson's teacher sets the marks, inside the edit period or under an unlock; no correction | Decision 6 |
+| The marks are undone in the same period; the copy's undo is refused once it was edited or placed | Decision 7 |
+| The copy is placed in the lesson's journal only, past its last row | Decision 8 |
+| The prepared request takes the cause `not_covered` (`PlanFollow.prepareFor`) | Decision 9 |
+| A plan work with a linked journal row is not removed | Decision 10 |
+| Minimums per subject and branch, 0 to 100, every planned work counted, the warning from the window's end | Decision 11 |
+| Completeness, progress, the share of "not held" per teacher (`lessonsCounted`, `shownPercent`), edit requests with "what changed" by `requestId` | Decisions 12 to 15 |
+| Reports worked out on read; Excel for the reports, PDF and Excel for a plan; `plans.not_delivered` to the owner when the substitute set it | Decisions 16 to 18 |
+| **Build decision.** The substitute in force reads the files of the item of their lesson (`itemReadScene`) | Plan review correction 1 |
+| **Build decision.** "Not given" is set through the lesson the homework was given at; the card of the next lesson shows it under "checked today" | One lesson holds the mark and its edit period |
+| **Build decision.** The works dialog of a lesson opens from its lesson card; the 8.1 and 8.7 web and browser tests open it that way | `09`: "Clicking it opens the lesson card" |
+| **Build decision.** The opening of a column covers the lesson's recorded teacher (`lessons.teacher_id`: the owner, or the substitute in force) | The database reads one person per lesson |
+
 ## 24 October 2026: lesson status, reminders and the discipline report (task 8.7)
 
 Plan approved on pull request #225 with corrections 1 to 3; decisions 1 to 16 confirmed there (14 changed by correction 1), the build decisions taken in the build. Flagged on issue #42.
