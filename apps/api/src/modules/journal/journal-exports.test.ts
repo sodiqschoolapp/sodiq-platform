@@ -751,7 +751,8 @@ describe('journal exports', () => {
         const list = journalExportListSchema.parse(
           (await t.get('/api/journal/exports', x.s.branch, reader.cookie)).body,
         );
-        expect(list).toEqual({ canExportBranch: false, exports: [] });
+        expect(list).toMatchObject({ canExportBranch: false, exports: [] });
+        expect(list.quarters.map((one) => one.number)).toEqual([1, 2, 3, 4]);
       }
       // A quarter of another branch, and a month outside the quarter.
       await at(vice, MOMENT);

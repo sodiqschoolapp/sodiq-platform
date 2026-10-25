@@ -137,7 +137,10 @@ export class Transactions {
     const filter = branchFilterValue(branchIds);
     const begun =
       options.snapshot === true
-        ? this.database.transaction().setIsolationLevel('repeatable read').setAccessMode('read only')
+        ? this.database
+            .transaction()
+            .setIsolationLevel('repeatable read')
+            .setAccessMode('read only')
         : this.database.transaction();
     return begun.execute(async (transaction) => {
       if (!this.filtered) {

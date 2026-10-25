@@ -25,6 +25,7 @@ import { PDF_MEDIA_TYPE, PDF_RENDERER, PdfFile, type PdfRenderer } from '../../h
 import { writeSheets, XLSX_MEDIA_TYPE, XlsxFile } from '../../http/xlsx.js';
 import { defineJob } from '../../jobs/job-definition.js';
 import { Jobs } from '../../jobs/jobs.service.js';
+import { branchToday } from '../access/taught-scope.js';
 import { currentAssignments, type CurrentAssignment } from '../access/current-assignments.js';
 import { permitting } from '../access/permission-check.js';
 import { PERMISSION_TABLE } from '../access/permission-table.token.js';
@@ -388,6 +389,32 @@ export class JournalExports {
     });
   }
 
+  /** The dated quarters of the year that holds today in branch time, else of the newest year. */
+  private async quartersOf(transaction: Transaction, branchId: string) {
+    const today = await branchToday(transaction, branchId);
+    const years = await transaction
+      .selectFrom('academic_years')
+      .select(['id', 'start_date', 'end_date'])
+      .where('branch_id', '=', branchId)
+      .orderBy('start_date', 'desc')
+      .execute();
+    const year =
+      years.find((one) => String(one.start_date) <= today && today <= String(one.end_date)) ??
+      years[0];
+    if (year === undefined) return [];
+    const quarters = await transaction
+      .selectFrom('quarters')
+      .select(['id', 'number', 'start_date', 'end_date'])
+      .where('academic_year_id', '=', year.id)
+      .orderBy('number')
+      .execute();
+    return quarters.flatMap((one) =>
+      one.start_date === null || one.end_date === null
+        ? []
+        : [{ id: one.id, number: one.number, startDate: one.start_date, endDate: one.end_date }],
+    );
+  }
+
   /** The person's own branch exports, newest first (decision 12). */
   list(access: Access): Promise<JournalExportList> {
     return this.transactions.run(access.branchIds, async (transaction) => {
@@ -408,6 +435,7 @@ export class JournalExports {
       }
       return {
         canExportBranch: wholeReaders(access.permitting).length > 0,
+        quarters: await this.quartersOf(transaction, branchOf(access)),
         exports: rows.map((row) => itemOf(row, now)),
       };
     });

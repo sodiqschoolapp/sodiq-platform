@@ -283,9 +283,10 @@ describe('the support view', () => {
       ]);
       expect(rows[1]).toMatchObject({ entry_kind: 'score', lesson_id: null, code: codeOf(rating) });
       // A recorder that fails is logged; the refusal is answered as it came.
-      const recorder = t.app.get(SaveRefusals) as unknown as {
-        record: (...args: unknown[]) => Promise<void>;
-      };
+      // `record` is private: the test reaches it as the object it is at run time.
+      const recorder = t.app.get<unknown, { record: (...args: unknown[]) => Promise<void> }>(
+        SaveRefusals,
+      );
       const original = recorder.record.bind(recorder);
       recorder.record = () => Promise.reject(new Error('The database is away.'));
       try {

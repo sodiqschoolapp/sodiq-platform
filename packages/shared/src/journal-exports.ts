@@ -63,6 +63,15 @@ export type JournalExportItem = z.infer<typeof journalExportItemSchema>;
 export const journalExportListSchema = z.object({
   /** The reader may ask for a branch export (decision 3). */
   canExportBranch: z.boolean(),
+  /** The dated quarters of the year in force today (else the newest), for the request form. */
+  quarters: z.array(
+    z.object({
+      id: z.uuid(),
+      number: z.int().min(1).max(4),
+      startDate: schoolDateSchema,
+      endDate: schoolDateSchema,
+    }),
+  ),
   exports: z.array(journalExportItemSchema),
 });
 

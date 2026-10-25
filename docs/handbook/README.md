@@ -15,7 +15,7 @@ One page per area, in the order a school meets them:
 | `03-people.md` | Staff, vacancies and working hours, students, relatives and parents, Head Teachers, search, exports, the personal data report |
 | `04-classes-and-groups.md` | Classes and Tutors, groups, putting students in classes and groups, moves, leaving and returning, moving to another branch, merging two records, the History tab |
 | `05-teaching-load-and-timetable.md` | The teaching load, the timetable and its versions, the board, generation, publishing, one-day changes, absences and substitutions, exams |
-| `06-journal.md` | Journals, attendance, marks, works and totals, exemptions, locks and unlock requests, closing a quarter |
+| `06-journal.md` | Journals, attendance, marks, works and totals, exemptions, locks and unlock requests, exports, the support view, closing a quarter |
 | `07-lesson-plans.md` | Lesson plans, windows and requests |
 | `08-results.md` | Lesson scores, quarter and year results, grades, ratings and reports |
 | `09-notices-and-the-log.md` | Notifications, reminders and the audit log |

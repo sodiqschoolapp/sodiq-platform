@@ -393,7 +393,11 @@ export const AUDIT_ACTION_GROUPS = {
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',
-    'staff.identity_shown', 'student.identity_shown', 'relative.show', 'audit.entry_shown'],
+    'staff.identity_shown',
+    'student.identity_shown',
+    'relative.show',
+    'audit.entry_shown',
+  ],
 } as const;
 
 export const AUDIT_GROUPS = Object.keys(

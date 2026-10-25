@@ -11,7 +11,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { useMayView, useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
-import { journalsQuery } from './journal-api';
+import { journalExportsQuery, journalsQuery } from './journal-api';
 import type { JournalsSearch } from './journal-search';
 
 type Row = JournalList['journals'][number];
@@ -39,6 +39,10 @@ export function JournalsPage(): React.JSX.Element {
   // Task 8.7: the counts per teacher and the orphan lessons.
   const discipline = useMayView('journal_discipline');
   const orphans = useMayView('journal_orphans');
+  // Task 8.9: the export of the branch (decision 3: the server answers who may) and the support view.
+  const exportsList = useQuery(journalExportsQuery(branchId));
+  const branchExports = exportsList.data?.canExportBranch === true;
+  const support = useMayView('journal_support');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
   const tab = search.tab ?? 'class';
@@ -100,7 +104,7 @@ export function JournalsPage(): React.JSX.Element {
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          absences || unlocks || exemptions || discipline || orphans ? (
+          absences || unlocks || exemptions || discipline || orphans || branchExports || support ? (
             <span className="flex flex-wrap gap-4">
               {absences && (
                 <Link to="/journal/student-absences" className="text-link">
@@ -125,6 +129,16 @@ export function JournalsPage(): React.JSX.Element {
               {orphans && (
                 <Link to="/journal/orphans" className="text-link">
                   {t('journal.orphans.title')}
+                </Link>
+              )}
+              {branchExports && (
+                <Link to="/journal/exports" className="text-link">
+                  {t('journal.exports.title')}
+                </Link>
+              )}
+              {support && (
+                <Link to="/journal/support" className="text-link">
+                  {t('journal.support.title')}
                 </Link>
               )}
             </span>

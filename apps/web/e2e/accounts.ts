@@ -92,6 +92,7 @@ export type AccountKey =
   | 'journalTeacher'
   | 'statusTeacher'
   | 'deliveryTeacher'
+  | 'exportsVice'
   | 'attendanceTeacher'
   | 'attendanceTutor'
   | 'plansTeacher'
