@@ -4304,4 +4304,250 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       });
     });
   });
+
+  // Task 9.2d, pull request #233: docs/spec/edge-cases/lesson-plans.md, "Items are still 'not
+  // covered' at the end of the quarter": "Items unresolved at closing are carried automatically.
+  // In quarter 4 only merge or drop exist." Build line: "Both closes carry: the branch close and a
+  // journal's re-close". Done when: "a close carries an unresolved item into the next quarter's
+  // tray, and in quarter 4 refuses to close while one is left".
+  describe('not-covered plan items at the close (task 9.2d)', () => {
+    /** The rows of a journal's plan in a quarter: its lessons not cancelled. */
+    const rowCount = async (s: PublishedScene, classId: string, from: string, to: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', classId)
+          .where('subject_id', '=', s.subject)
+          .where('lesson_date', '>=', from)
+          .where('lesson_date', '<=', to)
+          .where('cancel_cause', 'is', null)
+          .execute()
+      ).length;
+
+    /** An item past the last row of a journal's plan, as the follow leaves one (its plan made when missing). */
+    const pastItem = async (
+      branch: string,
+      subject: string,
+      journal: string,
+      quarter: string,
+      rows: number,
+      topic: string,
+    ) => {
+      const link = await t.database.migrator
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', journal)
+        .where('quarter_id', '=', quarter)
+        .executeTakeFirst();
+      const plan =
+        link?.plan_id ??
+        (
+          await t.database.migrator
+            .insertInto('lesson_plans')
+            .values({ branch_id: branch, quarter_id: quarter, subject_id: subject })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      if (link === undefined) {
+        await t.database.migrator
+          .insertInto('lesson_plan_journals')
+          .values({ branch_id: branch, plan_id: plan, journal_id: journal, quarter_id: quarter })
+          .execute();
+      }
+      const taken = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .select('position')
+        .where('plan_id', '=', plan)
+        .where('journal_id', '=', journal)
+        .orderBy('position', 'desc')
+        .executeTakeFirst();
+      const item = await t.database.migrator
+        .insertInto('lesson_plan_items')
+        .values({ branch_id: branch, plan_id: plan, topic })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('lesson_plan_places')
+        .values({
+          branch_id: branch,
+          plan_id: plan,
+          journal_id: journal,
+          item_id: item.id,
+          position: Math.max(rows, taken?.position ?? 0) + 1,
+        })
+        .execute();
+      return item.id;
+    };
+
+    const trayOf = (journal: string, quarter: string) =>
+      t.database.migrator
+        .selectFrom('lesson_plan_tray')
+        .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_tray.item_id')
+        .innerJoin('lesson_plan_outcomes', 'lesson_plan_outcomes.id', 'lesson_plan_tray.outcome_id')
+        .select([
+          'lesson_plan_items.topic',
+          'lesson_plan_items.copied_from',
+          'lesson_plan_outcomes.automatic',
+          'lesson_plan_outcomes.item_id',
+        ])
+        .where('lesson_plan_tray.journal_id', '=', journal)
+        .where('lesson_plan_tray.quarter_id', '=', quarter)
+        .execute();
+
+    /** A journal of the scene's class and a second graded subject whose runs end on `until`. */
+    const endedJournal = async (b: Awaited<ReturnType<typeof base>>, until: string) => {
+      const subject = await load.classes.subject({ grades: [7], journalType: 'graded' });
+      const journal = (
+        await t.database.migrator
+          .insertInto('journals')
+          .values({
+            branch_id: b.s.branch,
+            academic_year_id: b.s.year,
+            class_id: b.s.classId,
+            group_id: null,
+            subject_id: subject,
+            runs: `{[2026-09-07,${until})}`,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      return { subject, journal };
+    };
+
+    it("carries an unresolved item into the next quarter's tray at the branch close, once, and not from a journal closed with it", async () => {
+      const b = await base();
+      const q2 = await quarterOf(b.s.year, 2);
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+      const item = await pastItem(b.s.branch, b.s.subject, b.journal, b.q1, rows, 'Fractions');
+      // `09`, "A subject is removed from a class": its plan is closed with the journal.
+      const ended = await endedJournal(b, '2026-10-20');
+      const endedItem = await pastItem(b.s.branch, ended.subject, ended.journal, b.q1, 0, 'Ratios');
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = await decideAll(calls, b.s.branch, b.q1);
+          expect(itemsOf(list, 'plan_not_covered')).toEqual([]);
+          const done = await calls.post(
+            b.s.branch,
+            closePath(b.q1),
+            { warnings: warningsOf(list), lockNow: true, startQuarter: null },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          return closingClosedSchema.parse(done.body);
+        },
+        CLOSE,
+      );
+      expect(answer.carried).toBe(1);
+      expect(await trayOf(b.journal, q2)).toEqual([
+        { topic: 'Fractions', copied_from: item, automatic: true, item_id: item },
+      ]);
+      expect(await trayOf(ended.journal, q2)).toEqual([]);
+      const outcomes = await t.database.migrator
+        .selectFrom('lesson_plan_outcomes')
+        .select(['item_id', 'kind', 'automatic'])
+        .where('quarter_id', '=', b.q1)
+        .execute();
+      expect(outcomes).toEqual([{ item_id: item, kind: 'carried', automatic: true }]);
+      expect(outcomes.some((one) => one.item_id === endedItem)).toBe(false);
+      const entry = (await t.entries('plan.not_covered_carried')).at(-1);
+      expect(entry?.new_value).toMatchObject({
+        automatic: true,
+        items: [{ journalId: b.journal, itemId: item }],
+      });
+    });
+
+    it("carries the reopened journal's own unresolved items at its re-close", async () => {
+      const b = await closed();
+      const q2 = await quarterOf(b.s.year, 2);
+      const REOPEN = '2026-11-02T09:00:00+05:00';
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/reopen`,
+            { journalId: b.journal, reason: 'A plan item was left behind', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+        },
+        REOPEN,
+      );
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+      const item = await pastItem(b.s.branch, b.s.subject, b.journal, b.q1, rows, 'Decimals');
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const ready = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          const journal = ready.reopenedJournals[0];
+          const done = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+            { warnings: warningsOf({ ...ready, items: journal?.items ?? [] }), lockNow: false },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          return closingClosedSchema.parse(done.body);
+        },
+        '2026-11-03T10:00:00+05:00',
+      );
+      expect(answer.carried).toBe(1);
+      expect((await trayOf(b.journal, q2)).map((one) => [one.topic, one.item_id])).toEqual([
+        ['Decimals', item],
+      ]);
+    });
+
+    it('refuses to close the last quarter while an item is left, and closes once it is dropped', async () => {
+      const b = await base();
+      const q4 = await quarterOf(b.s.year, 4);
+      const viceAccount = await account();
+      for (const number of [1, 2, 3]) {
+        await closeQuarter(t.database, {
+          branchId: b.s.branch,
+          quarterId: await quarterOf(b.s.year, number),
+          accountId: viceAccount.account.id,
+        });
+      }
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[3][0], QUARTERS[3][1]);
+      const item = await pastItem(b.s.branch, b.s.subject, b.journal, q4, rows, 'Percentages');
+      // Correction 2: a journal whose runs ended inside the quarter does not block.
+      const ended = await endedJournal(b, '2027-04-15');
+      await pastItem(b.s.branch, ended.subject, ended.journal, q4, 0, 'Proportions');
+      const AFTER_Q4 = '2027-06-01T12:00:00+05:00';
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = await decideAll(calls, b.s.branch, q4);
+          const blocking = itemsOf(list, 'plan_not_covered');
+          expect(blocking.map((one) => [one.journal?.id, one.notCovered])).toEqual([
+            [b.journal, 1],
+          ]);
+          expect(list.closable).toBe(false);
+          const body = { warnings: warningsOf(list), lockNow: true, startQuarter: null };
+          const blocked = await calls.post(b.s.branch, closePath(q4), body, randomUUID());
+          expect([blocked.status, codeOf(blocked)]).toEqual([409, 'closing_blocked']);
+          // "Only merge or drop exist": the Academic Vice Principal, an approver, drops it.
+          const dropped = await calls.post(
+            b.s.branch,
+            `/api/plans/journals/${b.journal}/not-covered/${item}/drop`,
+            { quarterId: q4, reason: 'Covered in the revision lessons' },
+          );
+          expect(dropped.status, JSON.stringify(dropped.body)).toBe(200);
+          const after = checklistOf(await calls.get(b.s.branch, path(q4)));
+          expect(itemsOf(after, 'plan_not_covered')).toEqual([]);
+          const done = await calls.post(
+            b.s.branch,
+            closePath(q4),
+            { warnings: warningsOf(after), lockNow: true, startQuarter: null },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(closingClosedSchema.parse(done.body).carried).toBe(0);
+        },
+        AFTER_Q4,
+      );
+    });
+  });
 });
