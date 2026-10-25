@@ -29,8 +29,21 @@
 import type { AttendanceMark } from './attendance.js';
 import { Fraction } from './fraction.js';
 import { CalcInputError, type CalcInputErrorCode } from './input.js';
-import { studentQuarterOutcome, type StudentQuarterInput } from './outcome.js';
-import type { QuarterLesson, RatingExamEntry } from './quarter.js';
+import type { Grade } from './grade.js';
+import {
+  studentQuarterOutcome,
+  type QuarterNumber,
+  type ResultFlag,
+  type StudentQuarterInput,
+  type StudentQuarterOutcome,
+} from './outcome.js';
+import type {
+  LeftOutPart,
+  QuarterAverages,
+  QuarterLesson,
+  QuarterPart,
+  RatingExamEntry,
+} from './quarter.js';
 import type { Work } from './daily.js';
 import { CALC_VERSION } from './version.js';
 
@@ -319,4 +332,128 @@ export function recalculateAndCompare(record: unknown): Comparison {
     now,
     refused: null,
   };
+}
+
+const FLAGS: ReadonlySet<string> = new Set(['few_lessons', 'attendance_only', 'left_subject']);
+const PARTS: ReadonlySet<string> = new Set(['attendance', 'classwork', 'homework', 'ratingExam']);
+const LEFT_OUT_REASONS: ReadonlySet<string> = new Set(['no_data', 'exempt', 'not_held']);
+
+/** A stored decimal string of a `bigint`. */
+function bigintAt(value: unknown, path: string): bigint {
+  if (typeof value !== 'string' || !/^-?\d+$/.test(value)) throw shapeError(path);
+  return BigInt(value);
+}
+
+function fractionAt(value: unknown, path: string): Fraction {
+  const stored = objectAt(value, path);
+  const den = bigintAt(stored.den, `${path}.den`);
+  if (den <= 0n) throw shapeError(`${path}.den`);
+  return Fraction.of(bigintAt(stored.num, `${path}.num`), den);
+}
+
+function fractionOrNullAt(value: unknown, path: string): Fraction | null {
+  return value === null ? null : fractionAt(value, path);
+}
+
+function averagesAt(value: unknown, path: string): QuarterAverages {
+  const averages = objectAt(value, path);
+  return {
+    attendance: fractionOrNullAt(averages.attendance, `${path}.attendance`),
+    classwork: fractionOrNullAt(averages.classwork, `${path}.classwork`),
+    homework: fractionOrNullAt(averages.homework, `${path}.homework`),
+    ratingExam: fractionOrNullAt(averages.ratingExam, `${path}.ratingExam`),
+  };
+}
+
+function gradeAt(value: unknown, path: string): Grade {
+  if (value === 2 || value === 3 || value === 4 || value === 5) return value;
+  throw shapeError(path);
+}
+
+function numberResultAt(value: unknown, path: string): QuarterNumber {
+  const result = objectAt(value, path);
+  if (result.kind !== 'number') throw shapeError(`${path}.kind`);
+  return {
+    kind: 'number',
+    value: fractionAt(result.value, `${path}.value`),
+    shown: bigintAt(result.shown, `${path}.shown`),
+    grade: gradeAt(result.grade, `${path}.grade`),
+    averages: averagesAt(result.averages, `${path}.averages`),
+    leftOut: arrayAt(result.leftOut, `${path}.leftOut`).map((item, index): LeftOutPart => {
+      const at = `${path}.leftOut[${index}]`;
+      const left = objectAt(item, at);
+      const { part, reason } = left;
+      if (typeof part !== 'string' || !PARTS.has(part)) throw shapeError(`${at}.part`);
+      if (typeof reason !== 'string' || !LEFT_OUT_REASONS.has(reason)) {
+        throw shapeError(`${at}.reason`);
+      }
+      return { part: part as QuarterPart, reason: reason as LeftOutPart['reason'] };
+    }),
+    provisional: booleanAt(result.provisional, `${path}.provisional`),
+  };
+}
+
+/**
+ * The outcome stored in a final record, read back as the module's value (task 9.2b, review
+ * decision 1, Look first): a closed quarter's figures are read from here, never calculated again,
+ * so a later release never changes a closed result silently (`edge/calculation`, "A bug is found
+ * after results were closed and exported"; `07`: "the results are stored as final"). The record is
+ * read as an unknown value from `jsonb`, its shape checked field by field (`record_shape`); the
+ * values are the ones the module stored, the nightly check (9.2c) compares them with the inputs.
+ */
+export function storedQuarterOutcome(record: unknown): StudentQuarterOutcome {
+  const value = objectAt(record, 'record');
+  if (value.format !== 1) throw shapeError('format');
+  if (value.kind !== 'closing' && value.kind !== 'at_leaving') throw shapeError('kind');
+  const outcome = objectAt(value.outcome, 'outcome');
+  const basedOn = objectAt(outcome.basedOn, 'outcome.basedOn');
+  const flags = arrayAt(outcome.flags, 'outcome.flags').map((flag, index) => {
+    if (typeof flag !== 'string' || !FLAGS.has(flag)) throw shapeError(`outcome.flags[${index}]`);
+    return flag as ResultFlag;
+  });
+  const labels = {
+    basedOn: {
+      expected: numberAt(basedOn.expected, 'outcome.basedOn.expected'),
+      held: numberAt(basedOn.held, 'outcome.basedOn.held'),
+    },
+    from: stringOrNullAt(outcome.from, 'outcome.from'),
+    leftSubjectOn: stringOrNullAt(outcome.leftSubjectOn, 'outcome.leftSubjectOn'),
+    atLeaving: stringOrNullAt(outcome.atLeaving, 'outcome.atLeaving'),
+    flags,
+    staleDecision: booleanAt(outcome.staleDecision, 'outcome.staleDecision'),
+  };
+  switch (outcome.kind) {
+    case 'number': {
+      const decision = outcome.decision;
+      if (decision !== null && decision !== 'keep') throw shapeError('outcome.decision');
+      return {
+        ...labels,
+        kind: 'number',
+        result: numberResultAt(outcome.result, 'outcome.result'),
+        decision,
+        undecided: booleanAt(outcome.undecided, 'outcome.undecided'),
+      };
+    }
+    case 'exempt': {
+      const cause = outcome.cause;
+      if (cause !== 'no_lesson_remains' && cause !== 'decided') throw shapeError('outcome.cause');
+      return { ...labels, kind: 'exempt', cause };
+    }
+    case 'not_assessed':
+      return { ...labels, kind: 'not_assessed' };
+    case 'no_result':
+      return { ...labels, kind: 'no_result' };
+    default:
+      throw shapeError('outcome.kind');
+  }
+}
+
+/**
+ * The inputs stored in a final record (task 9.2b), read field by field as `recalculateAndCompare`
+ * reads them: the entries, weights and values the quarter was closed with.
+ */
+export function storedQuarterInputs(record: unknown): StudentQuarterInput {
+  const value = objectAt(record, 'record');
+  if (value.format !== 1) throw shapeError('format');
+  return inputsAt(value.inputs, 'inputs');
 }

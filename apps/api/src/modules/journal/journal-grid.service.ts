@@ -12,6 +12,8 @@ import {
   type QuarterResult,
   type RatingExamEntry,
   type Work,
+  storedQuarterInputs,
+  storedQuarterOutcome,
 } from '@sodiq/calc';
 import {
   compareStudentNames,
@@ -36,6 +38,7 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
+import { closingOf } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
@@ -347,6 +350,23 @@ export class JournalGridReader {
         dated.at(-1);
       if (quarter === undefined) throw new ApiException('journal_no_quarter', 409);
     }
+    // Task 9.2b: a closed quarter's figures carry no "provisional" marker (`07` rule 8).
+    const closing = await closingOf(transaction, quarter.id);
+    const quarterClosed = closing !== undefined;
+    // Task 9.2b (decision 1, Look first; spec review of the code, must-fix 2): a closed quarter's
+    // results are its stored final records, never calculated again.
+    const finalRecords = new Map(
+      closing === undefined
+        ? []
+        : (
+            await transaction
+              .selectFrom('quarter_final_results')
+              .select(['student_id', 'record'])
+              .where('closing_id', '=', closing.id)
+              .where('subject_id', '=', journal.subjectId)
+              .execute()
+          ).map((row) => [row.student_id, row.record as unknown]),
+    );
     // edge/00-definitions, Reference date: the quarter's last day, or today while it is open.
     const referenceDate =
       today > quarter.endDate
@@ -814,32 +834,41 @@ export class JournalGridReader {
             exact: { ...NO_EXACT, attendance },
           };
         }
-        const result: QuarterResult = quarterResult({
-          weights: quarterly,
-          attendanceValues,
-          lessons: counted,
-          // Task 8.2: the student's entry; a month leaves it out (From 4.3).
-          ratingExam: inMonth === null ? ratingOf() : null,
-          quarterClosed: false,
-        });
+        const stored = inMonth === null ? finalRecords.get(student.id) : undefined;
+        const storedOutcome = stored === undefined ? null : storedQuarterOutcome(stored);
+        const result: QuarterResult =
+          storedOutcome?.kind === 'number'
+            ? storedOutcome.result
+            : stored !== undefined
+              ? quarterResult(storedQuarterInputs(stored))
+              : quarterResult({
+                  weights: quarterly,
+                  attendanceValues,
+                  lessons: counted,
+                  // Task 8.2: the student's entry; a month leaves it out (From 4.3).
+                  ratingExam: inMonth === null ? ratingOf() : null,
+                  quarterClosed,
+                });
         // Task 8.5: the quarter's outcome, for "Exempt" (no lesson remains) and "based on n of N
         // lessons" (07, Effect on totals); N is counted per school day across the journals
         // that follow the student (task 8.6, 4.3 decision 10), else the held lessons here.
         const outcome =
-          inMonth === null
-            ? studentQuarterOutcome({
-                weights: quarterly,
-                attendanceValues,
-                lessons: counted,
-                ratingExam: ratingOf(),
-                quarterClosed: false,
-                heldInJournals: across?.heldInJournals ?? counted.length,
-                countsFrom,
-                leftSubjectOn: across?.leftSubjectOn ?? null,
-                atLeaving: across?.atLeaving ?? null,
-                decision: decisions.get(student.id)?.decision ?? null,
-              })
-            : null;
+          storedOutcome !== null
+            ? storedOutcome
+            : inMonth === null
+              ? studentQuarterOutcome({
+                  weights: quarterly,
+                  attendanceValues,
+                  lessons: counted,
+                  ratingExam: ratingOf(),
+                  quarterClosed,
+                  heldInJournals: across?.heldInJournals ?? counted.length,
+                  countsFrom,
+                  leftSubjectOn: across?.leftSubjectOn ?? null,
+                  atLeaving: across?.atLeaving ?? null,
+                  decision: decisions.get(student.id)?.decision ?? null,
+                })
+              : null;
         const { averages } = result;
         const figures: JournalFigures = {
           attendance: shown(averages.attendance),
@@ -1024,21 +1053,30 @@ export class JournalGridReader {
         staffId,
         now,
         enters: theirs(lesson),
-        requests,
+        // Task 9.2b: no unlock is asked in a closed quarter (From 8.4).
+        requests: requests && !quarterClosed,
         // A corrector's own lesson takes the unlock path (decision 17; code review 2, finding 1).
         corrects:
-          corrects && held.get(lesson.id) === true && shape === 'whole' && !teachesIt(lesson),
+          !quarterClosed &&
+          corrects &&
+          held.get(lesson.id) === true &&
+          shape === 'whole' &&
+          !teachesIt(lesson),
         nameOf: (accountId) => {
           const found = accountId === null ? undefined : approvers.get(accountId);
           return found?.name ?? found?.login ?? null;
         },
       });
+    // Task 9.2b: a closed quarter takes no entry, a correction included (From 8.4).
     const canEnter = (lesson: GridLessonRow): boolean =>
-      theirs(lesson) && (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
+      !quarterClosed &&
+      theirs(lesson) &&
+      (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
     // Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson takes the reader's
     // entry until its end; the cells guard takes it as a late entry (0123, 0127).
     const reopened = await reopenedCellsOf(transaction, lessonIds, now);
     const openCell = (lesson: GridLessonRow, studentId: string): boolean =>
+      !quarterClosed &&
       theirs(lesson) &&
       lockOf(lesson).window === 'locked' &&
       (optional.has(`${lesson.id}|${studentId}`) || reopened.has(`${lesson.id}|${studentId}`));
@@ -1142,7 +1180,7 @@ export class JournalGridReader {
         startDate: one.start_date,
         endDate: one.end_date,
       })),
-      quarter,
+      quarter: { ...quarter, closed: quarterClosed },
       today,
       referenceDate,
       teacher: ownerId === null ? null : { id: ownerId, name: names.get(ownerId) ?? '' },

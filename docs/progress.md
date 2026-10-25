@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 9.2b Closing a quarter
+
+- 0133: `quarter_closings` (the close in force: no `reopened_at`), `quarter_closing_journals` (names as they were), `quarter_final_results` (`FinalQuarterRecord` only, append-only, merge carry); `quarter_open_guard` / `quarter_days_open_guard` and a guard on every table a closed quarter freezes; `journal_lock_moment` capped at the first close; 0134 checks an end set on an open-ended student status to the end of time. Route `POST /api/results/closing/:quarterId/close` (`quarter_closing` `edit`, request key).
+- Every From line's refusal (409 `quarter_closed` or its own code) in the services, each with a route test; exemptions apply the open part only (`closedPart` in the preview). Readers: the student results and the journal grid read a closed quarter from its record (`storedQuarterOutcome`) and answer the year once quarter 4 is closed; files of a closed quarter say "Final"; the grid shows "Quarter closed" and takes no entry. Web: the close dialog and the closed state of `/results/closing`; handbook `08-results.md`.
+- Left out, with From lines: reopening, per-journal reopening, the carry of "not covered" plan items, the day view's correction kinds (9.2c); the rating's reading of stored results (9.3a); the alert of a failed close (10.2).
+
+The next sessions must know:
+
+- A writer of a row that feeds a quarter's results calls `lockOpenQuarters` / `lockOpenQuarter` (`apps/api/src/modules/setup/closed-quarters.ts`) in a statement before its first row lock, after its 404/403 reads; the 0133 guards refuse the same in the database (`quarters_closed`).
+- A closed quarter's figures come from `quarter_final_results`, never from the entries.
+- Test fixtures close a quarter with `closeQuarter` of `apps/api/src/testing/closing-kit.ts`; build the rows dated in it before, since the guards refuse them after (the migrator too).
+
 ## 25 October 2026: task 9.2a Closing checklist
 
 - 0132: `quarter_result_decisions` (one per student, subject and quarter; cleared is `null`; moment from the transaction; no write in a closed year). Area `quarter_closing`. Routes: `GET /api/results/closing`, `PUT /api/results/closing/:quarterId/decisions`, `POST .../journals/:journalId/decisions`, `POST .../plan-periods/end`, `POST .../remind` (`closing.service.ts`).

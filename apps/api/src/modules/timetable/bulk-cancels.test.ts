@@ -19,6 +19,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { inOrderOnLesson, workWithTotal } from '../../testing/cells-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -132,6 +133,24 @@ describe('the bulk cancel', () => {
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     return { check: answer, saved: bulkCancelAnswerSchema.parse(response.body) };
   };
+
+  /**
+   * Task 9.2b: the quarter of a dated lesson closed as the close writes it (`closeQuarter`),
+   * every fixture row written before.
+   */
+  async function closeQuarterOf(s: Scene, lessonId: string) {
+    const block = await t.database.migrator
+      .selectFrom('lessons')
+      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+      .select('lesson_blocks.quarter_id')
+      .where('lessons.id', '=', lessonId)
+      .executeTakeFirstOrThrow();
+    await closeQuarter(t.database, {
+      branchId: s.branch,
+      quarterId: block.quarter_id,
+      accountId: await load.classes.account(),
+    });
+  }
 
   const publish = (branch: string, version: string, startsOn: string) =>
     request(t.kit.server)
@@ -1426,6 +1445,31 @@ describe('the bulk cancel', () => {
       expect(await cellsOf([maths.id])).toEqual(kept);
     });
 
+    // Task 9.2b (From 6.1b-2; edge/timetable, "A lesson that already has attendance must be
+    // cancelled": "Not possible in a closed quarter."): a date of a closed quarter, with the
+    // "cancel" choice over a lesson with data or without one, is refused.
+    it('refuses the save of a date in a closed quarter, its "cancel" over a lesson with data too, and nothing changes', async () => {
+      const s = await scene();
+      const maths = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      await markOn(s, maths.id);
+      const monday = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [1] };
+      const answer = await checked(s.branch, monday);
+      expect(answer.withData.map((one) => one.lessonId)).toEqual([maths.id]);
+      const plain = { date: NEXT_MONDAY, classIds: [s.princeton], lessonNumbers: [1] };
+      const plainAnswer = await checked(s.branch, plain);
+      expect(plainAnswer.withData).toEqual([]);
+      await closeQuarterOf(s, maths.id);
+      const before = await all();
+      refusedWith(
+        await saveWith(s, monday, answer, 'keep', { [maths.id]: 'cancel' }),
+        409,
+        'quarter_closed',
+      );
+      refusedWith(await saveWith(s, plain, plainAnswer, 'keep', {}), 409, 'quarter_closed');
+      expect(await all()).toEqual(before);
+      expect((await rowOf(maths.id))?.cancel_cause).toBeNull();
+    });
+
     it('asks about a part of the chosen classes alone in a shared block chosen "keep", which follows its choice', async () => {
       const s = await scene();
       const body = { date: NEXT_MONDAY, classIds: [s.oxford], lessonNumbers: [2] };
@@ -1608,6 +1652,20 @@ describe('the bulk cancel', () => {
         'class_not_active',
       );
       expect(await everything()).toEqual(before);
+    });
+
+    // Task 9.2b (From 6.1b-2): the quarter after a closed one still takes a bulk cancel.
+    it('still saves a bulk cancel of a date in the next quarter when the quarter before is closed', async () => {
+      const s = await scene();
+      const closed = await oneLesson(s, NEXT_MONDAY, { classId: s.oxford }, s.maths);
+      await closeQuarterOf(s, closed.id);
+      // Not 9 November, which the request key test counts across the branches.
+      const { saved } = await checkAndSave(s.branch, {
+        date: '2026-11-16',
+        classIds: [s.princeton],
+        lessonNumbers: [1],
+      });
+      expect(saved.cancelled.length).toBeGreaterThan(0);
     });
 
     it('refuses the save when a lesson moved into the slots after the check (decision 12)', async () => {

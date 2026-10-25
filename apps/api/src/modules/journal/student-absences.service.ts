@@ -19,6 +19,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
+import { lockOpenQuarters, refusingClosedQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import type { UploadedFile } from '../../http/file-routes.js';
@@ -63,6 +64,30 @@ const tutorClassesOf = (access: Access): Set<string> =>
 
 const isWhole = (access: Access, roles: readonly Role[]) =>
   access.permitting.some((assignment) => roles.includes(assignment.role));
+
+/**
+ * Task 9.2b (From 6.3, decision 11; `edge/journal`, "A Tutor records why a student was absent":
+ * "The class Tutor and the Academic Vice Principal can edit it until the quarter closes"): the
+ * dated quarters that hold the day, taken `for key share` with no refusal before the first row
+ * lock (`.claude/rules/database.md`). The refusal (`lockOpenQuarters`, `quarter_closed`) comes
+ * after the reading checks (404, 403), so it tells nothing of a student the person may not write.
+ */
+async function holdQuarterOf(
+  transaction: Transaction,
+  branchId: string,
+  date: string,
+): Promise<void> {
+  await transaction
+    .selectFrom('quarters')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('start_date', 'is not', null)
+    .where('start_date', '<=', date)
+    .where('end_date', '>=', date)
+    .orderBy('id')
+    .forKeyShare()
+    .execute();
+}
 
 async function todayOf(transaction: Transaction, branchId: string): Promise<string> {
   const branch = await transaction
@@ -396,91 +421,99 @@ export class StudentAbsences {
     requestId: string | undefined,
   ): Promise<AbsenceReason> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      // The student first, so that a membership change waits for the reason or the reason for it.
-      const student = await transaction
-        .selectFrom('students')
-        .select('id')
-        .where('id', '=', studentId)
-        .forShare()
-        .executeTakeFirst();
-      if (student === undefined) throw notFound();
-      const membership = await transaction
-        .selectFrom('class_memberships')
-        .select('class_id')
-        .where('student_id', '=', student.id)
-        .whereRef('valid_from', '<', 'valid_until')
-        .where('valid_from', '<=', date)
-        .where('valid_until', '>', date)
-        .forShare()
-        .executeTakeFirst();
-      if (membership === undefined) throw new ApiException('absence_not_member', 409);
-      const ownClass = tutorClassesOf(access).has(lower(membership.class_id));
-      // The Tutor of the class (rows in force now) writes as the Tutor; the Academic Vice
-      // Principal and the Super Admin write every class (decisions 6 and 8).
-      const writer = writerOf(access, ownClass);
-      if (writer === undefined) throw new ApiException('absence_scope', 403);
-      const readStored = () =>
-        transaction
-          .selectFrom('student_absence_reasons')
-          .select(['id', 'category', 'note'])
-          .where('branch_id', '=', branchId)
-          .where('student_id', '=', student.id)
-          .where('absence_date', '=', date)
-          .forUpdate()
+    return refusingClosedQuarter(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        // Task 9.2b: the quarter of the date first, before any row lock.
+        await holdQuarterOf(transaction, branchId, date);
+        // The student first, so that a membership change waits for the reason or the reason for it.
+        const student = await transaction
+          .selectFrom('students')
+          .select('id')
+          .where('id', '=', studentId)
+          .forShare()
           .executeTakeFirst();
-      let stored = await readStored();
-      if (stored === undefined) {
-        // A first save: a row another first save wrote meanwhile is read and changed instead,
-        // so the audit entry names its value as the old one (spec review of the code, should-fix 1).
-        const inserted = await transaction
-          .insertInto('student_absence_reasons')
-          .values({
-            branch_id: branchId,
-            student_id: student.id,
-            absence_date: date,
+        if (student === undefined) throw notFound();
+        const membership = await transaction
+          .selectFrom('class_memberships')
+          .select('class_id')
+          .where('student_id', '=', student.id)
+          .whereRef('valid_from', '<', 'valid_until')
+          .where('valid_from', '<=', date)
+          .where('valid_until', '>', date)
+          .forShare()
+          .executeTakeFirst();
+        if (membership === undefined) throw new ApiException('absence_not_member', 409);
+        const ownClass = tutorClassesOf(access).has(lower(membership.class_id));
+        // The Tutor of the class (rows in force now) writes as the Tutor; the Academic Vice
+        // Principal and the Super Admin write every class (decisions 6 and 8).
+        const writer = writerOf(access, ownClass);
+        if (writer === undefined) throw new ApiException('absence_scope', 403);
+        // Task 9.2b: a date in a closed quarter is refused, the set and the clear alike.
+        await lockOpenQuarters(transaction, branchId, date, date);
+        const readStored = () =>
+          transaction
+            .selectFrom('student_absence_reasons')
+            .select(['id', 'category', 'note'])
+            .where('branch_id', '=', branchId)
+            .where('student_id', '=', student.id)
+            .where('absence_date', '=', date)
+            .forUpdate()
+            .executeTakeFirst();
+        let stored = await readStored();
+        if (stored === undefined) {
+          // A first save: a row another first save wrote meanwhile is read and changed instead,
+          // so the audit entry names its value as the old one (spec review of the code, should-fix 1).
+          const inserted = await transaction
+            .insertInto('student_absence_reasons')
+            .values({
+              branch_id: branchId,
+              student_id: student.id,
+              absence_date: date,
+              category: input.category,
+              note: input.note,
+              changed_by: access.accountId,
+              // Overwritten by student_absence_reasons_write.
+              changed_at: new Date(0),
+            })
+            .onConflict((conflict) =>
+              conflict.columns(['branch_id', 'student_id', 'absence_date']).doNothing(),
+            )
+            .returning('id')
+            .executeTakeFirst();
+          if (inserted !== undefined) {
+            await this.audited(transaction, access, writer.id, branchId, student.id, inserted.id, {
+              date,
+              old: null,
+              input,
+              requestId,
+            });
+            return this.answer(transaction, student.id, date, inserted.id);
+          }
+          stored = await readStored();
+          if (stored === undefined) throw new Error('A reason refused by its key is read back.');
+        }
+        await transaction
+          .updateTable('student_absence_reasons')
+          .set({
             category: input.category,
             note: input.note,
             changed_by: access.accountId,
-            // Overwritten by student_absence_reasons_write.
-            changed_at: new Date(0),
+            // Task 8.5: a cleared reason takes its file with it (the check of 0123).
+            ...(input.category === null
+              ? { file_key: null, file_type: null, file_name: null }
+              : {}),
           })
-          .onConflict((conflict) =>
-            conflict.columns(['branch_id', 'student_id', 'absence_date']).doNothing(),
-          )
-          .returning('id')
-          .executeTakeFirst();
-        if (inserted !== undefined) {
-          await this.audited(transaction, access, writer.id, branchId, student.id, inserted.id, {
-            date,
-            old: null,
-            input,
-            requestId,
-          });
-          return this.answer(transaction, student.id, date, inserted.id);
-        }
-        stored = await readStored();
-        if (stored === undefined) throw new Error('A reason refused by its key is read back.');
-      }
-      await transaction
-        .updateTable('student_absence_reasons')
-        .set({
-          category: input.category,
-          note: input.note,
-          changed_by: access.accountId,
-          // Task 8.5: a cleared reason takes its file with it (the check of 0123).
-          ...(input.category === null ? { file_key: null, file_type: null, file_name: null } : {}),
-        })
-        .where('id', '=', stored.id)
-        .execute();
-      await this.audited(transaction, access, writer.id, branchId, student.id, stored.id, {
-        date,
-        old: { date, category: stored.category, note: stored.note },
-        input,
-        requestId,
-      });
-      return this.answer(transaction, student.id, date, stored.id);
-    });
+          .where('id', '=', stored.id)
+          .execute();
+        await this.audited(transaction, access, writer.id, branchId, student.id, stored.id, {
+          date,
+          old: { date, category: stored.category, note: stored.note },
+          input,
+          requestId,
+        });
+        return this.answer(transaction, student.id, date, stored.id);
+      }),
+    );
   }
 
   private async audited(
@@ -554,6 +587,8 @@ export class StudentAbsences {
     write: boolean,
   ) {
     const branchId = branchOf(access);
+    // Task 9.2b: a write takes the quarter of the date first, before any row lock.
+    if (write) await holdQuarterOf(transaction, branchId, date);
     const student = await transaction
       .selectFrom('students')
       .select('id')
@@ -582,6 +617,8 @@ export class StudentAbsences {
       .forUpdate()
       .executeTakeFirst();
     if (reason?.category === null || reason === undefined) throw notFound();
+    // Task 9.2b: the file of a reason of a date in a closed quarter is neither put nor removed.
+    if (write) await lockOpenQuarters(transaction, branchId, date, date);
     return { branchId, assignmentId: assignment.id, reason };
   }
 

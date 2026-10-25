@@ -36,6 +36,7 @@ const EXEMPTION: Exemption = {
 
 const PREVIEW: ExemptionPreview = {
   yearEnd: '2027-05-31',
+  closedPart: null,
   students: [
     {
       studentId: uid(10),

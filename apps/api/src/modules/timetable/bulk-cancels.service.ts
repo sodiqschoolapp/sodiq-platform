@@ -22,6 +22,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { DAY_REFUSALS, classSlotsOn, dayLessonsOf } from './day-changes.service.js';
 import { dayBeginnings } from './dated-check.js';
@@ -258,6 +259,14 @@ export class TimetableBulkCancels {
   ): Promise<BulkCancelAnswer> {
     const branchId = branchOf(access);
     const yearId = await yearOfClasses(transaction, branchId, input);
+    // Task 9.2b (From 6.1b-2; edge/timetable, "A lesson that already has
+    // attendance must be cancelled": "Not possible in a closed quarter."): a
+    // date of a closed quarter is refused `quarter_closed`, whatever the
+    // choices. The quarter of the date is locked in a statement of its own
+    // before the first row lock (.claude/rules/database.md), so a close held
+    // open makes the save wait and a close that committed refuses it; the
+    // other half of a double brought in lies on the same date.
+    await lockOpenQuarters(transaction, branchId, input.date, input.date);
     await lockPublishChain(transaction, branchId, yearId);
     const week = await snapshotWeek(transaction, branchId, input.date, input.date);
     const scope = await scopeOf(transaction, branchId, input);

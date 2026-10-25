@@ -174,6 +174,11 @@ export function StudentResultsTab({ studentId }: { studentId: string }): React.J
           onChange={setQuarterId}
         />
       )}
+      {quarter?.notOfficial === true && (
+        <p className="text-sm text-muted-foreground" data-not-official="true">
+          {t('results.notOfficial')}
+        </p>
+      )}
       {quarter?.notInSystem === true ? (
         <p className="text-sm text-muted-foreground" data-not-in-system="true">
           {t('results.notInSystem')}

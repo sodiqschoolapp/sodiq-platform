@@ -281,6 +281,12 @@ function JournalLoaded({
               {data.journal.year.closed && (
                 <span className="font-semibold">{t('journal.page.pastYear')}</span>
               )}
+              {/* Task 9.2b: 07, "Journals of that quarter become read only". */}
+              {data.quarter.closed && (
+                <span className="font-semibold" data-quarter-closed="true">
+                  {t('journal.page.quarterClosed')}
+                </span>
+              )}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

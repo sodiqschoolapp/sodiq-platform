@@ -4,6 +4,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import {
   dayTemplatesKit,
   TODAY,
@@ -243,6 +244,31 @@ describe('class transfers', () => {
     return [await one, await two];
   }
 
+  /**
+   * The four quarters of a year dated (task 9.2b): quarter 1 from 1 September to 4 October,
+   * quarter 2 from 5 October. Answers their ids in order.
+   */
+  const datedQuarters = (yearId: string): Promise<string[]> =>
+    t.database.migrator.transaction().execute(async (transaction) => {
+      const ids: string[] = [];
+      for (const [number, start, end] of [
+        [1, '2026-09-01', '2026-10-04'],
+        [2, '2026-10-05', '2026-12-27'],
+        [3, '2027-01-11', '2027-03-20'],
+        [4, '2027-03-28', '2027-05-31'],
+      ] as const) {
+        const row = await transaction
+          .updateTable('quarters')
+          .set({ start_date: start, end_date: end })
+          .where('academic_year_id', '=', yearId)
+          .where('number', '=', number)
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        ids.push(row.id);
+      }
+      return ids;
+    });
+
   beforeAll(async () => {
     t = await dayTemplatesKit();
     classes = new ClassesKit(t.database.migrator);
@@ -400,6 +426,131 @@ describe('class transfers', () => {
         409,
         'class_year_closed',
       );
+    });
+
+    // Task 9.2b (From 3.3a, pull request #95, decision 4; plan decision 12): `edge`,
+    // "Backdating is for the Academic Vice Principal, in an open quarter". A branch of its own
+    // with dated quarters, built before quarter 1 is closed (a closed quarter refuses the
+    // fixture's rows too).
+    it('refuses a move, the change and the undo of a move dated in a closed quarter, 404 for another branch, and takes a move dated after it', async () => {
+      const branch = await t.newBranch();
+      const own = await classes.year(branch);
+      const quarters = await datedQuarters(own);
+      const oxford = await classes.schoolClass(branch, own, { grade: 7 });
+      const yale = await classes.schoolClass(branch, own, { grade: 7 });
+      const account = await classes.account();
+      const members = new MembersKit(t.database.migrator, account);
+      const pupilOf = async () => {
+        const student = await members.student(branch, { startsOn: '2026-09-01' });
+        await members.member({ branch, classId: oxford, studentId: student, from: '2026-09-01' });
+        return student;
+      };
+      const [one, two, three, four] = [
+        await pupilOf(),
+        await pupilOf(),
+        await pupilOf(),
+        await pupilOf(),
+      ];
+      // Another branch's student, class and scheduled move (the north of the kit), for the 404s
+      // (permission review of task 9.2b, S2).
+      const northClass = await schoolClass();
+      const northStudent = await pupil(northClass);
+      const northMove = moveOf(ok(await transfer(northStudent.id, await schoolClass())));
+      const versionOf = async (id: string) =>
+        studentDetailSchema.parse((await t.get(`/api/people/students/${id}`, branch, t.admin)).body)
+          .version;
+      const move = async (id: string, from: string) =>
+        t.post(
+          '/api/classes/transfers',
+          branch,
+          { studentId: id, version: await versionOf(id), toClassId: yale, from },
+          t.admin,
+        );
+      // A move dated in quarter 1 while it was open.
+      ok(await move(two, '2026-10-02'));
+      const moved = moveOf(
+        studentDetailSchema.parse(
+          (await t.get(`/api/people/students/${two}`, branch, t.admin)).body,
+        ),
+      );
+      // A move scheduled in quarter 2, whose change would date it in quarter 1 (permission
+      // review of task 9.2b, M3).
+      const scheduled = moveOf(ok(await move(four, '2026-10-20')));
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: quarters[0] ?? '',
+        accountId: account,
+      });
+      const before = await rowsOf();
+      refusedWith(await move(one, '2026-10-01'), 409, 'class_quarter_closed');
+      // An unknown student or class is 404 before the quarter's refusal (`.claude/rules/api.md`).
+      for (const [studentId, toClassId] of [
+        [UNKNOWN, yale],
+        [one, UNKNOWN],
+        [northStudent.id, yale],
+        [one, northClass],
+      ]) {
+        refusedWith(
+          await t.post(
+            '/api/classes/transfers',
+            branch,
+            { studentId, version: 1, toClassId, from: '2026-10-01' },
+            t.admin,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await t.post(
+          `/api/classes/transfers/${moved}/undo`,
+          branch,
+          { version: await versionOf(two), reason: 'Moved by mistake.' },
+          t.admin,
+        ),
+        409,
+        'class_quarter_closed',
+      );
+      // The change of the scheduled move to a date in quarter 1 (M3).
+      refusedWith(
+        await t.post(
+          `/api/classes/transfers/${scheduled}/change`,
+          branch,
+          { version: await versionOf(four), toClassId: yale, from: '2026-10-01' },
+          t.admin,
+        ),
+        409,
+        'class_quarter_closed',
+      );
+      // Another branch's move is 404 on every route, the date in the closed quarter or not (S2).
+      for (const [path, extra] of [
+        ['change', { toClassId: yale, from: '2026-10-01' }],
+        ['cancel', {}],
+        ['undo', { reason: 'Moved by mistake.' }],
+      ] as const) {
+        refusedWith(
+          await t.post(
+            `/api/classes/transfers/${northMove}/${path}`,
+            branch,
+            { version: northStudent.version + 1, ...extra },
+            t.admin,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      expect(await rowsOf()).toEqual(before);
+      expect(await held(one)).toEqual([[oxford, '2026-09-01', '2027-06-01']]);
+      expect(await held(four)).toEqual([
+        [oxford, '2026-09-01', '2026-10-20'],
+        [yale, '2026-10-20', '2027-06-01'],
+      ]);
+      // "The part in an open quarter is applied": the first day of quarter 2 is taken.
+      ok(await move(three, '2026-10-05'));
+      expect(await held(three)).toEqual([
+        [oxford, '2026-09-01', '2026-10-05'],
+        [yale, '2026-10-05', '2027-06-01'],
+      ]);
     });
   });
 

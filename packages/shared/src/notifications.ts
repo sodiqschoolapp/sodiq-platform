@@ -549,6 +549,12 @@ export const NOTIFICATION_KINDS = {
       .min(1)
       .max(200),
   }),
+  /**
+   * Task 9.2b: `edge/journal`, Closing and reopening: "lock now and close ... is logged and tells
+   * the teachers". One notice per teacher whose lessons inside the edit period or whose unlocks
+   * the close locked.
+   */
+  'results.quarter_locked_now': z.strictObject({ quarter: z.int().min(1).max(4) }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

@@ -267,6 +267,7 @@ describe('OpenAPI document', () => {
         '/api/plans/windows/{quarterId}',
         '/api/plans/windows/{quarterId}/extensions',
         '/api/results/closing',
+        '/api/results/closing/{quarterId}/close',
         '/api/results/closing/{quarterId}/decisions',
         '/api/results/closing/{quarterId}/journals/{journalId}/decisions',
         '/api/results/closing/{quarterId}/plan-periods/end',

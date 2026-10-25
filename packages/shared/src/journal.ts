@@ -345,6 +345,11 @@ export const journalGridSchema = z.object({
     number: z.int().min(1).max(4),
     startDate: schoolDateSchema,
     endDate: schoolDateSchema,
+    /**
+     * Task 9.2b: the quarter is closed (`07`: "Journals of that quarter become read only and the
+     * results are stored as final"); the server refuses every entry.
+     */
+    closed: z.boolean(),
   }),
   /** Today in branch time, from the injected clock. */
   today: schoolDateSchema,

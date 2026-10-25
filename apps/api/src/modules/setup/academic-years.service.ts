@@ -24,7 +24,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
 import type { Access } from '../access/permission.guard.js';
 import { lessonsAuditOf, NO_LESSONS, refuseForeignChoices } from '../timetable/calendar-lessons.js';
-import { refusingPublish } from '../timetable/publish.service.js';
+import { PUBLISH_REFUSALS, refusingPublish } from '../timetable/publish.service.js';
 import { loadEntries } from './calendar-state.js';
 import { endsOf, lockFollowingRows, refuseCutHolds } from './academic-year-dates.js';
 import { QuarterLessons } from './quarter-lessons.js';
@@ -77,7 +77,8 @@ class PreviewDone extends Error {
  * the go-live save (`Branches.setGoLive`) takes the branch row `for update`
  * and reads the years without a lock; a save of the quarters (task 5.6b-5a,
  * decision 7; `.claude/rules/timetable.md`, a setup write that writes dated
- * lessons) takes the branch row `for no key update`, then the people of the
+ * lessons) takes the year's quarters `for key share` (task 9.2b, before a
+ * close's `for update`), then the branch row `for no key update`, then the people of the
  * branch and the classes of the year `for key share` and the year `for no
  * key update` (`QuarterLessons.lock`). So every change of the years of a
  * branch waits for the one before it at the branch row, a go-live save and a
@@ -435,7 +436,8 @@ export class AcademicYears {
    * (`QuarterLessons.follow`). The audit entry carries the quarters that
    * changed, old and new, in number order, the blocks moved to another
    * quarter and what the save did to the lessons; nothing is written when
-   * nothing changed.
+   * nothing changed. Task 9.2b (From 5.6b-5a): a save that changes the dates of a quarter that
+   * has been closed, also one reopened since, is refused `quarter_closed`.
    */
   async saveQuarters(
     access: Access,
@@ -479,100 +481,153 @@ export class AcademicYears {
     preview: boolean,
   ): Promise<AcademicYear> {
     // The dated lessons a save writes are refused by the database as a
-    // publish's are (the claims, `timetable_busy`).
-    return refusingPublish(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        // Every id of the choices is the branch's, and the year too, before any lock.
-        await refuseForeignChoices(transaction, branchId, record.days ?? {});
-        await this.readYear(transaction, id);
-        const branch = await transaction
-          .selectFrom('branches')
-          .select('time_zone')
-          .where('id', '=', branchId)
-          .forNoKeyUpdate()
-          .executeTakeFirst();
-        if (branch === undefined) {
-          throw notFound();
-        }
-        await this.quarterLessons.lock(transaction, branchId, id);
-        const year = await this.readYear(transaction, id);
-        if (year.status === 'closed') {
-          throw refused('year_closed');
-        }
-        const outside = record.quarters.flatMap((quarter, index) => [
-          ...(quarter.startDate !== null && !inside(quarter.startDate, year)
-            ? [`quarters.${String(index)}.startDate`]
-            : []),
-          ...(quarter.endDate !== null && !inside(quarter.endDate, year)
-            ? [`quarters.${String(index)}.endDate`]
-            : []),
-        ]);
-        if (outside.length > 0) {
-          throw refused('outside_year', outside);
-        }
-        const changed = year.quarters.flatMap((before) => {
-          const after = record.quarters[before.number - 1];
-          return after !== undefined &&
-            (after.startDate !== before.startDate || after.endDate !== before.endDate)
-            ? [{ before, after: { number: before.number, ...after } }]
-            : [];
-        });
-        if (changed.length === 0 && !preview) {
-          return year;
-        }
-        for (const { after } of changed) {
-          await transaction
-            .updateTable('quarters')
-            .set({ start_date: after.startDate, end_date: after.endDate })
-            .where('academic_year_id', '=', id)
-            .where('number', '=', after.number)
-            .execute();
-        }
-        // Today at the moment of the transaction, as `lesson_block_quarter_fixed` reads it.
-        const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
-        const followed = await this.quarterLessons.follow(transaction, {
-          branchId,
-          accountId: access.accountId,
-          yearId: id,
-          year,
-          today,
-          before: year.quarters,
-          after: record.quarters,
-          preview,
-          days: record.days ?? {},
-        });
-        if (preview) {
-          // A refusal answered as a line leaves the deferred checks to refuse
-          // what the save would refuse first; otherwise they run now.
-          if (!followed.refused) {
-            await sql`set constraints all immediate`.execute(transaction);
+    // publish's are (the claims, `timetable_busy`); task 9.2b: a closed quarter's dates as
+    // `quarters_closed_guard` (0133) refuses them.
+    return refusingPublish(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          // Every id of the choices is the branch's, and the year too, before any lock.
+          await refuseForeignChoices(transaction, branchId, record.days ?? {});
+          await this.readYear(transaction, id);
+          // Task 9.2b: the year's quarters `for key share` in a statement of their own before the
+          // first row lock (`.claude/rules/database.md`; review correction 3), so a close held
+          // open makes the save wait and a close that committed is read below.
+          const closed = await this.closedQuarterNumbers(transaction, id);
+          const branch = await transaction
+            .selectFrom('branches')
+            .select('time_zone')
+            .where('id', '=', branchId)
+            .forNoKeyUpdate()
+            .executeTakeFirst();
+          if (branch === undefined) {
+            throw notFound();
           }
-          throw new PreviewDone({
-            lessons: followed.rewrite.lessons ?? NO_LESSONS,
-            ...followed.preview,
-            // Task 7.1b: what the change does to each plan (edge/lesson-plans).
-            plans: await this.planFollow.preview(transaction, access),
+          await this.quarterLessons.lock(transaction, branchId, id);
+          const year = await this.readYear(transaction, id);
+          if (year.status === 'closed') {
+            throw refused('year_closed');
+          }
+          const outside = record.quarters.flatMap((quarter, index) => [
+            ...(quarter.startDate !== null && !inside(quarter.startDate, year)
+              ? [`quarters.${String(index)}.startDate`]
+              : []),
+            ...(quarter.endDate !== null && !inside(quarter.endDate, year)
+              ? [`quarters.${String(index)}.endDate`]
+              : []),
+          ]);
+          if (outside.length > 0) {
+            throw refused('outside_year', outside);
+          }
+          const changed = year.quarters.flatMap((before) => {
+            const after = record.quarters[before.number - 1];
+            return after !== undefined &&
+              (after.startDate !== before.startDate || after.endDate !== before.endDate)
+              ? [{ before, after: { number: before.number, ...after } }]
+              : [];
           });
-        }
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'quarters.edit',
-          record: { type: 'academic_year', id },
-          oldValue: { quarters: changed.map(({ before }) => before) },
-          newValue: {
-            quarters: changed.map(({ after }) => after),
-            ...(followed.moved.length === 0
-              ? {}
-              : { movedBlocks: followed.moved.map((one): JsonValue => ({ ...one })) }),
-            ...lessonsAuditOf(followed.rewrite),
-          },
-          requestId,
-        });
-        return this.readYear(transaction, id);
-      }),
+          // Task 9.2b (From 5.6b-5a; plan decision 9): `edge/time-dates-calendar`, "A closed
+          // quarter's dates are frozen", also after a reopening. A save that leaves such a
+          // quarter's dates as they are is taken.
+          const frozen = changed.flatMap(({ before, after }) =>
+            closed.has(before.number)
+              ? [
+                  ...(after.startDate === before.startDate
+                    ? []
+                    : [`quarters.${String(before.number - 1)}.startDate`]),
+                  ...(after.endDate === before.endDate
+                    ? []
+                    : [`quarters.${String(before.number - 1)}.endDate`]),
+                ]
+              : [],
+          );
+          if (frozen.length > 0) {
+            throw refused('quarter_closed', frozen);
+          }
+          if (changed.length === 0 && !preview) {
+            return year;
+          }
+          for (const { after } of changed) {
+            await transaction
+              .updateTable('quarters')
+              .set({ start_date: after.startDate, end_date: after.endDate })
+              .where('academic_year_id', '=', id)
+              .where('number', '=', after.number)
+              .execute();
+          }
+          // Today at the moment of the transaction, as `lesson_block_quarter_fixed` reads it.
+          const today = schoolDateOf(await transactionMoment(transaction), branch.time_zone);
+          const followed = await this.quarterLessons.follow(transaction, {
+            branchId,
+            accountId: access.accountId,
+            yearId: id,
+            year,
+            today,
+            before: year.quarters,
+            after: record.quarters,
+            preview,
+            days: record.days ?? {},
+          });
+          if (preview) {
+            // A refusal answered as a line leaves the deferred checks to refuse
+            // what the save would refuse first; otherwise they run now.
+            if (!followed.refused) {
+              await sql`set constraints all immediate`.execute(transaction);
+            }
+            throw new PreviewDone({
+              lessons: followed.rewrite.lessons ?? NO_LESSONS,
+              ...followed.preview,
+              // Task 7.1b: what the change does to each plan (edge/lesson-plans).
+              plans: await this.planFollow.preview(transaction, access),
+            });
+          }
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'quarters.edit',
+            record: { type: 'academic_year', id },
+            oldValue: { quarters: changed.map(({ before }) => before) },
+            newValue: {
+              quarters: changed.map(({ after }) => after),
+              ...(followed.moved.length === 0
+                ? {}
+                : { movedBlocks: followed.moved.map((one): JsonValue => ({ ...one })) }),
+              ...lessonsAuditOf(followed.rewrite),
+            },
+            requestId,
+          });
+          return this.readYear(transaction, id);
+        }),
+      { ...PUBLISH_REFUSALS, quarters_closed: 'quarter_closed' },
     );
+  }
+
+  /**
+   * Task 9.2b (From 5.6b-5a): locks the quarters of a year `for key share`, in the order of the
+   * id, and answers the numbers of those that have ever been closed (a close in force or one
+   * reopened since, 9.2c), as `quarters_closed_guard` reads them; read after the lock. The save
+   * then updates the rows `for no key update`, which a key share of its own or of another save
+   * does not block, while a close's `for update` waits for it or it for the close.
+   */
+  private async closedQuarterNumbers(
+    transaction: Transaction,
+    yearId: string,
+  ): Promise<Set<number>> {
+    await transaction
+      .selectFrom('quarters')
+      .select('id')
+      .where('academic_year_id', '=', yearId)
+      .orderBy('id')
+      .forKeyShare()
+      .execute();
+    const rows = await transaction
+      .selectFrom('quarter_closings')
+      .innerJoin('quarters', 'quarters.id', 'quarter_closings.quarter_id')
+      .select('quarters.number')
+      .where('quarters.academic_year_id', '=', yearId)
+      .distinct()
+      .execute();
+    return new Set(rows.map((row) => row.number));
   }
 
   /**

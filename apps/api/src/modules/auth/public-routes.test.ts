@@ -358,6 +358,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/plans/requests/:requestId/send',
       'POST /api/plans/requests/decide-event',
       'POST /api/plans/windows/:quarterId/extensions',
+      'POST /api/results/closing/:quarterId/close',
       'POST /api/results/closing/:quarterId/journals/:journalId/decisions',
       'POST /api/results/closing/:quarterId/plan-periods/end',
       'POST /api/results/closing/:quarterId/remind',

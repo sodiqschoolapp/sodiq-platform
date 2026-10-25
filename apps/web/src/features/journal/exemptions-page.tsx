@@ -556,70 +556,89 @@ function PreviewLines({
   const lines = preview.students.filter(
     (one) => one.auto.length + one.choose.length + one.reopen.length > 0 || one.overlap !== null,
   );
+  // Task 9.2b (From 8.5): "The part inside a closed quarter is refused ... The part in an open
+  // quarter is applied."
+  const closedPart =
+    preview.closedPart === null ? null : (
+      <p className="text-sm" role="status" data-closed-part="true">
+        {t('journal.exemptions.closedPart', {
+          from: schoolDateText(preview.closedPart.startDate, language),
+          to: schoolDateText(preview.closedPart.endDate, language),
+        })}
+      </p>
+    );
   if (lines.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t('journal.exemptions.noLessons')}</p>;
+    return (
+      <>
+        {closedPart}
+        <p className="text-sm text-muted-foreground">{t('journal.exemptions.noLessons')}</p>
+      </>
+    );
   }
   return (
-    <ul className="grid gap-3 text-sm">
-      {lines.map((one) => (
-        <li key={one.studentId} className="grid gap-1">
-          <span className="font-semibold">{names.get(one.studentId) ?? '—'}</span>
-          {one.overlap !== null && (
-            <span role="alert">
-              {one.overlap.exemption === null
-                ? t('journal.exemptions.overlapElsewhere')
-                : t('journal.exemptions.overlap', {
-                    dates: t('journal.exemptions.datesLine', {
-                      from: schoolDateText(one.overlap.exemption.startDate, language),
-                      to: schoolDateText(one.overlap.exemption.endDate, language),
-                    }),
-                  })}
-            </span>
-          )}
-          {one.auto.length > 0 && (
-            <span>{t('journal.exemptions.auto', { count: one.auto.length })}</span>
-          )}
-          {one.choose.map((lesson) => {
-            const key = `${one.studentId}|${lesson.lessonId}`;
-            return (
-              <fieldset key={lesson.lessonId} className="flex flex-wrap items-center gap-3">
-                <legend className="sr-only">{lessonText(lesson)}</legend>
-                <span>
-                  {lessonText(lesson)}
-                  {' · '}
-                  {lesson.mark === 2
-                    ? t('journal.exemptions.markLate')
-                    : lesson.mark === 1
-                      ? t('journal.exemptions.markPresent')
-                      : t('journal.exemptions.numbers', { count: lesson.numbers })}
-                </span>
-                {(['keep', 'exempt'] as const).map((choice) => (
-                  <label key={choice} className="flex items-center gap-1.5">
-                    <input
-                      type="radio"
-                      name={key}
-                      checked={choices.get(key) === choice}
-                      onChange={() => {
-                        onChoose(one.studentId, lesson.lessonId, choice);
-                      }}
-                    />
-                    {t(`journal.exemptions.choice.${choice}`)}
-                  </label>
-                ))}
-              </fieldset>
-            );
-          })}
-          {one.reopen.length > 0 && (
-            <span>
-              {t('journal.exemptions.reopen', { count: one.reopen.length })}
-              {one.reopen.some((lesson) => lesson.givesBack) && (
-                <span className="ml-1">{t('journal.exemptions.givesBack')}</span>
-              )}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
+    <>
+      {closedPart}
+      <ul className="grid gap-3 text-sm">
+        {lines.map((one) => (
+          <li key={one.studentId} className="grid gap-1">
+            <span className="font-semibold">{names.get(one.studentId) ?? '—'}</span>
+            {one.overlap !== null && (
+              <span role="alert">
+                {one.overlap.exemption === null
+                  ? t('journal.exemptions.overlapElsewhere')
+                  : t('journal.exemptions.overlap', {
+                      dates: t('journal.exemptions.datesLine', {
+                        from: schoolDateText(one.overlap.exemption.startDate, language),
+                        to: schoolDateText(one.overlap.exemption.endDate, language),
+                      }),
+                    })}
+              </span>
+            )}
+            {one.auto.length > 0 && (
+              <span>{t('journal.exemptions.auto', { count: one.auto.length })}</span>
+            )}
+            {one.choose.map((lesson) => {
+              const key = `${one.studentId}|${lesson.lessonId}`;
+              return (
+                <fieldset key={lesson.lessonId} className="flex flex-wrap items-center gap-3">
+                  <legend className="sr-only">{lessonText(lesson)}</legend>
+                  <span>
+                    {lessonText(lesson)}
+                    {' · '}
+                    {lesson.mark === 2
+                      ? t('journal.exemptions.markLate')
+                      : lesson.mark === 1
+                        ? t('journal.exemptions.markPresent')
+                        : t('journal.exemptions.numbers', { count: lesson.numbers })}
+                  </span>
+                  {(['keep', 'exempt'] as const).map((choice) => (
+                    <label key={choice} className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name={key}
+                        checked={choices.get(key) === choice}
+                        onChange={() => {
+                          onChoose(one.studentId, lesson.lessonId, choice);
+                        }}
+                      />
+                      {t(`journal.exemptions.choice.${choice}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              );
+            })}
+            {one.reopen.length > 0 && (
+              <span>
+                {t('journal.exemptions.reopen', { count: one.reopen.length })}
+                {one.reopen.some((lesson) => lesson.givesBack) && (
+                  <span className="ml-1">{t('journal.exemptions.givesBack')}</span>
+                )}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -998,7 +1017,7 @@ function ChangeDialog({
             : change === 'void'
               ? await previewVoid(exemption.id, exemption.version)
               : null;
-        setPreview(answer ?? { students: [], yearEnd: exemption.endDate });
+        setPreview(answer ?? { students: [], yearEnd: exemption.endDate, closedPart: null });
         return;
       }
       if (change === 'end') {

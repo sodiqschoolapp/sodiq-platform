@@ -3,6 +3,7 @@ import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { personOutOf } from '../timetable/journal-owners.js';
 
 /**
@@ -79,6 +80,24 @@ export function correctorAssignment(access: Access, branchId: string): string | 
     access.assignments.find((one) => one.role === 'super_admin')?.id ??
     null
   );
+}
+
+/**
+ * The quarter of a target locked `for key share`, refused `quarter_closed` when it is closed
+ * (task 9.2b; From 8.4: a closed quarter refuses every person's write, a correction included).
+ */
+export async function lockTargetQuarter(
+  transaction: Transaction,
+  target: LockTarget,
+): Promise<void> {
+  let quarterId = target.kind === 'rating' ? target.quarterId : null;
+  if (target.kind === 'lesson') {
+    const found = await sql<{ quarter: string | null }>`
+      select lesson_quarter(${target.lessonId}::uuid) as quarter
+    `.execute(transaction);
+    quarterId = found.rows[0]?.quarter ?? null;
+  }
+  if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
 }
 
 /** The lock moment of a target, from the database. */
@@ -190,6 +209,7 @@ export async function decideWrite(
     readonly planRequestId?: string | null;
   },
 ): Promise<WriteHow> {
+  await lockTargetQuarter(transaction, input.target);
   if (input.correction !== undefined) {
     const assignmentId = correctorAssignment(input.access, input.branchId);
     if (assignmentId === null) throw new ApiException('journal_correction_role', 403);
@@ -279,6 +299,8 @@ async function timeZoneOf(transaction: Transaction, branchId: string): Promise<s
 
 /** The constraint refusals of the guard of 0122, as error codes (`refusingConstraints`). */
 export const LOCK_REFUSALS = {
+  // Task 9.2b: the guards of 0133.
+  quarters_closed: 'quarter_closed',
   journal_locked: 'journal_locked',
   journal_correction_role: 'journal_correction_role',
   journal_correction_reason: 'validation_failed',

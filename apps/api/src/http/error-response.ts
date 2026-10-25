@@ -519,6 +519,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   discipline_range: 'The range is longer than 92 days or crosses academic years.',
   student_merge_journal_overlap: 'Both records hold journal data on the same lesson.',
   student_merge_decision_overlap: 'Both records hold a decision on the same subject and quarter.',
+  student_merge_result_overlap:
+    'Both records hold a final result of the same subject in a closed quarter.',
   student_merge_journal_cut: 'The merged record holds journal entries on days the merge cuts.',
   work_not_in_lesson: 'The work is not a column of this lesson.',
   lesson_has_plan_item: 'The lesson has a plan item; its works come from the plan.',
@@ -614,6 +616,20 @@ const MESSAGE: Record<ErrorCode, string> = {
   closing_decision_changed: 'The decision was changed since it was read.',
   closing_nothing_to_clear: 'No decision is stored to clear.',
   closing_list_changed: 'The student was not in the list sent.',
+  quarter_closed: 'The quarter is closed.',
+  closing_before_last_day: 'A quarter cannot be closed before its last day.',
+  closing_earlier_open: 'An earlier quarter of the year is still open.',
+  closing_blocked: 'A blocking item of the checklist is left.',
+  closing_lock_now_needed: 'Lessons are still inside the edit period or unlocked.',
+  closing_warnings_changed: 'A warning is listed that was not acknowledged.',
+  closing_start_quarter_needed: 'The start quarter needs a choice: keep or not official.',
+  closing_not_start_quarter: 'The choice is only for the start quarter.',
+  class_quarter_closed: 'The move is dated in a closed quarter.',
+  group_quarter_closed: 'The group move is dated in a closed quarter.',
+  branch_move_quarter_closed: 'The move is dated in a closed quarter.',
+  date_in_closed_quarter: 'The date is in a closed quarter.',
+  plan_quarter_closed: 'The quarter of the plan is closed.',
+  exemption_closed_quarter: 'The change would touch days of a closed quarter.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

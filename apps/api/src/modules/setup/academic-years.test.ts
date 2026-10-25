@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
@@ -618,6 +619,112 @@ describe('academic years', () => {
 
       expect(response.status).toBe(409);
       expect(errorCode(response)).toBe('year_closed');
+    });
+
+    /** The quarters of a year as stored, and the closer of a quarter closed by a test. */
+    const quarterRows = (id: string) =>
+      database.migrator
+        .selectFrom('quarters')
+        .selectAll()
+        .where('academic_year_id', '=', id)
+        .orderBy('number')
+        .execute();
+    const closerId = async () =>
+      (
+        await database.migrator
+          .selectFrom('accounts')
+          .select('id')
+          .orderBy('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    // Task 9.2b (From 5.6b-5a; plan decision 9): `edge/time-dates-calendar`, "A closed
+    // quarter's dates are frozen."
+    it("do not change a closed quarter's dates, in the save and its preview; a later open quarter still changes", async () => {
+      const branch = await newBranch();
+      const id = await createYear(branch, '2026-09-02', '2027-05-25');
+      await dateQuarters(branch, id);
+      const quarters = await quarterRows(id);
+      await closeQuarter(database, {
+        branchId: branch,
+        quarterId: quarters[0]?.id ?? '',
+        accountId: await closerId(),
+      });
+      const count = await auditCount();
+      const moved = quartersBody([
+        ['2026-09-02', '2026-11-02'],
+        ['2026-11-10', '2026-12-27'],
+        DATED[2] ?? [null, null],
+        DATED[3] ?? [null, null],
+      ]);
+
+      const response = await put(`/api/setup/academic-years/${id}/quarters`, branch, moved);
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('quarter_closed');
+      expect(detailPaths(response)).toEqual(['quarters.0.endDate']);
+      const preview = await post(`/api/setup/academic-years/${id}/quarters/preview`, branch, moved);
+      expect(preview.status).toBe(409);
+      expect(errorCode(preview)).toBe('quarter_closed');
+      expect(await quarterRows(id)).toEqual(quarters);
+      expect(await auditCount()).toBe(count);
+
+      // The closed quarter's dates as they are, a later open quarter's moved: taken.
+      const later = await put(
+        `/api/setup/academic-years/${id}/quarters`,
+        branch,
+        quartersBody([
+          DATED[0] ?? [null, null],
+          DATED[1] ?? [null, null],
+          ['2027-01-13', '2027-03-20'],
+          DATED[3] ?? [null, null],
+        ]),
+      );
+      expect(later.status).toBe(200);
+      expect(yearOf(later).quarters[2]).toEqual({
+        number: 3,
+        startDate: '2027-01-13',
+        endDate: '2027-03-20',
+      });
+      expect(yearOf(later).quarters[0]).toEqual({
+        number: 1,
+        startDate: DATED[0]?.[0],
+        endDate: DATED[0]?.[1],
+      });
+    });
+
+    it('do not change the dates of a quarter closed and reopened since, as the database refuses', async () => {
+      const branch = await newBranch();
+      const id = await createYear(branch, '2026-09-02', '2027-05-25');
+      await dateQuarters(branch, id);
+      const quarters = await quarterRows(id);
+      const closingId = await closeQuarter(database, {
+        branchId: branch,
+        quarterId: quarters[0]?.id ?? '',
+        accountId: await closerId(),
+      });
+      // Stands for the reopening of 9.2c.
+      await database.migrator
+        .updateTable('quarter_closings')
+        .set({ reopened_at: new Date('2026-11-02T09:00:00+05:00') })
+        .where('id', '=', closingId)
+        .execute();
+      const count = await auditCount();
+
+      const response = await put(
+        `/api/setup/academic-years/${id}/quarters`,
+        branch,
+        quartersBody([
+          ['2026-09-03', '2026-10-31'],
+          DATED[1] ?? [null, null],
+          DATED[2] ?? [null, null],
+          DATED[3] ?? [null, null],
+        ]),
+      );
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('quarter_closed');
+      expect(detailPaths(response)).toEqual(['quarters.0.startDate']);
+      expect(await quarterRows(id)).toEqual(quarters);
+      expect(await auditCount()).toBe(count);
     });
 
     it('of another branch are not found, for the Super Admin and the Academic Vice Principal, and nothing changes', async () => {

@@ -53,6 +53,8 @@ const KEPT = [
   'journal_rating_entries',
   // Task 9.2a: a decision on a flagged result stays in the branch of its quarter.
   'quarter_result_decisions',
+  // Task 9.2b: a final result stays in the branch of its quarter.
+  'quarter_final_results',
   // Task 6.3: a reason of absence stays in the branch of its date.
   'student_absence_reasons',
   'student_moves',
@@ -326,6 +328,7 @@ describe('branch moves in the database', () => {
           one !== 'journal_comments' &&
           one !== 'journal_rating_entries' &&
           one !== 'quarter_result_decisions' &&
+          one !== 'quarter_final_results' &&
           one !== 'student_absence_reasons' &&
           one !== 'exemptions' &&
           one !== 'exemption_move_offers',

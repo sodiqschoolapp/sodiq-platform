@@ -1,6 +1,8 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   closingChecklistSchema,
+  closingCloseInputSchema,
+  closingClosedSchema,
   closingDecisionInputSchema,
   closingDecisionSchema,
   closingJournalDecisionInputSchema,
@@ -11,6 +13,8 @@ import {
   closingQuerySchema,
   closingRemindedSchema,
   type ClosingChecklist,
+  type ClosingClosed,
+  type ClosingCloseInput,
   type ClosingDecisionAnswer,
   type ClosingDecisionInput,
   type ClosingJournalDecision,
@@ -28,7 +32,7 @@ import { ClosingService } from './closing.service.js';
  * Closing a quarter). The area `quarter_closing` (decision 2, Look first):
  * the Super Admin, the Principal and the Academic Vice Principal read it; the
  * Super Admin and the Academic Vice Principal decide flagged results, end the
- * open plan periods and send the reminders.
+ * open plan periods, send the reminders and close the quarter (task 9.2b).
  */
 @Controller('results/closing')
 export class ClosingController {
@@ -97,5 +101,24 @@ export class ClosingController {
     @RequestKey() key: string,
   ): Promise<{ sent: number }> {
     return this.closing.remind(access, params.quarterId, key);
+  }
+
+  /**
+   * `07`, Closing a quarter: "With no blocking item left, the quarter can be closed. Warnings
+   * must be acknowledged"; "The whole branch is closed in one step" (task 9.2b). Repeat-safe:
+   * `edge/developer-rules`, "Publish, close and every offline entry carry a key".
+   */
+  @Post(':quarterId/close')
+  @HttpCode(200)
+  @Requires('quarter_closing', 'edit')
+  @Returns(closingClosedSchema)
+  close(
+    @CurrentAccess() access: Access,
+    @ValidParams(closingQuarterParamsSchema) params: { quarterId: string },
+    @ValidBody(closingCloseInputSchema) input: ClosingCloseInput,
+    @RequestKey() key: string,
+    @RequestId() requestId: string,
+  ): Promise<ClosingClosed> {
+    return this.closing.close(access, params.quarterId, input, key, requestId);
   }
 }

@@ -3468,15 +3468,26 @@ describe('the Results and Attendance tabs', () => {
   const UNIT = { kind: 'class' as const, id: uid(63), name: '7 Oxford' };
   const YEAR = { id: YEAR_ID, startDate: '2026-09-01', endDate: '2027-05-31', status: 'current' };
   const QUARTERS = [
-    { id: Q1, number: 1, startDate: '2026-09-01', endDate: '2026-10-31', notInSystem: false },
+    {
+      id: Q1,
+      number: 1,
+      startDate: '2026-09-01',
+      endDate: '2026-10-31',
+      notInSystem: false,
+      notOfficial: false,
+      closed: false,
+    },
   ];
-  const routes = (tabs: { results: boolean; attendance: boolean }): Record<string, Handler> => ({
+  const routes = (
+    tabs: { results: boolean; attendance: boolean },
+    quarters: typeof QUARTERS = QUARTERS,
+  ): Record<string, Handler> => ({
     [`GET /api/results/students/${OTKIR.id}/tabs`]: () => json(tabs),
     [`GET /api/results/students/${OTKIR.id}`]: () =>
       json({
         year: YEAR,
         years: [YEAR],
-        quarters: QUARTERS,
+        quarters,
         subjects: [
           {
             subject: SUBJECT,
@@ -3580,6 +3591,7 @@ describe('the Results and Attendance tabs', () => {
     expect(cell('result')).toBe('77');
     expect(cell('grade')).toBe('4');
     expect(row.textContent).toContain(en.results.labels.provisional);
+    expect(panel.querySelector('[data-not-official]')).toBeNull();
     expect(row.textContent).toContain(
       en.results.labels.countsFrom.replace('{{date}}', schoolDateText('2026-10-05', 'en')),
     );
@@ -3605,6 +3617,24 @@ describe('the Results and Attendance tabs', () => {
       (call) => call.route === `GET /api/results/students/${OTKIR.id}/lessons`,
     );
     expect(asked?.query).toBe(`?subjectId=${SUBJECT.id}&quarterId=${Q1}`);
+  });
+
+  // Task 9.2b (spec review of the code, must-fix 3; `edge/academic-year`, "Closing the start
+  // quarter": "A 'not official' quarter is left out of the year result").
+  it('says a start quarter closed not official is left out of the year result', async () => {
+    openList(
+      'principal',
+      routes({ results: true, attendance: true }, [
+        { ...QUARTERS[0], notOfficial: true, closed: true },
+      ] as typeof QUARTERS),
+    );
+    const panel = await openTab(en.people.students.tabs.results);
+    const line = await waitFor(() => {
+      const found = panel.querySelector('[data-not-official="true"]');
+      if (found === null) throw new Error('No line yet.');
+      return found;
+    });
+    expect(line.textContent).toBe(en.results.notOfficial);
   });
 
   it('shows the attendance with the counts of the marks', async () => {

@@ -17,6 +17,8 @@ import { RESULT_FLAGS } from './results.js';
  * - `POST /api/results/closing/:quarterId/journals/:journalId/decisions`: a whole journal.
  * - `POST /api/results/closing/:quarterId/plan-periods/end`: "end them all".
  * - `POST /api/results/closing/:quarterId/remind`: the list to each teacher concerned.
+ * - `POST /api/results/closing/:quarterId/close`: the close of the quarter for the whole branch
+ *   (task 9.2b, pull request #230).
  */
 
 /** "The checklist opens two weeks earlier" (`07`, decision 4 of the plan). */
@@ -213,6 +215,82 @@ export const CLOSING_BLOCKING: readonly ClosingItemKind[] = [
   'plan_periods',
 ];
 
+/**
+ * The blocking items "lock now and close" ends (`edge/journal`, Closing and reopening, first
+ * row; From 8.4 and 9.2a): the close locks them from its stored moment (task 9.2b, decision 3).
+ */
+export const CLOSING_LOCK_NOW: readonly ClosingItemKind[] = [
+  'unlocked',
+  'extension_open',
+  'edit_period',
+];
+
+/** The warnings of the checklist: acknowledged at the close and stored with it (`07`). */
+export const CLOSING_WARNINGS = [
+  'no_attendance',
+  'numbers_missing',
+  'plan_incomplete',
+  'no_result',
+  'part_without_data',
+  'no_teacher',
+] as const satisfies readonly ClosingItemKind[];
+
+/** `edge/academic-year`, "Closing the start quarter": keep the platform's results, or "not official". */
+export const CLOSING_START_QUARTER = ['keep', 'not_official'] as const;
+
+export type ClosingStartQuarter = (typeof CLOSING_START_QUARTER)[number];
+
+/** A warning as the person saw it listed: its kind and its journal. */
+export const closingWarningSeenSchema = z.strictObject({
+  kind: z.enum(CLOSING_WARNINGS),
+  journalId: z.uuid().nullable(),
+});
+
+/**
+ * The close (task 9.2b): the warnings seen, each kind and journal once, matched one to one with
+ * the warnings listed now; "lock now and close"; the start quarter's choice, `null` for any
+ * other quarter.
+ */
+export const closingCloseInputSchema = z.strictObject({
+  warnings: z
+    .array(closingWarningSeenSchema)
+    .max(5000)
+    .refine(
+      (seen) =>
+        new Set(seen.map((one) => `${one.kind}|${one.journalId?.toLowerCase() ?? ''}`)).size ===
+        seen.length,
+      { message: 'Each warning is named once.' },
+    ),
+  lockNow: z.boolean(),
+  startQuarter: z.enum(CLOSING_START_QUARTER).nullable(),
+});
+
+export type ClosingCloseInput = z.infer<typeof closingCloseInputSchema>;
+
+export const closingClosedSchema = z.object({
+  closedAt: z.iso.datetime({ offset: true }),
+  version: z.int().min(1),
+  /** The final results stored, those at leaving included. */
+  stored: z.int().min(0),
+  /** The waiting plan requests made void. */
+  voided: z.int().min(0),
+});
+
+export type ClosingClosed = z.infer<typeof closingClosedSchema>;
+
+/** The close in force of a closed quarter, as stored. */
+export const closingRecordSchema = z.object({
+  closedAt: z.iso.datetime({ offset: true }),
+  closedBy: z.string(),
+  version: z.int().min(1),
+  lockNow: z.boolean(),
+  startQuarter: z.enum(CLOSING_START_QUARTER).nullable(),
+  /** The warnings acknowledged, as they were listed. */
+  warnings: z.array(closingItemSchema),
+});
+
+export type ClosingRecord = z.infer<typeof closingRecordSchema>;
+
 export const closingChecklistSchema = z.object({
   quarters: z.array(
     z.object({
@@ -224,12 +302,23 @@ export const closingChecklistSchema = z.object({
   ),
   /** `null` when the branch has no dated quarter. */
   quarterId: z.uuid().nullable(),
-  /** `not_open` before the checklist opens: no items. */
-  state: z.enum(['not_open', 'open']),
+  /** `not_open` before the checklist opens, `closed` once closed: no items. */
+  state: z.enum(['not_open', 'open', 'closed']),
   opensOn: schoolDateSchema.nullable(),
   lastDay: schoolDateSchema.nullable(),
-  /** No blocking item and today is the last day or later (`07`); the close is 9.2b's. */
+  /**
+   * No blocking item other than those "lock now" ends, today the last day or later (`07`), and
+   * every earlier quarter of the year closed (task 9.2b, review correction 1).
+   */
   closable: z.boolean(),
+  /** An item that "lock now and close" ends is listed: the close needs `lockNow`. */
+  lockNowNeeded: z.boolean(),
+  /** The start quarter of the branch: the close needs "keep" or "not official". */
+  startQuarter: z.boolean(),
+  /** An earlier quarter of the year is still open (`edge/journal`: "Quarters are closed in order"). */
+  earlierOpen: z.boolean(),
+  /** The close in force; `null` while the quarter is open. */
+  closing: closingRecordSchema.nullable(),
   /** The reader may decide, end the plan periods and remind. */
   canEdit: z.boolean(),
   blocking: z.int().min(0),

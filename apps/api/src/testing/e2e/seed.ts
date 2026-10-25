@@ -9,6 +9,7 @@ import { relativeNameKey, studentNameKey } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { insertBranch, setEditDays } from '../branch-filter-sql.js';
 import { LessonsKit } from '../lessons-kit.js';
+import { LoadKit } from '../load-kit.js';
 import { linkRelative } from '../relatives-kit.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
@@ -6008,6 +6009,38 @@ try {
     }),
   );
   seeded.closingVice = { login: closingVice.login, password: closingVice.firstPassword };
+
+  // Task 9.2b: a branch of its own whose quarter 1 ended yesterday, with nothing in it: its
+  // Academic Vice Principal closes the quarter from the checklist (07, Closing a quarter).
+  // All names are invented.
+  {
+    const closeBranch = await insertBranch(migrator, 'Closing browser test branch');
+    const closeYear = await new LoadKit(migrator).classes.year(
+      closeBranch,
+      'current',
+      startDate,
+      isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+    );
+    await migrator
+      .updateTable('quarters')
+      .set({
+        start_date: startDate,
+        end_date: isoDate(new Date(tashkentToday.getTime() - dayMs)),
+      })
+      .where('academic_year_id', '=', closeYear)
+      .where('number', '=', 1)
+      .execute();
+    const closeVice = await create('Feruza', 'Nurmatova');
+    await transactions.run([closeBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: closeVice.id,
+        role: 'academic_vice_principal',
+        branchId: closeBranch,
+        givenBy: null,
+      }),
+    );
+    seeded.closeVice = { login: closeVice.login, password: closeVice.firstPassword };
+  }
 
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight

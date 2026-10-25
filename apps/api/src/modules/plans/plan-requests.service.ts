@@ -27,6 +27,7 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { closingOf, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
 import { accountOfStaff, postHolders, postsOf } from '../access/request-posts.js';
@@ -42,7 +43,7 @@ import { decisionReach, firstTier } from '../access/request-routing.js';
 import { ownerIdOn } from './plan-scope.js';
 import { periodLastDay, periodOpen, windowStateOf } from './plan-window.js';
 import { answerOf, calendarOf, requestRows, type RequestRow } from './plan-request-read.js';
-import { PlansService, type Scene } from './plans.service.js';
+import { PlansService, holdQuarter, type Scene } from './plans.service.js';
 
 /**
  * Plan edit requests (task 7.2, pull request #215; `09`, Editing after the
@@ -756,6 +757,9 @@ export class PlanRequestsService {
   ): Promise<{ scene: Scene; planId: string }> {
     // Permission review, should-fix 1: a closed year is told after the routing.
     const scene = await this.plans.sceneOf(transaction, access, branchId, journalId, quarterId);
+    // Task 9.2b (From 7.1a): the quarter before the journals and the request; a closed one is
+    // told after the routing too (`lockOpenQuarter` at the closed year's refusal).
+    await holdQuarter(transaction, scene.quarter.id);
     await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
     const planId = await planIdOf(transaction, journalId, scene.quarter.id);
     if (planId === null) throw notFound();
@@ -810,6 +814,8 @@ export class PlanRequestsService {
       const request = await this.lockRequest(transaction, requestId);
       const requester = await this.refuseNonDecider(transaction, access, scene, request);
       if (scene.closed) throw new ApiException('plan_year_closed', 409);
+      // Task 9.2b (From 7.1a; `edge/lesson-plans`: "Nothing is possible in a closed quarter").
+      await lockOpenQuarter(transaction, scene.quarter.id, 'plan_quarter_closed');
       if (!(WAITING as readonly string[]).includes(request.status) || request.plan_id !== planId) {
         throw new ApiException('plan_request_decided', 409);
       }
@@ -847,6 +853,8 @@ export class PlanRequestsService {
       if (reach === 'own') refuseOwnRequest(access.accountId, owner ?? '');
       if (reach !== 'decide') throw scopeRefusal();
       if (scene.closed) throw new ApiException('plan_year_closed', 409);
+      // Task 9.2b (From 7.1a; `edge/lesson-plans`: "Nothing is possible in a closed quarter").
+      await lockOpenQuarter(transaction, scene.quarter.id, 'plan_quarter_closed');
       const stored = await this.storeWindowEnd(transaction, scene, planId);
       const request = await this.lockRequest(transaction, stored.id);
       if (!(WAITING as readonly string[]).includes(request.status)) {
@@ -1057,7 +1065,7 @@ export class PlanRequestsService {
       let until = today;
       // Every journal first in the order of the id, then the requests.
       const journalIds = [...new Set(requests.map((one) => one.journal_id))].sort();
-      const scenes = new Map<string, { scene: Scene; planId: string }>();
+      const scenes = new Map<string, { scene: Scene; planId: string; quarterClosed: boolean }>();
       for (const journalId of journalIds) {
         const one = requests.find((row) => row.journal_id === journalId);
         if (one === undefined) continue;
@@ -1069,9 +1077,12 @@ export class PlanRequestsService {
           one.quarter_id,
         );
         if (input.subjectId !== undefined && scene.journal.subjectId !== input.subjectId) continue;
+        // Task 9.2b (From 7.1a): the quarter before the journals; a closed one skips its requests.
+        await holdQuarter(transaction, scene.quarter.id);
         await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
         const planId = await planIdOf(transaction, journalId, scene.quarter.id);
-        if (planId !== null) scenes.set(journalId, { scene, planId });
+        const quarterClosed = (await closingOf(transaction, scene.quarter.id)) !== undefined;
+        if (planId !== null) scenes.set(journalId, { scene, planId, quarterClosed });
       }
       for (const row of [...requests].sort((a, b) => a.id.localeCompare(b.id))) {
         const found = scenes.get(row.journal_id);
@@ -1103,7 +1114,7 @@ export class PlanRequestsService {
           others += 1;
           continue;
         }
-        if (reach !== 'decide' || found.scene.closed) {
+        if (reach !== 'decide' || found.scene.closed || found.quarterClosed) {
           skipped.push(request.id);
           continue;
         }

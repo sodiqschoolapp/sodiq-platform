@@ -275,6 +275,12 @@ export async function dayTemplatesKit(
         'lesson_plan_requests',
         'lesson_plan_request_causes',
         'lesson_plan_absorbed',
+        // Task 9.2b: the close of a quarter writes its closing, the names and the final results.
+        'quarter_closings',
+        'quarter_closing_journals',
+        'quarter_final_results',
+        // Task 9.2b (permission review should-fix 6): the notice of "lock now".
+        'notifications',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)

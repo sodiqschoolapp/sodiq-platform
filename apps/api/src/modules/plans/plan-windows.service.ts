@@ -18,6 +18,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
@@ -32,6 +33,7 @@ import {
   type PlanQuarter,
 } from './plan-read.js';
 import { windowStateOf } from './plan-window.js';
+import { holdQuarter } from './plans.service.js';
 
 /**
  * The plan window (task 7.2, pull request #215; `09`, The plan window: "The
@@ -130,11 +132,16 @@ export class PlanWindowsService {
     });
   }
 
-  /** The quarter of a path, of the branch. */
+  /**
+   * The quarter of a path, of the branch. `refuseClosed` false: the quarter is held
+   * `for key share` with no refusal, and the caller refuses `plan_quarter_closed` after its
+   * own 404 and 403 (task 9.2b, permission review M1).
+   */
   private async quarterOf(
     transaction: Transaction,
     branchId: string,
     quarterId: string,
+    refuseClosed = true,
   ): Promise<QuarterRow> {
     const found = await transaction
       .selectFrom('quarters')
@@ -152,6 +159,10 @@ export class PlanWindowsService {
       .executeTakeFirst();
     if (found === undefined) throw notFound();
     if (found.status === 'closed') throw new ApiException('plan_year_closed', 409);
+    // Task 9.2b (From 7.1a; `edge/lesson-plans`: "Nothing is possible in a closed quarter"):
+    // the quarter `for key share`, before the window's and the journals' locks.
+    if (refuseClosed) await lockOpenQuarter(transaction, found.id, 'plan_quarter_closed');
+    else await holdQuarter(transaction, found.id);
     if (found.start_date === null || found.end_date === null) {
       throw new ApiException('plan_window_dates', 409);
     }
@@ -424,7 +435,9 @@ export class PlanWindowsService {
     const branchId = branchOf(access);
     return this.transactions
       .run(access.branchIds, async (transaction) => {
-        const quarter = await this.quarterOf(transaction, branchId, quarterId);
+        // Task 9.2b (From 7.1a; permission review M1): the quarter held before the row locks,
+        // refused only after the 404 of the person and the refusal of one's own window.
+        const quarter = await this.quarterOf(transaction, branchId, quarterId, false);
         const person = await transaction
           .selectFrom('staff')
           .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
@@ -438,6 +451,8 @@ export class PlanWindowsService {
         // one's own window, before or after its end, is refused.
         const personAccount = await accountOfStaff(transaction, person.id);
         if (personAccount !== null) refuseOwnRequest(access.accountId, personAccount);
+        // `edge/lesson-plans`: "Nothing is possible in a closed quarter".
+        await lockOpenQuarter(transaction, quarter.id, 'plan_quarter_closed');
         const { today, now, timeZone } = await clockOf(transaction, branchId);
         const window = await transaction
           .selectFrom('lesson_plan_windows')

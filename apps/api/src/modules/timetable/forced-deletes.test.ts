@@ -19,6 +19,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
 import { heldEntry } from '../../testing/held-entry.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { inOrderOnLesson, markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -487,6 +488,39 @@ describe('the forced delete of a dated lesson and its restore', () => {
         .execute();
       refusedWith(await forceDelete(s.branch, lesson.id), 409, 'timetable_year_closed');
       expect(await rowOf(lesson.id)).toBeDefined();
+    });
+
+    // Task 9.2b (From 5.8b; edge/people-roles-accounts: "A Super Admin force-deletes a lesson
+    // with marks. | Refused in a closed quarter.").
+    it('is refused in a closed quarter, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await mark(s, lesson.id);
+      const block = await blockOf(lesson.block_id);
+      if (block === undefined) throw new Error('No block.');
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: block.quarter_id,
+        accountId: adminAccount,
+      });
+      const before = await everything();
+      refusedWith(await forceDelete(s.branch, lesson.id), 409, 'quarter_closed');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('still deletes a lesson of the next quarter when the quarter before is closed', async () => {
+      const s = await scene();
+      const closed = await lessonOf(s, NEXT_MONDAY);
+      const block = await blockOf(closed.block_id);
+      if (block === undefined) throw new Error('No block.');
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: block.quarter_id,
+        accountId: adminAccount,
+      });
+      const lesson = await lessonOf(s, '2026-11-09');
+      done(await forceDelete(s.branch, lesson.id));
+      expect(await rowOf(lesson.id)).toBeUndefined();
     });
 
     it('is refused to the Academic Vice Principal, the Principal and a Teacher, and nothing changes', async () => {
@@ -1022,6 +1056,61 @@ describe('the forced delete of a dated lesson and its restore', () => {
         .execute();
       refusedWith(await restore(s.branch, store), 409, 'timetable_year_closed');
       expect(await rowOf(lesson.id)).toBeUndefined();
+    });
+
+    // Task 9.2b (From 5.8b): the restore of a lesson of a closed quarter is refused, its block
+    // gone with it (the quarter stored on the block) or kept by its other lessons (the quarter
+    // of its date).
+    it('is refused in a closed quarter, the block gone with the lesson, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await mark(s, lesson.id);
+      const block = await blockOf(lesson.block_id);
+      if (block === undefined) throw new Error('No block.');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      expect(await blockOf(lesson.block_id)).toBeUndefined();
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: block.quarter_id,
+        accountId: adminAccount,
+      });
+      const before = await everything();
+      refusedWith(await restore(s.branch, store), 409, 'quarter_closed');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('is refused in a closed quarter, the block kept by its other lessons', async () => {
+      const s = await scene();
+      const { lesson, other } = await sharedBlock(s);
+      const block = await blockOf(lesson.block_id);
+      if (block === undefined) throw new Error('No block.');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      expect(await blockOf(lesson.block_id)).toBeDefined();
+      expect(await rowOf(other.id)).toBeDefined();
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: block.quarter_id,
+        accountId: adminAccount,
+      });
+      const before = await everything();
+      refusedWith(await restore(s.branch, store), 409, 'quarter_closed');
+      expect(await everything()).toEqual(before);
+    });
+
+    it('still restores a lesson of the next quarter when the quarter before is closed', async () => {
+      const s = await scene();
+      const closed = await lessonOf(s, NEXT_MONDAY);
+      const block = await blockOf(closed.block_id);
+      if (block === undefined) throw new Error('No block.');
+      const lesson = await lessonOf(s, '2026-11-09');
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: block.quarter_id,
+        accountId: adminAccount,
+      });
+      done(await restore(s.branch, store));
+      expect(await rowOf(lesson.id)).toBeDefined();
     });
 
     it('refuses a body with a field of its own as an input error', async () => {

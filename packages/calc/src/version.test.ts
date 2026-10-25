@@ -19,6 +19,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 3: task 6.2, the class or group average of the journal's bottom row (`groupAverage`); no
   // existing formula changes.
   'c68ce35f92e0abdfc99e441e58e971cc14c8b5607ac2ed513ac0f2d479f73160',
+  // 4: task 9.2b, the readers of a stored final record (`storedQuarterOutcome`,
+  // `storedQuarterInputs`); no existing formula changes.
+  '5b067ddb39578b079fe3babe9fe21dfa871d5e1c94f77ef62d0391bf7bdeddf1',
 ];
 
 const directory = new URL('./', import.meta.url);

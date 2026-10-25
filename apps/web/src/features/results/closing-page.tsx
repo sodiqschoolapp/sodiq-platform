@@ -21,7 +21,9 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText, schoolDateText } from '@/lib/dates';
+import { CloseQuarterDialog } from './close-quarter-dialog';
 import {
+  closeQuarter,
   closingQuery,
   decideJournal,
   decideResult,
@@ -72,6 +74,19 @@ export function ClosingPage(): React.JSX.Element {
       setRemindKey(crypto.randomUUID());
     },
   });
+  // Task 9.2b: the close, one key per dialog opened.
+  const [closing, setClosing] = useState<string | null>(null);
+  const close = useMutation({
+    mutationFn: async (input: Parameters<typeof closeQuarter>[1]) => {
+      if (data?.quarterId === null || data === undefined || closing === null) return null;
+      const answer = await closeQuarter(data.quarterId, input, closing);
+      await invalidateClosing(queryClient);
+      return answer;
+    },
+    onSuccess: (answer) => {
+      if (answer !== null) setClosing(null);
+    },
+  });
   const periods = data?.items.filter((item) => item.kind === 'plan_periods') ?? [];
   const endPeriods = useMutation({
     mutationFn: async (quarterId: string) => {
@@ -92,10 +107,13 @@ export function ClosingPage(): React.JSX.Element {
   });
   const rows = useMemo(
     (): Row[] | undefined =>
-      data?.items.map((item, index) => ({
-        ...item,
-        rowId: `${item.kind}:${item.journal?.id ?? ''}:${item.teacher?.id ?? ''}:${String(index)}`,
-      })),
+      // A closed quarter lists the warnings acknowledged at its close (`07`).
+      (data?.state === 'closed' ? (data.closing?.warnings ?? []) : data?.items)?.map(
+        (item, index) => ({
+          ...item,
+          rowId: `${item.kind}:${item.journal?.id ?? ''}:${item.teacher?.id ?? ''}:${String(index)}`,
+        }),
+      ),
     [data],
   );
   const columns = useMemo(
@@ -159,16 +177,24 @@ export function ClosingPage(): React.JSX.Element {
       ? null
       : data.quarterId === null
         ? t('results.closing.noQuarter')
-        : data.state === 'not_open'
-          ? t('results.closing.opensOn', {
-              date: schoolDateText(data.opensOn ?? '', language),
+        : data.state === 'closed' && data.closing !== null
+          ? t('results.closing.closedLine', {
+              date: momentText(language, data.closing.closedAt),
+              name: data.closing.closedBy,
+              version: data.closing.version,
             })
-          : data.closable
-            ? t('results.closing.closable')
-            : t('results.closing.counts', {
-                blocking: data.blocking,
-                warnings: data.warnings,
-              });
+          : data.state === 'not_open'
+            ? t('results.closing.opensOn', {
+                date: schoolDateText(data.opensOn ?? '', language),
+              })
+            : data.earlierOpen
+              ? t('results.closing.earlierOpen')
+              : data.closable
+                ? t('results.closing.closable')
+                : t('results.closing.counts', {
+                    blocking: data.blocking,
+                    warnings: data.warnings,
+                  });
 
   return (
     <>
@@ -193,12 +219,22 @@ export function ClosingPage(): React.JSX.Element {
                 </Button>
               )}
               <Button
+                variant="secondary"
                 disabled={remind.isPending || data.items.length === 0}
                 onClick={() => {
                   if (data.quarterId !== null) remind.mutate(data.quarterId);
                 }}
               >
                 {t('results.closing.remind')}
+              </Button>
+              <Button
+                disabled={!data.closable || close.isPending}
+                onClick={() => {
+                  close.reset();
+                  setClosing(crypto.randomUUID());
+                }}
+              >
+                {t('results.closing.closeQuarter')}
               </Button>
             </span>
           ) : undefined
@@ -237,6 +273,32 @@ export function ClosingPage(): React.JSX.Element {
           </div>
         )}
         <FailureAlert error={remind.error ?? endPeriods.error} />
+        {data?.state === 'closed' && data.closing !== null && (
+          <div className="grid gap-1 text-sm" data-closing-record="true">
+            {close.data !== undefined && close.data !== null && (
+              <p role="status">{t('results.closing.closed', { count: close.data.stored })}</p>
+            )}
+            {data.closing.lockNow && <p>{t('results.closing.closedLockNow')}</p>}
+            {data.closing.startQuarter !== null && (
+              <p>{t(`results.closing.closedStart_${data.closing.startQuarter}`)}</p>
+            )}
+            <p className="text-muted-foreground">
+              {data.closing.warnings.length > 0
+                ? t('results.closing.closedWarnings')
+                : t('results.closing.closedNone')}
+            </p>
+          </div>
+        )}
+        {closing !== null && data !== undefined && (
+          <CloseQuarterDialog
+            key={`${closing}:${JSON.stringify(data.items.map((item) => [item.kind, item.journal?.id ?? null]))}`}
+            checklist={data}
+            pending={close.isPending}
+            error={close.error}
+            onClose={(input) => close.mutate(input)}
+            onCancel={() => setClosing(null)}
+          />
+        )}
         {remind.data !== undefined && (
           <p className="text-sm" role="status">
             {t('results.closing.reminded', { count: remind.data.sent })}

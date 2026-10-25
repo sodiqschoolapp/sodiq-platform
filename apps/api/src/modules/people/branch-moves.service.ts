@@ -53,6 +53,7 @@ import {
 } from '../classes/group-membership-rows.js';
 import { holdsDays } from '../classes/membership-plan.js';
 import { MOVE_REFUSALS, moveState, movesOf } from '../classes/student-moves.js';
+import { lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import {
   arrivedOn,
@@ -86,6 +87,9 @@ const ACCEPT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   ...CLASS_GROUP_REFUSALS,
   ...MOVE_REFUSALS,
   ...BRANCH_MOVE_REFUSALS,
+  // Task 9.2b (From 3.3c, pull request #97, decision 9): the accept cuts the sending branch's
+  // rows and writes the receiving branch's from the date; a closed quarter refuses both (0133).
+  quarters_closed: 'branch_move_quarter_closed',
 };
 
 /**
@@ -161,6 +165,31 @@ export class BranchMoves {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
+          // Task 9.2b (From 3.3c, pull request #97, decision 9): a release dated in a closed
+          // quarter is refused; one dated after it is taken. The ids that answer 404 first, read
+          // without a lock (`.claude/rules/api.md`), then the quarters of the sending branch
+          // from the date on, in a statement of their own before the student
+          // (`.claude/rules/database.md`; review correction 3).
+          const seen = await transaction
+            .selectFrom('students')
+            .select('branch_id')
+            .where('id', '=', studentId)
+            .executeTakeFirst();
+          const named = await transaction
+            .selectFrom('branches')
+            .select('id')
+            .where('id', '=', input.toBranchId)
+            .executeTakeFirst();
+          if (seen === undefined || !same(seen.branch_id, branchId) || named === undefined) {
+            throw notFound();
+          }
+          await lockOpenQuarters(
+            transaction,
+            branchId,
+            input.from,
+            null,
+            'branch_move_quarter_closed',
+          );
           await this.lockStudentOf(transaction, studentId, branchId);
           const student = await this.placementStudent(transaction, studentId);
           if (student.version !== input.version) {
@@ -374,6 +403,22 @@ export class BranchMoves {
           const sending = await this.transactions.joinSendingBranch(transaction, moveId, branchId);
           if (sending === undefined) {
             throw notFound();
+          }
+          // Task 9.2b (From 3.3c, pull request #97, decision 9; plan decision 12): the accept of a
+          // release dated in a closed quarter is refused, also when the quarter was closed after
+          // the release. The accept ends the sending branch's class and group rows from the
+          // date and writes the receiving branch's from it, so the quarters of both branches
+          // from the date on are locked, the sending branch's first, each in a statement of its
+          // own before the student (`.claude/rules/database.md`; review correction 3); the
+          // guards of 0133 on those rows refuse again (`ACCEPT_REFUSALS`).
+          for (const branch of [sending.fromBranchId, branchId]) {
+            await lockOpenQuarters(
+              transaction,
+              branch,
+              sending.effectiveOn,
+              null,
+              'branch_move_quarter_closed',
+            );
           }
           // The student FOR UPDATE first, then the release: a change that came
           // first (an accept, a cancel, a leaving) leaves the release closed.

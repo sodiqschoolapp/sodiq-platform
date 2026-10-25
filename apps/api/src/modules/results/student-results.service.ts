@@ -6,6 +6,8 @@ import {
   quarterAttendanceAverage,
   quarterResult,
   shownPercent,
+  storedQuarterInputs,
+  storedQuarterOutcome,
   studentQuarterOutcome,
   yearResult,
   type FlagDecision,
@@ -77,9 +79,12 @@ import { notFound } from '../setup/setup-refusals.js';
  *   (`gridWeights`, decision 13) has no result: the grid shows none either, so
  *   it has no row in Results.
  * - The decision on a flag is the closing checklist's (task 9.2a,
- *   `quarter-decisions.ts`); no quarter is closed before 9.2b:
- *   `quarterClosed: false`.
- * - The year result is answered once the year is closed (decision 1, Look first).
+ *   `quarter-decisions.ts`).
+ * - Task 9.2b (From 9.1, decision 1, Look first): every figure of a closed quarter is read from
+ *   its stored final record (`storedQuarterOutcome`, the averages of a number from it, of
+ *   another outcome from the stored inputs), never calculated again; the year result is answered
+ *   once the fourth quarter is closed (`08`: "The year result is shown when the fourth quarter
+ *   is closed"), or the year; a start quarter closed "not official" is left out of it.
  */
 
 const shown = (value: Fraction | null): number | null =>
@@ -157,6 +162,11 @@ export class StudentResultsService {
         return studentResultsSchema.parse({ year, years, quarters: [], subjects: [] });
       }
       const quarters = await quartersOf(context, year.id);
+      const closings = await closingsOf(
+        context.transaction,
+        quarters.map((one) => one.id),
+      );
+      const fourthClosed = quarters.some((one) => one.number === 4 && closings.has(one.id));
       const subjects = [];
       for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
         const rows: unknown[] = [];
@@ -170,19 +180,29 @@ export class StudentResultsService {
           if (one === undefined || one.attendanceOnly) continue;
           const quarterly = one.weights.quarterly;
           if (quarterly === null) continue;
+          const closing = closings.get(quarter.id);
           const input = inputOf(
             context,
             one,
             quarterly,
             await decisionOf(context.transaction, quarter.id, subjectId, context.studentId),
+            closing !== undefined,
           );
-          const outcome = studentQuarterOutcome(input);
+          const stored =
+            closing === undefined
+              ? undefined
+              : await storedRecordOf(context.transaction, closing.id, subjectId, studentId);
+          const outcome =
+            stored === undefined ? studentQuarterOutcome(input) : storedQuarterOutcome(stored);
           outcomes.set(quarter.number, outcome);
           if (one.reading !== 'whole') {
             readsEveryQuarter = false;
             continue;
           }
-          const { averages } = quarterResult(input);
+          const averages =
+            outcome.kind === 'number'
+              ? outcome.result.averages
+              : quarterResult(stored === undefined ? input : storedQuarterInputs(stored)).averages;
           subject = one.journal.subject;
           rows.push({
             quarterId: quarter.id,
@@ -204,8 +224,8 @@ export class StudentResultsService {
           subject: { id: subjectId, names: subject.names, colour: subject.colour },
           quarters: rows,
           year:
-            year.status === 'closed' && readsEveryQuarter
-              ? yearShown(context.goLive, quarters, outcomes)
+            (year.status === 'closed' || fourthClosed) && readsEveryQuarter
+              ? yearShown(context.goLive, quarters, outcomes, notOfficialOf(closings))
               : null,
         });
       }
@@ -216,6 +236,8 @@ export class StudentResultsService {
         quarters: quarters.map((quarter) => ({
           ...quarter,
           notInSystem: notInSystem(context.goLive, quarter),
+          notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
+          closed: closings.has(quarter.id),
         })),
         subjects,
       });
@@ -234,6 +256,10 @@ export class StudentResultsService {
         return studentAttendanceSchema.parse({ year, years, quarters: [], subjects: [] });
       }
       const quarters = await quartersOf(context, year.id);
+      const closings = await closingsOf(
+        context.transaction,
+        quarters.map((one) => one.id),
+      );
       const subjects = [];
       for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
         const rows: unknown[] = [];
@@ -275,6 +301,8 @@ export class StudentResultsService {
         quarters: quarters.map((quarter) => ({
           ...quarter,
           notInSystem: notInSystem(context.goLive, quarter),
+          notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
+          closed: closings.has(quarter.id),
         })),
         subjects,
       });
@@ -567,13 +595,14 @@ function inputOf(
   one: SubjectQuarter,
   quarterly: NonNullable<GridWeights['quarterly']>,
   decision: FlagDecision | null,
+  quarterClosed = false,
 ): StudentQuarterInput {
   return {
     weights: quarterly,
     attendanceValues: valuesOf(one.weights),
     lessons: one.found.lessons.map((lesson) => lesson.lesson),
     ratingExam: ratingShownOf(one) ? one.found.ratingExam : null,
-    quarterClosed: false,
+    quarterClosed,
     heldInJournals: one.found.heldInJournals,
     countsFrom: countsFromOf(context.goLive, one.quarter),
     leftSubjectOn: one.found.leftSubjectOn,
@@ -618,10 +647,13 @@ export function yearShown(
   goLive: string | null,
   quarters: readonly QuarterRow[],
   outcomes: ReadonlyMap<number, StudentQuarterOutcome>,
+  notOfficial: ReadonlySet<string> = new Set(),
 ) {
   const four: QuarterOutcome[] = [1, 2, 3, 4].map((number) => {
     const quarter = quarters.find((one) => one.number === number);
     if (quarter !== undefined && notInSystem(goLive, quarter)) return 'not_in_system';
+    // Task 9.2b: `edge/academic-year`, "A 'not official' quarter is left out of the year result".
+    if (quarter !== undefined && notOfficial.has(quarter.id)) return 'not_official';
     const outcome = outcomes.get(number);
     return outcome === undefined ? 'no_result' : outcomeForYear(outcome);
   });
@@ -695,4 +727,48 @@ async function membershipReadings(context: Context, year: YearRow): Promise<Stud
     }
   }
   return readings;
+}
+
+/** The closes in force of the quarters given, by quarter (task 9.2b). */
+async function closingsOf(
+  transaction: Transaction,
+  quarterIds: readonly string[],
+): Promise<Map<string, { id: string; startQuarter: string | null }>> {
+  if (quarterIds.length === 0) return new Map();
+  const rows = await transaction
+    .selectFrom('quarter_closings')
+    .select(['id', 'quarter_id', 'start_quarter'])
+    .where('quarter_id', 'in', [...quarterIds])
+    .where('reopened_at', 'is', null)
+    .execute();
+  return new Map(
+    rows.map((row) => [row.quarter_id, { id: row.id, startQuarter: row.start_quarter }]),
+  );
+}
+
+/** The quarters closed "not official" (task 9.2b). */
+const notOfficialOf = (
+  closings: ReadonlyMap<string, { startQuarter: string | null }>,
+): Set<string> =>
+  new Set(
+    [...closings].flatMap(([quarterId, one]) =>
+      one.startQuarter === 'not_official' ? [quarterId] : [],
+    ),
+  );
+
+/** The final record of a student and subject stored by a close (task 9.2b), as stored. */
+async function storedRecordOf(
+  transaction: Transaction,
+  closingId: string,
+  subjectId: string,
+  studentId: string,
+): Promise<unknown> {
+  const row = await transaction
+    .selectFrom('quarter_final_results')
+    .select('record')
+    .where('closing_id', '=', closingId)
+    .where('subject_id', '=', subjectId)
+    .where('student_id', '=', studentId)
+    .executeTakeFirst();
+  return row?.record;
 }

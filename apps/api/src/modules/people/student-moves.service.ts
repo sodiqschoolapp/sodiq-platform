@@ -71,6 +71,7 @@ import {
   writtenBy,
   type StoredMove,
 } from '../classes/student-moves.js';
+import { lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { arrivedOn, branchMoveState, branchMovesOf } from './branch-moves.js';
 import { Students } from './students.service.js';
@@ -79,6 +80,8 @@ import { Students } from './students.service.js';
 const asJson = (value: unknown): JsonValue => JSON.parse(JSON.stringify(value)) as JsonValue;
 
 const later = (a: SchoolDate, b: SchoolDate): SchoolDate => (a > b ? a : b);
+
+const earlier = (a: SchoolDate, b: SchoolDate): SchoolDate => (a < b ? a : b);
 
 function branchOf(access: Access): string {
   if (access.branchId === null) {
@@ -145,8 +148,14 @@ export class StudentMoves {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const student = await this.lockStudent(transaction, input.studentId, input.version);
+          // Task 9.2b: the ids that answer 404 and the past date's 403 first, read without a
+          // lock (`.claude/rules/api.md`), then the quarters, then the student.
+          await seenStudent(transaction, input.studentId);
+          await seenClass(transaction, branchId, input.toClassId);
           const today = await this.students.todayIn(transaction, branchId);
+          this.pastAllowed(access, input.from, today);
+          await this.lockQuarters(transaction, access, input.from, 'class_quarter_closed');
+          const student = await this.lockStudent(transaction, input.studentId, input.version);
           const follow = await followJournal(transaction, student.id, input.from);
           const moved = await this.moveClass(transaction, access, student, today, input, requestId);
           const journal = await settleMove(transaction, access, follow, moved.moveId, today, input);
@@ -172,9 +181,18 @@ export class StudentMoves {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const studentId = await studentOfMove(transaction, branchId, moveId, 'class');
+          const stored = await storedMove(transaction, branchId, studentId, moveId);
+          await seenClass(transaction, branchId, input.toClassId);
+          const today = await this.students.todayIn(transaction, branchId);
+          this.pastAllowed(access, input.from, today);
+          await this.lockQuarters(
+            transaction,
+            access,
+            earlier(input.from, stored.effectiveOn),
+            'class_quarter_closed',
+          );
           const student = await this.lockStudent(transaction, studentId, input.version);
           const move = await lockMove(transaction, branchId, moveId, 'class');
-          const today = await this.students.todayIn(transaction, branchId);
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
           }
@@ -244,13 +262,27 @@ export class StudentMoves {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
+          // Task 9.2b: the checks that answer 404 and 403 on the rows as read, then the
+          // quarters, then the student; `moveGroup` checks them again under the locks.
+          const seen = (await groupMembershipsOf(transaction, input.studentId)).find(
+            (one) => one.id.toLowerCase() === input.memberId.toLowerCase(),
+          );
+          if (seen === undefined) {
+            throw notFound();
+          }
+          const today = await this.students.todayIn(transaction, branchId);
+          scopeOf(
+            access,
+            await this.readGroupPair(transaction, branchId, seen.groupId, input.toGroupId),
+          );
+          this.pastAllowed(access, input.from, today);
+          await this.lockQuarters(transaction, access, input.from, 'group_quarter_closed');
           const student = await this.lockStudent(transaction, input.studentId, null);
           const rows = await groupMembershipsOf(transaction, student.id);
           const row = rows.find((one) => one.id.toLowerCase() === input.memberId.toLowerCase());
           if (row === undefined) {
             throw notFound();
           }
-          const today = await this.students.todayIn(transaction, branchId);
           const follow = await followJournal(transaction, student.id, input.from);
           const { assignmentId, ...moved } = await this.moveGroup(
             transaction,
@@ -283,9 +315,19 @@ export class StudentMoves {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const studentId = await studentOfMove(transaction, branchId, moveId, 'group');
+          const today = await this.students.todayIn(transaction, branchId);
+          const stored = await storedMove(transaction, branchId, studentId, moveId);
+          await this.groupScope(transaction, access, stored);
+          await this.readGroups(transaction, branchId, [input.toGroupId]);
+          this.pastAllowed(access, input.from, today);
+          await this.lockQuarters(
+            transaction,
+            access,
+            earlier(input.from, stored.effectiveOn),
+            'group_quarter_closed',
+          );
           const student = await this.lockStudent(transaction, studentId, null);
           const move = await lockMove(transaction, branchId, moveId, 'group');
-          const today = await this.students.todayIn(transaction, branchId);
           await this.groupScope(transaction, access, move);
           if (moveState(move, today) !== 'scheduled') {
             throw new ApiException('move_not_scheduled', 409);
@@ -391,6 +433,25 @@ export class StudentMoves {
       ...(entry.reason === undefined ? {} : { reason: entry.reason }),
       requestId: entry.requestId,
     });
+  }
+
+  /**
+   * Task 9.2b (From 3.3a, pull request #95, decision 4; plan decision 12): a move, its change
+   * and its taking back change membership from their date on, so a date in a closed quarter is
+   * refused (`edge/students-classes-groups`: "Backdating is for the Academic Vice Principal, in
+   * an open quarter"); a date after the closed quarter changes no closed day and is taken. The
+   * quarters of the branch from the date on are locked in a statement of their own, after the
+   * checks that answer 404 and 403 and before the student (`.claude/rules/database.md`; review
+   * correction 3); the guards of 0133 on the class and group rows refuse again
+   * (`quarters_closed` of `MEMBERSHIP_REFUSALS` and `GROUP_MEMBERSHIP_REFUSALS`).
+   */
+  private async lockQuarters(
+    transaction: Transaction,
+    access: Access,
+    from: SchoolDate,
+    code: 'class_quarter_closed' | 'group_quarter_closed',
+  ): Promise<void> {
+    await lockOpenQuarters(transaction, branchOf(access), from, null, code);
   }
 
   /** A date before today needs the Super Admin or the Academic Vice Principal (decision 4). */
@@ -628,6 +689,8 @@ export class StudentMoves {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const studentId = await studentOfMove(transaction, branchId, moveId, 'class');
+          const stored = await storedMove(transaction, branchId, studentId, moveId);
+          await this.lockQuarters(transaction, access, stored.effectiveOn, 'class_quarter_closed');
           const student = await this.lockStudent(transaction, studentId, version);
           const move = await lockMove(transaction, branchId, moveId, 'class');
           const today = await this.students.todayIn(transaction, branchId);
@@ -1070,6 +1133,9 @@ export class StudentMoves {
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
           const studentId = await studentOfMove(transaction, branchId, moveId, 'group');
+          const stored = await storedMove(transaction, branchId, studentId, moveId);
+          await this.groupScope(transaction, access, stored);
+          await this.lockQuarters(transaction, access, stored.effectiveOn, 'group_quarter_closed');
           const student = await this.lockStudent(transaction, studentId, null);
           const move = await lockMove(transaction, branchId, moveId, 'group');
           const assignmentId = await this.groupScope(transaction, access, move);
@@ -1256,6 +1322,49 @@ export class StudentMoves {
       .where('id', '=', row.id)
       .execute();
   }
+}
+
+/** The student of the request's branch, read without a lock (task 9.2b); 404 otherwise. */
+async function seenStudent(transaction: Transaction, studentId: string): Promise<void> {
+  const row = await transaction
+    .selectFrom('students')
+    .select('id')
+    .where('id', '=', studentId)
+    .executeTakeFirst();
+  if (row === undefined) {
+    throw notFound();
+  }
+}
+
+/** The class a move names, of the branch, read without a lock (task 9.2b); 404 otherwise. */
+async function seenClass(
+  transaction: Transaction,
+  branchId: string,
+  classId: string,
+): Promise<void> {
+  const found = await readPlacementClass(transaction, classId);
+  if (found === undefined || found.branchId.toLowerCase() !== branchId.toLowerCase()) {
+    throw notFound();
+  }
+}
+
+/**
+ * A move of the student as read, without a lock (task 9.2b): its date and groups for the checks
+ * and the quarter lock taken before the student; the move is locked and read again after it.
+ */
+async function storedMove(
+  transaction: Transaction,
+  branchId: string,
+  studentId: string,
+  moveId: string,
+): Promise<StoredMove> {
+  const move = (await movesOf(transaction, studentId, branchId)).find(
+    (one) => one.id.toLowerCase() === moveId.toLowerCase(),
+  );
+  if (move === undefined) {
+    throw notFound();
+  }
+  return move;
 }
 
 /**

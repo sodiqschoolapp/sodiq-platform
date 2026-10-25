@@ -44,6 +44,9 @@ const MERGE_DOES: Readonly<
   // Task 9.2a: the decisions on flagged results go to the kept record; two of one quarter
   // and subject refuse the merge by their key.
   quarter_result_decisions: 'carried',
+  // Task 9.2b: the final results of closed quarters go to the kept record; two of one close
+  // and subject refuse the merge by their key.
+  quarter_final_results: 'carried',
   // Task 6.3, correction 2: the reasons of absence go to the kept record.
   student_absence_reasons: 'carried',
   student_accounts: 'left behind',

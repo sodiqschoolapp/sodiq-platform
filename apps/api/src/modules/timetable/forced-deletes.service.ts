@@ -24,6 +24,7 @@ import {
 } from '../audit/forced-deletes.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { lockOpenQuarter, lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { refuseBlocked } from './day-changes.service.js';
 import { TimetablePattern } from './pattern.service.js';
@@ -182,6 +183,15 @@ export const RESTORE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   lesson_block_class_out_exam: 'forced_delete_parent_changed',
   forced_delete_expired: 'forced_delete_expired',
   forced_delete_restored: 'forced_delete_restored',
+  // Task 9.2b (From 5.8b): a 0133 guard met by the rows put back (a cell of a
+  // closed quarter's lesson) refuses as the lock of the quarter would.
+  quarters_closed: 'quarter_closed',
+};
+
+/** The constraints a forced delete meets: those of a publish and the guards of 0133 (task 9.2b). */
+const DELETE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
+  ...PUBLISH_REFUSALS,
+  quarters_closed: 'quarter_closed',
 };
 
 const iso = (value: Date | string): string =>
@@ -209,6 +219,7 @@ export class LessonForcedDeletes implements OnModuleInit {
       lock: async (transaction, branchId, row) => {
         const yearId = (row.rows as unknown as LessonRows).place.academicYearId;
         await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+        await lockStoredQuarter(transaction, branchId, row.rows as unknown as LessonRows);
         await lockPublishChain(transaction, branchId, yearId);
         await refuseClosedYear(transaction, yearId);
       },
@@ -224,50 +235,52 @@ export class LessonForcedDeletes implements OnModuleInit {
     requestId: string,
   ): Promise<ForcedDelete> {
     const branchId = branchOf(access);
-    return refusingPublish(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        // The lesson of the branch first, so an unknown or foreign id never
-        // waits on a publish; a repeat with the key finds it in the store.
-        const found =
-          (await transaction
-            .selectFrom('lessons')
-            .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
-            .select('lesson_blocks.academic_year_id')
-            .where('lessons.id', '=', id)
-            .where('lessons.branch_id', '=', branchId)
-            .executeTakeFirst()) ??
-          (await transaction
-            .selectFrom('forced_deletes')
-            .select(sql<string>`rows -> 'place' ->> 'academicYearId'`.as('academic_year_id'))
-            .where('record_type', '=', 'lesson')
-            .where('record_id', '=', id)
-            .where('branch_id', '=', branchId)
-            .orderBy('deleted_at', 'desc')
-            .executeTakeFirst());
-        if (found === undefined) {
-          throw notFound();
-        }
-        await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
-        const once = await this.requestKeys.runOnce(
-          transaction,
-          {
-            key,
-            scope: 'timetable.lesson_forced_delete',
-            accountId: access.accountId,
-            input: { lessonId: id, reason: input.reason },
-          },
-          async () =>
-            (await this.deleteLocked(
-              transaction,
-              access,
-              id,
-              found.academic_year_id,
-              input.reason,
-              requestId,
-            )) as unknown as JsonValue,
-        );
-        return forcedDeleteSchema.parse(once.result);
-      }),
+    return refusingPublish(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          // The lesson of the branch first, so an unknown or foreign id never
+          // waits on a publish; a repeat with the key finds it in the store.
+          const found =
+            (await transaction
+              .selectFrom('lessons')
+              .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+              .select('lesson_blocks.academic_year_id')
+              .where('lessons.id', '=', id)
+              .where('lessons.branch_id', '=', branchId)
+              .executeTakeFirst()) ??
+            (await transaction
+              .selectFrom('forced_deletes')
+              .select(sql<string>`rows -> 'place' ->> 'academicYearId'`.as('academic_year_id'))
+              .where('record_type', '=', 'lesson')
+              .where('record_id', '=', id)
+              .where('branch_id', '=', branchId)
+              .orderBy('deleted_at', 'desc')
+              .executeTakeFirst());
+          if (found === undefined) {
+            throw notFound();
+          }
+          await sql`select pg_advisory_xact_lock(${PUBLISH_LOCK})`.execute(transaction);
+          const once = await this.requestKeys.runOnce(
+            transaction,
+            {
+              key,
+              scope: 'timetable.lesson_forced_delete',
+              accountId: access.accountId,
+              input: { lessonId: id, reason: input.reason },
+            },
+            async () =>
+              (await this.deleteLocked(
+                transaction,
+                access,
+                id,
+                found.academic_year_id,
+                input.reason,
+                requestId,
+              )) as unknown as JsonValue,
+          );
+          return forcedDeleteSchema.parse(once.result);
+        }),
+      DELETE_REFUSALS,
     );
   }
 
@@ -280,6 +293,21 @@ export class LessonForcedDeletes implements OnModuleInit {
     requestId: string,
   ): Promise<ForcedDelete> {
     const branchId = branchOf(access);
+    // Task 9.2b (From 5.8b; edge/people-roles-accounts: "A Super Admin
+    // force-deletes a lesson with marks. | Refused in a closed quarter."). The
+    // quarter is locked in a statement of its own before the first row lock
+    // (.claude/rules/database.md), so a close held open makes the delete wait
+    // and a close that committed refuses it.
+    const quarter = await transaction
+      .selectFrom('lessons')
+      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+      .select('lesson_blocks.quarter_id')
+      .where('lessons.id', '=', id)
+      .where('lessons.branch_id', '=', branchId)
+      .executeTakeFirst();
+    if (quarter !== undefined) {
+      await lockOpenQuarter(transaction, quarter.quarter_id);
+    }
     await lockPublishChain(transaction, branchId, yearId);
     await refuseClosedYear(transaction, yearId);
     const dated = await transaction
@@ -1137,6 +1165,23 @@ async function refuseExamsMoved(
       },
     ]);
   }
+}
+
+/**
+ * Task 9.2b (From 5.8b): the quarter of a stored lesson locked open before the
+ * restore's row locks: its block's quarter when the block went with it, else
+ * the quarter of its date (the block that stayed is dated the same day).
+ */
+async function lockStoredQuarter(
+  transaction: Transaction,
+  branchId: string,
+  rows: LessonRows,
+): Promise<void> {
+  if (rows.block !== null) {
+    await lockOpenQuarter(transaction, rows.block.quarter_id);
+    return;
+  }
+  await lockOpenQuarters(transaction, branchId, rows.lesson.lesson_date, rows.lesson.lesson_date);
 }
 
 /** Refuses a change of a lesson of a closed year: its timetable is read only (decision 6). */

@@ -393,6 +393,12 @@ export const exemptionPreviewSchema = z.strictObject({
   students: z.array(exemptionPreviewStudentSchema),
   /** The year's last day: the end of a full exemption. */
   yearEnd: schoolDateSchema,
+  /**
+   * Task 9.2b (From 8.5; `07`, Problem cases, "The dates fall in a closed quarter": "The part
+   * inside a closed quarter is refused until that quarter is reopened ... The part in an open
+   * quarter is applied"): the days of the change the close keeps as they are; `null` when none.
+   */
+  closedPart: z.strictObject({ startDate: schoolDateSchema, endDate: schoolDateSchema }).nullable(),
 });
 
 export type ExemptionPreview = z.infer<typeof exemptionPreviewSchema>;
