@@ -118,8 +118,8 @@ describe('reopening a quarter in the database', () => {
 
   type Scene = Awaited<ReturnType<typeof scene>>;
 
-  /** The branch close, with the names of both journals as the close stores them. */
-  async function close(s: Scene, moment = CLOSE) {
+  /** The branch close, with the names of both journals (and `more`) as the close stores them. */
+  async function close(s: Scene, moment = CLOSE, more: readonly string[] = []) {
     return inBranch(s.branch, moment, async (transaction) => {
       const row = await transaction
         .insertInto('quarter_closings')
@@ -138,7 +138,7 @@ describe('reopening a quarter in the database', () => {
       await transaction
         .insertInto('quarter_closing_journals')
         .values(
-          [s.journal, s.otherJournal].map((journal) => ({
+          [s.journal, s.otherJournal, ...more].map((journal) => ({
             branch_id: s.branch,
             closing_id: row.id,
             journal_id: journal,
@@ -983,6 +983,45 @@ describe('reopening a quarter in the database', () => {
       expect(await refusal(add(s, INSIDE))).toMatchObject(EXEMPTION_CLOSED);
       // Of some subjects: refused when its subject rows are written (deferred to the commit).
       expect(await refusal(add(s, INSIDE, false))).toMatchObject(EXEMPTION_CLOSED);
+    });
+
+    // Spec review must-fix 2: closed days that reach two journals (the class's and a group's of
+    // the same student) are applied only once both are reopened, never with one of them.
+    it('is refused while one of the two journals its closed days reach is not reopened', async () => {
+      const s = await scene();
+      const group = await cells.lessons.load.classes.group(s.branch, s.year, cells.subject, [
+        s.classId,
+      ]);
+      await cells.lessons.inGroup(s.branch, group, cells.subject, s.student);
+      await cells.groupLesson(s.branch, s.year, group, DAY);
+      const groupJournal =
+        (
+          await database.migrator
+            .selectFrom('journals')
+            .select('id')
+            .where('group_id', '=', group)
+            .executeTakeFirst()
+        )?.id ??
+        (
+          await database.migrator
+            .insertInto('journals')
+            .values({
+              branch_id: s.branch,
+              academic_year_id: s.year,
+              class_id: null,
+              group_id: group,
+              subject_id: cells.subject,
+              runs: '{[2026-09-01,)}',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const closing = await close(s, CLOSE, [groupJournal]);
+      await reopen(s, closing.id, { journal: s.journal });
+      expect(await refusal(add(s, INSIDE))).toMatchObject(EXEMPTION_CLOSED);
+      expect(await refusal(add(s, INSIDE, false))).toMatchObject(EXEMPTION_CLOSED);
+      await reopen(s, closing.id, { journal: groupJournal });
+      await add(s, INSIDE);
     });
 
     it('is refused once the end of the reopening has passed', async () => {
