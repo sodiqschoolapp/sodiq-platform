@@ -966,6 +966,12 @@ test('the Academic Vice Principal changes the edit days and a late value, and th
   });
   await quarter.getByLabel(en.setup.settings.lateValue, { exact: true }).fill('75');
   await quarter.getByRole('button', { name: en.form.save, exact: true }).click();
+  // Task 9.1 (edge/calculation, "with the same preview"): a change of stored values asks its reason.
+  const reason = page.getByRole('dialog', { name: en.results.change.title });
+  await reason
+    .getByLabel(en.results.change.reason, { exact: true })
+    .fill('Agreed by the teachers council');
+  await reason.getByRole('button', { name: en.results.change.save, exact: true }).click();
   await expect(saved(quarter)).toBeVisible();
   await page.reload();
   await expect(
