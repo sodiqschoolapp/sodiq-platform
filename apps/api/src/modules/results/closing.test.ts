@@ -2527,13 +2527,9 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(lessons.map((one) => one.mark)).toEqual([1, 1, null]);
     });
 
-    it("a recalculation applied waits for a journal's re-close held open, and a re-close waits for it", async () => {
-      const b = await closed();
-      const by = await load.classes.account();
-      await reopenJournal(b, by);
-      const admin = await sharedAdmin(0);
-      // A record the module would not make, of a student of the journal.
-      await t.database.migrator.transaction().execute(async (transaction) => {
+    /** A record the module would not make, of a student of the journal. */
+    const corruptAziz = (b: Awaited<ReturnType<typeof base>>) =>
+      t.database.migrator.transaction().execute(async (transaction) => {
         await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
           transaction,
         );
@@ -2547,10 +2543,50 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           transaction,
         );
       });
-      const apply = {
-        reason: 'A rounding bug of an earlier release',
-        students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+    const applyOf = (b: Awaited<ReturnType<typeof base>>) => ({
+      reason: 'A rounding bug of an earlier release',
+      students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+    });
+    /** What an apply writes first: the quarter for update, its version `recalculation`. */
+    const applyRow =
+      (b: Awaited<ReturnType<typeof base>>, by: string) => async (transaction: Transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: by,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: 'recalculation',
+            reason: 'A rounding bug of an earlier release',
+          })
+          .execute();
       };
+    const versionsOf = (quarterId: string) =>
+      t.database.migrator
+        .selectFrom('quarter_closings')
+        .select(['version', 'cause'])
+        .where('quarter_id', '=', quarterId)
+        .orderBy('version')
+        .execute();
+
+    it("a recalculation applied waits for a journal's re-close held open, and a journal's reopening waits for it", async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const admin = await sharedAdmin(0);
+      await corruptAziz(b);
+      const apply = applyOf(b);
       // The re-close held first: the apply waits on the quarter and stores the next version.
       const held = hold(b.s.branch, INSIDE_AT, journalCloseRow(b, by));
       const pid = await held.isReady;
@@ -2577,29 +2613,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       // The other order: an apply held (the quarter for update, its version written) makes a
       // reopening of the journal wait, which then reads the close in force and is taken.
       const c = await closed();
-      const held2 = hold(c.s.branch, REOPEN_AT, async (transaction) => {
-        await transaction
-          .selectFrom('quarters')
-          .select('id')
-          .where('id', '=', c.q1)
-          .forUpdate()
-          .execute();
-        await transaction
-          .insertInto('quarter_closings')
-          .values({
-            branch_id: c.s.branch,
-            quarter_id: c.q1,
-            version: 0,
-            closed_at: new Date(0),
-            closed_by: by,
-            lock_now: false,
-            start_quarter: null,
-            warnings: '[]',
-            cause: 'recalculation',
-            reason: 'A rounding bug of an earlier release',
-          })
-          .execute();
-      });
+      const held2 = hold(c.s.branch, REOPEN_AT, applyRow(c, by));
       const pid2 = await held2.isReady;
       const reopened = await vice(
         c.s.branch,
@@ -2622,16 +2636,149 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       );
       expect(await held2.done).toBeUndefined();
       expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
-      const versions = await t.database.migrator
-        .selectFrom('quarter_closings')
-        .select(['version', 'cause'])
-        .where('quarter_id', '=', c.q1)
-        .orderBy('version')
-        .execute();
-      expect(versions).toEqual([
+      expect(await versionsOf(c.q1)).toEqual([
         { version: 1, cause: 'close' },
         { version: 2, cause: 'recalculation' },
       ]);
+    });
+
+    // Spec review must-fix 1: the re-close of a reopened journal waits for an apply held open,
+    // then reads the version it stored and is taken as the next one.
+    it('the re-close of a journal waits for a recalculation applied held open and is taken after it', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const warnings = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          return warningsOf({ ...list, items: list.reopenedJournals[0]?.items ?? [] });
+        },
+        INSIDE_AT,
+      );
+      const held = hold(b.s.branch, INSIDE_AT, applyRow(b, by));
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                b.s.branch,
+                `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+                { warnings, lockNow: false },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect((answer.body as { version: number }).version).toBe(3);
+      expect(await versionsOf(b.q1)).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+        { version: 3, cause: 'journal_close' },
+      ]);
+    });
+
+    // Spec review must-fix 1: an apply against a whole-branch reopening, in both orders. The
+    // reopening held first: the apply waits on the quarter, then finds it no longer closed.
+    it('a recalculation applied waits for a whole-branch reopening held open and is refused, and a reopening waits for it', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await corruptAziz(b);
+      const admin = await sharedAdmin(0);
+      const held = hold(b.s.branch, REOPEN_AT, async (transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        const closing = await transaction
+          .selectFrom('quarter_closings')
+          .select('id')
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('quarter_reopenings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            closing_id: closing.id,
+            journal_id: null,
+            reason: 'A mark was typed in the wrong row',
+            days: 3,
+            reopened_at: new Date(0),
+            open_until: new Date(0),
+            reopened_by: by,
+          })
+          .execute();
+      });
+      const pid = await held.isReady;
+      const refused = await as(
+        admin,
+        [],
+        async ({ post }) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            post(
+              b.s.branch,
+              `/api/results/closing/${b.q1}/recalculation/apply`,
+              applyOf(b),
+              randomUUID(),
+            ).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([refused.status, codeOf(refused)]).toEqual([409, 'quarter_not_closed']);
+      expect(await versionsOf(b.q1)).toEqual([{ version: 1, cause: 'close' }]);
+      // The apply held first: the whole-branch reopening waits, then reopens the close in force.
+      const c = await closed();
+      const held2 = hold(c.s.branch, REOPEN_AT, applyRow(c, by));
+      const pid2 = await held2.isReady;
+      const reopened = await vice(
+        c.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                c.s.branch,
+                `/api/results/closing/${c.q1}/reopen`,
+                { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid2);
+          held2.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held2.done).toBeUndefined();
+      expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+      expect(await versionsOf(c.q1)).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+      ]);
+      const reopening = await t.database.migrator
+        .selectFrom('quarter_reopenings')
+        .innerJoin('quarter_closings', 'quarter_closings.id', 'quarter_reopenings.closing_id')
+        .select(['quarter_closings.version', 'quarter_reopenings.journal_id'])
+        .where('quarter_reopenings.quarter_id', '=', c.q1)
+        .execute();
+      expect(reopening).toEqual([{ version: 1, journal_id: null }]);
     });
   });
 
@@ -3896,6 +4043,23 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(notices.map((one) => (one.data as { date: string }).date)).toEqual(['2026-10-26']);
     });
 
+    // Spec review must-fix 8: "within 48 hours" holds at exactly 48 hours, not at 48 h 1 min.
+    it('tells the teacher at exactly 48 hours before the lock, not a minute earlier', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const aboutToLock = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().aboutToLock(transaction, b.s.branch));
+      const dates = async () =>
+        (await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock')).map(
+          (one) => (one.data as { date: string; locksAt: string }).date,
+        );
+      // The 26th locks at 00:00 of 3 November.
+      await aboutToLock('2026-10-31T23:59:00+05:00');
+      expect(await dates()).toEqual([]);
+      await aboutToLock('2026-11-01T00:00:00+05:00');
+      expect(await dates()).toEqual(['2026-10-26']);
+    });
+
     it('reminds the Academic Vice Principals daily when no plan window is open 14 days before a quarter', async () => {
       const b = await base();
       const own = await account();
@@ -3921,11 +4085,112 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       // 15 days before: nothing; 14 days before and the next day: one each.
       const day = (offset: number) =>
         new Date(Date.parse(`${start}T07:00:00+05:00`) + offset * 86_400_000).toISOString();
+      // Spec review must-fix 8 and permission review should-fix 7: never to the Academic Vice
+      // Principal of another branch.
+      const other = await base();
+      const elsewhere = await account();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
       await remind(day(-15));
       expect(await missing()).toEqual([]);
       await remind(day(-14));
       await remind(day(-13));
       expect(await missing()).toHaveLength(2);
+      expect(await noticesTo(elsewhere.account.id, 'plans.window_missing')).toEqual([]);
+    });
+
+    /** The plan the base scene links to its journal in the first quarter. */
+    const planOf = async (b: Awaited<ReturnType<typeof base>>) =>
+      (
+        await t.database.migrator
+          .selectFrom('lesson_plan_journals')
+          .select('plan_id')
+          .where('journal_id', '=', b.journal)
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow()
+      ).plan_id;
+
+    // 09: "Teachers are reminded ... three days before it ends, and on the last day if the plan is
+    // incomplete" (spec review must-fix 8: the two days exactly, nothing on the days around them).
+    it('reminds the plan owner three days before the window ends and on its last day', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      await planOf(b);
+      const opener = await load.classes.account();
+      // Open from 20 to 30 October: it ends at 00:00 of 31 October.
+      await t.database.migrator
+        .insertInto('lesson_plan_windows')
+        .values({
+          branch_id: b.s.branch,
+          quarter_id: b.q1,
+          start_date: '2026-10-20',
+          end_date: '2026-10-30',
+          starts_at: new Date('2026-10-20T00:00:00+05:00'),
+          ends_at: new Date('2026-10-31T00:00:00+05:00'),
+          opened_at: new Date('2026-10-19T09:00:00+05:00'),
+          opened_by: opener,
+        })
+        .execute();
+      const remind = (date: string) =>
+        job(b.s.branch, `${date}T07:00:00+05:00`, (transaction) =>
+          daily().planReminders(transaction, b.s.branch),
+        );
+      const kinds = ['plans.window_ending', 'plans.window_last_day'] as const;
+      const sent = async () =>
+        Object.fromEntries(
+          await Promise.all(
+            kinds.map(
+              async (kind) => [kind, (await noticesTo(teacher.account.id, kind)).length] as const,
+            ),
+          ),
+        );
+      await remind('2026-10-26');
+      expect(await sent()).toEqual({ 'plans.window_ending': 0, 'plans.window_last_day': 0 });
+      await remind('2026-10-27');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 0 });
+      expect(await noticesTo(teacher.account.id, 'plans.window_ending')).toEqual([
+        { data: { quarter: 1, endDate: '2026-10-30' } },
+      ]);
+      await remind('2026-10-28');
+      await remind('2026-10-29');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 0 });
+      await remind('2026-10-30');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 1 });
+      await remind('2026-10-31');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 1 });
+    });
+
+    // edge/lesson-plans: "The teacher is reminded on days 1, 3 and 7, then weekly" (spec review
+    // must-fix 8: days 1, 3, 7 and 14, nothing between).
+    it('reminds the owner of a prepared request not sent on days 1, 3, 7 and 14', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const plan = await planOf(b);
+      await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: b.s.branch,
+          plan_id: plan,
+          journal_id: b.journal,
+          quarter_id: b.q1,
+          kind: 'replan',
+          status: 'prepared',
+          from_date: '2026-10-26',
+          prepared_at: new Date('2026-10-20T09:00:00+05:00'),
+          updated_at: new Date('2026-10-20T09:00:00+05:00'),
+        })
+        .execute();
+      for (let offset = 0; offset <= 15; offset += 1) {
+        const moment = new Date(Date.parse('2026-10-20T07:00:00+05:00') + offset * 86_400_000);
+        await job(b.s.branch, moment.toISOString(), (transaction) =>
+          daily().planReminders(transaction, b.s.branch),
+        );
+      }
+      const notices = await noticesTo(teacher.account.id, 'plans.request_unsent');
+      expect(notices.map((one) => (one.data as { days: number }).days)).toEqual([1, 3, 7, 14]);
     });
 
     it('removes the kept rows of a forced delete past its restore time and keeps the store row with a summary', async () => {
@@ -3962,7 +4227,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .where('id', '=', stored.id)
         .executeTakeFirstOrThrow();
       expect(before.purged_at).toBeNull();
-      await purge('2026-10-26T02:00:00+05:00');
+      // Spec review must-fix 8: at exactly the restore time, it is removed.
+      await purge('2026-10-25T10:00:00+05:00');
       const after = await t.database.migrator
         .selectFrom('forced_deletes')
         .select(['rows', 'purged_at', 'reason'])
@@ -3970,7 +4236,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .executeTakeFirstOrThrow();
       expect(after).toEqual({
         rows: {},
-        purged_at: new Date('2026-10-26T02:00:00+05:00'),
+        purged_at: new Date('2026-10-25T10:00:00+05:00'),
         reason: 'Entered by mistake',
       });
       const entry = await t.database.migrator
