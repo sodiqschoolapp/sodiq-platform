@@ -5682,6 +5682,32 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   plans: {
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    outcomes: {
+      carriedIn: 'Перенесено из прошлой четверти',
+      title: 'Решения по непройденным пунктам',
+      merge: 'Объединить с уроком',
+      mergeTitle: 'Объединить «{{topic}}» с уроком',
+      place: 'Поставить на урок',
+      placeTitle: 'Поставить «{{topic}}» на урок',
+      carry: 'Перенести в следующую четверть',
+      carryTitle: 'Перенести «{{topic}}» в следующую четверть?',
+      carryText: 'Пункт будет ждать в плане следующей четверти, пока его не поставят на урок.',
+      drop: 'Удалить',
+      dropTitle: 'Удалить «{{topic}}»',
+      reason: 'Причина',
+      reasonNeeded: 'Напишите, почему пункт удаляется.',
+      row: 'Урок',
+      rowEmpty: 'Урок {{number}}, {{date}} (пусто)',
+      rowWith: 'Урок {{number}}, {{date}}: {{topic}}',
+      chooseRow: 'Выберите урок.',
+      kind: {
+        merged: 'объединено с уроком {{date}}',
+        carried: 'перенесено в следующую четверть',
+        carriedAutomatic: 'перенесено в следующую четверть при закрытии',
+        dropped: 'удалено: {{reason}}',
+      },
+    },
     reports: {
       title: 'Отчёты по планам',
       noTeacher: 'Без учителя',

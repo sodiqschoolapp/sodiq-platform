@@ -5383,6 +5383,32 @@ export const en = {
     },
   },
   plans: {
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    outcomes: {
+      carriedIn: 'Carried in',
+      title: 'Outcomes of items not covered',
+      merge: 'Merge into a lesson',
+      mergeTitle: 'Merge “{{topic}}” into a lesson',
+      place: 'Place at a lesson',
+      placeTitle: 'Place “{{topic}}” at a lesson',
+      carry: 'Carry to next quarter',
+      carryTitle: 'Carry “{{topic}}” to the next quarter?',
+      carryText: 'It waits in the next quarter’s plan until it is placed at a lesson.',
+      drop: 'Drop',
+      dropTitle: 'Drop “{{topic}}”',
+      reason: 'Reason',
+      reasonNeeded: 'Write why the item is dropped.',
+      row: 'Lesson',
+      rowEmpty: 'Lesson {{number}}, {{date}} (empty)',
+      rowWith: 'Lesson {{number}}, {{date}}: {{topic}}',
+      chooseRow: 'Choose a lesson.',
+      kind: {
+        merged: 'merged into the lesson of {{date}}',
+        carried: 'carried to the next quarter',
+        carriedAutomatic: 'carried to the next quarter at closing',
+        dropped: 'dropped: {{reason}}',
+      },
+    },
     reports: {
       title: 'Plan reports',
       noTeacher: 'No teacher',

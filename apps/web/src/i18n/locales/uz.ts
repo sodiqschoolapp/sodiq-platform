@@ -5439,6 +5439,32 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    outcomes: {
+      carriedIn: 'Oʻtgan chorakdan koʻchirilgan',
+      title: 'Oʻtilmagan bandlar boʻyicha qarorlar',
+      merge: 'Darsga birlashtirish',
+      mergeTitle: '«{{topic}}» bandini darsga birlashtirish',
+      place: 'Darsga qoʻyish',
+      placeTitle: '«{{topic}}» bandini darsga qoʻyish',
+      carry: 'Keyingi chorakka koʻchirish',
+      carryTitle: '«{{topic}}» keyingi chorakka koʻchirilsinmi?',
+      carryText: 'Band darsga qoʻyilguncha keyingi chorak rejasida kutadi.',
+      drop: 'Oʻchirish',
+      dropTitle: '«{{topic}}» bandini oʻchirish',
+      reason: 'Sabab',
+      reasonNeeded: 'Band nega oʻchirilayotganini yozing.',
+      row: 'Dars',
+      rowEmpty: '{{number}}-dars, {{date}} (boʻsh)',
+      rowWith: '{{number}}-dars, {{date}}: {{topic}}',
+      chooseRow: 'Darsni tanlang.',
+      kind: {
+        merged: '{{date}} darsiga birlashtirildi',
+        carried: 'keyingi chorakka koʻchirildi',
+        carriedAutomatic: 'yopishda keyingi chorakka koʻchirildi',
+        dropped: 'oʻchirildi: {{reason}}',
+      },
+    },
     reports: {
       title: 'Rejalar hisobotlari',
       noTeacher: 'Oʻqituvchisiz',

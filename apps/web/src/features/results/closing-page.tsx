@@ -432,6 +432,8 @@ function countOf(item: ClosingItem): number {
       return item.lessons.length;
     case 'plan_incomplete':
       return item.empty + item.notCovered;
+    case 'plan_not_covered':
+      return item.notCovered;
     case 'part_without_data':
       return item.parts.length;
     case 'no_teacher':
@@ -561,6 +563,9 @@ function ItemDetails({ row }: { row: Row }) {
           {row.belowMinimum && <li>{t('results.closing.belowMinimum')}</li>}
         </ul>
       );
+    // Task 9.2d: no carry is possible: merge or drop each one.
+    case 'plan_not_covered':
+      return <p>{t('results.closing.notCovered', { count: row.notCovered })}</p>;
     case 'part_without_data':
       return <p>{row.parts.map((part) => t(`journal.grid.parts.${part}`)).join(', ')}</p>;
     case 'no_teacher':

@@ -22,6 +22,9 @@ import {
   type PlanItemCreate,
   type PlanItemSave,
   type PlanShare,
+  type PlanDrop,
+  type PlanMerge,
+  type PlanPlace,
   planMasterCompareSchema,
   planMasterSchema,
   planMastersSchema,
@@ -512,3 +515,39 @@ export const exportPlan = (journalId: string, quarterId: string, format: 'pdf' |
     body: { quarterId, format },
     parseAs: 'blob',
   });
+
+/** Task 9.2d: a not-covered item merged into the row of a lesson. */
+export const mergeNotCovered = (journalId: string, itemId: string, body: PlanMerge) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/not-covered/{itemId}/merge', {
+      params: { header: branchHeader(), path: { journalId, itemId } },
+      body,
+    }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 9.2d: a not-covered item carried into the next quarter's tray. */
+export const carryNotCovered = (journalId: string, itemId: string, quarterId: string) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/not-covered/{itemId}/carry', {
+      params: { header: branchHeader(), path: { journalId, itemId } },
+      body: { quarterId },
+    }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 9.2d: a not-covered item dropped with a reason, by the approver. */
+export const dropNotCovered = (journalId: string, itemId: string, body: PlanDrop) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/not-covered/{itemId}/drop', {
+      params: { header: branchHeader(), path: { journalId, itemId } },
+      body,
+    }),
+  ).then((answer) => planSchema.parse(answer));
+
+/** Task 9.2d: a carried-in item put at the row of a lesson. */
+export const placeCarried = (journalId: string, itemId: string, body: PlanPlace) =>
+  answerOf(
+    api.POST('/api/plans/journals/{journalId}/carried/{itemId}/place', {
+      params: { header: branchHeader(), path: { journalId, itemId } },
+      body,
+    }),
+  ).then((answer) => planSchema.parse(answer));
