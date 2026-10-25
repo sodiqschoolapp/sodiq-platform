@@ -15,6 +15,8 @@ import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { journalFinalOf } from '../setup/closed-quarters.js';
+import { storedShown } from './closing-versions.js';
 import { ActingKit } from '../../testing/acting-kit.js';
 import {
   dayTemplatesKit,
@@ -2777,7 +2779,9 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             reopened.id,
           ]);
           expect(open.changes).toEqual([]);
-          // edge/journal: "Lessons stay locked": a plain save of the teacher's lesson is refused.
+          // edge/journal: "Lessons stay locked": a plain entry is refused by the guard during the
+          // reopening ("takes a correction, refuses a plain entry" of
+          // quarter-reopen.database.test.ts); the Academic Vice Principal enters corrections.
           const corrected = await correctDilshod(calls, b);
           expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
           const after = checklistOf(await calls.get(b.s.branch, path(b.q1)));
@@ -2869,6 +2873,13 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
     it('reopens one journal: its correction, its own items and changes, closed again with its students only', async () => {
       const b = await closed();
+      const otherJournal = await journalOf(b.s.otherClass, b.s.subject);
+      const firstRecords = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['journal_id', 'student_id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .orderBy('student_id')
+        .execute();
       const other = await base();
       const key = randomUUID();
       const id = await vice(
@@ -2983,13 +2994,46 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         [1, 'close', null, null],
         [2, 'journal_close', b.journal, null],
       ]);
-      const second = await t.database.migrator
-        .selectFrom('quarter_final_results')
-        .select('student_id')
-        .where('closing_id', '=', versions[1]?.id ?? '')
-        .execute();
-      expect(second.every((one) => one.student_id !== '')).toBe(true);
-      expect(second.length).toBeGreaterThan(0);
+      // Version 2 holds the reopened journal's students only; version 1 is kept as it was.
+      const recordsOf = (closingId: string) =>
+        t.database.migrator
+          .selectFrom('quarter_final_results')
+          .select(['journal_id', 'student_id', 'record'])
+          .where('closing_id', '=', closingId)
+          .orderBy('student_id')
+          .execute();
+      const second = await recordsOf(versions[1]?.id ?? '');
+      expect(second.map((one) => one.student_id)).toContain(b.dilshod);
+      expect(new Set(second.map((one) => one.journal_id))).toEqual(new Set([b.journal]));
+      expect(await recordsOf(versions[0]?.id ?? '')).toEqual(firstRecords);
+      // Spec review must-fix 7: the readers of "closed" take the version in force, where
+      // version 1 and 2 differ. The grid: Dilshod's result is version 2's (version 1: no result).
+      const dilshodInGrid = await vice(
+        b.s.branch,
+        async (calls) =>
+          journalGridSchema
+            .parse(
+              (await calls.get(b.s.branch, `/api/journal/journals/${b.journal}?quarterId=${b.q1}`))
+                .body,
+            )
+            .students.find((one) => one.id === b.dilshod)?.quarter?.result,
+        INSIDE,
+      );
+      expect(dilshodInGrid?.kind).toBe('number');
+      const dilshodBefore = firstRecords.find((one) => one.student_id === b.dilshod);
+      expect(storedShown(dilshodBefore?.record).kind).toBe('no_result');
+      // The export's "Final" line: version 2 and its date for the journal closed again, version 1
+      // for the other journal.
+      const finals = await t.app
+        .get(Transactions)
+        .run([b.s.branch], async (transaction) => [
+          await journalFinalOf(transaction, b.q1, b.journal),
+          await journalFinalOf(transaction, b.q1, otherJournal),
+        ]);
+      expect(finals.map((one) => [one?.version, one?.closedAt.toISOString()])).toEqual([
+        [2, new Date(INSIDE).toISOString()],
+        [1, new Date(CLOSE).toISOString()],
+      ]);
     });
 
     // .claude/rules/journal.md: a grant that opens one record is refused on another, at the route.
@@ -3077,6 +3121,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         expect([recalculation.status, codeOf(recalculation)]).toEqual([409, 'quarter_not_closed']);
       });
       const c = await closed();
+      const lateClass = await load.classes.schoolClass(c.s.branch, c.s.year, { grade: 7 });
+      const lateJournal = (
+        await t.database.migrator
+          .insertInto('journals')
+          .values({
+            branch_id: c.s.branch,
+            academic_year_id: c.s.year,
+            class_id: lateClass,
+            group_id: null,
+            subject_id: c.s.subject,
+            runs: '{[2026-11-01,)}',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
       await vice(
         c.s.branch,
         async (calls) => {
@@ -3106,6 +3165,18 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           expect([twice.status, codeOf(twice)]).toEqual([409, 'quarter_reopened']);
           const whole = await calls.post(c.s.branch, reopenPath(c.q1), body, randomUUID());
           expect([whole.status, codeOf(whole)]).toEqual([409, 'quarter_journal_reopened']);
+          // A journal of the branch and year that the close did not store (opened after it):
+          // the database's refusal, mapped by the route (.claude/rules/api.md).
+          const notClosed = await calls.post(
+            c.s.branch,
+            reopenPath(c.q1),
+            { ...body, journalId: lateJournal },
+            randomUUID(),
+          );
+          expect([notClosed.status, codeOf(notClosed)]).toEqual([
+            409,
+            'closing_journal_not_closed',
+          ]);
         },
         REOPEN,
       );
@@ -3859,6 +3930,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
     it('removes the kept rows of a forced delete past its restore time and keeps the store row with a summary', async () => {
       const b = await base();
+      const deleter = await load.classes.account();
       const stored = await t.database.migrator.transaction().execute(async (transaction) => {
         await sql`select set_config('app.now', '2026-09-25T10:00:00+05:00', true)`.execute(
           transaction,
@@ -3871,7 +3943,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             record_id: b.lessons.l12.id,
             rows: JSON.stringify({ lessons: [{ id: 'kept' }], journal_cells: [{}, {}] }),
             reason: 'Entered by mistake',
-            deleted_by: b.s.teacher.staffId === '' ? '' : await load.classes.account(),
+            deleted_by: deleter,
             deleted_at: new Date(0),
             restore_until: new Date(0),
           })
