@@ -3888,7 +3888,7 @@ export const en = {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
       setup: {
         quarter_weights_changed:
-          'The weights of {{subject}} for quarter {{quarter}} changed on {{date}}: {{reason}}.',
+          'The weights of {{subject}} for {{quarters}} changed on {{date}}: {{reason}}.',
       },
       plans: {
         followed:

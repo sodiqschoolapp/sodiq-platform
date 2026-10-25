@@ -3937,7 +3937,7 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       setup: {
         quarter_weights_changed:
-          '{{subject}} fanining {{quarter}}-chorak vaznlari {{date}} kuni oʻzgardi: {{reason}}.',
+          '{{subject}} fanining vaznlari ({{quarters}}) {{date}} kuni oʻzgardi: {{reason}}.',
       },
       plans: {
         followed:

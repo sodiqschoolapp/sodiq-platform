@@ -1244,6 +1244,9 @@ export class Subjects {
     if (!reasonRequired) return;
     if (reason === undefined) throw refused('reason_required');
     const today = schoolDateOf(grades.now, grades.timeZone);
+    // One notice per account for the change, naming every quarter of it the account
+    // teaches in (decision 11: "each once"; spec review of the code, should-fix 3).
+    const quartersOf = new Map<string, number[]>();
     for (const one of written) {
       if (one.change !== 'changed') continue;
       const quarter = await quarterRefOf(transaction, one.quarterId);
@@ -1254,17 +1257,28 @@ export class Subjects {
         quarter,
         today,
       });
-      if (accountIds.length === 0) continue;
+      for (const accountId of accountIds) {
+        quartersOf.set(accountId, [...(quartersOf.get(accountId) ?? []), quarter.number]);
+      }
+    }
+    const byQuarters = new Map<string, { quarters: number[]; accountIds: string[] }>();
+    for (const [accountId, quarters] of quartersOf) {
+      const key = quarters.join(',');
+      const group = byQuarters.get(key) ?? { quarters, accountIds: [] };
+      group.accountIds.push(accountId);
+      byQuarters.set(key, group);
+    }
+    for (const group of byQuarters.values()) {
       await this.notifications.send(transaction, {
         kind: 'setup.quarter_weights_changed',
         data: {
           subject: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en },
-          quarter: quarter.number,
+          quarters: group.quarters,
           date: today,
           reason,
         },
         branchId,
-        accountIds,
+        accountIds: group.accountIds,
       });
     }
   }

@@ -717,4 +717,64 @@ describe('the student results (08, Student results)', () => {
       },
     );
   });
+
+  // The spec review of the code, must-fix 1: the year is the mean of every quarter's result
+  // (07, rule 11), so a reader who does not read one of them sees no year at all.
+  it('answers the year only to a reader of the subject in every quarter with a result', async () => {
+    const owner = await account();
+    const s = await scene({ teacher: owner.account.id });
+    const lessons = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'class_id', sql<string>`lesson_date::text`.as('date')])
+      .where('lesson_date', 'in', ['2026-10-12', '2026-11-09'])
+      .where('class_id', 'in', [s.scene.classId, s.scene.otherClass])
+      .execute();
+    const lessonOf = (classId: string, date: string) =>
+      lessons.find((one) => one.class_id === classId && one.date === date)?.id ?? '';
+    // Kamola: the other class in quarter 1, the owner's class from quarter 2.
+    const kamola = await student(s.scene.branch, { first: 'Kamola', last: 'Yoqubova' }, [
+      { classId: s.scene.otherClass, from: '2026-09-01', ownUntil: '2026-11-09' },
+      { classId: s.scene.classId, from: '2026-11-09' },
+    ]);
+    await saveOn(s.scene.branch, '2026-10-12', [
+      { lessonId: lessonOf(s.scene.otherClass, '2026-10-12'), studentId: kamola, value: 1 },
+    ]);
+    await saveOn(s.scene.branch, '2026-11-09', [
+      { lessonId: lessonOf(s.scene.classId, '2026-11-09'), studentId: kamola, value: 1 },
+    ]);
+    await t.database.migrator
+      .updateTable('academic_years')
+      .set({ status: 'closed' })
+      .where('id', '=', s.scene.year)
+      .execute();
+    const path = `/api/results/students/${kamola}?yearId=${s.scene.year}`;
+    const later = '2026-12-29T12:00:00+05:00';
+    await as(
+      await account(),
+      [{ role: 'principal', branchId: s.scene.branch }],
+      async (get) => {
+        const answer = resultsOf(await get(s.scene.branch, path));
+        expect(answer.subjects.map((one) => [one.quarters.length, one.year])).toEqual([
+          [2, { kind: 'number', shown: 100, grade: 5, basedOn: 2 }],
+        ]);
+      },
+      later,
+    );
+    // The owner of the quarter 2 journal, who reads quarter 1 as the Head Tutor (attendance
+    // only): quarter 2 and no year.
+    await as(
+      owner,
+      [
+        { role: 'teacher', branchId: s.scene.branch },
+        { role: 'head_tutor', branchId: s.scene.branch },
+      ],
+      async (get) => {
+        const answer = resultsOf(await get(s.scene.branch, path));
+        expect(
+          answer.subjects.map((one) => [one.quarters.map((row) => row.quarterId), one.year]),
+        ).toEqual([[[await quarterOf(s.scene, 2)], null]]);
+      },
+      later,
+    );
+  });
 });

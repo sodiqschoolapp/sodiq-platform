@@ -155,16 +155,23 @@ export class StudentResultsService {
       for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
         const rows: unknown[] = [];
         const outcomes = new Map<number, StudentQuarterOutcome>();
+        // The year is the mean of every quarter's result (`07`, rule 11): a reader who does
+        // not read the subject in each quarter with a result sees no year (review must-fix 1).
+        let readsEveryQuarter = true;
         let subject: JournalRow['subject'] | undefined;
         for (const quarter of quarters) {
           const one = await subjectQuarter(context, year, quarter, subjectId);
-          if (one === undefined || one.reading !== 'whole' || one.attendanceOnly) continue;
+          if (one === undefined || one.attendanceOnly) continue;
           const quarterly = one.weights.quarterly;
           if (quarterly === null) continue;
           const input = inputOf(context, one, quarterly);
           const outcome = studentQuarterOutcome(input);
-          const { averages } = quarterResult(input);
           outcomes.set(quarter.number, outcome);
+          if (one.reading !== 'whole') {
+            readsEveryQuarter = false;
+            continue;
+          }
+          const { averages } = quarterResult(input);
           subject = one.journal.subject;
           rows.push({
             quarterId: quarter.id,
@@ -185,7 +192,10 @@ export class StudentResultsService {
         subjects.push({
           subject: { id: subjectId, names: subject.names, colour: subject.colour },
           quarters: rows,
-          year: year.status === 'closed' ? yearShown(context, quarters, outcomes) : null,
+          year:
+            year.status === 'closed' && readsEveryQuarter
+              ? yearShown(context.goLive, quarters, outcomes)
+              : null,
         });
       }
       subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
@@ -592,14 +602,14 @@ function outcomeShown(outcome: StudentQuarterOutcome): QuarterOutcomeShown {
  * the start date as "not in the system" (decision 8), a quarter with no
  * result row (no lesson, attendance only) as "No result".
  */
-function yearShown(
-  context: Context,
+export function yearShown(
+  goLive: string | null,
   quarters: readonly QuarterRow[],
   outcomes: ReadonlyMap<number, StudentQuarterOutcome>,
 ) {
   const four: QuarterOutcome[] = [1, 2, 3, 4].map((number) => {
     const quarter = quarters.find((one) => one.number === number);
-    if (quarter !== undefined && notInSystem(context.goLive, quarter)) return 'not_in_system';
+    if (quarter !== undefined && notInSystem(goLive, quarter)) return 'not_in_system';
     const outcome = outcomes.get(number);
     return outcome === undefined ? 'no_result' : outcomeForYear(outcome);
   });

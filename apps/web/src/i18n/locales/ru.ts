@@ -4082,7 +4082,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         'Уведомление, которое эта версия приложения пока не может показать. Перезагрузите страницу.',
       setup: {
         quarter_weights_changed:
-          'Веса предмета {{subject}} на {{quarter}}-ю четверть изменены {{date}}: {{reason}}.',
+          'Веса предмета {{subject}} ({{quarters}}) изменены {{date}}: {{reason}}.',
       },
       plans: {
         followed:

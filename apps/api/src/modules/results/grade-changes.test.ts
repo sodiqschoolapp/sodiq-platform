@@ -173,6 +173,8 @@ describe('the preview and the reason of a change of weights or values', () => {
       .select(['kind', 'data', 'branch_id'])
       .where('account_id', '=', accountId)
       .where('kind', '=', 'setup.quarter_weights_changed')
+      .orderBy('created_at')
+      .orderBy('id')
       .execute();
 
   /** 60 · 20 · 20: Aziz (60 × 50 + 20 × 90) ÷ 80 = 60, grade 3; Bekzod 62.5, grade 3. */
@@ -246,7 +248,7 @@ describe('the preview and the reason of a change of weights or values', () => {
         branch_id: x.s.branch,
         data: {
           subject: expect.any(Object) as unknown,
-          quarter: 1,
+          quarters: [1],
           date: '2026-10-27',
           reason: 'Agreed by the department',
         },
@@ -286,7 +288,7 @@ describe('the preview and the reason of a change of weights or values', () => {
     const saved = await at(() => t.put(path, x.s.branch, { ...CHANGED, reason: 'Set for Q2' }));
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
     expect((await noticesOf(x.owner.account.id)).map((one) => one.data)).toEqual([
-      expect.objectContaining({ quarter: 2, reason: 'Set for Q2' }),
+      expect.objectContaining({ quarters: [2], reason: 'Set for Q2' }),
     ]);
   });
 
@@ -313,6 +315,15 @@ describe('the preview and the reason of a change of weights or values', () => {
     const refused = await at(() => t.post(copy, x.s.branch, { yearId: x.s.year }));
     expect(codeOf(refused)).toBe('reason_required');
     expect(await rowsOf()).toEqual(before);
+    // With the reason: one notice to the teacher, naming the three quarters it changed.
+    const copied = await at(() =>
+      t.post(copy, x.s.branch, { yearId: x.s.year, reason: 'One distribution' }),
+    );
+    expect(copied.status, JSON.stringify(copied.body)).toBe(200);
+    expect((await noticesOf(x.owner.account.id)).map((one) => one.data)).toEqual([
+      expect.objectContaining({ quarters: [1], reason: 'Agreed by the department' }),
+      expect.objectContaining({ quarters: [2, 3, 4], reason: 'One distribution' }),
+    ]);
   });
 
   it('shows the grades a change of late alters, refuses it without a reason, and audits the reason', async () => {
