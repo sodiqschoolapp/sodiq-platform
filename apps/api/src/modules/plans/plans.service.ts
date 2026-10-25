@@ -1034,6 +1034,36 @@ export class PlansService {
   }
 
   /**
+   * Task 8.8 (decision 3, correction 2; `edge/lesson-plans`, Plans and the journal: "Adding a
+   * work is allowed, and the approval also opens that journal column for the same days"): a
+   * work added through an approved request to the item of a lesson already started opens its
+   * journal column for that request's period, wherever the column is shown
+   * (`lesson_plan_work_openings`, 0130). The period is the request's own, read on each write.
+   */
+  async openColumns(
+    transaction: Transaction,
+    branchId: string,
+    pass: GatePass,
+    planWorkIds: readonly string[],
+    startedIn: readonly string[],
+  ): Promise<void> {
+    if (pass.via !== 'request' || startedIn.length === 0 || planWorkIds.length === 0) return;
+    const rows = pass.periods.flatMap((period) =>
+      planWorkIds.map((planWorkId) => ({
+        branch_id: branchId,
+        plan_work_id: planWorkId,
+        request_id: period.requestId,
+      })),
+    );
+    if (rows.length === 0) return;
+    await transaction
+      .insertInto('lesson_plan_work_openings')
+      .values(rows)
+      .onConflict((conflict) => conflict.doNothing())
+      .execute();
+  }
+
+  /**
    * Task 8.1 (review correction 1): the works added by hand at the started
    * lessons of the item's rows are taken over by its works, in order
    * (`takeOverUnplanned`).
@@ -1258,9 +1288,10 @@ export class PlansService {
             })
             .returning('id')
             .executeTakeFirstOrThrow();
+          const addedWorks: string[] = [];
           for (const { kind, list } of KINDS) {
             for (const [index, work] of values[list].entries()) {
-              await transaction
+              const added = await transaction
                 .insertInto('lesson_plan_works')
                 .values({
                   branch_id: branchId,
@@ -1270,7 +1301,9 @@ export class PlansService {
                   title: work.title,
                   description: work.description,
                 })
-                .execute();
+                .returning('id')
+                .executeTakeFirstOrThrow();
+              addedWorks.push(added.id);
             }
           }
           await transaction
@@ -1314,6 +1347,7 @@ export class PlansService {
           // Decided without the owner (code round 1): an item created on a held
           // row through a request changes the item of a lesson already held.
           await this.markEditedAfterLesson(transaction, pass, item.id, startedIn);
+          await this.openColumns(transaction, branchId, pass, addedWorks, startedIn);
           await this.takeOverWorks(transaction, scene, access, item.id, startedIn, requestId);
           const created = await this.itemOf(transaction, item.id, journalId);
           const row = rows[input.position - 1];
@@ -1469,6 +1503,7 @@ export class PlansService {
               .execute();
           }
           const removedWorks: ReturnType<typeof workEntry>[] = [];
+          const addedWorks: string[] = [];
           for (const change of workChanges) {
             const touched =
               change.removed.length > 0 ||
@@ -1501,7 +1536,7 @@ export class PlansService {
             for (const work of change.sent) {
               position += 1;
               if (work.id === undefined) {
-                await transaction
+                const added = await transaction
                   .insertInto('lesson_plan_works')
                   .values({
                     branch_id: branchId,
@@ -1511,7 +1546,9 @@ export class PlansService {
                     title: work.title,
                     description: work.description,
                   })
-                  .execute();
+                  .returning('id')
+                  .executeTakeFirstOrThrow();
+                addedWorks.push(added.id);
               } else if (change.now.some((one) => one.id === work.id)) {
                 await transaction
                   .updateTable('lesson_plan_works')
@@ -1535,6 +1572,7 @@ export class PlansService {
             );
           }
           await this.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
+          await this.openColumns(transaction, branchId, scene.pass, addedWorks, scene.startedIn);
           await this.takeOverWorks(transaction, scene, access, itemId, scene.startedIn, requestId);
           const saved = await this.itemOf(transaction, itemId, scene.journal.id);
           for (const change of workChanges) {

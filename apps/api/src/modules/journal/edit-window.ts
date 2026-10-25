@@ -61,6 +61,8 @@ export type WriteHow =
   | { readonly how: 'late_entry'; readonly unlockId: string }
   /** Task 8.7 (decision 4): a late entry of the person an orphan lesson is assigned to. */
   | { readonly how: 'assigned_entry'; readonly orphanAssignmentId: string }
+  /** Task 8.8 (decision 3): a late entry on a work column an approved plan request opened. */
+  | { readonly how: 'opened_entry'; readonly planRequestId: string }
   | { readonly how: 'correction'; readonly assignmentId: string };
 
 /**
@@ -181,6 +183,11 @@ export async function decideWrite(
      * the cells guard takes such a write after the lock as a late entry (0123, 0127).
      */
     readonly openCells?: boolean;
+    /**
+     * Task 8.8 (decision 3, correction 2): the approved plan request whose period is open now
+     * and that opened every work column the write names, for the lesson's teacher, if any.
+     */
+    readonly planRequestId?: string | null;
   },
 ): Promise<WriteHow> {
   if (input.correction !== undefined) {
@@ -215,6 +222,11 @@ export async function decideWrite(
         );
   if (window.kind !== 'unlocked') {
     const assigned = input.orphanAssignmentId ?? null;
+    const opened = input.planRequestId ?? null;
+    if (assigned === null && opened !== null) {
+      await sql`select set_config('app.plan_request_id', ${opened}, true)`.execute(transaction);
+      return { how: 'opened_entry', planRequestId: opened };
+    }
     if (assigned === null) throw lockedRefusal(locksAt);
     await sql`select set_config('app.orphan_assignment_id', ${assigned}, true)`.execute(
       transaction,
@@ -234,6 +246,8 @@ export function writeDetails(
   if (write.how === 'assigned_entry') {
     return { how: 'late_entry', orphanAssignmentId: write.orphanAssignmentId };
   }
+  if (write.how === 'opened_entry')
+    return { how: 'late_entry', planRequestId: write.planRequestId };
   if (write.how === 'correction') return { how: 'correction', reason: correction?.reason ?? '' };
   return {};
 }
