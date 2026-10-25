@@ -780,7 +780,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Yangi jurnallarda koʻchirishdan keyin oʻquvchining yozuvlari bor, shuning uchun uni bekor qilib boʻlmaydi. Uning oʻrniga orqaga koʻchiring.',
     student_merge_journal_overlap:
       'Ikkala yozuvda bir xil dars boʻyicha jurnal maʼlumotlari bor. Avval ulardan birini tozalang.',
-    student_merge_result_overlap: 'Ikkala yozuvda yopilgan chorakda bir fan boʻyicha yakuniy natija bor, shuning uchun ularni birlashtirib boʻlmaydi. Qaysi yozuv toʻgʻriligini tekshirishni Super Adminga topshiring.',
+    student_merge_result_overlap:
+      'Ikkala yozuvda yopilgan chorakda bir fan boʻyicha yakuniy natija bor, shuning uchun ularni birlashtirib boʻlmaydi. Qaysi yozuv toʻgʻriligini tekshirishni Super Adminga topshiring.',
     student_merge_decision_overlap:
       'Ikkala yozuvda ham bir fan va chorak boʻyicha belgilangan natija qarori bor. Avval ulardan birini chorakni yopish roʻyxatida bekor qiling.',
     student_merge_journal_cut:
