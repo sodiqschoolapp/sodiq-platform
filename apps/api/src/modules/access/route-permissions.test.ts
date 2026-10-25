@@ -848,6 +848,16 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 8.9: the exports of journals (`journal` `export` for the nine readers, decision 1; the
+  // scope in the route, journal-exports.test.ts) and the support view (decision 2).
+  'POST /api/journal/journals/:journalId/export': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/journal/exports': { branch: 'request', roles: VIEW_READERS },
+  'POST /api/journal/exports': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/journal/exports/:exportId/file': { branch: 'request', roles: VIEW_READERS },
+  'GET /api/journal/support': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/journal/comments/history': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': {
     branch: 'request',

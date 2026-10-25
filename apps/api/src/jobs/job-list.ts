@@ -1,4 +1,5 @@
 import { passwordResetMailJob } from '../modules/auth/password-reset-mail.job.js';
+import { branchExportJob } from '../modules/journal/journal-exports.service.js';
 import { deliverNotificationsJob } from '../modules/notifications/deliver.job.js';
 import type { JobDefinition } from './job-definition.js';
 
@@ -10,4 +11,5 @@ import type { JobDefinition } from './job-definition.js';
 export const JOB_DEFINITIONS: readonly JobDefinition<unknown>[] = [
   deliverNotificationsJob,
   passwordResetMailJob,
+  branchExportJob,
 ];

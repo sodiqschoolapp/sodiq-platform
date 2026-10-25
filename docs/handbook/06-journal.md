@@ -188,3 +188,51 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 | Two people mark and grade the same homework at the same moment | One wins: either the mark is refused because the column has a total, or the total is refused because the homework is "not given". |
 
 **What the person sees.** "This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead."
+
+## Exporting a journal
+
+<!-- Sources: spec 07 (last paragraph), edge/journal ("A results table is exported in week 6"), edge/system-behaviour ("A whole branch's journals are exported to PDF during lessons"); task 8.9, decisions 1, 3 to 6, 9 and 10 -->
+
+**What it is.** A journal can be printed or saved as a PDF or an Excel file, for the month on screen or the whole quarter. The Principal, the Academic Vice Principal and the Super Admin can also export all the journals of the branch at once.
+
+**How it works.**
+
+1. Open a journal. Choose the month in the selector, or leave it on the quarter.
+2. Press **Print**, **PDF** or **Excel** (**Chop etish**, **PDF**, **Excel**). The file holds what the journal shows you, nothing more.
+3. For the whole branch: on the Journals page open **Export of the branch** (**Filial eksporti**), choose the format, the quarter and a month or the whole quarter, and press **Ask for the export**. The file is made in the background; press **Refresh** after a few minutes, then **Download**.
+
+**Rules.**
+
+- Every file says "Provisional" with the date and time it was read. ("Final" comes with the closing of quarters.)
+- A Tutor's file has the rows of their own class only; the Vice Principal for Spiritual and Moral Education and the Head Tutor get attendance only.
+- An exempt student's cell shows 4 or 5. The reason, the category and the document of the exemption are never in a file. Comments and reasons of absence are not in the file either.
+- Excel cells hold real numbers and dates: the number typed and its percent are two columns.
+- A teacher who only substituted a lesson, or completes an orphan lesson, cannot export that journal.
+- One export of the branch at a time per person. Its link works for 24 hours after the file is ready, and the server checks again at the download that the person still may export the branch.
+- Every export and every download is written to the audit log.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The link is opened 25 hours after the file was made | It is refused: "The link of this export worked for 24 hours and has expired. Ask for a new export." |
+| The person lost the role between the request and the download | The download is refused. |
+| The export was not finished within 20 minutes | It is shown as failed, and a new one can be asked for. |
+
+## The support view
+
+<!-- Sources: edge/journal ("My grade disappeared"); task 8.9, decisions 2, 7, 13 to 15 -->
+
+**What it is.** When a parent or a teacher says "my grade disappeared", the Academic Vice Principal (or the Super Admin) opens one page for one student, one journal and one date that lists everything that happened to those cells, in time order, and how the result was calculated.
+
+**How it works.**
+
+1. From a cell's history choose **Support view** (**Yordam koʻrinishi**), or open it from the Journals page and choose the journal, the date and the student.
+2. The page shows the lessons of that date with the mark and numbers as the journal shows them, the values stored, and what hid a value (an exemption).
+3. Below, every line in order: each save (who, how: entry, late entry with the approver, correction with its reason, exemption, transfer, leaving, cancellation, "not held", offline entry, undo), each refused save with the value sent and the reason, each clear by an exemption and its give-back, each value voided by a move or a leaving and its give-back, and the work and rating exam lines.
+
+**Rules.**
+
+- For the Academic Vice Principal and the Super Admin only. Each opening is written to the audit log.
+- A student who has since left for another branch is still found.
+- The figures are the journal's own; the page calculates nothing.

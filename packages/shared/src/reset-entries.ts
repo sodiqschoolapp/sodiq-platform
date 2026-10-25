@@ -24,6 +24,8 @@ export const CELL_CHANGES = [
   'undo',
   'restored',
   'forced_delete',
+  // Task 8.6 (0127): a value voided by a leaving; named in the support view (task 8.9).
+  'leaving',
 ] as const;
 
 export const cellChangeSchema = z.enum(CELL_CHANGES);

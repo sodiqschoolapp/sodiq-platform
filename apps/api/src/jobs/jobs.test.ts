@@ -414,6 +414,62 @@ describe('the worker', () => {
     }).toThrow('already has a handler');
   });
 
+  // Task 8.9 (decision 11): a job whose handler calls a store with no transaction open.
+  describe('without a transaction of its own', () => {
+    const outsideJob = defineJob({
+      name: 'sample.outside',
+      data: z.strictObject({ noteId: z.uuid() }),
+      transaction: 'none',
+    });
+
+    it('claims the delivery first, runs the handler with no transaction open, and once', async () => {
+      const { northNote } = await addNotes();
+      const outside = new JobRunner(queue, transactions, new RequestKeys(clock), [
+        sampleJob,
+        outsideJob,
+      ]);
+      const seen: { branchIds: readonly string[]; open: number }[] = [];
+      outside.handleWithoutTransaction(outsideJob, async (data, job) => {
+        // No transaction of the application's is open while the handler runs: its own is.
+        const open = await sql<{ open: number }>`
+          select count(*)::int as open from pg_stat_activity
+          where datname = current_database() and state like 'idle in transaction%'
+        `.execute(database.migrator);
+        seen.push({ branchIds: job.branchIds, open: open.rows[0]?.open ?? -1 });
+        await transactions.run(job.branchIds, (transaction) =>
+          sql`update scratch_notes set handled = handled + 1 where id = ${data.noteId}`.execute(
+            transaction,
+          ),
+        );
+      });
+      const delivery = {
+        id: randomUUID(),
+        data: { branchIds: [north], data: { noteId: northNote } },
+      };
+      await outside.deliver('sample.outside', delivery);
+      await outside.deliver('sample.outside', delivery);
+      expect(seen).toEqual([{ branchIds: [north], open: 0 }]);
+      expect((await handledCounts(database.migrator))[northNote]).toBe(1);
+      const keys = await sql<{ scope: string }>`
+        select scope from request_keys where key = ${delivery.id}
+      `.execute(database.migrator);
+      expect(keys.rows).toEqual([{ scope: 'job:sample.outside' }]);
+    });
+
+    it('takes each kind of handler only for its kind of definition', () => {
+      const outside = new JobRunner(queue, transactions, new RequestKeys(clock), [
+        sampleJob,
+        outsideJob,
+      ]);
+      expect(() => {
+        outside.handle(outsideJob, countVisible);
+      }).toThrow('runs without a transaction');
+      expect(() => {
+        outside.handleWithoutTransaction(sampleJob, () => Promise.resolve());
+      }).toThrow('runs in a transaction: use handle');
+    });
+  });
+
   it('does not start while a definition has no handler', async () => {
     const idle = new JobRunner(queue, transactions, new RequestKeys(clock), [sampleJob]);
 

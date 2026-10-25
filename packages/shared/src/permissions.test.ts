@@ -398,7 +398,7 @@ describe('a frozen permission table', () => {
     }
   });
 
-  it('gives the journals to the nine roles of 07, Who can do what (task 6.2, decision 2), and entry to four (task 6.3, correction 1)', () => {
+  it('gives the journals to the nine roles of 07, Who can do what (task 6.2, decision 2), entry to four (task 6.3, correction 1) and the export to the nine (task 8.9, decision 1)', () => {
     const writers = ['super_admin', 'academic_vice_principal', 'tutor', 'teacher'];
     const readers = [
       'super_admin',
@@ -413,7 +413,11 @@ describe('a frozen permission table', () => {
     ];
     for (const role of ROLES) {
       expect(PERMISSIONS.journal[role], role).toEqual(
-        writers.includes(role) ? ['view', 'edit'] : readers.includes(role) ? ['view'] : [],
+        writers.includes(role)
+          ? ['view', 'edit', 'export']
+          : readers.includes(role)
+            ? ['view', 'export']
+            : [],
       );
     }
   });
@@ -545,6 +549,14 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the support view to the Super Admin and the Academic Vice Principal (task 8.9, decision 2)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.journal_support[role], role).toEqual(
+        role === 'super_admin' || role === 'academic_vice_principal' ? ['view'] : [],
+      );
+    }
+  });
+
   it('gives the personal data report to the Super Admin alone, as an export (task 2.6b)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.personal_data_report[role], role).toEqual(
@@ -576,6 +588,7 @@ describe('a frozen permission table', () => {
       'journal_discipline',
       'journal_extensions',
       'journal_orphans',
+      'journal_support',
       'journal_unlocks',
       'personal_data_report',
       'plan_masters',

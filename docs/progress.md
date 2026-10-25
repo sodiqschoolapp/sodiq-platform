@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 8.9 Journal exports and the support view
+
+- 0131: `journal_save_refusals` (append-only, by month: the refused saves of attendance, numbers and rating entries, recorded by `SaveRefusals` after the refused transaction) and `journal_exports` (one queued per person and branch; the 24 hours of the link written by the trigger).
+- Routes: `POST /api/journal/journals/:journalId/export`, `GET/POST /api/journal/exports`, `GET /api/journal/exports/:exportId/file` (`journal` `export`), `GET /api/journal/support` (`journal_support`). The job `journal.branch_export` runs without a runner transaction (`handleWithoutTransaction`) and reads one snapshot (`Transactions.run(…, { snapshot: true })`). Web: Print/PDF/Excel on the journal, the Export of the branch page, the Support view page (also from a cell's history); handbook `06-journal.md`.
+- Left out, with From lines: "Final" stamps of closed quarters (9.2b); cleanup of expired export files and the alerts over refused saves and failed exports (10.2).
+
+The next sessions must know:
+
+- A file of a journal is written from `JournalGridReader.gridIn` with the reader's access and calculates nothing (`journal-export.ts`).
+- A job that calls a store defines `transaction: 'none'` and is registered with `handleWithoutTransaction`; it opens its own short transactions and decides from stored state.
+- A new route that saves cells naming students wraps its call in `SaveRefusals.recorded`.
+
 ## 25 October 2026: task 8.8 Plans in the journal
 
 - 0130: `journal_lesson_deliveries` ("topic not delivered"), `journal_homework_not_given`, their history `journal_delivery_history`, the copy's `lesson_plan_items.not_delivered_from`, `lesson_plan_work_openings` (a work an approved request adds to a held lesson opens its column; the cells and works guards take it with `app.plan_request_id`), `subject_plan_minimums`; "not given" against data is refused both ways in the database.

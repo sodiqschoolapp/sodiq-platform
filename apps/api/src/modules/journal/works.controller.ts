@@ -26,6 +26,7 @@ import { RequestId } from '../../http/request-id.js';
 import { RequestKey, Returns, ReturnsNothing, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { SaveRefusals } from './save-refusals.js';
 import { WorksService } from './works.service.js';
 
 /**
@@ -38,7 +39,10 @@ import { WorksService } from './works.service.js';
  */
 @Controller('journal/lessons')
 export class WorksController {
-  constructor(private readonly works: WorksService) {}
+  constructor(
+    private readonly works: WorksService,
+    private readonly refusals: SaveRefusals,
+  ) {}
 
   @Post(':lessonId/works')
   @HttpCode(200)
@@ -112,7 +116,24 @@ export class WorksController {
     @RequestKey() key: string,
     @RequestId() requestId: string,
   ): Promise<ScoresSaved> {
-    return this.works.saveScores(access, params.lessonId, input, key, requestId);
+    // Task 8.9 (decision 7): a refused save is recorded for the support view.
+    return this.refusals.recorded(
+      access,
+      {
+        kind: 'score',
+        lessonId: params.lessonId,
+        cells: input.saves.map((save) => ({
+          studentId: save.studentId,
+          ...('workId' in save.column
+            ? { workId: save.column.workId }
+            : { planWorkId: save.column.planWorkId }),
+          value: save.score,
+          version: save.version,
+        })),
+      },
+      requestId,
+      () => this.works.saveScores(access, params.lessonId, input, key, requestId),
+    );
   }
 
   /**

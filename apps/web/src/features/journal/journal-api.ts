@@ -41,10 +41,17 @@ import {
   type WorkCarry,
   type WorkNotHeld,
   type WorkTotal,
+  journalExportListSchema,
+  journalExportRequestedSchema,
+  journalSupportSchema,
+  type JournalExport,
+  type JournalExportFormat,
+  type JournalSupportQuery,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
+import { fileNameOf, save } from '@/components/list/use-export';
 
 /** The journals of a branch (task 6.2); `null` while no branch is chosen. */
 export const journalKey = (branchId?: string | null) =>
@@ -445,3 +452,68 @@ export const setHomeworkGiven = (lessonId: string, body: HomeworkGiven) =>
       body,
     }),
   ).then((answer) => homeworkGivenAnswerSchema.parse(answer));
+
+// ---------------------------------------------------------------------------
+// Task 8.9: the exports of journals and the support view.
+
+/** A journal's PDF or Excel, for the quarter or a month (`TimetableFileButtons`). */
+export const exportJournal = (
+  journalId: string,
+  body: { quarterId: string; month?: string; format: JournalExportFormat },
+) =>
+  api.POST('/api/journal/journals/{journalId}/export', {
+    params: { header: branchHeader(), path: { journalId } },
+    body,
+    parseAs: 'blob',
+  });
+
+/** The person's own exports of the branch, newest first (decision 12). */
+export const journalExportsQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'exports'],
+    queryFn: async () =>
+      journalExportListSchema.parse(
+        await answerOf(api.GET('/api/journal/exports', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Asks for the export of the whole branch (decision 3), with a key sent again on a retry. */
+export const requestBranchExport = (body: JournalExport, key: string) =>
+  answerOf(
+    api.POST('/api/journal/exports', {
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key } },
+      body,
+    }),
+  ).then((answer) => journalExportRequestedSchema.parse(answer));
+
+/** Downloads a ready export of the branch; access is checked again by the server (decision 4). */
+export async function downloadBranchExport(exportId: string): Promise<void> {
+  const result = await api.GET('/api/journal/exports/{exportId}/file', {
+    params: { header: branchHeader(), path: { exportId } },
+    parseAs: 'blob',
+  });
+  // The document calls the file a binary string; with `parseAs: 'blob'` it is a Blob.
+  const file: unknown = await answerOf(Promise.resolve(result));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(result.response.headers.get('Content-Disposition'), 'journals.xlsx'));
+}
+
+/** The support view of one student, journal and date (`edge/journal`, "My grade disappeared"). */
+export const journalSupportQuery = (branchId: string | null, query: JournalSupportQuery | null) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'support', query],
+    queryFn: async () =>
+      journalSupportSchema.parse(
+        await answerOf(
+          api.GET('/api/journal/support', {
+            // `enabled` holds it back while the query is incomplete.
+            params: {
+              header: branchHeader(),
+              query: query ?? { studentId: '', journalId: '', date: '' },
+            },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && query !== null,
+  });

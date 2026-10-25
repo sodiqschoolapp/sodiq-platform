@@ -297,6 +297,34 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: journal exports and the support view (task 8.9)
+
+Plan approved on pull request #227 with correction 1 (every `changed_how` named in the support view); decisions 1 to 15 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (widening what roles may do; a pinned test widened). `journal` gains `export` for the nine readers; a file is written from the reader's own grid answer; the shape `lessons` (a substitute's, an orphan lesson's reading) is refused `journal_export_scope`; `permissions.test.ts` pins it | Decision 1; `07`, last paragraph; `edge/people-roles-accounts`: "teachers export their own journals" |
+| **Look first** (new permission area). `journal_support`: view for the Super Admin and the Academic Vice Principal | Decision 2; `edge/journal`, "My grade disappeared" |
+| The branch export is for the whole-branch readers (Super Admin, Principal, Academic Vice Principal, `WHOLE_ROLES`); access checked again at download with the assignments of that request | Decision 3 |
+| The link works for 24 hours from `ready_at` (written by the trigger); 410 `journal_export_expired` at or after `expires_at`, compared with the clock | Decision 4 |
+| Every file says "Provisional" with date and time until 9.2b (From line there) | Decision 5 |
+| One queued export per account and branch (unique partial index); `retryLimit: 0`; a queued row older than 20 minutes reads as failed `journal_export_stale` and the next request marks it so | Decision 6 |
+| Refusals recorded for the saves that name students (attendance, numbers, rating entries), one row per student, in a transaction of their own; 404s and schema refusals are not | Decision 7 |
+| The support view reads one journal | Decision 8 |
+| Excel: the typed number and its percent are two real-number columns; the PDF shows "12 · 40%" | Decision 9 |
+| Comments and reasons of absence are not in the files | Decision 10 |
+| The branch export reads every journal in one read-only `repeatable read` transaction (`Transactions.run(…, { snapshot: true })`); its job has `transaction: 'none'` (`JobRunner.handleWithoutTransaction`): the delivery is claimed in a short transaction, the handler runs with none open, so the store is never called inside one | Decision 11 |
+| The export list answers the newest 20 of the person's exports in the branch | Decision 12 |
+| "That date" of the support view: the journal's lessons dated that date, and the rating exam on its date | Decision 13 |
+| One audit entry `journal.support_view` per opening | Decision 14 |
+| The support view finds the student among the grid's members of the quarter, a former member in another branch included | Decision 15 |
+| **Build decision.** `journal_save_refusals` refuses a `refused_at` other than the transaction's moment (a BEFORE trigger cannot move a row to another partition by changing its key) | Found by the database test |
+| **Build decision.** The memory store of `PHOTOS_IN_MEMORY` is one per process (`photoStoreOf`): the browser tests run the API and the worker in one process, and the worker's file is read by the API | The tests give their own store as before |
+| **Build decision.** `PdfRenderer.render` takes a limit per call; the branch PDF has 10 minutes inside the job's 15 | A branch PDF is far larger than one journal's |
+| **Build decision.** The audit entry of a single journal's file is written after the file is made, before it is sent, as the plan's export (8.8) | No PDF render inside an open transaction |
+| **Build decision.** `CELL_CHANGES` names `leaving` (written by 0127 since 8.6), with its text | Correction 1; a history line of a leaving no longer fails the readers |
+| **Build decision.** The export list answers the dated quarters of the year in force, for the request form | The page needs no other query |
+
 ## 25 October 2026: plans in the journal (task 8.8)
 
 Plan approved on pull request #226 with corrections 1 to 4; decisions 1 to 18 confirmed there (3, 5 and 7 as changed by corrections 2 and 3). Flagged on issue #42.

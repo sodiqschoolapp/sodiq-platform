@@ -1,6 +1,6 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
@@ -628,5 +628,59 @@ describe('the Journals page filters', () => {
         ),
       ).toBe(true);
     });
+  });
+});
+
+// Task 8.9, pull request #227 (07: "Export to Excel and PDF, and print, for a month or a
+// quarter"): the journal's files for the period shown.
+describe('the export of a journal', () => {
+  const sent = (calls: { route: string; body: unknown }[]) =>
+    calls
+      .filter((one) => one.route === `POST /api/journal/journals/${JOURNAL}/export`)
+      .map((one) => one.body);
+
+  const xlsx = () =>
+    new Response(new Blob(['xlsx']), {
+      headers: { 'Content-Disposition': 'attachment; filename="journal-1.xlsx"' },
+    });
+
+  it('sends the quarter, and the month on screen, for Excel and the PDF', async () => {
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    const revoked = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined);
+    try {
+      const calls = fakeApi({
+        'GET /api/auth/session': () =>
+          json(
+            sessionOf({
+              language: 'en',
+              assignments: [{ role: 'principal', branchId: NORTH.id }],
+            }),
+          ),
+        [GRID_ROUTE]: () => json(GRID),
+        'GET /api/journal/journals': () => json(LIST),
+        [`POST /api/journal/journals/${JOURNAL}/export`]: xlsx,
+      });
+      renderApp(`/journal/${JOURNAL}?month=2026-10`, 'en');
+      (await screen.findByRole('button', { name: en.timetable.views.excel })).click();
+      await waitFor(() => {
+        expect(sent(calls)).toHaveLength(1);
+      });
+      expect(sent(calls)).toEqual([{ quarterId: QUARTER.id, format: 'xlsx', month: '2026-10' }]);
+    } finally {
+      click.mockRestore();
+      created.mockRestore();
+      revoked.mockRestore();
+    }
+  });
+
+  it('offers no export to a reader of some lessons only', async () => {
+    open({ ...GRID, shape: 'lessons' });
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-header="true"]')).not.toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: en.timetable.views.excel })).toBeNull();
   });
 });

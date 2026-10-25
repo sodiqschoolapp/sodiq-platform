@@ -343,6 +343,19 @@ describe('every export is logged', () => {
     'POST /api/plans/journals/:journalId/export': { action: 'plan.export' },
   };
 
+  /**
+   * Task 8.9 (pull request #227): a journal's file, and the branch export: the request, its
+   * list and its download. Each writes its entries (`journal.export`,
+   * `journal.branch_export`, `journal.branch_export_ready`, `journal.branch_export_download`)
+   * as `journal-exports.test.ts` tests with a journal; the list holds no data of the journals.
+   */
+  const JOURNAL_FILES: Record<string, { action: string | null }> = {
+    'POST /api/journal/journals/:journalId/export': { action: 'journal.export' },
+    'POST /api/journal/exports': { action: 'journal.branch_export' },
+    'GET /api/journal/exports': { action: null },
+    'GET /api/journal/exports/:exportId/file': { action: 'journal.branch_export_download' },
+  };
+
   /** The entries of an action in both logs. */
   const countOf = async (action: string): Promise<number> => {
     const found = await sql<{ count: number }>`
@@ -416,6 +429,7 @@ describe('every export is logged', () => {
         ...Object.keys(VIEW_FILES),
         ...Object.keys(VERSION_FILES),
         ...Object.keys(PLAN_FILES),
+        ...Object.keys(JOURNAL_FILES),
       ].sort(),
     );
   });

@@ -18,7 +18,8 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
+import { TimetableFileButtons } from '@/features/timetable/timetable-file-buttons';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
 import { monthsText, schoolDateText } from '@/lib/dates';
@@ -38,7 +39,7 @@ import {
   withCorrection,
   type Correcting,
 } from './edit-period';
-import { journalGridQuery } from './journal-api';
+import { exportJournal, journalGridQuery } from './journal-api';
 import { GRADE_TINT, JournalGridView } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
@@ -161,6 +162,8 @@ function JournalLoaded({
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
   const [exemptOpen, setExemptOpen] = useState(false);
+  // Task 8.9 (decision 1): the reader exports what the grid shows; a lesson reader does not.
+  const mayExport = useMayView('journal', 'export');
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
   // or the rating exam, with the reason asked once for the visit; its saves carry it, the
   // comments on it included (code review 1, finding 2).
@@ -245,7 +248,25 @@ function JournalLoaded({
 
   return (
     <>
-      <PageHeader title={t('journal.sheet')} breadcrumbs={breadcrumbs} />
+      <PageHeader
+        title={t('journal.sheet')}
+        breadcrumbs={breadcrumbs}
+        actions={
+          // 07: "Export to Excel and PDF, and print, for a month or a quarter": the month shown,
+          // or the quarter.
+          !mayExport || data.shape === 'lessons' ? undefined : (
+            <TimetableFileButtons
+              send={(format) =>
+                exportJournal(data.journal.id, {
+                  quarterId: data.quarter.id,
+                  format,
+                  ...(month === null ? {} : { month }),
+                })
+              }
+            />
+          )
+        }
+      />
       <div className="grid gap-4">
         <div className={`${PANEL} grid gap-4`}>
           <div className="grid gap-1" data-journal-header="true">

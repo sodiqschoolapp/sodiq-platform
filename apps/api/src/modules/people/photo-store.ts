@@ -135,12 +135,17 @@ export class R2PhotoStore implements PhotoStore {
 }
 
 /** The store the configuration names. */
+let memoryStore: MemoryPhotoStore | undefined;
+
 export function photoStoreOf(config: PhotosConfig): PhotoStore {
   switch (config.store) {
     case 'r2':
       return new R2PhotoStore(new S3Client(r2ClientConfig(config)), config.bucket);
     case 'memory':
-      return new MemoryPhotoStore();
+      // One store for the process, as one bucket on a server (task 8.9): the browser tests run
+      // the API and the worker in one process, and a file the worker writes is read by the API.
+      memoryStore ??= new MemoryPhotoStore();
+      return memoryStore;
     case 'none':
       return new NoPhotoStore();
   }

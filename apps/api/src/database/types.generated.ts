@@ -713,6 +713,27 @@ export interface JournalEditExtensions {
   to_date: string;
 }
 
+export interface JournalExports {
+  account_id: string;
+  as_of: Timestamp | null;
+  assignment_id: string;
+  branch_id: string;
+  expires_at: Timestamp | null;
+  failed_at: Timestamp | null;
+  failure: string | null;
+  file_key: string | null;
+  format: string;
+  id: Generated<string>;
+  journals: number | null;
+  language: string;
+  month: string | null;
+  quarter_id: string;
+  ready_at: Timestamp | null;
+  requested_at: Timestamp;
+  rows: number | null;
+  status: Generated<string>;
+}
+
 export interface JournalHomeworkNotGiven {
   branch_id: string;
   changed_by: string;
@@ -830,6 +851,25 @@ export interface Journals {
   id: Generated<string>;
   runs: string;
   subject_id: string;
+}
+
+export interface JournalSaveRefusals {
+  account_id: string;
+  branch_id: string;
+  code: string;
+  entry_kind: string | null;
+  id: Generated<string>;
+  journal_id: string;
+  kind: string;
+  lesson_id: string | null;
+  plan_work_id: string | null;
+  quarter_id: string | null;
+  refused_at: Timestamp;
+  request_id: string | null;
+  student_id: string;
+  value_sent: number | null;
+  version_sent: number | null;
+  work_id: string | null;
 }
 
 export interface JournalUnlocks {
@@ -1990,6 +2030,7 @@ export interface DB {
   journal_comments: JournalComments;
   journal_delivery_history: JournalDeliveryHistory;
   journal_edit_extensions: JournalEditExtensions;
+  journal_exports: JournalExports;
   journal_homework_not_given: JournalHomeworkNotGiven;
   journal_lesson_deliveries: JournalLessonDeliveries;
   journal_optional_cells: JournalOptionalCells;
@@ -1997,6 +2038,7 @@ export interface DB {
   journal_rating_entries: JournalRatingEntries;
   journal_rating_exams: JournalRatingExams;
   journal_rating_history: JournalRatingHistory;
+  journal_save_refusals: JournalSaveRefusals;
   journal_unlocks: JournalUnlocks;
   journal_voids: JournalVoids;
   journal_work_history: JournalWorkHistory;

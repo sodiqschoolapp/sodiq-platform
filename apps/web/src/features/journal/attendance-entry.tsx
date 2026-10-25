@@ -1,5 +1,6 @@
 import type { AttendanceMark, JournalGrid, JournalStudent } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
 import { accountText, cellKindText, cellValueText } from '@/features/people/cell-lines';
 import { momentText } from '@/lib/dates';
 import {
@@ -324,6 +325,8 @@ export function useAttendanceEntry(
         <CellHistoryDialog
           lessonId={history.lessonId}
           student={history.student}
+          journalId={grid.journal.id}
+          date={grid.lessons.find((one) => one.id === history.lessonId)?.date ?? null}
           language={i18n.language}
           onClose={() => {
             setHistory(null);
@@ -340,17 +343,23 @@ export function useAttendanceEntry(
 function CellHistoryDialog({
   lessonId,
   student,
+  journalId,
+  date,
   language,
   onClose,
 }: {
   lessonId: string;
   student: JournalStudent;
+  journalId: string;
+  date: string | null;
   language: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const history = useQuery(cellHistoryQuery(branchId, lessonId, student.id));
+  // Task 8.9 (decision 2): the support view of the student, journal and date.
+  const support = useMayView('journal_support');
   const title = t('journal.entry.historyTitle', {
     student: `${student.lastName} ${student.firstName}`,
   });
@@ -365,6 +374,15 @@ function CellHistoryDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+        {support && date !== null && (
+          <Link
+            to="/journal/support"
+            search={{ journal: journalId, student: student.id, date }}
+            className="text-link"
+          >
+            {t('journal.support.open')}
+          </Link>
+        )}
         {history.isError ? (
           <ErrorState error={history.error} onRetry={() => void history.refetch()} />
         ) : history.data === undefined ? (

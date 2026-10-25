@@ -71,7 +71,22 @@ const textLength = (cell: Cell | undefined): number =>
  * any) and columns as wide as their longest text.
  */
 export async function writeWorkbook(sheet: Sheet): Promise<Buffer> {
+  return writeSheets([sheet]);
+}
+
+/**
+ * A workbook of several sheets, each written as `writeWorkbook` writes one
+ * (task 8.9: the branch export, one sheet per journal). The names are unique.
+ */
+export async function writeSheets(sheets: readonly Sheet[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
+  for (const sheet of sheets) {
+    addSheet(workbook, sheet);
+  }
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+function addSheet(workbook: ExcelJS.Workbook, sheet: Sheet): void {
   const preamble = sheet.preamble ?? [];
   const worksheet = workbook.addWorksheet(sheet.name, {
     views: [{ state: 'frozen', ySplit: preamble.length + 1 }],
@@ -81,20 +96,29 @@ export async function writeWorkbook(sheet: Sheet): Promise<Buffer> {
   }
   worksheet.addRow([...sheet.headings]).font = { bold: true };
   for (const row of sheet.rows) {
-    worksheet.addRow(row.map(valueOf));
+    const added = worksheet.addRow(row.map(valueOf));
+    // Task 8.9: a date or a time in a column of numbers (the date row of a journal) keeps its
+    // own format; the column's format below is for a column of dates or times only.
+    row.forEach((cell, index) => {
+      if (cell !== null && typeof cell === 'object') {
+        added.getCell(index + 1).numFmt = 'date' in cell ? 'yyyy-mm-dd' : 'hh:mm';
+      }
+    });
   }
   sheet.headings.forEach((heading, index) => {
     const column = worksheet.getColumn(index + 1);
     const widest = Math.max(heading.length, ...sheet.rows.map((row) => textLength(row[index])));
     column.width = Math.min(Math.max(widest + 2, 8), 60);
-    const kinds = sheet.rows.map((row) => row[index]);
-    if (kinds.some((cell) => cell !== null && typeof cell === 'object' && 'date' in cell)) {
+    const kinds = sheet.rows.map((row) => row[index]).filter((cell) => cell !== null);
+    const only = (kind: 'date' | 'time') =>
+      kinds.length > 0 &&
+      kinds.every((cell) => cell !== undefined && typeof cell === 'object' && kind in cell);
+    if (only('date')) {
       column.numFmt = 'yyyy-mm-dd';
-    } else if (kinds.some((cell) => cell !== null && typeof cell === 'object' && 'time' in cell)) {
+    } else if (only('time')) {
       column.numFmt = 'hh:mm';
     }
   });
-  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 /**

@@ -21,7 +21,8 @@ import type { Access } from '../access/permission.guard.js';
  * the Tutor's own rows, then attendance, then lessons.
  */
 
-const WHOLE_ROLES: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
+/** The roles that read every journal of the branch whole; the branch export is theirs (task 8.9, decision 3). */
+export const WHOLE_ROLES: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
 
 const ATTENDANCE_ROLES: readonly Role[] = ['spiritual_vice_principal', 'head_tutor'];
 

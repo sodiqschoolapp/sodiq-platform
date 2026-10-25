@@ -25,6 +25,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { AttendanceService } from './attendance.service.js';
 import { CellActionsService } from './cell-actions.service.js';
+import { SaveRefusals } from './save-refusals.js';
 
 /**
  * Attendance entry and the history of a cell (task 6.3, pull request #211;
@@ -40,6 +41,7 @@ export class AttendanceController {
   constructor(
     private readonly attendance: AttendanceService,
     private readonly actions: CellActionsService,
+    private readonly refusals: SaveRefusals,
   ) {}
 
   @Post(':lessonId/attendance')
@@ -53,7 +55,21 @@ export class AttendanceController {
     @RequestKey() key: string,
     @RequestId() requestId: string,
   ): Promise<AttendanceSaved> {
-    return this.attendance.save(access, params.lessonId, input, key, requestId);
+    // Task 8.9 (decision 7): a refused save is recorded for the support view.
+    return this.refusals.recorded(
+      access,
+      {
+        kind: 'attendance',
+        lessonId: params.lessonId,
+        cells: input.saves.map((save) => ({
+          studentId: save.studentId,
+          value: save.mark,
+          version: save.version,
+        })),
+      },
+      requestId,
+      () => this.attendance.save(access, params.lessonId, input, key, requestId),
+    );
   }
 
   @Post(':lessonId/all-present')

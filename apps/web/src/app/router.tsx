@@ -80,6 +80,8 @@ import {
 import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unlock-requests-page';
 import { DisciplinePage, disciplineSearch } from '@/features/journal/discipline-page';
 import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
+import { BranchExportsPage, branchExportsSearch } from '@/features/journal/branch-exports-page';
+import { SupportPage, supportSearch } from '@/features/journal/support-page';
 import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
 import { ViewsPage } from '@/features/timetable/views-page';
 import { viewsSearch } from '@/features/timetable/views-search';
@@ -401,6 +403,21 @@ const disciplineRoute = createRoute({
   component: guarded('journal_discipline', DisciplinePage),
 });
 
+/** Task 8.9: the export of the branch's journals and the support view. */
+const branchExportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/exports',
+  validateSearch: branchExportsSearch,
+  component: guarded('journal', BranchExportsPage, 'export'),
+});
+
+const supportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/journal/support',
+  validateSearch: supportSearch,
+  component: guarded('journal_support', SupportPage),
+});
+
 const orphansRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/journal/orphans',
@@ -699,6 +716,8 @@ const routeTree = rootRoute.addChildren([
     unlockRequestsRoute,
     disciplineRoute,
     orphansRoute,
+    branchExportsRoute,
+    supportRoute,
     exemptionsRoute,
     journalRoute,
     plansRoute,

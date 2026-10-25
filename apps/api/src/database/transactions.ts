@@ -123,13 +123,26 @@ export class Transactions {
    * branches, none (`[]`) for work on school-wide tables only. Commits when
    * `work` returns and rolls back when it throws. The moment of the clock is
    * set for the transaction too (`MOMENT_SETTING`).
+   *
+   * `snapshot` (task 8.9, decision 11): a read-only transaction at
+   * `repeatable read`, so that every statement sees the one moment of its
+   * first: "taken from one consistent moment" (edge/system-behaviour). Every
+   * other transaction keeps the default, `read committed`.
    */
   async run<T>(
     branchIds: readonly string[],
     work: (transaction: Transaction) => Promise<T>,
+    options: { snapshot?: boolean } = {},
   ): Promise<T> {
     const filter = branchFilterValue(branchIds);
-    return this.database.transaction().execute(async (transaction) => {
+    const begun =
+      options.snapshot === true
+        ? this.database
+            .transaction()
+            .setIsolationLevel('repeatable read')
+            .setAccessMode('read only')
+        : this.database.transaction();
+    return begun.execute(async (transaction) => {
       if (!this.filtered) {
         await this.assertFiltered(transaction);
       }

@@ -5964,6 +5964,22 @@ try {
     password: deliveryTeacher.firstPassword,
   };
 
+  // Task 8.9: the Principal of the same branch (a whole-branch reader) exports a journal and the whole
+  // branch (the job runs in the worker of the browser tests). All names are invented.
+  const exportsPrincipal = await create('Shahnoza', 'Qodirova');
+  await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: exportsPrincipal.id,
+      role: 'principal',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.exportsPrincipal = {
+    login: exportsPrincipal.login,
+    password: exportsPrincipal.firstPassword,
+  };
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.

@@ -1153,7 +1153,7 @@ How to read the task lines:
   - From 7.1a (pull request #212, decision 10): `edge/lesson-plans`, "A wrongly copied plan must be removed; an inspector asks for a printout": "Plans export to PDF and Excel with their marks." Export of a plan, logged as every export, with the plan reports.
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, Plans and the journal: "Adding a work is allowed, and the approval also opens that journal column for the same days"; "A work that has numbers cannot be removed, only marked \"not held\""; "Each subject can have a minimum number of classworks and homeworks per quarter ... a warning at the end of the window". The approved period is `lesson_plan_requests.open_until` (0117).
 
-- [ ] **8.9 Journal exports and the support view**
+- [x] **8.9 Journal exports and the support view**
   - Read: `07` (last paragraph), `edge/journal`, `edge/system-behaviour`.
   - Build: Excel and PDF export of a journal; branch-wide export as a background job from one consistent moment; the support view of one student, journal and date showing every save and refusal.
   - Done when: an export link stops working after 24 hours and access is checked again at download.
@@ -1205,6 +1205,7 @@ How to read the task lines:
   - From 7.2 (pull request #215, Left out): `edge/lesson-plans`, "The quarter is closed while plan periods are open or requests are waiting": "Waiting requests become void." The close sets the prepared and sent requests of the quarter (`lesson_plan_requests`, 0117) to `void`, in its transaction, with an audit entry.
   - From 8.4 (pull request #222): a correction (`correction` of the cell, work, rating entry and comment saves) and an unlock request are refused in a closed quarter; `journal_edit_judge` (0122, called by the guards `journal_*_edit_guard`) gains the closed quarter for every kind of a person, the correction included.
   - From 8.5 (pull request #223, decision 6): `07`, Problem cases, "The dates fall in a closed quarter": "The part inside a closed quarter is refused until that quarter is reopened ... The part in an open quarter is applied"; `edge/exemptions`, "The range starts in a closed quarter". Every exemption write (create, edit, end, void, batch, a confirmed move offer, a leaving's end) applies the open part only and refuses the closed part, in the database (`exemptions_write`, 0123) and through the routes and the late-entry preview, with a route test each; the row of `exemption-spec-rows.test.ts` that names 9.2b gets its test then.
+  - From 8.9 (pull request #227, decision 5): `edge/journal`, "A results table is exported in week 6": "Every export and print states 'Provisional' with date and time, or 'Final' with the closing date and version." The files of journals (`stampOf` of `apps/api/src/modules/journal/journal-export.ts`) say "Final" with the closing date and the version of the stored results once the quarter is closed; today every file is provisional.
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
@@ -1255,6 +1256,7 @@ How to read the task lines:
   - Build: the daily export to R2; written steps for restoring to a side copy; Sentry, Grafana Cloud and UptimeRobot alerts to Telegram; the sign-in-and-save check every 5 minutes with a test teacher account.
   - Done when: the owner has restored a backup once by following the written steps.
   - From the owner (15 October 2026): a daily scheduled task that reads the day's error reports, slow requests and job runs of the live system and sends the owner a short report of anything unusual (a page that fails, a job that did not run, a request much slower than usual), beside the fixed alerts; it reads and reports only.
+  - From 8.9 (pull request #227, decision 4): the files of the branch exports stay in the store under `exports/` after their 24 hours (`journal_exports`, 0131): a cleanup removes the files of expired and failed exports; the alerts of `edge/system-behaviour` ("a jump in refused saves", "failed jobs") read `journal_save_refusals` (0131) and the failed exports.
 
 - [ ] **10.3 Permission and security review**
   - Read: `02`, `13` (Security), `edge/people-roles-accounts`.

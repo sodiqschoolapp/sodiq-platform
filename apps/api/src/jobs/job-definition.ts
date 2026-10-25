@@ -26,6 +26,15 @@ export interface JobDefinition<Data> {
    */
   data: z.ZodType<Data>;
   options?: JobOptions;
+  /**
+   * `none` (task 8.9, decision 11): the handler runs with no transaction open
+   * and opens its own short ones, so that it can call a store outside any
+   * transaction (`photo-store.ts`). The runner claims the delivery in a short
+   * transaction first, so a delivery already claimed does nothing; such a
+   * handler is registered with `JobRunner.handleWithoutTransaction` and is
+   * repeat-safe from the stored state it reads.
+   */
+  transaction?: 'none';
 }
 
 const JOB_NAME = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
