@@ -31,6 +31,9 @@ export const GROUP_MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // the day of the move).
   group_memberships_one_stay: 'stay_continues',
   group_memberships_join: 'request_refused',
+  // Task 9.2b (From 3.3a; plan decision 12): a group row that changes membership on a day of a
+  // closed quarter (0133, `memberships_closed_quarter`).
+  quarters_closed: 'group_quarter_closed',
 };
 
 /**

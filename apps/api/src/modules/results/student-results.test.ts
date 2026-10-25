@@ -1,3 +1,4 @@
+import { finalQuarterRecord } from '@sodiq/calc';
 import {
   journalGridSchema,
   studentAttendanceSchema,
@@ -18,6 +19,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
@@ -514,6 +516,92 @@ describe('the student results (08, Student results)', () => {
         { kind: 'number', shown: 77, grade: 4, basedOn: 1 },
       ]);
     });
+  });
+
+  // Task 9.2b (From 9.1, decision 1, Look first): 08, "The year result is shown when the fourth
+  // quarter is closed"; every figure of a closed quarter is its stored final record;
+  // edge/academic-year: a "not official" start quarter is left out of the year result.
+  it('reads a closed quarter from its stored record, answers the year once quarter 4 is closed, and leaves a "not official" quarter out', async () => {
+    const s = await scene();
+    const q1 = await quarterOf(s.scene, 1);
+    const q4 = await quarterOf(s.scene, 4);
+    const closer = await load.classes.account();
+    const closing = await closeQuarter(t.database, {
+      branchId: s.scene.branch,
+      quarterId: q1,
+      accountId: closer,
+    });
+    // A record the close stored: one lesson, present, a classwork 10 of 10 (100), not the entries
+    // of the journal now (77): the stored value is what the student results answer.
+    const record = finalQuarterRecord(
+      {
+        weights: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
+        attendanceValues: { lateValue: 50, skippedValue: 0 },
+        lessons: [{ mark: 1, classworks: [{ score: 10, total: 10 }], homeworks: [] }],
+        ratingExam: null,
+        quarterClosed: true,
+        heldInJournals: 1,
+        countsFrom: null,
+        leftSubjectOn: null,
+        atLeaving: null,
+        decision: null,
+      },
+      'closing',
+    );
+    await t.database.migrator
+      .insertInto('quarter_final_results')
+      .values({
+        branch_id: s.scene.branch,
+        closing_id: closing,
+        quarter_id: q1,
+        subject_id: s.scene.subject,
+        student_id: s.aziz,
+        journal_id: s.journal,
+        kind: 'closing',
+        record: JSON.stringify(record),
+      })
+      .execute();
+    const reader = await account();
+    let roles: { role: 'principal'; branchId: string }[] = [
+      { role: 'principal', branchId: s.scene.branch },
+    ];
+    const read = () => {
+      const given = roles;
+      roles = [];
+      return as(reader, given, async (get) =>
+        resultsOf(
+          await get(s.scene.branch, `/api/results/students/${s.aziz}?yearId=${s.scene.year}`),
+        ),
+      );
+    };
+    const closedOne = await read();
+    expect(closedOne.quarters.find((one) => one.id === q1)).toMatchObject({ closed: true });
+    expect(closedOne.subjects[0]?.quarters[0]).toMatchObject({
+      classwork: 100,
+      outcome: { kind: 'number', shown: 100, grade: 5, provisional: false },
+    });
+    // The year waits for the fourth quarter.
+    expect(closedOne.subjects[0]?.year).toBeNull();
+    await closeQuarter(t.database, {
+      branchId: s.scene.branch,
+      quarterId: q4,
+      accountId: closer,
+      at: '2027-05-31T18:00:00+05:00',
+    });
+    expect((await read()).subjects[0]?.year).toEqual({
+      kind: 'number',
+      shown: 100,
+      grade: 5,
+      basedOn: 1,
+    });
+    await t.database.migrator
+      .updateTable('quarter_closings')
+      .set({ start_quarter: 'not_official' })
+      .where('id', '=', closing)
+      .execute();
+    const unofficial = await read();
+    expect(unofficial.quarters.find((one) => one.id === q1)).toMatchObject({ notOfficial: true });
+    expect(unofficial.subjects[0]?.year).toEqual({ kind: 'no_result' });
   });
 
   it('labels the start quarter "from <date>" at every reader, and marks a quarter ended before the start date "not in the system" (decision 8)', async () => {

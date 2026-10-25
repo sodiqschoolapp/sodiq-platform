@@ -16,6 +16,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { CellsKit, markInStore } from '../../testing/cells-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { moveStudentBranch } from '../../testing/members-kit.js';
 import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
@@ -734,6 +735,118 @@ describe('leaving, return and delete of a student', () => {
         code: 'held_elsewhere',
       });
       expect((await detail(student.id)).status).toBe('inactive');
+    });
+  });
+
+  // Task 9.2b (From 2.4b-1, pull request #68): edge/students-classes-groups, "A student stopped
+  // coming on 1 October": "A date in a closed quarter is refused." A branch of its own with
+  // dated quarters (quarter 1 to 4 October, quarter 2 from 5 October), its students written
+  // before quarter 1 is closed: a closed quarter refuses the fixture's rows too.
+  describe('a closed quarter (task 9.2b)', () => {
+    it('refuses a leaving, an undo and a return dated in a closed quarter, and takes them dated after it', async () => {
+      const branch = await t.newBranch();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({ branch_id: branch, start_date: '2026-09-01', end_date: '2027-05-31' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [number, start, end] of [
+          [1, '2026-09-01', '2026-10-04'],
+          [2, '2026-10-05', '2026-12-27'],
+          [3, '2027-01-11', '2027-03-20'],
+          [4, '2027-03-28', '2027-05-31'],
+        ] as const) {
+          await transaction
+            .insertInto('quarters')
+            .values({
+              branch_id: branch,
+              academic_year_id: year.id,
+              number,
+              start_date: start,
+              end_date: end,
+            })
+            .execute();
+        }
+        await transaction
+          .updateTable('academic_years')
+          .set({ status: 'current' })
+          .where('id', '=', year.id)
+          .execute();
+      });
+      const first = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('branch_id', '=', branch)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      const classId = (await t.classOf(branch, 7, '2026-09-02')) ?? UNKNOWN;
+      const staying = await create({ classId }, branch);
+      const leaving = await create({ classId }, branch);
+      const version = async (id: string) =>
+        studentDetailSchema.parse((await t.get(`/api/people/students/${id}`, branch)).body).version;
+      const leave = async (id: string, lastDay: string) =>
+        t.post(`/api/people/students/${id}/leaving`, branch, {
+          lastDay,
+          reason: 'The family moved to another city.',
+          version: await version(id),
+        });
+      const giveBack = async (id: string, from: string) =>
+        t.post(`/api/people/students/${id}/return`, branch, {
+          from,
+          grade: 7,
+          classId,
+          contract: { number: `LV-QUARTER/${from}`, signedOn: from },
+          reason: null,
+          version: await version(id),
+        });
+      // Left from 1 October, a day of quarter 1, while it was open.
+      accepted(await leave(leaving.id, '2026-09-30'));
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: first.id,
+        accountId: (
+          await t.database.migrator
+            .selectFrom('accounts')
+            .select('id')
+            .orderBy('id')
+            .executeTakeFirstOrThrow()
+        ).id,
+      });
+      const before = await snapshot();
+      refusedWith(await leave(staying.id, '2026-10-01'), 409, 'date_in_closed_quarter');
+      // An unknown student is 404 before the quarter's refusal (`.claude/rules/api.md`).
+      refusedWith(
+        await t.post(`/api/people/students/${UNKNOWN}/leaving`, branch, {
+          lastDay: '2026-10-01',
+          reason: 'The family moved to another city.',
+          version: 1,
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await t.post(`/api/people/students/${leaving.id}/leaving/undo`, branch, {
+          reason: 'Entered by mistake.',
+          version: await version(leaving.id),
+        }),
+        409,
+        'date_in_closed_quarter',
+      );
+      refusedWith(await giveBack(leaving.id, '2026-10-02'), 409, 'date_in_closed_quarter');
+      expect(await snapshot()).toEqual(before);
+      // Dates in quarter 2 are taken.
+      const left = accepted(await leave(staying.id, '2026-10-06'));
+      expect(left.statuses.map((row) => [row.status, row.from, row.until])).toEqual([
+        ['active', '2026-09-02', '2026-10-07'],
+        ['inactive', '2026-10-07', null],
+      ]);
+      const back = accepted(await giveBack(leaving.id, '2026-10-05'));
+      expect(back.statuses.map((row) => [row.status, row.from, row.until])).toEqual([
+        ['active', '2026-09-02', '2026-10-01'],
+        ['inactive', '2026-10-01', '2026-10-05'],
+        ['active', '2026-10-05', null],
+      ]);
     });
   });
 

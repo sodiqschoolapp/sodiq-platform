@@ -2,6 +2,7 @@ import { studentDetailSchema, studentHistorySchema, type StudentDetail } from '@
 import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import {
   dayTemplatesKit,
@@ -636,6 +637,130 @@ describe('group transfers and the History tab', () => {
         403,
         'move_in_past',
       );
+    });
+  });
+
+  // Task 9.2b (From 3.3a, pull request #95, decision 4; plan decision 12): `edge`,
+  // "Backdating is for the Academic Vice Principal, in an open quarter". A branch of its own
+  // with dated quarters (quarter 1 to 4 October, quarter 2 from 5 October), built before
+  // quarter 1 is closed: a closed quarter refuses the fixture's rows too.
+  describe('a closed quarter', () => {
+    it('refuses a group move, its change and its undo dated in a closed quarter, and takes a move dated after it', async () => {
+      const branch = await t.newBranch();
+      const own = await classes.year(branch);
+      const quarters = await t.database.migrator.transaction().execute(async (transaction) => {
+        const ids: string[] = [];
+        for (const [number, start, end] of [
+          [1, '2026-09-01', '2026-10-04'],
+          [2, '2026-10-05', '2026-12-27'],
+          [3, '2027-01-11', '2027-03-20'],
+          [4, '2027-03-28', '2027-05-31'],
+        ] as const) {
+          const row = await transaction
+            .updateTable('quarters')
+            .set({ start_date: start, end_date: end })
+            .where('academic_year_id', '=', own)
+            .where('number', '=', number)
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          ids.push(row.id);
+        }
+        return ids;
+      });
+      const oxford = await classes.schoolClass(branch, own, { grade: 7 });
+      const account = await classes.account();
+      const members = new MembersKit(t.database.migrator, account);
+      // The class rows first, then the groups of the class and the group rows, as the
+      // fixture of another branch above.
+      const students: string[] = [];
+      for (let index = 0; index < 3; index += 1) {
+        const studentId = await members.student(branch, { startsOn: '2026-09-01' });
+        await members.member({ branch, classId: oxford, studentId, from: '2026-09-01' });
+        students.push(studentId);
+      }
+      const [a, b] = [
+        await classes.group(branch, own, headSubject, [oxford]),
+        await classes.group(branch, own, headSubject, [oxford]),
+      ];
+      const [one, two, three] = await Promise.all(
+        students.map(async (studentId) => ({
+          studentId,
+          memberId: await members.groupMember({
+            branch,
+            groupId: a,
+            subjectId: headSubject,
+            studentId,
+            from: '2026-09-01',
+          }),
+        })),
+      );
+      if (one === undefined || two === undefined || three === undefined) {
+        throw new Error('Three students.');
+      }
+      const move = (pupil: { studentId: string; memberId: string }, from: string) =>
+        t.post('/api/groups/transfers', branch, { ...pupil, toGroupId: b, from }, t.admin);
+      // A move dated in quarter 1 while it was open.
+      ok(await move(two, '2026-10-02'));
+      const moved = await lastMoveId(two.studentId);
+      // A move scheduled in quarter 2, whose change would date it in quarter 1.
+      ok(await move(one, '2026-10-20'));
+      const scheduled = await lastMoveId(one.studentId);
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: quarters[0] ?? '',
+        accountId: account,
+      });
+      const before = await rowsOf();
+      refusedWith(await move(three, '2026-10-01'), 409, 'group_quarter_closed');
+      // An unknown student or group is 404 before the quarter's refusal (`.claude/rules/api.md`).
+      refusedWith(await move({ ...three, studentId: UNKNOWN }, '2026-10-01'), 404, 'not_found');
+      refusedWith(
+        await t.post(
+          '/api/groups/transfers',
+          branch,
+          { ...three, toGroupId: UNKNOWN, from: '2026-10-01' },
+          t.admin,
+        ),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await t.post(
+          `/api/groups/transfers/${scheduled}/change`,
+          branch,
+          { toGroupId: UNKNOWN, from: '2026-10-01' },
+          t.admin,
+        ),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await t.post(
+          `/api/groups/transfers/${moved}/undo`,
+          branch,
+          { reason: 'Moved by mistake.' },
+          t.admin,
+        ),
+        409,
+        'group_quarter_closed',
+      );
+      refusedWith(
+        await t.post(
+          `/api/groups/transfers/${scheduled}/change`,
+          branch,
+          { toGroupId: b, from: '2026-10-01' },
+          t.admin,
+        ),
+        409,
+        'group_quarter_closed',
+      );
+      expect(await rowsOf()).toEqual(before);
+      // The first day of quarter 2 is taken.
+      ok(await move(three, '2026-10-05'));
+      expect(await held(three.studentId)).toEqual([
+        [a, '2026-09-01', '2026-10-05'],
+        [b, '2026-10-05', '2027-06-01'],
+      ]);
     });
   });
 

@@ -7,6 +7,7 @@ import { studentQuarterOutcome } from './outcome.js';
 import {
   finalQuarterRecord,
   recalculateAndCompare,
+  storedQuarterInputs,
   storedQuarterOutcome,
   type FinalQuarterRecord,
 } from './record.js';
@@ -381,5 +382,19 @@ describe('storedQuarterOutcome', () => {
   it.each(broken)('refuses %s with record_shape', (_, edit) => {
     const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as Stored;
     expect(codeOf(() => storedQuarterOutcome(edit(stored)))).toBe('record_shape');
+  });
+});
+
+// Task 9.2b: the averages of a closed quarter whose outcome is not a number are read from the
+// inputs stored with it, never from the entries of today.
+describe('storedQuarterInputs', () => {
+  it('reads the stored inputs back as they were given', () => {
+    const stored = throughJson(finalQuarterRecord(CLOSED, 'closing'));
+    expect(storedQuarterInputs(stored)).toEqual(CLOSED);
+  });
+
+  it('refuses a record of another format with record_shape', () => {
+    const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as Record<string, unknown>;
+    expect(codeOf(() => storedQuarterInputs({ ...stored, format: 2 }))).toBe('record_shape');
   });
 });

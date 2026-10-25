@@ -12,6 +12,7 @@ import { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import {
@@ -423,6 +424,90 @@ describe('the move of a student to another branch', () => {
         'branch_move_year_closed',
       );
       expect(await rowsOf()).toEqual(before);
+    });
+
+    // Task 9.2b (From 3.3c, pull request #97, decision 9; plan decision 12): a release dated in
+    // a closed quarter is refused, and so is its accept, also when the quarter was closed after
+    // the release; a date after the closed quarter is taken. Two branches of their own; the
+    // sending one's quarters dated (quarter 1 to 4 October, quarter 2 from 5 October) and its
+    // students written before quarter 1 is closed (a closed quarter refuses the fixture too).
+    it('refuses a release and its accept dated in a closed quarter, and takes both dated after it', async () => {
+      const sending = await t.newBranch();
+      const receiving = await t.newBranch();
+      const sendingYear = await classes.year(sending);
+      const receivingYear = await classes.year(receiving);
+      const quarters = await t.database.migrator.transaction().execute(async (transaction) => {
+        const ids: string[] = [];
+        for (const [number, start, end] of [
+          [1, '2026-09-01', '2026-10-04'],
+          [2, '2026-10-05', '2026-12-27'],
+          [3, '2027-01-11', '2027-03-20'],
+          [4, '2027-03-28', '2027-05-31'],
+        ] as const) {
+          const row = await transaction
+            .updateTable('quarters')
+            .set({ start_date: start, end_date: end })
+            .where('academic_year_id', '=', sendingYear)
+            .where('number', '=', number)
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          ids.push(row.id);
+        }
+        return ids;
+      });
+      const oxford = await classes.schoolClass(sending, sendingYear, { grade: 7 });
+      const yale = await classes.schoolClass(receiving, receivingYear, { grade: 7 });
+      const pupilOf = async () => {
+        const studentId = await members.student(sending, { startsOn: '2026-09-01' });
+        await members.member({ branch: sending, classId: oxford, studentId, from: '2026-09-01' });
+        return studentId;
+      };
+      const [one, two, three] = [await pupilOf(), await pupilOf(), await pupilOf()];
+      const releaseOf = async (id: string, from: string) =>
+        release(id, { to: receiving, from, branch: sending, cookie: t.admin });
+      // Released from a day of quarter 1 while it was open.
+      const moveId = accepted(await releaseOf(two, '2026-10-01')).branchMove?.id ?? '';
+      await closeQuarter(t.database, {
+        branchId: sending,
+        quarterId: quarters[0] ?? '',
+        accountId: await classes.account(),
+      });
+      const before = await rowsOf();
+      refusedWith(await releaseOf(one, '2026-10-01'), 409, 'branch_move_quarter_closed');
+      // An unknown student or branch is 404 before the quarter's refusal (`.claude/rules/api.md`).
+      refusedWith(
+        await release(UNKNOWN, {
+          to: receiving,
+          from: '2026-10-01',
+          branch: sending,
+          cookie: t.admin,
+          version: 1,
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await release(one, { to: UNKNOWN, from: '2026-10-01', branch: sending, cookie: t.admin }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await accept(moveId, { classId: yale }, t.admin, receiving),
+        409,
+        'branch_move_quarter_closed',
+      );
+      expect(await rowsOf()).toEqual(before);
+      expect(await classRowsOf(two)).toEqual([
+        expect.objectContaining({ class_id: oxford, valid_until: '2027-06-01', ended_by: null }),
+      ]);
+      // The first day of quarter 2: the release and its accept are taken.
+      const later = accepted(await releaseOf(three, '2026-10-05')).branchMove?.id ?? '';
+      const moved = accepted(await accept(later, { classId: yale }, t.admin, receiving));
+      expect(moved.class?.id).toBe(yale);
+      expect(await classRowsOf(three)).toEqual([
+        expect.objectContaining({ class_id: oxford, valid_until: '2026-10-05' }),
+        expect.objectContaining({ class_id: yale, valid_from: '2026-10-05' }),
+      ]);
     });
 
     it('refuses a group move while a release is open', async () => {

@@ -39,6 +39,10 @@ export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Task 3.5c, decision 11: two adjoining rows of one class (a move back on
   // the day of the move).
   class_memberships_one_stay: 'stay_continues',
+  // Task 9.2b (From 3.3a, From 3.3c; plan decision 12): a class row that changes membership on
+  // a day of a closed quarter (0133, `memberships_closed_quarter`). A route whose refusal
+  // names the change itself maps `quarters_closed` again after this map.
+  quarters_closed: 'class_quarter_closed',
 };
 
 /**

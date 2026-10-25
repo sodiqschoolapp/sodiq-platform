@@ -447,3 +447,13 @@ export function storedQuarterOutcome(record: unknown): StudentQuarterOutcome {
       throw shapeError('outcome.kind');
   }
 }
+
+/**
+ * The inputs stored in a final record (task 9.2b), read field by field as `recalculateAndCompare`
+ * reads them: the entries, weights and values the quarter was closed with.
+ */
+export function storedQuarterInputs(record: unknown): StudentQuarterInput {
+  const value = objectAt(record, 'record');
+  if (value.format !== 1) throw shapeError('format');
+  return inputsAt(value.inputs, 'inputs');
+}

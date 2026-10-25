@@ -36,6 +36,7 @@ export {
 export {
   finalQuarterRecord,
   recalculateAndCompare,
+  storedQuarterInputs,
   storedQuarterOutcome,
   type Comparison,
   type FinalQuarterRecord,

@@ -65,6 +65,13 @@ const resultQuarterSchema = z.object({
   startDate: schoolDateSchema,
   endDate: schoolDateSchema,
   notInSystem: z.boolean(),
+  /**
+   * Task 9.2b: the start quarter closed "not official" (`edge/academic-year`, "Closing the start
+   * quarter": "A 'not official' quarter is left out of the year result").
+   */
+  notOfficial: z.boolean(),
+  /** Task 9.2b: the quarter is closed; its figures are the stored final results. */
+  closed: z.boolean(),
 });
 
 export const RESULT_FLAGS = ['few_lessons', 'attendance_only', 'left_subject'] as const;

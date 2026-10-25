@@ -52,6 +52,7 @@ import {
   writePlacement,
   type PlacementClass,
 } from '../classes/class-placement.js';
+import { lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { atClassFields, classLeft, groupsLeavingCut } from './return-class.js';
 import {
@@ -126,6 +127,10 @@ const GUARDS: Readonly<Record<string, ErrorCode>> = {
   // Task 8.5 (decision 14): a leaving taken back gives back the exemptions it cut; one entered
   // since over those days refuses it (spec review of the code, note 3).
   exemption_spans_no_overlap: 'student_status_exemption_overlap',
+  // Task 9.2b (From 2.4b-1, pull request #68): a status row, or a class or group row the change
+  // cuts or writes back, dated in a closed quarter (0133); after the maps above, so the class
+  // and group rows of the change answer the change's own code.
+  quarters_closed: 'date_in_closed_quarter',
 };
 
 /** Runs work; a guard of 0033 that refused becomes its 409. */
@@ -796,6 +801,7 @@ export class StudentStatuses {
     return guarded(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
         await change.before?.(transaction);
+        await this.lockQuarters(transaction, branchId, id, change);
         const student = await this.students.lockStudent(transaction, id);
         const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
         const memberships = await membershipsOf(transaction, id);
@@ -882,6 +888,48 @@ export class StudentStatuses {
           : { ...detail, classesNotRestored: classes.notRestored };
       }),
     );
+  }
+
+  /**
+   * Task 9.2b (From 2.4b-1, pull request #68; `edge/students-classes-groups`: "A date in a
+   * closed quarter is refused"): a leaving, its cancel and undo, a return, a graduated restore
+   * and the cancel of a return change the status, class and group rows from their first day on,
+   * so the quarters of the branch from that day on are locked and a closed one refuses the
+   * change; a date after the closed quarter is taken. The day is planned from the rows as read,
+   * without a lock, so that the quarters are taken in a statement of their own before the
+   * student (`.claude/rules/database.md`; review correction 3); the plan is made again under
+   * the student's lock, and the guards of 0133 refuse what a change made meanwhile moves into a
+   * closed quarter (`GUARDS`). A plan that refuses takes no lock: it is refused again
+   * under the student's lock.
+   */
+  private async lockQuarters(
+    transaction: Transaction,
+    branchId: string,
+    id: string,
+    change: StatusChange,
+  ): Promise<void> {
+    // Another branch's or an unknown student is 404 before any refusal (`.claude/rules/api.md`).
+    const seen = await transaction
+      .selectFrom('students')
+      .select('id')
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (seen === undefined) {
+      throw notFound();
+    }
+    const today = await this.students.todayIn(transaction, branchId);
+    const rows = (await this.students.statusRowsOf(transaction, id)).get(id) ?? [];
+    const outcome = change.plan(rows, today);
+    if ('refusal' in outcome) {
+      return;
+    }
+    const [first] = [
+      ...outcome.cuts.map((cut) => cut.validUntil),
+      ...outcome.writes.map((write) => write.validFrom),
+    ].sort();
+    if (first !== undefined) {
+      await lockOpenQuarters(transaction, branchId, first, null, 'date_in_closed_quarter');
+    }
   }
 
   /**
