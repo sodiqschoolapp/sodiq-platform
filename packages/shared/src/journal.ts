@@ -87,7 +87,7 @@ export type ShownResult = z.infer<typeof shownResultSchema>;
  * `null`. `result` is `null` for an attendance-only subject, and for a reader
  * who sees attendance only.
  */
-const figuresSchema = z.object({
+export const figuresSchema = z.object({
   attendance: z.int().min(0).max(100).nullable(),
   classwork: z.int().min(0).max(100).nullable(),
   homework: z.int().min(0).max(100).nullable(),
@@ -191,7 +191,7 @@ export const journalLessonSchema = z.object({
 export type JournalLesson = z.infer<typeof journalLessonSchema>;
 
 /** One cell of a student in a lesson, in the order of `lessons`. */
-const journalCellSchema = z.object({
+export const journalCellSchema = z.object({
   /** Outside the student's membership, or before the lesson starts (`07`, Editing rules). */
   closed: z.boolean(),
   /**

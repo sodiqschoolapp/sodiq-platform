@@ -21,6 +21,16 @@ export type JobHandler<Data> = (
   job: { id: string },
 ) => Promise<void>;
 
+/**
+ * The work of a job that runs with no transaction open (`transaction: 'none'`
+ * of its definition, task 8.9): it gets the branches of the job and opens its
+ * own transactions with them.
+ */
+export type OutsideJobHandler<Data> = (
+  data: Data,
+  job: { id: string; branchIds: readonly string[] },
+) => Promise<void>;
+
 /** One delivery of a job, as the queue hands it over. */
 export interface Delivery {
   id: string;
@@ -65,6 +75,9 @@ export class JobRunner {
 
   /** Names the handler of a job definition. One handler per definition. */
   handle<Data>(definition: JobDefinition<Data>, handler: JobHandler<Data>): void {
+    if (definition.transaction === 'none') {
+      throw new Error(`The job "${definition.name}" runs without a transaction.`);
+    }
     if (!this.definitions.includes(definition)) {
       throw new Error(`The job "${definition.name}" is not in the list of job definitions.`);
     }
@@ -73,6 +86,28 @@ export class JobRunner {
     }
     this.handlers.set(definition.name, {
       deliver: (delivery) => this.run(definition, handler, delivery),
+    });
+  }
+
+  /**
+   * Names the handler of a job that runs with no transaction open (its
+   * definition says `transaction: 'none'`, task 8.9). One handler per definition.
+   */
+  handleWithoutTransaction<Data>(
+    definition: JobDefinition<Data>,
+    handler: OutsideJobHandler<Data>,
+  ): void {
+    if (definition.transaction !== 'none') {
+      throw new Error(`The job "${definition.name}" runs in a transaction: use handle.`);
+    }
+    if (!this.definitions.includes(definition)) {
+      throw new Error(`The job "${definition.name}" is not in the list of job definitions.`);
+    }
+    if (this.handlers.has(definition.name)) {
+      throw new Error(`The job "${definition.name}" already has a handler.`);
+    }
+    this.handlers.set(definition.name, {
+      deliver: (delivery) => this.runOutside(definition, handler, delivery),
     });
   }
 
@@ -114,6 +149,36 @@ export class JobRunner {
         },
       );
     });
+  }
+
+  /**
+   * A job with no transaction of its own (task 8.9, decision 11): the delivery
+   * is claimed in a short transaction first, so a delivery seen before does
+   * nothing; the handler then runs with no transaction open. A handler that
+   * fails after the claim is not run again for that delivery: it decides from
+   * the stored state it reads and leaves that state as a later read can tell.
+   */
+  private async runOutside<Data>(
+    definition: JobDefinition<Data>,
+    handler: OutsideJobHandler<Data>,
+    delivery: Delivery,
+  ): Promise<void> {
+    const envelope = envelopeSchema(definition).safeParse(delivery.data);
+    if (!envelope.success) {
+      throw new Error(`The data of a "${definition.name}" job does not fit its definition.`);
+    }
+    const { branchIds } = envelope.data;
+    const data = envelope.data.data;
+    const claim = await this.transactions.run(branchIds, (transaction) =>
+      this.requestKeys.runJobOnce<JsonValue>(
+        transaction,
+        // The stored envelope is JSON, so it is a JsonValue.
+        { key: delivery.id, jobName: definition.name, input: delivery.data as JsonValue },
+        () => Promise.resolve(null),
+      ),
+    );
+    if (claim.repeated) return;
+    await handler(data, { id: delivery.id, branchIds });
   }
 
   /** Worker only: begins to fetch and run jobs. Every definition needs a handler first. */

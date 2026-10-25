@@ -23,7 +23,11 @@ export class PdfFile {
 
 /** Makes a PDF of a whole HTML document. */
 export interface PdfRenderer {
-  render(html: string): Promise<Buffer>;
+  /**
+   * `limitMs` (task 8.9): a longer limit for one render, the branch export
+   * of a background job; a route keeps the renderer's own.
+   */
+  render(html: string, options?: { limitMs?: number }): Promise<Buffer>;
 }
 
 /** Injection token of the `PdfRenderer`; the tests give a fake one. */
@@ -99,12 +103,13 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
     private readonly limitMs: number = PDF_RENDER_TIMEOUT_MS,
   ) {}
 
-  render(html: string): Promise<Buffer> {
+  render(html: string, options: { limitMs?: number } = {}): Promise<Buffer> {
     if (this.waiting >= PDF_WAITING_MAX + 1) {
       return Promise.reject(unavailable());
     }
     this.waiting += 1;
-    const run = this.queue.then(() => this.renderNow(html));
+    const limitMs = options.limitMs ?? this.limitMs;
+    const run = this.queue.then(() => this.renderNow(html, limitMs));
     this.queue = run.catch(() => undefined);
     return run.finally(() => {
       this.waiting -= 1;
@@ -120,18 +125,18 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
   }
 
   /**
-   * One render within `limitMs` in all (spec review should-fix 2): past it
+   * One render within its limit in all (spec review should-fix 2): past it
    * the Chromium is closed, which ends the render, and the answer is 503.
    */
-  private async renderNow(html: string): Promise<Buffer> {
+  private async renderNow(html: string, limitMs: number): Promise<Buffer> {
     let timer: NodeJS.Timeout | undefined;
     const limit = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         reject(unavailable());
-      }, this.limitMs);
+      }, limitMs);
     });
     try {
-      return await Promise.race([this.renderInChromium(html), limit]);
+      return await Promise.race([this.renderInChromium(html, limitMs), limit]);
     } catch (error) {
       await this.onModuleDestroy();
       throw error instanceof ApiException ? error : unavailable();
@@ -140,7 +145,7 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
     }
   }
 
-  private async renderInChromium(html: string): Promise<Buffer> {
+  private async renderInChromium(html: string, limitMs: number): Promise<Buffer> {
     let browser: RenderBrowser;
     try {
       browser = await this.browserOf();
@@ -152,11 +157,11 @@ export class ChromiumPdfRenderer implements PdfRenderer, OnModuleDestroy {
       try {
         await context.route('**/*', (route) => route.abort());
         const page = await context.newPage();
-        await page.setContent(html, { waitUntil: 'load', timeout: this.limitMs });
+        await page.setContent(html, { waitUntil: 'load', timeout: limitMs });
         return await page.pdf({
           preferCSSPageSize: true,
           printBackground: true,
-          timeout: this.limitMs,
+          timeout: limitMs,
         });
       } finally {
         await context.close().catch(() => undefined);

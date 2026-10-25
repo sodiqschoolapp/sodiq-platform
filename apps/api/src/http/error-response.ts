@@ -455,6 +455,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   pdf_unavailable: 'A PDF cannot be made on this server now.',
   journal_scope: 'This journal is outside what the role may read.',
   journal_no_quarter: 'The year has no quarter with dates.',
+  journal_export_scope: 'This export is outside what the role may export.',
+  journal_month_outside: 'The month holds no day of the quarter.',
+  journal_export_running: 'An export of the branch is still being made.',
+  journal_export_not_ready: 'The export is still being made.',
+  journal_export_failed: 'The export could not be made.',
+  journal_export_stale: 'The export was not finished in time.',
+  journal_export_expired: 'The link of the export has expired.',
   journal_entry_scope: 'The lesson is not one the person teaches or owns.',
   lesson_attendance_only: 'The lesson takes attendance only.',
   subject_switches_from:

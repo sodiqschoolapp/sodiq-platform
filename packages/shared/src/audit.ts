@@ -365,6 +365,11 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.minimums',
   ],
   exports: [
+    // Task 8.9: a journal in Excel or PDF, and the branch export: asked for, ready, downloaded.
+    'journal.export',
+    'journal.branch_export',
+    'journal.branch_export_ready',
+    'journal.branch_export_download',
     // Task 8.8: a plan's PDF or Excel with its marks, and the plan reports in Excel.
     'plan.export',
     'plan_report.export',
@@ -385,7 +390,10 @@ export const AUDIT_ACTION_GROUPS = {
     'staff.personal_data_report',
     'relative.personal_data_report',
   ],
-  shows: ['staff.identity_shown', 'student.identity_shown', 'relative.show', 'audit.entry_shown'],
+  shows: [
+    // Task 8.9: the support view of a student, journal and date (decision 14).
+    'journal.support_view',
+    'staff.identity_shown', 'student.identity_shown', 'relative.show', 'audit.entry_shown'],
 } as const;
 
 export const AUDIT_GROUPS = Object.keys(

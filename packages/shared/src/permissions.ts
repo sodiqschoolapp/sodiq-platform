@@ -517,17 +517,34 @@ export const PERMISSIONS = freezeTable({
    * Principal ("corrects with a reason", 8.4) and the Super Admin. The route
    * decides the lesson for every request (`attendance-entry.ts`): only the
    * lessons the person teaches or owns, whatever the role.
+   *
+   * `export` (task 8.9, pull request #227, decision 1, Look first): the nine
+   * readers (07: "Export to Excel and PDF, and print, for a month or a
+   * quarter"); a file is written from the reader's own grid answer, and a
+   * substitute's or orphan lesson's reading exports nothing ("teachers export
+   * their own journals"). The branch export is for the Super Admin, the
+   * Principal and the Academic Vice Principal (decision 3), in the route.
    */
   journal: rows({
-    super_admin: ['view', 'edit'],
-    principal: ['view'],
-    academic_vice_principal: ['view', 'edit'],
-    spiritual_vice_principal: ['view'],
-    head_tutor: ['view'],
-    tutor: ['view', 'edit'],
-    senior_head_teacher: ['view'],
-    head_teacher: ['view'],
-    teacher: ['view', 'edit'],
+    super_admin: ['view', 'edit', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'edit', 'export'],
+    spiritual_vice_principal: ['view', 'export'],
+    head_tutor: ['view', 'export'],
+    tutor: ['view', 'edit', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    teacher: ['view', 'edit', 'export'],
+  }),
+  /**
+   * The support view of one student, journal and date (task 8.9, pull
+   * request #227, decision 2, Look first): edge/journal, "My grade
+   * disappeared". It shows refusals and values an exemption hides; the
+   * Academic Vice Principal corrects, unlocks and grants exemptions.
+   */
+  journal_support: rows({
+    super_admin: ['view'],
+    academic_vice_principal: ['view'],
   }),
   /**
    * The reasons of a student's absence (task 6.3, pull request #211, decision

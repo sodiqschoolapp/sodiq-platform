@@ -281,6 +281,16 @@ export class JournalGridReader {
     return grid.rating !== null && grid.students.some((one) => one.id === studentId);
   }
 
+  /** The journals the reader may open in a year, in the order of the Journals page (task 8.9: the branch export). */
+  readableIn(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    yearId: string,
+  ): Promise<JournalRow[]> {
+    return readableJournals(transaction, access, branchId, yearId);
+  }
+
   /** One journal for one quarter. */
   grid(access: Access, journalId: string, query: JournalGridQuery): Promise<JournalGrid> {
     const branchId = branchOf(access);
@@ -289,7 +299,12 @@ export class JournalGridReader {
     );
   }
 
-  private async gridIn(
+  /**
+   * One journal for one quarter in the caller's transaction: the grid route,
+   * the cell history, and the files of a journal (task 8.9: an export is
+   * written from this answer and nothing else).
+   */
+  async gridIn(
     transaction: Transaction,
     access: Access,
     branchId: string,

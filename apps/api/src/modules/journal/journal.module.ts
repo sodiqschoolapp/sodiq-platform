@@ -1,4 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { AccessModule } from '../access/access.module.js';
+import { ChromiumPdfRenderer, PDF_RENDERER } from '../../http/pdf.js';
+import { JobRunner } from '../../jobs/job-runner.js';
+import { SupportViewController } from './support-view.controller.js';
+import { SupportView } from './support-view.service.js';
+import { SaveRefusals } from './save-refusals.js';
+import { JournalExportsController } from './journal-exports.controller.js';
+import { branchExportJob, JournalExports } from './journal-exports.service.js';
 import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
 import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
@@ -27,7 +35,7 @@ import { WorksController } from './works.controller.js';
 import { WorksService } from './works.service.js';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, AccessModule],
   controllers: [
     // Task 8.4: before the controllers whose `lessons/:lessonId` and `journals/:journalId` paths
     // would take `unlocks`.
@@ -45,6 +53,9 @@ import { WorksService } from './works.service.js';
     LeavingResultsController,
     // Task 8.7: the reminders, the counts per teacher and the orphan lessons.
     LessonStatusController,
+    // Task 8.9: the exports of journals.
+    JournalExportsController,
+    SupportViewController,
   ],
   providers: [
     JournalGridReader,
@@ -59,6 +70,15 @@ import { WorksService } from './works.service.js';
     Exemptions,
     LeavingResults,
     LessonStatusService,
+    JournalExports,
+    SaveRefusals,
+    SupportView,
+    // Task 8.9: the PDFs of journals.
+    {
+      provide: PDF_RENDERER,
+      useFactory: (config: AppConfig) => new ChromiumPdfRenderer(config),
+      inject: [CONFIG],
+    },
     // Task 8.5 (decision 17): the documents of exemptions and the files of reasons of absence go
     // to the photos' store under `exemptions/` and `absences/`.
     {
@@ -68,4 +88,15 @@ import { WorksService } from './works.service.js';
     },
   ],
 })
-export class JournalModule {}
+export class JournalModule implements OnModuleInit {
+  constructor(
+    private readonly runner: JobRunner,
+    private readonly exports: JournalExports,
+  ) {}
+
+  onModuleInit(): void {
+    this.runner.handleWithoutTransaction(branchExportJob, (data, job) =>
+      this.exports.runBranchExport(data, job),
+    );
+  }
+}

@@ -19,6 +19,7 @@ import { RequestId } from '../../http/request-id.js';
 import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { SaveRefusals } from './save-refusals.js';
 import { RatingService } from './rating.service.js';
 
 /**
@@ -32,7 +33,10 @@ import { RatingService } from './rating.service.js';
  */
 @Controller('journal/journals')
 export class RatingController {
-  constructor(private readonly rating: RatingService) {}
+  constructor(
+    private readonly rating: RatingService,
+    private readonly refusals: SaveRefusals,
+  ) {}
 
   @Put(':journalId/rating/:quarterId/date')
   @Requires('journal', 'edit')
@@ -68,7 +72,25 @@ export class RatingController {
     @ValidBody(ratingEntrySaveSchema) input: RatingEntrySave,
     @RequestId() requestId: string,
   ): Promise<RatingExam> {
-    return this.rating.saveEntry(access, params.journalId, params.quarterId, input, requestId);
+    // Task 8.9 (decision 7): a refused save is recorded for the support view.
+    return this.refusals.recorded(
+      access,
+      {
+        kind: 'rating',
+        journalId: params.journalId,
+        quarterId: params.quarterId,
+        cells: [
+          {
+            studentId: input.studentId,
+            value: input.entry?.kind === 'score' ? input.entry.score : null,
+            entryKind: input.entry?.kind ?? null,
+            version: input.version ?? null,
+          },
+        ],
+      },
+      requestId,
+      () => this.rating.saveEntry(access, params.journalId, params.quarterId, input, requestId),
+    );
   }
 
   @Get(':journalId/rating/:quarterId/students/:studentId/history')

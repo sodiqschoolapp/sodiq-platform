@@ -1118,6 +1118,20 @@ export const ERROR_CODES = [
   'orphan_assignment_withdrawn',
   /** The counts per teacher read at most 92 days inside one academic year (task 8.7, decision 14). */
   'discipline_range',
+  /** A substitute's or an orphan lesson's reading of a journal exports nothing: teachers export their own journals (task 8.9, decision 1); the branch export is for a reader of every journal of the branch (decision 3). */
+  'journal_export_scope',
+  /** The month holds no day of the quarter (task 8.9). */
+  'journal_month_outside',
+  /** An export of the branch asked for earlier is still being made: one at a time (task 8.9, decision 6). */
+  'journal_export_running',
+  /** The export is still being made (task 8.9). */
+  'journal_export_not_ready',
+  /** The export could not be made; it can be asked for again (task 8.9). */
+  'journal_export_failed',
+  /** The export was not finished in time; it can be asked for again (task 8.9, decision 6). */
+  'journal_export_stale',
+  /** The link of the export works for 24 hours (task 8.9, decision 4). */
+  'journal_export_expired',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
