@@ -701,6 +701,45 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     ]);
   });
 
+  it('matches a whole journal against the row it is sent from: the undecided for a decision, the outdated for a clear', async () => {
+    const b = await base();
+    // Bek decided "Not assessed", then a number arrives: his decision is outdated.
+    await vice(b.s.branch, async ({ put }) => {
+      const set = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: 'not_assessed',
+        version: null,
+      });
+      expect(set.status, JSON.stringify(set.body)).toBe(200);
+    });
+    await saveOn(b.s.branch, b.lessons.l12.date, [
+      { lessonId: b.lessons.l12.id, studentId: b.bek, workId: b.cw, value: 7 },
+    ]);
+    // Ravshan, present twice with no number: undecided (attendance only).
+    const ravshan = await student(b.s.branch, { first: 'Ravshan', last: 'Qosimov' }, [
+      { classId: b.s.classId, from: '2026-09-01' },
+    ]);
+    await saveOn(b.s.branch, b.lessons.l12.date, [
+      { lessonId: b.lessons.l12.id, studentId: ravshan, value: 1 },
+    ]);
+    await saveOn(b.s.branch, b.lessons.l19.date, [
+      { lessonId: b.lessons.l19.id, studentId: ravshan, value: 1 },
+    ]);
+    const decisions = `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`;
+    await vice(b.s.branch, async ({ get, post }) => {
+      const list = checklistOf(await get(b.s.branch, path(b.q1)));
+      expect(studentIdsOf(itemsOf(list, 'undecided', b.journal))).toEqual([ravshan]);
+      expect(studentIdsOf(itemsOf(list, 'decision_outdated', b.journal))).toEqual([b.bek]);
+      // From the undecided row: the outdated one is not named.
+      const kept = await post(b.s.branch, decisions, { decision: 'keep', students: [ravshan] });
+      expect(kept.body).toEqual({ decided: [ravshan], refused: [] });
+      // From the outdated row: the clear.
+      const cleared = await post(b.s.branch, decisions, { decision: null, students: [b.bek] });
+      expect(cleared.body).toEqual({ decided: [b.bek], refused: [] });
+    });
+  });
+
   it('allows "Exempt" only when few lessons is the one flag, and decides a whole journal naming the others', async () => {
     const s = await publishedScene(t, load, { graded: true, double: true });
     const lessons = await lessonsOf(s.classId);

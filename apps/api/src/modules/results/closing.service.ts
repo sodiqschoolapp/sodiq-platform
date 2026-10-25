@@ -243,15 +243,24 @@ export class ClosingService {
         throw notFound();
       }
       if (scene.today < scene.opensOn) throw notOpen();
+      const own = (await this.flaggedOf(transaction, scene, journal.subjectId)).filter(
+        (row) => row.journalId === journal.id,
+      );
+      // Each the decision may reach: an undecided or outdated one, or an outdated one to clear.
       const listed = new Map(
-        (await this.flaggedOf(transaction, scene, journal.subjectId))
-          .filter((row) => row.journalId === journal.id)
-          // Each the decision is for: an undecided or outdated one, or an outdated one to clear.
+        own
           .filter((row) =>
             input.decision === null ? row.stale : row.row.decision === null || row.stale,
           )
           .map((row) => [row.studentId, row]),
       );
+      // The students of the row the screen sends from (review of the code, round 1): the
+      // undecided ones for a decision, the outdated ones for a clear; each is matched one to one.
+      const shown = own
+        .filter((row) =>
+          input.decision === null ? row.stale : row.row.decision === null && !row.stale,
+        )
+        .map((row) => row.studentId);
       const decided: string[] = [];
       const refused: ClosingJournalDecision['refused'] = [];
       // Locked in the order of the student id (one order for every writer of these rows).
@@ -283,7 +292,7 @@ export class ClosingService {
       // Matched one to one: a student listed now that the person did not see is named, never
       // decided unseen (.claude/rules/journal.md, the list confirmed as seen).
       const sent = new Set(input.students.map((id) => id.toLowerCase()));
-      for (const studentId of [...listed.keys()].sort()) {
+      for (const studentId of [...shown].sort()) {
         if (!sent.has(studentId)) refused.push({ studentId, code: 'closing_list_changed' });
       }
       return closingJournalDecisionSchema.parse({ decided, refused });
