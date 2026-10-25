@@ -1027,21 +1027,30 @@ export class JournalGridReader {
         staffId,
         now,
         enters: theirs(lesson),
-        requests,
+        // Task 9.2b: no unlock is asked in a closed quarter (From 8.4).
+        requests: requests && !quarterClosed,
         // A corrector's own lesson takes the unlock path (decision 17; code review 2, finding 1).
         corrects:
-          corrects && held.get(lesson.id) === true && shape === 'whole' && !teachesIt(lesson),
+          !quarterClosed &&
+          corrects &&
+          held.get(lesson.id) === true &&
+          shape === 'whole' &&
+          !teachesIt(lesson),
         nameOf: (accountId) => {
           const found = accountId === null ? undefined : approvers.get(accountId);
           return found?.name ?? found?.login ?? null;
         },
       });
+    // Task 9.2b: a closed quarter takes no entry, a correction included (From 8.4).
     const canEnter = (lesson: GridLessonRow): boolean =>
-      theirs(lesson) && (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
+      !quarterClosed &&
+      theirs(lesson) &&
+      (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
     // Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson takes the reader's
     // entry until its end; the cells guard takes it as a late entry (0123, 0127).
     const reopened = await reopenedCellsOf(transaction, lessonIds, now);
     const openCell = (lesson: GridLessonRow, studentId: string): boolean =>
+      !quarterClosed &&
       theirs(lesson) &&
       lockOf(lesson).window === 'locked' &&
       (optional.has(`${lesson.id}|${studentId}`) || reopened.has(`${lesson.id}|${studentId}`));

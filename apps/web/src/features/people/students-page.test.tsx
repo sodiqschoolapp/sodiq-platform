@@ -3468,7 +3468,15 @@ describe('the Results and Attendance tabs', () => {
   const UNIT = { kind: 'class' as const, id: uid(63), name: '7 Oxford' };
   const YEAR = { id: YEAR_ID, startDate: '2026-09-01', endDate: '2027-05-31', status: 'current' };
   const QUARTERS = [
-    { id: Q1, number: 1, startDate: '2026-09-01', endDate: '2026-10-31', notInSystem: false },
+    {
+      id: Q1,
+      number: 1,
+      startDate: '2026-09-01',
+      endDate: '2026-10-31',
+      notInSystem: false,
+      notOfficial: false,
+      closed: false,
+    },
   ];
   const routes = (tabs: { results: boolean; attendance: boolean }): Record<string, Handler> => ({
     [`GET /api/results/students/${OTKIR.id}/tabs`]: () => json(tabs),

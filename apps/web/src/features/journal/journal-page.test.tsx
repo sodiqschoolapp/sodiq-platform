@@ -16,7 +16,13 @@ const SUBJECT = {
   colour: 'blue' as const,
 };
 const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
-const QUARTER = { id: uid(30), number: 1, startDate: '2026-09-01', endDate: '2026-10-31' };
+const QUARTER = {
+  id: uid(30),
+  number: 1,
+  startDate: '2026-09-01',
+  endDate: '2026-10-31',
+  closed: false,
+};
 
 const cell = (
   mark: number | null,
@@ -284,6 +290,17 @@ describe('a journal', () => {
       '7 Oxford · Mathematics · Quarter 1 · September – October',
     );
     expect(header?.textContent).toContain('Teacher: Karimova Aziza');
+  });
+
+  // Task 9.2b: 07, "Journals of that quarter become read only".
+  it('labels a closed quarter read only', async () => {
+    open({ ...GRID, quarter: { ...GRID.quarter, closed: true } });
+    const label = await waitFor(() => {
+      const found = document.querySelector('[data-quarter-closed]');
+      if (found === null) throw new Error('The label.');
+      return found;
+    });
+    expect(label.textContent).toBe(en.journal.page.quarterClosed);
   });
 
   it('draws the figures and cells as the server answers them, the cancelled lesson struck', async () => {

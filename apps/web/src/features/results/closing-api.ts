@@ -1,10 +1,12 @@
 import {
   REQUEST_KEY_HEADER,
   closingChecklistSchema,
+  closingClosedSchema,
   closingDecisionSchema,
   closingJournalDecisionSchema,
   closingPeriodsEndedSchema,
   closingRemindedSchema,
+  type ClosingCloseInput,
   type ClosingDecisionInput,
   type ClosingJournalDecisionInput,
 } from '@sodiq/shared';
@@ -77,3 +79,12 @@ export const remindTeachers = (quarterId: string, key: string) =>
       params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { quarterId } },
     }),
   ).then((answer) => closingRemindedSchema.parse(answer));
+
+/** The close of the quarter (task 9.2b): one key per dialog, so a retry of the same press closes once. */
+export const closeQuarter = (quarterId: string, body: ClosingCloseInput, key: string) =>
+  answerOf(
+    api.POST('/api/results/closing/{quarterId}/close', {
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { quarterId } },
+      body,
+    }),
+  ).then((answer) => closingClosedSchema.parse(answer));

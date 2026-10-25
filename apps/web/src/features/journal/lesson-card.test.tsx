@@ -22,7 +22,13 @@ const SUBJECT = {
   colour: 'blue' as const,
 };
 const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
-const QUARTER = { id: uid(30), number: 1, startDate: '2026-09-01', endDate: '2026-10-31' };
+const QUARTER = {
+  id: uid(30),
+  number: 1,
+  startDate: '2026-09-01',
+  endDate: '2026-10-31',
+  closed: false,
+};
 
 /** A column of the plan with no row yet (task 8.1: written at its first write). */
 const TEST: JournalWork = {

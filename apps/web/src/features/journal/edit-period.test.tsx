@@ -16,7 +16,13 @@ const SUBJECT = {
   colour: 'blue' as const,
 };
 const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
-const QUARTER = { id: uid(30), number: 1, startDate: '2026-09-01', endDate: '2026-10-31' };
+const QUARTER = {
+  id: uid(30),
+  number: 1,
+  startDate: '2026-09-01',
+  endDate: '2026-10-31',
+  closed: false,
+};
 
 /** 19 October, locked since 00:00 of the 27th for the reader. */
 const LOCKED: EditLock = {

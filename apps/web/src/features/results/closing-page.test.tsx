@@ -38,6 +38,13 @@ const DILSHOD = {
   uid: '0000053',
 };
 
+const NO_RESULT: ClosingChecklist['items'][number] = {
+  kind: 'no_result',
+  teacher: TEACHER,
+  journal: JOURNAL,
+  students: [DILSHOD],
+};
+
 // All names are invented. Task 9.2a: the closing checklist (07, Closing a quarter).
 const CHECKLIST: ClosingChecklist = {
   quarters: [{ id: Q1, number: 1, startDate: '2026-09-01', endDate: '2026-10-31' }],
@@ -46,6 +53,10 @@ const CHECKLIST: ClosingChecklist = {
   opensOn: '2026-10-17',
   lastDay: '2026-10-31',
   closable: false,
+  lockNowNeeded: false,
+  startQuarter: false,
+  earlierOpen: false,
+  closing: null,
   canEdit: true,
   blocking: 1,
   warnings: 1,
@@ -75,7 +86,7 @@ const CHECKLIST: ClosingChecklist = {
         },
       ],
     },
-    { kind: 'no_result', teacher: TEACHER, journal: JOURNAL, students: [DILSHOD] },
+    NO_RESULT,
   ],
 };
 
@@ -220,5 +231,132 @@ describe('the closing checklist', () => {
     });
     expect(line.textContent).toBe('The checklist opens on 17 October 2026.');
     expect(await screen.findByText(en.results.closing.notOpenYet)).not.toBeNull();
+  });
+  // Task 9.2b: the close (07, Closing a quarter; edge/journal, "lock now and close";
+  // edge/academic-year, "Closing the start quarter").
+  it('closes once every point is ticked: the warnings acknowledged, lock now and the start-quarter choice', async () => {
+    const closable: ClosingChecklist = {
+      ...CHECKLIST,
+      closable: true,
+      lockNowNeeded: true,
+      startQuarter: true,
+      blocking: 1,
+      warnings: 1,
+      items: [
+        { kind: 'edit_period', teacher: TEACHER, journal: JOURNAL, lessons: 2, incomplete: 1 },
+        NO_RESULT,
+      ],
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () => json(closable),
+      [`POST /api/results/closing/${Q1}/close`]: () =>
+        json({ closedAt: '2026-10-31T13:00:00.000Z', version: 1, stored: 24, voided: 0 }),
+    });
+    renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.closing.closeQuarter }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.closing.close.action }));
+    expect(within(dialog).getByRole('alert').textContent).toBe(en.results.closing.close.missing);
+    expect(calls.filter((call) => call.route === `POST /api/results/closing/${Q1}/close`)).toEqual(
+      [],
+    );
+    fireEvent.click(
+      within(dialog).getByRole('checkbox', {
+        name: 'I have looked at the 1 warning; it is stored with the close.',
+      }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole('checkbox', { name: en.results.closing.close.lockNow }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole('radio', {
+        name: en.results.closing.close.startQuarters.not_official,
+      }),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.closing.close.action }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === `POST /api/results/closing/${Q1}/close`)
+          .map((call) => call.body),
+      ).toEqual([
+        {
+          warnings: [{ kind: 'no_result', journalId: JOURNAL.id }],
+          lockNow: true,
+          startQuarter: 'not_official',
+        },
+      ]);
+    });
+  });
+
+  it('keeps the close off while it is not closable, and draws the ticks anew for a new list of warnings', async () => {
+    let answer: ClosingChecklist = {
+      ...CHECKLIST,
+      closable: true,
+      blocking: 0,
+      items: [NO_RESULT],
+    };
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () => json(answer),
+    });
+    const { queryClient } = renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.closing.closeQuarter }));
+    const dialog = await screen.findByRole('dialog');
+    const tick = within(dialog).getByRole('checkbox');
+    fireEvent.click(tick);
+    expect((tick as HTMLInputElement).checked).toBe(true);
+    // Another warning arrives while the dialog is open: the tick does not carry over.
+    answer = {
+      ...answer,
+      warnings: 2,
+      items: [
+        ...answer.items,
+        { kind: 'no_attendance', teacher: TEACHER, journal: JOURNAL, lessons: [] },
+      ],
+    };
+    await queryClient.invalidateQueries();
+    await waitFor(() => {
+      const again = within(screen.getByRole('dialog')).getAllByRole('checkbox')[0];
+      expect((again as HTMLInputElement).checked).toBe(false);
+    });
+  });
+
+  it('shows a closed quarter with its close and the warnings acknowledged, and no action', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({
+          ...CHECKLIST,
+          state: 'closed',
+          blocking: 0,
+          warnings: 0,
+          items: [],
+          closing: {
+            closedAt: '2026-10-31T13:00:00.000Z',
+            closedBy: 'Karimova Aziza',
+            version: 1,
+            lockNow: true,
+            startQuarter: null,
+            warnings: [NO_RESULT],
+          },
+        }),
+    });
+    renderApp('/results/closing');
+    const line = await waitFor(() => {
+      const found = document.querySelector('[data-closing-state="closed"]');
+      if (found === null) throw new Error('The line.');
+      return found;
+    });
+    expect(line.textContent).toMatch(
+      /^Closed on 31 Oct 2026, \d\d:\d\d by Karimova Aziza · version 1$/,
+    );
+    expect(screen.getByText(en.results.closing.closedLockNow)).not.toBeNull();
+    await waitFor(() => {
+      expect(rowsOf().map((row) => row[0])).toEqual([en.results.closing.kinds.no_result]);
+    });
+    expect(screen.queryByRole('button', { name: en.results.closing.closeQuarter })).toBeNull();
+    expect(screen.queryByRole('button', { name: en.results.closing.remind })).toBeNull();
   });
 });
