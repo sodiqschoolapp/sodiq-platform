@@ -29,6 +29,8 @@ import { Audit } from '../audit/audit.service.js';
 import { binary } from '../../testing/xlsx-kit.js';
 import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
+import { DailyWork } from './daily/daily.service.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the checklist of quarter 1 (to 31 October) is open. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -2335,6 +2337,26 @@ describe('the closing checklist (07, Closing a quarter)', () => {
   // explicit unlocks apply. The earlier final results are kept as a version. Closing again lists
   // every result that changed"; edge/calculation, "A bug is found after results were closed and
   // exported"; edge/system-behaviour, "The nightly check").
+  /** The base scene closed at CLOSE, every flag decided ("keep"), lock now. */
+  const closed = async () => {
+    const b = await base();
+    await vice(
+      b.s.branch,
+      async (calls) => {
+        const list = await decideAll(calls, b.s.branch, b.q1);
+        const done = await calls.post(
+          b.s.branch,
+          closePath(b.q1),
+          { warnings: warningsOf(list), lockNow: true, startQuarter: null },
+          randomUUID(),
+        );
+        expect(done.status, JSON.stringify(done.body)).toBe(200);
+      },
+      CLOSE,
+    );
+    return b;
+  };
+
   describe('reopening (task 9.2c)', () => {
     /** Monday 2 November, 09:00: a reopening for 3 days is open until 00:00 of 6 November. */
     const REOPEN = '2026-11-02T09:00:00+05:00';
@@ -2345,26 +2367,6 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       `/api/results/closing/${quarterId}/journals/${journalId}/close`;
     const recalculationPath = (quarterId: string) =>
       `/api/results/closing/${quarterId}/recalculation`;
-
-    /** The base scene closed at CLOSE, every flag decided ("keep"), lock now. */
-    const closed = async () => {
-      const b = await base();
-      await vice(
-        b.s.branch,
-        async (calls) => {
-          const list = await decideAll(calls, b.s.branch, b.q1);
-          const done = await calls.post(
-            b.s.branch,
-            closePath(b.q1),
-            { warnings: warningsOf(list), lockNow: true, startQuarter: null },
-            randomUUID(),
-          );
-          expect(done.status, JSON.stringify(done.body)).toBe(200);
-        },
-        CLOSE,
-      );
-      return b;
-    };
 
     /** Dilshod present on the 12th, as the Academic Vice Principal's correction. */
     const correctDilshod = (calls: Calls, b: Awaited<ReturnType<typeof base>>) =>
@@ -2916,6 +2918,403 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         },
         INSIDE,
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 9.2c: the nightly check and the daily work (edge/system-behaviour, "The nightly check":
+  // "It recalculates open journals and stored final results. A difference alerts the developer
+  // and blocks closing that journal. A check that did not run also raises an alert"; the "Done
+  // when": "a deliberately corrupted stored result is caught by the check in a test").
+  describe('the nightly check and the daily work (task 9.2c)', () => {
+    const daily = () => t.app.get(DailyWork);
+
+    /** The check of a branch at a moment, as the job runs it. */
+    const check = async (branch: string, moment: string) => {
+      t.clock.set(moment);
+      try {
+        await daily().check({ day: moment.slice(0, 10) }, [branch]);
+      } finally {
+        t.clock.set(START);
+      }
+      return t.database.migrator
+        .selectFrom('result_check_differences')
+        .innerJoin('result_checks', 'result_checks.id', 'result_check_differences.check_id')
+        .select([
+          'result_check_differences.kind',
+          'result_check_differences.journal_id',
+          'result_check_differences.student_id',
+        ])
+        .where('result_checks.branch_id', '=', branch)
+        .where('result_checks.started_at', '=', new Date(moment))
+        .execute();
+    };
+
+    /** A daily job of a branch in its transaction, as the runner runs it. */
+    const job = async (
+      branch: string,
+      moment: string,
+      work: (transaction: Transaction) => Promise<void>,
+    ) => {
+      t.clock.set(moment);
+      try {
+        await t.app.get(Transactions).run([branch], work);
+      } finally {
+        t.clock.set(START);
+      }
+    };
+
+    /** Writes past the triggers of a table as its owner: a corruption the guards never allow. */
+    const corrupt = (table: string, work: (transaction: Transaction) => Promise<unknown>) =>
+      t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table ${sql.table(table)} disable trigger user`.execute(transaction);
+        await work(transaction);
+        await sql`alter table ${sql.table(table)} enable trigger user`.execute(transaction);
+      });
+
+    // One Super Admin for the describe: at most three accounts hold the role (MAX_SUPER_ADMINS).
+    let admin: string | null = null;
+    const superAdmin = async () => {
+      if (admin !== null) return admin;
+      const made = await account();
+      await t.kit.giveRole(made.account.id, {
+        role: 'super_admin',
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      admin = made.account.id;
+      return admin;
+    };
+
+    const noticesTo = (accountId: string, kind: string, branch?: string) => {
+      let query = t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('account_id', '=', accountId)
+        .where('kind', '=', kind);
+      if (branch !== undefined) query = query.where('branch_id', '=', branch);
+      return query.execute();
+    };
+
+    it('finds nothing in a branch whose journals and stored results agree', async () => {
+      const b = await closed();
+      expect(await check(b.s.branch, '2026-11-03T02:00:00+05:00')).toEqual([]);
+      const run = await t.database.migrator
+        .selectFrom('result_checks')
+        .select(['finished_at', 'summary'])
+        .where('branch_id', '=', b.s.branch)
+        .executeTakeFirstOrThrow();
+      expect(run.finished_at).toEqual(new Date('2026-11-03T02:00:00+05:00'));
+      expect(run.summary).toMatchObject({ differences: {} });
+    });
+
+    it('catches a deliberately corrupted stored result and tells the Super Admins', async () => {
+      const b = await closed();
+      const admin = await superAdmin();
+      await corrupt('quarter_final_results', (transaction) =>
+        transaction
+          .updateTable('quarter_final_results')
+          .set({ record: sql`jsonb_set(record, '{outcome,result,grade}', '2'::jsonb)` })
+          .where('quarter_id', '=', b.q1)
+          .where('student_id', '=', b.aziz)
+          .execute(),
+      );
+      const found = await check(b.s.branch, '2026-11-03T02:00:00+05:00');
+      expect(found).toEqual([{ kind: 'stored_module', journal_id: b.journal, student_id: b.aziz }]);
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toEqual([
+        { data: { date: '2026-11-03', differences: 1, journals: 1 } },
+      ]);
+    });
+
+    it('catches an entry of a closed quarter changed past the guards', async () => {
+      const b = await closed();
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 0 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.aziz)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-11-03T02:00:00+05:00')).toEqual([
+        { kind: 'stored_entries', journal_id: b.journal, student_id: b.aziz },
+      ]);
+    });
+
+    it('catches a cell of an open journal that is not its history, blocks closing it, and clears once repaired', async () => {
+      const b = await base();
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 0 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.bek)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-10-28T02:00:00+05:00')).toEqual([
+        { kind: 'cell_history', journal_id: b.journal, student_id: b.bek },
+      ]);
+      await vice(b.s.branch, async (calls) => {
+        const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(itemsOf(list, 'check_difference', b.journal).map((one) => one.differences)).toEqual([
+          1,
+        ]);
+      });
+      // Repaired from the history; the next check finds nothing and the item is gone.
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 1 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.bek)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-10-29T02:00:00+05:00')).toEqual([]);
+      await vice(b.s.branch, async (calls) => {
+        const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(itemsOf(list, 'check_difference')).toEqual([]);
+      });
+    });
+
+    // Review must-fix 5: a correction in a reopened journal is no difference.
+    it('finds no difference in a reopened journal that took a correction', async () => {
+      const b = await closed();
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const reopened = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/reopen`,
+            { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(reopened.status).toBe(200);
+        },
+        '2026-11-02T09:00:00+05:00',
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const corrected = await calls.post(
+            b.s.branch,
+            `/api/journal/lessons/${b.lessons.l12.id}/attendance`,
+            {
+              saves: [{ studentId: b.dilshod, mark: 1, version: null }],
+              correction: { reason: 'The register shows him present' },
+            },
+            randomUUID(),
+          );
+          expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+        },
+        '2026-11-03T10:00:00+05:00',
+      );
+      expect(await check(b.s.branch, '2026-11-04T02:00:00+05:00')).toEqual([]);
+    });
+
+    it('raises "did not run" once a day when no run of that day finished', async () => {
+      const b = await base();
+      const admin = await superAdmin();
+      await job(b.s.branch, '2026-10-28T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-10-28' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toEqual([
+        { data: { date: '2026-10-28' } },
+      ]);
+      await check(b.s.branch, '2026-10-29T02:00:00+05:00');
+      await job(b.s.branch, '2026-10-29T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-10-29' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toHaveLength(1);
+    });
+
+    // Plan decision 9: the tick at 01:59 and 02:00 branch time, twice in a day.
+    it('enqueues each daily kind once per branch and day, from its hour', async () => {
+      const b = await base();
+      const runs = () =>
+        t.database.migrator
+          .selectFrom('scheduled_runs')
+          .select(['kind', sql<string>`day::text`.as('day')])
+          .where('branch_id', '=', b.s.branch)
+          .orderBy('kind')
+          .execute();
+      const tick = async (moment: string) => {
+        t.clock.set(moment);
+        try {
+          await daily().tick();
+        } finally {
+          t.clock.set(START);
+        }
+      };
+      await tick('2026-10-28T01:59:00+05:00');
+      expect(await runs()).toEqual([]);
+      await tick('2026-10-28T02:00:00+05:00');
+      await tick('2026-10-28T02:15:00+05:00');
+      expect(await runs()).toEqual([
+        { kind: 'results.check', day: '2026-10-28' },
+        { kind: 'timetable.forced_delete_purge', day: '2026-10-28' },
+      ]);
+      await tick('2026-10-28T07:00:00+05:00');
+      expect((await runs()).map((one) => one.kind)).toEqual([
+        'journal.about_to_lock',
+        'plans.reminders',
+        'results.check',
+        'results.check_missed',
+        'results.closing_overdue',
+        'timetable.forced_delete_purge',
+      ]);
+      // Each run's job is in the queue, for the branch alone.
+      const queued = await sql<{ name: string; data: { branchIds: string[] } }>`
+        select name, data from pgboss.job
+        where data -> 'branchIds' ->> 0 = ${b.s.branch}
+        order by name
+      `.execute(t.database.migrator);
+      expect(queued.rows.map((one) => one.name)).toEqual((await runs()).map((one) => one.kind));
+    });
+
+    // 07: "After the last day the Academic Vice Principal is reminded until the quarter is closed."
+    it('reminds the Academic Vice Principals of the branch of a quarter past its last day until it is closed', async () => {
+      const b = await base();
+      const own = await account();
+      await t.kit.giveRole(own.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const other = await base();
+      const elsewhere = await account();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const overdue = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().closingOverdue(transaction, b.s.branch));
+      await overdue('2026-10-31T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toEqual([]);
+      await overdue('2026-11-01T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toEqual([
+        { data: { quarter: 1, lastDay: '2026-10-31' } },
+      ]);
+      expect(await noticesTo(elsewhere.account.id, 'results.closing_overdue')).toEqual([]);
+      await closeQuarter(t.database, {
+        branchId: b.s.branch,
+        quarterId: b.q1,
+        accountId: own.account.id,
+      });
+      await overdue('2026-11-02T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toHaveLength(1);
+    });
+
+    // 10: "Lesson about to lock with data missing | Teacher" (From 8.7), once per lesson.
+    it('tells the teacher of an incomplete lesson within 48 hours of its lock, once', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const aboutToLock = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().aboutToLock(transaction, b.s.branch));
+      // The 26th locks at 00:00 of 3 November (7 edit days): 65 hours before, nothing.
+      await aboutToLock('2026-10-31T07:00:00+05:00');
+      expect(await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock')).toEqual([]);
+      await aboutToLock('2026-11-01T07:00:00+05:00');
+      await aboutToLock('2026-11-02T07:00:00+05:00');
+      const notices = await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock');
+      expect(notices.map((one) => (one.data as { date: string }).date)).toEqual(['2026-10-26']);
+    });
+
+    it('reminds the Academic Vice Principals daily when no plan window is open 14 days before a quarter', async () => {
+      const b = await base();
+      const own = await account();
+      await t.kit.giveRole(own.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const remind = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().planReminders(transaction, b.s.branch));
+      const quarter2 = await quarterOf(b.s.year, 2);
+      const start = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select(sql<string>`start_date::text`.as('start'))
+          .where('id', '=', quarter2)
+          .executeTakeFirstOrThrow()
+      ).start;
+      const missing = () =>
+        noticesTo(own.account.id, 'plans.window_missing').then((rows) =>
+          rows.filter((one) => (one.data as { quarter: number }).quarter === 2),
+        );
+      // 15 days before: nothing; 14 days before and the next day: one each.
+      const day = (offset: number) =>
+        new Date(Date.parse(`${start}T07:00:00+05:00`) + offset * 86_400_000).toISOString();
+      await remind(day(-15));
+      expect(await missing()).toEqual([]);
+      await remind(day(-14));
+      await remind(day(-13));
+      expect(await missing()).toHaveLength(2);
+    });
+
+    it('removes the kept rows of a forced delete past its restore time and keeps the store row with a summary', async () => {
+      const b = await base();
+      const stored = await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', '2026-09-25T10:00:00+05:00', true)`.execute(
+          transaction,
+        );
+        return transaction
+          .insertInto('forced_deletes')
+          .values({
+            branch_id: b.s.branch,
+            record_type: 'lesson',
+            record_id: b.lessons.l12.id,
+            rows: JSON.stringify({ lessons: [{ id: 'kept' }], journal_cells: [{}, {}] }),
+            reason: 'Entered by mistake',
+            deleted_by: b.s.teacher.staffId === '' ? '' : await load.classes.account(),
+            deleted_at: new Date(0),
+            restore_until: new Date(0),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+      });
+      const purge = (moment: string) =>
+        job(b.s.branch, moment, (transaction) =>
+          daily().forcedDeletePurge(transaction, b.s.branch),
+        );
+      // Restore until 25 October 10:00: a minute before, nothing.
+      await purge('2026-10-25T09:59:00+05:00');
+      const before = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select(['rows', 'purged_at'])
+        .where('id', '=', stored.id)
+        .executeTakeFirstOrThrow();
+      expect(before.purged_at).toBeNull();
+      await purge('2026-10-26T02:00:00+05:00');
+      const after = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select(['rows', 'purged_at', 'reason'])
+        .where('id', '=', stored.id)
+        .executeTakeFirstOrThrow();
+      expect(after).toEqual({
+        rows: {},
+        purged_at: new Date('2026-10-26T02:00:00+05:00'),
+        reason: 'Entered by mistake',
+      });
+      const entry = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['actor_id', 'new_value'])
+        .where('action', '=', 'forced_delete.purged')
+        .where('branch_id', '=', b.s.branch)
+        .executeTakeFirstOrThrow();
+      expect(entry.actor_id).toBeNull();
+      expect(entry.new_value).toEqual({
+        forcedDeletes: [
+          {
+            id: stored.id,
+            recordType: 'lesson',
+            recordId: b.lessons.l12.id,
+            rows: { lessons: 1, journal_cells: 2 },
+          },
+        ],
+      });
     });
   });
 });

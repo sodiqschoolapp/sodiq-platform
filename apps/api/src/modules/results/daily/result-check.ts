@@ -16,8 +16,9 @@ import { quarterOutcomes } from '../quarter-outcomes.js';
  * snapshot (review should-fix 4) and stores what it finds.
  *
  * - An open journal (its quarter has no branch close in force, or it has an unfinished
- *   reopening): each cell, work and rating entry of the quarter against the last line of its
- *   history (value and version), compared in one statement each; every listed student's outcome
+ *   reopening): each cell of the quarter against the last line of its history (value and
+ *   version: every write of a cell writes a line, 0108), each work and rating entry against its
+ *   last line's values (a work's insert writes none, 0119), compared in one statement each; every listed student's outcome
  *   through `quarterOutcomes` (a `CalcInputError` is `refused`).
  * - Every other journal of a closed quarter: the record in force of each listed student (the
  *   highest version, as the readers take it; review must-fix 5) through `recalculateAndCompare`
@@ -161,10 +162,9 @@ async function historyDifferences(
       where x.work_id = w.id order by x.version desc limit 1
     ) h on true
     where b.quarter_id = ${quarter.id}::uuid
-      and (
-        h.version is null or h.version <> w.version
-        or h.total_after is distinct from w.total or h.not_held_after is distinct from w.not_held
-      )
+      -- A work's insert writes no line (0119): a work with lines is its last line.
+      and h.version is not null
+      and (h.total_after is distinct from w.total or h.not_held_after is distinct from w.not_held)
     order by w.id
   `.execute(transaction);
   for (const row of works.rows) {
@@ -199,7 +199,7 @@ async function historyDifferences(
     ) h on true
     where x.quarter_id = ${quarter.id}::uuid
       and (
-        h.version is null or h.version <> e.version
+        h.version is null
         or h.kind_after is distinct from e.kind or h.score_after is distinct from e.score
       )
     order by e.id
