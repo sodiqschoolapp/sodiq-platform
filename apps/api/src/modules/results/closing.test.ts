@@ -1761,6 +1761,17 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         expect(after.closing).toMatchObject({ version: 1, lockNow: true, startQuarter: null });
         expect(after.closing?.warnings).toHaveLength(list.warnings);
         expect(after.closing?.closedBy).not.toBe('');
+        // The journal of a closed quarter: read only, and no figure "provisional" (07 rule 8).
+        const grid = journalGridSchema.parse(
+          (await calls.get(b.s.branch, `/api/journal/journals/${b.journal}?quarterId=${b.q1}`))
+            .body,
+        );
+        expect(grid.quarter.closed).toBe(true);
+        expect(
+          grid.students.some(
+            (one) => one.quarter?.result?.kind === 'number' && one.quarter.result.provisional,
+          ),
+        ).toBe(false);
         // Every write of the checklist is refused now.
         const writes = [
           await calls.put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {

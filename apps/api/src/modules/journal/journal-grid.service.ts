@@ -36,6 +36,7 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
+import { closingOf } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
@@ -347,6 +348,8 @@ export class JournalGridReader {
         dated.at(-1);
       if (quarter === undefined) throw new ApiException('journal_no_quarter', 409);
     }
+    // Task 9.2b: a closed quarter's figures carry no "provisional" marker (`07` rule 8).
+    const quarterClosed = (await closingOf(transaction, quarter.id)) !== undefined;
     // edge/00-definitions, Reference date: the quarter's last day, or today while it is open.
     const referenceDate =
       today > quarter.endDate
@@ -820,7 +823,7 @@ export class JournalGridReader {
           lessons: counted,
           // Task 8.2: the student's entry; a month leaves it out (From 4.3).
           ratingExam: inMonth === null ? ratingOf() : null,
-          quarterClosed: false,
+          quarterClosed,
         });
         // Task 8.5: the quarter's outcome, for "Exempt" (no lesson remains) and "based on n of N
         // lessons" (07, Effect on totals); N is counted per school day across the journals
@@ -832,7 +835,7 @@ export class JournalGridReader {
                 attendanceValues,
                 lessons: counted,
                 ratingExam: ratingOf(),
-                quarterClosed: false,
+                quarterClosed,
                 heldInJournals: across?.heldInJournals ?? counted.length,
                 countsFrom,
                 leftSubjectOn: across?.leftSubjectOn ?? null,
@@ -1142,7 +1145,7 @@ export class JournalGridReader {
         startDate: one.start_date,
         endDate: one.end_date,
       })),
-      quarter,
+      quarter: { ...quarter, closed: quarterClosed },
       today,
       referenceDate,
       teacher: ownerId === null ? null : { id: ownerId, name: names.get(ownerId) ?? '' },
