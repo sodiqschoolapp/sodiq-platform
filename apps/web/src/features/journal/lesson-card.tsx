@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -153,7 +153,7 @@ export function LessonCardDialog({
                           {given.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
                         </span>
                         {found.canMark && given.planWorkId !== null && (
-                          <label className="flex items-center gap-2">
+                          <label className={CHECKBOX_TARGET}>
                             <input
                               type="checkbox"
                               className={CHECKBOX}
@@ -252,7 +252,7 @@ export function LessonCardDialog({
               </div>
             )}
             {found.canMark && (
-              <label className="flex items-center gap-2">
+              <label className={CHECKBOX_TARGET}>
                 <input
                   type="checkbox"
                   className={CHECKBOX}
