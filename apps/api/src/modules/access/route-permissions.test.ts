@@ -438,6 +438,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 9.2b: the close of a quarter, `quarter_closing` `edit`.
+  'POST /api/results/closing/:quarterId/close': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

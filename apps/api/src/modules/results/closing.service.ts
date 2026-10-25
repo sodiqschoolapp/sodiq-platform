@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import type { ResultFlag } from '@sodiq/calc';
+import { CalcInputError, finalQuarterRecord, type ResultFlag } from '@sodiq/calc';
 import {
   CLOSING_BLOCKING,
+  CLOSING_LOCK_NOW,
   CLOSING_OPENS_DAYS_BEFORE,
+  CLOSING_WARNINGS,
   PERMISSIONS,
   permits,
   closingChecklistSchema,
+  closingClosedSchema,
   closingDecisionSchema,
   closingJournalDecisionSchema,
   type ClosingChecklist,
+  type ClosingClosed,
+  type ClosingCloseInput,
   type ClosingDecision,
   type ClosingDecisionAnswer,
   type ClosingDecisionInput,
@@ -35,7 +40,10 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { clockOf } from '../plans/plan-read.js';
 import { PlanReportsService } from '../plans/plan-reports.service.js';
 import { periodOpen } from '../plans/plan-window.js';
+import { closedQuarters, closingOf } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { accountNames } from '../timetable/edit-lock.js';
+import { countsFromOf, goLiveOf } from '../journal/start-quarter.js';
 import { journalsWithoutTeacher, ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
 import { exemptedIn } from './closing.query.js';
@@ -131,6 +139,16 @@ export class ClosingService {
           (one.branchId === null || one.branchId === branchId) &&
           permits(PERMISSIONS, one.role, 'quarter_closing', 'edit'),
       );
+      const none = {
+        closable: false,
+        lockNowNeeded: false,
+        startQuarter: false,
+        earlierOpen: false,
+        closing: null,
+        blocking: 0,
+        warnings: 0,
+        items: [],
+      };
       if (chosen.quarter === null) {
         return closingChecklistSchema.parse({
           quarters: chosen.quarters,
@@ -138,11 +156,8 @@ export class ClosingService {
           state: 'not_open',
           opensOn: null,
           lastDay: null,
-          closable: false,
           canEdit,
-          blocking: 0,
-          warnings: 0,
-          items: [],
+          ...none,
         });
       }
       const scene: Scene = {
@@ -153,17 +168,37 @@ export class ClosingService {
         quarter: chosen.quarter,
         opensOn: addDays(chosen.quarter.endDate, -CLOSING_OPENS_DAYS_BEFORE),
       };
+      const closing = await this.closingRecordOf(transaction, chosen.quarter.id);
+      if (closing !== null) {
+        return closingChecklistSchema.parse({
+          quarters: chosen.quarters,
+          quarterId: chosen.quarter.id,
+          state: 'closed',
+          opensOn: scene.opensOn,
+          lastDay: chosen.quarter.endDate,
+          canEdit,
+          ...none,
+          closing,
+        });
+      }
       const open = today >= scene.opensOn;
       const items = open ? await this.itemsOf(transaction, access, scene) : [];
       const blocking = items.filter((item) => CLOSING_BLOCKING.includes(item.kind)).length;
+      const lockNow = items.filter((item) => CLOSING_LOCK_NOW.includes(item.kind)).length;
+      const earlierOpen = await this.earlierOpen(transaction, scene);
       return closingChecklistSchema.parse({
         quarters: chosen.quarters,
         quarterId: chosen.quarter.id,
         state: open ? 'open' : 'not_open',
         opensOn: scene.opensOn,
         lastDay: chosen.quarter.endDate,
-        // `07`: "A quarter cannot be closed before its last day."
-        closable: open && blocking === 0 && today >= chosen.quarter.endDate,
+        // `07`: "A quarter cannot be closed before its last day." Review correction 1: the
+        // items "lock now and close" ends do not keep the close away.
+        closable: open && blocking === lockNow && today >= chosen.quarter.endDate && !earlierOpen,
+        lockNowNeeded: lockNow > 0,
+        startQuarter: await this.isStartQuarter(transaction, scene),
+        earlierOpen,
+        closing: null,
         canEdit,
         blocking,
         warnings: items.length - blocking,
@@ -198,6 +233,7 @@ export class ClosingService {
         .executeTakeFirst();
       if (student === undefined || subject === undefined) throw notFound();
       if (scene.today < scene.opensOn) throw notOpen();
+      await this.refuseClosed(transaction, scene);
       const flagged = await this.flaggedOf(transaction, scene, subjectId);
       const one = flagged.find((row) => row.studentId === studentId);
       // A result with no flag now (an outdated decision only) can only be cleared.
@@ -243,6 +279,7 @@ export class ClosingService {
         throw notFound();
       }
       if (scene.today < scene.opensOn) throw notOpen();
+      await this.refuseClosed(transaction, scene);
       const own = (await this.flaggedOf(transaction, scene, journal.subjectId)).filter(
         (row) => row.journalId === journal.id,
       );
@@ -305,6 +342,7 @@ export class ClosingService {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const scene = await this.sceneOf(transaction, branchId, quarterId);
       if (scene.today < scene.opensOn) throw notOpen();
+      await this.refuseClosed(transaction, scene);
       const requests = await transaction
         .selectFrom('lesson_plan_requests')
         .select(['id', 'journal_id', 'status', 'open_until', 'finished_at'])
@@ -360,6 +398,7 @@ export class ClosingService {
         },
         async () => {
           if (scene.today < scene.opensOn) return { sent: 0 };
+          await this.refuseClosed(transaction, scene);
           const items = await this.itemsOf(transaction, access, scene);
           const byTeacher = new Map<string, ClosingItem[]>();
           for (const item of items) {
@@ -408,7 +447,355 @@ export class ClosingService {
     });
   }
 
+  /**
+   * `POST /api/results/closing/:quarterId/close` (task 9.2b): the close of the quarter for the
+   * whole branch in one step (`07`, Closing a quarter). The quarter row is locked `for update`
+   * first, the "closing" instant (`edge/journal`: "refuses new entries from that instant"; plan
+   * decision 2); then the checklist is read again, the closing row and the names written, every
+   * result stored as final from the raw entries, and the waiting plan requests made void, all in
+   * this transaction: a failure leaves the quarter open with nothing stored. Repeat-safe
+   * (`edge/developer-rules`, Repeat-safe actions).
+   */
+  close(
+    access: Access,
+    quarterId: string,
+    input: ClosingCloseInput,
+    key: string,
+    requestId: string,
+  ): Promise<ClosingClosed> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.sceneOf(transaction, branchId, quarterId);
+      await transaction
+        .selectFrom('quarters')
+        .select('id')
+        .where('id', '=', scene.quarter.id)
+        .forUpdate()
+        .execute();
+      const once = await this.requestKeys.runOnce(
+        transaction,
+        {
+          key,
+          scope: 'results.quarter_close',
+          accountId: access.accountId,
+          input: { quarterId: scene.quarter.id, ...input },
+        },
+        () => this.closeLocked(transaction, access, scene, input, requestId),
+      );
+      return closingClosedSchema.parse(once.result);
+    });
+  }
+
+  private async closeLocked(
+    transaction: Transaction,
+    access: Access,
+    scene: Scene,
+    input: ClosingCloseInput,
+    requestId: string,
+  ): Promise<ClosingClosed> {
+    const { branchId, quarter } = scene;
+    await this.refuseClosed(transaction, scene);
+    if (scene.today < scene.opensOn) throw notOpen();
+    // `07`: "A quarter cannot be closed before its last day."
+    if (scene.today < quarter.endDate) throw new ApiException('closing_before_last_day', 409);
+    // `edge/journal`: "Quarters are closed in order" (decision 6).
+    if (await this.earlierOpen(transaction, scene)) {
+      throw new ApiException('closing_earlier_open', 409);
+    }
+    // `edge/academic-year`, "Closing the start quarter" (review correction 2).
+    const startQuarter = await this.isStartQuarter(transaction, scene);
+    if (startQuarter && input.startQuarter === null) {
+      throw new ApiException('closing_start_quarter_needed', 409);
+    }
+    if (!startQuarter && input.startQuarter !== null) {
+      throw new ApiException('closing_not_start_quarter', 409);
+    }
+    const items = await this.itemsOf(transaction, access, scene);
+    const blocking = items.filter((item) => CLOSING_BLOCKING.includes(item.kind));
+    if (blocking.some((item) => !CLOSING_LOCK_NOW.includes(item.kind))) {
+      throw new ApiException('closing_blocked', 409);
+    }
+    const lockedNow = blocking.filter((item) => CLOSING_LOCK_NOW.includes(item.kind));
+    if (lockedNow.length > 0 && !input.lockNow) {
+      throw new ApiException('closing_lock_now_needed', 409);
+    }
+    // `07`: "Warnings must be acknowledged"; the list matched to the one listed now (decision 8).
+    const warnings = items.filter((item) =>
+      (CLOSING_WARNINGS as readonly string[]).includes(item.kind),
+    );
+    const seen = new Set(
+      input.warnings.map((one) => `${one.kind}|${one.journalId?.toLowerCase() ?? ''}`),
+    );
+    if (warnings.some((item) => !seen.has(`${item.kind}|${item.journal?.id ?? ''}`))) {
+      throw new ApiException('closing_warnings_changed', 409);
+    }
+
+    const closing = await transaction
+      .insertInto('quarter_closings')
+      .values({
+        branch_id: branchId,
+        quarter_id: quarter.id,
+        // Both written again by the trigger: the next version, the transaction's moment.
+        version: 1,
+        closed_at: scene.now,
+        closed_by: access.accountId,
+        lock_now: lockedNow.length > 0,
+        start_quarter: input.startQuarter,
+        warnings: JSON.stringify(warnings),
+      })
+      .returning(['id', 'version', 'closed_at'])
+      .executeTakeFirstOrThrow();
+
+    // The names as they were (`edge/academic-year`; review must-fix 4).
+    const journals = (
+      await journalRows(transaction, branchId, { yearId: quarter.academicYearId })
+    ).sort((a, b) => a.id.localeCompare(b.id));
+    const facts = await ownerFactsOf(
+      transaction,
+      branchId,
+      journals.map((journal) => ({
+        id: journal.id,
+        academic_year_id: journal.academicYearId,
+        class_id: journal.classId,
+        group_id: journal.groupId,
+        subject_id: journal.subjectId,
+      })),
+    );
+    const owners = new Map<string, string | null>();
+    for (const journal of journals) {
+      const owner = ownerOn(
+        facts.runs.get(journal.id) ?? [],
+        facts.periods.get(journal.id) ?? [],
+        facts.out,
+        quarter.endDate,
+      );
+      owners.set(journal.id, owner === null || owner.kind === 'none' ? null : owner.staffId);
+    }
+    const teacherNames = await staffNames(transaction, [
+      ...new Set([...owners.values()].flatMap((id) => (id === null ? [] : [id]))),
+    ]);
+    if (journals.length > 0) {
+      await transaction
+        .insertInto('quarter_closing_journals')
+        .values(
+          journals.map((journal) => {
+            const owner = owners.get(journal.id) ?? null;
+            return {
+              branch_id: branchId,
+              closing_id: closing.id,
+              journal_id: journal.id,
+              unit_name: unitOf(journal).name,
+              subject_names: JSON.stringify(subjectOf(journal).names),
+              teacher_name: owner === null ? null : (teacherNames.get(owner) ?? null),
+            };
+          }),
+        )
+        .execute();
+    }
+
+    // The final results, from the raw entries, with the stored decisions (From 4.3, 8.6, 9.2a).
+    const { journals: outcomes } = await quarterOutcomes(transaction, {
+      branchId,
+      timeZone: scene.timeZone,
+      now: scene.now,
+      quarter,
+      subjectIds: null,
+      quarterClosed: true,
+    });
+    const records: {
+      journalId: string;
+      subjectId: string;
+      studentId: string;
+      kind: 'closing' | 'at_leaving';
+      record: string;
+    }[] = [];
+    for (const [journalId, one] of outcomes) {
+      for (const [studentId, member] of one.members) {
+        if (member.input === null || member.outcome === null) continue;
+        if (listedJournalOf(member.found?.spans ?? [], journalId) !== journalId) continue;
+        const kind = member.input.atLeaving === null ? 'closing' : 'at_leaving';
+        let record;
+        try {
+          record = finalQuarterRecord(member.input, kind);
+        } catch (error) {
+          // A record the module refuses: the checklist missed it; nothing is stored.
+          if (error instanceof CalcInputError) throw new ApiException('closing_blocked', 409);
+          throw error;
+        }
+        records.push({
+          journalId,
+          subjectId: one.journal.subjectId,
+          studentId,
+          kind,
+          record: JSON.stringify(record),
+        });
+      }
+    }
+    for (let start = 0; start < records.length; start += 500) {
+      await transaction
+        .insertInto('quarter_final_results')
+        .values(
+          records.slice(start, start + 500).map((one) => ({
+            branch_id: branchId,
+            closing_id: closing.id,
+            quarter_id: quarter.id,
+            subject_id: one.subjectId,
+            student_id: one.studentId,
+            journal_id: one.journalId,
+            kind: one.kind,
+            record: one.record,
+          })),
+        )
+        .execute();
+    }
+
+    // `edge/lesson-plans`: "Waiting requests become void" (From 7.2; decision 11).
+    const waiting = await transaction
+      .selectFrom('lesson_plan_requests')
+      .select(['id', 'journal_id', 'status'])
+      .where('branch_id', '=', branchId)
+      .where('quarter_id', '=', quarter.id)
+      .where('status', 'in', ['prepared', 'sent'])
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+    if (waiting.length > 0) {
+      await transaction
+        .updateTable('lesson_plan_requests')
+        .set({ status: 'void', updated_at: scene.now })
+        .where(
+          'id',
+          'in',
+          waiting.map((one) => one.id),
+        )
+        .execute();
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'plan.requests_voided',
+        record: { type: 'quarter', id: quarter.id },
+        newValue: {
+          requests: waiting.map((one) => ({
+            id: one.id,
+            journalId: one.journal_id,
+            status: one.status,
+          })),
+        },
+        requestId,
+      });
+    }
+
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'results.quarter_closed',
+      record: { type: 'quarter', id: quarter.id },
+      newValue: {
+        closingId: closing.id,
+        version: closing.version,
+        lockNow: lockedNow.length > 0,
+        startQuarter: input.startQuarter,
+        warnings: warnings.map((item) => ({
+          kind: item.kind,
+          journalId: item.journal?.id ?? null,
+        })),
+        lockedNow: lockedNow.map((item) => ({
+          kind: item.kind,
+          journalId: item.journal?.id ?? null,
+          teacherId: item.teacher?.id ?? null,
+        })),
+        stored: records.length,
+        atLeaving: records.filter((one) => one.kind === 'at_leaving').length,
+        voided: waiting.length,
+      },
+      requestId,
+    });
+
+    // "Lock now and close ... is logged and tells the teachers" (decision 3).
+    const told = [
+      ...new Set(lockedNow.flatMap((item) => (item.teacher === null ? [] : [item.teacher.id]))),
+    ].sort();
+    if (told.length > 0) {
+      const accounts = await transaction
+        .selectFrom('staff')
+        .select('account_id')
+        .where('id', 'in', told)
+        .where('account_id', 'is not', null)
+        .orderBy('id')
+        .execute();
+      const accountIds = accounts.flatMap((row) =>
+        row.account_id === null ? [] : [row.account_id],
+      );
+      if (accountIds.length > 0) {
+        await this.notifications.send(transaction, {
+          kind: 'results.quarter_locked_now',
+          branchId,
+          accountIds,
+          data: { quarter: quarter.number },
+        });
+      }
+    }
+
+    return {
+      closedAt: closing.closed_at.toISOString(),
+      version: closing.version,
+      stored: records.length,
+      voided: waiting.length,
+    };
+  }
+
   // -------------------------------------------------------------------------
+
+  /** A write of the checklist in a closed quarter is refused (task 9.2b). */
+  private async refuseClosed(transaction: Transaction, scene: Scene): Promise<void> {
+    if ((await closingOf(transaction, scene.quarter.id)) !== undefined) {
+      throw new ApiException('quarter_closed', 409);
+    }
+  }
+
+  /** The close in force, as the checklist answers it; `null` while open. */
+  private async closingRecordOf(
+    transaction: Transaction,
+    quarterId: string,
+  ): Promise<ClosingChecklist['closing']> {
+    const row = await closingOf(transaction, quarterId);
+    if (row === undefined) return null;
+    const names = await accountNames(transaction, [row.closed_by]);
+    return {
+      closedAt: row.closed_at.toISOString(),
+      closedBy: names.get(row.closed_by) ?? '',
+      version: row.version,
+      lockNow: row.lock_now,
+      startQuarter:
+        row.start_quarter === 'keep' || row.start_quarter === 'not_official'
+          ? row.start_quarter
+          : null,
+      warnings: closingChecklistSchema.shape.items.parse(row.warnings),
+    };
+  }
+
+  /** An earlier dated quarter of the year is still open (decision 6). */
+  private async earlierOpen(transaction: Transaction, scene: Scene): Promise<boolean> {
+    const earlier = await transaction
+      .selectFrom('quarters')
+      .select('id')
+      .where('academic_year_id', '=', scene.quarter.academicYearId)
+      .where('number', '<', scene.quarter.number)
+      .where('start_date', 'is not', null)
+      .execute();
+    const closed = await closedQuarters(
+      transaction,
+      earlier.map((row) => row.id),
+    );
+    return earlier.some((row) => !closed.has(row.id));
+  }
+
+  /** The start quarter: the branch's start date falls inside it after its first day (correction 2). */
+  private async isStartQuarter(transaction: Transaction, scene: Scene): Promise<boolean> {
+    return countsFromOf(await goLiveOf(transaction, scene.branchId), scene.quarter) !== null;
+  }
 
   /** The quarters of the year shown, and the one asked for (the current one by default). */
   private async chosenQuarter(
@@ -1119,6 +1506,9 @@ async function refusingDecisionWrites<T>(work: () => Promise<T>): Promise<T> {
     }
     if (failure.code === '23514' && failure.constraint === 'academic_years_closed') {
       throw new ApiException('year_closed', 409);
+    }
+    if (failure.code === '23514' && failure.constraint === 'quarters_closed') {
+      throw new ApiException('quarter_closed', 409);
     }
     throw error;
   }

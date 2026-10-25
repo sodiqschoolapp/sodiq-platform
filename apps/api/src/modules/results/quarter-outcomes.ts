@@ -88,6 +88,11 @@ export async function quarterOutcomes(
     readonly now: Date;
     readonly quarter: QuarterRef;
     readonly subjectIds: readonly string[] | null;
+    /**
+     * The quarter is closed, or being closed by this transaction (task 9.2b): the module drops
+     * the "provisional" marker (`07` rule 8). Read by the caller from the stored state.
+     */
+    readonly quarterClosed?: boolean;
   },
 ): Promise<{ journals: ReadonlyMap<string, JournalOutcomes> }> {
   const { quarter } = input;
@@ -147,7 +152,7 @@ export async function quarterOutcomes(
                 },
                 lessons: one.lessons.map((lesson) => lesson.lesson),
                 ratingExam: ratingShown ? one.ratingExam : null,
-                quarterClosed: false,
+                quarterClosed: input.quarterClosed ?? false,
                 heldInJournals: one.heldInJournals,
                 countsFrom,
                 leftSubjectOn: one.leftSubjectOn,

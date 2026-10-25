@@ -320,6 +320,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 9.2a: a decision on a flagged result set or cleared on the closing checklist.
     'results.decision_set',
     'results.decision_cleared',
+    // Task 9.2b: a quarter closed for the whole branch.
+    'results.quarter_closed',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).
@@ -368,6 +370,8 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.minimums',
     // Task 9.2a: the open plan periods of a quarter ended from the closing checklist.
     'plan.periods_ended',
+    // Task 9.2b: the waiting plan requests of a quarter made void by its close.
+    'plan.requests_voided',
   ],
   exports: [
     // Task 8.9: a journal in Excel or PDF, and the branch export: asked for, ready, downloaded.

@@ -1148,6 +1148,34 @@ export const ERROR_CODES = [
   'closing_nothing_to_clear',
   /** A student flagged under the journal now was not in the list sent: decide again from the list as it is (task 9.2a). */
   'closing_list_changed',
+  /** The quarter is closed: nothing that would change its results is written (task 9.2b). */
+  'quarter_closed',
+  /** A quarter cannot be closed before its last day (`07`; task 9.2b). */
+  'closing_before_last_day',
+  /** An earlier quarter of the year is still open: quarters are closed in order (task 9.2b). */
+  'closing_earlier_open',
+  /** A blocking item of the checklist is left (task 9.2b). */
+  'closing_blocked',
+  /** Lessons are still inside the edit period or unlocked: choose "lock now and close" (task 9.2b). */
+  'closing_lock_now_needed',
+  /** A warning is listed now that was not acknowledged: look at the list again (task 9.2b). */
+  'closing_warnings_changed',
+  /** The start quarter needs "keep" or "not official" (task 9.2b). */
+  'closing_start_quarter_needed',
+  /** "Keep" or "not official" is only for the start quarter (task 9.2b). */
+  'closing_not_start_quarter',
+  /** The move is dated in a closed quarter (task 9.2b). */
+  'class_quarter_closed',
+  /** The group move is dated in a closed quarter (task 9.2b). */
+  'group_quarter_closed',
+  /** The move to another branch is dated in a closed quarter (task 9.2b). */
+  'branch_move_quarter_closed',
+  /** The date is in a closed quarter (task 9.2b). */
+  'date_in_closed_quarter',
+  /** The plan's quarter is closed (task 9.2b). */
+  'plan_quarter_closed',
+  /** The exemption's days are all in closed quarters (task 9.2b). */
+  'exemption_closed_quarter',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

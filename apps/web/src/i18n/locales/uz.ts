@@ -681,6 +681,20 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu natija uchun qaror saqlanmagan, bekor qiladigan narsa yoʻq. Roʻyxatni yangilang.',
     closing_list_changed:
       'Bu oʻquvchi siz roʻyxatni ochganingizdan keyin qoʻshildi va u boʻyicha qaror qabul qilinmadi. Roʻyxatni yangilab, qayta qaror qiling.',
+    quarter_closed: 'Chorak yopilgan: uning jurnallari va natijalari yakuniy. Oʻzgartirish faqat chorak qayta ochilgandan keyin mumkin.',
+    closing_before_last_day: 'Chorakni uning oxirgi kunida yoki undan keyin yopish mumkin.',
+    closing_earlier_open: 'Avval yilning oldingi choraklarini yoping: choraklar tartib bilan yopiladi.',
+    closing_blocked: 'Yopish roʻyxatida hali toʻsib turgan band bor. Uni tugating, soʻng chorakni yoping.',
+    closing_lock_now_needed: 'Tahrirlash muddati ichidagi yoki qulfdan chiqarilgan darslar bor. «Hozir qulflash va yopish»ni tanlang.',
+    closing_warnings_changed: 'Yopish roʻyxati ochilgandan beri ogohlantirishlar oʻzgardi. Ularni qayta koʻrib chiqing, soʻng yoping.',
+    closing_start_quarter_needed: 'Bu filialning boshlangʻich choragi. «Platforma natijalarini qoldirish» yoki «Norasmiy»ni tanlang.',
+    closing_not_start_quarter: '«Qoldirish» yoki «Norasmiy» faqat boshlangʻich chorak uchun tanlanadi. Yopish roʻyxatini yangilang.',
+    class_quarter_closed: 'Koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    group_quarter_closed: 'Guruhga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    branch_move_quarter_closed: 'Boshqa filialga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    date_in_closed_quarter: 'Sana yopilgan chorakda. Ochiq chorakdagi sanani tanlang.',
+    plan_quarter_closed: 'Bu rejaning choragi yopilgan, shuning uchun rejani oʻzgartirib boʻlmaydi.',
+    exemption_closed_quarter: 'Ozod qilishning barcha kunlari yopilgan choraklarda. Ochiq chorakdagi kunlarni tanlang.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
@@ -3294,6 +3308,7 @@ export const uz: Texts<'one' | 'other'> = {
       results: {
         decision_set: 'Belgilangan natija boʻyicha qaror qabul qilindi',
         decision_cleared: 'Belgilangan natija boʻyicha qaror bekor qilindi',
+        quarter_closed: 'Chorak yopildi',
       },
       calendar_entry: {
         create: 'Kalendar kuni qoʻshildi',
@@ -3524,6 +3539,7 @@ export const uz: Texts<'one' | 'other'> = {
         request_refuse: 'Rejani oʻzgartirish soʻrovi rad etildi',
         request_finish: 'Rejani tahrirlash muddatidan oldin tugatildi',
         periods_ended: 'Chorak rejalarini tahrirlash muddatlari tugatildi',
+        requests_voided: 'Yopilgan chorakning kutayotgan reja soʻrovlari bekor qilindi',
         request_void: 'Yangi oʻqituvchi tufayli oʻzgartirish soʻrovlari bekor qilindi',
         queue_edit: 'Reja qatorlari tartibi oʻzgartirildi',
         shared: 'Sinf yoki guruh umumiy rejaga qoʻshildi',
@@ -3956,6 +3972,7 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       results: {
         closing_reminder: '{{quarter}}-chorak tez orada yopiladi. Tugatilishi kerak: {{items}}.',
+        quarter_locked_now: '{{quarter}}-chorak «hozir qulflash» bilan yopildi: uning tahrirlash muddati ichidagi darslaringiz va undagi qulfdan chiqarishlaringiz qulflandi.',
       },
       setup: {
         quarter_weights_changed:
