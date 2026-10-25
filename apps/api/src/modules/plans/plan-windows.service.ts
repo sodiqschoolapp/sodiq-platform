@@ -18,6 +18,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
@@ -152,6 +153,9 @@ export class PlanWindowsService {
       .executeTakeFirst();
     if (found === undefined) throw notFound();
     if (found.status === 'closed') throw new ApiException('plan_year_closed', 409);
+    // Task 9.2b (From 7.1a; `edge/lesson-plans`: "Nothing is possible in a closed quarter"):
+    // the quarter `for key share`, before the window's and the journals' locks.
+    await lockOpenQuarter(transaction, found.id, 'plan_quarter_closed');
     if (found.start_date === null || found.end_date === null) {
       throw new ApiException('plan_window_dates', 409);
     }

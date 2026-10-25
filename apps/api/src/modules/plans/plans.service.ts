@@ -37,6 +37,7 @@ import {
 import { removePlanWork } from '../journal/plan-work-remove.js';
 import { deliveryMarksOf } from '../journal/journal-works.query.js';
 import { takeOverUnplanned } from '../journal/works-takeover.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { substitutionsInForce } from '../timetable/substitutions-read.js';
@@ -104,6 +105,21 @@ export const gateAudit = (pass: GatePass): { details?: JsonValue } => {
 };
 
 const scopeRefusal = () => new ApiException('plan_scope', 403);
+
+/**
+ * Takes the quarter `for key share` with no refusal (task 9.2b; `.claude/rules/database.md`):
+ * a decider takes it before the first row lock and is refused `plan_quarter_closed` only after
+ * the routing (`lockOpenQuarter` again), so the close, which locks the quarter `for update`
+ * before the waiting requests, never waits on a decider that waits on it.
+ */
+export async function holdQuarter(transaction: Transaction, quarterId: string): Promise<void> {
+  await transaction
+    .selectFrom('quarters')
+    .select('id')
+    .where('id', '=', quarterId)
+    .forKeyShare()
+    .execute();
+}
 
 /**
  * The refusal the database answers for a plan write (`api.md`: with a route
@@ -942,7 +958,12 @@ export class PlansService {
     };
   }
 
-  /** The scene of a write: read and owned, the year open. */
+  /**
+   * The scene of a write: read and owned, the year and the quarter open. Task 9.2b (From 7.1a;
+   * `edge/lesson-plans`, Plans and the journal: "Nothing is possible in a closed quarter"):
+   * the quarter is taken `for key share` here, before the caller's first row lock, and a
+   * closed one refuses `plan_quarter_closed`.
+   */
   async writeSceneOf(
     transaction: Transaction,
     access: Access,
@@ -961,6 +982,7 @@ export class PlansService {
       throw new ApiException('plan_attendance_only', 409);
     }
     if (scene.closed) throw new ApiException('plan_year_closed', 409);
+    await lockOpenQuarter(transaction, scene.quarter.id, 'plan_quarter_closed');
     if (!scene.open) throw new ApiException('plan_closed', 409);
     return { ...scene, assignmentId: scene.reach.assignmentId };
   }

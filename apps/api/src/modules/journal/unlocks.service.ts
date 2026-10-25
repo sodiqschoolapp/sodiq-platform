@@ -20,6 +20,7 @@ import { decisionReach, firstTier, type RequestOn } from '../access/request-rout
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { lockOpenQuarter, refusingClosedQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, personOutOf } from '../timetable/journal-owners.js';
 import {
@@ -239,6 +240,9 @@ export class UnlocksService {
   ): Promise<JournalUnlock> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
+      // Task 9.2b: the lesson's quarter before the lesson's lock; refused after the scope.
+      const quarterId = await lessonQuarterOf(transaction, branchId, lessonId);
+      await holdQuarter(transaction, quarterId);
       const lesson = await lockedLesson(transaction, branchId, lessonId);
       const now = await transactionMoment(transaction);
       const today = schoolDateOf(now, await zoneOf(transaction, branchId));
@@ -255,6 +259,8 @@ export class UnlocksService {
         throw new ApiException('journal_entry_scope', 403);
       }
       refuseState(await entryStateOf(transaction, lesson, now));
+      // Task 9.2b (From 8.4): no unlock request in a closed quarter.
+      if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
       return this.send(transaction, access, branchId, {
         target: { kind: 'lesson', lessonId: lesson.id },
         staffId,
@@ -298,6 +304,8 @@ export class UnlocksService {
       if (switchesIn(journal, quarterId)?.ratingExam !== true) {
         throw new ApiException('rating_exam_off', 409);
       }
+      // Task 9.2b (From 8.4): no unlock request in a closed quarter; nothing is locked before.
+      await lockOpenQuarter(transaction, quarterId);
       return this.send(transaction, access, branchId, {
         target: { kind: 'rating', journalId: journal.id, quarterId },
         staffId,
@@ -419,79 +427,87 @@ export class UnlocksService {
     requestId: string,
   ): Promise<JournalUnlock> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      await this.rowOf(transaction, branchId, unlockId);
-      const row = await this.lockRow(transaction, unlockId);
-      refuseOwnRequest(access.accountId, row.requested_by);
-      const now = await transactionMoment(transaction);
-      const today = schoolDateOf(now, await zoneOf(transaction, branchId));
-      const subject = await subjectOf(transaction, branchId, row);
-      const holders = await postHolders(transaction, branchId, subject.subjectId, now);
-      const reach = decisionReach(
-        { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
-        { accountId: row.requested_by, posts: postsOf(holders, row.requested_by) },
-        subject.on,
-      );
-      if (reach !== 'decide') throw scopeRefusal();
-      if (row.status !== 'sent') throw new ApiException('journal_unlock_decided', 409);
-      if (await outToday(transaction, branchId, row.staff_id, today)) {
-        throw new ApiException('journal_unlock_cancelled', 409);
-      }
-      if (row.version !== input.version) throw new ApiException('journal_unlock_stale', 409);
-      const approve = input.decision === 'approve';
-      const updated = await transaction
-        .updateTable('journal_unlocks')
-        .set({
-          status: approve ? 'approved' : 'refused',
-          days: approve ? input.days : null,
-          decided_by: access.accountId,
-          refuse_reason: approve ? null : input.reason,
-        })
-        .where('id', '=', row.id)
-        .returning(['open_until', 'version'])
-        .executeTakeFirstOrThrow();
-      await this.audit.record(transaction, {
-        branchId,
-        actorId: access.accountId,
-        assignmentId: access.assignmentId,
-        action: 'journal.unlock_decide',
-        record: { type: 'journal_unlock', id: row.id },
-        oldValue: { status: row.status, version: row.version },
-        newValue: approve
-          ? {
-              status: 'approved',
-              days: input.days,
-              openUntil: updated.open_until?.toISOString() ?? null,
-              version: updated.version,
-            }
-          : { status: 'refused', reason: input.reason, version: updated.version },
-        requestId,
-      });
-      if (subject.date !== null) {
-        if (approve && updated.open_until !== null) {
-          const zone = await zoneOf(transaction, branchId);
-          await this.notifications.send(transaction, {
-            kind: 'journal.unlock_approved',
-            branchId,
-            accountIds: [row.requested_by],
-            data: {
-              unit: subject.unit.name,
-              date: subject.date,
-              // The last open day: the day before the stored 00:00.
-              until: addDays(schoolDateOf(new Date(updated.open_until), zone), -1),
-            },
-          });
-        } else if (!approve) {
-          await this.notifications.send(transaction, {
-            kind: 'journal.unlock_refused',
-            branchId,
-            accountIds: [row.requested_by],
-            data: { unit: subject.unit.name, date: subject.date, reason: input.reason ?? '' },
-          });
+    const approve = input.decision === 'approve';
+    return refusingClosedQuarter(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const seen = await this.rowOf(transaction, branchId, unlockId);
+        // Task 9.2b (From 8.4): an approval takes the quarter before the request's lock (the close
+        // locks the quarter, then ends the open unlocks); it is refused after the routing.
+        const quarterId = approve ? await quarterOfUnlock(transaction, branchId, seen) : null;
+        await holdQuarter(transaction, quarterId);
+        const row = await this.lockRow(transaction, unlockId);
+        refuseOwnRequest(access.accountId, row.requested_by);
+        const now = await transactionMoment(transaction);
+        const today = schoolDateOf(now, await zoneOf(transaction, branchId));
+        const subject = await subjectOf(transaction, branchId, row);
+        const holders = await postHolders(transaction, branchId, subject.subjectId, now);
+        const reach = decisionReach(
+          { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
+          { accountId: row.requested_by, posts: postsOf(holders, row.requested_by) },
+          subject.on,
+        );
+        if (reach !== 'decide') throw scopeRefusal();
+        // Task 9.2b (From 8.4): an approval in a closed quarter is refused; a refusal still works.
+        if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
+        if (row.status !== 'sent') throw new ApiException('journal_unlock_decided', 409);
+        if (await outToday(transaction, branchId, row.staff_id, today)) {
+          throw new ApiException('journal_unlock_cancelled', 409);
         }
-      }
-      return this.answerOf(transaction, access, branchId, row.id);
-    });
+        if (row.version !== input.version) throw new ApiException('journal_unlock_stale', 409);
+        const updated = await transaction
+          .updateTable('journal_unlocks')
+          .set({
+            status: approve ? 'approved' : 'refused',
+            days: approve ? input.days : null,
+            decided_by: access.accountId,
+            refuse_reason: approve ? null : input.reason,
+          })
+          .where('id', '=', row.id)
+          .returning(['open_until', 'version'])
+          .executeTakeFirstOrThrow();
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'journal.unlock_decide',
+          record: { type: 'journal_unlock', id: row.id },
+          oldValue: { status: row.status, version: row.version },
+          newValue: approve
+            ? {
+                status: 'approved',
+                days: input.days,
+                openUntil: updated.open_until?.toISOString() ?? null,
+                version: updated.version,
+              }
+            : { status: 'refused', reason: input.reason, version: updated.version },
+          requestId,
+        });
+        if (subject.date !== null) {
+          if (approve && updated.open_until !== null) {
+            const zone = await zoneOf(transaction, branchId);
+            await this.notifications.send(transaction, {
+              kind: 'journal.unlock_approved',
+              branchId,
+              accountIds: [row.requested_by],
+              data: {
+                unit: subject.unit.name,
+                date: subject.date,
+                // The last open day: the day before the stored 00:00.
+                until: addDays(schoolDateOf(new Date(updated.open_until), zone), -1),
+              },
+            });
+          } else if (!approve) {
+            await this.notifications.send(transaction, {
+              kind: 'journal.unlock_refused',
+              branchId,
+              accountIds: [row.requested_by],
+              data: { unit: subject.unit.name, date: subject.date, reason: input.reason ?? '' },
+            });
+          }
+        }
+        return this.answerOf(transaction, access, branchId, row.id);
+      }),
+    );
   }
 
   /** The requester takes back a waiting request. */
@@ -572,6 +588,45 @@ export class UnlocksService {
     if (answer === undefined) throw notFound();
     return answer;
   }
+}
+
+/**
+ * Takes a quarter `for key share` with no refusal (task 9.2b; `.claude/rules/database.md`):
+ * before the first row lock, so the close (the quarter `for update` first) never waits on a
+ * writer that waits on it; the refusal (`lockOpenQuarter`) comes after the reading checks.
+ */
+async function holdQuarter(transaction: Transaction, quarterId: string | null): Promise<void> {
+  if (quarterId === null) return;
+  await transaction
+    .selectFrom('quarters')
+    .select('id')
+    .where('id', '=', quarterId)
+    .forKeyShare()
+    .execute();
+}
+
+/** The quarter of a dated lesson of the branch (`lesson_quarter`, 0133), null when none. */
+async function lessonQuarterOf(
+  transaction: Transaction,
+  branchId: string,
+  lessonId: string,
+): Promise<string | null> {
+  const found = await sql<{ quarter: string | null }>`
+    select lesson_quarter(l.id) as quarter from lessons l
+    where l.id = ${lessonId}::uuid and l.branch_id = ${branchId}::uuid
+  `.execute(transaction);
+  return found.rows[0]?.quarter ?? null;
+}
+
+/** The quarter of a request: the rating exam's, or its lesson's. */
+function quarterOfUnlock(
+  transaction: Transaction,
+  branchId: string,
+  row: Pick<UnlockRow, 'lesson_id' | 'quarter_id'>,
+): Promise<string | null> {
+  return row.lesson_id === null
+    ? Promise.resolve(row.quarter_id)
+    : lessonQuarterOf(transaction, branchId, row.lesson_id);
 }
 
 async function zoneOf(transaction: Transaction, branchId: string): Promise<string> {
