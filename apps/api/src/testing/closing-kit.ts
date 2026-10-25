@@ -105,3 +105,58 @@ export async function reopenQuarter(
     return row.id;
   });
 }
+
+/**
+ * Task 9.2c: the re-close of a reopened journal as the route writes its rows (the re-close
+ * itself is tested in `closing.test.ts`): the next version for that journal, its names, and its
+ * reopening ended. Answers the closing's id.
+ */
+export async function closeJournalAgain(
+  database: { readonly app: Database },
+  input: {
+    readonly branchId: string;
+    readonly quarterId: string;
+    readonly journalId: string;
+    readonly accountId: string;
+    readonly at: string;
+  },
+): Promise<string> {
+  const transactions = new Transactions(database.app, new FixedClock(input.at));
+  return transactions.run([input.branchId], async (transaction) => {
+    const row = await transaction
+      .insertInto('quarter_closings')
+      .values({
+        branch_id: input.branchId,
+        quarter_id: input.quarterId,
+        version: 0,
+        closed_at: new Date(0),
+        closed_by: input.accountId,
+        lock_now: false,
+        start_quarter: null,
+        warnings: JSON.stringify([]),
+        cause: 'journal_close',
+        journal_id: input.journalId,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarter_closing_journals')
+      .values({
+        branch_id: input.branchId,
+        closing_id: row.id,
+        journal_id: input.journalId,
+        unit_name: '7 Oxford',
+        subject_names: JSON.stringify({ uz: 'Fizika', ru: 'Физика', en: 'Physics' }),
+        teacher_name: null,
+      })
+      .execute();
+    await transaction
+      .updateTable('quarter_reopenings')
+      .set({ ended_by_closing_id: row.id })
+      .where('quarter_id', '=', input.quarterId)
+      .where('journal_id', '=', input.journalId)
+      .where('ended_by_closing_id', 'is', null)
+      .execute();
+    return row.id;
+  });
+}

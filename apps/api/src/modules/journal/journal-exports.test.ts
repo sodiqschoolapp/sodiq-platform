@@ -14,7 +14,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
-import { closeQuarter } from '../../testing/closing-kit.js';
+import { closeJournalAgain, closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { RecordingPdf, refusedFile } from '../../testing/pdf-kit.js';
@@ -346,6 +346,49 @@ describe('journal exports', () => {
       expect(values[1]).toEqual(['7 Oxford (as closed) · Physics as closed · Quarter 1']);
       expect(values[2]).toEqual(['Teacher: Dilnoza Karimova']);
       expect(values[3]).toEqual(['Final · closed 31.10.2026 · version 1']);
+    });
+
+    // Task 9.2c (plan, route tests): the file states the version in force for the journal: live
+    // and provisional while it is reopened, then version 2 and its date once closed again.
+    it('writes "Provisional" while the journal is reopened and "Final" of version 2 once it is closed again', async () => {
+      const principal = await account();
+      const x = await scene();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      await closeQuarter(t.database, {
+        branchId: x.s.branch,
+        quarterId: x.q1,
+        accountId: principal.account.id,
+      });
+      await reopenQuarter(t.database, {
+        branchId: x.s.branch,
+        quarterId: x.q1,
+        journalId: x.journal,
+        accountId: principal.account.id,
+        at: '2026-11-02T09:00:00+05:00',
+      });
+      const stampAt = async (moment: string) => {
+        await at(principal, moment);
+        const answer = await exportOf(principal, x.s.branch, x.journal, {
+          format: 'xlsx',
+          quarterId: x.q1,
+        });
+        expect(answer.status, codeOf(answer)).toBe(200);
+        const [sheet] = await sheetsOf(answer.body as Buffer);
+        return sheet?.rows.map((row) => row.values)[3];
+      };
+      expect(await stampAt('2026-11-03T12:00:00+05:00')).toEqual([
+        'Provisional · 03.11.2026 12:00',
+      ]);
+      await closeJournalAgain(t.database, {
+        branchId: x.s.branch,
+        quarterId: x.q1,
+        journalId: x.journal,
+        accountId: principal.account.id,
+        at: '2026-11-04T10:00:00+05:00',
+      });
+      expect(await stampAt('2026-11-12T10:00:00+05:00')).toEqual([
+        'Final · closed 04.11.2026 · version 2',
+      ]);
     });
 
     it('writes the grid of the reader to Excel: header and stamp, real numbers and dates, the fixed name order, the folded section and one audit entry', async () => {

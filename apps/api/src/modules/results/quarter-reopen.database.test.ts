@@ -729,6 +729,53 @@ describe('reopening a quarter in the database', () => {
       }
     });
 
+    // Plan decision 5: an orphan assignment gives no entry in a reopened quarter, though it is
+    // still open and took one before the close.
+    it('refuses an entry under an orphan assignment, which it took before the close', async () => {
+      const s = await scene();
+      const teacher = await cells.lessons.load.classes.person(s.branch, ['uz']);
+      // Assigned on 29 October for 7 days: open until 00:00 of 6 November.
+      const assignment = await inBranch(s.branch, '2026-10-29T10:00:00+05:00', (transaction) =>
+        transaction
+          .insertInto('journal_orphan_assignments')
+          .values({
+            branch_id: s.branch,
+            lesson_id: s.lesson,
+            staff_id: teacher.staffId,
+            reason: 'Completes the lesson',
+            days: 7,
+            assigned_by: vice,
+            assigned_at: new Date(0),
+            open_until: new Date(0),
+          })
+          .returning(['id', 'open_until'])
+          .executeTakeFirstOrThrow(),
+      );
+      expect(assignment.open_until).toEqual(new Date('2026-11-06T00:00:00+05:00'));
+      const under = (moment: string, student: string) =>
+        inBranch(s.branch, moment, async (transaction) => {
+          await setting(transaction, 'app.orphan_assignment_id', assignment.id);
+          return transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: s.branch,
+              lesson_id: s.lesson,
+              student_id: student,
+              mark: 1,
+              version: 1,
+              changed_by: teacher.accountId,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .returning('changed_how')
+            .executeTakeFirstOrThrow();
+        });
+      expect((await under('2026-10-29T11:00:00+05:00', s.student)).changed_how).toBe('late_entry');
+      const closing = await close(s);
+      await reopen(s, closing.id);
+      expect(await refusal(under(INSIDE, s.classmate))).toMatchObject(LOCKED);
+    });
+
     // edge/system-behaviour: the moments 23:59 and 00:00 (plan decision 3).
     it('takes entries until the end of the reopening, and none from 00:00 of its end', async () => {
       const s = await scene();
