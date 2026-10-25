@@ -5716,6 +5716,7 @@ export const uz: Texts<'one' | 'other'> = {
   journal: {
     exports: {
       title: 'Filial eksporti',
+      emptyTitle: 'Hali eksport yoʻq',
       refresh: 'Yangilash',
       requested: 'Soʻralgan',
       period: 'Davr',

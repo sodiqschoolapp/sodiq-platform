@@ -5660,6 +5660,7 @@ export const en = {
   journal: {
     exports: {
       title: 'Export of the branch',
+      emptyTitle: 'No exports yet',
       refresh: 'Refresh',
       requested: 'Asked for',
       period: 'Period',

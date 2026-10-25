@@ -5980,6 +5980,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   journal: {
     exports: {
       title: 'Экспорт филиала',
+      emptyTitle: 'Экспортов ещё нет',
       refresh: 'Обновить',
       requested: 'Запрошен',
       period: 'Период',

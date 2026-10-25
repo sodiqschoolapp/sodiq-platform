@@ -160,7 +160,7 @@ export function BranchExportsPage(): React.JSX.Element {
             onSearchChange={(next, how) => {
               void navigate({ to: '/journal/exports', search: next, replace: how === 'replace' });
             }}
-            empty={{ title: t('journal.exports.title'), text: t('journal.exports.empty') }}
+            empty={{ title: t('journal.exports.emptyTitle'), text: t('journal.exports.empty') }}
           />
         </div>
       )}

@@ -16,14 +16,14 @@ async function saved(page: Page, click: () => Promise<void>): Promise<Buffer> {
 // docs/spec/07-journal.md, last paragraph: "Export to Excel and PDF, and print, for a month or a
 // quarter"; docs/spec/edge-cases/system-behaviour.md: "A large export is a background job ...
 // The link works for 24 hours and access is checked again at download" (task 8.9). The
-// Academic Vice Principal of the "Plans in the journal browser test branch" exports its Geodesy
+// Principal of the "Plans in the journal browser test branch" exports its Geodesy
 // journal from the journal page, then asks for the export of the branch, which the worker of
 // the browser tests makes, and downloads it. All names are invented.
-test('an Academic Vice Principal exports a journal to Excel and downloads the export of the branch', async ({
+test('a Principal exports a journal to Excel and downloads the export of the branch', async ({
   page,
 }) => {
   test.setTimeout(90_000);
-  const account = accountOf('exportsVice');
+  const account = accountOf('exportsPrincipal');
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
