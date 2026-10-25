@@ -530,6 +530,87 @@ describe('reopening a quarter in the database', () => {
       expect(taken.changed_how).toBe('late_entry');
     });
 
+    // Plan decision 5: the cells an exemption reopened and the optional cells give no entry in a
+    // reopened quarter (they are neither a correction nor an explicit unlock).
+    it('refuses a cell an exemption reopened and an optional cell, which they took before the close', async () => {
+      const s = await scene();
+      await inBranch(s.branch, BEFORE, async (transaction) => {
+        const exemption = await transaction
+          .insertInto('exemptions')
+          .values({
+            branch_id: s.branch,
+            student_id: s.student,
+            year_id: s.year,
+            batch_id: '019a0000-0000-7000-8000-000000000012',
+            kind: 'temporary',
+            all_subjects: true,
+            start_date: '2026-10-20',
+            end_date: '2026-10-21',
+            category: 'illness',
+            detail: 'A certificate from the clinic',
+            granted_by: vice,
+            granted_at: new Date(0),
+            version: 0,
+            changed_at: new Date(0),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('exemption_reopened_cells')
+          .values({
+            branch_id: s.branch,
+            exemption_id: exemption.id,
+            lesson_id: s.lesson,
+            student_id: s.student,
+            reopened_at: new Date(BEFORE),
+            open_until: new Date('2026-11-30T00:00:00+05:00'),
+          })
+          .execute();
+        const status = await transaction
+          .selectFrom('student_statuses')
+          .select('id')
+          .where('student_id', '=', s.classmate)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('journal_optional_cells')
+          .values({
+            branch_id: s.branch,
+            lesson_id: s.lesson,
+            student_id: s.classmate,
+            open_until: new Date('2026-11-30T00:00:00+05:00'),
+            opened_at: new Date(BEFORE),
+            return_status_id: status.id,
+          })
+          .execute();
+      });
+      // Both open after the lock, before the close.
+      const reopenedCell = await mark(s.branch, '2026-10-23T10:00:00+05:00', {
+        lesson: s.lesson,
+        student: s.student,
+      });
+      expect(reopenedCell.changed_how).toBe('late_entry');
+      const optional = await mark(s.branch, '2026-10-23T10:00:00+05:00', {
+        lesson: s.lesson,
+        student: s.classmate,
+      });
+      expect(optional.changed_how).toBe('late_entry');
+      const closing = await close(s);
+      await reopen(s, closing.id);
+      for (const id of [reopenedCell.id, optional.id]) {
+        expect(
+          await refusal(
+            inBranch(s.branch, INSIDE, (transaction) =>
+              transaction
+                .updateTable('journal_cells')
+                .set({ mark: 2, changed_by: account, changed_how: 'entry' })
+                .where('id', '=', id)
+                .execute(),
+            ),
+          ),
+        ).toMatchObject(LOCKED);
+      }
+    });
+
     // edge/system-behaviour: the moments 23:59 and 00:00 (plan decision 3).
     it('takes entries until the end of the reopening, and none from 00:00 of its end', async () => {
       const s = await scene();
@@ -629,6 +710,31 @@ describe('reopening a quarter in the database', () => {
       const closed = await close(whole);
       await reopen(whole, closed.id);
       await reason(whole, INSIDE);
+    });
+
+    // The quarterly weights refuse only a closed quarter (9.2b, `subject_quarter_weights_closed_quarter`).
+    it('take the quarterly weights while the whole branch is reopened, not while a journal is', async () => {
+      const weights = (s: Scene) =>
+        database.migrator
+          .insertInto('subject_quarter_weights')
+          .values({
+            branch_id: s.branch,
+            subject_id: cells.subject,
+            quarter_id: s.first,
+            attendance: 20,
+            classwork: 40,
+            homework: 40,
+            rating_exam: null,
+          })
+          .execute();
+      const journal = await scene();
+      const closing = await close(journal);
+      await reopen(journal, closing.id, { journal: journal.journal });
+      expect(await refusal(weights(journal))).toMatchObject(CLOSED);
+      const whole = await scene();
+      const closed = await close(whole);
+      await reopen(whole, closed.id);
+      await weights(whole);
     });
   });
 
