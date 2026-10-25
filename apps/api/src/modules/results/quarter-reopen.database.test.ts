@@ -448,6 +448,124 @@ describe('reopening a quarter in the database', () => {
       ).toMatchObject(refused('quarter_reopenings_end'));
     });
 
+    // Spec review must-fix 3: each branch of `quarter_reopenings_end` reached on its own, by a
+    // version written in the same transaction (so only the version's quarter, cause or journal
+    // decides).
+    it('is not ended by a version of this transaction of another quarter, another journal or a recalculation', async () => {
+      const s = await scene();
+      const elsewhere = await scene();
+      const closing = await close(s);
+      const own = await reopen(s, closing.id, { journal: s.journal });
+      const other = await reopen(s, closing.id, { journal: s.otherJournal });
+      const endBy = (transaction: Transaction, id: string) =>
+        transaction
+          .updateTable('quarter_reopenings')
+          .set({ ended_by_closing_id: id })
+          .where('id', '=', own.id)
+          .execute();
+      const newVersion = (
+        transaction: Transaction,
+        scene: Scene,
+        values: { cause: 'close' | 'journal_close' | 'recalculation'; journal?: string },
+      ) =>
+        transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: scene.branch,
+            quarter_id: scene.first,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: vice,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: values.cause,
+            journal_id: values.journal ?? null,
+            reason:
+              values.cause === 'recalculation' ? 'A rounding bug of an earlier release' : null,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+      // A branch close of another quarter (another branch's), in this transaction.
+      expect(
+        await refusal(
+          new Transactions(database.app, new FixedClock(INSIDE)).run(
+            [s.branch, elsewhere.branch],
+            async (transaction) => {
+              const row = await newVersion(transaction, elsewhere, { cause: 'close' });
+              await endBy(transaction, row.id);
+            },
+          ),
+        ),
+      ).toMatchObject(refused('quarter_reopenings_end'));
+      // Another journal's re-close, in this transaction: it ends that journal's reopening only.
+      expect(
+        await refusal(
+          inBranch(s.branch, INSIDE, async (transaction) => {
+            const row = await newVersion(transaction, s, {
+              cause: 'journal_close',
+              journal: s.otherJournal,
+            });
+            await endBy(transaction, row.id);
+          }),
+        ),
+      ).toMatchObject(refused('quarter_reopenings_end'));
+      // A recalculation of this quarter, in this transaction.
+      expect(
+        await refusal(
+          inBranch(s.branch, INSIDE, async (transaction) => {
+            const row = await newVersion(transaction, s, { cause: 'recalculation' });
+            await endBy(transaction, row.id);
+          }),
+        ),
+      ).toMatchObject(refused('quarter_reopenings_end'));
+      const rows = await database.migrator
+        .selectFrom('quarter_reopenings')
+        .select(['id', 'ended_by_closing_id'])
+        .where('id', 'in', [own.id, other.id])
+        .execute();
+      expect(rows.map((row) => row.ended_by_closing_id)).toEqual([null, null]);
+    });
+
+    // Spec review must-fix 3: `quarter_closings_reopen` refuses a version already out of force,
+    // also in the transaction of a whole-branch reopening at its own moment.
+    it('takes a version out of force only once', async () => {
+      const s = await scene();
+      const closing = await close(s);
+      expect(
+        await refusal(
+          inBranch(s.branch, REOPEN, async (transaction) => {
+            await transaction
+              .insertInto('quarter_reopenings')
+              .values({
+                branch_id: s.branch,
+                quarter_id: s.first,
+                closing_id: closing.id,
+                journal_id: null,
+                reason: 'A mark was typed in the wrong row',
+                days: 3,
+                reopened_at: new Date(0),
+                open_until: new Date(0),
+                reopened_by: vice,
+              })
+              .execute();
+            // The reopening took it out of force at REOPEN; written again, same moment.
+            await transaction
+              .updateTable('quarter_closings')
+              .set({ reopened_at: new Date(REOPEN) })
+              .where('id', '=', closing.id)
+              .execute();
+          }),
+        ),
+      ).toMatchObject(refused('quarter_closings_reopen'));
+      const row = await database.migrator
+        .selectFrom('quarter_closings')
+        .select('reopened_at')
+        .where('id', '=', closing.id)
+        .executeTakeFirstOrThrow();
+      expect(row.reopened_at).toBeNull();
+    });
+
     it('of the whole branch is ended by the next branch close, which is version 2', async () => {
       const s = await scene();
       const closing = await close(s);
@@ -710,6 +828,83 @@ describe('reopening a quarter in the database', () => {
       const closed = await close(whole);
       await reopen(whole, closed.id);
       await reason(whole, INSIDE);
+    });
+
+    // Spec review must-fix 10: the statuses and the memberships (0133, plan decision 12) refuse
+    // a day of a closed quarter; the whole branch reopened opens it, a journal reopened does not.
+    it('take a leaving dated in the quarter while the whole branch is reopened, not while a journal is', async () => {
+      // As the leaving's service writes it: the status rows, then the class row cut.
+      const leave = (s: Scene, firstInactiveDay: string) =>
+        inBranch(s.branch, INSIDE, async (transaction) => {
+          const leaving = await cells.lessons.members.leaving(
+            transaction,
+            s.branch,
+            s.student,
+            firstInactiveDay,
+          );
+          await transaction
+            .updateTable('class_memberships')
+            .set({ valid_until: firstInactiveDay, ended_by: 'leaving', leaving_id: leaving })
+            .where('student_id', '=', s.student)
+            .execute();
+        });
+      const statusOnly = (s: Scene, firstInactiveDay: string) =>
+        inBranch(s.branch, INSIDE, (transaction) =>
+          cells.lessons.members.leaving(transaction, s.branch, s.student, firstInactiveDay),
+        );
+      const journal = await scene();
+      const closing = await close(journal);
+      await reopen(journal, closing.id, { journal: journal.journal });
+      expect(await refusal(statusOnly(journal, '2026-10-20'))).toMatchObject(CLOSED);
+      // The membership alone: a leaving on the 20th written by the migrator past both guards, then
+      // the application moves the cut to the 22nd (days of the closed quarter, statuses untouched).
+      await database.migrator.transaction().execute(async (transaction) => {
+        const guards = [
+          sql`alter table student_statuses disable trigger student_statuses_closed_quarter`,
+          sql`alter table class_memberships disable trigger class_memberships_closed_quarter`,
+        ];
+        for (const one of guards) await one.execute(transaction);
+        const id = await cells.lessons.members.leaving(
+          transaction,
+          journal.branch,
+          journal.student,
+          '2026-10-20',
+        );
+        await transaction
+          .updateTable('class_memberships')
+          .set({ valid_until: '2026-10-20', ended_by: 'leaving', leaving_id: id })
+          .where('student_id', '=', journal.student)
+          .execute();
+        // The deferred checks of the rows run first: a table with pending events is not altered.
+        await sql`set constraints all immediate`.execute(transaction);
+        await sql`alter table student_statuses enable trigger student_statuses_closed_quarter`.execute(
+          transaction,
+        );
+        await sql`alter table class_memberships enable trigger class_memberships_closed_quarter`.execute(
+          transaction,
+        );
+      });
+      expect(
+        await refusal(
+          inBranch(journal.branch, INSIDE, (transaction) =>
+            transaction
+              .updateTable('class_memberships')
+              .set({ valid_until: '2026-10-22' })
+              .where('student_id', '=', journal.student)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject(CLOSED);
+      const whole = await scene();
+      const closed = await close(whole);
+      await reopen(whole, closed.id);
+      await leave(whole, '2026-10-20');
+      const rows = await database.migrator
+        .selectFrom('class_memberships')
+        .select(sql<string>`valid_until::text`.as('until'))
+        .where('student_id', '=', whole.student)
+        .execute();
+      expect(rows.map((row) => row.until)).toEqual(['2026-10-20']);
     });
 
     // The quarterly weights refuse only a closed quarter (9.2b, `subject_quarter_weights_closed_quarter`).
