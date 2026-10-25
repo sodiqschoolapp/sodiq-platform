@@ -382,6 +382,11 @@ export const journalGridSchema = z.object({
     quarterly: journalWeightsSchema.extend({ ratingExam: z.int().nullable() }).nullable(),
     /** `edge/calculation`: "The journal legend shows 'changed on [date]'" (decision 22). */
     weightsChangedOn: schoolDateSchema.nullable(),
+    /**
+     * Task 9.1 (`edge/academic-year`, start quarter): the quarter's figures count from the
+     * branch's start date, "from <date>"; `null` outside the start quarter.
+     */
+    countsFrom: schoolDateSchema.nullable(),
   }),
 });
 

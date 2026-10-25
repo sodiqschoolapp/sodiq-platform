@@ -476,6 +476,8 @@ export {
   type TravelTimeRecord,
 } from './settings.js';
 export {
+  CHANGE_REASON_MAX_LENGTH,
+  changeReasonSchema,
   copyQuarterWeightsRecordSchema,
   dailyWeightsSchema,
   JOURNAL_TYPES,
@@ -2235,3 +2237,23 @@ export {
   type JournalSupport,
   type SupportLine,
 } from './journal-support.js';
+export {
+  RESULT_FLAGS,
+  gradeChangesSchema,
+  type GradeChanges,
+  quarterOutcomeShownSchema,
+  studentAttendanceSchema,
+  studentResultLessonsQuerySchema,
+  studentResultLessonsSchema,
+  studentResultsQuerySchema,
+  studentResultsSchema,
+  studentResultTabsSchema,
+  type QuarterOutcomeShown,
+  type ResultSubjectQuarter,
+  type StudentAttendance,
+  type StudentResultLessons,
+  type StudentResultLessonsQuery,
+  type StudentResults,
+  type StudentResultsQuery,
+  type StudentResultTabs,
+} from './results.js';

@@ -144,6 +144,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi. Kafedrasini qoldiring yoki Super administratorga murojaat qiling.',
     weights_shape_mismatch:
       'Fanning reyting imtihoni belgisi oʻzgardi. Fanni qaytadan oching va taqsimotni yangidan kiriting.',
+    reason_required: 'Bu oʻzgarish natijalarni oʻzgartiradi. Sababini kiriting.',
     quarter_one_not_set: '1-chorakda nusxa olish uchun taqsimot yoʻq. Avval 1-chorakni belgilang.',
     go_live_not_school_day:
       'Ishga tushirish sanasi oʻquv kuni boʻlishi kerak: kamida bitta sinfda dars boʻladigan kun. Boshqa sana tanlang.',

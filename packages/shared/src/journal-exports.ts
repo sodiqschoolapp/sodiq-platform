@@ -94,6 +94,8 @@ export interface JournalExportTexts {
   readonly teacher: string;
   readonly noTeacher: string;
   readonly provisional: string;
+  /** Task 9.1 (`edge/academic-year`, start quarter): "from <date>". */
+  readonly countsFrom: string;
   readonly page: string;
   readonly columns: {
     readonly number: string;
@@ -142,6 +144,7 @@ const en: JournalExportTexts = {
   teacher: 'Teacher: {{name}}',
   noTeacher: 'No teacher',
   provisional: 'Provisional · {{moment}}',
+  countsFrom: 'Results from {{date}}',
   page: 'Page {{page}}',
   columns: {
     number: 'No.',
@@ -198,6 +201,7 @@ const ru: JournalExportTexts = {
   teacher: 'Учитель: {{name}}',
   noTeacher: 'Нет учителя',
   provisional: 'Предварительно · {{moment}}',
+  countsFrom: 'Результаты с {{date}}',
   page: 'Страница {{page}}',
   columns: {
     number: '№',
@@ -255,6 +259,7 @@ const uz: JournalExportTexts = {
   teacher: 'Oʻqituvchi: {{name}}',
   noTeacher: 'Oʻqituvchi yoʻq',
   provisional: 'Dastlabki · {{moment}}',
+  countsFrom: 'Natijalar {{date}} dan',
   page: '{{page}}-sahifa',
   columns: {
     number: '№',

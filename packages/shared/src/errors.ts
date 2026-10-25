@@ -220,6 +220,8 @@ export const ERROR_CODES = [
   'weights_shape_mismatch',
   /** Quarter 1 has no distribution that fits the subject, so there is nothing to copy (answer 6; task 2.1). */
   'quarter_one_not_set',
+  /** A change of stored weights or late and skipped values in an open quarter needs a reason (`edge/calculation`, week 7: "asks for a reason"; task 9.1, decision 5). */
+  'reason_required',
   /** The 9,999 staff IDs of the year of first hire are all given (`edge/people-roles-accounts`: "A 10,000th hire in one year is refused"; task 2.2a). */
   'staff_id_exhausted',
   /** A staff member in the Academic division has a department there (`04`; task 2.2a). */

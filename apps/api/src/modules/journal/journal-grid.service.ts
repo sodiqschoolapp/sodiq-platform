@@ -78,6 +78,7 @@ import {
 } from './journal-grid.query.js';
 import { gridComments } from './comments.query.js';
 import { firstsOfDoubles } from './doubles.query.js';
+import { countsFromOf, goLiveOf } from './start-quarter.js';
 import { ratingExamOf, ratingRightsOf } from './rating.js';
 import { roleReadingOf, shapeOf, teaches, type JournalScopeKey } from './journal-scope.js';
 import {
@@ -416,7 +417,7 @@ export class JournalGridReader {
       }
     }
     const lessonIds = lessons.map((one) => one.id);
-    const [away, slots, plan, cells, expected, memberships, weights, changedAt, names] =
+    const [away, slots, plan, cells, expected, memberships, weights, changedAt, names, goLive] =
       await Promise.all([
         awayLessons(
           transaction,
@@ -435,7 +436,10 @@ export class JournalGridReader {
         gridWeights(transaction, branchId, journal.subjectId, quarter.id),
         weightsChangedAt(transaction, branchId, journal.subjectId, quarter.id, timeZone),
         staffNames(transaction, ownerId === null ? [] : [ownerId]),
+        goLiveOf(transaction, branchId),
       ]);
+    // Task 9.1 (decision 8): the start quarter's "from <date>".
+    const countsFrom = countsFromOf(goLive, quarter);
 
     const held = new Map(
       lessons.map((one) => [
@@ -467,6 +471,8 @@ export class JournalGridReader {
           kind: column.kind,
           total: column.total,
           notHeld: column.notHeld,
+          title: column.title,
+          position: column.position,
         })),
       ]),
     );
@@ -817,7 +823,7 @@ export class JournalGridReader {
                 ratingExam: ratingOf(),
                 quarterClosed: false,
                 heldInJournals: across?.heldInJournals ?? counted.length,
-                countsFrom: null,
+                countsFrom,
                 leftSubjectOn: across?.leftSubjectOn ?? null,
                 atLeaving: across?.atLeaving ?? null,
                 decision: null,
@@ -1170,6 +1176,7 @@ export class JournalGridReader {
         quarterly: attendanceOnly ? null : weights.quarterly,
         weightsChangedOn:
           changedAt !== null && changedAt > quarter.startDate && !attendanceOnly ? changedAt : null,
+        countsFrom,
       },
     });
   }

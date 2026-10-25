@@ -54,11 +54,22 @@ export interface SubjectSpan {
   readonly until: string;
 }
 
+/** A counted work's column: its row, title and place among its kind in the lesson. */
+export interface CountedWork {
+  readonly workId: string;
+  readonly title: string | null;
+  readonly position: number;
+}
+
 /** One lesson counted for the student, with its journal and date (for the month figures). */
 export interface CountedLesson {
   readonly journalId: string;
+  readonly lessonId: string;
   readonly date: string;
   readonly lesson: QuarterLesson;
+  /** The work of each of `lesson.classworks` and `lesson.homeworks`, in order (task 9.1, the trace). */
+  readonly classworkColumns: readonly CountedWork[];
+  readonly homeworkColumns: readonly CountedWork[];
 }
 
 export interface StudentSubjectQuarter {
@@ -95,6 +106,15 @@ const addDays = (date: string, days: number): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 /** The works of a lesson that count: held and with their total set (as the grid's `countedWorks`). */
+const countedWorkRows = (works: readonly GridWorkRow[], kind: 'classwork' | 'homework') =>
+  works.filter((work) => work.kind === kind && !work.notHeld && work.total !== null);
+
+const columnOf = (work: GridWorkRow, index: number): CountedWork => ({
+  workId: work.id,
+  title: work.title ?? null,
+  position: work.position ?? index + 1,
+});
+
 function countedWorks(
   works: readonly GridWorkRow[],
   kind: 'classwork' | 'homework',
@@ -169,6 +189,8 @@ async function journalData(
           kind: column.kind,
           total: column.total,
           notHeld: column.notHeld,
+          title: column.title,
+          position: column.position,
         })),
       ]),
     ),
@@ -388,8 +410,11 @@ export async function subjectQuarterLessons(
         if (exempt !== undefined) {
           lessons.push({
             journalId,
+            lessonId: lesson.id,
             date: lesson.date,
             lesson: { mark: exempt === 'full' ? 5 : 4, classworks: [], homeworks: [] },
+            classworkColumns: [],
+            homeworkColumns: [],
           });
           continue;
         }
@@ -397,12 +422,15 @@ export async function subjectQuarterLessons(
         const works = one.worksOf.get(lesson.id) ?? [];
         lessons.push({
           journalId,
+          lessonId: lesson.id,
           date: lesson.date,
           lesson: {
             mark: (marks.get(lesson.id) ?? null) as AttendanceMark | null,
             classworks: countedWorks(works, 'classwork', scores),
             homeworks: countedWorks(works, 'homework', scores),
           },
+          classworkColumns: countedWorkRows(works, 'classwork').map(columnOf),
+          homeworkColumns: countedWorkRows(works, 'homework').map(columnOf),
         });
       }
     }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { changeReasonSchema } from './subjects.js';
 import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
 
@@ -83,6 +84,8 @@ const attendanceValueSchema = z.int().min(ATTENDANCE_VALUE_MIN).max(ATTENDANCE_V
 export const attendanceValuesRecordSchema = z.object({
   lateValue: attendanceValueSchema,
   skippedValue: attendanceValueSchema,
+  /** Task 9.1: required for a change in an open quarter (`edge/calculation`, "with the same preview"; decision 5). */
+  reason: changeReasonSchema.optional(),
 });
 
 export type AttendanceValuesRecord = z.infer<typeof attendanceValuesRecordSchema>;

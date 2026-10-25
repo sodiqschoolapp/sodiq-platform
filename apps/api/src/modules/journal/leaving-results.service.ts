@@ -15,10 +15,11 @@ import { NO_PLACES, studentPlaces, studentReaderOf } from '../access/class-scope
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
-import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { ownStaffOf } from './attendance-entry.js';
-import { gridWeights, journalRows, switchesIn, type JournalRow } from './journal-grid.query.js';
-import { roleReadingOf, teaches } from './journal-scope.js';
+import { gridWeights, journalRows, switchesIn } from './journal-grid.query.js';
+import { teaches } from './journal-scope.js';
+import { countsFromOf, goLiveOf } from './start-quarter.js';
+import { studentRowReading } from './student-row-reading.js';
 import { subjectQuarterLessons } from './subject-quarter-lessons.js';
 
 /**
@@ -46,12 +47,6 @@ const DAY_MS = 86_400_000;
 
 const dayBefore = (date: string): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
-
-const keyOf = (journal: JournalRow) => ({
-  subjectId: journal.subjectId,
-  classId: journal.classId,
-  groupClassIds: journal.groupClassIds,
-});
 
 @Injectable()
 export class LeavingResults {
@@ -97,6 +92,8 @@ export class LeavingResults {
       if (quarter === undefined) return studentLeavingResultsSchema.parse({ lastDay, results: [] });
       const dates = { id: quarter.id, startDate: quarter.start_date, endDate: quarter.end_date };
 
+      // Task 9.1 (decision 8): the start quarter's "from <date>".
+      const countsFrom = countsFromOf(await goLiveOf(transaction, branchId), dates);
       const subjects = await subjectsOf(transaction, studentId, quarter.academic_year_id, dates);
       const staffId = teaches(access) ? await ownStaffOf(transaction, access.accountId) : null;
       // Parsed by the answer's schema below, which checks the colour as the grid's does.
@@ -123,9 +120,14 @@ export class LeavingResults {
         if (last === undefined) continue;
         const [journal] = await journalRows(transaction, branchId, { journalId: last.journalId });
         if (journal === undefined) continue;
-        if (!(await readsWhole(transaction, access, branchId, journal, staffId, last.until))) {
-          continue;
-        }
+        const reading = await studentRowReading(transaction, access, {
+          branchId,
+          journal,
+          studentId,
+          day: last.until,
+          staffId,
+        });
+        if (reading !== 'whole') continue;
         const switches = switchesIn(journal, quarter.id);
         if (switches === undefined || switches.attendanceOnly) continue;
         const weights = await gridWeights(transaction, branchId, subjectId, quarter.id);
@@ -139,7 +141,7 @@ export class LeavingResults {
           ratingExam: ratingShown ? found.ratingExam : null,
           quarterClosed: false,
           heldInJournals: found.heldInJournals,
-          countsFrom: null,
+          countsFrom,
           leftSubjectOn: null,
           atLeaving,
           decision: null,
@@ -158,6 +160,7 @@ export class LeavingResults {
           },
           quarter: { id: quarter.id, number: quarter.number },
           lastDay: atLeaving,
+          countsFrom,
           outcome: shownOf(studentQuarterOutcome(record.inputs)),
         });
       }
@@ -192,7 +195,7 @@ async function leavingLastDay(
 }
 
 /** The subjects of the journals of the student's class and group rows meeting the quarter. */
-async function subjectsOf(
+export async function subjectsOf(
   transaction: Transaction,
   studentId: string,
   yearId: string,
@@ -233,38 +236,6 @@ async function subjectsOf(
     .orderBy('subject_id')
     .execute();
   return rows.map((row) => row.subject_id);
-}
-
-/**
- * Whether the reader reads the journal whole on `day` (6.2 decision 20, as the
- * grid decides it): a role that reads it whole, or a Teacher who owns it that day.
- */
-async function readsWhole(
-  transaction: Transaction,
-  access: Access,
-  branchId: string,
-  journal: JournalRow,
-  staffId: string | null,
-  day: string,
-): Promise<boolean> {
-  if (roleReadingOf(access, keyOf(journal))?.kind === 'whole') return true;
-  if (staffId === null) return false;
-  const facts = await ownerFactsOf(transaction, branchId, [
-    {
-      id: journal.id,
-      academic_year_id: journal.academicYearId,
-      class_id: journal.classId,
-      group_id: journal.groupId,
-      subject_id: journal.subjectId,
-    },
-  ]);
-  const owner = ownerOn(
-    facts.runs.get(journal.id) ?? [],
-    facts.periods.get(journal.id) ?? [],
-    facts.out,
-    day,
-  );
-  return owner !== null && owner.kind !== 'none' && owner.staffId === staffId;
 }
 
 /** The outcome as the record shows it: "based on n of N lessons" on every number. */

@@ -139,6 +139,7 @@ export const en = {
       'Only the Super Admin moves a subject to another department. Keep its department, or ask the Super Admin.',
     weights_shape_mismatch:
       'The rating exam switch of the subject has changed. Open the subject again and enter the distribution anew.',
+    reason_required: 'This change alters stored results. Give a reason for it.',
     quarter_one_not_set: 'Quarter 1 has no distribution to copy. Set quarter 1 first.',
     go_live_not_school_day:
       'The go-live date must be a school day: a date with lessons for at least one grade. Choose another date.',

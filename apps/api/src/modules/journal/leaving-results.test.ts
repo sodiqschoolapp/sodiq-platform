@@ -193,6 +193,7 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
             unit: { kind: 'class', id: s.scene.classId, name: expect.any(String) as unknown },
             quarter: { id: expect.any(String) as unknown, number: 1 },
             lastDay: '2026-10-20',
+            countsFrom: null,
             outcome: {
               kind: 'number',
               shown: 73,

@@ -146,6 +146,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   weights_shape_mismatch:
     'The distribution has a rating exam part exactly when the subject has a rating exam.',
   quarter_one_not_set: 'Quarter 1 has no distribution that fits the subject.',
+  reason_required: 'A change of stored weights or values in an open quarter needs a reason.',
   staff_id_exhausted: 'All staff IDs of this year of first hire are given.',
   staff_department_required: 'A staff member in the Academic division has a department there.',
   subject_outside_department: 'A subject of a teacher is in their Academic department.',
