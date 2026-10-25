@@ -226,7 +226,7 @@ export class DailyWork {
       if ((await closingOf(transaction, quarter.id)) === undefined) open.push(quarter);
     }
     if (open.length === 0) return;
-    const vices = await viceOf(transaction, branchId);
+    const vices = await viceOrAdminsOf(transaction, branchId);
     if (vices.length === 0) return;
     for (const quarter of open) {
       await this.notifications.send(transaction, {
@@ -245,8 +245,7 @@ export class DailyWork {
    * owner on days 1, 3, 7, then weekly (`edge/lesson-plans`).
    */
   async planReminders(transaction: Transaction, branchId: string): Promise<void> {
-    const { today } = await clockIn(transaction, branchId);
-    const { timeZone } = await clockIn(transaction, branchId);
+    const { today, timeZone } = await clockIn(transaction, branchId);
     const years = await transaction
       .selectFrom('academic_years')
       .select('id')
@@ -265,7 +264,7 @@ export class DailyWork {
         if (window === undefined) {
           // "If none exists 14 days before a quarter starts ... reminded daily" (decision 20).
           if (today < quarter.startDate && addDays(today, 14) >= quarter.startDate) {
-            const vices = await viceOf(transaction, branchId);
+            const vices = await viceOrAdminsOf(transaction, branchId);
             if (vices.length > 0) {
               await this.notifications.send(transaction, {
                 kind: 'plans.window_missing',
@@ -563,6 +562,16 @@ async function viceOf(transaction: Transaction, branchId: string): Promise<strin
     .orderBy('account_id')
     .execute();
   return rows.map((row) => row.account_id);
+}
+
+/**
+ * The Academic Vice Principals of the branch, or the Super Admins when the post is vacant
+ * (`edge/people-roles-accounts`: a task with no holder goes "to the Academic Vice Principal, then
+ * to the Super Admin"; permission review should-fix 6).
+ */
+async function viceOrAdminsOf(transaction: Transaction, branchId: string): Promise<string[]> {
+  const vices = await viceOf(transaction, branchId);
+  return vices.length > 0 ? vices : superAdmins(transaction);
 }
 
 /** The Super Admins now (school-wide, no branch). */

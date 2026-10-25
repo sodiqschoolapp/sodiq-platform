@@ -121,6 +121,24 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     }
   }
 
+  /**
+   * Two Super Admins for the whole file, each given the role once: with the kit's own, three
+   * accounts hold it, the most there may be (MAX_SUPER_ADMINS).
+   */
+  const admins: Browser[] = [];
+  const sharedAdmin = async (index: 0 | 1): Promise<Browser> => {
+    while (admins.length <= index) {
+      const made = await account();
+      await t.kit.giveRole(made.account.id, {
+        role: 'super_admin',
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      admins.push(made);
+    }
+    // The loop above filled the index.
+    return admins[index] as Browser;
+  };
+
   /** The Academic Vice Principal of the branch, a fresh account. */
   const vice = async <T>(branch: string, work: (calls: Calls) => Promise<T>, moment = MOMENT) =>
     as(await account(), [{ role: 'academic_vice_principal', branchId: branch }], work, moment);
@@ -2511,7 +2529,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       const b = await closed();
       const by = await load.classes.account();
       await reopenJournal(b, by);
-      const admin = await account();
+      const admin = await sharedAdmin(0);
       // A record the module would not make, of a student of the journal.
       await t.database.migrator.transaction().execute(async (transaction) => {
         await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
@@ -2536,7 +2554,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       const pid = await held.isReady;
       const answer = await as(
         admin,
-        [{ role: 'super_admin' }],
+        [],
         async ({ post }) => {
           const started = new Promise<Response>((resolve, reject) => {
             post(
@@ -2623,8 +2641,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
   // every result that changed"; edge/calculation, "A bug is found after results were closed and
   // exported"; edge/system-behaviour, "The nightly check").
   /** The base scene closed at CLOSE, every flag decided ("keep"), lock now. */
-  const closed = async () => {
-    const b = await base();
+  const closed = async () => closeBase(await base());
+  const closeBase = async (b: Awaited<ReturnType<typeof base>>) => {
     await vice(
       b.s.branch,
       async (calls) => {
@@ -2665,6 +2683,26 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         randomUUID(),
       );
 
+    /**
+     * A used key repeated (.claude/rules/api.md): with another branch's and an unknown id 404, from
+     * a role the route refuses 403, never the stored answer.
+     */
+    const repeatsRefused = async (
+      repeat: (quarterId: string, journalId?: string) => Promise<Response>,
+      ids: { other: string; otherJournal?: string; journal?: string; quarter: string },
+    ) => {
+      const answers = [await repeat(ids.other), await repeat(UNKNOWN)];
+      if (ids.journal !== undefined && ids.otherJournal !== undefined) {
+        answers.push(
+          await repeat(ids.quarter, ids.otherJournal),
+          await repeat(ids.quarter, UNKNOWN),
+        );
+      }
+      for (const answer of answers) {
+        expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+      }
+    };
+
     const resultOf = async (calls: Calls, b: Awaited<ReturnType<typeof base>>, id: string) =>
       studentResultsSchema
         .parse((await calls.get(b.s.branch, `/api/results/students/${id}`)).body)
@@ -2680,6 +2718,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
     it('reopens the whole branch, takes a correction, lists the result that changed and closes again as version 2', async () => {
       const b = await closed();
+      const other = await base();
       const key = randomUUID();
       const body = { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 };
       const reopened = await vice(
@@ -2690,7 +2729,31 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           // Repeat-safe: the stored answer.
           const repeat = await calls.post(b.s.branch, reopenPath(b.q1), body, key);
           expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter) => calls.post(b.s.branch, reopenPath(quarter), body, key),
+            {
+              other: other.q1,
+              quarter: b.q1,
+            },
+          );
+          for (const journalId of [other.journal, UNKNOWN]) {
+            const answer = await calls.post(
+              b.s.branch,
+              reopenPath(b.q1),
+              { ...body, journalId },
+              key,
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
           return done.body as { id: string; openUntil: string };
+        },
+        REOPEN,
+      );
+      await as(
+        await account(),
+        [{ role: 'principal', branchId: b.s.branch }],
+        async ({ post }) => {
+          expect((await post(b.s.branch, reopenPath(b.q1), body, key)).status).toBe(403);
         },
         REOPEN,
       );
@@ -2806,6 +2869,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
     it('reopens one journal: its correction, its own items and changes, closed again with its students only', async () => {
       const b = await closed();
+      const other = await base();
+      const key = randomUUID();
       const id = await vice(
         b.s.branch,
         async (calls) => {
@@ -2856,18 +2921,58 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           const ready = checklistOf(await calls.get(b.s.branch, path(b.q1)));
           const journal = ready.reopenedJournals[0];
           expect(journal?.closable).toBe(true);
+          const closeBody = {
+            warnings: warningsOf({ ...ready, items: journal?.items ?? [] }),
+            lockNow: false,
+          };
           const done = await calls.post(
             b.s.branch,
             journalClosePath(b.q1, b.journal),
-            { warnings: warningsOf({ ...ready, items: journal?.items ?? [] }), lockNow: false },
-            randomUUID(),
+            closeBody,
+            key,
           );
           expect(done.status, JSON.stringify(done.body)).toBe(200);
           expect(closingClosedSchema.parse(done.body).version).toBe(2);
+          const repeat = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            closeBody,
+            key,
+          );
+          expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter, journalId = b.journal) =>
+              calls.post(b.s.branch, journalClosePath(quarter, journalId), closeBody, key),
+            { other: other.q1, quarter: b.q1, journal: b.journal, otherJournal: other.journal },
+          );
           const final = checklistOf(await calls.get(b.s.branch, path(b.q1)));
           expect(final.reopenedJournals).toEqual([]);
           expect(final.reopenings.map((one) => one.closedAgainVersion)).toEqual([2]);
           expect((await resultOf(calls, b, b.dilshod))?.kind).toBe('number');
+        },
+        INSIDE,
+      );
+      // The same key from another account: 409; from a role the route refuses: 403.
+      const closeAgain = journalClosePath(b.q1, b.journal);
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const reused = await calls.post(
+            b.s.branch,
+            closeAgain,
+            { warnings: [], lockNow: false },
+            key,
+          );
+          expect([reused.status, codeOf(reused)]).toEqual([409, 'request_key_reused']);
+        },
+        INSIDE,
+      );
+      await as(
+        await account(),
+        [{ role: 'principal', branchId: b.s.branch }],
+        async ({ post }) => {
+          const refused = await post(b.s.branch, closeAgain, { warnings: [], lockNow: false }, key);
+          expect(refused.status).toBe(403);
         },
         INSIDE,
       );
@@ -2885,6 +2990,74 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .execute();
       expect(second.every((one) => one.student_id !== '')).toBe(true);
       expect(second.length).toBeGreaterThan(0);
+    });
+
+    // .claude/rules/journal.md: a grant that opens one record is refused on another, at the route.
+    it("refuses, while one journal is reopened, another journal's correction and decisions", async () => {
+      const b = await base();
+      const [o12, o19] = await lessonsOf(b.s.otherClass);
+      if (o12 === undefined || o19 === undefined) throw new Error('Lessons of the other class.');
+      const murod = await student(b.s.branch, { first: 'Murod', last: 'Aliyev' }, [
+        { classId: b.s.otherClass, from: '2026-09-01' },
+      ]);
+      // One mark: his result is flagged, so the close stores a decision for him.
+      await saveOn(b.s.branch, o12.date, [{ lessonId: o12.id, studentId: murod, value: 1 }]);
+      const other = await journalOf(b.s.otherClass, b.s.subject);
+      await closeBase(b);
+      const stored = await t.database.migrator
+        .selectFrom('quarter_result_decisions')
+        .select('version')
+        .where('quarter_id', '=', b.q1)
+        .where('student_id', '=', murod)
+        .executeTakeFirstOrThrow();
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            reopenPath(b.q1),
+            { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          // The reopened journal takes its correction; the other journal of the quarter does not.
+          expect((await correctDilshod(calls, b)).status).toBe(200);
+          const correction = await calls.post(
+            b.s.branch,
+            `/api/journal/lessons/${o19.id}/attendance`,
+            {
+              saves: [{ studentId: murod, mark: 1, version: null }],
+              correction: { reason: 'The register shows him present' },
+            },
+            randomUUID(),
+          );
+          expect([correction.status, codeOf(correction)]).toEqual([409, 'quarter_closed']);
+          // Murod is flagged under the other journal, with his stored decision's version: only the
+          // reopening decides the refusal.
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(list.closedJournals.map((one) => one.id)).toContain(other);
+          const one = await calls.put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+            subjectId: b.s.subject,
+            studentId: murod,
+            decision: 'keep',
+            version: stored.version,
+          });
+          expect([one.status, codeOf(one)]).toEqual([409, 'quarter_closed']);
+          const whole = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/journals/${other}/decisions`,
+            { decision: 'keep', students: [murod] },
+          );
+          expect([whole.status, codeOf(whole)]).toEqual([409, 'quarter_closed']);
+        },
+        INSIDE,
+      );
     });
 
     it('refuses a reopening of an open quarter, twice, of the branch while a journal is, and in a closed year', async () => {
@@ -2963,9 +3136,28 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         closings: await t.database.migrator.selectFrom('quarter_closings').select('id').execute(),
         audit: await t.database.migrator.selectFrom('audit_log').select('id').execute(),
       });
+      // The roles are given first: giving one writes to the audit log.
+      const viceBrowser = await account();
+      const principal = await account();
+      for (const [browser, role] of [
+        [viceBrowser, 'academic_vice_principal'],
+        [principal, 'principal'],
+      ] as const) {
+        await t.kit.giveRole(browser.account.id, {
+          role,
+          branchId: b.s.branch,
+          validFrom: new Date('2026-09-01T00:00:00+05:00'),
+        });
+      }
       const before = await stateOf();
-      await vice(
-        b.s.branch,
+      const rowsBefore = {
+        north: await t.rowsOf(b.s.branch),
+        south: await t.rowsOf(other.s.branch),
+      };
+      const auditBefore = await t.auditCount();
+      await as(
+        viceBrowser,
+        [],
         async (calls) => {
           const body = (journalId: string | null) => ({
             journalId,
@@ -2989,7 +3181,20 @@ describe('the closing checklist (07, Closing a quarter)', () => {
               { warnings: [], lockNow: false },
               randomUUID(),
             ),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, UNKNOWN),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(UNKNOWN, b.journal),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
             await calls.get(b.s.branch, recalculationPath(other.q1)),
+            await calls.get(b.s.branch, recalculationPath(UNKNOWN)),
           ]) {
             expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
           }
@@ -2998,8 +3203,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       );
       // The Principal reads, and may not reopen.
       await as(
-        await account(),
-        [{ role: 'principal', branchId: b.s.branch }],
+        principal,
+        [],
         async ({ post }) => {
           const refused = await post(
             b.s.branch,
@@ -3012,14 +3217,52 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         REOPEN,
       );
       const after = await stateOf();
-      expect(after.reopenings).toEqual(before.reopenings);
-      expect(after.closings).toEqual(before.closings);
+      expect(after).toEqual(before);
+      expect(await t.auditCount()).toBe(auditBefore);
+      expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
+      expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+    });
+
+    // The Super Admin's "apply" holds the branch of the request only; its ids are still checked.
+    it("answers 404 to the Super Admin's apply for another branch's and an unknown quarter, changing no row", async () => {
+      const b = await closed();
+      const other = await closed();
+      const rowsBefore = {
+        north: await t.rowsOf(b.s.branch),
+        south: await t.rowsOf(other.s.branch),
+      };
+      const auditBefore = await t.auditCount();
+      const apply = {
+        reason: 'A rounding bug of an earlier release',
+        students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+      };
+      await as(
+        await sharedAdmin(1),
+        [],
+        async ({ post }) => {
+          for (const quarter of [other.q1, UNKNOWN]) {
+            const answer = await post(
+              b.s.branch,
+              `${recalculationPath(quarter)}/apply`,
+              apply,
+              randomUUID(),
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
+        },
+        REOPEN,
+      );
+      expect(await t.auditCount()).toBe(auditBefore);
+      expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
+      expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
     });
 
     // edge/calculation, "A bug is found after results were closed and exported" (decision 10).
     it('lists a record the current module calculates otherwise, and applies it with a reason as a new version', async () => {
       const b = await closed();
-      const admin = await account();
+      const other = await base();
+      const admin = await sharedAdmin(0);
+      const applyKey = randomUUID();
       await vice(
         b.s.branch,
         async (calls) => {
@@ -3089,7 +3332,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       );
       await as(
         admin,
-        [{ role: 'super_admin' }],
+        [],
         async ({ post, get }) => {
           const changed = await post(
             b.s.branch,
@@ -3098,14 +3341,20 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             randomUUID(),
           );
           expect([changed.status, codeOf(changed)]).toEqual([409, 'recalculation_changed']);
-          const done = await post(
+          const done = await post(b.s.branch, `${recalculationPath(b.q1)}/apply`, apply, applyKey);
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(done.body).toEqual({ version: 2, stored: 1 });
+          const repeat = await post(
             b.s.branch,
             `${recalculationPath(b.q1)}/apply`,
             apply,
-            randomUUID(),
+            applyKey,
           );
-          expect(done.status, JSON.stringify(done.body)).toBe(200);
-          expect(done.body).toEqual({ version: 2, stored: 1 });
+          expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter) => post(b.s.branch, `${recalculationPath(quarter)}/apply`, apply, applyKey),
+            { other: other.q1, quarter: b.q1 },
+          );
           const again = await get(b.s.branch, recalculationPath(b.q1));
           expect((again.body as { rows: unknown[] }).rows).toEqual([]);
           const nothing = await post(
@@ -3115,6 +3364,34 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             randomUUID(),
           );
           expect([nothing.status, codeOf(nothing)]).toEqual([409, 'recalculation_nothing']);
+        },
+        REOPEN,
+      );
+      // The same key from another Super Admin: 409; from the Academic Vice Principal: 403.
+      await as(
+        await sharedAdmin(1),
+        [],
+        async ({ post }) => {
+          const reused = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            applyKey,
+          );
+          expect([reused.status, codeOf(reused)]).toEqual([409, 'request_key_reused']);
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const refused = await calls.post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            applyKey,
+          );
+          expect(refused.status).toBe(403);
         },
         REOPEN,
       );
@@ -3257,18 +3534,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         await sql`alter table ${sql.table(table)} enable trigger user`.execute(transaction);
       });
 
-    // One Super Admin for the describe: at most three accounts hold the role (MAX_SUPER_ADMINS).
-    let admin: string | null = null;
-    const superAdmin = async () => {
-      if (admin !== null) return admin;
-      const made = await account();
-      await t.kit.giveRole(made.account.id, {
-        role: 'super_admin',
-        validFrom: new Date('2026-09-01T00:00:00+05:00'),
-      });
-      admin = made.account.id;
-      return admin;
-    };
+    const superAdmin = async () => (await sharedAdmin(0)).account.id;
 
     const noticesTo = (accountId: string, kind: string, branch?: string) => {
       let query = t.database.migrator
@@ -3490,6 +3756,27 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       });
       await overdue('2026-11-02T07:00:00+05:00');
       expect(await noticesTo(own.account.id, 'results.closing_overdue')).toHaveLength(1);
+    });
+
+    // edge/people-roles-accounts: a task with no holder goes "to the Academic Vice Principal, then
+    // to the Super Admin" (permission review should-fix 6).
+    it('reminds the Super Admins when the branch has no Academic Vice Principal', async () => {
+      const vacant = await base();
+      const admin = await superAdmin();
+      const elsewhere = await account();
+      const other = await base();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await job(vacant.s.branch, '2026-11-01T07:00:00+05:00', (transaction) =>
+        daily().closingOverdue(transaction, vacant.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.closing_overdue', vacant.s.branch)).toEqual([
+        { data: { quarter: 1, lastDay: '2026-10-31' } },
+      ]);
+      expect(await noticesTo(elsewhere.account.id, 'results.closing_overdue')).toEqual([]);
     });
 
     // 10: "Lesson about to lock with data missing | Teacher" (From 8.7), once per lesson.
