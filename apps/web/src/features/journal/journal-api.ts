@@ -1,5 +1,10 @@
 import {
   absenceReasonSchema,
+  homeworkGivenAnswerSchema,
+  lessonCardSchema,
+  lessonDeliveryAnswerSchema,
+  type HomeworkGiven,
+  type LessonDelivery,
   disciplineSchema,
   notGradedAnswerSchema,
   orphanAssignmentSchema,
@@ -407,3 +412,36 @@ export const commentHistoryQuery = (branchId: string | null, query: CommentHisto
       ),
     enabled: branchId !== null,
   });
+
+/** Task 8.8: the lesson card (`09`, In the journal: "Clicking it opens the lesson card"). */
+export const lessonCardQuery = (branchId: string | null, lessonId: string) =>
+  queryOptions({
+    queryKey: [...journalKey(branchId), 'card', lessonId],
+    queryFn: async () =>
+      lessonCardSchema.parse(
+        await answerOf(
+          api.GET('/api/journal/lessons/{lessonId}/card', {
+            params: { header: branchHeader(), path: { lessonId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 8.8: "topic not delivered", set or undone on the version read. */
+export const setDelivery = (lessonId: string, body: LessonDelivery) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/delivery', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => lessonDeliveryAnswerSchema.parse(answer));
+
+/** Task 8.8: "not given" on homeworks of the lesson's item, or its undo. */
+export const setHomeworkGiven = (lessonId: string, body: HomeworkGiven) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/homework-given', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => homeworkGivenAnswerSchema.parse(answer));

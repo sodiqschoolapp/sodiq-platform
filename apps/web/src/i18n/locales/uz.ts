@@ -5612,6 +5612,27 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   journal: {
+    card: {
+      titleLoading: 'Dars',
+      title: '{{number}}-dars · {{date}}',
+      titleNoNumber: '{{date}} darsi',
+      dateSlot: '{{date}} · {{slot}}-dars',
+      topic: 'Mavzu',
+      notDelivered: 'Mavzu oʻtilmadi',
+      markNotDelivered: 'Mavzu oʻtilmadi',
+      movedFrom: '{{date}} dan koʻchirildi',
+      editedAfterLesson: 'Darsdan keyin tahrirlandi',
+      classworks: 'Sinf ishi',
+      givenToday: 'Bugun berilgan uy vazifasi',
+      checkedToday: 'Bugun tekshiriladigan uy vazifasi',
+      none: 'Yoʻq',
+      notGiven: 'Berilmadi',
+      checkedSameDay: 'Bugun {{slot}}-darsda tekshiriladi',
+      givenOn: '{{date}} da berilgan',
+      objectives: 'Maqsadlar',
+      materials: 'Materiallar',
+      open: 'Dars kartasi',
+    },
     lessonStatus: {
       not_started: 'Boshlanmagan',
       in_progress: 'Jarayonda',
@@ -5931,6 +5952,8 @@ export const uz: Texts<'one' | 'other'> = {
       lastDay: '{{date}} gacha',
     },
     grid: {
+      lessonNumber: '№ {{number}}',
+      notDeliveredShort: 'oʻtilmadi',
       // Task 8.6: oʻquvchiga ergashadigan natijalar (07, Transfers; edge/calculation).
       carriedIn: 'koʻchirilgan',
       carriedInTitle: 'Bulardan ham hisoblangan: {{journals}}',

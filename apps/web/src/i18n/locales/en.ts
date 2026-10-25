@@ -5562,6 +5562,27 @@ export const en = {
     },
   },
   journal: {
+    card: {
+      titleLoading: 'Lesson',
+      title: 'Lesson {{number}} · {{date}}',
+      titleNoNumber: 'Lesson of {{date}}',
+      dateSlot: '{{date}} · slot {{slot}}',
+      topic: 'Topic',
+      notDelivered: 'Topic not delivered',
+      markNotDelivered: 'Topic not delivered',
+      movedFrom: 'Moved from {{date}}',
+      editedAfterLesson: 'Edited after the lesson',
+      classworks: 'Classwork',
+      givenToday: 'Homework given today',
+      checkedToday: 'Homework checked today',
+      none: 'None',
+      notGiven: 'Not given',
+      checkedSameDay: 'Will be checked today in slot {{slot}}',
+      givenOn: 'given on {{date}}',
+      objectives: 'Objectives',
+      materials: 'Materials',
+      open: 'Lesson card',
+    },
     lessonStatus: {
       not_started: 'Not started',
       in_progress: 'In progress',
@@ -5880,6 +5901,8 @@ export const en = {
       lastDay: 'to {{date}}',
     },
     grid: {
+      lessonNumber: 'No. {{number}}',
+      notDeliveredShort: 'not delivered',
       // Task 8.6: results that follow the student (07, Transfers; edge/calculation).
       carriedIn: 'carried in',
       carriedInTitle: 'Also counted from: {{journals}}',

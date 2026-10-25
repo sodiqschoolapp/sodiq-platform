@@ -47,6 +47,9 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   canEnter: true,
   canEnterWorks: true,
   planItem: true,
+  number: null,
+  topic: null,
+  notDelivered: false,
   copyFrom: null,
   lock: OPEN_LOCK,
   works: [],
@@ -313,15 +316,27 @@ describe('classwork and homework in the grid', () => {
     });
   });
 
+  /** Task 8.8: the lesson card of the lesson at `index`, then its works (the second lesson has no plan item). */
+  const worksOf = async (index: number): Promise<HTMLElement> => {
+    const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
+    fireEvent.click(cards[index] as HTMLElement);
+    const card = await screen.findByRole('dialog');
+    fireEvent.click(within(card).getByRole('button', { name: en.journal.works.button }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog').getAttribute('aria-label')).not.toBe(
+        card.getAttribute('aria-label'),
+      );
+    });
+    return screen.getByRole('dialog');
+  };
+
   it('says "No plan" and adds a classwork by hand at a lesson with no plan item', async () => {
     const calls = open({
       [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
         json({ ...SAVED, total: null, version: 1 }),
     });
-    const buttons = await screen.findAllByRole('button', { name: en.journal.works.button });
-    // The second lesson's button: the one with no plan item.
-    fireEvent.click(buttons[1] as HTMLElement);
-    const dialog = await screen.findByRole('dialog');
+    // Task 8.8: the works of a lesson open from its lesson card.
+    const dialog = await worksOf(1);
     expect(dialog.textContent).toContain(en.journal.works.noPlan);
     fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
     await waitFor(() => {
@@ -426,9 +441,7 @@ describe('classwork and homework in the grid', () => {
     await waitFor(() => {
       expect(document.body.textContent).toContain(en.journal.lessonStatus.in_progress);
     });
-    const buttons = await screen.findAllByRole('button', { name: en.journal.works.button });
-    fireEvent.click(buttons[0] as HTMLElement);
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await worksOf(0);
     fireEvent.click(within(dialog).getByRole('button', { name: en.journal.notGraded.button }));
     const question = await screen.findByRole('alertdialog');
     expect(question.textContent).toContain('1 empty cell of a present student');

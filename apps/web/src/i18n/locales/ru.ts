@@ -5878,6 +5878,27 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   journal: {
+    card: {
+      titleLoading: 'Урок',
+      title: 'Урок {{number}} · {{date}}',
+      titleNoNumber: 'Урок {{date}}',
+      dateSlot: '{{date}} · {{slot}}-й урок',
+      topic: 'Тема',
+      notDelivered: 'Тема не пройдена',
+      markNotDelivered: 'Тема не пройдена',
+      movedFrom: 'Перенесено с {{date}}',
+      editedAfterLesson: 'Изменено после урока',
+      classworks: 'Классная работа',
+      givenToday: 'Задано сегодня',
+      checkedToday: 'Проверяется сегодня',
+      none: 'Нет',
+      notGiven: 'Не задано',
+      checkedSameDay: 'Будет проверено сегодня на {{slot}}-м уроке',
+      givenOn: 'задано {{date}}',
+      objectives: 'Цели',
+      materials: 'Материалы',
+      open: 'Карточка урока',
+    },
     lessonStatus: {
       not_started: 'Не начат',
       in_progress: 'В работе',
@@ -6218,6 +6239,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       lastDay: 'по {{date}}',
     },
     grid: {
+      lessonNumber: '№ {{number}}',
+      notDeliveredShort: 'не пройдена',
       // Task 8.6: результаты следуют за учеником (07, Transfers; edge/calculation).
       carriedIn: 'перенесено',
       carriedInTitle: 'Учтено также из: {{journals}}',
