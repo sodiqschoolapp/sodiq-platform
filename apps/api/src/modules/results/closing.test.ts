@@ -3804,7 +3804,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .selectFrom('notifications')
         .select('data')
         .where('account_id', '=', accountId)
-        .where('kind', '=', kind);
+        .where('kind', '=', kind)
+        .orderBy('id');
       if (branch !== undefined) query = query.where('branch_id', '=', branch);
       return query.execute();
     };

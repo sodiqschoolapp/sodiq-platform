@@ -323,6 +323,9 @@ Plan approved on pull request #231 with corrections 1 to 3 (the closed part of a
 | **Build decision.** An unlock stops covering after a close of the branch or a re-close of its own journal, not after an applied recalculation or another journal's re-close | Decision 5 read per journal |
 | **Build decision.** The exam date and "not held" of a rating exam in a reopened quarter are a corrector's only | "Only corrections and explicit unlocks apply" |
 | **Build decision.** An exemption of some subjects is checked against its journals when its subject rows are written (a deferred trigger); its row's own insert passes a closed quarter only when one of its journals is reopened | The subjects are not known at the row's insert |
+| **Build decision.** A journal's re-close whose warnings name another journal: 404 when it is no journal of the branch's year, 409 `closing_warnings_changed` when it is one (the branch close answers the same way) | Permission review should-fix 9 |
+| **Build decision.** A reopening named by a journal the close did not store answers 409 `closing_journal_not_closed`, not the plan's 404: the journal exists and the reader may read it | Spec review must-fix 6 |
+| **Build decision.** An unlock request or approval of a lesson with no journal takes the quarter's own check (`lockOpenQuarter`) | Permission review note 10: never a plain error (500) |
 
 ## 25 October 2026: closing a quarter (task 9.2b)
 

@@ -14,7 +14,7 @@ The next sessions must know:
 
 - A closed quarter's figures are the record in force: `recordsInForce` of `closed-quarters.ts` (the highest version in force holding one); `closingOf` / `closedQuarters` read the branch close (`cause = 'close'`); writes ask `quarter_is_closed` / `quarterClosedNow`, a journal's own rows `lockOpenJournalQuarter`.
 - A new daily kind is a row of `DAILY_WORK` (`daily-jobs.ts`) and of `scheduled_runs_kind_check` (a migration).
-- Test fixtures reopen with `reopenQuarter` of `apps/api/src/testing/closing-kit.ts`; `closeQuarter` stores the names of the year's journals.
+- Test fixtures reopen with `reopenQuarter` and close a journal again with `closeJournalAgain` of `apps/api/src/testing/closing-kit.ts`; `closeQuarter` stores the names of the year's journals.
 
 ## 25 October 2026: task 9.2b Closing a quarter
 
