@@ -296,6 +296,40 @@ export const planQuerySchema = z.strictObject({ quarterId: z.uuid().optional() }
 
 export type PlanQuery = z.infer<typeof planQuerySchema>;
 
+/**
+ * Task 9.2d (`edge/lesson-plans`, "Items are still 'not covered' at the end of the quarter":
+ * "Each item gets one outcome: merged into a lesson, carried, or dropped with a reason; only the
+ * approver can drop"). An outcome is kept per journal and quarter and never changed.
+ */
+export const PLAN_OUTCOME_KINDS = ['merged', 'carried', 'dropped'] as const;
+
+export const planOutcomeKindSchema = z.enum(PLAN_OUTCOME_KINDS);
+
+export type PlanOutcomeKind = z.infer<typeof planOutcomeKindSchema>;
+
+export const PLAN_DROP_REASON_MAX_LENGTH = 500;
+
+/** Task 9.2d: an item of the "carried in" tray: no row yet, so no position. */
+export const planTrayItemSchema = planItemSchema.omit({ position: true });
+
+export type PlanTrayItem = z.infer<typeof planTrayItemSchema>;
+
+export const planOutcomeSchema = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  topic: z.string(),
+  kind: planOutcomeKindSchema,
+  /** The date of the row merged into (`edge`: "History and requests refer to dates"). */
+  targetDate: schoolDateSchema.nullable(),
+  reason: z.string(),
+  /** Carried by the close (`edge`: "Items unresolved at closing are carried automatically"). */
+  automatic: z.boolean(),
+  decidedBy: z.string().nullable(),
+  decidedAt: z.iso.datetime({ offset: true }),
+});
+
+export type PlanOutcome = z.infer<typeof planOutcomeSchema>;
+
 export const planSchema = z.object({
   journalId: z.uuid(),
   unit: planUnitSchema,
@@ -312,6 +346,18 @@ export const planSchema = z.object({
   rows: z.array(planRowSchema),
   /** Task 7.1b: the items past the last row, attached to no lesson ("not covered"). */
   notCovered: z.array(planItemSchema),
+  /**
+   * Task 9.2d: the items carried in from the quarter before, waiting for a row (`edge`:
+   * "Carried items wait in a 'carried in' tray on the next quarter's plan"); they count as
+   * not covered of this quarter.
+   */
+  carriedIn: z.array(planTrayItemSchema),
+  /** Task 9.2d: the outcomes of this journal's not-covered items in the quarter, oldest first. */
+  outcomes: z.array(planOutcomeSchema),
+  /** Task 9.2d: the reader is the approver of the owner's requests and may drop. */
+  canDrop: z.boolean(),
+  /** Task 9.2d: the last quarter of the year, or the next one is closed: no carry. */
+  carryClosed: z.boolean(),
   /**
    * Task 7.1b: the edit request the system prepared; task 7.2: `id` is
    * `null` for the request worked out at the window's end and not stored yet.
@@ -766,6 +812,45 @@ export const planQueueSchema = z.strictObject({
 });
 
 export type PlanQueue = z.infer<typeof planQueueSchema>;
+
+/** Task 9.2d: the path of an outcome: a not-covered or tray item of the journal. */
+export const planOutcomeParamsSchema = z.object({ journalId: z.uuid(), itemId: z.uuid() });
+
+export type PlanOutcomeParams = z.infer<typeof planOutcomeParamsSchema>;
+
+/**
+ * Task 9.2d: merged into the row `position` of the quarter (the lesson named, as an item create
+ * names it): an empty row takes the item, a row with an item takes its content.
+ */
+export const planMergeSchema = z.strictObject({
+  quarterId: z.uuid(),
+  position: z.int().min(1),
+  lessonId: z.uuid(),
+});
+
+export type PlanMerge = z.infer<typeof planMergeSchema>;
+
+/** Task 9.2d: carried into the next quarter's "carried in" tray. */
+export const planCarrySchema = z.strictObject({ quarterId: z.uuid() });
+
+export type PlanCarry = z.infer<typeof planCarrySchema>;
+
+/** Task 9.2d: dropped with a reason, by the approver only. */
+export const planDropSchema = z.strictObject({
+  quarterId: z.uuid(),
+  reason: filledText(PLAN_DROP_REASON_MAX_LENGTH),
+});
+
+export type PlanDrop = z.infer<typeof planDropSchema>;
+
+/** Task 9.2d: a tray item put at row `position`; the later items of the journal move one step. */
+export const planPlaceSchema = z.strictObject({
+  quarterId: z.uuid(),
+  position: z.int().min(1),
+  lessonId: z.uuid(),
+});
+
+export type PlanPlace = z.infer<typeof planPlaceSchema>;
 
 /**
  * Master plans (task 7.3, pull request #216; `09`, Master plans: "the same

@@ -833,6 +833,16 @@ export const en = {
       'The student was not in a class of this branch on that date. Check the date.',
     student_merge_absence_reasons:
       'Both records have a reason of absence for the same date. Clear one of the two reasons, then merge again.',
+    plan_item_covered:
+      'This item is no longer in the not-covered list: it is at a row now, or it already has its outcome. Reload the plan.',
+    plan_merge_too_long:
+      'Merged together, the topic, the objectives or the links would be too long. Shorten the row first, then merge.',
+    plan_merge_shared:
+      'Another class of this shared plan still has this item at a lesson. Merge it into an empty row, carry it, or ask for it to be dropped.',
+    plan_carry_refused:
+      'Items cannot be carried from this quarter: it is the last of the year or the next quarter is closed. Merge the item into a lesson or ask for it to be dropped.',
+    plan_not_covered_drop:
+      'This item is in a not-covered list, so it cannot be removed here. Merge it, carry it, or ask the approver to drop it.',
     plan_scope:
       'This plan is not yours to read or change. Only the teacher of the class writes its plan.',
     plan_row_taken: 'This row already holds an item. Open the row again to edit it.',
@@ -3528,6 +3538,10 @@ export const en = {
         request_finish: 'Plan editing finished early',
         periods_ended: 'Plan editing periods of a quarter ended',
         requests_voided: 'Waiting plan requests of a closed quarter made void',
+        not_covered_merged: 'Not-covered plan item merged into a lesson',
+        not_covered_carried: 'Not-covered plan item carried to the next quarter',
+        not_covered_dropped: 'Not-covered plan item dropped',
+        carried_placed: 'Carried-in plan item placed at a lesson',
         request_void: 'Plan edit requests cancelled by a new teacher',
         queue_edit: 'Order of plan rows changed',
         shared: 'Class or group joined a shared plan',
@@ -6652,6 +6666,7 @@ export const en = {
         plan_incomplete: 'Lesson plan incomplete',
         no_result: 'Students with no result',
         part_without_data: 'A part with a weight and no data',
+        plan_not_covered: 'Plan items not covered, nothing can be carried',
         check_difference: 'Nightly check found a difference',
         no_teacher: 'No teacher',
       },

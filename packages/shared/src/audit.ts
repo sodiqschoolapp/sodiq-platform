@@ -379,6 +379,11 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.periods_ended',
     // Task 9.2b: the waiting plan requests of a quarter made void by its close.
     'plan.requests_voided',
+    // Task 9.2d: the outcomes of not-covered items and the place of a carried-in item.
+    'plan.not_covered_merged',
+    'plan.not_covered_carried',
+    'plan.not_covered_dropped',
+    'plan.carried_placed',
   ],
   exports: [
     // Task 8.9: a journal in Excel or PDF, and the branch export: asked for, ready, downloaded.

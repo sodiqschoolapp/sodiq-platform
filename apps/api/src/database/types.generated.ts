@@ -1173,6 +1173,22 @@ export interface LessonPlanMasterWorks {
   title: string;
 }
 
+export interface LessonPlanOutcomes {
+  automatic: Generated<boolean>;
+  branch_id: string;
+  carried_item_id: string | null;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp;
+  decided_by: string;
+  id: Generated<string>;
+  item_id: string;
+  journal_id: string;
+  kind: string;
+  quarter_id: string;
+  reason: Generated<string>;
+  target_date: string | null;
+}
+
 export interface LessonPlanPlaces {
   branch_id: string;
   edited_after_lesson: Generated<boolean>;
@@ -1246,6 +1262,15 @@ export interface LessonPlans {
   quarter_id: string;
   shared_unit: string | null;
   subject_id: string;
+}
+
+export interface LessonPlanTray {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  item_id: string;
+  journal_id: string;
+  outcome_id: string;
+  quarter_id: string;
 }
 
 export interface LessonPlanWindowExtensions {
@@ -2167,11 +2192,13 @@ export interface DB {
   lesson_plan_master_items: LessonPlanMasterItems;
   lesson_plan_master_works: LessonPlanMasterWorks;
   lesson_plan_masters: LessonPlanMasters;
+  lesson_plan_outcomes: LessonPlanOutcomes;
   lesson_plan_places: LessonPlanPlaces;
   lesson_plan_request_causes: LessonPlanRequestCauses;
   lesson_plan_request_lessons: LessonPlanRequestLessons;
   lesson_plan_requests: LessonPlanRequests;
   lesson_plan_rows: LessonPlanRows;
+  lesson_plan_tray: LessonPlanTray;
   lesson_plan_window_extensions: LessonPlanWindowExtensions;
   lesson_plan_windows: LessonPlanWindows;
   lesson_plan_work_openings: LessonPlanWorkOpenings;

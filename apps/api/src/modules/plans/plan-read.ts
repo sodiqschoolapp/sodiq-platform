@@ -5,6 +5,7 @@ import {
   schoolDateOf,
   type PlanRequestCause,
   type PlanItem,
+  type PlanTrayItem,
   type PlanWork,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -275,6 +276,59 @@ export async function planItems(
     .where('lesson_plan_items.cleared_at', 'is', null)
     .orderBy('lesson_plan_places.position')
     .execute();
+  return (await decorated(transaction, items)).map((item, index) => ({
+    ...item,
+    position: items[index]?.position ?? 1,
+  }));
+}
+
+/**
+ * Task 9.2d: the items of a journal's "carried in" tray in a quarter (`lesson_plan_tray`), not
+ * cleared, in the order they came; they have no row, so no position.
+ */
+export async function trayItems(
+  transaction: Transaction,
+  journalId: string,
+  quarterId: string,
+): Promise<PlanTrayItem[]> {
+  const items = await transaction
+    .selectFrom('lesson_plan_tray')
+    .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_tray.item_id')
+    .leftJoin('lessons', 'lessons.id', 'lesson_plan_items.not_delivered_from')
+    .select([
+      'lesson_plan_items.id',
+      sql<string | null>`lessons.lesson_date::text`.as('not_delivered_from'),
+      'lesson_plan_items.topic',
+      'lesson_plan_items.objectives',
+      'lesson_plan_items.links',
+      'lesson_plan_items.copied_from',
+      sql<string | null>`null::text`.as('moved_from'),
+      sql<boolean>`false`.as('edited_after_lesson'),
+    ])
+    .where('lesson_plan_tray.journal_id', '=', journalId)
+    .where('lesson_plan_tray.quarter_id', '=', quarterId)
+    .where('lesson_plan_items.cleared_at', 'is', null)
+    .orderBy('lesson_plan_tray.outcome_id')
+    .execute();
+  return decorated(transaction, items);
+}
+
+interface StoredItem {
+  readonly id: string;
+  readonly not_delivered_from: string | null;
+  readonly topic: string;
+  readonly objectives: string;
+  readonly links: string[];
+  readonly copied_from: string | null;
+  readonly moved_from: string | null;
+  readonly edited_after_lesson: boolean;
+}
+
+/** Items as the answer sends them: works, files and the plan each copy came from. */
+async function decorated(
+  transaction: Transaction,
+  items: readonly StoredItem[],
+): Promise<PlanTrayItem[]> {
   const ids = items.map((item) => item.id);
   const works = await worksOf(transaction, ids);
   const files =
@@ -312,7 +366,6 @@ export async function planItems(
   }
   return items.map((item) => ({
     id: item.id,
-    position: item.position,
     topic: item.topic,
     objectives: item.objectives,
     links: item.links,

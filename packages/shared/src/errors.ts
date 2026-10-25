@@ -865,6 +865,16 @@ export const ERROR_CODES = [
   'student_merge_absence_reasons',
   /** The plan is of the branch but outside what the role may read of it, or the reader may not write it: only the owner edits (edge/lesson-plans, "Who may read a plan?"; task 7.1a). */
   'plan_scope',
+  /** The item is 'not covered' in a journal of the plan: only the approver drops it, with a reason (09: "never dropped silently"; task 9.2d). */
+  'plan_not_covered_drop',
+  /** No carry: the quarter is the last of the year, or the next quarter is closed (edge/lesson-plans: "In quarter 4 only merge or drop exist"; task 9.2d). */
+  'plan_carry_refused',
+  /** In a shared plan the item still stands at a row of another class: merging it into an item would show it twice there (task 9.2d, decision 8). */
+  'plan_merge_shared',
+  /** The merged topic, objectives or links would pass their limits (300, 2000 characters, 10 links; task 9.2d). */
+  'plan_merge_too_long',
+  /** The item is no longer 'not covered' in this journal: it stands at a row now, or it has its outcome (task 9.2d). */
+  'plan_item_covered',
   /** The row already holds an item; the details name it (task 7.1a). */
   'plan_row_taken',
   /** The quarter has no row with that number: rows are the lessons of the quarter not cancelled (task 7.1a, decision 5). */

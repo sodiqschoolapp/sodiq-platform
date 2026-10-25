@@ -31,6 +31,14 @@ export interface PlanExportTexts {
     readonly copyOf: string;
   };
   readonly notCovered: string;
+  /** Task 9.2d: the "carried in" tray and the outcomes of not-covered items. */
+  readonly carriedIn: string;
+  readonly outcomes: {
+    readonly merged: string;
+    readonly carried: string;
+    readonly carriedAutomatic: string;
+    readonly dropped: string;
+  };
   readonly reports: {
     readonly completeness: string;
     readonly progress: string;
@@ -92,6 +100,13 @@ const en: PlanExportTexts = {
     copyOf: 'not delivered on {{date}}',
   },
   notCovered: 'Not covered',
+  carriedIn: 'Carried in',
+  outcomes: {
+    merged: 'merged into the lesson of {{date}}',
+    carried: 'carried to the next quarter',
+    carriedAutomatic: 'carried to the next quarter at closing',
+    dropped: 'dropped: {{reason}}',
+  },
   reports: {
     completeness: 'Plan completeness',
     progress: 'Plan progress',
@@ -163,6 +178,13 @@ const ru: PlanExportTexts = {
     copyOf: 'не пройдено {{date}}',
   },
   notCovered: 'Не пройдено',
+  carriedIn: 'Перенесено',
+  outcomes: {
+    merged: 'объединено с уроком {{date}}',
+    carried: 'перенесено в следующую четверть',
+    carriedAutomatic: 'перенесено в следующую четверть при закрытии',
+    dropped: 'удалено: {{reason}}',
+  },
   reports: {
     completeness: 'Заполненность планов',
     progress: 'Прохождение планов',
@@ -234,6 +256,13 @@ const uz: PlanExportTexts = {
     copyOf: '{{date}} da oʻtilmagan',
   },
   notCovered: 'Oʻtilmagan',
+  carriedIn: 'Koʻchirilgan',
+  outcomes: {
+    merged: '{{date}} darsiga birlashtirildi',
+    carried: 'keyingi chorakka koʻchirildi',
+    carriedAutomatic: 'yopishda keyingi chorakka koʻchirildi',
+    dropped: 'oʻchirildi: {{reason}}',
+  },
   reports: {
     completeness: 'Rejalar toʻliqligi',
     progress: 'Rejalarning bajarilishi',

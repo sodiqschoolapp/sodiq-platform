@@ -48,6 +48,7 @@ import {
   movePlaces,
   planIdOf,
   planItems,
+  trayItems,
   planJournalIds,
   planRows,
   preparedRequestOf,
@@ -77,6 +78,7 @@ import {
   type GateTarget,
 } from './plan-gate.js';
 import { planRequestsOf } from './plan-request-read.js';
+import { carryClosedFrom, dropReachOf, ensurePlan, outcomesOf } from './plan-outcomes.js';
 import { unitKeysOf } from './plan-separate.js';
 import {
   periodCovers,
@@ -669,6 +671,23 @@ export class PlansService {
         };
       }
     }
+    // Task 9.2d: the tray, the outcomes, who may drop and whether a carry is possible.
+    const carriedIn = await trayItems(transaction, scene.journal.id, scene.quarter.id);
+    const outcomes = await outcomesOf(transaction, scene.journal.id, scene.quarter.id);
+    const carryClosed = await carryClosedFrom(transaction, scene.quarter.id);
+    const canDrop =
+      !scene.closed &&
+      scene.open &&
+      (
+        await dropReachOf(
+          transaction,
+          scene.reader.access.accountId,
+          scene.branchId,
+          scene.journal,
+          scene.ownerId,
+          scene.now,
+        )
+      ).reach === 'decide';
     return planSchema.parse({
       journalId: scene.journal.id,
       unit: unitOf(scene.journal),
@@ -689,6 +708,10 @@ export class PlansService {
           .map((work) => work.id),
       })),
       notCovered: items.filter((item) => item.position > rows.length),
+      carriedIn,
+      outcomes,
+      canDrop,
+      carryClosed,
       request,
       window: {
         state,
@@ -754,7 +777,9 @@ export class PlansService {
                 date: next.date,
                 topic: items.find((item) => item.position === next.number)?.topic ?? null,
               },
-        notCovered: items.filter((item) => item.position > rows.length).length,
+        notCovered:
+          items.filter((item) => item.position > rows.length).length +
+          (await trayItems(transaction, journalId, scene.quarter.id)).length,
       });
     }
     return found.sort((a, b) => a.unit.name.localeCompare(b.unit.name, 'en'));
@@ -813,43 +838,18 @@ export class PlansService {
     scene: Scene & { readonly assignmentId: string },
     requestId: string | undefined,
   ): Promise<string> {
-    const journalId = scene.journal.id;
-    const found = await planIdOf(transaction, journalId, scene.quarter.id);
-    if (found !== null) return found;
-    const plan = await transaction
-      .insertInto('lesson_plans')
-      .values({
-        branch_id: scene.branchId,
-        quarter_id: scene.quarter.id,
-        subject_id: scene.journal.subjectId,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('lesson_plan_journals')
-      .values({
-        branch_id: scene.branchId,
-        plan_id: plan.id,
-        journal_id: journalId,
-        quarter_id: scene.quarter.id,
-      })
-      .execute();
-    // Task 7.1b: the plan is laid on its rows before the commit (its
-    // snapshot, `PlanFollow`), as after any change of the timetable.
-    await transaction
-      .insertInto('lesson_plan_follow_marks')
-      .values({ branch_id: scene.branchId, journal_id: journalId })
-      .execute();
-    await this.audit.record(transaction, {
-      branchId: scene.branchId,
-      actorId: access.accountId,
-      assignmentId: scene.assignmentId,
-      action: 'plan.create',
-      record: { type: 'lesson_plan', id: plan.id },
-      newValue: { journalId, quarterId: scene.quarter.id },
-      ...(requestId === undefined ? {} : { requestId }),
-    });
-    return plan.id;
+    return ensurePlan(
+      transaction,
+      this.audit,
+      {
+        branchId: scene.branchId,
+        accountId: access.accountId,
+        assignmentId: scene.assignmentId,
+        ...(requestId === undefined ? {} : { requestId }),
+      },
+      scene.journal,
+      scene.quarter.id,
+    );
   }
 
   /** The plan holds an item not cleared. */
@@ -1796,6 +1796,8 @@ export class PlansService {
           scene.now,
         );
         const { position } = await this.placeOf(transaction, itemId, journalId);
+        // Task 9.2d (review correction 1): a not-covered item is dropped by the approver only.
+        if (position > rows.length) throw new ApiException('plan_not_covered_drop', 409);
         const at = rows[position - 1];
         if (at?.held === true) throw new ApiException('plan_row_held', 409);
         if (journalId === scene.journal.id) row = at;
@@ -1935,6 +1937,16 @@ export class PlansService {
       });
       const pass = await this.gate(transaction, scene, planId, targets);
       const cleared = [...inQueue].filter((itemId) => !named.includes(itemId)).sort();
+      // Task 9.2d (review correction 1; `09`: "'Not covered' items are never dropped silently"):
+      // an item past the last row of any journal of the plan is dropped by the approver only.
+      for (const one of layout.values()) {
+        for (const itemId of cleared) {
+          const at = one.places.get(itemId);
+          if (at !== undefined && at > one.rows.length) {
+            throw new ApiException('plan_not_covered_drop', 409);
+          }
+        }
+      }
       if (cleared.length > 0) {
         await transaction
           .deleteFrom('lesson_plan_places')
