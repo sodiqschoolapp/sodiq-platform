@@ -398,9 +398,7 @@ export const exemptionPreviewSchema = z.strictObject({
    * inside a closed quarter is refused until that quarter is reopened ... The part in an open
    * quarter is applied"): the days of the change the close keeps as they are; `null` when none.
    */
-  closedPart: z
-    .strictObject({ startDate: schoolDateSchema, endDate: schoolDateSchema })
-    .nullable(),
+  closedPart: z.strictObject({ startDate: schoolDateSchema, endDate: schoolDateSchema }).nullable(),
 });
 
 export type ExemptionPreview = z.infer<typeof exemptionPreviewSchema>;

@@ -666,20 +666,31 @@ export const en = {
       'No decision is stored for this result, so there is nothing to clear. Reload the checklist.',
     closing_list_changed:
       'This student was listed after you opened the checklist and was not decided. Reload it and decide again.',
-    quarter_closed: 'This quarter is closed: its journals and results are final. Only a reopening of the quarter allows a change.',
+    quarter_closed:
+      'This quarter is closed: its journals and results are final. Only a reopening of the quarter allows a change.',
     closing_before_last_day: 'A quarter can be closed on its last day or later.',
-    closing_earlier_open: 'Close the earlier quarters of the year first: quarters are closed in order.',
-    closing_blocked: 'A blocking item is still on the checklist. Finish it, then close the quarter.',
-    closing_lock_now_needed: 'Lessons are still inside their edit period or unlocked. Choose \"Lock now and close\".',
-    closing_warnings_changed: 'The warnings changed since you opened the checklist. Look at them again, then close.',
-    closing_start_quarter_needed: 'This is the start quarter of the branch. Choose \"Keep the platform results\" or \"Not official\".',
-    closing_not_start_quarter: '\"Keep\" or \"Not official\" is chosen only for the start quarter. Reload the checklist.',
-    class_quarter_closed: 'The move is dated in a closed quarter. Choose a date in an open quarter.',
-    group_quarter_closed: 'The group move is dated in a closed quarter. Choose a date in an open quarter.',
-    branch_move_quarter_closed: 'The move to another branch is dated in a closed quarter. Choose a date in an open quarter.',
+    closing_earlier_open:
+      'Close the earlier quarters of the year first: quarters are closed in order.',
+    closing_blocked:
+      'A blocking item is still on the checklist. Finish it, then close the quarter.',
+    closing_lock_now_needed:
+      'Lessons are still inside their edit period or unlocked. Choose "Lock now and close".',
+    closing_warnings_changed:
+      'The warnings changed since you opened the checklist. Look at them again, then close.',
+    closing_start_quarter_needed:
+      'This is the start quarter of the branch. Choose "Keep the platform results" or "Not official".',
+    closing_not_start_quarter:
+      '"Keep" or "Not official" is chosen only for the start quarter. Reload the checklist.',
+    class_quarter_closed:
+      'The move is dated in a closed quarter. Choose a date in an open quarter.',
+    group_quarter_closed:
+      'The group move is dated in a closed quarter. Choose a date in an open quarter.',
+    branch_move_quarter_closed:
+      'The move to another branch is dated in a closed quarter. Choose a date in an open quarter.',
     date_in_closed_quarter: 'The date is in a closed quarter. Choose a date in an open quarter.',
     plan_quarter_closed: 'The quarter of this plan is closed, so the plan cannot change.',
-    exemption_closed_quarter: 'Every day of the exemption is in a closed quarter. Choose days in an open quarter.',
+    exemption_closed_quarter:
+      'Every day of the exemption is in a closed quarter. Choose days in an open quarter.',
     journal_entry_scope:
       'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
     lesson_attendance_only:
@@ -3923,7 +3934,8 @@ export const en = {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
       results: {
         closing_reminder: 'Quarter {{quarter}} closes soon. Still to finish: {{items}}.',
-        quarter_locked_now: 'Quarter {{quarter}} was closed with "lock now": your lessons of it still inside the edit period and your unlocks in it are locked.',
+        quarter_locked_now:
+          'Quarter {{quarter}} was closed with "lock now": your lessons of it still inside the edit period and your unlocks in it are locked.',
       },
       setup: {
         quarter_weights_changed:
@@ -6026,7 +6038,8 @@ export const en = {
       reopen_other: '{{count}} lessons open again.',
       givesBack: 'Cleared values come back.',
       overlap: 'Another exemption covers that time: {{dates}}.',
-      closedPart: 'The days from {{from}} to {{to}} are in a closed quarter and stay as they are; the rest is applied.',
+      closedPart:
+        'The days from {{from}} to {{to}} are in a closed quarter and stay as they are; the rest is applied.',
       overlapElsewhere: 'Another exemption of this student, in another branch, covers that time.',
       emptyTitle: 'No exemptions',
       empty: 'Exemptions entered by the Academic Vice Principal appear here.',
@@ -6457,8 +6470,10 @@ export const en = {
         title: 'Close quarter {{number}}',
         text: 'The journals of the quarter become read only for the whole branch, and every result is stored as final.',
         acknowledge_one: 'I have looked at the {{count}} warning; it is stored with the close.',
-        acknowledge_other: 'I have looked at the {{count}} warnings; they are stored with the close.',
-        lockNow: 'Lock now and close: lessons still inside their edit period and open unlocks are locked, and their teachers are told.',
+        acknowledge_other:
+          'I have looked at the {{count}} warnings; they are stored with the close.',
+        lockNow:
+          'Lock now and close: lessons still inside their edit period and open unlocks are locked, and their teachers are told.',
         startQuarter: 'This is the start quarter of the branch',
         startQuarters: {
           keep: 'Keep the platform results as the quarter results',

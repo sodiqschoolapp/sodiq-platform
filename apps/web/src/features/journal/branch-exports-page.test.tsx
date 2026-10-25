@@ -8,7 +8,7 @@ import { OPEN_LOCK } from '@/testing/edit-lock';
 const uid = (n: number): string => `0199e800-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
 const Q1 = { id: uid(1), number: 1, startDate: '2026-09-01', endDate: '2026-10-31', closed: false };
-const Q2 = { id: uid(2), number: 2, startDate: '2026-11-09', endDate: '2026-12-27' };
+const Q2 = { id: uid(2), number: 2, startDate: '2026-11-09', endDate: '2026-12-27', closed: false };
 
 const item = (n: number, rest: Partial<JournalExportItem>): JournalExportItem => ({
   id: uid(10 + n),

@@ -681,20 +681,32 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu natija uchun qaror saqlanmagan, bekor qiladigan narsa yoʻq. Roʻyxatni yangilang.',
     closing_list_changed:
       'Bu oʻquvchi siz roʻyxatni ochganingizdan keyin qoʻshildi va u boʻyicha qaror qabul qilinmadi. Roʻyxatni yangilab, qayta qaror qiling.',
-    quarter_closed: 'Chorak yopilgan: uning jurnallari va natijalari yakuniy. Oʻzgartirish faqat chorak qayta ochilgandan keyin mumkin.',
+    quarter_closed:
+      'Chorak yopilgan: uning jurnallari va natijalari yakuniy. Oʻzgartirish faqat chorak qayta ochilgandan keyin mumkin.',
     closing_before_last_day: 'Chorakni uning oxirgi kunida yoki undan keyin yopish mumkin.',
-    closing_earlier_open: 'Avval yilning oldingi choraklarini yoping: choraklar tartib bilan yopiladi.',
-    closing_blocked: 'Yopish roʻyxatida hali toʻsib turgan band bor. Uni tugating, soʻng chorakni yoping.',
-    closing_lock_now_needed: 'Tahrirlash muddati ichidagi yoki qulfdan chiqarilgan darslar bor. «Hozir qulflash va yopish»ni tanlang.',
-    closing_warnings_changed: 'Yopish roʻyxati ochilgandan beri ogohlantirishlar oʻzgardi. Ularni qayta koʻrib chiqing, soʻng yoping.',
-    closing_start_quarter_needed: 'Bu filialning boshlangʻich choragi. «Platforma natijalarini qoldirish» yoki «Norasmiy»ni tanlang.',
-    closing_not_start_quarter: '«Qoldirish» yoki «Norasmiy» faqat boshlangʻich chorak uchun tanlanadi. Yopish roʻyxatini yangilang.',
-    class_quarter_closed: 'Koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
-    group_quarter_closed: 'Guruhga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
-    branch_move_quarter_closed: 'Boshqa filialga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    closing_earlier_open:
+      'Avval yilning oldingi choraklarini yoping: choraklar tartib bilan yopiladi.',
+    closing_blocked:
+      'Yopish roʻyxatida hali toʻsib turgan band bor. Uni tugating, soʻng chorakni yoping.',
+    closing_lock_now_needed:
+      'Tahrirlash muddati ichidagi yoki qulfdan chiqarilgan darslar bor. «Hozir qulflash va yopish»ni tanlang.',
+    closing_warnings_changed:
+      'Yopish roʻyxati ochilgandan beri ogohlantirishlar oʻzgardi. Ularni qayta koʻrib chiqing, soʻng yoping.',
+    closing_start_quarter_needed:
+      'Bu filialning boshlangʻich choragi. «Platforma natijalarini qoldirish» yoki «Norasmiy»ni tanlang.',
+    closing_not_start_quarter:
+      '«Qoldirish» yoki «Norasmiy» faqat boshlangʻich chorak uchun tanlanadi. Yopish roʻyxatini yangilang.',
+    class_quarter_closed:
+      'Koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    group_quarter_closed:
+      'Guruhga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
+    branch_move_quarter_closed:
+      'Boshqa filialga koʻchirish yopilgan chorak sanasiga belgilangan. Ochiq chorakdagi sanani tanlang.',
     date_in_closed_quarter: 'Sana yopilgan chorakda. Ochiq chorakdagi sanani tanlang.',
-    plan_quarter_closed: 'Bu rejaning choragi yopilgan, shuning uchun rejani oʻzgartirib boʻlmaydi.',
-    exemption_closed_quarter: 'Ozod qilishning barcha kunlari yopilgan choraklarda. Ochiq chorakdagi kunlarni tanlang.',
+    plan_quarter_closed:
+      'Bu rejaning choragi yopilgan, shuning uchun rejani oʻzgartirib boʻlmaydi.',
+    exemption_closed_quarter:
+      'Ozod qilishning barcha kunlari yopilgan choraklarda. Ochiq chorakdagi kunlarni tanlang.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
@@ -3972,7 +3984,8 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       results: {
         closing_reminder: '{{quarter}}-chorak tez orada yopiladi. Tugatilishi kerak: {{items}}.',
-        quarter_locked_now: '{{quarter}}-chorak «hozir qulflash» bilan yopildi: uning tahrirlash muddati ichidagi darslaringiz va undagi qulfdan chiqarishlaringiz qulflandi.',
+        quarter_locked_now:
+          '{{quarter}}-chorak «hozir qulflash» bilan yopildi: uning tahrirlash muddati ichidagi darslaringiz va undagi qulfdan chiqarishlaringiz qulflandi.',
       },
       setup: {
         quarter_weights_changed:
@@ -6083,7 +6096,8 @@ export const uz: Texts<'one' | 'other'> = {
       reopen_other: '{{count}} ta dars qayta ochiladi.',
       givesBack: 'Tozalangan qiymatlar qaytadi.',
       overlap: 'Bu vaqtni boshqa ozod qilish qoplaydi: {{dates}}.',
-      closedPart: '{{from}} dan {{to}} gacha boʻlgan kunlar yopilgan chorakda va oʻzgarmaydi; qolgani qoʻllanadi.',
+      closedPart:
+        '{{from}} dan {{to}} gacha boʻlgan kunlar yopilgan chorakda va oʻzgarmaydi; qolgani qoʻllanadi.',
       overlapElsewhere: 'Bu vaqtni oʻquvchining boshqa filialdagi ozod qilishi qoplaydi.',
       emptyTitle: 'Ozod qilishlar yoʻq',
       empty:
@@ -6504,7 +6518,8 @@ export const uz: Texts<'one' | 'other'> = {
       reminderLine: '{{kind}}: {{unit}}, {{subject}} ({{count}})',
       closeQuarter: 'Chorakni yopish',
       closedLine: '{{date}} kuni {{name}} tomonidan yopilgan · {{version}}-versiya',
-      closedLockNow: '«Hozir qulflash» bilan yopilgan: tahrirlash muddati ichidagi darslar qulflandi.',
+      closedLockNow:
+        '«Hozir qulflash» bilan yopilgan: tahrirlash muddati ichidagi darslar qulflandi.',
       closedStart_keep: 'Boshlangʻich chorak: platforma natijalari qoldirildi.',
       closedStart_not_official: 'Boshlangʻich chorak: norasmiy, yillik natijaga kirmaydi.',
       closedWarnings: 'Yopishda tasdiqlangan ogohlantirishlar.',
@@ -6516,8 +6531,10 @@ export const uz: Texts<'one' | 'other'> = {
         title: '{{number}}-chorakni yopish',
         text: 'Chorak jurnallari butun filialda faqat oʻqish uchun boʻladi va barcha natijalar yakuniy sifatida saqlanadi.',
         acknowledge_one: '{{count}} ta ogohlantirishni koʻrib chiqdim; u yopish bilan saqlanadi.',
-        acknowledge_other: '{{count}} ta ogohlantirishni koʻrib chiqdim; ular yopish bilan saqlanadi.',
-        lockNow: 'Hozir qulflash va yopish: tahrirlash muddati ichidagi darslar va ochiq qulfdan chiqarishlar qulflanadi, ularning oʻqituvchilariga xabar beriladi.',
+        acknowledge_other:
+          '{{count}} ta ogohlantirishni koʻrib chiqdim; ular yopish bilan saqlanadi.',
+        lockNow:
+          'Hozir qulflash va yopish: tahrirlash muddati ichidagi darslar va ochiq qulfdan chiqarishlar qulflanadi, ularning oʻqituvchilariga xabar beriladi.',
         startQuarter: 'Bu filialning boshlangʻich choragi',
         startQuarters: {
           keep: 'Platforma natijalarini chorak natijalari sifatida qoldirish',

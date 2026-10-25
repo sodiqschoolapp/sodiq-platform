@@ -627,7 +627,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   branch_move_quarter_closed: 'The move is dated in a closed quarter.',
   date_in_closed_quarter: 'The date is in a closed quarter.',
   plan_quarter_closed: 'The quarter of the plan is closed.',
-  exemption_closed_quarter: 'The exemption\'s days are all in closed quarters.',
+  exemption_closed_quarter: "The exemption's days are all in closed quarters.",
 };
 
 function codeOfStatus(status: number): ErrorCode {

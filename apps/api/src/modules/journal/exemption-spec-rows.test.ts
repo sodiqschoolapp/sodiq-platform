@@ -50,7 +50,10 @@ const PROBLEM_CASES: readonly Row[] = [
     case: 'The dates fall in a closed quarter.',
     rule: '397a8839d8eade9c',
     // Task 9.2b (From 8.5): the closed part refused, the open part applied.
-    tests: [[ROUTES, CLOSED_QUARTER], [CLOSE_DATABASE, 'closing a quarter in the database']],
+    tests: [
+      [ROUTES, CLOSED_QUARTER],
+      [CLOSE_DATABASE, 'closing a quarter in the database'],
+    ],
     tasks: [],
   },
   {
