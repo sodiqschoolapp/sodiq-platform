@@ -853,6 +853,40 @@ describe('closing a quarter in the database', () => {
       await reason(NEXT_DAY);
     });
 
+    /** The student out of every class, so that a status alone can change (no membership cut). */
+    const outOfClass = (student: string) =>
+      database.migrator.deleteFrom('class_memberships').where('student_id', '=', student).execute();
+
+    // Spec review of the code, should-fix 3: an end set on a status with none changes every day
+    // from that end on; a closed quarter after the end is among them. (An end taken away is
+    // refused by `dated_rows_only_shrink`.)
+    it('refuses an end set on a status before a closed quarter', async () => {
+      const { branch, first, second, student } = await scene();
+      await outOfClass(student);
+      await close(branch, first);
+      await close(branch, second);
+      const status = await database.migrator
+        .selectFrom('student_statuses')
+        .select(['id', 'valid_until'])
+        .where('student_id', '=', student)
+        .executeTakeFirstOrThrow();
+      expect(status.valid_until).toBeNull();
+      // 5 November lies between the closed first and the closed second quarter.
+      const end = (until: string | null) =>
+        database.migrator
+          .updateTable('student_statuses')
+          .set({ valid_until: until })
+          .where('id', '=', status.id)
+          .execute();
+      expect(await refusal(end('2026-11-05'))).toMatchObject(CLOSED);
+      const ended = await database.migrator
+        .selectFrom('student_statuses')
+        .select('valid_until')
+        .where('id', '=', status.id)
+        .executeTakeFirstOrThrow();
+      expect(ended.valid_until).toBeNull();
+    });
+
     it('refuses a decision and a quarterly distribution of the closed quarter', async () => {
       const { branch, first, student } = await scene();
       await close(branch, first);
