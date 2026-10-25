@@ -87,9 +87,14 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   const lessonId = (column ?? '').split(':')[0] ?? '';
   const button = page
     .locator(`.ag-header-cell[col-id="${lessonId}:a"]`)
-    .getByRole('button', { name: en.journal.works.button, exact: true });
+    .getByRole('button', { name: en.journal.card.open, exact: true });
   await button.focus();
   await page.keyboard.press('Enter');
+  // Task 8.8: the works of the lesson open from its lesson card.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: en.journal.works.button, exact: true })
+    .click();
   const works = page.getByRole('dialog');
   await expect(works).toContainText(en.journal.works.noPlan);
   await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();

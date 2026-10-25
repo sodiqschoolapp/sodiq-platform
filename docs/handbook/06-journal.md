@@ -134,3 +134,57 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 - Only a person working in the branch today can be assigned.
 - A new assignment of the same lesson replaces the open one.
 - The assigned teacher gets no other right: only that lesson, only until the end of the assignment.
+
+## The lesson card
+
+<!-- Sources: spec 09 (In the journal), edge/lesson-plans (Plans and the journal, "Who may read a plan?", "A double lesson"); task 8.8, decisions 6 and 16, plan review correction 1 -->
+
+**What it is.** The header of each lesson in the journal shows the lesson's number in the quarter and its topic from the plan, shortened to fit; the whole topic shows when the pointer rests on the header. The **Lesson card** (**Dars kartasi**) button under the A of a lesson opens the card: number, date, slot, topic, classworks, the homework given today, the homework checked today, objectives and materials.
+
+**Who can use it.**
+
+| Role | What the role may do |
+| --- | --- |
+| The lesson's teacher (the plan's owner on that day, or the substitute while the substitution is in force) | Sees the whole card and sets "Topic not delivered" and "Not given" |
+| Readers of the plan (Academic Vice Principal, Principal, Super Admin, Head Teachers of the subject, teachers with the subject and grade in their profile) | See the whole card |
+| Tutor, Head Tutor, Vice Principal for Spiritual and Moral Education | See the topic and the homework titles only |
+
+**Rules.**
+
+- The number is the lesson's place among the quarter's lessons that are not cancelled.
+- The plan is read only in the journal; it is changed only on the plan page.
+- "Homework checked today" lists the homework given at the previous lesson: the numbers of this lesson's homework columns refer to it.
+- Homework given at the first of two lessons on one day says "Will be checked today in slot N".
+- In lesson mode on a phone, the topic, the classwork and the homework stand at the top.
+- The **Works** button inside the card opens the works of the lesson (totals, "not held", works added by hand).
+
+## Topic not delivered and homework not given
+
+<!-- Sources: edge/lesson-plans ("A substitute supervises the class", "On Thursday it is recorded that Monday's lesson did not happen"), spec 09 (In the journal); task 8.8, decisions 4 to 9 and 18 -->
+
+**What it is.** When the planned topic was not taught, or a planned homework was not given, the lesson's teacher marks it on the lesson card. This is not a plan edit.
+
+**How it works.**
+
+1. Open the lesson card of a held lesson.
+2. Tick **Topic not delivered** (**Mavzu oʻtilmadi**). A copy of the lesson's item goes to "Not covered" on the plan of this class, and an edit request is prepared for the plan's owner.
+3. Tick **Not given** (**Berilmadi**) beside a homework. The next lesson has no column for it.
+4. Untick to undo, inside the same edit period.
+
+**Rules.**
+
+- Only for a held lesson with a plan item, of a graded subject, inside the edit period or under an unlock of that lesson.
+- A homework cannot be marked "not given" once its column has a total, numbers, a carry or "not held". Mark it "not held" instead.
+- The copy in "Not covered" belongs to the class of that lesson only, also in a shared plan.
+- Undoing "Topic not delivered" removes the copy while it is unchanged and still not covered; once it was edited or placed in a row, the undo is refused.
+- When the substitute sets "Topic not delivered", the plan's owner gets a notice.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The lesson is later recorded as not having happened (cancelled after its date) | Both marks are taken back by themselves, and an unchanged copy leaves "Not covered"; the item moves on as after any cancellation. |
+| A homework was marked "not given" and the next lesson's teacher tries to set its total | It is refused: "This homework was marked "not given", so nothing is entered for it." |
+| Two people mark and grade the same homework at the same moment | One wins: either the mark is refused because the column has a total, or the total is refused because the homework is "not given". |
+
+**What the person sees.** "This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead."

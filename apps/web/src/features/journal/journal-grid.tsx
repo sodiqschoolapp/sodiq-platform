@@ -21,7 +21,7 @@ import {
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,11 @@ import type { AttendanceEntry } from './attendance-entry';
 import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
+import { LessonCardDialog } from './lesson-card';
 import { workKey, type WorksEntry } from './works-entry';
+
+/** Task 8.8: the characters of a topic the header shows; the tooltip holds it whole. */
+const TOPIC_SHOWN = 28;
 
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
@@ -291,6 +295,8 @@ export function JournalGridView({
   const language = i18n.language;
   const entryText = useEntryText();
   const api = useRef<GridApi<GridRow> | null>(null);
+  /** Task 8.8: the lesson whose card is open. */
+  const [cardOpen, setCardOpen] = useState<string | null>(null);
   /** The marker class of a cell with a comment, for a student row. */
   const marked = useCallback(
     (row: GridRow | undefined, cell: (studentId: string) => CommentCell): string | undefined =>
@@ -687,15 +693,16 @@ export function JournalGridView({
                   },
                 }
               : {}),
-            // Task 8.1: the works of the lesson ("No plan", added by hand, not held, given).
-            ...(works !== undefined && graded && lessonWorksShown(lesson)
+            // Task 8.8: the lesson card (`09`: "Clicking it opens the lesson card"), with the
+            // works of the lesson inside it (task 8.1).
+            ...(graded && !cancelled
               ? {
                   more: {
-                    label: t('journal.works.button'),
+                    label: t('journal.card.open'),
                     icon: 'more',
-                    disabled: works.busy,
+                    disabled: works?.busy === true,
                     run: () => {
-                      works.openLesson(lesson);
+                      setCardOpen(lesson.id);
                     },
                   },
                 }
@@ -955,11 +962,23 @@ export function JournalGridView({
       // Task 8.7 (`07`, Lesson status: "in the journal header"), in words.
       const status =
         lesson.status === null ? '' : ` · ${t(`journal.lessonStatus.${lesson.status}`)}`;
+      // Task 8.8 (`09`, In the journal): "the lesson number and the topic, shortened to fit".
+      const number =
+        lesson.number === null
+          ? ''
+          : `${t('journal.grid.lessonNumber', { number: lesson.number })} · `;
+      const topic =
+        lesson.topic === null || lesson.topic === ''
+          ? ''
+          : `${lesson.topic.length > TOPIC_SHOWN ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…` : lesson.topic} · `;
+      const notDelivered = lesson.notDelivered ? ` · ${t('journal.grid.notDeliveredShort')}` : '';
       return {
         groupId: lesson.id,
         headerName:
-          reason === null ? `${date}${slot}${noPlan}${status}` : `${date}${slot} · ${reason}`,
-        headerTooltip: reason ?? undefined,
+          reason === null
+            ? `${number}${topic}${date}${slot}${noPlan}${notDelivered}${status}`
+            : `${date}${slot} · ${reason}`,
+        headerTooltip: reason ?? (lesson.topic === null ? undefined : lesson.topic),
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
         children: children.map((child) => ({
           ...child,
@@ -1093,7 +1112,9 @@ export function JournalGridView({
       <AgGridReact<GridRow>
         // Room for the "all present" button under the A of a lesson the reader enters.
         headerHeight={
-          (grid.lessons.some((lesson) => lesson.canEnter) && entering) || works !== undefined
+          (grid.lessons.some((lesson) => lesson.canEnter) && entering) ||
+          works !== undefined ||
+          graded
             ? 64
             : 40
         }
@@ -1150,6 +1171,27 @@ export function JournalGridView({
           if (scrollTo !== null) event.api.ensureColumnVisible(`${scrollTo}:a`, 'start');
         }}
       />
+      {cardOpen !== null &&
+        (() => {
+          const lesson = grid.lessons.find((one) => one.id === cardOpen);
+          return (
+            <LessonCardDialog
+              lessonId={cardOpen}
+              language={language}
+              onClose={() => {
+                setCardOpen(null);
+              }}
+              onOpenWorks={
+                works !== undefined && lesson !== undefined && lessonWorksShown(lesson)
+                  ? () => {
+                      setCardOpen(null);
+                      works.openLesson(lesson);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })()}
     </div>
   );
 }

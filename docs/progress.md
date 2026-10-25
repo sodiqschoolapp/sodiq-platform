@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 8.8 Plans in the journal
+
+- 0130: `journal_lesson_deliveries` ("topic not delivered"), `journal_homework_not_given`, their history `journal_delivery_history`, the copy's `lesson_plan_items.not_delivered_from`, `lesson_plan_work_openings` (a work an approved request adds to a held lesson opens its column; the cells and works guards take it with `app.plan_request_id`), `subject_plan_minimums`; "not given" against data is refused both ways in the database.
+- Routes: `GET /api/journal/lessons/:lessonId/card`, `PUT .../delivery`, `PUT .../homework-given`, `GET/PUT /api/plans/minimums`, `GET /api/plans/reports/{completeness,progress,requests}`, `POST /api/plans/reports/export` (area `plan_reports`), `POST /api/plans/journals/:journalId/export` (`plans` `export`). The grid answers each lesson's number, topic and "not delivered"; a lesson cancelled after its date loses its marks in the follow. Web: header number and topic, the lesson card (the works dialog opens from it), lesson mode's top lines, the Plan reports page, the minimums on the windows page, the plan's Print/PDF/Excel and its marks.
+- Left out, with From lines: the closing checklist's minimum and "not covered" warnings (9.2a); prepared totals of the reports (9.3b).
+
+The next sessions must know:
+
+- A reader of a lesson's work columns goes through `journalsColumns`: it leaves out homeworks marked "not given".
+- A write of a planned homework's journal row takes its `lesson_plan_works` row `for no key update` first (`rowOf`), as "not given" does.
+- A copy of a plan's items into another plan drops `not_delivered_from`; a separation keeps it (`copyItems`).
+
 ## 24 October 2026: task 8.7 Lesson status, reminders and the discipline report
 
 - 0129: `journal_cells.not_graded` (a work cell with no number, kept in the history before and after, ended by a number or a clear), `journal_orphan_assignments` (a teacher named for 1 to 7 days on an orphan lesson; `journal_edit_judge` takes that person's write after the lock as a late entry with `orphan_assignment_id` in the histories).

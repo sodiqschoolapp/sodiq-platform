@@ -334,6 +334,15 @@ describe('every export is logged', () => {
     'POST /api/timetable/versions/:id/export': { action: 'timetable_version.export' },
   };
 
+  /**
+   * Task 8.8 (pull request #226, decisions 2 and 17): a plan's PDF or Excel and a plan report's
+   * Excel, one entry each; the plan's own file is tested with a plan in `plan-delivery.test.ts`.
+   */
+  const PLAN_FILES: Record<string, { action: string }> = {
+    'POST /api/plans/reports/export': { action: 'plan_report.export' },
+    'POST /api/plans/journals/:journalId/export': { action: 'plan.export' },
+  };
+
   /** The entries of an action in both logs. */
   const countOf = async (action: string): Promise<number> => {
     const found = await sql<{ count: number }>`
@@ -406,6 +415,7 @@ describe('every export is logged', () => {
         ...Object.keys(REPORTS),
         ...Object.keys(VIEW_FILES),
         ...Object.keys(VERSION_FILES),
+        ...Object.keys(PLAN_FILES),
       ].sort(),
     );
   });
@@ -488,6 +498,40 @@ describe('every export is logged', () => {
       expect(await countOf(spec.action)).toBe(before + 1);
     },
   );
+
+  it('POST /api/plans/reports/export writes one entry; a refusal writes none', async () => {
+    const action = 'plan_report.export';
+    const before = await countOf(action);
+    const response = await exportOf('/api/plans/reports/export', { report: 'completeness' });
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(await countOf(action)).toBe(before + 1);
+    const [entry] = await t.database.migrator
+      .selectFrom('audit_log')
+      .select(['details', 'branch_id'])
+      .where('action', '=', action)
+      .orderBy('occurred_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(1)
+      .execute();
+    expect(entry?.branch_id).toBe(t.north);
+    expect(entry?.details).toMatchObject({ report: 'completeness', rows: 0 });
+    const refused = await exportOf('/api/plans/reports/export', {
+      report: 'progress',
+      quarterId: UNKNOWN,
+    });
+    expect(refused.status).toBe(404);
+    expect(await countOf(action)).toBe(before + 1);
+  });
+
+  it('POST /api/plans/journals/:journalId/export writes no entry when refused', async () => {
+    const before = await countOf('plan.export');
+    const refused = await exportOf(`/api/plans/journals/${UNKNOWN}/export`, {
+      quarterId: UNKNOWN,
+      format: 'xlsx',
+    });
+    expect(refused.status).toBe(404);
+    expect(await countOf('plan.export')).toBe(before);
+  });
 
   it.each(Object.entries(REPORTS))(
     '%s writes one entry with the person and the counts',

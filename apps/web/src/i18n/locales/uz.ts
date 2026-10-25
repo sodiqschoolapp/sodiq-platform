@@ -765,6 +765,19 @@ export const uz: Texts<'one' | 'other'> = {
       'Dars qaytmaydi: uning ishlari bogʻlangan darsda qoʻlda qoʻshilgan shu turdagi 10 ta ish bor. Avval ulardan birini olib tashlang.',
     plan_work_has_data:
       'Bu ishning jurnalda jami yoki sonlari bor, shuning uchun uni rejadan olib tashlab boʻlmaydi. Uning oʻrniga jurnalda «oʻtkazilmadi» deb belgilang.',
+    no_plan_item:
+      'Bu darsning reja bandi yoʻq, shuning uchun belgilaydigan mavzu yoki uy vazifasi yoʻq.',
+    delivery_stale:
+      'Siz dars kartasini ochganingizdan keyin bu belgi oʻzgartirildi. Uni qayta oching.',
+    not_delivered_copy_used:
+      '«Oʻtilmagan» roʻyxatidagi bu mavzu nusxasi allaqachon oʻzgartirilgan yoki rejaga qoʻyilgan, shuning uchun belgini bekor qilib boʻlmaydi. Rejani tahrir soʻrovi orqali oʻzgartiring.',
+    homework_not_in_lesson: 'Bu uy vazifasi shu darsda berilmagan.',
+    homework_has_entries:
+      'Bu uy vazifasining jurnalda allaqachon maksimal balli, ballari, koʻchirilishi yoki «oʻtkazilmadi» belgisi bor, shuning uchun uni «berilmadi» deb belgilab boʻlmaydi. Uni «oʻtkazilmadi» deb belgilang.',
+    journal_work_not_given:
+      'Bu uy vazifasi «berilmadi» deb belgilangan, shuning uchun unga hech narsa kiritilmaydi.',
+    plan_minimum_stale:
+      'Siz sahifani ochganingizdan keyin bu minimum oʻzgartirildi. Sahifani yangilab, qayta urinib koʻring.',
     entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
     lesson_not_held:
       'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',
@@ -3386,6 +3399,9 @@ export const uz: Texts<'one' | 'other'> = {
         restore: 'Guruh tiklandi',
         export: 'Guruhlar eksport qilindi',
       },
+      plan_report: {
+        export: 'Dars rejalari hisoboti eksport qilindi',
+      },
       timetable_view: {
         export: 'Dars jadvali chop etildi yoki yuklab olindi',
       },
@@ -3448,12 +3464,16 @@ export const uz: Texts<'one' | 'other'> = {
         not_graded: '«Baholanmagan» belgilandi',
         orphan_assign: 'Oʻqituvchisiz dars biriktirildi',
         orphan_withdraw: 'Oʻqituvchisiz dars biriktiruvi bekor qilindi',
+        topic_not_delivered: 'Mavzu oʻtilmadi deb belgilandi yoki belgi bekor qilindi',
+        homework_not_given: 'Uy vazifasi berilmadi deb belgilandi yoki belgi bekor qilindi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',
         item_create: 'Reja qatori toʻldirildi',
         item_edit: 'Reja qatori oʻzgartirildi',
         item_clear: 'Reja qatori tozalandi',
+        minimums: 'Fanlar boʻyicha ishlar minimumi oʻzgartirildi',
+        export: 'Dars rejasi chop etildi yoki eksport qilindi',
         file_add: 'Reja qatoriga fayl qoʻshildi',
         file_remove: 'Reja qatoridan fayl oʻchirildi',
         items_followed: 'Reja qatorlari dars jadvali oʻzgarishiga ergashdi',
@@ -3901,6 +3921,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi. Siz uchun oʻzgartirish soʻrovi tayyorlandi: {{requested}}. Faqat surilgan: {{moved}}.',
         followed_counts:
           'Fanlaringiz boʻyicha dars rejalari dars jadvali oʻzgarishi bilan surildi: {{plans}}. Tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
+        not_delivered:
+          '{{unit}} sinfining {{date}} kungi darsi mavzusi oʻtilmadi. U rejangizning «oʻtilmagan» roʻyxatida, siz uchun tahrir soʻrovi tayyorlandi.',
         window_opened:
           '{{quarter}}-chorak dars rejasi oynasi {{startDate}} dan {{endDate}} gacha ochiq.',
         window_changed:
@@ -5294,6 +5316,92 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    reports: {
+      title: 'Rejalar hisobotlari',
+      noTeacher: 'Oʻqituvchisiz',
+      teacher: 'Oʻqituvchi',
+      unit: 'Sinf yoki guruh',
+      state: 'Holati',
+      flag: 'Ogohlantirish',
+      empty: 'Bu chorakda rejalar yoʻq.',
+      completeness: 'Toʻliqlik',
+      progressTitle: 'Bajarilish',
+      requestsTitle: 'Tahrir soʻrovlari',
+      report: 'Hisobot',
+      part: 'Koʻrsatish',
+      byTeacher: 'Oʻqituvchilar boʻyicha',
+      byPlan: 'Rejalar boʻyicha',
+      quarter: 'Chorak',
+      department: 'Kafedra',
+      allDepartments: 'Barcha kafedralar',
+      excel: 'Excel',
+      branchCounts: 'Filial: {{plans}} ta rejadan {{complete}} tasi toʻliq ({{percent}})',
+      otherSubjects_one:
+        'Sizning doirangizdan tashqari fanning {{count}} ta rejasi koʻrsatilmagan.',
+      otherSubjects_other:
+        'Sizning doirangizdan tashqari fanlarning {{count}} ta rejasi koʻrsatilmagan.',
+      counts: {
+        plans: 'Rejalar',
+        complete: 'Toʻliq',
+        incomplete: 'Toʻliq emas',
+        noTopic: 'Mavzusiz darslar',
+        notStarted: 'Boshlanmagan',
+        overdue: 'Muddati oʻtgan',
+        windowNotOpened: 'Oyna ochilmagan',
+        belowMinimum: 'Minimumdan kam',
+        percentComplete: 'Toʻliq, %',
+      },
+      progress: {
+        planned: 'Rejalashtirilgan darslar',
+        held: 'Oʻtkazilgan darslar',
+        delivered: 'Oʻtilgan mavzular',
+        notCovered: 'Oʻtilmagan bandlar',
+        behind: 'Rejadan orqada',
+        behindYes: 'Orqada',
+        plannedWorks: 'Rejalashtirilgan ishlar',
+        notHeld: 'Oʻtkazilmagan ishlar',
+        percentNotHeld: 'Oʻtkazilmaganlar ulushi',
+      },
+      requests: {
+        kind: 'Turi',
+        status: 'Holati',
+        decidedBy: 'Hal qildi',
+        decidedOn: '{{name}}, {{date}}',
+        changes: 'Nima oʻzgartirildi',
+        changeOn: '{{date}} da oʻzgartirildi',
+        topicChange: '{{date}}: {{before}} → {{after}}',
+        kinds: {
+          text: 'Matn',
+          replan: 'Qayta rejalash',
+          extension: 'Uzaytirish',
+        },
+        statuses: {
+          prepared: 'Tayyorlangan',
+          sent: 'Yuborilgan',
+          approved: 'Tasdiqlangan',
+          refused: 'Rad etilgan',
+          void: 'Bekor',
+        },
+      },
+    },
+    minimum: {
+      below: 'Ishlar minimumidan kam',
+      belowDetail:
+        '{{minimumClassworks}} ta sinf ishidan {{classworks}} ta, {{minimumHomeworks}} ta uy vazifasidan {{homeworks}} ta',
+      title: 'Chorakdagi ishlar minimumi',
+      subject: 'Fan',
+      classworks: 'Sinf ishlari',
+      homeworks: 'Uy vazifalari',
+      save: 'Saqlash',
+      saved: 'Saqlandi.',
+      empty: 'Hozircha baholanadigan fanlar yoʻq.',
+      hint: 'Minimumdan kam reja oyna tugagach ogohlantirish boʻladi. 0 — minimum yoʻq.',
+    },
+    marks: {
+      notDelivered: 'Mavzu oʻtilmadi',
+      notGiven: 'Berilmadi: {{titles}}',
+      copyOf: '{{date}} da oʻtilmagan',
+    },
     page: {
       title: 'Dars rejalari',
       caption: 'Dars rejalari',
@@ -5316,6 +5424,7 @@ export const uz: Texts<'one' | 'other'> = {
       incomplete_other: 'Mavzusiz {{count}} qator',
     },
     plan: {
+      marks: 'Belgilar',
       title: 'Dars rejasi',
       caption: 'Reja qatorlari',
       quarter: 'Chorak',
@@ -5589,6 +5698,27 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   journal: {
+    card: {
+      titleLoading: 'Dars',
+      title: '{{number}}-dars · {{date}}',
+      titleNoNumber: '{{date}} darsi',
+      dateSlot: '{{date}} · {{slot}}-dars',
+      topic: 'Mavzu',
+      notDelivered: 'Mavzu oʻtilmadi',
+      markNotDelivered: 'Mavzu oʻtilmadi',
+      movedFrom: '{{date}} dan koʻchirildi',
+      editedAfterLesson: 'Darsdan keyin tahrirlandi',
+      classworks: 'Sinf ishi',
+      givenToday: 'Bugun berilgan uy vazifasi',
+      checkedToday: 'Bugun tekshiriladigan uy vazifasi',
+      none: 'Yoʻq',
+      notGiven: 'Berilmadi',
+      checkedSameDay: 'Bugun {{slot}}-darsda tekshiriladi',
+      givenOn: '{{date}} da berilgan',
+      objectives: 'Maqsadlar',
+      materials: 'Materiallar',
+      open: 'Dars kartasi',
+    },
     lessonStatus: {
       not_started: 'Boshlanmagan',
       in_progress: 'Jarayonda',
@@ -5908,6 +6038,8 @@ export const uz: Texts<'one' | 'other'> = {
       lastDay: '{{date}} gacha',
     },
     grid: {
+      lessonNumber: '№ {{number}}',
+      notDeliveredShort: 'oʻtilmadi',
       // Task 8.6: oʻquvchiga ergashadigan natijalar (07, Transfers; edge/calculation).
       carriedIn: 'koʻchirilgan',
       carriedInTitle: 'Bulardan ham hisoblangan: {{journals}}',

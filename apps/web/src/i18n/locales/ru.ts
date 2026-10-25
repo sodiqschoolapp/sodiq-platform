@@ -742,6 +742,18 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Урок нельзя вернуть: на уроке его работ уже 10 работ этого вида, добавленных вручную. Сначала уберите одну из них.',
     plan_work_has_data:
       'У этой работы есть максимум или числа в журнале, поэтому её нельзя убрать из плана. Вместо этого отметьте её в журнале «не проводилась».',
+    no_plan_item: 'У этого урока нет пункта плана, поэтому нечего отмечать.',
+    delivery_stale:
+      'Эту отметку изменили после того, как вы открыли карточку урока. Откройте её снова.',
+    not_delivered_copy_used:
+      'Копию этой темы в списке «не пройдено» уже изменили или поставили в план, поэтому отметку нельзя отменить. Измените план через запрос на изменение.',
+    homework_not_in_lesson: 'Это домашнее задание задано не на этом уроке.',
+    homework_has_entries:
+      'У этого домашнего задания в журнале уже есть максимум, баллы, перенос или отметка «не проводилось», поэтому его нельзя отметить «не задано». Отметьте его «не проводилось».',
+    journal_work_not_given:
+      'Это домашнее задание отмечено «не задано», поэтому для него ничего не вносится.',
+    plan_minimum_stale:
+      'Этот минимум изменили после того, как вы открыли страницу. Обновите её и попробуйте снова.',
     entry_not_started: 'Урок ещё не начался. Посещаемость вносится с времени его начала.',
     lesson_not_held:
       'У этого урока не записан учитель (нужен учитель или не решено), поэтому вносить нельзя. Сначала это решает заместитель директора по учебной работе.',
@@ -3498,6 +3510,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         restore: 'Группа восстановлена',
         export: 'Группы выгружены',
       },
+      plan_report: {
+        export: 'Отчёт по планам уроков выгружен',
+      },
       timetable_view: {
         export: 'Расписание распечатано или выгружено',
       },
@@ -3560,12 +3575,16 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         not_graded: 'Отмечено «без оценки»',
         orphan_assign: 'Урок без учителя назначен',
         orphan_withdraw: 'Назначение урока без учителя отозвано',
+        topic_not_delivered: 'Тема отмечена как не пройденная, или отметка отменена',
+        homework_not_given: 'Домашнее задание отмечено как не заданное, или отметка отменена',
       },
       plan: {
         create: 'Начат план уроков',
         item_create: 'Заполнена строка плана',
         item_edit: 'Изменена строка плана',
         item_clear: 'Очищена строка плана',
+        minimums: 'Изменён минимум работ по предметам',
+        export: 'План уроков распечатан или выгружен',
         file_add: 'Добавлен файл в строку плана',
         file_remove: 'Удалён файл из строки плана',
         items_followed: 'Строки плана последовали за изменением расписания',
@@ -4048,6 +4067,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
           'Ваши планы уроков сдвинулись вместе с изменением расписания. Для вас подготовлен запрос на изменение: {{requested}}. Только сдвинуты: {{moved}}.',
         followed_counts:
           'Планы уроков по вашим предметам сдвинулись вместе с изменением расписания: {{plans}}. Подготовлено запросов на изменение: {{requests}}.',
+        not_delivered:
+          'Тема урока {{unit}} {{date}} не пройдена. Она в списке «не пройдено» вашего плана, для вас подготовлен запрос на изменение.',
         window_opened:
           'Окно планов уроков {{quarter}}-й четверти открыто с {{startDate}} по {{endDate}}.',
         window_changed:
@@ -5539,6 +5560,92 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   plans: {
+    reports: {
+      title: 'Отчёты по планам',
+      noTeacher: 'Без учителя',
+      teacher: 'Учитель',
+      unit: 'Класс или группа',
+      state: 'Состояние',
+      flag: 'Предупреждение',
+      empty: 'В этой четверти нет планов.',
+      completeness: 'Заполненность',
+      progressTitle: 'Прохождение',
+      requestsTitle: 'Запросы на изменение',
+      report: 'Отчёт',
+      part: 'Показать',
+      byTeacher: 'По учителям',
+      byPlan: 'По планам',
+      quarter: 'Четверть',
+      department: 'Кафедра',
+      allDepartments: 'Все кафедры',
+      excel: 'Excel',
+      branchCounts: 'Филиал: заполнено {{complete}} из {{plans}} планов ({{percent}})',
+      otherSubjects_one: 'Не показан {{count}} план предмета вне вашей области.',
+      otherSubjects_few: 'Не показаны {{count}} плана предметов вне вашей области.',
+      otherSubjects_many: 'Не показаны {{count}} планов предметов вне вашей области.',
+      otherSubjects_other: 'Не показаны {{count}} плана предметов вне вашей области.',
+      counts: {
+        plans: 'Планы',
+        complete: 'Заполнены',
+        incomplete: 'Не заполнены',
+        noTopic: 'Уроки без темы',
+        notStarted: 'Не начаты',
+        overdue: 'Просрочены',
+        windowNotOpened: 'Окно не открыто',
+        belowMinimum: 'Ниже минимума',
+        percentComplete: 'Заполнено, %',
+      },
+      progress: {
+        planned: 'Уроков запланировано',
+        held: 'Уроков проведено',
+        delivered: 'Тем пройдено',
+        notCovered: 'Пунктов не пройдено',
+        behind: 'Отстаёт от плана',
+        behindYes: 'Отстаёт',
+        plannedWorks: 'Запланированные работы',
+        notHeld: 'Работы не проводились',
+        percentNotHeld: 'Доля не проведённых',
+      },
+      requests: {
+        kind: 'Вид',
+        status: 'Статус',
+        decidedBy: 'Решил',
+        decidedOn: '{{name}}, {{date}}',
+        changes: 'Что изменено',
+        changeOn: 'изменено {{date}}',
+        topicChange: '{{date}}: {{before}} → {{after}}',
+        kinds: {
+          text: 'Текст',
+          replan: 'Перепланирование',
+          extension: 'Продление',
+        },
+        statuses: {
+          prepared: 'Подготовлен',
+          sent: 'Отправлен',
+          approved: 'Одобрен',
+          refused: 'Отклонён',
+          void: 'Недействителен',
+        },
+      },
+    },
+    minimum: {
+      below: 'Ниже минимума работ',
+      belowDetail:
+        '{{classworks}} из {{minimumClassworks}} классных работ, {{homeworks}} из {{minimumHomeworks}} домашних заданий',
+      title: 'Минимум работ за четверть',
+      subject: 'Предмет',
+      classworks: 'Классные работы',
+      homeworks: 'Домашние задания',
+      save: 'Сохранить',
+      saved: 'Сохранено.',
+      empty: 'Пока нет предметов с оценками.',
+      hint: 'План ниже минимума — предупреждение после окончания окна. 0 — без минимума.',
+    },
+    marks: {
+      notDelivered: 'Тема не пройдена',
+      notGiven: 'Не задано: {{titles}}',
+      copyOf: 'Не пройдено {{date}}',
+    },
     page: {
       title: 'Планы уроков',
       caption: 'Планы уроков',
@@ -5563,6 +5670,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       incomplete_other: '{{count}} строки без темы',
     },
     plan: {
+      marks: 'Отметки',
       title: 'План уроков',
       caption: 'Строки плана',
       quarter: 'Четверть',
@@ -5855,6 +5963,27 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   journal: {
+    card: {
+      titleLoading: 'Урок',
+      title: 'Урок {{number}} · {{date}}',
+      titleNoNumber: 'Урок {{date}}',
+      dateSlot: '{{date}} · {{slot}}-й урок',
+      topic: 'Тема',
+      notDelivered: 'Тема не пройдена',
+      markNotDelivered: 'Тема не пройдена',
+      movedFrom: 'Перенесено с {{date}}',
+      editedAfterLesson: 'Изменено после урока',
+      classworks: 'Классная работа',
+      givenToday: 'Задано сегодня',
+      checkedToday: 'Проверяется сегодня',
+      none: 'Нет',
+      notGiven: 'Не задано',
+      checkedSameDay: 'Будет проверено сегодня на {{slot}}-м уроке',
+      givenOn: 'задано {{date}}',
+      objectives: 'Цели',
+      materials: 'Материалы',
+      open: 'Карточка урока',
+    },
     lessonStatus: {
       not_started: 'Не начат',
       in_progress: 'В работе',
@@ -6195,6 +6324,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       lastDay: 'по {{date}}',
     },
     grid: {
+      lessonNumber: '№ {{number}}',
+      notDeliveredShort: 'не пройдена',
       // Task 8.6: результаты следуют за учеником (07, Transfers; edge/calculation).
       carriedIn: 'перенесено',
       carriedInTitle: 'Учтено также из: {{journals}}',

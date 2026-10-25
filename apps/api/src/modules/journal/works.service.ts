@@ -62,6 +62,8 @@ const WORK_REFUSALS = {
   journal_work_carry_once: 'work_carried',
   journal_works_limit: 'journal_works_limit',
   journal_cell_delete: 'work_holds_data',
+  // Task 8.8 (decision 4): a planned homework marked "not given" takes no entry (0130).
+  journal_work_not_given: 'journal_work_not_given',
   // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
   journal_locked: 'journal_locked',
   journal_correction_role: 'journal_correction_role',
@@ -176,6 +178,8 @@ export class WorksService {
     correction?: Correction,
     /** Task 8.7: the students a save of numbers names (optional cells of a locked lesson). */
     students?: readonly string[],
+    /** Task 8.8: the columns the write names, for a column an approved plan request opened. */
+    named: readonly WorkColumn[] = [],
   ): Promise<Scene> {
     const branchId = branchOf(access);
     const { lesson, now, timeZone, write } = await enterableLesson(
@@ -183,7 +187,11 @@ export class WorksService {
       access,
       branchId,
       lessonId,
-      { correction, ...(students === undefined ? {} : { students }) },
+      {
+        correction,
+        ...(students === undefined ? {} : { students }),
+        planWorks: await this.planWorksOf(transaction, named),
+      },
     );
     if (lesson.journalId === null) throw new ApiException('lesson_attendance_only', 409);
     const [unlocked] = await journalRows(transaction, branchId, { journalId: lesson.journalId });
@@ -209,6 +217,32 @@ export class WorksService {
     if (owner?.kind === 'none') throw new ApiException('lesson_attendance_only', 409);
     const columns = await journalColumns(transaction, journal, timeZone, now);
     return { access, branchId, lesson, journal, columns, requestId, write, correction };
+  }
+
+  /** Task 8.8: the plan works of the columns named; `null` for a hand-added work stops the opening. */
+  private async planWorksOf(
+    transaction: Transaction,
+    named: readonly WorkColumn[],
+  ): Promise<string[]> {
+    if (named.length === 0) return [];
+    const direct = named.flatMap((key) => ('planWorkId' in key ? [key.planWorkId] : []));
+    const workIds = named.flatMap((key) => ('workId' in key ? [key.workId] : []));
+    const stored =
+      workIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('journal_works')
+            .select('plan_work_id')
+            .where('id', 'in', workIds)
+            .execute();
+    // A work with no plan work (added by hand) is opened by no request.
+    if (stored.length !== workIds.length || stored.some((one) => one.plan_work_id === null)) {
+      return [];
+    }
+    return [
+      ...direct,
+      ...stored.flatMap((one) => (one.plan_work_id === null ? [] : [one.plan_work_id])),
+    ];
   }
 
   /**
@@ -322,6 +356,16 @@ export class WorksService {
   ): Promise<{ row: WorkRow; moved: boolean }> {
     let row: WorkRow | undefined;
     let moved = false;
+    // Task 8.8 (decision 4): the plan work of a planned homework first, FOR NO KEY UPDATE, as
+    // "homework not given" takes it: the mark and a first entry meet in one order.
+    if (column.kind === 'homework' && column.planWorkId !== null) {
+      await transaction
+        .selectFrom('lesson_plan_works')
+        .select('id')
+        .where('id', '=', column.planWorkId)
+        .forNoKeyUpdate()
+        .execute();
+    }
     if (column.workId === null) {
       if (column.planWorkId === null || column.sourceLessonId === null) {
         throw new ApiException('work_not_in_lesson', 409);
@@ -545,7 +589,15 @@ export class WorksService {
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        undefined,
+        [input.column],
+      );
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       const { row } = await this.rowOf(transaction, scene, column, input.version);
@@ -611,7 +663,15 @@ export class WorksService {
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        undefined,
+        [input.column],
+      );
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       const { row } = await this.rowOf(transaction, scene, column, input.version);
@@ -660,7 +720,15 @@ export class WorksService {
     requestId?: string,
   ): Promise<WorkSaved> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        undefined,
+        [input.column],
+      );
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
       if (column.kind !== 'homework') throw new ApiException('work_not_in_lesson', 409);
@@ -723,6 +791,7 @@ export class WorksService {
         requestId,
         input.correction,
         input.saves.map((save) => save.studentId),
+        input.saves.map((save) => save.column),
       );
       await refuseOtherStudents(
         transaction,
@@ -806,7 +875,15 @@ export class WorksService {
     requestId?: string,
   ): Promise<NotGradedAnswer> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const scene = await this.sceneOf(
+        transaction,
+        access,
+        lessonId,
+        requestId,
+        input.correction,
+        undefined,
+        (input.workIds ?? []).map((workId) => ({ workId })),
+      );
       const named = input.workIds?.map((id) => id.toLowerCase());
       if (named !== undefined) {
         await this.refuseUnknownColumns(

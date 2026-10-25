@@ -163,6 +163,16 @@ export const journalLessonSchema = z.object({
   copyFrom: z.uuid().nullable(),
   /** The lesson's row has a plan item; `false` shows "No plan" (`edge/journal`, "A lesson is held with no plan item"; task 8.1). */
   planItem: z.boolean(),
+  /**
+   * Task 8.8 (`09`, In the journal: "The header of each lesson shows the lesson number and the
+   * topic"): the position among the quarter's lessons not cancelled (`edge/lesson-plans`, "Lesson
+   * numbers after a cancellation"), `null` for a cancelled lesson; the topic of its plan item,
+   * `null` with no item. The screen shortens the topic to fit.
+   */
+  number: z.int().min(1).nullable(),
+  topic: z.string().nullable(),
+  /** Task 8.8: "topic not delivered" is set on the lesson (`edge/lesson-plans`). */
+  notDelivered: z.boolean(),
   /** The works of the lesson marked "not held": out of the columns, listed for the undo (`09`: "its column is removed from that lesson"). */
   notHeldWorks: z.array(journalWorkSchema),
   /** The homeworks given at this lesson, with the lesson that checks them, or why none does (task 8.1). */
@@ -172,6 +182,8 @@ export const journalLessonSchema = z.object({
       checkAt: z.uuid().nullable(),
       /** `year_end`: "will not be graded"; `group_closed`: "not checked, group closed" (`edge/lesson-plans`). */
       ungraded: z.enum(['year_end', 'group_closed']).nullable(),
+      /** Task 8.8: marked "not given"; the next lesson has no column for it. */
+      notGiven: z.boolean(),
     }),
   ),
 });

@@ -25,6 +25,11 @@
  *   must-fix 2): nothing typed leaves the grid.
  * - A work marked "not held" leaves the columns (`09`: "its column is
  *   removed from that lesson") and is listed apart, so it can be undone.
+ * - A planned homework marked "not given" at its source lesson (task 8.8,
+ *   `edge/lesson-plans`: "the next lesson gets no column for a homework not
+ *   given") makes no column, and an empty stored row of it is not shown (a
+ *   row with data refuses the mark, 0130). It stays in the source lesson's
+ *   `given` list with `notGiven`.
  */
 
 export type WorkKind = 'classwork' | 'homework';
@@ -92,6 +97,8 @@ export interface GivenHomework {
   /** The check lesson, `null` when there is none. */
   readonly checkAt: string | null;
   readonly ungraded: Ungraded | null;
+  /** Task 8.8: marked "not given" at this lesson; it has no check lesson then. */
+  readonly notGiven: boolean;
 }
 
 export interface LessonColumns {
@@ -116,6 +123,8 @@ export interface ColumnsInput {
   readonly stored: readonly StoredWork[];
   /** The journal has no run day left (7.1b decision 9): its last homework is "not checked, group closed". */
   readonly journalClosed: boolean;
+  /** Task 8.8: the planned homeworks marked "not given", as `<source lesson>/<plan work>`. */
+  readonly notGiven?: ReadonlySet<string>;
 }
 
 const eligible = (lesson: ColumnLesson): boolean =>
@@ -128,6 +137,17 @@ function byStart(one: ColumnLesson, other: ColumnLesson): number {
 /** The columns of every lesson of `input.lessons`. */
 export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
   const lessons = [...input.lessons].sort(byStart);
+  const notGiven = input.notGiven ?? new Set<string>();
+  const isNotGiven = (sourceId: string | null, planWorkId: string | null): boolean =>
+    sourceId !== null && planWorkId !== null && notGiven.has(`${sourceId}/${planWorkId}`);
+  // An empty row of a homework not given is not shown (spec review of the plan, must-fix 1).
+  const hidden = (row: StoredWork): boolean =>
+    row.kind === 'homework' &&
+    isNotGiven(row.sourceLessonId, row.planWorkId) &&
+    row.total === null &&
+    !row.notHeld &&
+    row.carriedFromLessonId === null &&
+    !row.hasNumbers;
   const index = new Map(lessons.map((lesson, at) => [lesson.id, at]));
   const nextOf = (lessonId: string): string | null => {
     const at = index.get(lessonId);
@@ -175,6 +195,7 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
   const storedAt = new Map<string, StoredWork[]>();
   const placed = new Map<string, string | null>();
   for (const row of [...input.stored].sort((a, b) => a.id.localeCompare(b.id))) {
+    if (hidden(row)) continue;
     const at = shownAt(row);
     placed.set(row.id, at);
     if (at === null) continue;
@@ -220,6 +241,13 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       if (sourceId !== null) {
         for (const work of (input.planned.get(sourceId) ?? []).filter((one) => one.kind === kind)) {
           const row = plannedRow.get(`${sourceId}/${work.id}`);
+          if (
+            kind === 'homework' &&
+            isNotGiven(sourceId, work.id) &&
+            (row === undefined || hidden(row))
+          ) {
+            continue;
+          }
           if (row === undefined) {
             found.push({
               workId: null,
@@ -280,16 +308,25 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
     for (const work of (input.planned.get(lesson.id) ?? []).filter(
       (one) => one.kind === 'homework',
     )) {
+      const marked = isNotGiven(lesson.id, work.id);
       given.push({
         workId: plannedRow.get(`${lesson.id}/${work.id}`)?.id ?? null,
         planWorkId: work.id,
         title: work.title,
-        checkAt,
-        ungraded,
+        checkAt: marked ? null : checkAt,
+        ungraded: marked ? null : ungraded,
+        notGiven: marked,
       });
     }
     for (const row of unplannedOf(lesson.id, 'homework')) {
-      given.push({ workId: row.id, planWorkId: null, title: null, checkAt, ungraded });
+      given.push({
+        workId: row.id,
+        planWorkId: null,
+        title: null,
+        checkAt,
+        ungraded,
+        notGiven: false,
+      });
     }
     result.set(lesson.id, {
       planItem: (input.planned.get(lesson.id) ?? null) !== null,

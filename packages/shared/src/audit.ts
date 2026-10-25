@@ -292,6 +292,9 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.not_graded',
     'journal.orphan_assign',
     'journal.orphan_withdraw',
+    // Task 8.8: "topic not delivered" and "homework not given" set or undone on the lesson card.
+    'journal.topic_not_delivered',
+    'journal.homework_not_given',
     // Task 8.5: exemptions entered, edited, ended or voided, their reason and document opened,
     // their document added or removed, a branch move's offer confirmed or dropped, the end a
     // leaving or a branch move writes and its give-back, and the file of a reason of absence.
@@ -358,8 +361,13 @@ export const AUDIT_ACTION_GROUPS = {
     'plan_master.order',
     'plan.master_taken',
     'plan.master_kept',
+    // Task 8.8: the minimum works of subjects per quarter set by the Academic Vice Principal.
+    'plan.minimums',
   ],
   exports: [
+    // Task 8.8: a plan's PDF or Excel with its marks, and the plan reports in Excel.
+    'plan.export',
+    'plan_report.export',
     'building.export',
     'room.export',
     'division.export',

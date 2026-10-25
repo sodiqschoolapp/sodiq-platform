@@ -22,6 +22,7 @@ import {
   type PlanQuarter,
 } from './plan-read.js';
 import { storedWindowOf } from './plan-gate.js';
+import { clearUntouchedCopy } from './plan-copy-clear.js';
 import { separateJournal, unitKeysOf } from './plan-separate.js';
 import { windowStateOf } from './plan-window.js';
 import { separations, type SharingJournal } from './plan-share.js';
@@ -82,7 +83,14 @@ interface Followed {
   readonly causes: readonly Cause[];
 }
 
-interface Cause {
+/** What a prepared request names of its plan. */
+export interface PreparedPlan {
+  readonly planId: string;
+  readonly journal: { readonly id: string };
+  readonly quarter: { readonly id: string; readonly startDate: string };
+}
+
+export interface Cause {
   readonly kind: PlanRequestCause;
   readonly onDate: string;
   readonly items: number;
@@ -131,6 +139,8 @@ export class PlanFollow implements OnModuleInit {
       // Task 7.1c: a journal of a shared plan that lost its teacher, language
       // or grade leaves the plan first, then follows on its own.
       const separated = await this.separateShared(transaction, branchId, journalIds);
+      // Task 8.8 (decision 5): a lesson cancelled loses its marks before its item moves.
+      await this.withdrawCancelledMarks(transaction, branchId, journalIds);
       const followed = await this.followBranch(
         transaction,
         branchId,
@@ -138,6 +148,154 @@ export class PlanFollow implements OnModuleInit {
       );
       await this.write(transaction, branchId, followed, eventId);
     }
+  }
+
+  /**
+   * Task 8.8 (decision 5, correction 3; `edge/lesson-plans`, "On Thursday it
+   * is recorded that Monday's lesson did not happen"): a lesson cancelled with
+   * "topic not delivered" or homeworks "not given" loses them, each with its
+   * history line `withdrawn`; the copy in "not covered" is cleared while it is
+   * untouched, an edited copy stays as plan content. The item itself then
+   * moves as after any cancellation. One audit entry per lesson.
+   */
+  private async withdrawCancelledMarks(
+    transaction: Transaction,
+    branchId: string,
+    journalIds: readonly string[],
+  ): Promise<void> {
+    if (journalIds.length === 0) return;
+    const deliveries = await transaction
+      .selectFrom('journal_lesson_deliveries')
+      .innerJoin('lessons', 'lessons.id', 'journal_lesson_deliveries.lesson_id')
+      .select([
+        'journal_lesson_deliveries.id',
+        'journal_lesson_deliveries.lesson_id',
+        'journal_lesson_deliveries.journal_id',
+        'journal_lesson_deliveries.copy_item_id',
+        'journal_lesson_deliveries.version',
+        'journal_lesson_deliveries.changed_by',
+      ])
+      .where('journal_lesson_deliveries.journal_id', 'in', [...journalIds])
+      .where('journal_lesson_deliveries.not_delivered', '=', true)
+      .where('lessons.cancel_cause', 'is not', null)
+      .orderBy('journal_lesson_deliveries.id')
+      .forUpdate('journal_lesson_deliveries')
+      .execute();
+    const notGiven = await transaction
+      .selectFrom('journal_homework_not_given')
+      .innerJoin('lessons', 'lessons.id', 'journal_homework_not_given.lesson_id')
+      .select([
+        'journal_homework_not_given.id',
+        'journal_homework_not_given.lesson_id',
+        'journal_homework_not_given.plan_work_id',
+        'journal_homework_not_given.changed_by',
+      ])
+      .where('journal_homework_not_given.journal_id', 'in', [...journalIds])
+      .where('journal_homework_not_given.undone_at', 'is', null)
+      .where('lessons.cancel_cause', 'is not', null)
+      .orderBy('journal_homework_not_given.id')
+      .forUpdate('journal_homework_not_given')
+      .execute();
+    if (deliveries.length === 0 && notGiven.length === 0) return;
+    const now = await transactionMoment(transaction);
+    const actor = await this.actorOf(transaction, branchId);
+    const entries = new Map<string, { copy: JsonValue; homeworks: string[]; journalId: string }>();
+    for (const one of deliveries) {
+      let copy: JsonValue = null;
+      if (one.copy_item_id !== null) {
+        const rows = await this.rowsOfCopy(transaction, branchId, one.journal_id, one.copy_item_id);
+        const cleared = await clearUntouchedCopy(transaction, rows, one.copy_item_id);
+        copy = cleared === 'used' ? 'kept' : cleared;
+      }
+      await transaction
+        .updateTable('journal_lesson_deliveries')
+        .set({
+          not_delivered: false,
+          copy_item_id: null,
+          version: one.version + 1,
+          changed_by: actor.actorId ?? one.changed_by,
+          changed_how: 'withdrawn',
+        })
+        .where('id', '=', one.id)
+        .execute();
+      entries.set(one.lesson_id, { copy, homeworks: [], journalId: one.journal_id });
+    }
+    for (const one of notGiven) {
+      await transaction
+        .updateTable('journal_homework_not_given')
+        .set({
+          undone_at: now,
+          changed_by: actor.actorId ?? one.changed_by,
+          changed_how: 'withdrawn',
+        })
+        .where('id', '=', one.id)
+        .execute();
+      const entry = entries.get(one.lesson_id) ?? { copy: null, homeworks: [], journalId: '' };
+      entry.homeworks.push(one.plan_work_id);
+      entries.set(one.lesson_id, entry);
+    }
+    for (const [lessonId, entry] of entries) {
+      await this.audit.record(transaction, {
+        branchId,
+        actorId: actor.actorId,
+        ...(actor.assignmentId === null ? {} : { assignmentId: actor.assignmentId }),
+        action: 'journal.topic_not_delivered',
+        record: { type: 'lesson', id: lessonId },
+        oldValue: { notDelivered: deliveries.some((one) => one.lesson_id === lessonId) },
+        newValue: {
+          notDelivered: false,
+          withdrawn: true,
+          copy: entry.copy,
+          homeworksGivenAgain: entry.homeworks,
+        },
+      });
+    }
+  }
+
+  /** Task 8.8: the number of rows of a copy's journal in its plan's quarter (`planRows`). */
+  private async rowsOfCopy(
+    transaction: Transaction,
+    branchId: string,
+    journalId: string,
+    copyId: string,
+  ): Promise<number> {
+    const link = await transaction
+      .selectFrom('lesson_plan_items')
+      .innerJoin(
+        'lesson_plan_journals',
+        'lesson_plan_journals.plan_id',
+        'lesson_plan_items.plan_id',
+      )
+      .innerJoin('quarters', 'quarters.id', 'lesson_plan_journals.quarter_id')
+      .select([
+        'quarters.id',
+        'quarters.number',
+        sql<string | null>`quarters.start_date::text`.as('start_date'),
+        sql<string | null>`quarters.end_date::text`.as('end_date'),
+      ])
+      .where('lesson_plan_items.id', '=', copyId)
+      .where('lesson_plan_journals.journal_id', '=', journalId)
+      .executeTakeFirst();
+    const [journal] = await journalRows(transaction, branchId, { journalId });
+    if (
+      link === undefined ||
+      journal === undefined ||
+      link.start_date === null ||
+      link.end_date === null
+    ) {
+      return 0;
+    }
+    const { timeZone, now } = await this.clockOf(transaction, branchId);
+    return (
+      await planRows(
+        transaction,
+        branchId,
+        journal,
+        { id: link.id, number: link.number, startDate: link.start_date, endDate: link.end_date },
+        timeZone,
+        now,
+      )
+    ).length;
   }
 
   /**
@@ -884,11 +1042,36 @@ export class PlanFollow implements OnModuleInit {
     return { actorId: row?.actor_id ?? null, assignmentId: row?.assignment_id ?? null };
   }
 
+  /**
+   * Task 8.8 (decision 9): prepares the edit request of one plan's journal for an event outside
+   * the follow ("topic not delivered": "A copy of the item goes to 'not covered', a request is
+   * prepared"), as the follow prepares its own, with an event of its own.
+   */
+  async prepareFor(
+    transaction: Transaction,
+    input: {
+      readonly branchId: string;
+      readonly plan: PreparedPlan;
+      readonly causes: readonly Cause[];
+      readonly actor: { actorId: string | null; assignmentId: string | null };
+    },
+  ): Promise<void> {
+    await this.prepare(
+      transaction,
+      input.branchId,
+      input.plan,
+      input.causes,
+      await transactionMoment(transaction),
+      input.actor,
+      randomUUID(),
+    );
+  }
+
   /** Prepares the plan's edit request or adds the causes to it (`edge`: "a later event adds to it"). */
   private async prepare(
     transaction: Transaction,
     branchId: string,
-    plan: FollowedPlan,
+    plan: PreparedPlan,
     causes: readonly Cause[],
     now: Date,
     actor: { actorId: string | null; assignmentId: string | null },

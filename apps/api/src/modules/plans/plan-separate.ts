@@ -58,7 +58,10 @@ export async function unitKeysOf(
  * file names the first file whose bytes it shows). Gives the new item of each
  * source item, in the order given. Task 7.3 (decision 11): the master item an
  * item was copied from goes with it, unless `keepMaster` is false (the
- * target plan does not keep the master link).
+ * target plan does not keep the master link). Task 8.8: the lesson a copy
+ * "topic not delivered" made came from goes with it only on a separation
+ * (`keepNotDelivered`), which keeps the journal's own items; a copy into
+ * another plan takes "only the content".
  */
 export async function copyItems(
   transaction: Transaction,
@@ -66,12 +69,15 @@ export async function copyItems(
   planId: string,
   itemIds: readonly string[],
   keepMaster = true,
+  keepNotDelivered = false,
+  /** Task 8.8: the copy "topic not delivered" makes names its lesson. */
+  notDeliveredFrom: string | null = null,
 ): Promise<Map<string, string>> {
   const made = new Map<string, string>();
   if (itemIds.length === 0) return made;
   const items = await transaction
     .selectFrom('lesson_plan_items')
-    .select(['id', 'topic', 'objectives', 'links', 'master_item_id'])
+    .select(['id', 'topic', 'objectives', 'links', 'master_item_id', 'not_delivered_from'])
     .where('id', 'in', [...itemIds])
     .execute();
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -88,6 +94,8 @@ export async function copyItems(
         links: source.links,
         copied_from: source.id,
         master_item_id: keepMaster ? source.master_item_id : null,
+        not_delivered_from:
+          notDeliveredFrom ?? (keepNotDelivered ? source.not_delivered_from : null),
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -206,6 +214,8 @@ export async function separateJournal(
     branchId,
     created.id,
     places.map((place) => place.item_id),
+    true,
+    true,
   );
   if (places.length > 0) {
     await transaction
@@ -221,6 +231,15 @@ export async function separateJournal(
           edited_after_lesson: place.edited_after_lesson,
         })),
       )
+      .execute();
+  }
+  // Task 8.8: the journal's "topic not delivered" names the copy now in its plan.
+  for (const [old, copy] of made) {
+    await transaction
+      .updateTable('journal_lesson_deliveries')
+      .set({ copy_item_id: copy })
+      .where('journal_id', '=', journalId)
+      .where('copy_item_id', '=', old)
       .execute();
   }
   await followSeparation(transaction, actorId, journalId, made);

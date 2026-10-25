@@ -54,7 +54,7 @@ import {
 import { namedAccounts } from './cell-lines.query.js';
 import { exemptionMarksOf, studentExemptionsOf } from './exemption-read.js';
 import { expectedStudents } from './expected-students.js';
-import { journalColumns } from './journal-works.query.js';
+import { journalsColumns, lessonNumbersOf } from './journal-works.query.js';
 import type { Column } from './lesson-columns.js';
 import {
   classesOfStudents,
@@ -401,7 +401,7 @@ export class JournalGridReader {
       }
     }
     const lessonIds = lessons.map((one) => one.id);
-    const [away, slots, works, cells, expected, memberships, weights, changedAt, names] =
+    const [away, slots, plan, cells, expected, memberships, weights, changedAt, names] =
       await Promise.all([
         awayLessons(
           transaction,
@@ -413,7 +413,7 @@ export class JournalGridReader {
           journal.grades.length === 0 ? undefined : Math.min(...journal.grades),
           lessons,
         ),
-        journalColumns(transaction, journal, timeZone, now),
+        journalsColumns(transaction, [journal], timeZone, now),
         lessonCells(transaction, lessonIds),
         expectedStudents(transaction, lessonIds),
         unitMemberships(transaction, journal, quarter.startDate, quarter.endDate),
@@ -436,6 +436,11 @@ export class JournalGridReader {
         ) === 'held',
       ]),
     );
+    const works = plan.journals.get(journal.id);
+    if (works === undefined) throw new Error('Every journal named has its columns.');
+    // Task 8.8 (`09`, In the journal): "The header of each lesson shows the lesson number and
+    // the topic"; numbered over every lesson of the quarter, a lesson reader's own included.
+    const numbers = lessonNumbersOf(journal, works.lessons);
     // Task 8.1: the columns of each lesson (`lesson-columns.ts`); a column with no row has no number.
     const columnsOf = new Map(lessonIds.map((id) => [id, works.columns.get(id) ?? null] as const));
     const worksOf = new Map<string, GridWorkRow[]>(
@@ -1121,6 +1126,9 @@ export class JournalGridReader {
         lock: lockOf(lesson),
         copyFrom: copyFroms.get(lesson.id) ?? null,
         planItem: columnsOf.get(lesson.id)?.planItem ?? false,
+        number: numbers.get(lesson.id) ?? null,
+        topic: plan.items.get(lesson.id)?.topic ?? null,
+        notDelivered: plan.notDelivered.has(lesson.id),
         works:
           shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),
         notHeldWorks:
@@ -1132,6 +1140,7 @@ export class JournalGridReader {
                 title: one.title,
                 checkAt: one.checkAt,
                 ungraded: one.ungraded,
+                notGiven: one.notGiven,
               })),
       })),
       reminders,

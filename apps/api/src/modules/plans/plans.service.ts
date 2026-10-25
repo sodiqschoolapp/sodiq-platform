@@ -35,6 +35,7 @@ import {
   type JournalRow,
 } from '../journal/journal-grid.query.js';
 import { removePlanWork } from '../journal/plan-work-remove.js';
+import { deliveryMarksOf } from '../journal/journal-works.query.js';
 import { takeOverUnplanned } from '../journal/works-takeover.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
@@ -64,6 +65,7 @@ import {
   type PlanReach,
   type PlanReader,
 } from './plan-scope.js';
+import { minimumMarkOf, minimumsOf, plannedWorkCounts } from './plan-minimums.js';
 import {
   gateDetail,
   openPeriodsOf,
@@ -175,194 +177,224 @@ export class PlansService {
 
   /** The plans the reader may read in a year, with the state of each quarter. */
   list(access: Access, query: PlanListQuery): Promise<PlanList> {
+    return this.transactions.run(access.branchIds, (transaction) =>
+      this.listIn(transaction, access, query),
+    );
+  }
+
+  /**
+   * The plans list read in a transaction of the caller (task 8.8: the
+   * completeness report reads it with its owners and minimums in one moment).
+   */
+  async listIn(transaction: Transaction, access: Access, query: PlanListQuery): Promise<PlanList> {
     const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const { today } = await clockOf(transaction, branchId);
-      const years = (
-        await transaction
-          .selectFrom('academic_years')
-          .select([
-            'id',
-            sql<string>`start_date::text`.as('start_date'),
-            sql<string>`end_date::text`.as('end_date'),
-            'status',
-          ])
-          .where('branch_id', '=', branchId)
-          .orderBy('start_date', 'desc')
-          .execute()
-      ).map((row) => ({
-        id: row.id,
-        startDate: row.start_date,
-        endDate: row.end_date,
-        closed: row.status === 'closed',
-      }));
-      let yearId: string | null;
-      if (query.yearId !== undefined) {
-        if (!years.some((year) => year.id === query.yearId)) throw notFound();
-        yearId = query.yearId;
-      } else {
-        yearId =
-          years.find((year) => year.startDate <= today && today <= year.endDate)?.id ??
-          years[0]?.id ??
-          null;
-      }
-      if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
-      const quarters = await datedQuarters(transaction, yearId);
-      const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
-        plannedJournal(journal),
-      );
-      const reader = await planReaderOf(transaction, access);
-      const facts = await ownerFactsOf(
-        transaction,
-        branchId,
-        journals.map((journal) => ({
-          id: journal.id,
-          academic_year_id: journal.academicYearId,
-          class_id: journal.classId,
-          group_id: journal.groupId,
-          subject_id: journal.subjectId,
-        })),
-      );
-      const readable = journals.filter((journal) =>
-        (quarters.length === 0 ? [null] : quarters).some((quarter) => {
-          const owner =
-            quarter === null
-              ? null
-              : ownerOn(
-                  facts.runs.get(journal.id) ?? [],
-                  facts.periods.get(journal.id) ?? [],
-                  facts.out,
-                  referenceDateOf(quarter, today),
-                );
-          const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
-          return planReachOf(reader, journal, ownerId).read;
-        }),
-      );
-      const counts = await this.rowCounts(transaction, readable, quarters);
-      const filled = await this.filledCounts(transaction, readable, quarters, counts);
-      // Task 7.2: the flag of each plan (overdue, window not opened, vacancy).
-      const { now, timeZone } = await clockOf(transaction, branchId);
-      const links =
-        readable.length === 0
-          ? []
-          : await transaction
-              .selectFrom('lesson_plan_journals')
-              .select(['plan_id', 'journal_id', 'quarter_id'])
-              .where(
-                'journal_id',
-                'in',
-                readable.map((journal) => journal.id),
-              )
-              .execute();
-      const planOf = new Map(
-        links.map((link) => [`${link.journal_id}|${link.quarter_id}`, link.plan_id]),
-      );
-      const ownerPeriods = await ownerPeriodsOf(
-        transaction,
-        links.map((link) => link.plan_id),
-        now,
-      );
-      const windowStates = new Map<string, PlanWindowState>();
-      const stateOf = async (quarter: PlanQuarter, ownerId: string | null) => {
-        const key = `${quarter.id}|${ownerId ?? ''}`;
-        const known = windowStates.get(key);
-        if (known !== undefined) return known;
-        const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
-        const found = windowStateOf(window, now).state;
-        windowStates.set(key, found);
-        return found;
-      };
-      const flags = new Map<string, PlanFlag | null>();
-      for (const journal of readable) {
-        for (const quarter of quarters) {
-          const key = `${journal.id}|${quarter.id}`;
-          const owner = ownerOn(
-            facts.runs.get(journal.id) ?? [],
-            facts.periods.get(journal.id) ?? [],
-            facts.out,
-            referenceDateOf(quarter, today),
-          );
-          const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
-          const rows = counts.get(key) ?? 0;
-          flags.set(
-            key,
-            planFlagOf({
-              rows,
-              complete: (filled.get(key)?.topics ?? 0) >= rows,
-              vacancy: owner?.kind === 'none',
-              window: await stateOf(quarter, ownerId),
-              ownerPeriod: ownerPeriods.has(`${planOf.get(key) ?? ''}|${journal.id}`),
-            }),
-          );
-        }
-      }
-      // Task 7.3: "master updated" (decision 12), worked out only for a plan whose master moved on.
-      const updated = new Set<string>();
-      const linked =
-        links.length === 0
-          ? []
-          : await transaction
-              .selectFrom('lesson_plans')
-              .innerJoin('lesson_plan_masters', 'lesson_plan_masters.id', 'lesson_plans.master_id')
-              .select(['lesson_plans.id'])
-              .where(
-                'lesson_plans.id',
-                'in',
-                links.map((link) => link.plan_id),
-              )
-              .whereRef('lesson_plan_masters.revision', '>', 'lesson_plans.master_revision')
-              .execute();
-      const moved = new Set(linked.map((row) => row.id));
-      for (const link of links) {
-        if (!moved.has(link.plan_id)) continue;
-        const quarter = quarters.find((one) => one.id === link.quarter_id);
-        if (quarter === undefined) continue;
-        const mark = await planMasterMark(
-          transaction,
-          { branchId, quarter, timeZone, now },
-          link.plan_id,
+    const { today } = await clockOf(transaction, branchId);
+    const years = (
+      await transaction
+        .selectFrom('academic_years')
+        .select([
+          'id',
+          sql<string>`start_date::text`.as('start_date'),
+          sql<string>`end_date::text`.as('end_date'),
+          'status',
+        ])
+        .where('branch_id', '=', branchId)
+        .orderBy('start_date', 'desc')
+        .execute()
+    ).map((row) => ({
+      id: row.id,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      closed: row.status === 'closed',
+    }));
+    let yearId: string | null;
+    if (query.yearId !== undefined) {
+      if (!years.some((year) => year.id === query.yearId)) throw notFound();
+      yearId = query.yearId;
+    } else {
+      yearId =
+        years.find((year) => year.startDate <= today && today <= year.endDate)?.id ??
+        years[0]?.id ??
+        null;
+    }
+    if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
+    const quarters = await datedQuarters(transaction, yearId);
+    const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
+      plannedJournal(journal),
+    );
+    const reader = await planReaderOf(transaction, access);
+    const facts = await ownerFactsOf(
+      transaction,
+      branchId,
+      journals.map((journal) => ({
+        id: journal.id,
+        academic_year_id: journal.academicYearId,
+        class_id: journal.classId,
+        group_id: journal.groupId,
+        subject_id: journal.subjectId,
+      })),
+    );
+    const readable = journals.filter((journal) =>
+      (quarters.length === 0 ? [null] : quarters).some((quarter) => {
+        const owner =
+          quarter === null
+            ? null
+            : ownerOn(
+                facts.runs.get(journal.id) ?? [],
+                facts.periods.get(journal.id) ?? [],
+                facts.out,
+                referenceDateOf(quarter, today),
+              );
+        const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
+        return planReachOf(reader, journal, ownerId).read;
+      }),
+    );
+    const counts = await this.rowCounts(transaction, readable, quarters);
+    const filled = await this.filledCounts(transaction, readable, quarters, counts);
+    // Task 7.2: the flag of each plan (overdue, window not opened, vacancy).
+    const { now, timeZone } = await clockOf(transaction, branchId);
+    const links =
+      readable.length === 0
+        ? []
+        : await transaction
+            .selectFrom('lesson_plan_journals')
+            .select(['plan_id', 'journal_id', 'quarter_id'])
+            .where(
+              'journal_id',
+              'in',
+              readable.map((journal) => journal.id),
+            )
+            .execute();
+    const planOf = new Map(
+      links.map((link) => [`${link.journal_id}|${link.quarter_id}`, link.plan_id]),
+    );
+    const ownerPeriods = await ownerPeriodsOf(
+      transaction,
+      links.map((link) => link.plan_id),
+      now,
+    );
+    const windowStates = new Map<string, PlanWindowState>();
+    const stateOf = async (quarter: PlanQuarter, ownerId: string | null) => {
+      const key = `${quarter.id}|${ownerId ?? ''}`;
+      const known = windowStates.get(key);
+      if (known !== undefined) return known;
+      const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
+      const found = windowStateOf(window, now).state;
+      windowStates.set(key, found);
+      return found;
+    };
+    const flags = new Map<string, PlanFlag | null>();
+    // Task 8.8: whether the owner's window has ended, for the minimum's warning.
+    const ended = new Set<string>();
+    for (const journal of readable) {
+      for (const quarter of quarters) {
+        const key = `${journal.id}|${quarter.id}`;
+        const owner = ownerOn(
+          facts.runs.get(journal.id) ?? [],
+          facts.periods.get(journal.id) ?? [],
+          facts.out,
+          referenceDateOf(quarter, today),
         );
-        if (mark?.updated === true) updated.add(`${link.journal_id}|${link.quarter_id}`);
-      }
-      const sorted = [...readable].sort(
-        (a, b) =>
-          Number(a.classId === null) - Number(b.classId === null) ||
-          (a.grades[0] ?? 0) - (b.grades[0] ?? 0) ||
-          a.unitName.localeCompare(b.unitName, 'en') ||
-          a.subject.names.en.localeCompare(b.subject.names.en, 'en'),
-      );
-      return planListSchema.parse({
-        years,
-        yearId,
-        quarters,
-        plans: sorted.map((journal) => ({
-          journalId: journal.id,
-          unit: unitOf(journal),
-          subject: subjectOf(journal),
-          quarters: quarters.map((quarter) => {
-            const key = `${journal.id}|${quarter.id}`;
-            const rows = counts.get(key) ?? 0;
-            const found = filled.get(key);
-            const topics = found?.topics ?? 0;
-            const state: PlanState =
-              rows === 0
-                ? 'no_lessons'
-                : found === undefined || found.items === 0
-                  ? 'not_started'
-                  : topics >= rows
-                    ? 'complete'
-                    : 'incomplete';
-            return {
-              quarterId: quarter.id,
-              state,
-              rows,
-              empty: Math.max(rows - topics, 0),
-              flag: flags.get(key) ?? null,
-              masterUpdated: updated.has(key),
-            };
+        const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
+        const rows = counts.get(key) ?? 0;
+        const windowState = await stateOf(quarter, ownerId);
+        if (windowState === 'ended') ended.add(key);
+        flags.set(
+          key,
+          planFlagOf({
+            rows,
+            complete: (filled.get(key)?.topics ?? 0) >= rows,
+            vacancy: owner?.kind === 'none',
+            window: windowState,
+            ownerPeriod: ownerPeriods.has(`${planOf.get(key) ?? ''}|${journal.id}`),
           }),
-        })),
-      });
+        );
+      }
+    }
+    // Task 7.3: "master updated" (decision 12), worked out only for a plan whose master moved on.
+    const updated = new Set<string>();
+    const linked =
+      links.length === 0
+        ? []
+        : await transaction
+            .selectFrom('lesson_plans')
+            .innerJoin('lesson_plan_masters', 'lesson_plan_masters.id', 'lesson_plans.master_id')
+            .select(['lesson_plans.id'])
+            .where(
+              'lesson_plans.id',
+              'in',
+              links.map((link) => link.plan_id),
+            )
+            .whereRef('lesson_plan_masters.revision', '>', 'lesson_plans.master_revision')
+            .execute();
+    const moved = new Set(linked.map((row) => row.id));
+    for (const link of links) {
+      if (!moved.has(link.plan_id)) continue;
+      const quarter = quarters.find((one) => one.id === link.quarter_id);
+      if (quarter === undefined) continue;
+      const mark = await planMasterMark(
+        transaction,
+        { branchId, quarter, timeZone, now },
+        link.plan_id,
+      );
+      if (mark?.updated === true) updated.add(`${link.journal_id}|${link.quarter_id}`);
+    }
+    const minimums = await minimumsOf(
+      transaction,
+      readable.map((journal) => journal.subjectId),
+    );
+    const workCounts = await plannedWorkCounts(
+      transaction,
+      links.map((link) => ({
+        planId: link.plan_id,
+        journalId: link.journal_id,
+        quarterId: link.quarter_id,
+      })),
+      counts,
+    );
+    const sorted = [...readable].sort(
+      (a, b) =>
+        Number(a.classId === null) - Number(b.classId === null) ||
+        (a.grades[0] ?? 0) - (b.grades[0] ?? 0) ||
+        a.unitName.localeCompare(b.unitName, 'en') ||
+        a.subject.names.en.localeCompare(b.subject.names.en, 'en'),
+    );
+    return planListSchema.parse({
+      years,
+      yearId,
+      quarters,
+      plans: sorted.map((journal) => ({
+        journalId: journal.id,
+        unit: unitOf(journal),
+        subject: subjectOf(journal),
+        quarters: quarters.map((quarter) => {
+          const key = `${journal.id}|${quarter.id}`;
+          const rows = counts.get(key) ?? 0;
+          const found = filled.get(key);
+          const topics = found?.topics ?? 0;
+          const state: PlanState =
+            rows === 0
+              ? 'no_lessons'
+              : found === undefined || found.items === 0
+                ? 'not_started'
+                : topics >= rows
+                  ? 'complete'
+                  : 'incomplete';
+          return {
+            quarterId: quarter.id,
+            state,
+            rows,
+            empty: Math.max(rows - topics, 0),
+            flag: flags.get(key) ?? null,
+            masterUpdated: updated.has(key),
+            belowMinimum: minimumMarkOf(
+              minimums.get(journal.subjectId),
+              workCounts.get(key),
+              ended.has(key),
+            ),
+          };
+        }),
+      })),
     });
   }
 
@@ -507,6 +539,24 @@ export class PlansService {
       window: state,
       ownerPeriod: ownerPeriods.has(`${planId ?? ''}|${scene.journal.id}`),
     });
+    // Task 8.8: the marks of the journal on the held rows, and the minimum's warning.
+    const marks = await deliveryMarksOf(
+      transaction,
+      rows.map((row) => row.lessonId),
+    );
+    const minimum = (await minimumsOf(transaction, [scene.journal.subjectId])).get(
+      scene.journal.subjectId,
+    );
+    const workCount =
+      planId === null
+        ? undefined
+        : (
+            await plannedWorkCounts(
+              transaction,
+              [{ planId, journalId: scene.journal.id, quarterId: scene.quarter.id }],
+              new Map([[`${scene.journal.id}|${scene.quarter.id}`, rows.length]]),
+            )
+          ).get(`${scene.journal.id}|${scene.quarter.id}`);
     const prepared =
       planId === null ? null : await preparedRequestOf(transaction, planId, scene.journal.id);
     let request: Plan['request'] = prepared;
@@ -562,6 +612,10 @@ export class PlansService {
         ...row,
         open: openOf(row),
         item: byPosition.get(row.number) ?? null,
+        notDelivered: marks.notDelivered.has(row.lessonId),
+        notGiven: (byPosition.get(row.number)?.homeworks ?? [])
+          .filter((work) => marks.notGiven.has(`${row.lessonId}/${work.id}`))
+          .map((work) => work.id),
       })),
       notCovered: items.filter((item) => item.position > rows.length),
       request,
@@ -571,6 +625,7 @@ export class PlansService {
         endDate: endsAt === null ? null : schoolDateOf(endsAt, scene.timeZone),
       },
       flag,
+      belowMinimum: minimumMarkOf(minimum, workCount, state === 'ended'),
       requests:
         planId === null || !seesRequests(scene.reader, scene.journal, scene.ownerId)
           ? []
@@ -1034,6 +1089,36 @@ export class PlansService {
   }
 
   /**
+   * Task 8.8 (decision 3, correction 2; `edge/lesson-plans`, Plans and the journal: "Adding a
+   * work is allowed, and the approval also opens that journal column for the same days"): a
+   * work added through an approved request to the item of a lesson already started opens its
+   * journal column for that request's period, wherever the column is shown
+   * (`lesson_plan_work_openings`, 0130). The period is the request's own, read on each write.
+   */
+  async openColumns(
+    transaction: Transaction,
+    branchId: string,
+    pass: GatePass,
+    planWorkIds: readonly string[],
+    startedIn: readonly string[],
+  ): Promise<void> {
+    if (pass.via !== 'request' || startedIn.length === 0 || planWorkIds.length === 0) return;
+    const rows = pass.periods.flatMap((period) =>
+      planWorkIds.map((planWorkId) => ({
+        branch_id: branchId,
+        plan_work_id: planWorkId,
+        request_id: period.requestId,
+      })),
+    );
+    if (rows.length === 0) return;
+    await transaction
+      .insertInto('lesson_plan_work_openings')
+      .values(rows)
+      .onConflict((conflict) => conflict.doNothing())
+      .execute();
+  }
+
+  /**
    * Task 8.1 (review correction 1): the works added by hand at the started
    * lessons of the item's rows are taken over by its works, in order
    * (`takeOverUnplanned`).
@@ -1113,14 +1198,52 @@ export class PlansService {
     });
   }
 
-  /** The scene of a read of an item's file: the request may read its plan. */
+  /**
+   * The scene of a read of an item's file: the request may read its plan, or
+   * (task 8.8, plan review correction 1) its reader is the substitute in force
+   * of a lesson whose row holds the item (`edge/lesson-plans`: "a substitute,
+   * for that lesson's item"; the lesson card lists its files).
+   */
   async itemReadScene(transaction: Transaction, access: Access, itemId: string): Promise<void> {
     const branchId = branchOf(access);
     const target = await this.itemTarget(transaction, itemId);
+    const scenes: Scene[] = [];
     // A reader of any journal of a shared plan reads its items.
     for (const journalId of target.journalIds) {
       const scene = await this.sceneOf(transaction, access, branchId, journalId, target.quarterId);
       if (scene.reach.read) return;
+      scenes.push(scene);
+    }
+    for (const scene of scenes) {
+      const staffId = scene.reader.staffId;
+      if (staffId === null) continue;
+      const place = await transaction
+        .selectFrom('lesson_plan_places')
+        .select('position')
+        .where('item_id', '=', itemId)
+        .where('journal_id', '=', scene.journal.id)
+        .executeTakeFirst();
+      if (place === undefined) continue;
+      const rows = await planRows(
+        transaction,
+        branchId,
+        scene.journal,
+        scene.quarter,
+        scene.timeZone,
+        scene.now,
+      );
+      const lessonId = rows[place.position - 1]?.lessonId;
+      if (lessonId === undefined) continue;
+      const lesson = await transaction
+        .selectFrom('lessons')
+        .select(['id', 'teacher_id'])
+        .where('id', '=', lessonId)
+        .executeTakeFirst();
+      if (lesson?.teacher_id !== staffId) continue;
+      const substitutes = await substitutionsInForce(transaction, [
+        { id: lesson.id, teacherId: lesson.teacher_id },
+      ]);
+      if (substitutes.has(lesson.id)) return;
     }
     throw scopeRefusal();
   }
@@ -1258,9 +1381,10 @@ export class PlansService {
             })
             .returning('id')
             .executeTakeFirstOrThrow();
+          const addedWorks: string[] = [];
           for (const { kind, list } of KINDS) {
             for (const [index, work] of values[list].entries()) {
-              await transaction
+              const added = await transaction
                 .insertInto('lesson_plan_works')
                 .values({
                   branch_id: branchId,
@@ -1270,7 +1394,9 @@ export class PlansService {
                   title: work.title,
                   description: work.description,
                 })
-                .execute();
+                .returning('id')
+                .executeTakeFirstOrThrow();
+              addedWorks.push(added.id);
             }
           }
           await transaction
@@ -1314,6 +1440,7 @@ export class PlansService {
           // Decided without the owner (code round 1): an item created on a held
           // row through a request changes the item of a lesson already held.
           await this.markEditedAfterLesson(transaction, pass, item.id, startedIn);
+          await this.openColumns(transaction, branchId, pass, addedWorks, startedIn);
           await this.takeOverWorks(transaction, scene, access, item.id, startedIn, requestId);
           const created = await this.itemOf(transaction, item.id, journalId);
           const row = rows[input.position - 1];
@@ -1469,6 +1596,7 @@ export class PlansService {
               .execute();
           }
           const removedWorks: ReturnType<typeof workEntry>[] = [];
+          const addedWorks: string[] = [];
           for (const change of workChanges) {
             const touched =
               change.removed.length > 0 ||
@@ -1501,7 +1629,7 @@ export class PlansService {
             for (const work of change.sent) {
               position += 1;
               if (work.id === undefined) {
-                await transaction
+                const added = await transaction
                   .insertInto('lesson_plan_works')
                   .values({
                     branch_id: branchId,
@@ -1511,7 +1639,9 @@ export class PlansService {
                     title: work.title,
                     description: work.description,
                   })
-                  .execute();
+                  .returning('id')
+                  .executeTakeFirstOrThrow();
+                addedWorks.push(added.id);
               } else if (change.now.some((one) => one.id === work.id)) {
                 await transaction
                   .updateTable('lesson_plan_works')
@@ -1535,6 +1665,7 @@ export class PlansService {
             );
           }
           await this.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
+          await this.openColumns(transaction, branchId, scene.pass, addedWorks, scene.startedIn);
           await this.takeOverWorks(transaction, scene, access, itemId, scene.startedIn, requestId);
           const saved = await this.itemOf(transaction, itemId, scene.journal.id);
           for (const change of workChanges) {

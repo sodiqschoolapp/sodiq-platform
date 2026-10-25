@@ -618,6 +618,7 @@ export interface JournalCellHistory {
   not_graded_after: Generated<boolean>;
   not_graded_before: Generated<boolean>;
   orphan_assignment_id: string | null;
+  plan_request_id: string | null;
   reason: string | null;
   score_after: number | null;
   score_before: number | null;
@@ -684,6 +685,22 @@ export interface JournalComments {
   work_id: string | null;
 }
 
+export interface JournalDeliveryHistory {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string | null;
+  changed_how: string;
+  id: Generated<string>;
+  journal_id: string;
+  kind: string;
+  lesson_id: string;
+  marked_after: boolean;
+  marked_before: boolean;
+  plan_work_id: string | null;
+  unlock_id: string | null;
+  written_xact: Generated<string>;
+}
+
 export interface JournalEditExtensions {
   branch_id: string;
   created_at: Timestamp;
@@ -694,6 +711,32 @@ export interface JournalEditExtensions {
   open_until: Timestamp;
   reason: string;
   to_date: string;
+}
+
+export interface JournalHomeworkNotGiven {
+  branch_id: string;
+  changed_by: string;
+  changed_how: string;
+  id: Generated<string>;
+  journal_id: string;
+  lesson_id: string;
+  plan_work_id: string;
+  set_at: Timestamp;
+  undone_at: Timestamp | null;
+}
+
+export interface JournalLessonDeliveries {
+  branch_id: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  changed_how: string;
+  copy_item_id: string | null;
+  id: Generated<string>;
+  item_id: string;
+  journal_id: string;
+  lesson_id: string;
+  not_delivered: boolean;
+  version: Generated<number>;
 }
 
 export interface JournalOptionalCells {
@@ -848,6 +891,7 @@ export interface JournalWorkHistory {
   not_held_after: boolean | null;
   not_held_before: boolean | null;
   orphan_assignment_id: string | null;
+  plan_request_id: string | null;
   plan_work_after: string | null;
   plan_work_before: string | null;
   reason: string | null;
@@ -1023,6 +1067,7 @@ export interface LessonPlanItems {
   id: Generated<string>;
   links: Generated<string[]>;
   master_item_id: string | null;
+  not_delivered_from: string | null;
   objectives: Generated<string>;
   plan_id: string;
   topic: string;
@@ -1175,6 +1220,14 @@ export interface LessonPlanWindows {
   quarter_id: string;
   start_date: string;
   starts_at: Timestamp;
+}
+
+export interface LessonPlanWorkOpenings {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  plan_work_id: string;
+  request_id: string;
 }
 
 export interface LessonPlanWorks {
@@ -1652,6 +1705,17 @@ export interface SubjectDailyWeights {
   weights_round: Generated<number>;
 }
 
+export interface SubjectPlanMinimums {
+  branch_id: string;
+  changed_at: Generated<Timestamp>;
+  changed_by: string;
+  classworks: number;
+  homeworks: number;
+  id: Generated<string>;
+  subject_id: string;
+  version: Generated<number>;
+}
+
 export interface SubjectQuarterWeights {
   attendance: number;
   branch_id: string;
@@ -1924,7 +1988,10 @@ export interface DB {
   journal_cells: JournalCells;
   journal_comment_history: JournalCommentHistory;
   journal_comments: JournalComments;
+  journal_delivery_history: JournalDeliveryHistory;
   journal_edit_extensions: JournalEditExtensions;
+  journal_homework_not_given: JournalHomeworkNotGiven;
+  journal_lesson_deliveries: JournalLessonDeliveries;
   journal_optional_cells: JournalOptionalCells;
   journal_orphan_assignments: JournalOrphanAssignments;
   journal_rating_entries: JournalRatingEntries;
@@ -1959,6 +2026,7 @@ export interface DB {
   lesson_plan_rows: LessonPlanRows;
   lesson_plan_window_extensions: LessonPlanWindowExtensions;
   lesson_plan_windows: LessonPlanWindows;
+  lesson_plan_work_openings: LessonPlanWorkOpenings;
   lesson_plan_works: LessonPlanWorks;
   lesson_plans: LessonPlans;
   lessons: Lessons;
@@ -2001,6 +2069,7 @@ export interface DB {
   student_uids: StudentUids;
   students: Students;
   subject_daily_weights: SubjectDailyWeights;
+  subject_plan_minimums: SubjectPlanMinimums;
   subject_quarter_weights: SubjectQuarterWeights;
   subject_switches: SubjectSwitches;
   subjects: Subjects;

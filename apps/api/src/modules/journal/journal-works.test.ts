@@ -866,7 +866,7 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.third).given).toEqual([
-          { title: 'Revise', checkAt: null, ungraded: 'year_end' },
+          { title: 'Revise', checkAt: null, ungraded: 'year_end', notGiven: false },
         ]);
       });
       // The journal runs no day after the 26th (7.1b decision 9).

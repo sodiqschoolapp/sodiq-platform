@@ -197,6 +197,40 @@ export async function allCellsOpen(
   return found.rows[0]?.open === true;
 }
 
+/**
+ * Task 8.8 (decision 3, correction 2; `edge/lesson-plans`: "the approval also opens that
+ * journal column for the same days"): the approved plan request of the lesson's journal whose
+ * period is open at `now` and under which every plan work named was added
+ * (`lesson_plan_work_openings`, 0130), else `null`. The guard of 0130 checks the same again.
+ */
+export async function openingRequestOf(
+  transaction: Transaction,
+  lesson: Pick<EntryLesson, 'journalId'>,
+  planWorks: readonly string[],
+  now: Date,
+): Promise<string | null> {
+  const ids = [...new Set(planWorks.map((id) => id.toLowerCase()))];
+  if (ids.length === 0 || lesson.journalId === null) return null;
+  const found = await transaction
+    .selectFrom('lesson_plan_work_openings')
+    .innerJoin(
+      'lesson_plan_requests',
+      'lesson_plan_requests.id',
+      'lesson_plan_work_openings.request_id',
+    )
+    .select('lesson_plan_work_openings.request_id')
+    .where('lesson_plan_work_openings.plan_work_id', 'in', ids)
+    .where('lesson_plan_requests.journal_id', '=', lesson.journalId)
+    .where('lesson_plan_requests.status', '=', 'approved')
+    .where('lesson_plan_requests.finished_at', 'is', null)
+    .where('lesson_plan_requests.open_until', '>=', now)
+    .groupBy('lesson_plan_work_openings.request_id')
+    .having(sql<number>`count(distinct lesson_plan_work_openings.plan_work_id)`, '=', ids.length)
+    .orderBy('lesson_plan_work_openings.request_id')
+    .executeTakeFirst();
+  return found?.request_id ?? null;
+}
+
 /** Whether the staff record teaches or owns the lesson (decision 3). */
 export function teachesOrOwns(
   lesson: Pick<EntryLesson, 'date' | 'teacherId' | 'journalId'>,
@@ -262,6 +296,8 @@ export async function enterableLesson(
     readonly correction?: { readonly reason: string } | undefined;
     /** Task 8.7: the students whose cells the write names, for the optional cells of a locked lesson. */
     readonly students?: readonly string[];
+    /** Task 8.8: the plan works of the work columns the write names (an opened column). */
+    readonly planWorks?: readonly string[];
   } = {},
 ): Promise<{ lesson: EntryLesson; now: Date; timeZone: string; write: WriteHow }> {
   const lesson = await lockedLesson(transaction, branchId, lessonId);
@@ -308,6 +344,10 @@ export async function enterableLesson(
     correction: options.correction,
     orphanAssignmentId,
     openCells: await allCellsOpen(transaction, lesson.id, options.students ?? []),
+    planRequestId:
+      options.correction === undefined && staffId !== null && lesson.teacherId === staffId
+        ? await openingRequestOf(transaction, lesson, options.planWorks ?? [], now)
+        : null,
   });
   return { lesson, now, timeZone: branch.time_zone, write };
 }

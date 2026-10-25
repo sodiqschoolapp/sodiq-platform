@@ -5719,6 +5719,251 @@ try {
   }
   seeded.statusTeacher = { login: statusTeacher.login, password: statusTeacher.firstPassword };
 
+  // Task 8.8: a branch of its own for plans in the journal: a class of two students, a teacher
+  // of its "Geodesy" (graded) with a lesson yesterday and one today at 00:05 (both held), and
+  // a plan item on yesterday's row with the homework "Read the map". The browser test opens
+  // yesterday's lesson card, marks the homework "not given", and today's homework column is
+  // gone. All names are invented.
+  const deliveryBranch = await insertBranch(migrator, 'Plans in the journal browser test branch');
+  const deliveryTeacher = await create('Dilfuza', 'Rahimova');
+  await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: deliveryTeacher.id,
+      role: 'teacher',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const today = isoDate(tashkentToday);
+    const lessonsKit = await LessonsKit.create(migrator);
+    const geodesy = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Geodesy',
+      journalType: 'graded',
+    });
+    const { yearId, classId, staffId, quarterId } = await migrator
+      .transaction()
+      .execute(async (transaction) => {
+        const academic = await transaction
+          .selectFrom('divisions')
+          .select('id')
+          .where('name_en', '=', 'Academic')
+          .executeTakeFirstOrThrow();
+        const steam = await transaction
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'STEAM')
+          .executeTakeFirstOrThrow();
+        const person = await transaction
+          .insertInto('staff')
+          .values({
+            kind: 'person',
+            staff_id: 'S-778801',
+            account_id: deliveryTeacher.id,
+            first_name: 'Dilfuza',
+            last_name: 'Rahimova',
+            sex: 'female',
+            birth_date: '1986-02-03',
+            phone: '+998935558801',
+            admission_date: '2026-09-01',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('staff_branches')
+          .values({ staff_id: person.id, branch_id: deliveryBranch, is_main: true })
+          .execute();
+        await transaction
+          .insertInto('staff_divisions')
+          .values({
+            staff_id: person.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
+          .execute();
+        await transaction
+          .insertInto('staff_languages')
+          .values({ staff_id: person.id, language: 'uz' })
+          .execute();
+        await transaction
+          .insertInto('staff_statuses')
+          .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+          .execute();
+        await transaction
+          .insertInto('staff_subjects')
+          .values({ staff_id: person.id, subject_id: geodesy, grades: [7] })
+          .execute();
+        const year = await transaction
+          .insertInto('academic_years')
+          .values({
+            branch_id: deliveryBranch,
+            start_date: startDate,
+            end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+        const quarters = await transaction
+          .insertInto('quarters')
+          .values(
+            [
+              [startDate, plus(20)],
+              [plus(30), plus(90)],
+              [plus(100), plus(170)],
+              [plus(180), isoDate(new Date(yearStart.getTime() + 364 * dayMs))],
+            ].map(([start, end], index) => ({
+              branch_id: deliveryBranch,
+              academic_year_id: year.id,
+              number: index + 1,
+              start_date: start,
+              end_date: end,
+            })),
+          )
+          .returning('id')
+          .execute();
+        const weights = { attendance: 20, classwork: 40, homework: 40 };
+        await transaction
+          .insertInto('subject_daily_weights')
+          .values({ branch_id: deliveryBranch, subject_id: geodesy, ...weights })
+          .execute();
+        await transaction
+          .insertInto('subject_quarter_weights')
+          .values(
+            quarters.map((quarter) => ({
+              branch_id: deliveryBranch,
+              subject_id: geodesy,
+              quarter_id: quarter.id,
+              ...weights,
+            })),
+          )
+          .execute();
+        const bristol = await transaction
+          .insertInto('classes')
+          .values({
+            branch_id: deliveryBranch,
+            academic_year_id: year.id,
+            grade: 7,
+            name: 'Bristol',
+            language: 'uz',
+            max_size: 24,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const [uid, first, last, phone] of [
+          ['9999651', 'Sardor', 'Alimov', '+998935553301'],
+          ['9999652', 'Zarina', 'Botirova', '+998935553302'],
+        ] as const) {
+          await studentInClass(transaction, {
+            branch: deliveryBranch,
+            classId: bristol.id,
+            uid,
+            first,
+            last,
+            createdBy: deliveryTeacher.id,
+            phone,
+          });
+        }
+        return {
+          yearId: year.id,
+          classId: bristol.id,
+          staffId: person.id,
+          quarterId: quarters[0]?.id ?? '',
+        };
+      });
+    const source = await lessonsKit.source(
+      deliveryBranch,
+      yearId,
+      [{ classId, groupId: null, subjectId: geodesy, rowTeacherId: staffId }],
+      startDate,
+    );
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: deliveryBranch,
+        academic_year_id: yearId,
+        class_id: classId,
+        group_id: null,
+        subject_id: geodesy,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    const yesterday = isoDate(new Date(tashkentToday.getTime() - dayMs));
+    const lessonIds: string[] = [];
+    for (const day of [yesterday, today]) {
+      await migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: deliveryBranch,
+            academic_year_id: yearId,
+            quarter_id: quarterId,
+            lesson_date: day,
+            starts_at: new Date(`${day}T00:05:00+05:00`),
+            ends_at: new Date(`${day}T00:50:00+05:00`),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        const lesson = await transaction
+          .insertInto('lessons')
+          .values({
+            branch_id: deliveryBranch,
+            block_id: block.id,
+            lesson_date: block.lesson_date,
+            starts_at: block.starts_at,
+            ends_at: block.ends_at,
+            class_id: classId,
+            subject_id: geodesy,
+            teacher_id: staffId,
+            load_row_id: source.lessons[0]?.loadRowId ?? '',
+            pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        lessonIds.push(lesson.id);
+      });
+    }
+    const plan = await migrator
+      .selectFrom('lesson_plan_journals')
+      .innerJoin('journals', 'journals.id', 'lesson_plan_journals.journal_id')
+      .select(['lesson_plan_journals.plan_id', 'lesson_plan_journals.journal_id'])
+      .where('journals.class_id', '=', classId)
+      .where('lesson_plan_journals.quarter_id', '=', quarterId)
+      .executeTakeFirstOrThrow();
+    const item = await migrator
+      .insertInto('lesson_plan_items')
+      .values({ branch_id: deliveryBranch, plan_id: plan.plan_id, topic: 'Contour lines' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await migrator
+      .insertInto('lesson_plan_works')
+      .values({
+        branch_id: deliveryBranch,
+        item_id: item.id,
+        kind: 'homework',
+        position: 1,
+        title: 'Read the map',
+      })
+      .execute();
+    await migrator
+      .insertInto('lesson_plan_places')
+      .values({
+        branch_id: deliveryBranch,
+        plan_id: plan.plan_id,
+        journal_id: plan.journal_id,
+        item_id: item.id,
+        position: 1,
+      })
+      .execute();
+  }
+  seeded.deliveryTeacher = {
+    login: deliveryTeacher.login,
+    password: deliveryTeacher.firstPassword,
+  };
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.
