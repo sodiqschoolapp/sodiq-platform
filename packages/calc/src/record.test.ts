@@ -3,7 +3,13 @@ import type { AttendanceMark } from './attendance.js';
 import { CalcInputError } from './input.js';
 import type { StudentQuarterInput } from './outcome.js';
 import type { QuarterLesson } from './quarter.js';
-import { finalQuarterRecord, recalculateAndCompare, type FinalQuarterRecord } from './record.js';
+import { studentQuarterOutcome } from './outcome.js';
+import {
+  finalQuarterRecord,
+  recalculateAndCompare,
+  storedQuarterOutcome,
+  type FinalQuarterRecord,
+} from './record.js';
 import { CALC_VERSION } from './version.js';
 
 function lesson(mark: AttendanceMark | null, score: number | null = null): QuarterLesson {
@@ -278,5 +284,102 @@ describe('recalculateAndCompare', () => {
   it.each(edits)('refuses a record with %s', (_label, edit) => {
     const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as Stored;
     expect(codeOf(() => recalculateAndCompare(edit(stored)))).toBe('record_shape');
+  });
+});
+
+// Task 9.2b, review decision 1 (Look first): a closed quarter's figures are read from the stored
+// record, never recalculated (07: "the results are stored as final"; edge/calculation: "A release
+// never changes closed results silently").
+describe('storedQuarterOutcome', () => {
+  const cases: readonly [string, StudentQuarterInput, 'closing' | 'at_leaving'][] = [
+    ['a number with every part', CLOSED, 'closing'],
+    [
+      'a kept number with a flag and a part left out',
+      { ...CLOSED, lessons: [lesson(1)], heldInJournals: 40, decision: 'keep' },
+      'closing',
+    ],
+    [
+      'an Exempt with no lesson remaining',
+      { ...CLOSED, lessons: [lesson(4)], ratingExam: { kind: 'exempt' } },
+      'closing',
+    ],
+    [
+      'a Not assessed',
+      {
+        ...CLOSED,
+        lessons: [lesson(0)],
+        ratingExam: { kind: 'did_not_sit' },
+        decision: 'not_assessed',
+      },
+      'closing',
+    ],
+    [
+      'a No result',
+      { ...CLOSED, lessons: [lesson(null)], ratingExam: { kind: 'not_held' } },
+      'closing',
+    ],
+    ['a start quarter with its from date', { ...CLOSED, countsFrom: '2026-11-16' }, 'closing'],
+    [
+      'a result at leaving',
+      {
+        ...CLOSED,
+        quarterClosed: false,
+        ratingExam: null,
+        lessons: [lesson(1, 20)],
+        heldInJournals: 40,
+        atLeaving: '2026-10-09',
+      },
+      'at_leaving',
+    ],
+  ];
+
+  it.each(cases)('reads %s back as the module gave it', (_, input, kind) => {
+    const stored = throughJson(finalQuarterRecord(input, kind));
+    expect(storedQuarterOutcome(stored)).toEqual(studentQuarterOutcome(input));
+  });
+
+  // The stored value wins over the inputs: a later module that would calculate otherwise never
+  // changes what was closed.
+  it('answers the stored outcome, not one calculated again from the inputs', () => {
+    const stored = throughJson(finalQuarterRecord(CLOSED, 'closing'));
+    const changed = JSON.parse(
+      JSON.stringify(stored).replace('"shown":"56"', '"shown":"55"'),
+    ) as unknown;
+    const outcome = storedQuarterOutcome(changed);
+    expect(outcome.kind === 'number' ? outcome.result.shown : null).toBe(55n);
+  });
+
+  type Stored = { outcome: Record<string, unknown> } & Record<string, unknown>;
+  const resultOf = (stored: Stored) => stored.outcome.result as Record<string, unknown>;
+  const broken: readonly [string, (stored: Stored) => unknown][] = [
+    ['not an object', () => 7],
+    ['format 2', (stored) => ({ ...stored, format: 2 })],
+    [
+      'an unknown outcome kind',
+      (stored) => ({ ...stored, outcome: { ...stored.outcome, kind: 'maybe' } }),
+    ],
+    [
+      'a fraction as a number',
+      (stored) => ({
+        ...stored,
+        outcome: { ...stored.outcome, result: { ...resultOf(stored), value: 55.6 } },
+      }),
+    ],
+    [
+      'a grade out of the bands',
+      (stored) => ({
+        ...stored,
+        outcome: { ...stored.outcome, result: { ...resultOf(stored), grade: 6 } },
+      }),
+    ],
+    [
+      'an unknown flag',
+      (stored) => ({ ...stored, outcome: { ...stored.outcome, flags: ['late'] } }),
+    ],
+  ];
+
+  it.each(broken)('refuses %s with record_shape', (_, edit) => {
+    const stored = throughJson(finalQuarterRecord(CLOSED, 'closing')) as Stored;
+    expect(codeOf(() => storedQuarterOutcome(edit(stored)))).toBe('record_shape');
   });
 });
