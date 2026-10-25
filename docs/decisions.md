@@ -320,6 +320,9 @@ Plan approved on pull request #226 with corrections 1 to 4; decisions 1 to 18 co
 | **Build decision.** "Not given" is set through the lesson the homework was given at; the card of the next lesson shows it under "checked today" | One lesson holds the mark and its edit period |
 | **Build decision.** The works dialog of a lesson opens from its lesson card; the 8.1 and 8.7 web and browser tests open it that way | `09`: "Clicking it opens the lesson card" |
 | **Build decision.** The opening of a column covers the lesson's recorded teacher (`lessons.teacher_id`: the owner, or the substitute in force) | The database reads one person per lesson |
+| **Build decision.** The opening also needs the lesson to be of the request's journal: one class's request of a shared plan opens no column of the other class | Permission review of the code; the request names one journal |
+| **Build decision.** The undo of "not delivered" leaves the `not_covered` cause on the prepared request | 7.1b decision 10: a cause that goes away stays; the teacher removes the request or its line |
+| **Build decision.** The completeness and progress reports count the plans of subjects outside the reader's scope (`otherSubjects`), never naming them | `api.md`: records outside the scope are counted, never named |
 
 ## 24 October 2026: lesson status, reminders and the discipline report (task 8.7)
 

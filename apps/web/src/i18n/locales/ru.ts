@@ -5580,6 +5580,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       allDepartments: 'Все кафедры',
       excel: 'Excel',
       branchCounts: 'Филиал: заполнено {{complete}} из {{plans}} планов ({{percent}})',
+      otherSubjects_one: 'Не показан {{count}} план предмета вне вашей области.',
+      otherSubjects_few: 'Не показаны {{count}} плана предметов вне вашей области.',
+      otherSubjects_many: 'Не показаны {{count}} планов предметов вне вашей области.',
+      otherSubjects_other: 'Не показаны {{count}} плана предметов вне вашей области.',
       counts: {
         plans: 'Планы',
         complete: 'Заполнены',

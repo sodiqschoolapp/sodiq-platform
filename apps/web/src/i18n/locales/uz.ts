@@ -5336,6 +5336,10 @@ export const uz: Texts<'one' | 'other'> = {
       allDepartments: 'Barcha kafedralar',
       excel: 'Excel',
       branchCounts: 'Filial: {{plans}} ta rejadan {{complete}} tasi toʻliq ({{percent}})',
+      otherSubjects_one:
+        'Sizning doirangizdan tashqari fanning {{count}} ta rejasi koʻrsatilmagan.',
+      otherSubjects_other:
+        'Sizning doirangizdan tashqari fanlarning {{count}} ta rejasi koʻrsatilmagan.',
       counts: {
         plans: 'Rejalar',
         complete: 'Toʻliq',

@@ -8,9 +8,11 @@ import {
   planCompletenessSchema,
   planProgressSchema,
   planRequestsReportSchema,
+  remindersSchema,
   type JournalGrid,
   type JournalLesson,
   type LessonCard,
+  type Reminder,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
@@ -22,9 +24,12 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { hoursOf, publishedScene } from '../../testing/published-scene.js';
+import { linesOf, RecordingPdf } from '../../testing/pdf-kit.js';
+import { binary } from '../../testing/xlsx-kit.js';
 import { MemoryPhotoStore, planFileKey } from '../people/photo-store.js';
 
 const store = new MemoryPhotoStore();
+const pdf = new RecordingPdf();
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -55,6 +60,7 @@ describe('plans in the journal', () => {
   interface Calls {
     get: (path: string) => Promise<Response>;
     put: (path: string, body: object) => Promise<Response>;
+    post: (path: string, body: object) => Promise<Response>;
   }
 
   const given = new Set<string>();
@@ -83,7 +89,7 @@ describe('plans in the journal', () => {
         .set({ created_at: new Date(moment), last_used_at: new Date(moment) })
         .where('account_id', '=', browser.account.id)
         .execute();
-      const at = (method: 'get' | 'put', path: string) =>
+      const at = (method: 'get' | 'put' | 'post', path: string) =>
         request(t.kit.server)
           [method](path)
           .set('Cookie', browser.cookie)
@@ -91,6 +97,7 @@ describe('plans in the journal', () => {
       return await work({
         get: (path) => at('get', path),
         put: (path, body) => at('put', path).send(body),
+        post: (path, body) => at('post', path).set(REQUEST_KEY_HEADER, randomUUID()).send(body),
       });
     } finally {
       t.clock.set(START);
@@ -265,12 +272,19 @@ describe('plans in the journal', () => {
           'lesson_plan_places',
           'lesson_plan_requests',
           'lesson_plan_request_causes',
+          'lesson_plan_works',
+          'notifications',
+          'audit_log',
         ] as const
       ).map((table) =>
         t.database.migrator
           .selectFrom(table)
           .selectAll()
           .where('branch_id', '=', branch)
+          // The roles a test gives write their own lines.
+          .$if(table === 'audit_log', (query) =>
+            query.where(sql<boolean>`action <> 'assignment.given'`),
+          )
           .orderBy((table === 'lesson_plan_places' ? 'item_id' : 'id') as never)
           .execute(),
       ),
@@ -284,8 +298,53 @@ describe('plans in the journal', () => {
       .orderBy('id')
       .execute();
 
+  /** An approved Text request of the owner on lessons, open until the 30th, as the migrator. */
+  async function approvedRequest(s: Scene, owner: string, lessons: readonly string[]) {
+    // Decided by another account (`refuseOwnRequest`).
+    const decider = (await account()).account.id;
+    const planId = await planOf(s.journal, s.q1);
+    const row = await t.database.migrator
+      .insertInto('lesson_plan_requests')
+      .values({
+        branch_id: s.branch,
+        plan_id: planId,
+        journal_id: s.journal,
+        quarter_id: s.q1,
+        kind: 'text',
+        status: 'approved',
+        reason: 'A quiz was given',
+        requested_by: owner,
+        sent_at: new Date('2026-10-27T09:00:00+05:00'),
+        decided_by: decider,
+        decided_at: new Date('2026-10-27T10:00:00+05:00'),
+        days: 3,
+        open_until: new Date('2026-10-30T23:59:59.999+05:00'),
+        prepared_at: new Date('2026-10-27T09:00:00+05:00'),
+        updated_at: new Date('2026-10-27T10:00:00+05:00'),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    for (const lessonId of lessons) {
+      const lesson = await t.database.migrator
+        .selectFrom('lessons')
+        .select(sql<string>`lesson_date::text`.as('date'))
+        .where('id', '=', lessonId)
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('lesson_plan_request_lessons')
+        .values({
+          branch_id: s.branch,
+          request_id: row.id,
+          lesson_id: lessonId,
+          lesson_date: lesson.date,
+        })
+        .execute();
+    }
+    return row.id;
+  }
+
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true, photoStore: store });
+    t = await dayTemplatesKit({ jobs: true, photoStore: store, pdfRenderer: pdf });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -522,7 +581,7 @@ describe('plans in the journal', () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const other = await scene();
-      await itemAt(s, s.first, { homeworks: ['Read'] });
+      const own = await itemAt(s, s.first, { homeworks: ['Read'] });
       const second = await itemAt(s, s.second, { homeworks: ['Write'] });
       const theirs = await itemAt(other, other.first, { homeworks: ['Draw'] });
       const before = await rowsOf(s.branch);
@@ -540,14 +599,14 @@ describe('plans in the journal', () => {
           });
           expect(missing.status).toBe(404);
         }
-        const lessonMissing = await calls.put(
-          `/api/journal/lessons/${other.first}/homework-given`,
-          {
-            planWorkIds: [theirs.homeworks[0]],
+        // The path: another branch's or an unknown lesson, with a homework of this branch.
+        for (const lesson of [other.first, randomUUID()]) {
+          const lessonMissing = await calls.put(`/api/journal/lessons/${lesson}/homework-given`, {
+            planWorkIds: [own.homeworks[0]],
             notGiven: true,
-          },
-        );
-        expect(lessonMissing.status).toBe(404);
+          });
+          expect(lessonMissing.status).toBe(404);
+        }
       });
       expect(await rowsOf(s.branch)).toEqual(before);
       expect(await rowsOf(other.branch)).toEqual(otherBefore);
@@ -690,12 +749,27 @@ describe('plans in the journal', () => {
             }),
           ),
         );
-        // The other class's lesson moves: its journal follows.
+        // A held lesson of the other class is cancelled: its journal follows.
+        const [, otherSecond] = (
+          await t.database.migrator
+            .selectFrom('lessons')
+            .select('id')
+            .where('class_id', '=', s.otherClass)
+            .where('lesson_date', '>=', '2026-10-12')
+            .orderBy('starts_at')
+            .execute()
+        ).map((row) => row.id);
         await t.database.migrator
-          .updateTable('lessons')
-          .set({ cancel_cause: 'reason', cancel_reason: 'Quarantine' })
-          .where('id', '=', s.fourth)
+          .updateTable('sessions')
+          .set({ created_at: new Date(MOMENT), last_used_at: new Date(MOMENT) })
           .execute();
+        const cancelled = await request(t.kit.server)
+          .post(`/api/timetable/lessons/${otherSecond ?? ''}/correction`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ kind: 'cancel', reason: 'Quarantine', confirm: true });
+        expect(cancelled.status, JSON.stringify(cancelled.body)).toBeLessThan(300);
         const places = await t.database.migrator
           .selectFrom('lesson_plan_places')
           .select('journal_id')
@@ -913,48 +987,7 @@ describe('plans in the journal', () => {
   });
 
   describe('the column an approved request opens (decision 3)', () => {
-    /** An approved Text request of the owner on lessons, open until the 30th, as the migrator. */
-    async function approved(s: Scene, owner: string, lessons: readonly string[]) {
-      const planId = await planOf(s.journal, s.q1);
-      const row = await t.database.migrator
-        .insertInto('lesson_plan_requests')
-        .values({
-          branch_id: s.branch,
-          plan_id: planId,
-          journal_id: s.journal,
-          quarter_id: s.q1,
-          kind: 'text',
-          status: 'approved',
-          reason: 'A quiz was given',
-          requested_by: owner,
-          sent_at: new Date('2026-10-27T09:00:00+05:00'),
-          decided_by: owner,
-          decided_at: new Date('2026-10-27T10:00:00+05:00'),
-          days: 3,
-          open_until: new Date('2026-10-30T23:59:59.999+05:00'),
-          prepared_at: new Date('2026-10-27T09:00:00+05:00'),
-          updated_at: new Date('2026-10-27T10:00:00+05:00'),
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      for (const lessonId of lessons) {
-        const lesson = await t.database.migrator
-          .selectFrom('lessons')
-          .select(sql<string>`lesson_date::text`.as('date'))
-          .where('id', '=', lessonId)
-          .executeTakeFirstOrThrow();
-        await t.database.migrator
-          .insertInto('lesson_plan_request_lessons')
-          .values({
-            branch_id: s.branch,
-            request_id: row.id,
-            lesson_id: lessonId,
-            lesson_date: lesson.date,
-          })
-          .execute();
-      }
-      return row.id;
-    }
+    const approved = approvedRequest;
 
     const totalOn = (calls: Calls, lessonId: string, planWorkId: string, sourceLessonId: string) =>
       calls.put(`/api/journal/lessons/${lessonId}/works/total`, {
@@ -1546,6 +1579,1169 @@ describe('plans in the journal', () => {
       } finally {
         t.clock.set(START);
       }
+    });
+  });
+  describe('the paths of other branches, other subjects and other roles (code review)', () => {
+    it('answers 404 for the delivery of another branch’s or an unknown lesson, leaving every row of both branches', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first, { homeworks: ['Read'] });
+      const otherOwner = await account();
+      const other = await scene({ teacher: otherOwner.account.id });
+      await itemAt(other, other.first, { homeworks: ['Draw'] });
+      // Rows the route would write, in both branches.
+      await as(otherOwner, other.branch, teacherIn(other), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${other.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+      });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+      });
+      const before = await rowsOf(s.branch);
+      const otherBefore = await rowsOf(other.branch);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        for (const lesson of [other.first, randomUUID()]) {
+          for (const body of [
+            { notDelivered: true, version: null },
+            { notDelivered: false, version: 1 },
+          ]) {
+            const missing = await calls.put(`/api/journal/lessons/${lesson}/delivery`, body);
+            expect(missing.status).toBe(404);
+          }
+          expect((await calls.get(`/api/journal/lessons/${lesson}/card`)).status).toBe(404);
+        }
+      });
+      expect(await rowsOf(s.branch)).toEqual(before);
+      expect(await rowsOf(other.branch)).toEqual(otherBefore);
+    });
+
+    it('refuses the Academic Vice Principal both marks, and gives the card whole to the Head Teacher of the subject, the Senior Head Teacher and the vice; a Head Teacher of another subject is refused', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first, { classworks: ['Test'], homeworks: ['Read'] });
+      const before = await rowsOf(s.branch);
+      const vice = await account();
+      await as(
+        vice,
+        s.branch,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          const delivery = await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          });
+          expect(delivery.status).toBe(403);
+          expect(codeOf(delivery)).toBe('journal_entry_scope');
+          const card = await cardOf(calls, s.first);
+          expect(card).toMatchObject({ whole: true, canMark: false });
+          expect(card.classworks.map((one) => one.title)).toEqual(['Test']);
+          const homework = await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+            planWorkIds: card.givenToday.flatMap((one) =>
+              one.planWorkId === null ? [] : [one.planWorkId],
+            ),
+            notGiven: true,
+          });
+          expect(homework.status).toBe(403);
+          expect(codeOf(homework)).toBe('journal_entry_scope');
+        },
+      );
+      expect(await rowsOf(s.branch)).toEqual(before);
+      const head = await account();
+      await as(
+        head,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+        async (calls) => {
+          expect(await cardOf(calls, s.first)).toMatchObject({ whole: true, canMark: false });
+        },
+      );
+      const senior = await account();
+      await as(
+        senior,
+        s.branch,
+        [{ role: 'senior_head_teacher', subjectIds: [s.subject] }],
+        async (calls) => {
+          expect(await cardOf(calls, s.first)).toMatchObject({ whole: true, canMark: false });
+        },
+      );
+      const stranger = await account();
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      await as(
+        stranger,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
+        async (calls) => {
+          const refused = await calls.get(`/api/journal/lessons/${s.first}/card`);
+          expect(refused.status).toBe(403);
+        },
+      );
+    });
+
+    it('answers 404 for a minimum of an unknown subject, and refuses an attendance-only subject', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const attendance = await load.classes.subject({
+        grades: [7],
+        journalType: 'attendance_only',
+      });
+      const vice = await account();
+      const before = await rowsOf(s.branch);
+      await as(
+        vice,
+        s.branch,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          const unknown = await calls.put('/api/plans/minimums', {
+            subjectId: randomUUID(),
+            classworks: 1,
+            homeworks: 1,
+            version: null,
+          });
+          expect(unknown.status).toBe(404);
+          const only = await calls.put('/api/plans/minimums', {
+            subjectId: attendance,
+            classworks: 1,
+            homeworks: 1,
+            version: null,
+          });
+          expect(codeOf(only)).toBe('plan_attendance_only');
+        },
+      );
+      expect(await rowsOf(s.branch)).toEqual(before);
+      const stored = await t.database.migrator
+        .selectFrom('subject_plan_minimums')
+        .select('subject_id')
+        .where('branch_id', '=', s.branch)
+        .execute();
+      expect(stored).toEqual([]);
+    });
+  });
+
+  describe('the plan reports for each scope, the 404s and the files (code review)', () => {
+    /** A window of quarter 1 that ended on 20 October, as the migrator. */
+    const endedWindowOf = (s: Scene) =>
+      sql`
+        insert into lesson_plan_windows
+          (branch_id, quarter_id, start_date, end_date, starts_at, ends_at, opened_at, opened_by)
+        select q.branch_id, q.id, date '2026-09-01', date '2026-10-20',
+          (date '2026-09-01')::timestamp at time zone b.time_zone,
+          ((date '2026-10-21')::timestamp at time zone b.time_zone) - interval '1 millisecond',
+          now(), (select a.id from accounts a order by a.id limit 1)
+        from quarters q join branches b on b.id = q.branch_id
+        where q.id = ${s.q1}
+      `.execute(t.database.migrator);
+
+    const viceIn = (s: Scene) => [{ role: 'academic_vice_principal' as const, branchId: s.branch }];
+
+    const exportOf = (cookie: string, branch: string, body: object) =>
+      request(t.kit.server)
+        .post('/api/plans/reports/export')
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, branch)
+        .buffer(true)
+        .parse(binary)
+        .send(body);
+
+    const reportsOf = async (calls: Calls, quarterId: string) => ({
+      completeness: planCompletenessSchema.parse(
+        ok(await calls.get(`/api/plans/reports/completeness?quarterId=${quarterId}`)),
+      ),
+      progress: planProgressSchema.parse(
+        ok(await calls.get(`/api/plans/reports/progress?quarterId=${quarterId}`)),
+      ),
+      requests: planRequestsReportSchema.parse(
+        ok(await calls.get(`/api/plans/reports/requests?quarterId=${quarterId}`)),
+      ),
+    });
+
+    it('gives a Head Teacher who also teaches another subject the plans of the own subject only, counting the other, in every report and the file; a Senior Head Teacher the same', async () => {
+      const owner = await account();
+      const s = await publishedScene(t, load, {
+        graded: true,
+        accounts: { teacher: owner.account.id },
+        secondSubject: true,
+      });
+      // The second subject graded too, so its journal has a plan.
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ journal_type: 'graded' })
+        .where('id', '=', s.secondSubject ?? '')
+        .execute();
+      const q1 = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', s.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const journals = await t.database.migrator
+        .selectFrom('journals')
+        .select(['id', 'subject_id', 'class_id'])
+        .where('branch_id', '=', s.branch)
+        .execute();
+      const ofSubject = journals.filter((one) => one.subject_id === s.subject).map((one) => one.id);
+      const second = journals.find((one) => one.subject_id === s.secondSubject)?.id ?? '';
+      expect(ofSubject).toHaveLength(2);
+      const check = async (calls: Calls, shown: readonly string[], counted: number) => {
+        const reports = await reportsOf(calls, q1);
+        for (const report of [reports.completeness, reports.progress]) {
+          expect(report.plans.map((one) => one.journalId).sort()).toEqual([...shown].sort());
+          expect(report.otherSubjects).toBe(counted);
+        }
+      };
+      await as(
+        owner,
+        s.branch,
+        [
+          { role: 'teacher', branchId: s.branch },
+          { role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] },
+        ],
+        async (calls) => {
+          await check(calls, ofSubject, 1);
+          const file = await exportOf(owner.cookie, s.branch, {
+            report: 'completeness',
+            quarterId: q1,
+          });
+          expect(file.status).toBe(200);
+          const lines = await linesOf(file.body as Buffer);
+          const text = JSON.stringify(lines.lines.map((line) => line.values));
+          expect(text).not.toContain(s.secondSubject ?? 'none');
+          const secondName = await t.database.migrator
+            .selectFrom('subjects')
+            .select('name_en')
+            .where('id', '=', s.secondSubject ?? '')
+            .executeTakeFirstOrThrow();
+          expect(text).not.toContain(secondName.name_en);
+        },
+      );
+      const senior = await account();
+      await as(
+        senior,
+        s.branch,
+        [{ role: 'senior_head_teacher', subjectIds: [s.secondSubject ?? ''] }],
+        async (calls) => {
+          const reports = await reportsOf(calls, q1);
+          expect(reports.completeness.plans.map((one) => one.journalId)).toEqual([second]);
+          expect(reports.completeness.otherSubjects).toBe(2);
+        },
+      );
+    });
+
+    it('answers 404 for a quarter of another branch or an unknown one, in every report and the file, logging nothing', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const other = await scene();
+      const vice = await account();
+      const before = await rowsOf(s.branch);
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        for (const quarterId of [other.q1, randomUUID()]) {
+          for (const path of ['completeness', 'progress', 'requests']) {
+            const missing = await calls.get(`/api/plans/reports/${path}?quarterId=${quarterId}`);
+            expect(missing.status, path).toBe(404);
+          }
+          for (const report of ['completeness', 'progress', 'requests']) {
+            const file = await exportOf(vice.cookie, s.branch, { report, quarterId });
+            expect(file.status, report).toBe(404);
+          }
+        }
+      });
+      expect(await rowsOf(s.branch)).toEqual(before);
+    });
+
+    it('answers 404 for the plan file of another branch’s journal or quarter and unknown ids, and refuses a Head Teacher of another subject', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first);
+      const other = await scene();
+      const before = await rowsOf(s.branch);
+      const otherBefore = await rowsOf(other.branch);
+      const send = (cookie: string, journal: string, quarterId: string) =>
+        request(t.kit.server)
+          .post(`/api/plans/journals/${journal}/export`)
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, s.branch)
+          .send({ quarterId, format: 'xlsx' });
+      await as(owner, s.branch, teacherIn(s), async () => {
+        for (const [journal, quarter] of [
+          [other.journal, s.q1],
+          [s.journal, other.q1],
+          [randomUUID(), s.q1],
+          [s.journal, randomUUID()],
+        ] as const) {
+          expect((await send(owner.cookie, journal, quarter)).status).toBe(404);
+        }
+      });
+      const head = await account();
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      await as(
+        head,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
+        async () => {
+          expect((await send(head.cookie, s.journal, s.q1)).status).toBe(403);
+        },
+      );
+      expect(await rowsOf(s.branch)).toEqual(before);
+      expect(await rowsOf(other.branch)).toEqual(otherBefore);
+    });
+
+    it('gives each state and flag of completeness, and the minimum only once the window has ended', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      for (const lesson of [s.first, s.second, s.third]) await itemAt(s, lesson);
+      const vice = await account();
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        ok(
+          await calls.put('/api/plans/minimums', {
+            subjectId: s.subject,
+            classworks: 2,
+            homeworks: 0,
+            version: null,
+          }),
+        );
+        const open = planCompletenessSchema.parse(
+          ok(await calls.get(`/api/plans/reports/completeness?quarterId=${s.q1}`)),
+        );
+        expect(open.plans.find((one) => one.journalId === s.journal)).toMatchObject({
+          state: 'complete',
+          flag: null,
+          belowMinimum: null,
+        });
+        expect(open.plans.find((one) => one.journalId === s.otherJournal)).toMatchObject({
+          state: 'not_started',
+          flag: 'window_not_opened',
+          belowMinimum: null,
+        });
+        expect(open.branch).toMatchObject({
+          complete: 1,
+          notStarted: 1,
+          windowNotOpened: 1,
+          belowMinimum: 0,
+          percentComplete: 50,
+        });
+      });
+      await endedWindowOf(s);
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        const ended = planCompletenessSchema.parse(
+          ok(await calls.get(`/api/plans/reports/completeness?quarterId=${s.q1}`)),
+        );
+        expect(ended.plans.find((one) => one.journalId === s.journal)).toMatchObject({
+          state: 'complete',
+          flag: null,
+          belowMinimum: { classworks: 0, minimumClassworks: 2 },
+        });
+        expect(ended.plans.find((one) => one.journalId === s.otherJournal)).toMatchObject({
+          state: 'not_started',
+          flag: 'overdue',
+        });
+      });
+    });
+
+    it('exports the plan as PDF and Excel with its marks, and the progress report', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first, { homeworks: ['Read'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+        const card = await cardOf(calls, s.first);
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+            planWorkIds: card.givenToday.flatMap((one) =>
+              one.planWorkId === null ? [] : [one.planWorkId],
+            ),
+            notGiven: true,
+          }),
+        );
+      });
+      await t.database.migrator
+        .updateTable('accounts')
+        .set({ language: 'en' })
+        .where('id', '=', owner.account.id)
+        .execute();
+      await as(owner, s.branch, teacherIn(s), async () => {
+        const send = (format: 'pdf' | 'xlsx') =>
+          request(t.kit.server)
+            .post(`/api/plans/journals/${s.journal}/export`)
+            .set('Cookie', owner.cookie)
+            .set(BRANCH_HEADER, s.branch)
+            .buffer(true)
+            .parse(binary)
+            .send({ quarterId: s.q1, format });
+        const made = pdf.htmls.length;
+        const printed = await send('pdf');
+        expect(printed.status).toBe(200);
+        expect(printed.headers['content-type']).toContain('application/pdf');
+        expect(pdf.htmls).toHaveLength(made + 1);
+        expect(pdf.last).toContain('topic not delivered');
+        expect(pdf.last).toContain('not given: Read');
+        expect(pdf.last).toContain('Not covered');
+        const sheet = await send('xlsx');
+        expect(sheet.status).toBe(200);
+        const lines = (await linesOf(sheet.body as Buffer)).lines.map((line) =>
+          line.values.map((value) => (value === undefined ? null : value)),
+        );
+        const text = JSON.stringify(lines);
+        expect(text).toContain('topic not delivered');
+        expect(text).toContain('not given: Read');
+      });
+      const formats = (await entriesOf('plan.export'))
+        .filter((one) => one.record_id === s.journal)
+        .map((one) => (one.details as { format: string }).format);
+      expect(formats).toEqual(['pdf', 'xlsx']);
+      const vice = await account();
+      await t.database.migrator
+        .updateTable('accounts')
+        .set({ language: 'en' })
+        .where('id', '=', vice.account.id)
+        .execute();
+      await as(vice, s.branch, viceIn(s), async () => {
+        const before = (await entriesOf('plan_report.export')).length;
+        const file = await exportOf(vice.cookie, s.branch, { report: 'progress', quarterId: s.q1 });
+        expect(file.status).toBe(200);
+        const text = JSON.stringify(
+          (await linesOf(file.body as Buffer)).lines.map((one) => one.values),
+        );
+        expect(text).toContain('Behind the plan');
+        expect(await entriesOf('plan_report.export')).toHaveLength(before + 1);
+      });
+    });
+
+    it('lists what an approved request changed in the requests report', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first);
+      await endedWindowOf(s);
+      const requestId = await approvedRequest(s, owner.account.id, [s.first]);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const values = {
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: ['https://example.org/fractions'],
+          classworks: [],
+          homeworks: [],
+        };
+        ok(
+          await calls.put(`/api/plans/items/${item.itemId}`, {
+            base: values,
+            values: { ...values, topic: 'Fractions and decimals' },
+          }),
+        );
+      });
+      const vice = await account();
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        const report = planRequestsReportSchema.parse(
+          ok(await calls.get(`/api/plans/reports/requests?quarterId=${s.q1}`)),
+        );
+        const found = report.teachers
+          .flatMap((one) => one.requests)
+          .find((one) => one.id === requestId);
+        expect(found?.status).toBe('approved');
+        expect(found?.changes).toEqual([
+          expect.objectContaining({
+            topicBefore: 'Fractions',
+            topicAfter: 'Fractions and decimals',
+          }),
+        ]);
+      });
+    });
+  });
+
+  describe('the marks over many lessons, a late cancel and the entries of a homework (code review)', () => {
+    it('adds a second "not covered" cause to the one prepared request', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first);
+      await itemAt(s, s.second, { topic: 'Decimals' });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        for (const lesson of [s.first, s.second]) {
+          ok(
+            await calls.put(`/api/journal/lessons/${lesson}/delivery`, {
+              notDelivered: true,
+              version: null,
+            }),
+          );
+        }
+      });
+      const planId = await planOf(s.journal, s.q1);
+      const requests = await t.database.migrator
+        .selectFrom('lesson_plan_requests')
+        .select(['id', 'status'])
+        .where('plan_id', '=', planId)
+        .execute();
+      expect(requests.map((one) => one.status)).toEqual(['prepared']);
+      const causes = await t.database.migrator
+        .selectFrom('lesson_plan_request_causes')
+        .select('kind')
+        .where('request_id', '=', requests[0]?.id ?? '')
+        .execute();
+      expect(causes).toEqual([{ kind: 'not_covered' }, { kind: 'not_covered' }]);
+    });
+
+    it('keeps an edited copy when the lesson is cancelled later, and writes "withdrawn" lines into the history', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.second, { homeworks: ['Read'] });
+      let copyId = '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        copyId =
+          lessonDeliveryAnswerSchema.parse(
+            ok(
+              await calls.put(`/api/journal/lessons/${s.second}/delivery`, {
+                notDelivered: true,
+                version: null,
+              }),
+            ),
+          ).copyItemId ?? '';
+        ok(
+          await calls.put(`/api/journal/lessons/${s.second}/homework-given`, {
+            planWorkIds: item.homeworks,
+            notGiven: true,
+          }),
+        );
+      });
+      await t.database.migrator
+        .updateTable('lesson_plan_items')
+        .set({ topic: 'Decimals, taught again' })
+        .where('id', '=', copyId)
+        .execute();
+      t.clock.set(MOMENT);
+      await t.database.migrator
+        .updateTable('sessions')
+        .set({ created_at: new Date(MOMENT), last_used_at: new Date(MOMENT) })
+        .execute();
+      try {
+        const cancelled = await request(t.kit.server)
+          .post(`/api/timetable/lessons/${s.second}/correction`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ kind: 'cancel', reason: 'The class was on a trip', confirm: true });
+        expect(cancelled.status, JSON.stringify(cancelled.body)).toBeLessThan(300);
+      } finally {
+        t.clock.set(START);
+      }
+      const copy = await t.database.migrator
+        .selectFrom('lesson_plan_items')
+        .select(['cleared_at', 'topic'])
+        .where('id', '=', copyId)
+        .executeTakeFirstOrThrow();
+      expect(copy).toEqual({ cleared_at: null, topic: 'Decimals, taught again' });
+      const lines = await t.database.migrator
+        .selectFrom('journal_delivery_history')
+        .select(['kind', 'marked_before', 'marked_after', 'changed_how'])
+        .where('lesson_id', '=', s.second)
+        .orderBy('changed_at')
+        .orderBy('kind', 'desc')
+        .execute();
+      expect(lines).toEqual(
+        expect.arrayContaining([
+          { kind: 'topic', marked_before: true, marked_after: false, changed_how: 'withdrawn' },
+          { kind: 'homework', marked_before: true, marked_after: false, changed_how: 'withdrawn' },
+        ]),
+      );
+      expect(lines.filter((one) => one.changed_how === 'withdrawn')).toHaveLength(2);
+    });
+
+    it('refuses "not given" on a homework marked "not held" or carried at its check lesson', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      await itemAt(s, s.second);
+      const [read, write] = item.homeworks;
+      if (read === undefined || write === undefined) throw new Error('Two homeworks.');
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.second}/works/not-held`, {
+            column: { planWorkId: read, sourceLessonId: s.first },
+            notHeld: true,
+            version: null,
+            confirm: false,
+          }),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
+            column: { planWorkId: write, sourceLessonId: s.first },
+            version: null,
+          }),
+        );
+        for (const id of [read, write]) {
+          const refused = await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+            planWorkIds: [id],
+            notGiven: true,
+          });
+          expect(codeOf(refused)).toBe('homework_has_entries');
+        }
+      });
+      const live = await t.database.migrator
+        .selectFrom('journal_homework_not_given')
+        .select('id')
+        .where('lesson_id', '=', s.first)
+        .execute();
+      expect(live).toEqual([]);
+    });
+
+    it('refuses a plan save that removes a homework whose check lesson holds numbers', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read'] });
+      await itemAt(s, s.second);
+      const read = item.homeworks[0] ?? '';
+      // The plan window of quarter 1 is open until 31 October.
+      await sql`
+        insert into lesson_plan_windows
+          (branch_id, quarter_id, start_date, end_date, starts_at, ends_at, opened_at, opened_by)
+        select q.branch_id, q.id, date '2026-09-01', date '2026-10-31',
+          (date '2026-09-01')::timestamp at time zone b.time_zone,
+          ((date '2026-11-01')::timestamp at time zone b.time_zone) - interval '1 millisecond',
+          now(), (select a.id from accounts a order by a.id limit 1)
+        from quarters q join branches b on b.id = q.branch_id
+        where q.id = ${s.q1}
+      `.execute(t.database.migrator);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/attendance`, {
+            saves: [{ studentId: s.student, mark: 1, version: null }],
+          }),
+        );
+        const total = ok(
+          await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+            column: { planWorkId: read, sourceLessonId: s.first },
+            total: 10,
+            version: null,
+            confirm: false,
+          }),
+        ) as { id: string };
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/scores`, {
+            saves: [
+              { studentId: s.student, column: { workId: total.id }, score: 8, version: null },
+            ],
+          }),
+        );
+        const base = {
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: ['https://example.org/fractions'],
+          classworks: [],
+          homeworks: [{ id: read, title: 'Read', description: 'About Read' }],
+        };
+        const removed = await calls.put(`/api/plans/items/${item.itemId}`, {
+          base,
+          values: { ...base, homeworks: [] },
+        });
+        expect(codeOf(removed)).toBe('plan_work_has_data');
+      });
+    });
+  });
+
+  describe('lesson status with the marks and the opening (code review)', () => {
+    const statusIn = (grid: JournalGrid, lessonId: string) =>
+      grid.lessons.find((one) => one.id === lessonId)?.status;
+
+    const remindedOf = async (calls: Calls, lessonId: string) =>
+      (
+        remindersSchema.parse(ok(await calls.get('/api/journal/reminders'))).reminders as Reminder[]
+      ).flatMap((one) =>
+        one.kind !== 'rating_missing' && one.lesson.id === lessonId ? [one.kind] : [],
+      );
+
+    it('completes the check lesson of a homework not given, and the reminder of its numbers goes', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read'] });
+      await itemAt(s, s.second);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/attendance`, {
+            saves: [{ studentId: s.student, mark: 1, version: null }],
+          }),
+        );
+        expect(statusIn(await gridOf(calls, s.journal), s.second)).toBe('in_progress');
+        expect(await remindedOf(calls, s.second)).toContain('numbers_missing');
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+            planWorkIds: item.homeworks,
+            notGiven: true,
+          }),
+        );
+        expect(statusIn(await gridOf(calls, s.journal), s.second)).toBe('complete');
+        expect(await remindedOf(calls, s.second)).not.toContain('numbers_missing');
+      });
+    });
+
+    it('makes a locked lesson incomplete with a work its opening adds, and complete once it is graded', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first);
+      await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          ok(
+            await calls.post(`/api/journal/lessons/${s.first}/attendance`, {
+              saves: [{ studentId: s.student, mark: 1, version: null }],
+            }),
+          );
+        },
+        '2026-10-12T12:00:00+05:00',
+      );
+      await setEditDays(t.database.migrator, s.branch, 7);
+      await approvedRequest(s, owner.account.id, [s.first]);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        expect(statusIn(await gridOf(calls, s.journal), s.first)).toBe('complete');
+        const base = {
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: ['https://example.org/fractions'],
+          classworks: [],
+          homeworks: [],
+        };
+        const saved = ok(
+          await calls.put(`/api/plans/items/${item.itemId}`, {
+            base,
+            values: { ...base, classworks: [{ title: 'Quiz', description: '' }] },
+          }),
+        ) as { classworks: { id: string }[] };
+        const quiz = saved.classworks[0]?.id ?? '';
+        expect(statusIn(await gridOf(calls, s.journal), s.first)).toBe('locked_incomplete');
+        const total = ok(
+          await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+            column: { planWorkId: quiz, sourceLessonId: s.first },
+            total: 10,
+            version: null,
+            confirm: false,
+          }),
+        ) as { id: string };
+        expect(await remindedOf(calls, s.first)).toContain('numbers_missing');
+        ok(
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [
+              { studentId: s.student, column: { workId: total.id }, score: 8, version: null },
+            ],
+          }),
+        );
+        expect(statusIn(await gridOf(calls, s.journal), s.first)).toBe('complete');
+        expect(await remindedOf(calls, s.first)).not.toContain('numbers_missing');
+      });
+    });
+  });
+
+  describe('the opening of one class and the substitute (code review)', () => {
+    it('opens no column of the other class of a shared plan whose request names one class', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id }, true);
+      const planId = await planOf(s.journal, s.q1);
+      const otherPlan = await planOf(s.otherJournal, s.q1);
+      await t.database.migrator
+        .updateTable('lesson_plan_journals')
+        .set({ plan_id: planId })
+        .where('plan_id', '=', otherPlan)
+        .where('journal_id', '=', s.otherJournal)
+        .execute();
+      const item = await itemAt(s, s.first, {}, [
+        { journal: s.journal, classId: s.classId, lesson: s.first },
+        { journal: s.otherJournal, classId: s.otherClass, lesson: s.otherFirst },
+      ]);
+      await setEditDays(t.database.migrator, s.branch, 7);
+      const requestId = await approvedRequest(s, owner.account.id, [s.first]);
+      // The work the request added, opened for its one class, as the save writes them.
+      const quiz = (
+        await t.database.migrator
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: s.branch,
+            item_id: item.itemId,
+            kind: 'classwork',
+            position: 1,
+            title: 'Quiz',
+            description: '',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await t.database.migrator
+        .insertInto('lesson_plan_work_openings')
+        .values({ branch_id: s.branch, plan_work_id: quiz, request_id: requestId })
+        .execute();
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const own = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+          column: { planWorkId: quiz, sourceLessonId: s.first },
+          total: 10,
+          version: null,
+          confirm: false,
+        });
+        expect(own.status, JSON.stringify(own.body)).toBe(200);
+        const theirs = await calls.put(`/api/journal/lessons/${s.otherFirst}/works/total`, {
+          column: { planWorkId: quiz, sourceLessonId: s.otherFirst },
+          total: 10,
+          version: null,
+          confirm: false,
+        });
+        expect(codeOf(theirs)).toBe('journal_locked');
+      });
+      // The guard of 0130 refuses it too, with the request named.
+      const work = await t.database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: s.branch,
+          lesson_id: s.otherFirst,
+          source_lesson_id: s.otherFirst,
+          plan_work_id: quiz,
+          kind: 'classwork',
+          changed_by: owner.account.id,
+          changed_how: 'entry',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      t.clock.set(MOMENT);
+      try {
+        const refused = await t.app
+          .get(Transactions)
+          .run([s.branch], async (transaction) => {
+            await transaction
+              .insertInto('audit_log')
+              .values({
+                occurred_at: new Date(MOMENT),
+                branch_id: s.branch,
+                action: 'test.opening',
+              })
+              .execute();
+            await sql`select set_config('app.plan_request_id', ${requestId}, true)`.execute(
+              transaction,
+            );
+            await transaction
+              .updateTable('journal_works')
+              .set({ total: 10, changed_by: owner.account.id, changed_how: 'entry' })
+              .where('id', '=', work.id)
+              .execute();
+          })
+          .then(
+            () => null,
+            (failure: unknown) => failure as { constraint?: string },
+          );
+        expect(refused?.constraint).toBe('journal_locked');
+      } finally {
+        t.clock.set(START);
+      }
+    });
+
+    it('lets the substitute of a locked lesson grade the opened column, and not the owner (decision 3)', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.second);
+      const sub = await account();
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      const substitute = await load.teacher(s.branch, {
+        subjects: [{ subject: otherSubject, grades: [7] }],
+        accountId: sub.account.id,
+      });
+      await hoursOf(t, s.branch, substitute.staffId);
+      await t.database.migrator
+        .deleteFrom('staff_availability_ranges')
+        .where('staff_id', '=', s.spareTeacher.staffId)
+        .where('weekday', '=', 1)
+        .execute();
+      ok(
+        await request(t.kit.server)
+          .post(`/api/timetable/lessons/${s.second}/substitute`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({
+            teacherId: substitute.staffId,
+            reason: 'The teacher is at a seminar',
+            confirm: true,
+          }),
+      );
+      await setEditDays(t.database.migrator, s.branch, 7);
+      await approvedRequest(s, owner.account.id, [s.second]);
+      let quiz = '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const base = {
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: ['https://example.org/fractions'],
+          classworks: [],
+          homeworks: [],
+        };
+        const saved = ok(
+          await calls.put(`/api/plans/items/${item.itemId}`, {
+            base,
+            values: { ...base, classworks: [{ title: 'Quiz', description: '' }] },
+          }),
+        ) as { classworks: { id: string }[] };
+        quiz = saved.classworks[0]?.id ?? '';
+        const refused = await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+          column: { planWorkId: quiz, sourceLessonId: s.second },
+          total: 10,
+          version: null,
+          confirm: false,
+        });
+        expect(codeOf(refused)).toBe('journal_locked');
+      });
+      await as(sub, s.branch, teacherIn(s), async (calls) => {
+        const graded = await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+          column: { planWorkId: quiz, sourceLessonId: s.second },
+          total: 10,
+          version: null,
+          confirm: false,
+        });
+        expect(graded.status, JSON.stringify(graded.body)).toBe(200);
+      });
+    });
+  });
+
+  describe('the guards of the marks in the database (code review)', () => {
+    /** A write as the application at MOMENT; the constraint of its refusal, `null` when it passes. */
+    const asApp = async (
+      s: Scene,
+      work: (transaction: Transaction) => Promise<unknown>,
+    ): Promise<string | null> => {
+      t.clock.set(MOMENT);
+      try {
+        return await t.app
+          .get(Transactions)
+          .run([s.branch], async (transaction) => {
+            await transaction
+              .insertInto('audit_log')
+              .values({ occurred_at: new Date(MOMENT), branch_id: s.branch, action: 'test.marks' })
+              .execute();
+            await work(transaction);
+          })
+          .then(
+            () => null,
+            (failure: unknown) =>
+              (failure as { constraint?: string }).constraint ?? String(failure),
+          );
+      } finally {
+        t.clock.set(START);
+      }
+    };
+
+    it('refuses after the lock the insert and undo of "not given" and the change of a delivery', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      const [read, write] = item.homeworks;
+      if (read === undefined || write === undefined) throw new Error('Two homeworks.');
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+            planWorkIds: [read],
+            notGiven: true,
+          }),
+        );
+      });
+      await setEditDays(t.database.migrator, s.branch, 7);
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .insertInto('journal_homework_not_given')
+            .values({
+              branch_id: s.branch,
+              lesson_id: s.first,
+              journal_id: s.journal,
+              plan_work_id: write,
+              changed_by: owner.account.id,
+              changed_how: 'entry',
+              set_at: new Date(MOMENT),
+            })
+            .execute(),
+        ),
+      ).toBe('journal_locked');
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .updateTable('journal_homework_not_given')
+            .set({ undone_at: new Date(MOMENT), changed_by: owner.account.id, changed_how: 'undo' })
+            .where('lesson_id', '=', s.first)
+            .where('plan_work_id', '=', read)
+            .execute(),
+        ),
+      ).toBe('journal_locked');
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .updateTable('journal_lesson_deliveries')
+            .set({
+              not_delivered: false,
+              version: 2,
+              changed_by: owner.account.id,
+              changed_how: 'undo',
+            })
+            .where('lesson_id', '=', s.first)
+            .execute(),
+        ),
+      ).toBe('journal_locked');
+      // Through the routes too.
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const undo = await calls.put(`/api/journal/lessons/${s.first}/homework-given`, {
+          planWorkIds: [read],
+          notGiven: false,
+        });
+        expect(codeOf(undo)).toBe('journal_locked');
+      });
+    });
+
+    it('lets the teacher mark under an approved unlock as a late entry naming it', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first);
+      await setEditDays(t.database.migrator, s.branch, 7);
+      const vice = await account();
+      const unlock = await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const asked = ok(
+          await calls.post(`/api/journal/lessons/${s.first}/unlocks`, {
+            reason: 'I was ill that week',
+          }),
+          201,
+        ) as { id: string; version: number };
+        return asked;
+      });
+      await as(
+        vice,
+        s.branch,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          ok(
+            await calls.post(`/api/journal/unlocks/${unlock.id}/decide`, {
+              decision: 'approve',
+              days: 2,
+              version: unlock.version,
+            }),
+          );
+        },
+      );
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+      });
+      const lines = await t.database.migrator
+        .selectFrom('journal_delivery_history')
+        .select(['changed_how', 'unlock_id'])
+        .where('lesson_id', '=', s.first)
+        .execute();
+      expect(lines).toEqual([{ changed_how: 'late_entry', unlock_id: unlock.id }]);
+    });
+
+    it('refuses a correction, a version out of order on a change, a final "not given", a separation onto another item and "withdrawn" on a lesson not cancelled', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      const elsewhere = await itemAt(s, s.second, { homeworks: ['Draw'] });
+      const [read, write] = item.homeworks;
+      if (read === undefined || write === undefined) throw new Error('Two homeworks.');
+      const vice = await account();
+      await t.kit.giveRole(vice.account.id, {
+        role: 'academic_vice_principal',
+        branchId: s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const delivery =
+        (values: { by?: string; how?: 'entry' | 'withdrawn' } = {}) =>
+        (transaction: Transaction) =>
+          transaction
+            .insertInto('journal_lesson_deliveries')
+            .values({
+              branch_id: s.branch,
+              lesson_id: s.first,
+              journal_id: s.journal,
+              item_id: item.itemId,
+              not_delivered: true,
+              changed_by: values.by ?? owner.account.id,
+              changed_how: values.how ?? 'entry',
+              changed_at: new Date(MOMENT),
+            })
+            .execute();
+      // A correction: the mark is no value of a cell (decision 6), for a corrector too.
+      expect(
+        await asApp(s, async (transaction) => {
+          await sql`select set_config('app.correction_reason', 'A typing mistake', true)`.execute(
+            transaction,
+          );
+          await delivery({ by: vice.account.id })(transaction);
+        }),
+      ).toBe('journal_correction_role');
+      expect(await asApp(s, delivery({ how: 'withdrawn' }))).toBe('journal_mark_withdrawn');
+      expect(await asApp(s, delivery())).toBeNull();
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .updateTable('journal_lesson_deliveries')
+            .set({ not_delivered: false, version: 1, changed_how: 'undo' })
+            .where('lesson_id', '=', s.first)
+            .execute(),
+        ),
+      ).toBe('journal_delivery_version');
+      const notGiven = (planWorkId: string) => (transaction: Transaction) =>
+        transaction
+          .insertInto('journal_homework_not_given')
+          .values({
+            branch_id: s.branch,
+            lesson_id: s.first,
+            journal_id: s.journal,
+            plan_work_id: planWorkId,
+            changed_by: owner.account.id,
+            changed_how: 'entry',
+            set_at: new Date(MOMENT),
+          })
+          .execute();
+      expect(await asApp(s, notGiven(read))).toBeNull();
+      expect(await asApp(s, notGiven(write))).toBeNull();
+      const undo = (planWorkId: string) => (transaction: Transaction) =>
+        transaction
+          .updateTable('journal_homework_not_given')
+          .set({ undone_at: new Date(MOMENT), changed_how: 'undo' })
+          .where('plan_work_id', '=', planWorkId)
+          .execute();
+      expect(await asApp(s, undo(read))).toBeNull();
+      // An undone mark is final; a live one is ended only by an undo.
+      expect(await asApp(s, undo(read))).toBe('journal_not_given_final');
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .updateTable('journal_homework_not_given')
+            .set({ changed_how: 'entry' })
+            .where('plan_work_id', '=', write)
+            .execute(),
+        ),
+      ).toBe('journal_not_given_final');
+      // A separation moves it only onto a work of the copy of its item.
+      expect(
+        await asApp(s, (transaction) =>
+          transaction
+            .updateTable('journal_homework_not_given')
+            .set({ plan_work_id: elsewhere.homeworks[0] ?? '' })
+            .where('plan_work_id', '=', write)
+            .execute(),
+        ),
+      ).toBe('journal_not_given_final');
     });
   });
 });

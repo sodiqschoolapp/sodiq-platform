@@ -333,6 +333,13 @@ export function PlanReportsPage(): React.JSX.Element {
 
   const quarters = data?.quarters ?? [];
   const departments = data?.departments ?? [];
+  // Plans of subjects outside the reader's scope: counted, never named (decision 1).
+  const otherSubjects =
+    report === 'completeness'
+      ? (completeness.data?.otherSubjects ?? 0)
+      : report === 'progress'
+        ? (progress.data?.otherSubjects ?? 0)
+        : 0;
   const list = (() => {
     const common = {
       search,
@@ -498,6 +505,11 @@ export function PlanReportsPage(): React.JSX.Element {
               complete: completeness.data.branch.complete,
               percent: percent(completeness.data.branch.percentComplete),
             })}
+          </p>
+        )}
+        {otherSubjects > 0 && (
+          <p className="text-muted-foreground text-sm" data-other-subjects="true">
+            {t('plans.reports.otherSubjects', { count: otherSubjects })}
           </p>
         )}
         {list}

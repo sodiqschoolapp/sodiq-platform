@@ -51,6 +51,7 @@ const COMPLETENESS: PlanCompleteness = {
   teachers: [{ teacher, counts }],
   byDepartment: [{ department, counts }],
   branch: counts,
+  otherSubjects: 0,
 };
 
 const PROGRESS: PlanProgress = {
@@ -73,6 +74,7 @@ const PROGRESS: PlanProgress = {
     },
   ],
   teachers: [{ teacher, plannedWorks: 8, notHeld: 2, percentNotHeld: 25 }],
+  otherSubjects: 0,
 };
 
 const MINIMUMS: PlanMinimums = {
@@ -108,6 +110,25 @@ describe('the plan reports', () => {
     expect(document.querySelector('[data-branch-counts]')?.textContent).toBe(
       'Branch: 1 of 2 plans complete (50%)',
     );
+    expect(document.querySelector('[data-other-subjects]')).toBeNull();
+  });
+
+  it('counts the plans of subjects outside the reader’s scope, never naming them (decision 1)', async () => {
+    open('/plans/reports', {
+      'GET /api/plans/reports/completeness': () => json({ ...COMPLETENESS, otherSubjects: 3 }),
+      'GET /api/plans/reports/progress': () => json({ ...PROGRESS, otherSubjects: 1 }),
+    });
+    await waitFor(() => {
+      expect(document.querySelector('[data-other-subjects]')?.textContent).toBe(
+        '3 plans of subjects outside your scope are not shown.',
+      );
+    });
+    fireEvent.click(screen.getByRole('radio', { name: en.plans.reports.progressTitle }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-other-subjects]')?.textContent).toBe(
+        '1 plan of a subject outside your scope is not shown.',
+      );
+    });
   });
 
   it('shows each plan with its warnings, and progress with the share of "not held"', async () => {

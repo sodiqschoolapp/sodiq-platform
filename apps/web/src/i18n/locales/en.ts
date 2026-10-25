@@ -5281,6 +5281,8 @@ export const en = {
       allDepartments: 'All departments',
       excel: 'Excel',
       branchCounts: 'Branch: {{complete}} of {{plans}} plans complete ({{percent}})',
+      otherSubjects_one: '{{count}} plan of a subject outside your scope is not shown.',
+      otherSubjects_other: '{{count}} plans of subjects outside your scope are not shown.',
       counts: {
         plans: 'Plans',
         complete: 'Complete',
