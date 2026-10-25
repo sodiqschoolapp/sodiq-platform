@@ -33,6 +33,8 @@ import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
 import { DailyWork } from './daily/daily.service.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
+import { openPlanWindows } from '../../testing/plan-windows-kit.js';
+import { carryItem, lockPlansOf, notCoveredAt } from '../plans/plan-outcomes.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the checklist of quarter 1 (to 31 October) is open. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -4497,6 +4499,160 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect((await trayOf(b.journal, q2)).map((one) => [one.topic, one.item_id])).toEqual([
         ['Decimals', item],
       ]);
+    });
+
+    // Plan review, must-fix 5: the close and a carry meet on the quarter and the journals.
+    describe('closing against a carry', () => {
+      const blockedBy = async (pid: number) => {
+        const found = await sql<{ n: number }>`
+          select count(*)::int as n from pg_stat_activity a
+          where a.datname = current_database() and ${pid}::int = any(pg_blocking_pids(a.pid))
+        `.execute(t.database.migrator);
+        return found.rows[0]?.n ?? 0;
+      };
+      const untilWaiting = async (pid: number) => {
+        for (let tries = 0; tries < 800; tries += 1) {
+          if ((await blockedBy(pid)) >= 1) return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error('Nothing waited on the held side.');
+      };
+      const hold = (branch: string, work: (transaction: Transaction) => Promise<void>) => {
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let ready: (pid: number) => void = () => undefined;
+        const isReady = new Promise<number>((resolve) => {
+          ready = resolve;
+        });
+        t.clock.set(CLOSE);
+        const done = t.app
+          .get(Transactions)
+          .run([branch], async (transaction) => {
+            await work(transaction);
+            const process = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+              transaction,
+            );
+            ready(process.rows[0]?.pid ?? 0);
+            await released;
+          })
+          .catch((error: unknown) => error);
+        return { isReady, release, done };
+      };
+
+      /** The base scene with its owner signing in, the plan windows open, an item past the last row. */
+      const carryScene = async () => {
+        const teacher = await account();
+        const b = await base({ teacher: teacher.account.id });
+        await openPlanWindows(t.database.migrator, b.s.branch, b.s.year);
+        const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+        const item = await pastItem(b.s.branch, b.s.subject, b.journal, b.q1, rows, 'Fractions');
+        return { b, teacher, item, q2: await quarterOf(b.s.year, 2) };
+      };
+
+      it('a carry waits for a close held open and is refused once it is closed', async () => {
+        const { b, teacher, item, q2 } = await carryScene();
+        const closer = await account();
+        // The held side does what the close does: the quarter for update, the closing row written.
+        const held = hold(b.s.branch, async (transaction) => {
+          await transaction
+            .selectFrom('quarters')
+            .select('id')
+            .where('id', '=', b.q1)
+            .forUpdate()
+            .execute();
+          await transaction
+            .insertInto('quarter_closings')
+            .values({
+              branch_id: b.s.branch,
+              quarter_id: b.q1,
+              version: 1,
+              closed_at: new Date(CLOSE),
+              closed_by: closer.account.id,
+              lock_now: true,
+              start_quarter: null,
+              warnings: JSON.stringify([]),
+            })
+            .execute();
+        });
+        const pid = await held.isReady;
+        const carried = await as(
+          teacher,
+          [{ role: 'teacher', branchId: b.s.branch }],
+          async ({ post }) => {
+            const started = new Promise<Response>((resolve, reject) => {
+              post(b.s.branch, `/api/plans/journals/${b.journal}/not-covered/${item}/carry`, {
+                quarterId: b.q1,
+              }).then(resolve, reject);
+            });
+            await untilWaiting(pid);
+            held.release();
+            return started;
+          },
+          CLOSE,
+        );
+        expect(await held.done).toBeUndefined();
+        expect([carried.status, codeOf(carried)]).toEqual([409, 'plan_quarter_closed']);
+        expect(await trayOf(b.journal, q2)).toEqual([]);
+      });
+
+      it('the close waits for a carry held open and carries nothing twice', async () => {
+        const { b, teacher, item, q2 } = await carryScene();
+        const warnings = await vice(
+          b.s.branch,
+          async (calls) => warningsOf(await decideAll(calls, b.s.branch, b.q1)),
+          CLOSE,
+        );
+        // The held side does what the carry route does: the journal locked, the carry written.
+        const held = hold(b.s.branch, async (transaction) => {
+          await lockPlansOf(transaction, [b.journal], [b.q1, q2]);
+          const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+          const at = await notCoveredAt(transaction, b.journal, b.q1, item, rows);
+          if (at === null) throw new Error('The item is not covered.');
+          await carryItem(
+            transaction,
+            t.app.get(Audit),
+            {
+              branchId: b.s.branch,
+              accountId: teacher.account.id,
+              assignmentId: t.adminAssignment,
+            },
+            {
+              journal: { id: b.journal, subjectId: b.s.subject },
+              quarterId: b.q1,
+              nextQuarterId: q2,
+              itemId: item,
+              at,
+              automatic: false,
+            },
+          );
+        });
+        const pid = await held.isReady;
+        const answer = await vice(
+          b.s.branch,
+          async ({ post }) => {
+            const started = new Promise<Response>((resolve, reject) => {
+              post(
+                b.s.branch,
+                closePath(b.q1),
+                { warnings, lockNow: true, startQuarter: null },
+                randomUUID(),
+              ).then(resolve, reject);
+            });
+            await untilWaiting(pid);
+            held.release();
+            return started;
+          },
+          CLOSE,
+        );
+        expect(await held.done).toBeUndefined();
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(closingClosedSchema.parse(answer.body).carried).toBe(0);
+        expect((await trayOf(b.journal, q2)).map((one) => [one.item_id, one.automatic])).toEqual([
+          [item, false],
+        ]);
+      });
     });
 
     it('refuses to close the last quarter while an item is left, and closes once it is dropped', async () => {
