@@ -191,7 +191,12 @@ function markCell(
   cell: JournalCell | undefined,
   texts: JournalExportTexts,
 ): Cell {
-  if (lesson.cancelled !== null) return texts.cancelled;
+  // 07, Layout: "Cancelled lessons are grey with the reason".
+  if (lesson.cancelled !== null) {
+    return lesson.cancelled.reason === null
+      ? texts.cancelled
+      : `${texts.cancelled}: ${lesson.cancelled.reason}`;
+  }
   if (cell === undefined) return null;
   if (cell.exempt !== null) return cell.exempt === 'temporary' ? 4 : 5;
   return cell.mark;

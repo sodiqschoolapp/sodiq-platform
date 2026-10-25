@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  BRANCH_HEADER,
   REQUEST_KEY_HEADER,
   attendanceSavedSchema,
   journalGridSchema,
@@ -8,7 +9,7 @@ import {
   type SupportLine,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import type { Response } from 'supertest';
+import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Transaction } from '../../database/transactions.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
@@ -16,6 +17,7 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { ratingEntryAndNote } from '../../testing/rating-kit.js';
 import { SaveRefusals } from './save-refusals.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
@@ -652,6 +654,123 @@ describe('the support view', () => {
       expect(ofKind(view, 'refusal').map((one) => [one.code, one.by.accountId])).toEqual([
         ['journal_entry_scope', stranger.account.id],
       ]);
+    });
+
+    it('names the lines of a removed work, a transfer and a cancellation, and the rating exam on its date with its refusal', async () => {
+      const owner = await account();
+      const vice = await account();
+      const stranger = await account();
+      const s = await scene(owner.account.id);
+      await give(owner, [{ role: 'teacher', branchId: s.branch }]);
+      await give(vice, [{ role: 'academic_vice_principal', branchId: s.branch }]);
+      await give(stranger, [{ role: 'teacher', branchId: s.branch }]);
+      // A work added by hand on the 26th, a number typed, then the work removed.
+      await at(owner, '2026-10-26T09:00:00+05:00');
+      const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
+        kind: 'homework',
+      });
+      expect(added.status, JSON.stringify(added.body)).toBe(200);
+      const work = added.body as { id: string };
+      const removed = await request(t.kit.server)
+        .delete(`/api/journal/lessons/${s.third}/works/${work.id}`)
+        .set('Cookie', owner.cookie)
+        .set(BRANCH_HEADER, s.branch);
+      expect(removed.status, JSON.stringify(removed.body)).toBe(204);
+      // A transfer's void and a cancellation, as 0127 and 0108 write their history lines.
+      for (const [how, moment] of [
+        ['transfer', '2026-10-26T10:00:00+05:00'],
+        ['cancellation', '2026-10-26T10:05:00+05:00'],
+      ] as const) {
+        await atMoment(moment, async (transaction) => {
+          await sql`select set_config('app.void_reason', 'Moved to 7 Cambridge', true)`.execute(
+            transaction,
+          );
+          await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: s.branch,
+              lesson_id: s.third,
+              student_id: s.boboyev,
+              mark: 1,
+              version: 1,
+              changed_by: owner.account.id,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .onConflict((conflict) => conflict.doNothing())
+            .execute();
+          await transaction
+            .updateTable('journal_cells')
+            .set({ mark: null, changed_how: how, changed_by: owner.account.id })
+            .where('lesson_id', '=', s.third)
+            .where('student_id', '=', s.boboyev)
+            .execute();
+        });
+      }
+      await at(vice, MOMENT);
+      const boboyev = await supportOf(vice, s.branch, {
+        studentId: s.boboyev,
+        journalId: s.journal,
+        date: '2026-10-26',
+      });
+      expect(ofKind(boboyev, 'cell').map((one) => one.how)).toEqual(
+        expect.arrayContaining(['transfer', 'cancellation']),
+      );
+      const ahmedov = await supportOf(vice, s.branch, {
+        studentId: s.ahmedov,
+        journalId: s.journal,
+        date: '2026-10-26',
+      });
+      const workLines = ofKind(ahmedov, 'work');
+      expect(workLines.map((one) => one.how)).toContain('deleted');
+      expect(
+        workLines.every((one) => one.work.id === work.id && one.work.kind === 'homework'),
+      ).toBe(true);
+      // The rating exam of a subject of its own on the 20th, with an entry, and a refusal of it.
+      await ratingEntryAndNote(t, load, {
+        branch: s.branch,
+        year: s.year,
+        classId: s.classId,
+        lessonId: s.second,
+        studentId: s.ahmedov,
+        accountId: vice.account.id,
+        at: '2026-10-20T12:00:00+05:00',
+        examDate: '2026-10-20',
+      });
+      const rated = await t.database.migrator
+        .selectFrom('journal_rating_exams')
+        .select(['journal_id', 'quarter_id'])
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
+      await at(stranger, MOMENT);
+      const refusal = await post(
+        stranger,
+        s.branch,
+        `/api/journal/journals/${rated.journal_id}/rating/${rated.quarter_id}/entries`,
+        { studentId: s.ahmedov, entry: { kind: 'score', score: 90 }, reason: 'Retake', version: 1 },
+      );
+      expect(refusal.status).toBe(403);
+      await at(vice, MOMENT);
+      const exam = await supportOf(vice, s.branch, {
+        studentId: s.ahmedov,
+        journalId: rated.journal_id,
+        date: '2026-10-20',
+      });
+      expect(exam.ratingDate).toBe('2026-10-20');
+      expect(ofKind(exam, 'rating').map((one) => one.after)).toEqual([
+        { kind: 'score', score: 77 },
+      ]);
+      expect(
+        ofKind(exam, 'refusal').map((one) => [one.field, one.valueSent, one.lessonId]),
+      ).toEqual([['rating', 90, null]]);
+      // On another date the exam's lines are not this view's.
+      const other = await supportOf(vice, s.branch, {
+        studentId: s.ahmedov,
+        journalId: rated.journal_id,
+        date: '2026-10-19',
+      });
+      expect(ofKind(other, 'rating')).toEqual([]);
+      expect(ofKind(other, 'refusal')).toEqual([]);
     });
 
     it('lists a total and "not held" of the date\'s works, and refuses another branch\'s journal, a student with no membership and a date outside the year', async () => {

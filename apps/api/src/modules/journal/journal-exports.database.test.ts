@@ -317,18 +317,30 @@ describe('journal exports and refusals in the database', () => {
       expect(deleted.code).toBe(INSUFFICIENT_PRIVILEGE);
     });
 
-    it("hides another branch's exports", async () => {
-      const row = await queued(south, MOMENT, southQuarter).catch(async () =>
-        database.migrator
-          .selectFrom('journal_exports')
-          .select('id')
-          .where('branch_id', '=', south)
-          .executeTakeFirstOrThrow(),
+    it("hides another branch's exports, and keeps a queued export from staying queued by an update", async () => {
+      // The earlier tests left a queued export in the south: it is ended first.
+      await inBranch(south, MOMENT, (transaction) =>
+        transaction
+          .updateTable('journal_exports')
+          .set({ status: 'failed', failure: 'journal_export_failed' })
+          .where('status', '=', 'queued')
+          .execute(),
       );
+      const row = await queued(south, MOMENT, southQuarter);
       const seen = await inBranch(north, MOMENT, (transaction) =>
         transaction.selectFrom('journal_exports').select('id').where('id', '=', row.id).execute(),
       );
       expect(seen).toEqual([]);
+      const still = await refusal(
+        inBranch(south, MOMENT, (transaction) =>
+          transaction
+            .updateTable('journal_exports')
+            .set({ status: 'queued' })
+            .where('id', '=', row.id)
+            .execute(),
+        ),
+      );
+      expect(still).toMatchObject({ code: CHECK_VIOLATION, constraint: 'journal_export_status' });
     });
   });
 });

@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
+  JOURNAL_EXPORT_TEXTS,
   journalExportListSchema,
+  journalGridSchema,
   journalExportRequestedSchema,
   type Language,
 } from '@sodiq/shared';
@@ -20,6 +22,7 @@ import { binary } from '../../testing/xlsx-kit.js';
 import { Audit } from '../audit/audit.service.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
 import { saveCells } from './cells.js';
+import { journalSheet } from './journal-export.js';
 import { JournalExports } from './journal-exports.service.js';
 import { JournalGridReader } from './journal-grid.service.js';
 
@@ -229,6 +232,8 @@ describe('journal exports', () => {
     const zokirov = await student(s.branch, s.classId, { first: 'Ali', last: 'Zokirov' });
     const oktamov = await student(s.branch, s.classId, { first: 'Bek', last: 'Oʻktamov' });
     const shodiyev = await student(s.branch, s.classId, { first: 'Bek', last: 'Shodiyev' });
+    await student(s.branch, s.classId, { first: 'Bek', last: 'Gʻaniyev' });
+    await student(s.branch, s.classId, { first: 'Bek', last: 'Chorshanbiyev' });
     const karimov1 = await student(s.branch, s.classId, {
       first: 'Ali',
       last: 'Karimov',
@@ -321,12 +326,14 @@ describe('journal exports', () => {
       // Zokirov, then oʻ and sh after z (edge/journal, Uzbek names).
       const rows = values.slice(6);
       const listed = rows.map((row) => row[1]);
-      expect(listed.slice(0, 5)).toEqual([
+      expect(listed.slice(0, 7)).toEqual([
         'Karimov Ali Anvarovich',
         'Karimov Ali Botirovich',
         'Zokirov Ali',
         'Oʻktamov Bek',
+        'Gʻaniyev Bek',
         'Shodiyev Bek',
+        'Chorshanbiyev Bek',
       ]);
       const zokirov = rows[2] ?? [];
       // A real number for the mark, the number typed and its percent from the grid.
@@ -334,15 +341,15 @@ describe('journal exports', () => {
       expect(zokirov[cwColumn]).toBe(12);
       expect(zokirov[cwColumn + 1]).toBe(40);
       // The bottom row, then the folded section with the student who left.
-      expect(rows[5]?.[1]).toBe('Average');
-      expect(rows[6]?.[0]).toBe('Left or moved');
-      expect(rows[7]?.[1]).toBe('Abdullayev Said');
-      expect(rows[7]?.[markColumn]).toBe(0);
+      expect(rows[7]?.[1]).toBe('Average');
+      expect(rows[8]?.[0]).toBe('Left or moved');
+      expect(rows[9]?.[1]).toBe('Abdullayev Said');
+      expect(rows[9]?.[markColumn]).toBe(0);
       const entries = await t.entries('journal.export', x.journal);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
         actor_id: principal.account.id,
-        details: { quarterId: x.q1, month: null, format: 'xlsx', shape: 'whole', rows: 6 },
+        details: { quarterId: x.q1, month: null, format: 'xlsx', shape: 'whole', rows: 8 },
       });
       t.clock.set(START);
     });
@@ -481,6 +488,25 @@ describe('journal exports', () => {
         )
         .set(REQUEST_KEY_HEADER, randomUUID());
       expect(created.status, JSON.stringify(created.body)).toBe(200);
+      const full = await t
+        .post(
+          '/api/exemptions',
+          x.s.branch,
+          {
+            studentIds: [x.shodiyev],
+            kind: 'full',
+            subjectIds: null,
+            startDate: '2026-10-12',
+            endDate: null,
+            slots: null,
+            category: 'illness',
+            detail: 'A long illness',
+            choices: [],
+          },
+          vice.cookie,
+        )
+        .set(REQUEST_KEY_HEADER, randomUUID());
+      expect(full.status, JSON.stringify(full.body)).toBe(200);
       const answer = await exportOf(vice, x.s.branch, x.journal, {
         format: 'xlsx',
         quarterId: x.q1,
@@ -493,8 +519,11 @@ describe('journal exports', () => {
       );
       const oktamov = sheet?.rows.find((row) => row.values[1] === 'Oʻktamov Bek');
       expect(oktamov?.values[first]).toBe(4);
+      // A full exemption for the whole quarter's lessons: in the folded "Exempt" section, as 5.
+      const shodiyev = sheet?.rows.find((row) => row.values[1] === 'Shodiyev Bek');
+      expect(shodiyev?.values[first]).toBe(5);
       const text = JSON.stringify(sheet?.rows.map((row) => row.values));
-      for (const word of ['Samarqand', 'chess', 'competition', 'Competition']) {
+      for (const word of ['Samarqand', 'chess', 'competition', 'Competition', 'long illness']) {
         expect(text).not.toContain(word);
       }
       const printed = await exportOf(vice, x.s.branch, x.journal, {
@@ -548,6 +577,44 @@ describe('journal exports', () => {
       };
       await allowed(await tutorOf(x.s.classId), x.s.branch, x.journal);
       await refused(await tutorOf(x.s.otherClass), x.s.branch, x.journal);
+      t.clock.set(START);
+    });
+
+    it('writes only the rows and averages the grid answers: a Tutor of a mixed group gets own rows and no bottom row', async () => {
+      const principal = await account();
+      const x = await scene();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      await at(principal, MOMENT);
+      const read = await t.get(
+        `/api/journal/journals/${x.journal}?quarterId=${x.q1}`,
+        x.s.branch,
+        principal.cookie,
+      );
+      expect(read.status, JSON.stringify(read.body)).toBe(200);
+      const grid = journalGridSchema.parse(read.body);
+      // The answer the grid gives a Tutor of a mixed group (task 6.2, decision 2): own rows only,
+      // and no bottom row ("The group's averages are hidden for them").
+      const tutorGrid = {
+        ...grid,
+        students: grid.students.filter((one) => one.id === x.zokirov),
+        bottom: null,
+      };
+      const { sheet, rows } = journalSheet(
+        {
+          grid: tutorGrid,
+          month: null,
+          language: 'en',
+          timeZone: 'Asia/Tashkent',
+          asOf: new Date(MOMENT),
+        },
+        JOURNAL_EXPORT_TEXTS.en,
+        'journal',
+      );
+      expect(rows).toBe(1);
+      const names = sheet.rows.map((row) => row[1]);
+      expect(names).toContain('Zokirov Ali');
+      expect(names).not.toContain('Karimov Ali Anvarovich');
+      expect(names).not.toContain('Average');
       t.clock.set(START);
     });
 
@@ -688,7 +755,7 @@ describe('journal exports', () => {
       t.clock.set('2026-10-27T12:05:00+05:00');
       await run(x.s.branch, item.id);
       const ready = await exportRow(item.id);
-      expect(ready).toMatchObject({ status: 'ready', journals: 2, rows: 6 });
+      expect(ready).toMatchObject({ status: 'ready', journals: 2, rows: 8 });
       expect(ready.ready_at?.toISOString()).toBe('2026-10-27T07:05:00.000Z');
       expect(ready.expires_at?.toISOString()).toBe('2026-10-28T07:05:00.000Z');
       // A second run of a row no longer queued does nothing.
@@ -696,7 +763,7 @@ describe('journal exports', () => {
       expect((await exportRow(item.id)).file_key).toBe(ready.file_key);
       expect(await t.entries('journal.branch_export_ready', item.id)).toHaveLength(1);
       expect((await t.entries('journal.branch_export_ready', item.id))[0]).toMatchObject({
-        details: { journals: 2, rows: 6, format: 'xlsx' },
+        details: { journals: 2, rows: 8, format: 'xlsx' },
       });
       // The link works at 23:59:59 after the file is ready and not at 24:00:00.
       await at(principal, '2026-10-28T12:04:59+05:00');
@@ -748,7 +815,9 @@ describe('journal exports', () => {
         404,
         'not_found',
       );
-      // Access checked again at download: the Principal's assignment ended.
+      // Access checked again at download: the Principal's assignment ended. As a Teacher of the
+      // branch the person passes the guard (`journal` `export`), and the route refuses.
+      await give(principal, [{ role: 'teacher', branchId: x.s.branch }]);
       await t.database.migrator
         .updateTable('assignments')
         .set({ valid_until: new Date('2026-10-28T08:00:00+05:00') })
@@ -761,7 +830,7 @@ describe('journal exports', () => {
         'get',
         `/api/journal/exports/${item.id}/file`,
       );
-      expect(refused.status).toBe(403);
+      refusedFile(refused, 403, 'journal_export_scope');
       expect(await t.entries('journal.branch_export_download')).toHaveLength(downloads);
       t.clock.set(START);
     });

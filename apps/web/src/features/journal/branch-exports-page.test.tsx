@@ -38,6 +38,8 @@ const LIST: JournalExportList = {
     }),
     item(2, { status: 'failed', failure: 'journal_export_stale', month: '2026-10' }),
     item(3, { status: 'expired', format: 'pdf' }),
+    item(4, { status: 'queued' }),
+    item(5, { status: 'failed', failure: 'journal_export_failed' }),
   ],
 };
 
@@ -62,9 +64,9 @@ describe('the export of the branch', () => {
     renderApp('/journal/exports', 'en');
     await screen.findByRole('heading', { name: en.journal.exports.title });
     await waitFor(() => {
-      expect(rowsOf()).toHaveLength(3);
+      expect(rowsOf()).toHaveLength(5);
     });
-    const [ready, failed, expired] = rowsOf();
+    const [ready, failed, expired, queued, plain] = rowsOf();
     expect(ready?.[4]).toContain('Ready, link works until');
     expect(ready?.[5]).toBe(en.journal.exports.download);
     expect(failed?.[1]).toContain('Quarter 1 · October');
@@ -73,6 +75,11 @@ describe('the export of the branch', () => {
     );
     expect(failed?.[5]).toBe('—');
     expect(expired?.[4]).toBe(en.journal.exports.statuses.expired);
+    expect(queued?.[4]).toBe(en.journal.exports.statuses.queued);
+    expect(queued?.[5]).toBe('—');
+    expect(plain?.[4]).toBe(
+      `${en.journal.exports.statuses.failed}: ${en.errors.journal_export_failed}`,
+    );
     fireEvent.change(screen.getByLabelText(en.journal.exports.month), {
       target: { value: '2026-10' },
     });
@@ -244,11 +251,79 @@ const SUPPORT: JournalSupport = {
       approvedBy: null,
       orphanAssignment: false,
     },
+    {
+      kind: 'work',
+      at: '2026-10-27T05:01:00.000Z',
+      lessonId: LESSON,
+      work: { id: uid(60), kind: 'classwork', title: 'Fractions' },
+      totalBefore: null,
+      totalAfter: 20,
+      notHeldBefore: false,
+      notHeldAfter: false,
+      how: 'entry',
+      by,
+    },
+    {
+      kind: 'delivery',
+      at: '2026-10-27T05:02:00.000Z',
+      lessonId: LESSON,
+      mark: 'topic',
+      before: false,
+      after: true,
+      how: 'entry',
+      by,
+    },
+    {
+      kind: 'exemption_clear',
+      at: '2026-10-27T05:03:00.000Z',
+      lessonId: LESSON,
+      work: null,
+      value: 1,
+      exemption: { kind: 'temporary', startDate: '2026-10-26', endDate: '2026-10-26' },
+    },
+    {
+      kind: 'exemption_give_back',
+      at: '2026-10-27T05:04:00.000Z',
+      lessonId: LESSON,
+      work: null,
+      value: 1,
+      exemption: { kind: 'temporary', startDate: '2026-10-26', endDate: '2026-10-26' },
+    },
+    {
+      kind: 'void',
+      at: '2026-10-27T05:05:00.000Z',
+      lessonId: LESSON,
+      work: null,
+      target: 'cell',
+      value: 1,
+      source: 'leaving',
+      reason: 'Left for another school',
+      by,
+    },
+    {
+      kind: 'void_give_back',
+      at: '2026-10-27T05:06:00.000Z',
+      lessonId: LESSON,
+      work: null,
+      target: 'cell',
+      value: 1,
+      source: 'leaving',
+      by,
+    },
+    {
+      kind: 'rating',
+      at: '2026-10-27T05:07:00.000Z',
+      before: null,
+      after: { kind: 'score', score: 77 },
+      reason: null,
+      how: 'entry',
+      by,
+    },
   ],
 };
 
 describe('the support view', () => {
-  it('shows the lessons of the date with what hid a value, the grid’s figures and every line in order', async () => {
+  it('asks for no support view while the grid gives no quarter for the date, and says why', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': as('academic_vice_principal'),
       'GET /api/journal/journals': () =>
@@ -316,6 +391,33 @@ describe('the support view', () => {
         `${en.journal.changes.correction} · Seen in the corridor`,
         'Karimova Aziza',
       ],
+      ['work', 'Total of Classwork: — → 20', en.journal.works.changes.entry, 'Karimova Aziza'],
+      ['delivery', en.journal.support.topic, en.journal.support.set, 'Karimova Aziza'],
+      [
+        'exemption_clear',
+        'Cleared by an exemption: Attendance, 1 (Present)',
+        'Temporary exemption 26 October 2026 – 26 October 2026',
+        '—',
+      ],
+      [
+        'exemption_give_back',
+        'Given back after the exemption changed: Attendance, 1 (Present)',
+        'Temporary exemption 26 October 2026 – 26 October 2026',
+        '—',
+      ],
+      [
+        'void',
+        'Voided: Attendance, 1 (Present)',
+        `${en.journal.support.sources.leaving} · Left for another school`,
+        'Karimova Aziza',
+      ],
+      [
+        'void_give_back',
+        'Void given back: Attendance, 1 (Present)',
+        en.journal.support.sources.leaving,
+        'Karimova Aziza',
+      ],
+      ['rating', 'Rating exam: — → 77', '', 'Karimova Aziza'],
     ]);
     expect(within(view).getByText(/Late counts 50/)).not.toBeNull();
   });

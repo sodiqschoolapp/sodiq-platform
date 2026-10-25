@@ -199,7 +199,7 @@ export class SupportView {
       ) => { id: string; kind: 'classwork' | 'homework'; title: string | null } | null;
     },
   ): Promise<SupportLine[]> {
-    const { lessonIds, studentId, lineWork } = scope;
+    const { lessonIds, studentId } = scope;
     const hasLessons = lessonIds.length > 0;
     const cells = hasLessons
       ? await transaction
@@ -230,6 +230,35 @@ export class SupportView {
           .orderBy('version')
           .execute()
       : [];
+    // A work no longer shown on the date (removed, force-deleted, carried or moved away) is
+    // still named by the kind its history keeps (0119), so none of its lines is lost.
+    const unknown = [
+      ...new Set(
+        [...cells.map((one) => one.work_id), ...workHistory.map((one) => one.work_id)].filter(
+          (id): id is string => id !== null && scope.lineWork(id) === null,
+        ),
+      ),
+    ];
+    const kinds = new Map(
+      (unknown.length === 0
+        ? []
+        : await transaction
+            .selectFrom('journal_work_history')
+            .select(['work_id', 'kind'])
+            .where('work_id', 'in', unknown)
+            .execute()
+      ).map((one) => [
+        one.work_id,
+        one.kind === 'homework' ? ('homework' as const) : ('classwork' as const),
+      ]),
+    );
+    const lineWork = (workId: string | null) => {
+      if (workId === null) return null;
+      const shown = scope.lineWork(workId);
+      if (shown !== null) return shown;
+      const kind = kinds.get(workId);
+      return kind === undefined ? null : { id: workId, kind, title: null };
+    };
     const deliveries = hasLessons
       ? await transaction
           .selectFrom('journal_delivery_history')

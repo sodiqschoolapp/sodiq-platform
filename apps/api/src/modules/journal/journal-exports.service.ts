@@ -283,8 +283,9 @@ export class JournalExports {
   // -------------------------------------------------------------------------
   // The branch export.
 
-  private async rowOf(transaction: Transaction, exportId: string): Promise<ExportRow | undefined> {
-    const row = await transaction
+  /** The exports with their quarter's number, as the list and the download read them. */
+  private exportsOf(transaction: Transaction) {
+    return transaction
       .selectFrom('journal_exports')
       .innerJoin('quarters', 'quarters.id', 'journal_exports.quarter_id')
       .select([
@@ -303,10 +304,13 @@ export class JournalExports {
         'journal_exports.file_key',
         'journal_exports.account_id',
         'journal_exports.language',
-      ])
+      ]);
+  }
+
+  private rowOf(transaction: Transaction, exportId: string): Promise<ExportRow | undefined> {
+    return this.exportsOf(transaction)
       .where('journal_exports.id', '=', exportId)
       .executeTakeFirst();
-    return row === undefined ? undefined : exportRow(row);
   }
 
   /** Asks for the export of the whole branch (decisions 3 and 6), repeat-safe by its key. */
@@ -419,20 +423,13 @@ export class JournalExports {
   list(access: Access): Promise<JournalExportList> {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const now = await transactionMoment(transaction);
-      const ids = await transaction
-        .selectFrom('journal_exports')
-        .select('id')
-        .where('account_id', '=', access.accountId)
-        .where('branch_id', '=', branchOf(access))
-        .orderBy('requested_at', 'desc')
-        .orderBy('id', 'desc')
+      const rows = await this.exportsOf(transaction)
+        .where('journal_exports.account_id', '=', access.accountId)
+        .where('journal_exports.branch_id', '=', branchOf(access))
+        .orderBy('journal_exports.requested_at', 'desc')
+        .orderBy('journal_exports.id', 'desc')
         .limit(JOURNAL_EXPORTS_LISTED)
         .execute();
-      const rows: ExportRow[] = [];
-      for (const { id } of ids) {
-        const row = await this.rowOf(transaction, id);
-        if (row !== undefined) rows.push(row);
-      }
       return {
         canExportBranch: wholeReaders(access.permitting).length > 0,
         quarters: await this.quartersOf(transaction, branchOf(access)),
@@ -659,8 +656,4 @@ export class JournalExports {
       .where('status', '=', 'queued')
       .execute();
   }
-}
-
-function exportRow(row: ExportRow): ExportRow {
-  return row;
 }
