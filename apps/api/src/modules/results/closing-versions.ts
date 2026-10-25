@@ -88,7 +88,7 @@ export async function recordsBefore(
       studentId: row.student_id,
       journalId: row.journal_id,
       kind: row.kind,
-      record: row.record as unknown,
+      record: row.record,
     });
   }
   return found;

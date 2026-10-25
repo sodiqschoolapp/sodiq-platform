@@ -4,7 +4,12 @@ import { schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../../database/transactions.js';
 import { transactionMoment } from '../../../database/transactions.js';
-import { closingOf, recordsInForce, reopenedJournals } from '../../setup/closed-quarters.js';
+import {
+  closingOf,
+  recordsInForce,
+  reopenedJournals,
+  type RecordInForce,
+} from '../../setup/closed-quarters.js';
 import type { QuarterRef } from '../grade-changes.js';
 import { quarterOutcomes } from '../quarter-outcomes.js';
 
@@ -253,7 +258,9 @@ export async function checkBranch(transaction: Transaction, branchId: string): P
     for (const row of subjects) {
       bySubject.set(row.subject_id, [...(bySubject.get(row.subject_id) ?? []), row.id]);
     }
-    const inForce = closed ? await recordsInForce(transaction, quarter.id) : new Map();
+    const inForce: ReadonlyMap<string, RecordInForce> = closed
+      ? await recordsInForce(transaction, quarter.id)
+      : new Map<string, RecordInForce>();
     records += inForce.size;
     for (const [subjectId, journalIds] of bySubject) {
       let outcomes;

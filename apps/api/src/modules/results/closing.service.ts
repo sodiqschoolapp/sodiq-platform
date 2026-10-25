@@ -63,7 +63,6 @@ import { periodOpen } from '../plans/plan-window.js';
 import {
   closedQuarters,
   closingOf,
-  lockOpenQuarter,
   recordsInForce,
   reopenedJournals,
   reopeningsOf,
