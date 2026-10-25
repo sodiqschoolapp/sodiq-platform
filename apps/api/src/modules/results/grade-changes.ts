@@ -1,5 +1,5 @@
 import type { StudentQuarterOutcome } from '@sodiq/calc';
-import { schoolDateOf, subjectColourSchema, type GradeChanges } from '@sodiq/shared';
+import { subjectColourSchema, type GradeChanges } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { JournalRow } from '../journal/journal-grid.query.js';

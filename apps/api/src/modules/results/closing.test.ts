@@ -861,7 +861,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         await t.app.get(Audit).record(transaction, {
           branchId: s.branch,
           actorId: deciderAccount,
-          action: 'journal.extension',
+          action: 'journal.edit_extension',
         });
         await transaction
           .insertInto('journal_edit_extensions')

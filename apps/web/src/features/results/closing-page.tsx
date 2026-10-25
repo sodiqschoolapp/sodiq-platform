@@ -42,8 +42,12 @@ type Row = ClosingItem & { rowId: string };
 
 const isBlocking = (item: ClosingItem): boolean => CLOSING_BLOCKING.includes(item.kind);
 
+/** The separators of the parts of a line (not words of a language). */
+const SEPARATOR = ' · ';
+const COLON = ': ';
+
 const studentName = (student: { firstName: string; lastName: string; uid: string }) =>
-  `${student.lastName} ${student.firstName} · ${student.uid}`;
+  [`${student.lastName} ${student.firstName}`, student.uid].join(SEPARATOR);
 
 /**
  * The closing checklist of a quarter (task 9.2a, pull request #229; `07`,
@@ -320,7 +324,7 @@ function ItemPanel({ row, checklist }: { row: Row; checklist: ClosingChecklist }
         <span className="font-semibold">
           {isBlocking(row) ? t('results.closing.blocking') : t('results.closing.warning')}
         </span>
-        {row.teacher !== null && ` · ${row.teacher.name}`}
+        {row.teacher !== null && <span className="text-muted-foreground"> {row.teacher.name}</span>}
       </p>
       {row.journal !== null && quarterId !== null && (
         <Link
@@ -365,8 +369,10 @@ function ItemDetails({ row }: { row: Row }) {
         <ul className="grid gap-1">
           {row.students.map((one) => (
             <li key={one.student.id}>
-              {studentName(one.student)}
-              {one.pending && ` · ${t('results.closing.pending')}`}
+              {[
+                studentName(one.student),
+                ...(one.pending ? [t('results.closing.pending')] : []),
+              ].join(SEPARATOR)}
             </li>
           ))}
         </ul>
@@ -577,7 +583,9 @@ function Decisions({
                   <li key={one.studentId}>
                     {student === undefined
                       ? t(`results.closing.refused.${one.code}`)
-                      : `${studentName(student)}: ${t(`results.closing.refused.${one.code}`)}`}
+                      : [studentName(student), t(`results.closing.refused.${one.code}`)].join(
+                          COLON,
+                        )}
                   </li>
                 );
               })}

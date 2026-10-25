@@ -583,9 +583,7 @@ export function JournalGridView({
             }
             // Task 9.2a: decided "Not assessed" on the closing checklist (edge/calculation).
             if (result.kind === 'not_assessed') {
-              return (
-                <span data-result="not_assessed">{t('journal.grid.notAssessedResult')}</span>
-              );
+              return <span data-result="not_assessed">{t('journal.grid.notAssessedResult')}</span>;
             }
             return (
               <span data-result={result.shown}>

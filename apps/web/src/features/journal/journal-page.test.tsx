@@ -47,7 +47,15 @@ const figures = (shown: number, grade: number) => ({
   classwork: 60,
   homework: 50,
   ratingExam: null,
-  result: { kind: 'number' as const, shown, grade, provisional: false, leftOut: [], basedOn: null },
+  result: {
+    kind: 'number' as const,
+    shown,
+    grade,
+    provisional: false,
+    leftOut: [],
+    basedOn: null,
+    kept: false,
+  },
 });
 
 // All names are invented.
@@ -345,6 +353,7 @@ describe('a journal', () => {
               provisional: false,
               leftOut: [],
               basedOn: { expected: 2, held: 7 },
+              kept: false,
             },
           },
         }),

@@ -82,7 +82,7 @@ const CHECKLIST: ClosingChecklist = {
 const UNDECIDED = `undecided:${JOURNAL.id}:${TEACHER.id}:0`;
 
 const sessionAs =
-  (role: 'academic_vice_principal' | 'principal', language = 'en') =>
+  (role: 'academic_vice_principal' | 'principal', language: 'en' | 'ru' = 'en') =>
   () =>
     json(sessionOf({ language, assignments: [{ role, branchId: NORTH.id }] }));
 

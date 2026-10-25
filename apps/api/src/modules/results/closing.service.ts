@@ -24,7 +24,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { exemptOnDate } from '../journal/exemption-read.js';
-import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import { journalRows, staffNames } from '../journal/journal-grid.query.js';
 import { subjectOf, unitOf } from '../journal/journal-grid.service.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { lessonStatuses } from '../journal/lesson-status.query.js';
@@ -810,7 +810,7 @@ export class ClosingService {
       }
     >();
     for (const unlock of unlocks) {
-      let journalId: string | null = null;
+      let journalId: string | null;
       let lesson: { id: string; date: string } | null = null;
       if (unlock.target === 'rating') {
         if (unlock.quarter_id !== quarter.id) continue;
