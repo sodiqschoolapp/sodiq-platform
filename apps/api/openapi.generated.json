@@ -388114,6 +388114,11 @@
                         "percentComplete"
                       ],
                       "additionalProperties": false
+                    },
+                    "otherSubjects": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
                     }
                   },
                   "required": [
@@ -388123,7 +388128,8 @@
                     "plans",
                     "teachers",
                     "byDepartment",
-                    "branch"
+                    "branch",
+                    "otherSubjects"
                   ],
                   "additionalProperties": false
                 }
@@ -390223,6 +390229,11 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "otherSubjects": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
                     }
                   },
                   "required": [
@@ -390230,7 +390241,8 @@
                     "quarterId",
                     "departments",
                     "plans",
-                    "teachers"
+                    "teachers",
+                    "otherSubjects"
                   ],
                   "additionalProperties": false
                 }

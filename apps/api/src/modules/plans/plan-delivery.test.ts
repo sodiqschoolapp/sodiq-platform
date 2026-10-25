@@ -2441,6 +2441,95 @@ describe('plans in the journal', () => {
       }
     });
 
+    it('keeps the column a request opened before the lesson locked open after the lock, until its period ends', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.third);
+      await setEditDays(t.database.migrator, s.branch, 7);
+      const lock = (
+        await sql<{ at: Date }>`select journal_lesson_lock(${s.third}::uuid) as at`.execute(
+          t.database.migrator,
+        )
+      ).rows[0]?.at;
+      if (lock === undefined) throw new Error('The lesson has a lock moment.');
+      expect(lock.getTime()).toBeGreaterThan(new Date(MOMENT).getTime());
+      const requestId = await approvedRequest(s, owner.account.id, [s.third]);
+      // The period ends two days after the lesson locks.
+      await t.database.migrator
+        .updateTable('lesson_plan_requests')
+        .set({ open_until: new Date(lock.getTime() + 2 * 86_400_000) })
+        .where('id', '=', requestId)
+        .execute();
+      let quiz = '';
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const base = {
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: ['https://example.org/fractions'],
+          classworks: [],
+          homeworks: [],
+        };
+        const saved = ok(
+          await calls.put(`/api/plans/items/${item.itemId}`, {
+            base,
+            values: { ...base, classworks: [{ title: 'Quiz', description: '' }] },
+          }),
+        ) as { classworks: { id: string }[] };
+        quiz = saved.classworks[0]?.id ?? '';
+      });
+      const opened = await t.database.migrator
+        .selectFrom('lesson_plan_work_openings')
+        .select('request_id')
+        .where('plan_work_id', '=', quiz)
+        .execute();
+      expect(opened).toEqual([{ request_id: requestId }]);
+      await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          const graded = await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
+            column: { planWorkId: quiz, sourceLessonId: s.third },
+            total: 10,
+            version: null,
+            confirm: false,
+          });
+          expect(graded.status, JSON.stringify(graded.body)).toBe(200);
+        },
+        new Date(lock.getTime() + 86_400_000).toISOString(),
+      );
+      const lines = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select(['changed_how', 'plan_request_id'])
+        .where('lesson_id', '=', s.third)
+        .where('total_after', '=', 10)
+        .execute();
+      expect(lines).toEqual([{ changed_how: 'late_entry', plan_request_id: requestId }]);
+      // After the period, locked again.
+      await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          // The grid of November shows quarter 2: the stored work is read as stored.
+          const work = await t.database.migrator
+            .selectFrom('journal_works')
+            .select(['id', 'version'])
+            .where('lesson_id', '=', s.third)
+            .where('plan_work_id', '=', quiz)
+            .executeTakeFirstOrThrow();
+          const late = await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
+            column: { workId: work.id },
+            total: 12,
+            version: work.version,
+            confirm: false,
+          });
+          expect(codeOf(late)).toBe('journal_locked');
+        },
+        new Date(lock.getTime() + 3 * 86_400_000).toISOString(),
+      );
+    });
+
     it('lets the substitute of a locked lesson grade the opened column, and not the owner (decision 3)', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });

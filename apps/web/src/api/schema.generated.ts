@@ -76224,6 +76224,7 @@ export interface operations {
                             belowMinimum: number;
                             percentComplete: number | null;
                         };
+                        otherSubjects: number;
                     };
                 };
             };
@@ -76601,6 +76602,7 @@ export interface operations {
                             notHeld: number;
                             percentNotHeld: number | null;
                         }[];
+                        otherSubjects: number;
                     };
                 };
             };
