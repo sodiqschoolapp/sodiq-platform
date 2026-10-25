@@ -323,9 +323,11 @@ describe('the settings of a branch', () => {
       const { quarterIds } = await insertYear(branch, '2026-09-01', '2027-06-30', 'planned', DATED);
       const quarterId = quarterIds[1] ?? '';
 
+      // Task 9.1 (decision 5): a change in an open quarter carries its reason.
       const response = await put(`/api/setup/quarters/${quarterId}/attendance-values`, branch, {
         lateValue: 75,
         skippedValue: 10,
+        reason: 'Agreed by the teachers council',
       });
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({

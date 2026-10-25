@@ -137,7 +137,14 @@ const GRID: JournalGrid = {
   lastTotal: 30,
   absences: [],
   bottom: null,
-  legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },
+  legend: {
+    lateValue: 50,
+    skippedValue: 0,
+    daily: null,
+    quarterly: null,
+    weightsChangedOn: null,
+    countsFrom: null,
+  },
 };
 
 const SAVED = {

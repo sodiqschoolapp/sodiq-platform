@@ -4,6 +4,7 @@ import {
   type Subject,
   type SubjectQuarter,
   type SubjectRecord,
+  gradeChangesSchema,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
 import { PanelActions } from '@/components/list/panel-actions';
@@ -19,6 +21,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { groupsQuery } from '@/features/classes/groups-api';
+import { useChangeReason } from '@/features/results/change-reason';
 import { MoveLoads } from '@/features/people/move-loads';
 import { staffQuery, vacanciesQuery } from '@/features/people/people-api';
 import { nameOf, yearsQuery } from './setup-api';
@@ -409,30 +412,83 @@ function QuarterWeights({
   const title = t('setup.subjects.quarterly');
   const refresh = () => invalidateSubjects(queryClient);
 
+  // Task 9.1: the grades a change alters, and its reason, before it is saved.
+  const reasons = useChangeReason();
+  const bodyOf = (weights: Weights) => ({
+    attendance: weights.attendance,
+    classwork: weights.classwork,
+    homework: weights.homework,
+    ratingExam: weights.ratingExam ?? null,
+  });
+
   const setQuarter = useMutation({
-    mutationFn: ({ quarterId, weights }: { quarterId: string; weights: Weights }) =>
+    mutationFn: ({
+      quarterId,
+      weights,
+      reason,
+    }: {
+      quarterId: string;
+      weights: Weights;
+      reason: string | undefined;
+    }) =>
       answerOf(
         api.PUT('/api/setup/subjects/{id}/quarter-weights/{quarterId}', {
           params: { header: branchHeader(), path: { id: subject.id, quarterId } },
-          body: {
-            attendance: weights.attendance,
-            classwork: weights.classwork,
-            homework: weights.homework,
-            ratingExam: weights.ratingExam ?? null,
-          },
+          body: { ...bodyOf(weights), ...(reason === undefined ? {} : { reason }) },
         }),
       ),
     onSuccess: refresh,
   });
 
-  const copy = useMutation({
-    mutationFn: (year: string) =>
-      answerOf(
-        api.POST('/api/setup/subjects/{id}/quarter-weights/copy', {
-          params: { header: branchHeader(), path: { id: subject.id } },
-          body: { yearId: year },
+  /** Saves a quarter after its preview: `false` when the person went back. */
+  const saveQuarter = async (quarterId: string, weights: Weights): Promise<boolean> => {
+    const preview = gradeChangesSchema.parse(
+      await answerOf(
+        api.POST('/api/setup/subjects/{id}/quarter-weights/{quarterId}/preview', {
+          params: { header: branchHeader(), path: { id: subject.id, quarterId } },
+          body: bodyOf(weights),
         }),
       ),
+    );
+    const reason = await reasons.ask(preview);
+    if (reason === null) return false;
+    await setQuarter.mutateAsync({ quarterId, weights, reason });
+    return true;
+  };
+
+  const copy = useMutation({
+    mutationFn: async ({ year, overwritten }: { year: string; overwritten: boolean }) => {
+      const preview = gradeChangesSchema.parse(
+        await answerOf(
+          api.POST('/api/setup/subjects/{id}/quarter-weights/copy/preview', {
+            params: { header: branchHeader(), path: { id: subject.id } },
+            body: { yearId: year },
+          }),
+        ),
+      );
+      // A change of stored distributions asks its reason, which names what changes; the
+      // overwrite of rows that change no grade is asked as before.
+      if (
+        !preview.reasonRequired &&
+        overwritten &&
+        !(await confirm({
+          title: t('setup.subjects.copyTitle'),
+          text: t('setup.subjects.copyText'),
+          action: t('setup.subjects.copy'),
+          destructive: true,
+        }))
+      ) {
+        return;
+      }
+      const reason = await reasons.ask(preview);
+      if (reason === null) return;
+      await answerOf(
+        api.POST('/api/setup/subjects/{id}/quarter-weights/copy', {
+          params: { header: branchHeader(), path: { id: subject.id } },
+          body: { yearId: year, ...(reason === undefined ? {} : { reason }) },
+        }),
+      );
+    },
     // The forms take what the copy wrote once the quarters are read again.
     onSuccess: async () => {
       await refresh();
@@ -440,22 +496,12 @@ function QuarterWeights({
     },
   });
 
-  const askCopy = async (rows: readonly SubjectQuarter[]) => {
+  const askCopy = (rows: readonly SubjectQuarter[]) => {
     if (yearId === null) {
       return;
     }
     const overwritten = rows.some((row) => row.number > 1 && row.weights !== null);
-    if (
-      !overwritten ||
-      (await confirm({
-        title: t('setup.subjects.copyTitle'),
-        text: t('setup.subjects.copyText'),
-        action: t('setup.subjects.copy'),
-        destructive: true,
-      }))
-    ) {
-      copy.mutate(yearId);
-    }
+    copy.mutate({ year: yearId, overwritten });
   };
 
   let body;
@@ -518,7 +564,7 @@ function QuarterWeights({
                   weights={row.fits ? row.weights : null}
                   label={label}
                   onSave={async (weights) => {
-                    await setQuarter.mutateAsync({ quarterId: row.quarterId, weights });
+                    if (!(await saveQuarter(row.quarterId, weights))) throw new SaveCancelled();
                     panel.stop({ saved: true, key: `weights:${row.quarterId}` });
                   }}
                   onCancel={() => {
@@ -546,13 +592,14 @@ function QuarterWeights({
             </div>
           );
         })}
+        {reasons.dialog}
         {canEdit && !frozen && panel.editing === null && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
               disabled={copy.isPending || !(rows[0]?.fits ?? false)}
               onClick={() => {
-                void askCopy(rows);
+                askCopy(rows);
               }}
             >
               {t('setup.subjects.copy')}

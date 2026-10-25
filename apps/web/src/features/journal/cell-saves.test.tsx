@@ -137,7 +137,14 @@ const GRID: JournalGrid = {
   lastTotal: 10,
   absences: [],
   bottom: null,
-  legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },
+  legend: {
+    lateValue: 50,
+    skippedValue: 0,
+    daily: null,
+    quarterly: null,
+    weightsChangedOn: null,
+    countsFrom: null,
+  },
 };
 
 /** The headers of every call, beside the calls `fakeApi` records. */

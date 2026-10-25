@@ -1162,7 +1162,7 @@ How to read the task lines:
 
 ## Phase 9. Results, closing and reports
 
-- [ ] **9.1 Quarter results and the student results page**
+- [x] **9.1 Quarter results and the student results page**
   - Read: `08` (Student results), `07` (Calculation rules), `edge/calculation`.
   - Build: the Results and Attendance tabs of the student profile; quarter and year results per subject; the trace from a result to its lessons.
   - Done when: every figure shown comes from `packages/calc`.
@@ -1206,6 +1206,8 @@ How to read the task lines:
   - From 8.4 (pull request #222): a correction (`correction` of the cell, work, rating entry and comment saves) and an unlock request are refused in a closed quarter; `journal_edit_judge` (0122, called by the guards `journal_*_edit_guard`) gains the closed quarter for every kind of a person, the correction included.
   - From 8.5 (pull request #223, decision 6): `07`, Problem cases, "The dates fall in a closed quarter": "The part inside a closed quarter is refused until that quarter is reopened ... The part in an open quarter is applied"; `edge/exemptions`, "The range starts in a closed quarter". Every exemption write (create, edit, end, void, batch, a confirmed move offer, a leaving's end) applies the open part only and refuses the closed part, in the database (`exemptions_write`, 0123) and through the routes and the late-entry preview, with a route test each; the row of `exemption-spec-rows.test.ts` that names 9.2b gets its test then.
   - From 8.9 (pull request #227, decision 5): `edge/journal`, "A results table is exported in week 6": "Every export and print states 'Provisional' with date and time, or 'Final' with the closing date and version." The files of journals (`stampOf` of `apps/api/src/modules/journal/journal-export.ts`) say "Final" with the closing date and the version of the stored results once the quarter is closed; today every file is provisional.
+  - From 9.1 (pull request #228, decision 1, Look first): `08`, Student results: "The year result is shown when the fourth quarter is closed." The student results (`GET /api/results/students/:id`, `apps/api/src/modules/results/student-results.service.ts`) answer the year result once the year is closed; with the close of a quarter it is answered once the fourth quarter is closed, and every figure of a closed quarter is read from its stored final record.
+  - From 9.1 (pull request #228, From 2.4b-1): the tables of stored results reference `students` with no action, as the line of 6.1 says.
 
 - [ ] **9.2c Reopening and the nightly check**
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.

@@ -214,6 +214,7 @@ const GRID: JournalGrid = {
     daily: { attendance: 20, classwork: 40, homework: 40 },
     quarterly: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
     weightsChangedOn: '2026-10-21',
+    countsFrom: null,
   },
 };
 

@@ -335,6 +335,37 @@ describe('the notifications of the top bar', () => {
       expect(within(dialog).getAllByTestId('week-before')).toHaveLength(1);
     });
 
+    // Task 9.1 (edge/calculation, week 7: "tells the subject's teachers"): the subject in the
+    // language shown, the quarters and the date as the screen writes them.
+    it.each(['en', 'ru', 'uz'] as const)(
+      'writes a weights change with the subject, the quarters and the date (%s)',
+      async (language) => {
+        const notice: Notification = {
+          ...MONDAY,
+          kind: 'setup.quarter_weights_changed',
+          data: {
+            subject: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+            quarters: [2, 3],
+            date: '2026-10-27',
+            reason: 'Agreed by the department',
+          },
+        };
+        open({ [LIST]: () => json({ unreadCount: 1, items: [notice] }) }, language);
+        const dialog = await openDialog(language, 1);
+        const texts = t[language];
+        const subject = { en: 'Mathematics', ru: 'Математика', uz: 'Matematika' }[language];
+        const quarter = (number: number) =>
+          texts.results.quarterNumber.replace('{{number}}', String(number));
+        expect(items(dialog)[0]).toContain(
+          texts.notifications.kinds.setup.quarter_weights_changed
+            .replace('{{subject}}', subject)
+            .replace('{{quarters}}', `${quarter(2)}, ${quarter(3)}`)
+            .replace('{{date}}', schoolDateText('2026-10-27', language))
+            .replace('{{reason}}', 'Agreed by the department'),
+        );
+      },
+    );
+
     // Task 5.6c-3b (decision 3): an exam a calendar or template change
     // moved or cancelled rides in its own notice, with the week or alone.
     it.each(['en', 'ru', 'uz'] as const)(

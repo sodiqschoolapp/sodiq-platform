@@ -287,6 +287,29 @@ describe('journal exports', () => {
   });
 
   describe('of one journal', () => {
+    // Task 9.1 (decision 8; edge/academic-year: "labelled 'from' with the date, on screen, in
+    // prints and in exports").
+    it('writes "from <date>" under the stamp in the start quarter', async () => {
+      const principal = await account();
+      const x = await scene();
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ go_live_date: '2026-10-05' })
+        .where('id', '=', x.s.branch)
+        .execute();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      await at(principal, MOMENT);
+      const answer = await exportOf(principal, x.s.branch, x.journal, {
+        format: 'xlsx',
+        quarterId: x.q1,
+      });
+      expect(answer.status, codeOf(answer)).toBe(200);
+      const [sheet] = await sheetsOf(answer.body as Buffer);
+      const values = sheet?.rows.map((row) => row.values) ?? [];
+      expect(values[3]).toEqual(['Provisional · 27.10.2026 12:00']);
+      expect(values[4]).toEqual(['Results from 05.10.2026']);
+    });
+
     it('writes the grid of the reader to Excel: header and stamp, real numbers and dates, the fixed name order, the folded section and one audit entry', async () => {
       const principal = await account();
       const x = await scene();

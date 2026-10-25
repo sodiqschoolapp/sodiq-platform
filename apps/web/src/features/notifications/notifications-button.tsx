@@ -1,4 +1,4 @@
-import type { Notification } from '@sodiq/shared';
+import { NOTIFICATION_KINDS, type Notification } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { NotificationsIcon } from '@/components/icons';
@@ -20,7 +20,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { NOTIFICATIONS_KEY, notificationsQuery } from './notifications-api';
-import { formatMoment } from '@/lib/dates';
+import { nameOf } from '@/features/setup/setup-api';
+import { formatMoment, schoolDateText } from '@/lib/dates';
 import { ExamNotice } from './exam-notice';
 import { WeekChange } from './week-change';
 
@@ -36,6 +37,22 @@ export function useNotificationText(): (item: Notification) => string {
     const key = `notifications.kinds.${item.kind}`;
     if (!i18n.exists(key)) {
       return t('notifications.kinds.unknown');
+    }
+    // Task 9.1: a weights change names the subject in the language shown, its quarters and the
+    // date as the screen writes them (a stored value is never shown as stored).
+    if (item.kind === 'setup.quarter_weights_changed') {
+      const change = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
+      if (!change.success) return t('notifications.kinds.unknown');
+      return t('notifications.kinds.setup.quarter_weights_changed', {
+        replace: {
+          subject: nameOf(change.data.subject, i18n.language),
+          quarters: change.data.quarters
+            .map((number) => t('results.quarterNumber', { number }))
+            .join(', '),
+          date: schoolDateText(change.data.date, i18n.language),
+          reason: change.data.reason,
+        },
+      });
     }
     // The key exists; the type of `t` cannot know a key built from data. The
     // data fills the {{names}} only (`replace`): a field called `count` or

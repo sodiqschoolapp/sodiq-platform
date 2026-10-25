@@ -10,6 +10,7 @@ import {
   type Clock,
   type EarlyWarningRecord,
   type EditDaysRecord,
+  type GradeChanges,
   type QuarterAttendanceValues,
   type SetupChecklist,
   type AuditAction,
@@ -17,13 +18,22 @@ import {
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { ApiException } from '../../http/api-exception.js';
 import { Audit } from '../audit/audit.service.js';
+import { compareGrades, quarterGrades, quarterRefOf } from '../results/grade-changes.js';
 import type { Access } from '../access/permission.guard.js';
 import { SETTINGS_COLUMNS, toSettings, type SettingsRow } from './settings-state.js';
 import { changesOf, notFound, refusingConstraints } from './setup-refusals.js';
 
 /** The fields of the settings row a route changes, in its stored names. */
 type SettingsChange = Partial<SettingsRow>;
+
+/** Ends a preview's transaction with its answer, so that the write it ran is rolled back. */
+class PreviewDone extends Error {
+  constructor(readonly preview: GradeChanges) {
+    super('preview');
+  }
+}
 
 const QUARTER_COLUMNS = [
   'id',
@@ -256,9 +266,43 @@ export class Settings {
     record: AttendanceValuesRecord,
     requestId: string,
   ): Promise<QuarterAttendanceValues> {
+    return this.writeAttendanceValues(access, branchId, quarterId, record, requestId, false);
+  }
+
+  /**
+   * Task 9.1 (From 1.6 decision 3; `edge/calculation`, "The value of 'late' is
+   * changed": "with the same preview"): the grades the change would alter in
+   * each journal, from the write itself, rolled back. Refuses what the write
+   * refuses; changes nothing.
+   */
+  async previewAttendanceValues(
+    access: Access,
+    branchId: string,
+    quarterId: string,
+    record: AttendanceValuesRecord,
+    requestId: string,
+  ): Promise<GradeChanges> {
+    try {
+      await this.writeAttendanceValues(access, branchId, quarterId, record, requestId, true);
+    } catch (error) {
+      if (error instanceof PreviewDone) return error.preview;
+      throw error;
+    }
+    // The work above always throws, the preview or a refusal; TypeScript cannot see that.
+    throw new ApiException('internal_error', 500);
+  }
+
+  private writeAttendanceValues(
+    access: Access,
+    branchId: string,
+    quarterId: string,
+    record: AttendanceValuesRecord,
+    requestId: string,
+    preview: boolean,
+  ): Promise<QuarterAttendanceValues> {
     return refusingConstraints(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        await this.branchOf(transaction, branchId, true);
+        const branch = await this.branchOf(transaction, branchId, true);
         const quarter = await transaction
           .selectFrom('quarters')
           .select(QUARTER_COLUMNS)
@@ -269,10 +313,38 @@ export class Settings {
         if (quarter === undefined) {
           throw notFound();
         }
-        const changes = changesOf(valuesOf(quarter), record);
+        const changes = changesOf(valuesOf(quarter), {
+          lateValue: record.lateValue,
+          skippedValue: record.skippedValue,
+        });
+        const year = await transaction
+          .selectFrom('academic_years')
+          .select('status')
+          .where('id', '=', quarter.academic_year_id)
+          .executeTakeFirstOrThrow();
+        // Task 9.1 (decision 5): a change in an open quarter needs a reason; a closed
+        // year refuses it in the database (`quarters_closed_year_guard`).
+        const reasonRequired = changes !== null && year.status !== 'closed';
         if (changes === null) {
+          if (preview) throw new PreviewDone({ reasonRequired, quarters: [] });
           return toQuarter(quarter);
         }
+        if (!preview && reasonRequired && record.reason === undefined) {
+          throw new ApiException('reason_required', 409);
+        }
+        const ref = await quarterRefOf(transaction, quarterId);
+        const grades = (now: Date) =>
+          ref === undefined
+            ? undefined
+            : quarterGrades(transaction, {
+                branchId,
+                timeZone: branch.time_zone,
+                now,
+                quarter: ref,
+                subjectIds: null,
+              });
+        const now = this.clock.now();
+        const before = preview ? await grades(now) : undefined;
         const row = await transaction
           .updateTable('quarters')
           .set({ late_value: record.lateValue, skipped_value: record.skippedValue })
@@ -287,8 +359,17 @@ export class Settings {
           record: { type: 'quarter', id: quarterId },
           oldValue: changes.oldValue,
           newValue: changes.newValue,
+          ...(record.reason === undefined ? {} : { details: { reason: record.reason } }),
           requestId,
         });
+        if (preview) {
+          const after = await grades(now);
+          throw new PreviewDone({
+            reasonRequired,
+            quarters:
+              before === undefined || after === undefined ? [] : [compareGrades(before, after)],
+          });
+        }
         return toQuarter(row);
       }),
     );

@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   copyQuarterWeightsRecordSchema,
+  gradeChangesSchema,
   dailyWeightsSchema,
   newSubjectRecordSchema,
   quarterWeightsSchema,
@@ -13,6 +14,7 @@ import {
   subjectRecordSchema,
   subjectSchema,
   type CopyQuarterWeightsRecord,
+  type GradeChanges,
   type DailyWeights,
   type QuarterWeights,
   type SetupIdParams,
@@ -154,6 +156,40 @@ export class SubjectsController {
     @ValidBody(copyQuarterWeightsRecordSchema) record: CopyQuarterWeightsRecord,
     @RequestId() requestId: string,
   ): Promise<SubjectQuarterWeights> {
-    return this.subjects.copyQuarterOne(access, params.id, record.yearId, requestId);
+    return this.subjects.copyQuarterOne(access, params.id, record, requestId);
+  }
+
+  /** Task 9.1: the grades the copy would alter in each quarter it writes; changes nothing. */
+  @Post('subjects/:id/quarter-weights/copy/preview')
+  @HttpCode(200)
+  @Requires('subjects', 'edit')
+  @Returns(gradeChangesSchema)
+  previewCopy(
+    @CurrentAccess() access: Access,
+    @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(copyQuarterWeightsRecordSchema) record: CopyQuarterWeightsRecord,
+    @RequestId() requestId: string,
+  ): Promise<GradeChanges> {
+    return this.subjects.previewCopy(access, params.id, record, requestId);
+  }
+
+  /** Task 9.1: the grades the change would alter in each journal; changes nothing. */
+  @Post('subjects/:id/quarter-weights/:quarterId/preview')
+  @HttpCode(200)
+  @Requires('subjects', 'edit')
+  @Returns(gradeChangesSchema)
+  previewQuarterWeights(
+    @CurrentAccess() access: Access,
+    @ValidParams(subjectQuarterParamsSchema) params: SubjectQuarterParams,
+    @ValidBody(quarterWeightsSchema) weights: QuarterWeights,
+    @RequestId() requestId: string,
+  ): Promise<GradeChanges> {
+    return this.subjects.previewQuarterWeights(
+      access,
+      params.id,
+      params.quarterId,
+      weights,
+      requestId,
+    );
   }
 }

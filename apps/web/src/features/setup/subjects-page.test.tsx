@@ -481,6 +481,17 @@ describe('the subjects page', () => {
   it('sets quarter 1 with four parts for a rating subject and copies it after asking when other quarters are set', async () => {
     const { calls } = await openList({
       quarters: [quarter(1, RATED), quarter(2), quarter(3, RATED), quarter(4)],
+      extra: {
+        // Task 9.1: quarter 1 holds a distribution, so its change asks for a reason; the
+        // copy changes no stored grade here and asks as before.
+        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/preview`]: () =>
+          json({
+            reasonRequired: true,
+            quarters: [{ quarterId: uid(41), number: 1, journals: [] }],
+          }),
+        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy/preview`]: () =>
+          json({ reasonRequired: false, quarters: [] }),
+      },
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
@@ -493,12 +504,24 @@ describe('the subjects page', () => {
     type(within(first).getByLabelText(subjectsText.parts.classwork), '40');
     type(within(first).getByLabelText(subjectsText.parts.ratingExam), '30');
     fireEvent.click(within(first).getByRole('button', { name: en.form.save }));
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    expect(dialog.getByText(en.results.change.noGrades)).toBeDefined();
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'Agreed by the department' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
     await waitFor(() => {
       expect(
         calls.find(
           (call) => call.route === `PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}`,
         )?.body,
-      ).toEqual({ attendance: 10, classwork: 40, homework: 20, ratingExam: 30 });
+      ).toEqual({
+        attendance: 10,
+        classwork: 40,
+        homework: 20,
+        ratingExam: 30,
+        reason: 'Agreed by the department',
+      });
     });
     await savedInPanel(panel);
 
@@ -510,6 +533,38 @@ describe('the subjects page', () => {
           (call) => call.route === `POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy`,
         )?.body,
       ).toEqual({ yearId: YEAR.id });
+    });
+  });
+
+  // Task 9.1: a copy that changes stored distributions asks its reason, not the overwrite.
+  it('asks the reason of a copy that changes stored distributions and sends it', async () => {
+    const { calls } = await openList({
+      quarters: [
+        quarter(1, RATED),
+        quarter(2),
+        quarter(3, { ...RATED, classwork: 30, ratingExam: 50 }),
+        quarter(4),
+      ],
+      extra: {
+        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy/preview`]: () =>
+          json({ reasonRequired: true, quarters: [] }),
+      },
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    fireEvent.click(await within(panel).findByRole('button', { name: subjectsText.copy }));
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'One distribution for the year' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) => call.route === `POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy`,
+        )?.body,
+      ).toEqual({ yearId: YEAR.id, reason: 'One distribution for the year' });
     });
   });
 

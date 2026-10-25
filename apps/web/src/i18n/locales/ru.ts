@@ -137,6 +137,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Перенести предмет на другую кафедру может только суперадминистратор. Оставьте кафедру или обратитесь к суперадминистратору.',
     weights_shape_mismatch:
       'Переключатель рейтингового экзамена предмета изменился. Откройте предмет заново и введите распределение снова.',
+    reason_required: 'Это изменение меняет результаты. Укажите причину.',
     quarter_one_not_set:
       'У 1-й четверти нет распределения для копирования. Сначала задайте 1-ю четверть.',
     go_live_not_school_day:
@@ -2482,6 +2483,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       tabs: {
         label: 'Профиль',
         overview: 'Обзор',
+        results: 'Результаты',
+        attendance: 'Посещаемость',
         contract: 'Договор и стипендия',
         relatives: 'Родственники',
         history: 'История',
@@ -4077,6 +4080,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     kinds: {
       unknown:
         'Уведомление, которое эта версия приложения пока не может показать. Перезагрузите страницу.',
+      setup: {
+        quarter_weights_changed:
+          'Веса предмета {{subject}} ({{quarters}}) изменены {{date}}: {{reason}}.',
+      },
       plans: {
         followed:
           'Ваши планы уроков сдвинулись вместе с изменением расписания. Для вас подготовлен запрос на изменение: {{requested}}. Только сдвинуты: {{moved}}.',
@@ -6759,6 +6766,90 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restored: 'Восстановлено',
       forced_delete: 'Принудительное удаление',
       leaving: 'Выбытие',
+    },
+  },
+  // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
+  results: {
+    year: 'Учебный год',
+    yearOption: '{{from}} – {{to}}',
+    quarter: 'Четверть',
+    quarterNumber: '{{number}} ч.',
+    noYear: 'Учебного года для показа пока нет.',
+    emptyQuarter: 'В этой четверти нет проведённых уроков по доступным вам предметам.',
+    notInSystem: 'Не в системе: четверть закончилась до начала работы филиала на платформе.',
+    none: '—',
+    notAssessed: 'Не аттестован',
+    attendanceOnly: 'Только посещаемость',
+    openLessons: 'Уроки за показателем «{{part}}», {{subject}}',
+    columns: {
+      subject: 'Предмет',
+      attendance: 'Посещаемость',
+      classwork: 'Классная работа',
+      homework: 'Домашняя работа',
+      ratingExam: 'Рейтинговый экзамен',
+      result: 'Результат',
+      grade: 'Оценка',
+      date: 'Дата',
+      unit: 'Класс или группа',
+      mark: 'Отметка',
+    },
+    parts: {
+      attendance: 'посещаемость',
+      classwork: 'классная работа',
+      homework: 'домашняя работа',
+      ratingExam: 'рейтинговый экзамен',
+      result: 'результат',
+    },
+    labels: {
+      provisional: 'предварительно',
+      leftOut: 'не учтено: {{parts}}',
+      countsFrom: 'с {{date}}',
+      leftSubjectOn: 'вышел из предмета {{date}}',
+      atLeaving: 'результат при выбытии, по {{date}}',
+    },
+    flags: {
+      few_lessons: 'мало уроков: решается при закрытии',
+      attendance_only: 'только посещаемость: решается при закрытии',
+      left_subject: 'вышел из предмета: решается при закрытии',
+    },
+    yearTitle: 'Годовой результат',
+    yearResult_one: '{{shown}}, оценка {{grade}} · по {{count}} из 4 четвертей',
+    yearResult_few: '{{shown}}, оценка {{grade}} · по {{count}} из 4 четвертей',
+    yearResult_many: '{{shown}}, оценка {{grade}} · по {{count}} из 4 четвертей',
+    yearResult_other: '{{shown}}, оценка {{grade}} · по {{count}} из 4 четвертей',
+    lessonsTitle: 'Уроки',
+    lessonsOf: '{{subject}} · {{number}}-я четверть',
+    noLessons: 'Ни один урок не учтён.',
+    unmarked: 'не отмечено',
+    mark: '{{mark}} (засчитывается {{value}})',
+    workNumber: 'Работа {{number}}',
+    work: '{{name}}: {{score}} из {{total}}, {{percent}}%',
+    workEmpty: '{{name}}: без числа (из {{total}})',
+    rating: {
+      score: 'Рейтинговый экзамен: {{score}}',
+      did_not_sit: 'Рейтинговый экзамен: не сдавал (засчитывается 0)',
+      exempt: 'Рейтинговый экзамен: освобождён',
+      not_held: 'Рейтинговый экзамен: не проводился',
+    },
+    counts: {
+      present: 'Присутствовал',
+      absent: 'Отсутствовал',
+      late: 'Опоздал',
+      skipped: 'Пропустил урок',
+      exempt: 'Освобождён',
+      unmarked: 'Не отмечено',
+    },
+    change: {
+      title: 'Это изменение меняет результаты',
+      noGrades: 'Оценки сейчас не меняются, но меняются сохранённые значения.',
+      grades_one: 'меняется {{count}} оценка',
+      grades_few: 'меняются {{count}} оценки',
+      grades_many: 'меняются {{count}} оценок',
+      grades_other: 'меняются {{count}} оценки',
+      reason: 'Причина',
+      reasonMissing: 'Укажите причину изменения.',
+      back: 'Назад',
+      save: 'Сохранить изменение',
     },
   },
 };

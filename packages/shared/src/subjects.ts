@@ -58,6 +58,14 @@ export const WEIGHT_MAX = 100;
 /** `05`: "Each distribution must total 100." */
 export const WEIGHTS_TOTAL = 100;
 
+/**
+ * The reason of a change of weights or of the late and skipped values (task 9.1;
+ * `edge/calculation`, week 7: "asks for a reason").
+ */
+export const CHANGE_REASON_MAX_LENGTH = 500;
+
+export const changeReasonSchema = z.string().trim().min(1).max(CHANGE_REASON_MAX_LENGTH);
+
 const weightSchema = z.int().min(WEIGHT_MIN).max(WEIGHT_MAX);
 
 const TOTAL_MESSAGE = 'The parts total 100.';
@@ -86,6 +94,8 @@ export const quarterWeightsSchema = z
     classwork: weightSchema,
     homework: weightSchema,
     ratingExam: weightSchema.nullable(),
+    /** Task 9.1: required for a change of a stored distribution in an open quarter (decision 5). */
+    reason: changeReasonSchema.optional(),
   })
   .refine(
     (weights) =>
@@ -251,7 +261,11 @@ export const subjectQuarterParamsSchema = z.object({ id: z.uuid(), quarterId: z.
 export type SubjectQuarterParams = z.infer<typeof subjectQuarterParamsSchema>;
 
 /** `POST /api/setup/subjects/:id/quarter-weights/copy`: the year whose quarter 1 is copied. */
-export const copyQuarterWeightsRecordSchema = z.object({ yearId: z.uuid() });
+export const copyQuarterWeightsRecordSchema = z.object({
+  yearId: z.uuid(),
+  /** Task 9.1: required when the copy changes a stored distribution (decision 5). */
+  reason: changeReasonSchema.optional(),
+});
 
 export type CopyQuarterWeightsRecord = z.infer<typeof copyQuarterWeightsRecordSchema>;
 

@@ -856,7 +856,11 @@ describe('subjects', () => {
       const answered = subjectQuarterWeightsSchema.parse(response.body);
       expect(answered.quarters[1]).toMatchObject({ weights: RATED, fits: true });
       const changed = { ...RATED, classwork: 40, ratingExam: 30 };
-      await put(`/api/setup/subjects/${subject.id}/quarter-weights/${quarter}`, branch, changed);
+      // Task 9.1 (decision 5): a change of a stored distribution carries its reason.
+      await put(`/api/setup/subjects/${subject.id}/quarter-weights/${quarter}`, branch, {
+        ...changed,
+        reason: 'Agreed by the department',
+      });
       const entries = await t.entries('subject_quarter_weights.set', subject.id);
       expect(entries).toHaveLength(2);
       expect(entries[1]).toMatchObject({
@@ -864,7 +868,7 @@ describe('subjects', () => {
         assignment_id: t.adminAssignment,
         old_value: { weights: RATED },
         new_value: { weights: changed },
-        details: { quarterId: quarter },
+        details: { quarterId: quarter, reason: 'Agreed by the department' },
       });
     });
 
@@ -1177,10 +1181,11 @@ describe('subjects', () => {
       await put(path(2), branch, { ...RATED, classwork: 40, ratingExam: 30 });
       const before = (await t.entries('subject_quarter_weights.set', subject.id)).length;
 
+      // Task 9.1: quarter 3 holds another distribution, so the copy carries a reason.
       const response = await t.post(
         `/api/setup/subjects/${subject.id}/quarter-weights/copy`,
         branch,
-        { yearId },
+        { yearId, reason: 'One distribution for the year' },
         t.admin,
       );
 

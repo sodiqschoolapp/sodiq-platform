@@ -1,4 +1,4 @@
-import { Controller, Get, Put } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   attendanceValuesListSchema,
   attendanceValuesRecordSchema,
@@ -6,6 +6,7 @@ import {
   classDailyLessonsRecordSchema,
   earlyWarningRecordSchema,
   editDaysRecordSchema,
+  gradeChangesSchema,
   quarterAttendanceValuesSchema,
   setupChecklistSchema,
   setupIdParamsSchema,
@@ -15,6 +16,7 @@ import {
   type ClassDailyLessonsRecord,
   type EarlyWarningRecord,
   type EditDaysRecord,
+  type GradeChanges,
   type QuarterAttendanceValues,
   type SetupChecklist,
   type SetupIdParams,
@@ -92,6 +94,26 @@ export class SettingsController {
     @RequestId() requestId: string,
   ): Promise<QuarterAttendanceValues> {
     return this.settings.setAttendanceValues(
+      access,
+      branchOf(access),
+      params.id,
+      record,
+      requestId,
+    );
+  }
+
+  /** Task 9.1: the grades a change would alter in each journal; changes nothing. */
+  @Post('quarters/:id/attendance-values/preview')
+  @HttpCode(200)
+  @Requires('settings', 'edit')
+  @Returns(gradeChangesSchema)
+  previewAttendanceValues(
+    @CurrentAccess() access: Access,
+    @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(attendanceValuesRecordSchema) record: AttendanceValuesRecord,
+    @RequestId() requestId: string,
+  ): Promise<GradeChanges> {
+    return this.settings.previewAttendanceValues(
       access,
       branchOf(access),
       params.id,

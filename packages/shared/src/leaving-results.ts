@@ -42,6 +42,8 @@ export const leavingResultSchema = z.object({
   quarter: z.object({ id: z.uuid(), number: z.int().min(1) }),
   /** The last day the result counts to: the leaving's last day. */
   lastDay: schoolDateSchema,
+  /** Task 9.1 (`edge/academic-year`, start quarter): "from <date>"; `null` outside it. */
+  countsFrom: schoolDateSchema.nullable(),
   outcome: leavingOutcomeSchema,
 });
 

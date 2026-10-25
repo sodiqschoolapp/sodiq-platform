@@ -100,7 +100,14 @@ const GRID: JournalGrid = {
   reminders: [],
   lastTotal: null,
   bottom: null,
-  legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },
+  legend: {
+    lateValue: 50,
+    skippedValue: 0,
+    daily: null,
+    quarterly: null,
+    weightsChangedOn: null,
+    countsFrom: null,
+  },
 };
 
 const HISTORY: CellHistory = {

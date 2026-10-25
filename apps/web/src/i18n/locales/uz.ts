@@ -144,6 +144,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi. Kafedrasini qoldiring yoki Super administratorga murojaat qiling.',
     weights_shape_mismatch:
       'Fanning reyting imtihoni belgisi oʻzgardi. Fanni qaytadan oching va taqsimotni yangidan kiriting.',
+    reason_required: 'Bu oʻzgarish natijalarni oʻzgartiradi. Sababini kiriting.',
     quarter_one_not_set: '1-chorakda nusxa olish uchun taqsimot yoʻq. Avval 1-chorakni belgilang.',
     go_live_not_school_day:
       'Ishga tushirish sanasi oʻquv kuni boʻlishi kerak: kamida bitta sinfda dars boʻladigan kun. Boshqa sana tanlang.',
@@ -2390,6 +2391,8 @@ export const uz: Texts<'one' | 'other'> = {
       tabs: {
         label: 'Profil',
         overview: 'Umumiy',
+        results: 'Natijalar',
+        attendance: 'Davomat',
         contract: 'Shartnoma va grant',
         relatives: 'Qarindoshlar',
         history: 'Tarix',
@@ -3932,6 +3935,10 @@ export const uz: Texts<'one' | 'other'> = {
     kinds: {
       unknown:
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
+      setup: {
+        quarter_weights_changed:
+          '{{subject}} fanining vaznlari ({{quarters}}) {{date}} kuni oʻzgardi: {{reason}}.',
+      },
       plans: {
         followed:
           'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi. Siz uchun oʻzgartirish soʻrovi tayyorlandi: {{requested}}. Faqat surilgan: {{moved}}.',
@@ -6445,6 +6452,87 @@ export const uz: Texts<'one' | 'other'> = {
       restored: 'Tiklangan',
       forced_delete: 'Majburiy oʻchirish',
       leaving: 'Ketish',
+    },
+  },
+  // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
+  results: {
+    year: 'Oʻquv yili',
+    yearOption: '{{from}} – {{to}}',
+    quarter: 'Chorak',
+    quarterNumber: '{{number}}-ch.',
+    noYear: 'Hozircha koʻrsatiladigan oʻquv yili yoʻq.',
+    emptyQuarter: 'Bu chorakda siz koʻradigan fanlar boʻyicha oʻtilgan dars yoʻq.',
+    notInSystem:
+      'Tizimda emas: bu chorak filial platformadan foydalanishni boshlashidan oldin tugagan.',
+    none: '—',
+    notAssessed: 'Baholanmagan',
+    attendanceOnly: 'Faqat davomat',
+    openLessons: '{{subject}}: «{{part}}» ortidagi darslar',
+    columns: {
+      subject: 'Fan',
+      attendance: 'Davomat',
+      classwork: 'Sinf ishi',
+      homework: 'Uy ishi',
+      ratingExam: 'Reyting imtihoni',
+      result: 'Natija',
+      grade: 'Baho',
+      date: 'Sana',
+      unit: 'Sinf yoki guruh',
+      mark: 'Belgi',
+    },
+    parts: {
+      attendance: 'davomat',
+      classwork: 'sinf ishi',
+      homework: 'uy ishi',
+      ratingExam: 'reyting imtihoni',
+      result: 'natija',
+    },
+    labels: {
+      provisional: 'dastlabki',
+      leftOut: 'hisobga olinmadi: {{parts}}',
+      countsFrom: '{{date}} dan',
+      leftSubjectOn: '{{date}} kuni fandan chiqdi',
+      atLeaving: 'ketishdagi natija, {{date}} gacha',
+    },
+    flags: {
+      few_lessons: 'darslar kam: yopishda hal qilinadi',
+      attendance_only: 'faqat davomat: yopishda hal qilinadi',
+      left_subject: 'fandan chiqdi: yopishda hal qilinadi',
+    },
+    yearTitle: 'Yillik natija',
+    yearResult_one: '{{shown}}, baho {{grade}} · 4 chorakdan {{count}} tasi boʻyicha',
+    yearResult_other: '{{shown}}, baho {{grade}} · 4 chorakdan {{count}} tasi boʻyicha',
+    lessonsTitle: 'Darslar',
+    lessonsOf: '{{subject}} · {{number}}-chorak',
+    noLessons: 'Hech bir dars hisobga olinmagan.',
+    unmarked: 'belgilanmagan',
+    mark: '{{mark}} ({{value}} hisoblanadi)',
+    workNumber: '{{number}}-ish',
+    work: '{{name}}: {{total}} dan {{score}}, {{percent}}%',
+    workEmpty: '{{name}}: son yoʻq ({{total}} dan)',
+    rating: {
+      score: 'Reyting imtihoni: {{score}}',
+      did_not_sit: 'Reyting imtihoni: topshirmadi (0 hisoblanadi)',
+      exempt: 'Reyting imtihoni: ozod',
+      not_held: 'Reyting imtihoni: oʻtkazilmadi',
+    },
+    counts: {
+      present: 'Keldi',
+      absent: 'Kelmadi',
+      late: 'Kechikdi',
+      skipped: 'Darsga kirmadi',
+      exempt: 'Ozod',
+      unmarked: 'Belgilanmagan',
+    },
+    change: {
+      title: 'Bu oʻzgarish natijalarni oʻzgartiradi',
+      noGrades: 'Hozir baholar oʻzgarmaydi, lekin saqlangan qiymatlar oʻzgaradi.',
+      grades_one: '{{count}} ta baho oʻzgaradi',
+      grades_other: '{{count}} ta baho oʻzgaradi',
+      reason: 'Sabab',
+      reasonMissing: 'Oʻzgarish sababini yozing.',
+      back: 'Orqaga',
+      save: 'Oʻzgarishni saqlash',
     },
   },
 };

@@ -402,6 +402,22 @@ export const NOTIFICATION_KINDS = {
     reason: z.string().min(1).max(1000),
   }),
   /**
+   * Task 9.1 (`edge/calculation`, "Quarterly weights are changed in week 7": "asks for a
+   * reason and tells the subject's teachers"): a change of stored quarterly distributions, once
+   * to each teacher of the subject's journals in its quarters, with the reason (decision 11).
+   */
+  'setup.quarter_weights_changed': z.strictObject({
+    subject: z.strictObject({
+      uz: z.string().min(1).max(200),
+      ru: z.string().min(1).max(200),
+      en: z.string().min(1).max(200),
+    }),
+    /** The quarters of the change the account teaches in, in order. */
+    quarters: z.array(z.int().min(1).max(4)).min(1).max(4),
+    date: schoolDateSchema,
+    reason: z.string().min(1).max(500),
+  }),
+  /**
    * Task 8.4 (`10`, "Lesson unlock requested or granted"; review correction 3):
    * a request sent, to the first tier of its deciders; `date` is the lesson's,
    * or the rating exam's.

@@ -95,6 +95,14 @@ export function StudentLeavingResults({
               ) : (
                 t('journal.grid.noResult')
               )}
+              {one.countsFrom !== null && (
+                <>
+                  {' · '}
+                  {t('results.labels.countsFrom', {
+                    date: schoolDateText(one.countsFrom, language),
+                  })}
+                </>
+              )}
               {' · '}
               {t('journal.leavingResults.lastDay', {
                 date: schoolDateText(one.lastDay, language),

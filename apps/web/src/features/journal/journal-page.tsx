@@ -719,6 +719,14 @@ function Legend({ grid }: { grid: JournalGrid }) {
                     )}
                   </li>
                 )}
+                {/* Task 9.1 (edge/academic-year, start quarter): "from <date>". */}
+                {legend.countsFrom !== null && (
+                  <li data-counts-from={legend.countsFrom}>
+                    {t('results.labels.countsFrom', {
+                      date: schoolDateText(legend.countsFrom, i18n.language),
+                    })}
+                  </li>
+                )}
                 <li className="text-muted-foreground">
                   {t('journal.legend.markers', {
                     provisional: t('journal.grid.provisionalShort'),

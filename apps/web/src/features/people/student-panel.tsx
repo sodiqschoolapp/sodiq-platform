@@ -42,6 +42,9 @@ import { GroupsPlacedNotice } from '@/features/classes/class-members';
 import { StudentPhotoSection } from './student-photo-section';
 import { StudentExemptions } from '@/features/journal/student-exemptions';
 import { StudentLeavingResults } from '@/features/journal/student-leaving-results';
+import { studentResultTabsQuery } from '@/features/results/results-api';
+import { StudentAttendanceTab } from '@/features/results/student-attendance-tab';
+import { StudentResultsTab } from '@/features/results/student-results-tab';
 import { StudentRelativesTab } from './student-relatives';
 import {
   DeleteForm,
@@ -73,7 +76,8 @@ import { alsoUidRow, isMergeForm, MergeForm } from './student-merge';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
 
-type Tab = 'overview' | 'relatives' | 'contract' | 'history' | 'exemptions';
+type Tab =
+  'overview' | 'results' | 'attendance' | 'relatives' | 'contract' | 'history' | 'exemptions';
 
 /** The forms of the whole record: they take the place of the tabs and their content. */
 const RECORD_FORMS = ['record', 'uid'] as const;
@@ -106,6 +110,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const readsExemptions = useMayView('exemptions');
+  const resultTabs = useQuery(studentResultTabsQuery(branchId, id));
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const leave = useLeave();
@@ -316,6 +321,13 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   // segmented control of the design system; one tab draws no control.
   const tabs: { key: Tab; title: string }[] = [
     { key: 'overview', title: t('people.students.tabs.overview') },
+    // Task 9.1 (`04`, Profile tabs): Results and Attendance, as the server answers the reader's.
+    ...(resultTabs.data?.results === true
+      ? [{ key: 'results' as const, title: t('people.students.tabs.results') }]
+      : []),
+    ...(resultTabs.data?.attendance === true
+      ? [{ key: 'attendance' as const, title: t('people.students.tabs.attendance') }]
+      : []),
     // The Relatives tab for the Contact readers (`02`; task 2.5a).
     ...(student.contact === null
       ? []
@@ -649,6 +661,11 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           <StudentPhotoSection student={student} name={name} quiet={editing !== null} />
           <HistoryLink kind="student" id={student.id} />
           <ReportLink kind="student" id={student.id} />
+          {/* Task 9.1: the Results and Attendance tabs wait on the server's answer; a failure
+              says so, with a retry, rather than leaving the tabs out silently. */}
+          {resultTabs.isError && (
+            <ErrorState error={resultTabs.error} onRetry={() => void resultTabs.refetch()} />
+          )}
           {tabs.length > 1 && (
             <Segmented
               label={t('people.students.tabs.label')}
@@ -694,6 +711,10 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
               <StatusSection student={student} panel={shown} />
               <StudentLeavingResults studentId={student.id} left={student.status === 'inactive'} />
             </>
+          ) : shownTab === 'results' ? (
+            <StudentResultsTab studentId={student.id} />
+          ) : shownTab === 'attendance' ? (
+            <StudentAttendanceTab studentId={student.id} />
           ) : shownTab === 'relatives' ? (
             <StudentRelativesTab studentId={student.id} name={name} panel={shown} />
           ) : shownTab === 'exemptions' ? (

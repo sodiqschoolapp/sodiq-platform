@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   Clock,
+  CopyQuarterWeightsRecord,
   DailyWeights,
   ErrorCode,
+  GradeChanges,
   JournalType,
   Names,
   QuarterWeights,
@@ -14,7 +16,7 @@ import type {
   SubjectQuarterWeights,
   SubjectRecord,
 } from '@sodiq/shared';
-import { gradeRanges } from '@sodiq/shared';
+import { gradeRanges, schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -45,6 +47,14 @@ import {
   type DepartmentChange,
 } from '../people/department-moves.js';
 import { refuseTeachersOutside } from '../people/subject-teachers.js';
+import { Notifications } from '../notifications/notifications.service.js';
+import {
+  compareGrades,
+  quarterGrades,
+  quarterRefOf,
+  type QuarterGrades,
+} from '../results/grade-changes.js';
+import { weightsNoticeAccounts } from '../results/weights-notice.js';
 import { switchKey, switchesOf, type QuarterSwitches } from './subject-switches.js';
 import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
@@ -201,6 +211,42 @@ const fits = (row: QuarterWeightsRow, ratingExam: boolean): boolean =>
 
 const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
 
+/** What a write of one quarter did (task 9.1): nothing, a first setting, or a change of a stored one. */
+type QuarterChange = 'unchanged' | 'first' | 'changed';
+
+interface Written {
+  readonly quarterId: string;
+  readonly change: QuarterChange;
+  /** The shown results before the write, read for a preview only. */
+  readonly before: QuarterGrades | undefined;
+}
+
+interface GradesReader {
+  readonly preview: boolean;
+  readonly timeZone: string;
+  readonly now: Date;
+  read(quarterId: string): Promise<QuarterGrades | undefined>;
+}
+
+/** Ends a preview's transaction with its answer, so that the write it ran is rolled back. */
+class PreviewDone extends Error {
+  constructor(readonly preview: GradeChanges) {
+    super('preview');
+  }
+}
+
+/** Runs a write that ends in `PreviewDone` and answers the preview. */
+async function previewOf(work: () => Promise<unknown>): Promise<GradeChanges> {
+  try {
+    await work();
+  } catch (error) {
+    if (error instanceof PreviewDone) return error.preview;
+    throw error;
+  }
+  // The work above always throws, the preview or a refusal; TypeScript cannot see that.
+  throw new ApiException('internal_error', 500);
+}
+
 /** A route bound to a branch always has one; the guard sets it. */
 function branchOf(access: Access): string {
   if (access.branchId === null) {
@@ -301,6 +347,7 @@ export class Subjects {
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly notifications: Notifications,
   ) {}
 
   /** Every subject, archived ones included and marked, with this branch's weights. */
@@ -691,6 +738,34 @@ export class Subjects {
     weights: QuarterWeights,
     requestId: string,
   ): Promise<SubjectQuarterWeights> {
+    return this.writeQuarterWeights(access, id, quarterId, weights, requestId, false);
+  }
+
+  /**
+   * Task 9.1 (From 2.1 decision 4; `edge/calculation`, week 7: "Before saving,
+   * the system shows how many grades will change in each journal"): the
+   * write, rolled back, with the grades it alters. Refuses what it refuses.
+   */
+  previewQuarterWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: QuarterWeights,
+    requestId: string,
+  ): Promise<GradeChanges> {
+    return previewOf(() =>
+      this.writeQuarterWeights(access, id, quarterId, weights, requestId, true),
+    );
+  }
+
+  private writeQuarterWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: QuarterWeights,
+    requestId: string,
+    preview: boolean,
+  ): Promise<SubjectQuarterWeights> {
     const branchId = branchOf(access);
     return refusingConstraints(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
@@ -709,7 +784,9 @@ export class Subjects {
         if ((weights.ratingExam !== null) !== switches.rating_exam) {
           throw refused('weights_shape_mismatch');
         }
-        await this.writeQuarter(
+        const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+        const before = await grades.read(quarterId);
+        const change = await this.writeQuarter(
           transaction,
           access,
           branchId,
@@ -719,6 +796,9 @@ export class Subjects {
           weights,
           requestId,
         );
+        await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
+          { quarterId, change, before },
+        ]);
         return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
       }),
     );
@@ -732,9 +812,30 @@ export class Subjects {
   copyQuarterOne(
     access: Access,
     id: string,
-    yearId: string,
+    record: CopyQuarterWeightsRecord,
     requestId: string,
   ): Promise<SubjectQuarterWeights> {
+    return this.writeCopy(access, id, record, requestId, false);
+  }
+
+  /** Task 9.1: the copy, rolled back, with the grades it alters in each quarter it writes. */
+  previewCopy(
+    access: Access,
+    id: string,
+    record: CopyQuarterWeightsRecord,
+    requestId: string,
+  ): Promise<GradeChanges> {
+    return previewOf(() => this.writeCopy(access, id, record, requestId, true));
+  }
+
+  private writeCopy(
+    access: Access,
+    id: string,
+    record: CopyQuarterWeightsRecord,
+    requestId: string,
+    preview: boolean,
+  ): Promise<SubjectQuarterWeights> {
+    const { yearId } = record;
     const branchId = branchOf(access);
     return refusingConstraints(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
@@ -781,6 +882,8 @@ export class Subjects {
         ) {
           throw refused('quarter_one_not_set');
         }
+        const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+        const written: Written[] = [];
         for (const quarter of quarters) {
           if (quarter.number !== 1) {
             const own = switches.get(switchKey(id, quarter.id));
@@ -792,18 +895,29 @@ export class Subjects {
             ) {
               throw refused('weights_shape_mismatch');
             }
-            await this.writeQuarter(
+            const before = await grades.read(quarter.id);
+            const change = await this.writeQuarter(
               transaction,
               access,
               branchId,
               subject,
               own,
               quarter.id,
-              quarterOf(source),
+              { ...quarterOf(source), reason: record.reason },
               requestId,
             );
+            written.push({ quarterId: quarter.id, change, before });
           }
         }
+        await this.afterWrite(
+          transaction,
+          access,
+          branchId,
+          subject,
+          grades,
+          record.reason,
+          written,
+        );
         return this.readQuarters(transaction, branchId, subject, yearId);
       }),
     );
@@ -994,7 +1108,7 @@ export class Subjects {
     quarterId: string,
     weights: QuarterWeights,
     requestId: string,
-  ): Promise<void> {
+  ): Promise<QuarterChange> {
     const subjectId = subject.id;
     // Task 8.2 (correction 1): the rounds of the quarter's switches.
     const round = switches.weights_round;
@@ -1026,7 +1140,7 @@ export class Subjects {
       rating_exam: weights.ratingExam,
     });
     if (oldValue !== null && JSON.stringify(oldValue) === JSON.stringify(newValue)) {
-      return;
+      return 'unchanged';
     }
     const columns = {
       attendance: weights.attendance,
@@ -1058,9 +1172,115 @@ export class Subjects {
       record: { type: 'subject', id: subjectId },
       oldValue: { weights: oldValue },
       newValue: { weights: newValue },
-      details: { quarterId },
+      details: { quarterId, ...(weights.reason === undefined ? {} : { reason: weights.reason }) },
       requestId,
     });
+    return oldValue === null ? 'first' : 'changed';
+  }
+
+  /**
+   * The shown results of the subject's journals in a quarter, read only for a
+   * preview (task 9.1); the branch's time zone and the injected clock.
+   */
+  private async gradesOf(
+    transaction: Transaction,
+    branchId: string,
+    subjectId: string,
+    preview: boolean,
+  ): Promise<GradesReader> {
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', branchId)
+      .executeTakeFirstOrThrow();
+    const now = this.clock.now();
+    return {
+      preview,
+      timeZone: branch.time_zone,
+      now,
+      read: async (quarterId) => {
+        if (!preview) return undefined;
+        const ref = await quarterRefOf(transaction, quarterId);
+        return ref === undefined
+          ? undefined
+          : quarterGrades(transaction, {
+              branchId,
+              timeZone: branch.time_zone,
+              now,
+              quarter: ref,
+              subjectIds: [subjectId],
+            });
+      },
+    };
+  }
+
+  /**
+   * After the writes of a weights change (task 9.1; `edge/calculation`, week 7):
+   * a change of a stored distribution needs a reason (decision 5); its
+   * quarter's teachers are told in this transaction (decision 11); a preview
+   * ends here with the grades the change alters, rolled back. A first setting
+   * and a save that changes nothing need no reason and tell nobody.
+   */
+  private async afterWrite(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    subject: SubjectRow,
+    grades: GradesReader,
+    reason: string | undefined,
+    written: readonly Written[],
+  ): Promise<void> {
+    const reasonRequired = written.some((one) => one.change === 'changed');
+    if (grades.preview) {
+      const quarters = [];
+      for (const one of written) {
+        const after = await grades.read(one.quarterId);
+        if (one.before !== undefined && after !== undefined) {
+          quarters.push(compareGrades(one.before, after));
+        }
+      }
+      throw new PreviewDone({ reasonRequired, quarters });
+    }
+    if (!reasonRequired) return;
+    if (reason === undefined) throw refused('reason_required');
+    const today = schoolDateOf(grades.now, grades.timeZone);
+    // One notice per account for the change, naming every quarter of it the account
+    // teaches in (decision 11: "each once"; spec review of the code, should-fix 3).
+    const quartersOf = new Map<string, number[]>();
+    for (const one of written) {
+      if (one.change !== 'changed') continue;
+      const quarter = await quarterRefOf(transaction, one.quarterId);
+      if (quarter === undefined) continue;
+      const accountIds = await weightsNoticeAccounts(transaction, {
+        branchId,
+        subjectId: subject.id,
+        quarter,
+        today,
+      });
+      for (const accountId of accountIds) {
+        quartersOf.set(accountId, [...(quartersOf.get(accountId) ?? []), quarter.number]);
+      }
+    }
+    const byQuarters = new Map<string, { quarters: number[]; accountIds: string[] }>();
+    for (const [accountId, quarters] of quartersOf) {
+      const key = quarters.join(',');
+      const group = byQuarters.get(key) ?? { quarters, accountIds: [] };
+      group.accountIds.push(accountId);
+      byQuarters.set(key, group);
+    }
+    for (const group of byQuarters.values()) {
+      await this.notifications.send(transaction, {
+        kind: 'setup.quarter_weights_changed',
+        data: {
+          subject: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en },
+          quarters: group.quarters,
+          date: today,
+          reason,
+        },
+        branchId,
+        accountIds: group.accountIds,
+      });
+    }
   }
 
   private async readSubject(

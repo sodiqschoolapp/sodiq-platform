@@ -360,6 +360,7 @@ describe('the journal grid', () => {
         daily: { attendance: 20, classwork: 40, homework: 40 },
         quarterly: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
         weightsChangedOn: null,
+        countsFrom: null,
       });
     });
   });
@@ -527,7 +528,13 @@ describe('the journal grid', () => {
           .put(`/api/setup/subjects/${s.scene.subject}/quarter-weights/${quarter.id}`)
           .set('Cookie', vice.cookie)
           .set(BRANCH_HEADER, s.scene.branch)
-          .send({ attendance: 30, classwork: 40, homework: 30, ratingExam: null });
+          .send({
+            attendance: 30,
+            classwork: 40,
+            homework: 30,
+            ratingExam: null,
+            reason: 'Agreed by the department',
+          });
         expect([200, 201], JSON.stringify(changed.body)).toContain(changed.status);
       },
       '2026-10-21T10:00:00+05:00',

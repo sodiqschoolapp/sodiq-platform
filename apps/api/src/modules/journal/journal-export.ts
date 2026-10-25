@@ -114,6 +114,10 @@ export function journalHeader(input: JournalFileInput, texts: JournalExportTexts
     line,
     grid.teacher === null ? texts.noTeacher : fillText(texts.teacher, { name: grid.teacher.name }),
     stampOf(input, texts),
+    // Task 9.1 (`edge/academic-year`: "labelled 'from' with the date, ... in prints and in exports").
+    ...(grid.legend.countsFrom === null
+      ? []
+      : [fillText(texts.countsFrom, { date: dateText(grid.legend.countsFrom) })]),
   ];
 }
 

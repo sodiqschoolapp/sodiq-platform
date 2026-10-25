@@ -5,6 +5,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { switchKey, switchesOf } from '../setup/subject-switches.js';
+import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 
 /**
  * The reads of the journal grid (task 6.2, pull request #210), each one
@@ -299,6 +300,9 @@ export interface GridWorkRow {
   readonly kind: 'classwork' | 'homework';
   readonly total: number | null;
   readonly notHeld: boolean;
+  /** The column's title and place among its kind, where a reader of columns gives them (task 9.1, the trace). */
+  readonly title?: string | null;
+  readonly position?: number;
 }
 
 export async function lessonWorks(
@@ -521,16 +525,23 @@ export async function gridWeights(
   subjectId: string,
   quarterId: string,
 ): Promise<GridWeights> {
-  const [daily, quarterly, quarter] = await Promise.all([
+  const [daily, quarterly, quarter, subject, switches] = await Promise.all([
     transaction
       .selectFrom('subject_daily_weights')
-      .select(['attendance', 'classwork', 'homework'])
+      .select(['attendance', 'classwork', 'homework', 'weights_round'])
       .where('branch_id', '=', branchId)
       .where('subject_id', '=', subjectId)
       .executeTakeFirst(),
     transaction
       .selectFrom('subject_quarter_weights')
-      .select(['attendance', 'classwork', 'homework', 'rating_exam'])
+      .select([
+        'attendance',
+        'classwork',
+        'homework',
+        'rating_exam',
+        'weights_round',
+        'rating_round',
+      ])
       .where('branch_id', '=', branchId)
       .where('subject_id', '=', subjectId)
       .where('quarter_id', '=', quarterId)
@@ -540,18 +551,31 @@ export async function gridWeights(
       .select(['late_value', 'skipped_value'])
       .where('id', '=', quarterId)
       .executeTakeFirstOrThrow(),
+    transaction
+      .selectFrom('subjects')
+      .select(['weights_round', 'rating_round', 'rating_exam'])
+      .where('id', '=', subjectId)
+      .executeTakeFirstOrThrow(),
+    switchesOf(transaction, [subjectId], [quarterId]),
   ]);
+  // Task 9.1 (From 2.1 decision 14, From 8.2 correction 1): a row of an earlier round, or a
+  // quarterly row whose rating part does not fit the quarter's switch, is not a distribution.
+  const own = switches.get(switchKey(subjectId, quarterId));
+  const quarterlyFits =
+    quarterly !== undefined && own !== undefined && quarterWeightsFit(own, quarterly);
   return {
-    daily: daily ?? null,
-    quarterly:
-      quarterly === undefined
-        ? null
-        : {
-            attendance: quarterly.attendance,
-            classwork: quarterly.classwork,
-            homework: quarterly.homework,
-            ratingExam: quarterly.rating_exam,
-          },
+    daily:
+      daily !== undefined && dailyWeightsFit(subject, daily)
+        ? { attendance: daily.attendance, classwork: daily.classwork, homework: daily.homework }
+        : null,
+    quarterly: !quarterlyFits
+      ? null
+      : {
+          attendance: quarterly.attendance,
+          classwork: quarterly.classwork,
+          homework: quarterly.homework,
+          ratingExam: quarterly.rating_exam,
+        },
     lateValue: quarter.late_value,
     skippedValue: quarter.skipped_value,
   };

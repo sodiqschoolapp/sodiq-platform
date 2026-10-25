@@ -1,3 +1,4 @@
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { Module } from '@nestjs/common';
 import { TimetableModule } from '../timetable/timetable.module.js';
 import { AcademicYearsController } from './academic-years.controller.js';
@@ -35,7 +36,7 @@ import { PlansModule } from '../plans/plans.module.js';
  * the forced delete of a building, floor or room (task 5.8c).
  */
 @Module({
-  imports: [TimetableModule, PlansModule],
+  imports: [TimetableModule, PlansModule, NotificationsModule],
   controllers: [
     BranchesController,
     BuildingsController,

@@ -356,6 +356,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/setup/settings/class-daily-lessons': { branch: 'request', roles: SETTINGS_WRITERS },
   'GET /api/setup/attendance-values': { branch: 'request', roles: SETTINGS_VIEWERS },
   'PUT /api/setup/quarters/:id/attendance-values': { branch: 'request', roles: SETTINGS_WRITERS },
+  // Task 9.1: the preview of a change of late and skipped values, as its write.
+  'POST /api/setup/quarters/:id/attendance-values/preview': {
+    branch: 'request',
+    roles: SETTINGS_WRITERS,
+  },
   'GET /api/setup/checklist': { branch: 'request', roles: SETTINGS_VIEWERS },
   'GET /api/setup/travel-times': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/travel-times': { branch: 'request', roles: ['super_admin'] },
@@ -372,6 +377,15 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: SUBJECT_WRITERS,
   },
   'POST /api/setup/subjects/:id/quarter-weights/copy': {
+    branch: 'request',
+    roles: SUBJECT_WRITERS,
+  },
+  // Task 9.1: the previews of a weights change and of the copy, as their writes.
+  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview': {
+    branch: 'request',
+    roles: SUBJECT_WRITERS,
+  },
+  'POST /api/setup/subjects/:id/quarter-weights/copy/preview': {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },
@@ -398,6 +412,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/people/students/:id/identity': { branch: 'request', roles: STUDENT_VIEWERS },
   // Task 8.6 (correction 4 of the plan review): the readers of the record; the subjects by journal scope in the route.
   'GET /api/people/students/:id/leaving-results': { branch: 'request', roles: STUDENT_VIEWERS },
+  // Task 9.1: the Results and Attendance tabs and the lessons behind a figure, as the record.
+  'GET /api/results/students/:id': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/results/students/:id/tabs': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/results/students/:id/attendance': { branch: 'request', roles: STUDENT_VIEWERS },
+  'GET /api/results/students/:id/lessons': { branch: 'request', roles: STUDENT_VIEWERS },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },
