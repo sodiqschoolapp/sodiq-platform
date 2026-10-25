@@ -1162,7 +1162,7 @@ How to read the task lines:
 
 ## Phase 9. Results, closing and reports
 
-- [ ] **9.1 Quarter results and the student results page**
+- [x] **9.1 Quarter results and the student results page**
   - Read: `08` (Student results), `07` (Calculation rules), `edge/calculation`.
   - Build: the Results and Attendance tabs of the student profile; quarter and year results per subject; the trace from a result to its lessons.
   - Done when: every figure shown comes from `packages/calc`.

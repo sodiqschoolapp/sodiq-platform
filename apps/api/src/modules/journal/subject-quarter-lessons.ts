@@ -105,9 +105,15 @@ const DAY_MS = 86_400_000;
 const addDays = (date: string, days: number): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
-/** The works of a lesson that count: held and with their total set (as the grid's `countedWorks`). */
-const countedWorkRows = (works: readonly GridWorkRow[], kind: 'classwork' | 'homework') =>
-  works.filter((work) => work.kind === kind && !work.notHeld && work.total !== null);
+/** The work rows of a lesson that count: held and with their total set (as the grid's `countedWorks`). */
+const countedWorkRows = (
+  works: readonly GridWorkRow[],
+  kind: 'classwork' | 'homework',
+): (GridWorkRow & { readonly total: number })[] =>
+  works.filter(
+    (work): work is GridWorkRow & { readonly total: number } =>
+      work.kind === kind && !work.notHeld && work.total !== null,
+  );
 
 const columnOf = (work: GridWorkRow, index: number): CountedWork => ({
   workId: work.id,
@@ -115,16 +121,16 @@ const columnOf = (work: GridWorkRow, index: number): CountedWork => ({
   position: work.position ?? index + 1,
 });
 
+/** The counted works as `packages/calc` takes them, in the order of `countedWorkRows` (the trace pairs them). */
 function countedWorks(
   works: readonly GridWorkRow[],
   kind: 'classwork' | 'homework',
   scores: ReadonlyMap<string, number | null>,
 ): Work[] {
-  return works.flatMap((work) =>
-    work.kind !== kind || work.notHeld || work.total === null
-      ? []
-      : [{ total: work.total, score: scores.get(work.id) ?? null }],
-  );
+  return countedWorkRows(works, kind).map((work) => ({
+    total: work.total,
+    score: scores.get(work.id) ?? null,
+  }));
 }
 
 interface MemberRow {

@@ -7,9 +7,10 @@ import {
   studentResultTabsSchema,
   type StudentResults,
 } from '@sodiq/shared';
-import { sql } from 'kysely';
+import { sql, type ExpressionBuilder, type UpdateObject } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { DB } from '../../database/types.generated.js';
 import { Transactions } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
@@ -574,65 +575,6 @@ describe('the student results (08, Student results)', () => {
     });
   });
 
-  it('reads a quarterly distribution only in the quarter’s rounds (From 2.1 decision 14, From 8.2)', async () => {
-    const s = await scene();
-    // A new weights round of the subject from quarter 1: the stored rows are of round 1.
-    await t.app.get(Transactions).run([s.scene.branch], async (transaction) => {
-      await t.app.get(Audit).record(transaction, {
-        branchId: s.scene.branch,
-        actorId: await load.classes.account(),
-        action: 'subject.edit',
-      });
-      await transaction
-        .updateTable('subjects')
-        .set((eb) => ({ weights_round: eb('weights_round', '+', 1), switches_from: 1 }))
-        .where('id', '=', s.scene.subject)
-        .execute();
-    });
-    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
-      const grid = journalGridSchema.parse(
-        (await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).body,
-      );
-      expect(grid.legend.quarterly).toBeNull();
-      expect(grid.legend.daily).toBeNull();
-      expect(grid.students.find((one) => one.id === s.aziz)?.quarter?.result ?? null).toBeNull();
-      const answer = resultsOf(await get(s.scene.branch, `/api/results/students/${s.aziz}`));
-      expect(answer.subjects).toEqual([]);
-      // The attendance figures stand without weights.
-      const attendance = studentAttendanceSchema.parse(
-        (await get(s.scene.branch, `/api/results/students/${s.aziz}/attendance`)).body,
-      );
-      expect(attendance.subjects[0]?.quarters[0]?.average).toBe(50);
-    });
-  });
-
-  it('leaves out of Results a quarter where the subject is attendance only, and keeps it in Attendance', async () => {
-    const s = await scene();
-    await t.app.get(Transactions).run([s.scene.branch], async (transaction) => {
-      await t.app.get(Audit).record(transaction, {
-        branchId: s.scene.branch,
-        actorId: await load.classes.account(),
-        action: 'subject.edit',
-      });
-      await transaction
-        .updateTable('subjects')
-        .set({ journal_type: 'attendance_only', switches_from: 1 })
-        .where('id', '=', s.scene.subject)
-        .execute();
-    });
-    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
-      expect(
-        resultsOf(await get(s.scene.branch, `/api/results/students/${s.aziz}`)).subjects,
-      ).toEqual([]);
-      const attendance = studentAttendanceSchema.parse(
-        (await get(s.scene.branch, `/api/results/students/${s.aziz}/attendance`)).body,
-      );
-      expect(
-        attendance.subjects[0]?.quarters.map((one) => [one.attendanceOnly, one.average]),
-      ).toEqual([[true, 50]]);
-    });
-  });
-
   it('answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class', async () => {
     const owner = await account();
     const s = await scene({ teacher: owner.account.id }, true);
@@ -775,6 +717,372 @@ describe('the student results (08, Student results)', () => {
         ).toEqual([[[await quarterOf(s.scene, 2)], null]]);
       },
       later,
+    );
+  });
+  /** An all-subjects exemption of the student, written as the service writes one. */
+  const exempt = async (
+    scene: PublishedScene,
+    studentId: string,
+    from: string,
+    until: string,
+    times: readonly [string, string] | null = null,
+  ) => {
+    const writer = await load.classes.account();
+    await t.app.get(Transactions).run([scene.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: scene.branch,
+        actorId: writer,
+        action: 'exemption.create',
+      });
+      await transaction
+        .insertInto('exemptions')
+        .values({
+          branch_id: scene.branch,
+          student_id: studentId,
+          year_id: scene.year,
+          batch_id: '019a0000-0000-7000-8000-0000000000a1',
+          kind: 'temporary',
+          all_subjects: true,
+          start_date: from,
+          end_date: until,
+          start_time: times?.[0] ?? null,
+          end_time: times?.[1] ?? null,
+          category: 'illness',
+          detail: 'A certificate from the clinic',
+          granted_by: writer,
+          granted_at: new Date(0),
+          version: 0,
+          changed_at: new Date(0),
+        })
+        .execute();
+    });
+  };
+
+  /** The answer's quarter 1 row of the scene's subject for the student. */
+  const rowOf = async (
+    get: (branch: string, path: string) => Promise<Response>,
+    branch: string,
+    studentId: string,
+  ) => resultsOf(await get(branch, `/api/results/students/${studentId}`)).subjects[0]?.quarters[0];
+
+  /** The grid's quarter figures of the student in the journal. */
+  const gridRowOf = async (
+    get: (branch: string, path: string) => Promise<Response>,
+    branch: string,
+    journalId: string,
+    studentId: string,
+  ) =>
+    journalGridSchema
+      .parse((await get(branch, `/api/journal/journals/${journalId}`)).body)
+      .students.find((one) => one.id === studentId)?.quarter;
+
+  it('answers "Exempt", a moved student’s full result and the trace of both journals, "left the subject on" and a result at leaving, as the grid does', async () => {
+    const s = await scene();
+    const { l12, l19, l26 } = s.lessons;
+    const other = await lessonsOf(s.scene.otherClass);
+    const [b12, b19] = other;
+    if (b12 === undefined || b19 === undefined) throw new Error('Lessons of the other class.');
+    const otherJournal = (
+      await t.database.migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('class_id', '=', s.scene.otherClass)
+        .executeTakeFirstOrThrow()
+    ).id;
+    // Bobur: exempt the whole month (07, Effect on totals: "If none remain, the result is
+    // 'Exempt'").
+    const bobur = await student(s.scene.branch, { first: 'Bobur', last: 'Toshmatov' }, [
+      { classId: s.scene.classId, from: '2026-09-01' },
+    ]);
+    await exempt(s.scene, bobur, '2026-10-01', '2026-10-31');
+    // Laylo: present on the 12th in the first class, then the other class from the 19th
+    // (edge/calculation, week 6).
+    const laylo = await student(s.scene.branch, { first: 'Laylo', last: 'Hasanova' }, [
+      { classId: s.scene.classId, from: '2026-09-01', ownUntil: '2026-10-19' },
+      { classId: s.scene.otherClass, from: '2026-10-19' },
+    ]);
+    await saveOn(s.scene.branch, l12.date, [{ lessonId: l12.id, studentId: laylo, value: 1 }]);
+    await saveOn(s.scene.branch, b19.date, [{ lessonId: b19.id, studentId: laylo, value: 0 }]);
+    // Jasur: moved to a class without the subject on the 19th (edge/calculation, "A student
+    // moved to a class that does not study the subject").
+    const noMaths = await load.classes.schoolClass(s.scene.branch, s.scene.year, { grade: 7 });
+    const jasur = await student(s.scene.branch, { first: 'Jasur', last: 'Karimov' }, [
+      { classId: s.scene.classId, from: '2026-09-01', ownUntil: '2026-10-19' },
+      { classId: noMaths, from: '2026-10-19' },
+    ]);
+    await saveOn(s.scene.branch, l12.date, [{ lessonId: l12.id, studentId: jasur, value: 1 }]);
+    // Malika: left the school with the last day 20 October (a result at leaving).
+    const kit = new MembersKit(t.database.migrator, await load.classes.account());
+    const malika = await kit.student(s.scene.branch, { startsOn: '2026-09-01', grade: 7 });
+    const leavingId = await kit.leaving(t.database.migrator, s.scene.branch, malika, '2026-10-21');
+    await kit.member({
+      branch: s.scene.branch,
+      classId: s.scene.classId,
+      studentId: malika,
+      from: '2026-09-01',
+      until: '2026-10-21',
+      endedBy: 'leaving',
+      leavingId,
+    });
+    await saveOn(s.scene.branch, l12.date, [{ lessonId: l12.id, studentId: malika, value: 1 }]);
+    const q1 = await quarterOf(s.scene, 1);
+
+    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const branch = s.scene.branch;
+      // "Exempt": no number and no grade, as the grid shows it.
+      expect((await rowOf(get, branch, bobur))?.outcome).toEqual({ kind: 'exempt' });
+      expect((await gridRowOf(get, branch, s.journal, bobur))?.result).toEqual({ kind: 'exempt' });
+      // The exempt lessons in the trace: mark 4, counting nothing.
+      const boburTrace = studentResultLessonsSchema.parse(
+        (
+          await get(
+            branch,
+            `/api/results/students/${bobur}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
+          )
+        ).body,
+      );
+      expect(boburTrace.lessons.map((one) => [one.mark, one.attendanceValue])).toEqual([
+        [4, null],
+        [4, null],
+        [4, null],
+      ]);
+
+      // The moved student: both journals in the result, each lesson named with its unit.
+      const moved = await rowOf(get, branch, laylo);
+      expect(moved?.unit.id).toBe(s.scene.otherClass);
+      const inGrid = await gridRowOf(get, branch, otherJournal, laylo);
+      expect([moved?.attendance, moved?.outcome.kind]).toEqual([inGrid?.attendance, 'number']);
+      expect(moved?.attendance).toBe(50);
+      const trace = studentResultLessonsSchema.parse(
+        (
+          await get(
+            branch,
+            `/api/results/students/${laylo}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
+          )
+        ).body,
+      );
+      expect(trace.lessons.map((one) => [one.date, one.unit.journalId, one.mark])).toEqual([
+        ['2026-10-12', s.journal, 1],
+        ['2026-10-19', otherJournal, 0],
+        ['2026-10-26', otherJournal, null],
+      ]);
+
+      // "left the subject on" and its flag, as the grid labels the student.
+      const left = await rowOf(get, branch, jasur);
+      expect(left?.leftSubjectOn).toBe('2026-10-18');
+      expect(left?.outcome).toMatchObject({
+        kind: 'number',
+        flags: expect.arrayContaining(['left_subject']) as unknown,
+      });
+      // A result at leaving, labelled, with its lessons.
+      const leaving = await rowOf(get, branch, malika);
+      expect(leaving?.atLeaving).toBe('2026-10-20');
+      expect(leaving?.basedOn).toEqual({ expected: 2, held: 2 });
+      expect(leaving?.outcome).toMatchObject({ kind: 'number', flags: [] });
+    });
+    // Unused here: the lesson of the 26th of the first class and of the 12th of the other.
+    expect([l19.id, l26.id, b12.id].every((id) => id.length > 0)).toBe(true);
+  });
+
+  it('flags a result based on few lessons, "based on n of N"', async () => {
+    // A double lesson each Monday: six lessons in October; Dilnoza is exempt for the 12th and
+    // the 19th and the first lesson of the 26th, so she was expected at one of six.
+    const s = await publishedScene(t, load, { graded: true, double: true });
+    const dilnoza = await student(s.branch, { first: 'Dilnoza', last: 'Rasulova' }, [
+      { classId: s.classId, from: '2026-09-01' },
+    ]);
+    await exempt(s, dilnoza, '2026-10-01', '2026-10-25');
+    await exempt(s, dilnoza, '2026-10-26', '2026-10-26', ['08:00', '08:45']);
+    const lessons = await lessonsOf(s.classId);
+    const last = lessons.at(-1);
+    if (last === undefined) throw new Error('A last lesson.');
+    await saveOn(s.branch, last.date, [{ lessonId: last.id, studentId: dilnoza, value: 1 }]);
+    await as(await account(), [{ role: 'principal', branchId: s.branch }], async (get) => {
+      const row = await rowOf(get, s.branch, dilnoza);
+      expect(row?.basedOn).toEqual({ expected: 1, held: 6 });
+      expect(row?.outcome).toMatchObject({
+        kind: 'number',
+        flags: ['few_lessons', 'attendance_only'],
+      });
+    });
+  });
+
+  it('leaves a cancelled lesson and a work "not held" out of the lessons behind a figure', async () => {
+    const s = await scene();
+    const { l19, l26 } = s.lessons;
+    const work = (
+      await t.database.migrator
+        .insertInto('journal_works')
+        .values({ branch_id: s.scene.branch, lesson_id: l19.id, kind: 'classwork', total: 10 })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', '2026-10-19T18:00:00+05:00', true)`.execute(
+        transaction,
+      );
+      await transaction
+        .updateTable('journal_works')
+        .set({ not_held: true })
+        .where('id', '=', work)
+        .execute();
+    });
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: 'A school trip' })
+      .where('id', '=', l26.id)
+      .execute();
+    const q1 = await quarterOf(s.scene, 1);
+    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const trace = studentResultLessonsSchema.parse(
+        (
+          await get(
+            s.scene.branch,
+            `/api/results/students/${s.aziz}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
+          )
+        ).body,
+      );
+      expect(trace.lessons.map((one) => [one.date, one.classworks.length])).toEqual([
+        ['2026-10-12', 1],
+        ['2026-10-19', 0],
+      ]);
+      // The result counts the same lessons: attendance 50 (12th and 19th), based on 2 of 2.
+      const row = await rowOf(get, s.scene.branch, s.aziz);
+      expect([row?.attendance, row?.basedOn]).toEqual([50, { expected: 2, held: 2 }]);
+    });
+  });
+  /** Changes the subject's switches or rounds from a quarter, as the subject edit writes it. */
+  const switchSubject = async (
+    s: { scene: PublishedScene },
+    set: (eb: ExpressionBuilder<DB, 'subjects'>) => UpdateObject<DB, 'subjects'>,
+  ) => {
+    await t.app.get(Transactions).run([s.scene.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: s.scene.branch,
+        actorId: await load.classes.account(),
+        action: 'subject.edit',
+      });
+      await transaction
+        .updateTable('subjects')
+        .set((eb) => set(eb))
+        .where('id', '=', s.scene.subject)
+        .execute();
+    });
+  };
+
+  it('takes no quarterly distribution whose rating part does not fit the quarter’s switch, in the results, the grid and the result at leaving', async () => {
+    const s = await scene();
+    // A student who left on the 21st, to read the result at leaving.
+    const kit = new MembersKit(t.database.migrator, await load.classes.account());
+    const left = await kit.student(s.scene.branch, { startsOn: '2026-09-01', grade: 7 });
+    const leavingId = await kit.leaving(t.database.migrator, s.scene.branch, left, '2026-10-21');
+    await kit.member({
+      branch: s.scene.branch,
+      classId: s.scene.classId,
+      studentId: left,
+      from: '2026-09-01',
+      until: '2026-10-21',
+      endedBy: 'leaving',
+      leavingId,
+    });
+    await saveOn(s.scene.branch, s.lessons.l12.date, [
+      { lessonId: s.lessons.l12.id, studentId: left, value: 1 },
+    ]);
+    // The rating exam switched on from quarter 1: the stored rows have no rating part.
+    await switchSubject(s, (eb) => ({
+      rating_exam: true,
+      rating_round: eb('rating_round', '+', 1),
+      switches_from: 1,
+    }));
+    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const grid = journalGridSchema.parse(
+        (await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).body,
+      );
+      expect(grid.legend.quarterly).toBeNull();
+      expect(grid.legend.daily).not.toBeNull();
+      expect(
+        resultsOf(await get(s.scene.branch, `/api/results/students/${s.aziz}`)).subjects,
+      ).toEqual([]);
+      const leaving = studentLeavingResultsSchema.parse(
+        (await get(s.scene.branch, `/api/people/students/${left}/leaving-results`)).body,
+      );
+      expect(leaving.results).toEqual([]);
+    });
+  });
+
+  it('takes no daily distribution of an earlier round, while the quarter’s fitting rows still give the result', async () => {
+    const s = await scene();
+    // A new weights round; the quarterly rows are written again in it, the daily row is not.
+    await switchSubject(s, (eb) => ({
+      weights_round: eb('weights_round', '+', 1),
+      switches_from: 1,
+    }));
+    await t.database.migrator
+      .updateTable('subject_quarter_weights')
+      .set((eb) => ({ weights_round: eb('weights_round', '+', 1) }))
+      .where('branch_id', '=', s.scene.branch)
+      .where('subject_id', '=', s.scene.subject)
+      .execute();
+    await as(await account(), [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const grid = journalGridSchema.parse(
+        (await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).body,
+      );
+      expect(grid.legend.daily).toBeNull();
+      expect(grid.legend.quarterly).toEqual({
+        attendance: 20,
+        classwork: 40,
+        homework: 40,
+        ratingExam: null,
+      });
+      const row = (await rowOf(get, s.scene.branch, s.aziz))?.outcome;
+      expect(row).toMatchObject({ kind: 'number', shown: 77 });
+    });
+  });
+
+  it('shows a subject attendance only from quarter 2 in Results for quarter 1 only, in Attendance for both, and the year from quarter 1', async () => {
+    const s = await scene();
+    // Switched before quarter 2 starts (edge/calculation: "free before the quarter's first lesson").
+    await switchSubject(s, () => ({ journal_type: 'attendance_only', switches_from: 2 }));
+    const nov9 = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', s.scene.classId)
+      .where('lesson_date', '=', '2026-11-09')
+      .executeTakeFirstOrThrow();
+    await saveOn(s.scene.branch, '2026-11-09', [
+      { lessonId: nov9.id, studentId: s.aziz, value: 1 },
+    ]);
+    await t.database.migrator
+      .updateTable('academic_years')
+      .set({ status: 'closed' })
+      .where('id', '=', s.scene.year)
+      .execute();
+    const [q1, q2] = [await quarterOf(s.scene, 1), await quarterOf(s.scene, 2)];
+    await as(
+      await account(),
+      [{ role: 'principal', branchId: s.scene.branch }],
+      async (get) => {
+        const base = `/api/results/students/${s.aziz}?yearId=${s.scene.year}`;
+        const answer = resultsOf(await get(s.scene.branch, base));
+        expect(
+          answer.subjects.map((one) => [one.quarters.map((row) => row.quarterId), one.year]),
+        ).toEqual([[[q1], { kind: 'number', shown: 77, grade: 4, basedOn: 1 }]]);
+        const attendance = studentAttendanceSchema.parse(
+          (
+            await get(
+              s.scene.branch,
+              `/api/results/students/${s.aziz}/attendance?yearId=${s.scene.year}`,
+            )
+          ).body,
+        );
+        expect(
+          attendance.subjects[0]?.quarters.map((one) => [one.quarterId, one.attendanceOnly]),
+        ).toEqual([
+          [q1, false],
+          [q2, true],
+        ]);
+      },
+      '2026-12-29T12:00:00+05:00',
     );
   });
 });

@@ -477,4 +477,57 @@ describe('the preview and the reason of a change of weights or values', () => {
     expect(await rowsOf()).toEqual(before);
     expect(await noticesOf(other.owner.account.id)).toEqual([]);
   });
+
+  // The spec review of the code, must-fix 3k: each preview refuses what its write refuses.
+  it('refuses in the late and skipped preview and in the copy preview what their writes refuse', async () => {
+    const x = await scene();
+    const values = `/api/setup/quarters/${x.quarters[0] ?? ''}/attendance-values`;
+    const copy = `/api/setup/subjects/${x.s.subject}/quarter-weights/copy`;
+    // A value outside 0 to 100, as the write refuses it.
+    const range = await at(() =>
+      t.post(`${values}/preview`, x.s.branch, { lateValue: 101, skippedValue: 0 }),
+    );
+    const written = await at(() =>
+      t.put(values, x.s.branch, { lateValue: 101, skippedValue: 0, reason: 'x' }),
+    );
+    expect([range.status, codeOf(range)]).toEqual([written.status, codeOf(written)]);
+    expect(range.status).toBe(400);
+    // Quarter 3 with the rating exam switched on: the copy of quarter 1 does not fit it.
+    await t.app.get(Transactions).run([x.s.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: x.s.branch,
+        actorId: await load.classes.account(),
+        action: 'subject.edit',
+      });
+      await transaction
+        .updateTable('subjects')
+        .set((eb) => ({
+          rating_exam: true,
+          rating_round: eb('rating_round', '+', 1),
+          switches_from: 3,
+        }))
+        .where('id', '=', x.s.subject)
+        .execute();
+    });
+    expect(
+      codeOf(await at(() => t.post(`${copy}/preview`, x.s.branch, { yearId: x.s.year }))),
+    ).toBe('weights_shape_mismatch');
+    // A closed year: both previews refuse it.
+    await t.database.migrator
+      .updateTable('academic_years')
+      .set({ status: 'closed' })
+      .where('id', '=', x.s.year)
+      .execute();
+    expect(
+      codeOf(await at(() => t.post(`${copy}/preview`, x.s.branch, { yearId: x.s.year }))),
+    ).toBe('year_closed');
+    const closed = await at(() =>
+      t.post(`${values}/preview`, x.s.branch, { lateValue: 75, skippedValue: 0 }),
+    );
+    const closedWrite = await at(() =>
+      t.put(values, x.s.branch, { lateValue: 75, skippedValue: 0, reason: 'x' }),
+    );
+    expect(codeOf(closed)).toBe(codeOf(closedWrite));
+    expect(closed.status).toBe(409);
+  });
 });

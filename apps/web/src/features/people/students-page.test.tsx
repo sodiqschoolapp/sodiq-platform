@@ -3631,4 +3631,23 @@ describe('the Results and Attendance tabs', () => {
     ).toBeDefined();
     expect(within(tabs).queryByRole('radio', { name: en.people.students.tabs.results })).toBeNull();
   });
+
+  it('says when the tabs could not be read, with a retry', async () => {
+    const calls = openList('principal', {
+      [`GET /api/results/students/${OTKIR.id}/tabs`]: () =>
+        Response.json(
+          { error: { code: 'internal_error', message: 'x', requestId: 'r' } },
+          { status: 500 },
+        ),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const retry = await within(panel).findByRole('button', { name: en.problems.retry });
+    const before = calls.filter((call) => call.route.endsWith('/tabs')).length;
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route.endsWith('/tabs')).length).toBeGreaterThan(before);
+    });
+  });
 });

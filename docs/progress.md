@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 9.1 Quarter results and the student results page
+
+- No migration. Routes: `GET /api/results/students/:id` (Results), `/attendance`, `/lessons` (the lessons behind a figure), `/tabs` (`students` `view`, each subject only to a reader of its journal, `student-row-reading.ts`); `POST .../preview` of a quarter's late and skipped values, of a quarterly distribution and of the copy; the three writes take a `reason` (`reason_required` for a change of stored values) and a weights change tells the subject's teachers (`setup.quarter_weights_changed`).
+- `gridWeights` takes only rows of the quarter's switches and rounds; the start quarter's "from <date>" is shown by the grid, its files, the result at leaving and the student results. Web: the Results and Attendance tabs, the lessons dialog, the reason dialog of the weights and values forms; handbook `08-results.md`.
+- Left out, with From lines on 9.2b: the year result once the fourth quarter is closed (today once the year is closed), stored results and their `students` reference.
+
+The next sessions must know:
+
+- A reader of a student's figures across journals decides the scope with `studentRowReading` (a Tutor of the student's class reads a group journal's row whole).
+- A change that alters results previews by running its write and rolling it back (`PreviewDone`), counting with `quarterGrades`/`compareGrades` of `apps/api/src/modules/results/grade-changes.ts`.
+- The year result is answered only to a reader of the subject in every quarter with a result.
+
 ## 25 October 2026: task 8.9 Journal exports and the support view
 
 - 0131: `journal_save_refusals` (append-only, by month: the refused saves of attendance, numbers and rating entries, recorded by `SaveRefusals` after the refused transaction) and `journal_exports` (one queued per person and branch; the 24 hours of the link written by the trigger).

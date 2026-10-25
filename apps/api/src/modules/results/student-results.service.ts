@@ -132,10 +132,13 @@ export class StudentResultsService {
 
   tabs(access: Access, studentId: string): Promise<StudentResultTabs> {
     return this.run(access, studentId, async (context) => {
-      const year = await yearOf(context, undefined);
-      if (year === null)
-        return studentResultTabsSchema.parse({ results: false, attendance: false });
-      const readings = await membershipReadings(context, year);
+      // Every year of the branch, so a student with figures only in an earlier year has the
+      // tabs too (spec review of the code, should-fix 2).
+      const readings: StudentRowReading[] = [];
+      for (const year of await yearsOf(context)) {
+        readings.push(...(await membershipReadings(context, year)));
+        if (readings.includes('whole')) break;
+      }
       return studentResultTabsSchema.parse({
         results: readings.includes('whole'),
         attendance: readings.some((one) => one !== null),

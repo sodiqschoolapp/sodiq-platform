@@ -661,6 +661,11 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
           <StudentPhotoSection student={student} name={name} quiet={editing !== null} />
           <HistoryLink kind="student" id={student.id} />
           <ReportLink kind="student" id={student.id} />
+          {/* Task 9.1: the Results and Attendance tabs wait on the server's answer; a failure
+              says so, with a retry, rather than leaving the tabs out silently. */}
+          {resultTabs.isError && (
+            <ErrorState error={resultTabs.error} onRetry={() => void resultTabs.refetch()} />
+          )}
           {tabs.length > 1 && (
             <Segmented
               label={t('people.students.tabs.label')}

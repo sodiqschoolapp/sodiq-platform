@@ -38,7 +38,7 @@ export type StudentResultLessonsQuery = z.infer<typeof studentResultLessonsQuery
 
 /** Which tabs the reader has (the tabs follow the server, never the role). */
 export const studentResultTabsSchema = z.object({
-  /** The reader reads the student's row of some journal of the year shown by default whole. */
+  /** The reader reads the student's row of some journal of any year of the branch whole. */
   results: z.boolean(),
   /** The reader reads the student's row of some journal of that year at all. */
   attendance: z.boolean(),
@@ -46,7 +46,7 @@ export const studentResultTabsSchema = z.object({
 
 export type StudentResultTabs = z.infer<typeof studentResultTabsSchema>;
 
-/** A year the student has journals in, for the selector. */
+/** A year of the branch, newest first, for the selector. */
 const resultYearSchema = z.object({
   id: z.uuid(),
   startDate: schoolDateSchema,
