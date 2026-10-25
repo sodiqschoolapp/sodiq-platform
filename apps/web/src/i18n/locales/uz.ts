@@ -674,7 +674,7 @@ export const uz: Texts<'one' | 'other'> = {
     closing_not_flagged:
       'Bu natija endi belgilanmagan, qaror qabul qilish shart emas. Roʻyxatni yangilang.',
     closing_decision_not_allowed:
-      '«Ozod» faqat ozod qilish bilan izohlanadigan, faqat kam dars uchun belgilangan natijaga mos keladi. «Qoldirish» yoki «Baholanmagan»ni tanlang.',
+      '«Ozod» faqat ozod qilish bilan izohlanadigan, faqat kam dars uchun belgilangan natijaga mos keladi. «Raqamni qoldirish» yoki «Baholanmagan»ni tanlang.',
     closing_decision_changed:
       'Siz roʻyxatni ochganingizdan keyin kimdir bu qarorni oʻzgartirdi. Uni yangilab, qayta qaror qiling.',
     closing_nothing_to_clear:
@@ -754,6 +754,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Yangi jurnallarda koʻchirishdan keyin oʻquvchining yozuvlari bor, shuning uchun uni bekor qilib boʻlmaydi. Uning oʻrniga orqaga koʻchiring.',
     student_merge_journal_overlap:
       'Ikkala yozuvda bir xil dars boʻyicha jurnal maʼlumotlari bor. Avval ulardan birini tozalang.',
+    student_merge_decision_overlap:
+      'Ikkala yozuvda ham bir fan va chorak boʻyicha belgilangan natija qarori bor. Avval ulardan birini chorakni yopish roʻyxatida bekor qiling.',
     student_merge_journal_cut:
       'Birlashtirilayotgan yozuvda birlashtirish kesib tashlaydigan kunlarda jurnal yozuvlari bor. Avval ularni sabab bilan bekor qiling.',
     student_status_exemption_overlap:

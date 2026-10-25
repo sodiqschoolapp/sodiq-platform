@@ -659,7 +659,7 @@ export const en = {
     closing_not_flagged:
       'This result is not flagged any more, so there is nothing to decide. Reload the checklist.',
     closing_decision_not_allowed:
-      '"Exempt" fits only a result flagged for few lessons alone that an exemption explains. Choose "Keep" or "Not assessed".',
+      '"Exempt" fits only a result flagged for few lessons alone that an exemption explains. Choose "Keep the number" or "Not assessed".',
     closing_decision_changed:
       'Someone changed this decision since you opened the checklist. Reload it and decide again.',
     closing_nothing_to_clear:
@@ -741,6 +741,8 @@ export const en = {
       'The new journals already hold entries of the student since the move, so it cannot be undone. Make a transfer back instead.',
     student_merge_journal_overlap:
       'Both records hold journal entries for the same lesson. Clear one of them first.',
+    student_merge_decision_overlap:
+      'Both records hold a decision on a flagged result for the same subject and quarter. Clear one of them on the closing checklist first.',
     student_merge_journal_cut:
       'The record being merged holds journal entries on days the merge cuts. Void them with a reason first.',
     student_status_exemption_overlap:

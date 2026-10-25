@@ -41,6 +41,9 @@ const MERGE_DOES: Readonly<
   journal_cells: 'carried',
   journal_comments: 'carried',
   journal_rating_entries: 'carried',
+  // Task 9.2a: the decisions on flagged results go to the kept record; two of one quarter
+  // and subject refuse the merge by their key.
+  quarter_result_decisions: 'carried',
   // Task 6.3, correction 2: the reasons of absence go to the kept record.
   student_absence_reasons: 'carried',
   student_accounts: 'left behind',

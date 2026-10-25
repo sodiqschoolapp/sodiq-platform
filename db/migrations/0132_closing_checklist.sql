@@ -75,10 +75,23 @@ end
 $$;
 
 create trigger quarter_result_decisions_write
-  before insert or update on quarter_result_decisions
+  before insert on quarter_result_decisions
   for each row execute function quarter_result_decisions_write();
+create trigger quarter_result_decisions_write_update
+  before update on quarter_result_decisions
+  for each row when (old.student_id is not distinct from new.student_id)
+  execute function quarter_result_decisions_write();
+
+-- The merge of two student records (task 3.3d, From 8.6 decision 8) carries the decisions to
+-- the kept record as it carries the journal's rows (0128): a change of `student_id` alone, from
+-- the merged record to the kept one of a merge of this transaction; two decisions of one
+-- quarter and subject meet the unique key and refuse the merge.
+create trigger quarter_result_decisions_merge_carry
+  before update on quarter_result_decisions
+  for each row when (old.student_id is distinct from new.student_id)
+  execute function journal_merge_carry();
 
 grant select on quarter_result_decisions to sodiq_app;
 grant insert (branch_id, quarter_id, subject_id, student_id, decision, decided_by, decided_at)
   on quarter_result_decisions to sodiq_app;
-grant update (decision, decided_by, version) on quarter_result_decisions to sodiq_app;
+grant update (decision, decided_by, version, student_id) on quarter_result_decisions to sodiq_app;

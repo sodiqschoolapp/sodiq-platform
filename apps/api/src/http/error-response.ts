@@ -518,6 +518,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   orphan_assignment_withdrawn: 'The assignment is already withdrawn.',
   discipline_range: 'The range is longer than 92 days or crosses academic years.',
   student_merge_journal_overlap: 'Both records hold journal data on the same lesson.',
+  student_merge_decision_overlap: 'Both records hold a decision on the same subject and quarter.',
   student_merge_journal_cut: 'The merged record holds journal entries on days the merge cuts.',
   work_not_in_lesson: 'The work is not a column of this lesson.',
   lesson_has_plan_item: 'The lesson has a plan item; its works come from the plan.',

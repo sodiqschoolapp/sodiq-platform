@@ -1110,6 +1110,8 @@ export const ERROR_CODES = [
   'move_has_entries',
   /** Both records hold journal data on one key (the same lesson and work, rating exam or comment target): the details name the lessons (From 3.3d; task 8.6). */
   'student_merge_journal_overlap',
+  /** Both records hold a decision on a flagged result of the same subject and quarter (task 9.2a). */
+  'student_merge_decision_overlap',
   /** The merged record holds journal entries on days the merge cuts: they are voided with a reason first (From 3.3d; task 8.6). */
   'student_merge_journal_cut',
   /** The lesson is no orphan lesson now: it is complete, not held, or the teacher it counts for is in the school (edge/journal; task 8.7). */

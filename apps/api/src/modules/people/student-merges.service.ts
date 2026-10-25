@@ -1503,6 +1503,21 @@ export class StudentMerges {
       .where('student_id', '=', input.mergedId)
       .returning('id')
       .execute();
+    // Task 9.2a: the decisions on flagged results (0132), carried as the journal's rows; a
+    // decision of both records on one quarter and subject refuses the merge.
+    try {
+      await transaction
+        .updateTable('quarter_result_decisions')
+        .set({ student_id: input.keptId })
+        .where('student_id', '=', input.mergedId)
+        .execute();
+    } catch (error) {
+      const failure = error as { code?: unknown; constraint?: unknown };
+      if (failure.code === '23505' && failure.constraint === 'quarter_result_decisions_key') {
+        throw new ApiException('student_merge_decision_overlap', 409);
+      }
+      throw error;
+    }
     await transaction
       .updateTable('journal_voids')
       .set({ student_id: input.keptId })

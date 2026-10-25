@@ -51,6 +51,8 @@ const KEPT = [
   // Task 8.2: a comment stays in the branch of its lesson, a rating entry in its journal's.
   'journal_comments',
   'journal_rating_entries',
+  // Task 9.2a: a decision on a flagged result stays in the branch of its quarter.
+  'quarter_result_decisions',
   // Task 6.3: a reason of absence stays in the branch of its date.
   'student_absence_reasons',
   'student_moves',
@@ -323,6 +325,7 @@ describe('branch moves in the database', () => {
           one !== 'journal_cells' &&
           one !== 'journal_comments' &&
           one !== 'journal_rating_entries' &&
+          one !== 'quarter_result_decisions' &&
           one !== 'student_absence_reasons' &&
           one !== 'exemptions' &&
           one !== 'exemption_move_offers',

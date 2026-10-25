@@ -171,7 +171,7 @@ describe('quarter_result_decisions', () => {
     ]);
   });
 
-  it('lets the application clear a decision but never delete the row or move it to another student', async () => {
+  it('lets the application clear a decision but never delete the row or move it to another student outside a merge', async () => {
     const student = await studentIn(north);
     const row = await inBranch(north, (transaction) =>
       decide(transaction, { branch: north, quarter: northQuarter, student }),
@@ -198,7 +198,8 @@ describe('quarter_result_decisions', () => {
           .execute(),
       ),
     );
-    expect(moved.code).toBe(INSUFFICIENT_PRIVILEGE);
+    // Only the merge of this transaction moves a decision (0128's journal_merge_carry).
+    expect([moved.code, moved.constraint]).toEqual([CHECK_VIOLATION, 'journal_merge_carry']);
   });
 
   it('refuses a write with no moment and any write in a closed year', async () => {
