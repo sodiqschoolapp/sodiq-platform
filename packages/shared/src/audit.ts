@@ -236,6 +236,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.8b: the Super Admin's forced delete of a dated lesson, and its restore.
     'lesson.forced_delete',
     'forced_delete.restore',
+    // Task 9.2c: the nightly purge of the kept rows of forced deletes past their restore time.
+    'forced_delete.purged',
     // Task 5.8c: the Super Admin's forced delete of a building, floor or room.
     'building.forced_delete',
     'floor.forced_delete',
@@ -322,6 +324,11 @@ export const AUDIT_ACTION_GROUPS = {
     'results.decision_cleared',
     // Task 9.2b: a quarter closed for the whole branch.
     'results.quarter_closed',
+    // Task 9.2c: a quarter reopened for the branch or a journal, a journal closed again, a
+    // recalculation applied, a nightly check that found differences.
+    'results.quarter_reopened',
+    'results.journal_closed_again',
+    'results.recalculation_applied',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).

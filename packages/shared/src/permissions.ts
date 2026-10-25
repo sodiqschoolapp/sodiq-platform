@@ -732,6 +732,16 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
   }),
+  /**
+   * "Apply with a reason" of the "recalculate and compare" tool (task 9.2c, pull request #231,
+   * decision 10, Look first): `edge/calculation`, "A bug is found after results were closed and
+   * exported": "Applying them is a separate action with a reason"; `edge/system-behaviour`: a
+   * change to the calculation needs the owner's sign-off, and the Super Admin is the owner's
+   * post. The list itself is `quarter_closing` `view`. A new area for a new route.
+   */
+  results_recalculation: rows({
+    super_admin: ['edit'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

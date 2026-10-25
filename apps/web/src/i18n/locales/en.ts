@@ -689,6 +689,20 @@ export const en = {
       'The move to another branch is dated in a closed quarter. Choose a date in an open quarter.',
     date_in_closed_quarter: 'The date is in a closed quarter. Choose a date in an open quarter.',
     plan_quarter_closed: 'The quarter of this plan is closed, so the plan cannot change.',
+    quarter_not_closed:
+      'This quarter is not closed, so there is nothing to reopen or close again. Reload the checklist.',
+    quarter_reopened:
+      'This quarter or journal is already reopened. Close it again before reopening it.',
+    quarter_journal_reopened:
+      'A journal of this quarter is reopened. Close it again before reopening the whole branch.',
+    closing_journal_not_closed:
+      'This journal was not closed with the quarter, so it has nothing to reopen.',
+    closing_journal_not_reopened:
+      'This journal is not reopened, so there is nothing to close again. Reload the checklist.',
+    recalculation_changed:
+      'The differences changed since you opened the list. Compare again, then apply.',
+    recalculation_nothing:
+      'Every stored result matches the current calculation: there is nothing to apply.',
     exemption_closed_quarter:
       'This change would touch days of a closed quarter, and those days stay as they are. Only days in an open quarter can change.',
     journal_entry_scope:
@@ -3280,6 +3294,9 @@ export const en = {
         decision_set: 'Decision on a flagged result set',
         decision_cleared: 'Decision on a flagged result cleared',
         quarter_closed: 'Quarter closed',
+        quarter_reopened: 'Quarter reopened',
+        journal_closed_again: 'Reopened journal closed again',
+        recalculation_applied: 'Recalculated results applied',
       },
       calendar_entry: {
         create: 'Calendar day added',
@@ -3583,6 +3600,7 @@ export const en = {
         forced_delete: 'Lesson deleted for good',
       },
       forced_delete: {
+        purged: 'Kept data of deleted lessons removed',
         restore: 'Deleted lesson restored',
       },
       teaching_load: {
@@ -3936,6 +3954,12 @@ export const en = {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
       results: {
         closing_reminder: 'Quarter {{quarter}} closes soon. Still to finish: {{items}}.',
+        recalculated:
+          'The results of quarter {{quarter}} were recalculated and stored as version {{version}}.',
+        check_difference:
+          'The nightly check of {{date}} found {{differences}} differences in {{journals}} journals.',
+        check_missed: 'The nightly check of {{date}} did not run.',
+        closing_overdue: 'Quarter {{quarter}} ended on {{lastDay}} and is not closed yet.',
         quarter_locked_now:
           'Quarter {{quarter}} was closed with "lock now": your lessons of it still inside the edit period and your unlocks in it are locked.',
       },
@@ -3959,10 +3983,19 @@ export const en = {
         request_sent: '{{name}} asks to edit the lesson plan of {{unit}}, quarter {{quarter}}.',
         request_approved:
           'Your edit request is approved for {{unit}}, quarter {{quarter}}: open until {{until}}.',
+        window_ending: 'The lesson plan window of quarter {{quarter}} ends on {{endDate}}.',
+        window_last_day:
+          'Today is the last day of the lesson plan window of quarter {{quarter}}. Still incomplete: {{unit}}.',
+        window_missing:
+          'No lesson plan window is open for quarter {{quarter}}, which starts on {{startDate}}.',
+        request_unsent:
+          'The edit request prepared for {{unit}}, quarter {{quarter}} is still waiting to be sent.',
         request_refused:
           'Your edit request for {{unit}}, quarter {{quarter}} is refused: {{reason}}.',
       },
       journal: {
+        lesson_about_to_lock:
+          'The lesson of {{unit}}, {{subject}} on {{date}} locks at {{locksAt}} with data missing.',
         exemption_granted:
           '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
         exemption_changed:
@@ -6456,6 +6489,65 @@ export const en = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    reopening: {
+      action: 'Reopen',
+      title: 'Reopen the quarter',
+      text: 'Lessons stay locked: only corrections and unlocks approved from now on apply. The results stored now are kept as a version, and closing again lists every result that changed.',
+      what: 'What to reopen',
+      journalOption: '{{unit}} · {{subject}}',
+      wholeBranch: 'The whole branch',
+      days: 'For how many days, 1 to 14',
+      reason: 'Reason',
+      missing: 'Write the reason and a number of days from 1 to 14.',
+      by: 'reopened on {{date}} by {{name}}',
+      openUntil: 'open until {{date}}',
+      ended: 'entries ended on {{date}}: close it again',
+      closedAgain: 'closed again, version {{version}}',
+      history_one: '{{count}} reopening',
+      history_other: '{{count}} reopenings',
+      changes: 'Results that changed',
+      noChanges: 'No result changed.',
+      student: 'Student',
+      subject: 'Subject',
+      before: 'Before',
+      after: 'Now',
+      noRecord: 'new',
+      number: '{{shown}}, grade {{grade}}',
+      outcomes: {
+        exempt: 'Exempt',
+        not_assessed: 'Not assessed',
+        no_result: 'No result',
+      },
+      closeAgain: 'Close again',
+      closeAgainTitle: 'Close {{journal}} again',
+      closeAgainText_one:
+        '{{count}} result changed since the reopening. A new version of the results of this journal is stored, and the earlier one is kept.',
+      closeAgainText_other:
+        '{{count}} results changed since the reopening. A new version of the results of this journal is stored, and the earlier one is kept.',
+      closedAgainNow: 'Closed again: version {{version}} stored.',
+    },
+    recalculation: {
+      title: 'Recalculate and compare',
+      compare: 'Recalculate and compare',
+      same: 'Every stored result matches the calculation of version {{version}}.',
+      stored: 'Stored',
+      now: 'Calculated now',
+      version: 'calculation version {{version}}',
+      refused: 'the current calculation refuses this record',
+      apply: 'Apply with a reason',
+      applyTitle_one: 'Apply {{count}} recalculated result',
+      applyTitle_other: 'Apply {{count}} recalculated results',
+      applyText:
+        'A new version of these results is stored, the earlier ones are kept, and the teachers concerned are told.',
+    },
+    check: {
+      line_one: 'Nightly check of {{date}}: {{count}} difference in this quarter.',
+      line_other: 'Nightly check of {{date}}: {{count}} differences in this quarter.',
+      difference_one:
+        'The nightly check of {{date}} found {{count}} difference in this journal. It is repaired from the stored history; the next check clears it.',
+      difference_other:
+        'The nightly check of {{date}} found {{count}} differences in this journal. They are repaired from the stored history; the next check clears them.',
+    },
     closing: {
       reminderLine: '{{kind}} in {{unit}}, {{subject}} ({{count}})',
       closeQuarter: 'Close the quarter',
@@ -6560,6 +6652,7 @@ export const en = {
         plan_incomplete: 'Lesson plan incomplete',
         no_result: 'Students with no result',
         part_without_data: 'A part with a weight and no data',
+        check_difference: 'Nightly check found a difference',
         no_teacher: 'No teacher',
       },
     },

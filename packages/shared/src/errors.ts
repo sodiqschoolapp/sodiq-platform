@@ -1178,6 +1178,20 @@ export const ERROR_CODES = [
   'plan_quarter_closed',
   /** The change of an exemption would touch days of a closed quarter (task 9.2b). */
   'exemption_closed_quarter',
+  /** The quarter is not closed: there is nothing to reopen or close again (task 9.2c). */
+  'quarter_not_closed',
+  /** The quarter or the journal is already reopened (task 9.2c). */
+  'quarter_reopened',
+  /** A journal of the quarter is reopened: close it again before reopening the whole branch (task 9.2c). */
+  'quarter_journal_reopened',
+  /** The journal was not closed with the quarter: it has nothing to reopen (task 9.2c). */
+  'closing_journal_not_closed',
+  /** The journal is not reopened: there is nothing to close again (task 9.2c). */
+  'closing_journal_not_reopened',
+  /** The differences listed now are not the ones sent: look at the list again (task 9.2c). */
+  'recalculation_changed',
+  /** No result to apply: the stored results match the current calculation (task 9.2c). */
+  'recalculation_nothing',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

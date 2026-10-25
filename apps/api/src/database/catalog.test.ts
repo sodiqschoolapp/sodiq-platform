@@ -626,7 +626,7 @@ const JOB_TABLE_RIGHTS: Record<string, string[]> = {
   job_dependency: ['DELETE', 'INSERT', 'SELECT', 'UPDATE'],
   queue: ['INSERT', 'SELECT', 'UPDATE'],
   queue_stats: [],
-  schedule: [],
+  schedule: ['INSERT', 'SELECT', 'UPDATE'],
   subscription: [],
   version: ['SELECT', 'UPDATE'],
   warning: [],

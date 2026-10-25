@@ -47,6 +47,7 @@ const LESSON: DayLesson = {
   canRestore: false,
   state: 'upcoming',
   canCorrect: false,
+  quarterClosed: false,
   substitution: null,
   canSubstitute: false,
 };

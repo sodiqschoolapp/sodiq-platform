@@ -281,6 +281,8 @@ export async function dayTemplatesKit(
         'quarter_final_results',
         // Task 9.2b (permission review should-fix 6): the notice of "lock now".
         'notifications',
+        // Task 9.2c: a reopening.
+        'quarter_reopenings',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)

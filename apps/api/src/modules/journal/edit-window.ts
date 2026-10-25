@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
-import { lockOpenQuarter } from '../setup/closed-quarters.js';
+import { lockOpenJournalQuarter, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { personOutOf } from '../timetable/journal-owners.js';
 
 /**
@@ -84,20 +84,29 @@ export function correctorAssignment(access: Access, branchId: string): string | 
 
 /**
  * The quarter of a target locked `for key share`, refused `quarter_closed` when it is closed
- * (task 9.2b; From 8.4: a closed quarter refuses every person's write, a correction included).
+ * for the target's journal (task 9.2b; From 8.4: a closed quarter refuses every person's write, a
+ * correction included; task 9.2c: a reopened journal takes them until its end).
  */
 export async function lockTargetQuarter(
   transaction: Transaction,
   target: LockTarget,
 ): Promise<void> {
   let quarterId = target.kind === 'rating' ? target.quarterId : null;
+  let journalId = target.kind === 'rating' ? target.journalId : null;
   if (target.kind === 'lesson') {
-    const found = await sql<{ quarter: string | null }>`
-      select lesson_quarter(${target.lessonId}::uuid) as quarter
+    const found = await sql<{ quarter: string | null; journal: string | null }>`
+      select lesson_quarter(${target.lessonId}::uuid) as quarter,
+        lesson_journal(${target.lessonId}::uuid) as journal
     `.execute(transaction);
     quarterId = found.rows[0]?.quarter ?? null;
+    journalId = found.rows[0]?.journal ?? null;
   }
-  if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
+  // Task 9.2c: open for a journal with an unfinished reopening whose end has not passed.
+  if (quarterId !== null && journalId !== null) {
+    await lockOpenJournalQuarter(transaction, quarterId, journalId);
+  } else if (quarterId !== null) {
+    await lockOpenQuarter(transaction, quarterId);
+  }
 }
 
 /** The lock moment of a target, from the database. */

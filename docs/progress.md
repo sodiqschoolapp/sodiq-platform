@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 9.2c Reopening and the nightly check
+
+- 0135: versions of a quarter's results (`quarter_closings.cause`: `close`, `journal_close`, `recalculation`; the in-force index restricted to `close`), `quarter_reopenings` (whole branch or one journal, 1 to 14 days, `open_until` from the moment), `quarter_is_closed` with a passed reopening, `quarter_journal_open_guard` and `lesson_journal`; the journal guards, the judge, the unlock coverage (decided before a close never covers it) and the decisions follow a reopening; exemptions apply the closed part when every journal reached is reopened (`exemption_quarter_applies`); `result_checks` / `result_check_differences`, `scheduled_runs`, `lesson_lock_notices`, the forced-delete purge, pg-boss's schedule rights.
+- Routes: `POST /api/results/closing/:quarterId/reopen`, `POST .../journals/:journalId/close`, `GET .../recalculation`, `POST .../recalculation/apply` (`results_recalculation`, Super Admin); the checklist answers the reopenings, the changed results, the reopened journals with their items and the latest check; the close after a reopening stores the changes. Readers take the record in force (`recordsInForce`) and read a reopened journal live; the day view's `quarterClosed`.
+- Daily work (`apps/api/src/modules/results/daily/`): pg-boss cron `schedule.tick` every 15 minutes; per branch at 02:00 the nightly check and the purge, at 07:00 the missed-check alert, the closing reminder, the plan reminders and "about to lock". Web: reopen dialog, reopened-journal panels, changed results, "recalculate and compare" on `/results/closing`; texts in three languages.
+- Split (Look first): the outcomes of "not covered" items and their carry at closing are 9.2d.
+- Left out, with From lines: the phone alerts of the check (10.2); the closed-year correction (9.5a).
+
+The next sessions must know:
+
+- A closed quarter's figures are the record in force: `recordsInForce` of `closed-quarters.ts` (the highest version in force holding one); `closingOf` / `closedQuarters` read the branch close (`cause = 'close'`); writes ask `quarter_is_closed` / `quarterClosedNow`, a journal's own rows `lockOpenJournalQuarter`.
+- A new daily kind is a row of `DAILY_WORK` (`daily-jobs.ts`) and of `scheduled_runs_kind_check` (a migration).
+- Test fixtures reopen with `reopenQuarter` and close a journal again with `closeJournalAgain` of `apps/api/src/testing/closing-kit.ts`; `closeQuarter` stores the names of the year's journals.
+
 ## 25 October 2026: task 9.2b Closing a quarter
 
 - 0133: `quarter_closings` (the close in force: no `reopened_at`), `quarter_closing_journals` (names as they were), `quarter_final_results` (`FinalQuarterRecord` only, append-only, merge carry); `quarter_open_guard` / `quarter_days_open_guard` and a guard on every table a closed quarter freezes; `journal_lock_moment` capped at the first close; 0134 checks an end set on an open-ended student status to the end of time. Route `POST /api/results/closing/:quarterId/close` (`quarter_closing` `edit`, request key).

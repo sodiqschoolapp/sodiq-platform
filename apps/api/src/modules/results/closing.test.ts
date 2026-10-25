@@ -15,6 +15,8 @@ import { sql } from 'kysely';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
+import { journalFinalOf } from '../setup/closed-quarters.js';
+import { storedShown } from './closing-versions.js';
 import { ActingKit } from '../../testing/acting-kit.js';
 import {
   dayTemplatesKit,
@@ -29,6 +31,8 @@ import { Audit } from '../audit/audit.service.js';
 import { binary } from '../../testing/xlsx-kit.js';
 import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
+import { DailyWork } from './daily/daily.service.js';
+import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the checklist of quarter 1 (to 31 October) is open. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -118,6 +122,24 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       t.clock.set(START);
     }
   }
+
+  /**
+   * Two Super Admins for the whole file, each given the role once: with the kit's own, three
+   * accounts hold it, the most there may be (MAX_SUPER_ADMINS).
+   */
+  const admins: Browser[] = [];
+  const sharedAdmin = async (index: 0 | 1): Promise<Browser> => {
+    while (admins.length <= index) {
+      const made = await account();
+      await t.kit.giveRole(made.account.id, {
+        role: 'super_admin',
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      admins.push(made);
+    }
+    // The loop above filled the index.
+    return admins[index] as Browser;
+  };
 
   /** The Academic Vice Principal of the branch, a fresh account. */
   const vice = async <T>(branch: string, work: (calls: Calls) => Promise<T>, moment = MOMENT) =>
@@ -2325,6 +2347,1961 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .where('student_id', '=', b.bek)
         .execute();
       expect(cell).toEqual([]);
+    });
+
+    // Task 9.2c: the reopening and the journal's re-close against a correction, and a
+    // recalculation applied against a journal's re-close (review must-fix 3; should-fix 9).
+    const REOPEN_AT = '2026-11-02T09:00:00+05:00';
+    const INSIDE_AT = '2026-11-03T10:00:00+05:00';
+
+    /** The Academic Vice Principal's correction of Aziz on the 19th, present (was absent). */
+    const correctAziz = (calls: Calls, b: Awaited<ReturnType<typeof base>>) =>
+      calls.post(
+        b.s.branch,
+        `/api/journal/lessons/${b.lessons.l19.id}/attendance`,
+        {
+          saves: [{ studentId: b.aziz, mark: 1, version: 1 }],
+          correction: { reason: 'The register shows him present' },
+        },
+        randomUUID(),
+      );
+
+    const reopenJournal = (b: Awaited<ReturnType<typeof base>>, accountId: string) =>
+      reopenQuarter(t.database, {
+        branchId: b.s.branch,
+        quarterId: b.q1,
+        journalId: b.journal,
+        accountId,
+        at: REOPEN_AT,
+      });
+
+    /** What a journal's re-close writes first: the quarter for update, its version. */
+    const journalCloseRow =
+      (b: Awaited<ReturnType<typeof base>>, by: string) => async (transaction: Transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: by,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: 'journal_close',
+            journal_id: b.journal,
+          })
+          .execute();
+      };
+
+    it('a correction waits for a reopening held open and is taken once it commits', async () => {
+      const b = await closed();
+      const closer = await load.classes.account();
+      const held = hold(b.s.branch, REOPEN_AT, async (transaction) => {
+        const closing = await transaction
+          .selectFrom('quarter_closings')
+          .select('id')
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('quarter_reopenings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            closing_id: closing.id,
+            journal_id: null,
+            reason: 'A mark was typed in the wrong row',
+            days: 3,
+            reopened_at: new Date(0),
+            open_until: new Date(0),
+            reopened_by: closer,
+          })
+          .execute();
+      });
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            correctAziz(calls, b).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+    });
+
+    it('a correction in a reopened journal waits for its re-close held open and is refused', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const held = hold(b.s.branch, INSIDE_AT, journalCloseRow(b, by));
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            correctAziz(calls, b).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([answer.status, codeOf(answer)]).toEqual([409, 'quarter_closed']);
+    });
+
+    it('the re-close of a journal waits for a correction held open and stores the corrected result', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const corrector = await account();
+      await t.kit.giveRole(corrector.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const warnings = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          return warningsOf({ ...list, items: list.reopenedJournals[0]?.items ?? [] });
+        },
+        INSIDE_AT,
+      );
+      // The held side does what the correction does: the cell saved with its reason.
+      const held = hold(b.s.branch, INSIDE_AT, async (transaction) => {
+        await sql`select set_config('app.correction_reason', 'The register shows him present', true)`.execute(
+          transaction,
+        );
+        await saveCells(transaction, t.app.get(Audit), { accountId: corrector.account.id }, [
+          { lessonId: b.lessons.l19.id, studentId: b.aziz, workId: null, value: 1, version: 1 },
+        ]);
+      });
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                b.s.branch,
+                `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+                { warnings, lockNow: false },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      const record = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .innerJoin('quarter_closings', 'quarter_closings.id', 'quarter_final_results.closing_id')
+        .select('record')
+        .where('quarter_closings.version', '=', 2)
+        .where('quarter_final_results.quarter_id', '=', b.q1)
+        .where('quarter_final_results.student_id', '=', b.aziz)
+        .executeTakeFirstOrThrow();
+      const lessons = (record.record as { inputs: { lessons: { mark: number | null }[] } }).inputs
+        .lessons;
+      // The 12th (1), the 19th corrected while the re-close waited (1), the 26th (none).
+      expect(lessons.map((one) => one.mark)).toEqual([1, 1, null]);
+    });
+
+    /** A record the module would not make, of a student of the journal. */
+    const corruptAziz = (b: Awaited<ReturnType<typeof base>>) =>
+      t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('quarter_final_results')
+          .set({ record: sql`jsonb_set(record, '{outcome,result,grade}', '2'::jsonb)` })
+          .where('quarter_id', '=', b.q1)
+          .where('student_id', '=', b.aziz)
+          .execute();
+        await sql`alter table quarter_final_results enable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+      });
+    const applyOf = (b: Awaited<ReturnType<typeof base>>) => ({
+      reason: 'A rounding bug of an earlier release',
+      students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+    });
+    /** What an apply writes first: the quarter for update, its version `recalculation`. */
+    const applyRow =
+      (b: Awaited<ReturnType<typeof base>>, by: string) => async (transaction: Transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: by,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: 'recalculation',
+            reason: 'A rounding bug of an earlier release',
+          })
+          .execute();
+      };
+    const versionsOf = (quarterId: string) =>
+      t.database.migrator
+        .selectFrom('quarter_closings')
+        .select(['version', 'cause'])
+        .where('quarter_id', '=', quarterId)
+        .orderBy('version')
+        .execute();
+
+    it("a recalculation applied waits for a journal's re-close held open, and a journal's reopening waits for it", async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const admin = await sharedAdmin(0);
+      await corruptAziz(b);
+      const apply = applyOf(b);
+      // The re-close held first: the apply waits on the quarter and stores the next version.
+      const held = hold(b.s.branch, INSIDE_AT, journalCloseRow(b, by));
+      const pid = await held.isReady;
+      const answer = await as(
+        admin,
+        [],
+        async ({ post }) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            post(
+              b.s.branch,
+              `/api/results/closing/${b.q1}/recalculation/apply`,
+              apply,
+              randomUUID(),
+            ).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([answer.status, answer.body]).toEqual([200, { version: 3, stored: 1 }]);
+      // The other order: an apply held (the quarter for update, its version written) makes a
+      // reopening of the journal wait, which then reads the close in force and is taken.
+      const c = await closed();
+      const held2 = hold(c.s.branch, REOPEN_AT, applyRow(c, by));
+      const pid2 = await held2.isReady;
+      const reopened = await vice(
+        c.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                c.s.branch,
+                `/api/results/closing/${c.q1}/reopen`,
+                { journalId: c.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid2);
+          held2.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held2.done).toBeUndefined();
+      expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+      expect(await versionsOf(c.q1)).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+      ]);
+    });
+
+    // Spec review must-fix 1: the re-close of a reopened journal waits for an apply held open,
+    // then reads the version it stored and is taken as the next one.
+    it('the re-close of a journal waits for a recalculation applied held open and is taken after it', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const warnings = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          return warningsOf({ ...list, items: list.reopenedJournals[0]?.items ?? [] });
+        },
+        INSIDE_AT,
+      );
+      const held = hold(b.s.branch, INSIDE_AT, applyRow(b, by));
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                b.s.branch,
+                `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+                { warnings, lockNow: false },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      expect((answer.body as { version: number }).version).toBe(3);
+      expect(await versionsOf(b.q1)).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+        { version: 3, cause: 'journal_close' },
+      ]);
+    });
+
+    // Spec review must-fix 1: an apply against a whole-branch reopening, in both orders. The
+    // reopening held first: the apply waits on the quarter, then finds it no longer closed.
+    it('a recalculation applied waits for a whole-branch reopening held open and is refused, and a reopening waits for it', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await corruptAziz(b);
+      const admin = await sharedAdmin(0);
+      const held = hold(b.s.branch, REOPEN_AT, async (transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        const closing = await transaction
+          .selectFrom('quarter_closings')
+          .select('id')
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('quarter_reopenings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            closing_id: closing.id,
+            journal_id: null,
+            reason: 'A mark was typed in the wrong row',
+            days: 3,
+            reopened_at: new Date(0),
+            open_until: new Date(0),
+            reopened_by: by,
+          })
+          .execute();
+      });
+      const pid = await held.isReady;
+      const refused = await as(
+        admin,
+        [],
+        async ({ post }) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            post(
+              b.s.branch,
+              `/api/results/closing/${b.q1}/recalculation/apply`,
+              applyOf(b),
+              randomUUID(),
+            ).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([refused.status, codeOf(refused)]).toEqual([409, 'quarter_not_closed']);
+      expect(await versionsOf(b.q1)).toEqual([{ version: 1, cause: 'close' }]);
+      // The apply held first: the whole-branch reopening waits, then reopens the close in force.
+      const c = await closed();
+      const held2 = hold(c.s.branch, REOPEN_AT, applyRow(c, by));
+      const pid2 = await held2.isReady;
+      const reopened = await vice(
+        c.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                c.s.branch,
+                `/api/results/closing/${c.q1}/reopen`,
+                { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid2);
+          held2.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held2.done).toBeUndefined();
+      expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+      expect(await versionsOf(c.q1)).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+      ]);
+      const reopening = await t.database.migrator
+        .selectFrom('quarter_reopenings')
+        .innerJoin('quarter_closings', 'quarter_closings.id', 'quarter_reopenings.closing_id')
+        .select(['quarter_closings.version', 'quarter_reopenings.journal_id'])
+        .where('quarter_reopenings.quarter_id', '=', c.q1)
+        .execute();
+      expect(reopening).toEqual([{ version: 1, journal_id: null }]);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 9.2c (pull request #231): reopening and closing again, the versions of the results,
+  // "recalculate and compare" (edge/journal, Closing and reopening: "Reopening is for one journal
+  // or the whole branch, for a set number of days. Lessons stay locked; only corrections and
+  // explicit unlocks apply. The earlier final results are kept as a version. Closing again lists
+  // every result that changed"; edge/calculation, "A bug is found after results were closed and
+  // exported"; edge/system-behaviour, "The nightly check").
+  /** The base scene closed at CLOSE, every flag decided ("keep"), lock now. */
+  const closed = async () => closeBase(await base());
+  const closeBase = async (b: Awaited<ReturnType<typeof base>>) => {
+    await vice(
+      b.s.branch,
+      async (calls) => {
+        const list = await decideAll(calls, b.s.branch, b.q1);
+        const done = await calls.post(
+          b.s.branch,
+          closePath(b.q1),
+          { warnings: warningsOf(list), lockNow: true, startQuarter: null },
+          randomUUID(),
+        );
+        expect(done.status, JSON.stringify(done.body)).toBe(200);
+      },
+      CLOSE,
+    );
+    return b;
+  };
+
+  describe('reopening (task 9.2c)', () => {
+    /** Monday 2 November, 09:00: a reopening for 3 days is open until 00:00 of 6 November. */
+    const REOPEN = '2026-11-02T09:00:00+05:00';
+    const INSIDE = '2026-11-03T10:00:00+05:00';
+    const AFTER_END = '2026-11-06T09:00:00+05:00';
+    const reopenPath = (quarterId: string) => `/api/results/closing/${quarterId}/reopen`;
+    const journalClosePath = (quarterId: string, journalId: string) =>
+      `/api/results/closing/${quarterId}/journals/${journalId}/close`;
+    const recalculationPath = (quarterId: string) =>
+      `/api/results/closing/${quarterId}/recalculation`;
+
+    /** Dilshod present on the 12th, as the Academic Vice Principal's correction. */
+    const correctDilshod = (calls: Calls, b: Awaited<ReturnType<typeof base>>) =>
+      calls.post(
+        b.s.branch,
+        `/api/journal/lessons/${b.lessons.l12.id}/attendance`,
+        {
+          saves: [{ studentId: b.dilshod, mark: 1, version: null }],
+          correction: { reason: 'The register shows him present' },
+        },
+        randomUUID(),
+      );
+
+    /**
+     * A used key repeated (.claude/rules/api.md): with another branch's and an unknown id 404, from
+     * a role the route refuses 403, never the stored answer.
+     */
+    const repeatsRefused = async (
+      repeat: (quarterId: string, journalId?: string) => Promise<Response>,
+      ids: { other: string; otherJournal?: string; journal?: string; quarter: string },
+    ) => {
+      const answers = [await repeat(ids.other), await repeat(UNKNOWN)];
+      if (ids.journal !== undefined && ids.otherJournal !== undefined) {
+        answers.push(
+          await repeat(ids.quarter, ids.otherJournal),
+          await repeat(ids.quarter, UNKNOWN),
+        );
+      }
+      for (const answer of answers) {
+        expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+      }
+    };
+
+    const resultOf = async (calls: Calls, b: Awaited<ReturnType<typeof base>>, id: string) =>
+      studentResultsSchema
+        .parse((await calls.get(b.s.branch, `/api/results/students/${id}`)).body)
+        .subjects.find((one) => one.subject.id === b.s.subject)?.quarters[0]?.outcome;
+
+    const versionsOf = (quarter: string) =>
+      t.database.migrator
+        .selectFrom('quarter_closings')
+        .select(['id', 'version', 'cause', 'journal_id', 'reopened_at', 'changes'])
+        .where('quarter_id', '=', quarter)
+        .orderBy('version')
+        .execute();
+
+    it('reopens the whole branch, takes a correction, lists the result that changed and closes again as version 2', async () => {
+      const b = await closed();
+      const other = await base();
+      const key = randomUUID();
+      const body = { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 };
+      const reopened = await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(b.s.branch, reopenPath(b.q1), body, key);
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          // Repeat-safe: the stored answer.
+          const repeat = await calls.post(b.s.branch, reopenPath(b.q1), body, key);
+          expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter) => calls.post(b.s.branch, reopenPath(quarter), body, key),
+            {
+              other: other.q1,
+              quarter: b.q1,
+            },
+          );
+          for (const journalId of [other.journal, UNKNOWN]) {
+            const answer = await calls.post(
+              b.s.branch,
+              reopenPath(b.q1),
+              { ...body, journalId },
+              key,
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
+          return done.body as { id: string; openUntil: string };
+        },
+        REOPEN,
+      );
+      await as(
+        await account(),
+        [{ role: 'principal', branchId: b.s.branch }],
+        async ({ post }) => {
+          expect((await post(b.s.branch, reopenPath(b.q1), body, key)).status).toBe(403);
+        },
+        REOPEN,
+      );
+      expect(new Date(reopened.openUntil)).toEqual(new Date('2026-11-06T00:00:00+05:00'));
+      // The same key from another account is refused (.claude/rules/api.md).
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const reused = await calls.post(b.s.branch, reopenPath(b.q1), body, key);
+          expect([reused.status, codeOf(reused)]).toEqual([409, 'request_key_reused']);
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const open = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect([open.state, open.closing, open.reopening?.id]).toEqual([
+            'open',
+            null,
+            reopened.id,
+          ]);
+          expect(open.changes).toEqual([]);
+          // edge/journal: "Lessons stay locked": a plain entry is refused by the guard during the
+          // reopening ("takes a correction, refuses a plain entry" of
+          // quarter-reopen.database.test.ts); the Academic Vice Principal enters corrections.
+          const corrected = await correctDilshod(calls, b);
+          expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+          const after = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(
+            after.changes.map((one) => [one.student.id, one.before?.kind, one.after.kind]),
+          ).toEqual([[b.dilshod, 'no_result', 'number']]);
+          // The result is provisional while reopened: read live.
+          expect((await resultOf(calls, b, b.dilshod))?.kind).toBe('number');
+        },
+        INSIDE,
+      );
+      // Review must-fix 1: the end of the reopening passed; the flag is still decided, then the
+      // quarter is closed again.
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const late = await correctDilshod(calls, b);
+          expect([late.status, codeOf(late)]).toEqual([409, 'quarter_closed']);
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(list.reopening?.ended).toBe(true);
+          expect(studentIdsOf(itemsOf(list, 'undecided'))).toEqual([b.dilshod]);
+          const decided = await decideAll(calls, b.s.branch, b.q1);
+          expect(decided.closable).toBe(true);
+          const done = await calls.post(
+            b.s.branch,
+            closePath(b.q1),
+            { warnings: warningsOf(decided), lockNow: false, startQuarter: null },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          return closingClosedSchema.parse(done.body);
+        },
+        AFTER_END,
+      );
+      expect(answer.version).toBe(2);
+      const versions = await versionsOf(b.q1);
+      expect(versions.map((one) => [one.version, one.cause, one.reopened_at === null])).toEqual([
+        [1, 'close', false],
+        [2, 'close', true],
+      ]);
+      // "Closing again lists every result that changed": stored with the close.
+      expect(
+        (versions[1]?.changes as { studentId: string; before: { kind: string } }[]).map((one) => [
+          one.studentId,
+          one.before.kind,
+        ]),
+      ).toEqual([[b.dilshod, 'no_result']]);
+      // "The earlier final results are kept as a version": both sets stored.
+      const records = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['closing_id', 'student_id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .where('student_id', '=', b.dilshod)
+        .execute();
+      const byClosing = new Map(
+        records.map((one) => [one.closing_id, storedQuarterOutcome(one.record).kind]),
+      );
+      expect(byClosing).toEqual(
+        new Map([
+          [versions[0]?.id, 'no_result'],
+          [versions[1]?.id, 'number'],
+        ]),
+      );
+      // The readers read the version in force: version 2's number.
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          expect((await resultOf(calls, b, b.dilshod))?.kind).toBe('number');
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect([list.state, list.closing?.version]).toEqual(['closed', 2]);
+          expect(list.reopenings.map((one) => one.closedAgainVersion)).toEqual([2]);
+        },
+        AFTER_END,
+      );
+      const entries = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['action', 'new_value'])
+        .where('branch_id', '=', b.s.branch)
+        .where('action', 'in', ['results.quarter_reopened', 'results.quarter_closed'])
+        .orderBy('occurred_at')
+        .execute();
+      expect(entries.map((one) => one.action)).toEqual([
+        'results.quarter_closed',
+        'results.quarter_reopened',
+        'results.quarter_closed',
+      ]);
+      expect(entries[1]?.new_value).toMatchObject({ days: 3, journalId: null, version: 1 });
+    });
+
+    it('reopens one journal: its correction, its own items and changes, closed again with its students only', async () => {
+      const b = await closed();
+      const otherJournal = await journalOf(b.s.otherClass, b.s.subject);
+      const firstRecords = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['journal_id', 'student_id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .orderBy('student_id')
+        .execute();
+      const other = await base();
+      const key = randomUUID();
+      const id = await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            reopenPath(b.q1),
+            { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          return (done.body as { id: string }).id;
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const before = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(before.state).toBe('closed');
+          expect(before.reopenedJournals.map((one) => one.reopening.id)).toEqual([id]);
+          expect(before.closedJournals.map((one) => one.id)).toContain(b.journal);
+          // The grid of the reopened journal reads live (not closed).
+          const grid = journalGridSchema.parse(
+            (await calls.get(b.s.branch, `/api/journal/journals/${b.journal}?quarterId=${b.q1}`))
+              .body,
+          );
+          expect(grid.quarter.closed).toBe(false);
+          expect((await correctDilshod(calls, b)).status).toBe(200);
+          const after = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          const panel = after.reopenedJournals[0];
+          expect(panel?.changes.map((one) => one.student.id)).toEqual([b.dilshod]);
+          expect(panel?.items.some((item) => item.kind === 'undecided')).toBe(true);
+          expect(panel?.closable).toBe(false);
+          const blocked = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            { warnings: [], lockNow: false },
+            randomUUID(),
+          );
+          expect([blocked.status, codeOf(blocked)]).toEqual([409, 'closing_blocked']);
+          const decided = await calls.put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+            subjectId: b.s.subject,
+            studentId: b.dilshod,
+            decision: 'keep',
+            version: null,
+          });
+          expect(decided.status, JSON.stringify(decided.body)).toBe(200);
+          const ready = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          const journal = ready.reopenedJournals[0];
+          expect(journal?.closable).toBe(true);
+          const closeBody = {
+            warnings: warningsOf({ ...ready, items: journal?.items ?? [] }),
+            lockNow: false,
+          };
+          // Permission review should-fix 9: a warning naming another journal of the branch is
+          // none of this journal's (409); one of another branch or unknown is not found (404).
+          const naming = (journalId: string) => ({
+            ...closeBody,
+            warnings: [...closeBody.warnings, { kind: 'no_teacher' as const, journalId }],
+          });
+          const stale = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            naming(otherJournal),
+            randomUUID(),
+          );
+          expect([stale.status, codeOf(stale)]).toEqual([409, 'closing_warnings_changed']);
+          for (const journalId of [other.journal, UNKNOWN]) {
+            const unknown = await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, b.journal),
+              naming(journalId),
+              randomUUID(),
+            );
+            expect([unknown.status, codeOf(unknown)]).toEqual([404, 'not_found']);
+          }
+          const done = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            closeBody,
+            key,
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(closingClosedSchema.parse(done.body).version).toBe(2);
+          const repeat = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            closeBody,
+            key,
+          );
+          expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter, journalId = b.journal) =>
+              calls.post(b.s.branch, journalClosePath(quarter, journalId), closeBody, key),
+            { other: other.q1, quarter: b.q1, journal: b.journal, otherJournal: other.journal },
+          );
+          const final = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(final.reopenedJournals).toEqual([]);
+          expect(final.reopenings.map((one) => one.closedAgainVersion)).toEqual([2]);
+          expect((await resultOf(calls, b, b.dilshod))?.kind).toBe('number');
+        },
+        INSIDE,
+      );
+      // The same key from another account: 409; from a role the route refuses: 403.
+      const closeAgain = journalClosePath(b.q1, b.journal);
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const reused = await calls.post(
+            b.s.branch,
+            closeAgain,
+            { warnings: [], lockNow: false },
+            key,
+          );
+          expect([reused.status, codeOf(reused)]).toEqual([409, 'request_key_reused']);
+        },
+        INSIDE,
+      );
+      await as(
+        await account(),
+        [{ role: 'principal', branchId: b.s.branch }],
+        async ({ post }) => {
+          const refused = await post(b.s.branch, closeAgain, { warnings: [], lockNow: false }, key);
+          expect(refused.status).toBe(403);
+        },
+        INSIDE,
+      );
+      const versions = await versionsOf(b.q1);
+      expect(
+        versions.map((one) => [one.version, one.cause, one.journal_id, one.reopened_at]),
+      ).toEqual([
+        [1, 'close', null, null],
+        [2, 'journal_close', b.journal, null],
+      ]);
+      // Version 2 holds the reopened journal's students only; version 1 is kept as it was.
+      const recordsOf = (closingId: string) =>
+        t.database.migrator
+          .selectFrom('quarter_final_results')
+          .select(['journal_id', 'student_id', 'record'])
+          .where('closing_id', '=', closingId)
+          .orderBy('student_id')
+          .execute();
+      const second = await recordsOf(versions[1]?.id ?? '');
+      expect(second.map((one) => one.student_id)).toContain(b.dilshod);
+      expect(new Set(second.map((one) => one.journal_id))).toEqual(new Set([b.journal]));
+      expect(await recordsOf(versions[0]?.id ?? '')).toEqual(firstRecords);
+      // Spec review must-fix 7: the readers of "closed" take the version in force, where
+      // version 1 and 2 differ. The grid: Dilshod's result is version 2's (version 1: no result).
+      const dilshodInGrid = await vice(
+        b.s.branch,
+        async (calls) =>
+          journalGridSchema
+            .parse(
+              (await calls.get(b.s.branch, `/api/journal/journals/${b.journal}?quarterId=${b.q1}`))
+                .body,
+            )
+            .students.find((one) => one.id === b.dilshod)?.quarter?.result,
+        INSIDE,
+      );
+      expect(dilshodInGrid?.kind).toBe('number');
+      const dilshodBefore = firstRecords.find((one) => one.student_id === b.dilshod);
+      expect(storedShown(dilshodBefore?.record).kind).toBe('no_result');
+      // The export's "Final" line: version 2 and its date for the journal closed again, version 1
+      // for the other journal.
+      const finals = await t.app
+        .get(Transactions)
+        .run([b.s.branch], async (transaction) => [
+          await journalFinalOf(transaction, b.q1, b.journal),
+          await journalFinalOf(transaction, b.q1, otherJournal),
+        ]);
+      expect(finals.map((one) => [one?.version, one?.closedAt.toISOString()])).toEqual([
+        [2, new Date(INSIDE).toISOString()],
+        [1, new Date(CLOSE).toISOString()],
+      ]);
+    });
+
+    // .claude/rules/journal.md: a grant that opens one record is refused on another, at the route.
+    it("refuses, while one journal is reopened, another journal's correction and decisions", async () => {
+      const b = await base();
+      const [o12, o19] = await lessonsOf(b.s.otherClass);
+      if (o12 === undefined || o19 === undefined) throw new Error('Lessons of the other class.');
+      const murod = await student(b.s.branch, { first: 'Murod', last: 'Aliyev' }, [
+        { classId: b.s.otherClass, from: '2026-09-01' },
+      ]);
+      // One mark: his result is flagged, so the close stores a decision for him.
+      await saveOn(b.s.branch, o12.date, [{ lessonId: o12.id, studentId: murod, value: 1 }]);
+      const other = await journalOf(b.s.otherClass, b.s.subject);
+      await closeBase(b);
+      const stored = await t.database.migrator
+        .selectFrom('quarter_result_decisions')
+        .select('version')
+        .where('quarter_id', '=', b.q1)
+        .where('student_id', '=', murod)
+        .executeTakeFirstOrThrow();
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            reopenPath(b.q1),
+            { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          // The reopened journal takes its correction; the other journal of the quarter does not.
+          expect((await correctDilshod(calls, b)).status).toBe(200);
+          const correction = await calls.post(
+            b.s.branch,
+            `/api/journal/lessons/${o19.id}/attendance`,
+            {
+              saves: [{ studentId: murod, mark: 1, version: null }],
+              correction: { reason: 'The register shows him present' },
+            },
+            randomUUID(),
+          );
+          expect([correction.status, codeOf(correction)]).toEqual([409, 'quarter_closed']);
+          // Murod is flagged under the other journal, with his stored decision's version: only the
+          // reopening decides the refusal.
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(list.closedJournals.map((one) => one.id)).toContain(other);
+          const one = await calls.put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+            subjectId: b.s.subject,
+            studentId: murod,
+            decision: 'keep',
+            version: stored.version,
+          });
+          expect([one.status, codeOf(one)]).toEqual([409, 'quarter_closed']);
+          const whole = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/journals/${other}/decisions`,
+            { decision: 'keep', students: [murod] },
+          );
+          expect([whole.status, codeOf(whole)]).toEqual([409, 'quarter_closed']);
+        },
+        INSIDE,
+      );
+    });
+
+    it('refuses a reopening of an open quarter, twice, of the branch while a journal is, and in a closed year', async () => {
+      const b = await base();
+      const body = { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 };
+      await vice(b.s.branch, async (calls) => {
+        const open = await calls.post(b.s.branch, reopenPath(b.q1), body, randomUUID());
+        expect([open.status, codeOf(open)]).toEqual([409, 'quarter_not_closed']);
+        const journal = await calls.post(
+          b.s.branch,
+          journalClosePath(b.q1, b.journal),
+          { warnings: [], lockNow: false },
+          randomUUID(),
+        );
+        expect([journal.status, codeOf(journal)]).toEqual([409, 'quarter_not_closed']);
+        const recalculation = await calls.get(b.s.branch, recalculationPath(b.q1));
+        expect([recalculation.status, codeOf(recalculation)]).toEqual([409, 'quarter_not_closed']);
+      });
+      const c = await closed();
+      const lateClass = await load.classes.schoolClass(c.s.branch, c.s.year, { grade: 7 });
+      const lateJournal = (
+        await t.database.migrator
+          .insertInto('journals')
+          .values({
+            branch_id: c.s.branch,
+            academic_year_id: c.s.year,
+            class_id: lateClass,
+            group_id: null,
+            subject_id: c.s.subject,
+            runs: '{[2026-11-01,)}',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await vice(
+        c.s.branch,
+        async (calls) => {
+          const notReopened = await calls.post(
+            c.s.branch,
+            journalClosePath(c.q1, c.journal),
+            { warnings: [], lockNow: false },
+            randomUUID(),
+          );
+          expect([notReopened.status, codeOf(notReopened)]).toEqual([
+            409,
+            'closing_journal_not_reopened',
+          ]);
+          const first = await calls.post(
+            c.s.branch,
+            reopenPath(c.q1),
+            { ...body, journalId: c.journal },
+            randomUUID(),
+          );
+          expect(first.status).toBe(200);
+          const twice = await calls.post(
+            c.s.branch,
+            reopenPath(c.q1),
+            { ...body, journalId: c.journal },
+            randomUUID(),
+          );
+          expect([twice.status, codeOf(twice)]).toEqual([409, 'quarter_reopened']);
+          const whole = await calls.post(c.s.branch, reopenPath(c.q1), body, randomUUID());
+          expect([whole.status, codeOf(whole)]).toEqual([409, 'quarter_journal_reopened']);
+          // A journal of the branch and year that the close did not store (opened after it):
+          // the database's refusal, mapped by the route (.claude/rules/api.md).
+          const notClosed = await calls.post(
+            c.s.branch,
+            reopenPath(c.q1),
+            { ...body, journalId: lateJournal },
+            randomUUID(),
+          );
+          expect([notClosed.status, codeOf(notClosed)]).toEqual([
+            409,
+            'closing_journal_not_closed',
+          ]);
+        },
+        REOPEN,
+      );
+      const d = await closed();
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ status: 'closed' })
+        .where('id', '=', d.s.year)
+        .execute();
+      await vice(
+        d.s.branch,
+        async (calls) => {
+          const year = await calls.post(d.s.branch, reopenPath(d.q1), body, randomUUID());
+          expect([year.status, codeOf(year)]).toEqual([409, 'year_closed']);
+        },
+        REOPEN,
+      );
+    });
+
+    it("answers 404 for another branch's and an unknown quarter and journal, the rows and the audit log unchanged", async () => {
+      const b = await closed();
+      const other = await closed();
+      const stateOf = async () => ({
+        reopenings: await t.database.migrator
+          .selectFrom('quarter_reopenings')
+          .selectAll()
+          .execute(),
+        closings: await t.database.migrator.selectFrom('quarter_closings').select('id').execute(),
+        audit: await t.database.migrator.selectFrom('audit_log').select('id').execute(),
+      });
+      // The roles are given first: giving one writes to the audit log.
+      const viceBrowser = await account();
+      const principal = await account();
+      for (const [browser, role] of [
+        [viceBrowser, 'academic_vice_principal'],
+        [principal, 'principal'],
+      ] as const) {
+        await t.kit.giveRole(browser.account.id, {
+          role,
+          branchId: b.s.branch,
+          validFrom: new Date('2026-09-01T00:00:00+05:00'),
+        });
+      }
+      const before = await stateOf();
+      const rowsBefore = {
+        north: await t.rowsOf(b.s.branch),
+        south: await t.rowsOf(other.s.branch),
+      };
+      const auditBefore = await t.auditCount();
+      await as(
+        viceBrowser,
+        [],
+        async (calls) => {
+          const body = (journalId: string | null) => ({
+            journalId,
+            reason: 'A mark was typed in the wrong row',
+            days: 3,
+          });
+          for (const answer of [
+            await calls.post(b.s.branch, reopenPath(other.q1), body(null), randomUUID()),
+            await calls.post(b.s.branch, reopenPath(UNKNOWN), body(null), randomUUID()),
+            await calls.post(b.s.branch, reopenPath(b.q1), body(other.journal), randomUUID()),
+            await calls.post(b.s.branch, reopenPath(b.q1), body(UNKNOWN), randomUUID()),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, other.journal),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(other.q1, b.journal),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, UNKNOWN),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
+            await calls.post(
+              b.s.branch,
+              journalClosePath(UNKNOWN, b.journal),
+              { warnings: [], lockNow: false },
+              randomUUID(),
+            ),
+            await calls.get(b.s.branch, recalculationPath(other.q1)),
+            await calls.get(b.s.branch, recalculationPath(UNKNOWN)),
+          ]) {
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
+        },
+        REOPEN,
+      );
+      // The Principal reads, and may not reopen.
+      await as(
+        principal,
+        [],
+        async ({ post }) => {
+          const refused = await post(
+            b.s.branch,
+            reopenPath(b.q1),
+            { journalId: null, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(refused.status).toBe(403);
+        },
+        REOPEN,
+      );
+      const after = await stateOf();
+      expect(after).toEqual(before);
+      expect(await t.auditCount()).toBe(auditBefore);
+      expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
+      expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+    });
+
+    // The Super Admin's "apply" holds the branch of the request only; its ids are still checked.
+    it("answers 404 to the Super Admin's apply for another branch's and an unknown quarter, changing no row", async () => {
+      const b = await closed();
+      const other = await closed();
+      const rowsBefore = {
+        north: await t.rowsOf(b.s.branch),
+        south: await t.rowsOf(other.s.branch),
+      };
+      const auditBefore = await t.auditCount();
+      const apply = {
+        reason: 'A rounding bug of an earlier release',
+        students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+      };
+      await as(
+        await sharedAdmin(1),
+        [],
+        async ({ post }) => {
+          for (const quarter of [other.q1, UNKNOWN]) {
+            const answer = await post(
+              b.s.branch,
+              `${recalculationPath(quarter)}/apply`,
+              apply,
+              randomUUID(),
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
+        },
+        REOPEN,
+      );
+      expect(await t.auditCount()).toBe(auditBefore);
+      expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
+      expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+    });
+
+    // edge/calculation, "A bug is found after results were closed and exported" (decision 10).
+    it('lists a record the current module calculates otherwise, and applies it with a reason as a new version', async () => {
+      const owner = await account();
+      const b = await closeBase(await base({ teacher: owner.account.id }));
+      // Permission review should-fix 8: the owner of the other class's journal, which has no
+      // change, and a teacher of another branch's journal are told nothing.
+      // The scene makes that teacher without an account; linked here as one made with it (the
+      // link is fixed once made, so the migrator writes past that guard).
+      const unchanged = await account();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table staff disable trigger user`.execute(transaction);
+        await transaction
+          .updateTable('staff')
+          .set({ account_id: unchanged.account.id })
+          .where('id', '=', b.s.otherTeacher.staffId)
+          .execute();
+        await sql`alter table staff enable trigger user`.execute(transaction);
+      });
+      const elsewhere = await account();
+      const other = await base({ teacher: elsewhere.account.id });
+      const admin = await sharedAdmin(0);
+      const applyKey = randomUUID();
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const same = await calls.get(b.s.branch, recalculationPath(b.q1));
+          expect(same.status, JSON.stringify(same.body)).toBe(200);
+          expect((same.body as { rows: unknown[] }).rows).toEqual([]);
+        },
+        REOPEN,
+      );
+      // A stored outcome the module would not make (a bug in an earlier release, as the
+      // migrator writes it): Aziz's shown result is off by one.
+      const aziz = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .where('student_id', '=', b.aziz)
+        .executeTakeFirstOrThrow();
+      const shown = (aziz.record as { outcome: { result: { shown: string } } }).outcome.result
+        .shown;
+      // The record is append-only for everyone but its owner, which writes past its trigger.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('quarter_final_results')
+          .set({
+            record: sql`jsonb_set(record, '{outcome,result,shown}', to_jsonb(${String(Number(shown) - 1)}::text))`,
+          })
+          .where('id', '=', aziz.id)
+          .execute();
+        await sql`alter table quarter_final_results enable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+      });
+      const listed = await vice(
+        b.s.branch,
+        async (calls) => {
+          const answer = await calls.get(b.s.branch, recalculationPath(b.q1));
+          expect(answer.status).toBe(200);
+          return answer.body as {
+            rows: { student: { id: string }; subject: { id: string }; differences: string[] }[];
+          };
+        },
+        REOPEN,
+      );
+      expect(listed.rows.map((one) => [one.student.id, one.differences])).toEqual([
+        [b.aziz, ['result.shown']],
+      ]);
+      // "Apply" is the Super Admin's (decision 10): the Academic Vice Principal is refused.
+      const apply = {
+        reason: 'A rounding bug of an earlier release',
+        students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+      };
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const refused = await calls.post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            randomUUID(),
+          );
+          expect(refused.status).toBe(403);
+        },
+        REOPEN,
+      );
+      await as(
+        admin,
+        [],
+        async ({ post, get }) => {
+          const changed = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            { ...apply, students: [{ subjectId: b.s.subject, studentId: b.bek }] },
+            randomUUID(),
+          );
+          expect([changed.status, codeOf(changed)]).toEqual([409, 'recalculation_changed']);
+          const done = await post(b.s.branch, `${recalculationPath(b.q1)}/apply`, apply, applyKey);
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(done.body).toEqual({ version: 2, stored: 1 });
+          const repeat = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            applyKey,
+          );
+          expect([repeat.status, repeat.body]).toEqual([200, done.body]);
+          await repeatsRefused(
+            (quarter) => post(b.s.branch, `${recalculationPath(quarter)}/apply`, apply, applyKey),
+            { other: other.q1, quarter: b.q1 },
+          );
+          const again = await get(b.s.branch, recalculationPath(b.q1));
+          expect((again.body as { rows: unknown[] }).rows).toEqual([]);
+          const nothing = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            randomUUID(),
+          );
+          expect([nothing.status, codeOf(nothing)]).toEqual([409, 'recalculation_nothing']);
+        },
+        REOPEN,
+      );
+      // The same key from another Super Admin: 409; from the Academic Vice Principal: 403.
+      await as(
+        await sharedAdmin(1),
+        [],
+        async ({ post }) => {
+          const reused = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            applyKey,
+          );
+          expect([reused.status, codeOf(reused)]).toEqual([409, 'request_key_reused']);
+        },
+        REOPEN,
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const refused = await calls.post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            apply,
+            applyKey,
+          );
+          expect(refused.status).toBe(403);
+        },
+        REOPEN,
+      );
+      // The old record is kept; the new one is the module's.
+      const kept = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .innerJoin('quarter_closings', 'quarter_closings.id', 'quarter_final_results.closing_id')
+        .select(['quarter_closings.version', 'quarter_closings.cause', 'record'])
+        .where('quarter_final_results.student_id', '=', b.aziz)
+        .orderBy('quarter_closings.version')
+        .execute();
+      expect(kept.map((one) => [one.version, one.cause])).toEqual([
+        [1, 'close'],
+        [2, 'recalculation'],
+      ]);
+      expect(recalculateAndCompare(kept[1]?.record).same).toBe(true);
+      // "The teachers concerned are told."
+      const notices = await t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('kind', '=', 'results.recalculated')
+        .where('branch_id', '=', b.s.branch)
+        .execute();
+      expect(notices.map((one) => one.data)).toEqual([{ quarter: 1, version: 2 }]);
+      const told = await t.database.migrator
+        .selectFrom('notifications')
+        .select('account_id')
+        .where('kind', '=', 'results.recalculated')
+        .where('account_id', 'in', [owner.account.id, unchanged.account.id, elsewhere.account.id])
+        .execute();
+      expect(told).toEqual([{ account_id: owner.account.id }]);
+    });
+
+    // edge/system-behaviour: "A difference ... blocks closing that journal" (review must-fix 6).
+    it('refuses to close a reopened journal again while the latest check found a difference in it', async () => {
+      const b = await closed();
+      const reopened = await vice(
+        b.s.branch,
+        async (calls) =>
+          (
+            await calls.post(
+              b.s.branch,
+              reopenPath(b.q1),
+              { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+              randomUUID(),
+            )
+          ).status,
+        REOPEN,
+      );
+      expect(reopened).toBe(200);
+      // A finished run of the check with a difference in the journal, as the check writes it.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', '2026-11-03T02:00:00+05:00', true)`.execute(
+          transaction,
+        );
+        const run = await transaction
+          .insertInto('result_checks')
+          .values({ branch_id: b.s.branch, day: '2026-11-03', started_at: new Date(0) })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('result_check_differences')
+          .values({
+            branch_id: b.s.branch,
+            check_id: run.id,
+            quarter_id: b.q1,
+            journal_id: b.journal,
+            kind: 'cell_history',
+            detail: '{}',
+          })
+          .execute();
+        await transaction
+          .updateTable('result_checks')
+          .set({ finished_at: new Date(0), summary: '{}' })
+          .where('id', '=', run.id)
+          .execute();
+      });
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          expect(list.check?.journals).toEqual([{ journalId: b.journal, differences: 1 }]);
+          const panel = list.reopenedJournals[0];
+          expect(panel?.items.map((item) => item.kind)).toContain('check_difference');
+          expect(panel?.closable).toBe(false);
+          const refused = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            { warnings: warningsOf({ ...list, items: panel?.items ?? [] }), lockNow: false },
+            randomUUID(),
+          );
+          expect([refused.status, codeOf(refused)]).toEqual([409, 'closing_blocked']);
+        },
+        INSIDE,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 9.2c: the nightly check and the daily work (edge/system-behaviour, "The nightly check":
+  // "It recalculates open journals and stored final results. A difference alerts the developer
+  // and blocks closing that journal. A check that did not run also raises an alert"; the "Done
+  // when": "a deliberately corrupted stored result is caught by the check in a test").
+  describe('the nightly check and the daily work (task 9.2c)', () => {
+    const daily = () => t.app.get(DailyWork);
+
+    /** The check of a branch at a moment, as the job runs it. */
+    const check = async (branch: string, moment: string) => {
+      t.clock.set(moment);
+      try {
+        await daily().check({ day: moment.slice(0, 10) }, [branch]);
+      } finally {
+        t.clock.set(START);
+      }
+      return t.database.migrator
+        .selectFrom('result_check_differences')
+        .innerJoin('result_checks', 'result_checks.id', 'result_check_differences.check_id')
+        .select([
+          'result_check_differences.kind',
+          'result_check_differences.journal_id',
+          'result_check_differences.student_id',
+        ])
+        .where('result_checks.branch_id', '=', branch)
+        .where('result_checks.started_at', '=', new Date(moment))
+        .execute();
+    };
+
+    /** A daily job of a branch in its transaction, as the runner runs it. */
+    const job = async (
+      branch: string,
+      moment: string,
+      work: (transaction: Transaction) => Promise<void>,
+    ) => {
+      t.clock.set(moment);
+      try {
+        await t.app.get(Transactions).run([branch], work);
+      } finally {
+        t.clock.set(START);
+      }
+    };
+
+    /** Writes past the triggers of a table as its owner: a corruption the guards never allow. */
+    const corrupt = (table: string, work: (transaction: Transaction) => Promise<unknown>) =>
+      t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table ${sql.table(table)} disable trigger user`.execute(transaction);
+        await work(transaction);
+        await sql`alter table ${sql.table(table)} enable trigger user`.execute(transaction);
+      });
+
+    const superAdmin = async () => (await sharedAdmin(0)).account.id;
+
+    const noticesTo = (accountId: string, kind: string, branch?: string) => {
+      let query = t.database.migrator
+        .selectFrom('notifications')
+        .select('data')
+        .where('account_id', '=', accountId)
+        .where('kind', '=', kind)
+        .orderBy('id');
+      if (branch !== undefined) query = query.where('branch_id', '=', branch);
+      return query.execute();
+    };
+
+    it('finds nothing in a branch whose journals and stored results agree', async () => {
+      const b = await closed();
+      expect(await check(b.s.branch, '2026-11-03T02:00:00+05:00')).toEqual([]);
+      const run = await t.database.migrator
+        .selectFrom('result_checks')
+        .select(['finished_at', 'summary'])
+        .where('branch_id', '=', b.s.branch)
+        .executeTakeFirstOrThrow();
+      expect(run.finished_at).toEqual(new Date('2026-11-03T02:00:00+05:00'));
+      expect(run.summary).toMatchObject({ differences: {} });
+    });
+
+    it('catches a deliberately corrupted stored result and tells the Super Admins', async () => {
+      const b = await closed();
+      const admin = await superAdmin();
+      await corrupt('quarter_final_results', (transaction) =>
+        transaction
+          .updateTable('quarter_final_results')
+          .set({ record: sql`jsonb_set(record, '{outcome,result,grade}', '2'::jsonb)` })
+          .where('quarter_id', '=', b.q1)
+          .where('student_id', '=', b.aziz)
+          .execute(),
+      );
+      const found = await check(b.s.branch, '2026-11-03T02:00:00+05:00');
+      expect(found).toEqual([{ kind: 'stored_module', journal_id: b.journal, student_id: b.aziz }]);
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toEqual([
+        { data: { date: '2026-11-03', differences: 1, journals: 1 } },
+      ]);
+      // edge/system-behaviour: "Every job can be repeated safely": a retry of the finished day's
+      // run stores no second run and sends no second notice (spec review note).
+      await check(b.s.branch, '2026-11-03T02:30:00+05:00');
+      const runs = await t.database.migrator
+        .selectFrom('result_checks')
+        .select('id')
+        .where('branch_id', '=', b.s.branch)
+        .where('day', '=', '2026-11-03')
+        .execute();
+      expect(runs).toHaveLength(1);
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toHaveLength(1);
+    });
+
+    it('catches an entry of a closed quarter changed past the guards', async () => {
+      const b = await closed();
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 0 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.aziz)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-11-03T02:00:00+05:00')).toEqual([
+        { kind: 'stored_entries', journal_id: b.journal, student_id: b.aziz },
+      ]);
+    });
+
+    it('catches a cell of an open journal that is not its history, blocks closing it, and clears once repaired', async () => {
+      const b = await base();
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 0 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.bek)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-10-28T02:00:00+05:00')).toEqual([
+        { kind: 'cell_history', journal_id: b.journal, student_id: b.bek },
+      ]);
+      await vice(b.s.branch, async (calls) => {
+        const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(itemsOf(list, 'check_difference', b.journal).map((one) => one.differences)).toEqual([
+          1,
+        ]);
+      });
+      // Repaired from the history; the next check finds nothing and the item is gone.
+      await corrupt('journal_cells', (transaction) =>
+        transaction
+          .updateTable('journal_cells')
+          .set({ mark: 1 })
+          .where('lesson_id', '=', b.lessons.l12.id)
+          .where('student_id', '=', b.bek)
+          .where('work_id', 'is', null)
+          .execute(),
+      );
+      expect(await check(b.s.branch, '2026-10-29T02:00:00+05:00')).toEqual([]);
+      await vice(b.s.branch, async (calls) => {
+        const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(itemsOf(list, 'check_difference')).toEqual([]);
+      });
+    });
+
+    // Review must-fix 5: a correction in a reopened journal is no difference.
+    it('finds no difference in a reopened journal that took a correction', async () => {
+      const b = await closed();
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const reopened = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/reopen`,
+            { journalId: b.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+            randomUUID(),
+          );
+          expect(reopened.status).toBe(200);
+        },
+        '2026-11-02T09:00:00+05:00',
+      );
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const corrected = await calls.post(
+            b.s.branch,
+            `/api/journal/lessons/${b.lessons.l12.id}/attendance`,
+            {
+              saves: [{ studentId: b.dilshod, mark: 1, version: null }],
+              correction: { reason: 'The register shows him present' },
+            },
+            randomUUID(),
+          );
+          expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+        },
+        '2026-11-03T10:00:00+05:00',
+      );
+      expect(await check(b.s.branch, '2026-11-04T02:00:00+05:00')).toEqual([]);
+    });
+
+    it('raises "did not run" once a day when no run of that day finished', async () => {
+      const b = await base();
+      const admin = await superAdmin();
+      await job(b.s.branch, '2026-10-28T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-10-28' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toEqual([
+        { data: { date: '2026-10-28' } },
+      ]);
+      await check(b.s.branch, '2026-10-29T02:00:00+05:00');
+      await job(b.s.branch, '2026-10-29T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-10-29' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toHaveLength(1);
+    });
+
+    // Plan decision 9: the tick at 01:59 and 02:00 branch time, twice in a day.
+    it('enqueues each daily kind once per branch and day, from its hour', async () => {
+      const b = await base();
+      const runs = () =>
+        t.database.migrator
+          .selectFrom('scheduled_runs')
+          .select(['kind', sql<string>`day::text`.as('day')])
+          .where('branch_id', '=', b.s.branch)
+          .orderBy('kind')
+          .execute();
+      const tick = async (moment: string) => {
+        t.clock.set(moment);
+        try {
+          await daily().tick();
+        } finally {
+          t.clock.set(START);
+        }
+      };
+      await tick('2026-10-28T01:59:00+05:00');
+      expect(await runs()).toEqual([]);
+      await tick('2026-10-28T02:00:00+05:00');
+      await tick('2026-10-28T02:15:00+05:00');
+      expect(await runs()).toEqual([
+        { kind: 'results.check', day: '2026-10-28' },
+        { kind: 'timetable.forced_delete_purge', day: '2026-10-28' },
+      ]);
+      await tick('2026-10-28T07:00:00+05:00');
+      expect((await runs()).map((one) => one.kind)).toEqual([
+        'journal.about_to_lock',
+        'plans.reminders',
+        'results.check',
+        'results.check_missed',
+        'results.closing_overdue',
+        'timetable.forced_delete_purge',
+      ]);
+      // Each run's job is in the queue, for the branch alone.
+      const queued = await sql<{ name: string; data: { branchIds: string[] } }>`
+        select name, data from pgboss.job
+        where data -> 'branchIds' ->> 0 = ${b.s.branch}
+        order by name
+      `.execute(t.database.migrator);
+      expect(queued.rows.map((one) => one.name)).toEqual((await runs()).map((one) => one.kind));
+      // The worker down from 07:00 to 08:00 of the next day: the check is sent at 08:00 and "did
+      // not run" one hour after it, never in the same tick (spec review note).
+      const dayOf = async (day: string) =>
+        (await runs()).filter((one) => one.day === day).map((one) => one.kind);
+      await tick('2026-10-29T08:00:00+05:00');
+      expect(await dayOf('2026-10-29')).toEqual([
+        'journal.about_to_lock',
+        'plans.reminders',
+        'results.check',
+        'results.closing_overdue',
+        'timetable.forced_delete_purge',
+      ]);
+      await tick('2026-10-29T08:59:00+05:00');
+      expect(await dayOf('2026-10-29')).not.toContain('results.check_missed');
+      await tick('2026-10-29T09:00:00+05:00');
+      expect(await dayOf('2026-10-29')).toContain('results.check_missed');
+      // A tick late by a day: the day it missed is never sent, the new day once.
+      await tick('2026-10-31T02:00:00+05:00');
+      expect(await dayOf('2026-10-30')).toEqual([]);
+      expect(await dayOf('2026-10-31')).toEqual(['results.check', 'timetable.forced_delete_purge']);
+    });
+
+    // 07: "After the last day the Academic Vice Principal is reminded until the quarter is closed."
+    it('reminds the Academic Vice Principals of the branch of a quarter past its last day until it is closed', async () => {
+      const b = await base();
+      const own = await account();
+      await t.kit.giveRole(own.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const other = await base();
+      const elsewhere = await account();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const overdue = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().closingOverdue(transaction, b.s.branch));
+      await overdue('2026-10-31T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toEqual([]);
+      await overdue('2026-11-01T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toEqual([
+        { data: { quarter: 1, lastDay: '2026-10-31' } },
+      ]);
+      expect(await noticesTo(elsewhere.account.id, 'results.closing_overdue')).toEqual([]);
+      await closeQuarter(t.database, {
+        branchId: b.s.branch,
+        quarterId: b.q1,
+        accountId: own.account.id,
+      });
+      await overdue('2026-11-02T07:00:00+05:00');
+      expect(await noticesTo(own.account.id, 'results.closing_overdue')).toHaveLength(1);
+    });
+
+    // edge/people-roles-accounts: a task with no holder goes "to the Academic Vice Principal, then
+    // to the Super Admin" (permission review should-fix 6).
+    it('reminds the Super Admins when the branch has no Academic Vice Principal', async () => {
+      const vacant = await base();
+      const admin = await superAdmin();
+      const elsewhere = await account();
+      const other = await base();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await job(vacant.s.branch, '2026-11-01T07:00:00+05:00', (transaction) =>
+        daily().closingOverdue(transaction, vacant.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.closing_overdue', vacant.s.branch)).toEqual([
+        { data: { quarter: 1, lastDay: '2026-10-31' } },
+      ]);
+      expect(await noticesTo(elsewhere.account.id, 'results.closing_overdue')).toEqual([]);
+    });
+
+    // 10: "Lesson about to lock with data missing | Teacher" (From 8.7), once per lesson.
+    it('tells the teacher of an incomplete lesson within 48 hours of its lock, once', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const aboutToLock = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().aboutToLock(transaction, b.s.branch));
+      // The 26th locks at 00:00 of 3 November (7 edit days): 65 hours before, nothing.
+      await aboutToLock('2026-10-31T07:00:00+05:00');
+      expect(await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock')).toEqual([]);
+      await aboutToLock('2026-11-01T07:00:00+05:00');
+      await aboutToLock('2026-11-02T07:00:00+05:00');
+      const notices = await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock');
+      expect(notices.map((one) => (one.data as { date: string }).date)).toEqual(['2026-10-26']);
+    });
+
+    // Spec review must-fix 8: "within 48 hours" holds at exactly 48 hours, not at 48 h 1 min.
+    it('tells the teacher at exactly 48 hours before the lock, not a minute earlier', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const aboutToLock = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().aboutToLock(transaction, b.s.branch));
+      const dates = async () =>
+        (await noticesTo(teacher.account.id, 'journal.lesson_about_to_lock')).map(
+          (one) => (one.data as { date: string; locksAt: string }).date,
+        );
+      // The 26th locks at 00:00 of 3 November.
+      await aboutToLock('2026-10-31T23:59:00+05:00');
+      expect(await dates()).toEqual([]);
+      await aboutToLock('2026-11-01T00:00:00+05:00');
+      expect(await dates()).toEqual(['2026-10-26']);
+    });
+
+    it('reminds the Academic Vice Principals daily when no plan window is open 14 days before a quarter', async () => {
+      const b = await base();
+      const own = await account();
+      await t.kit.giveRole(own.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const remind = (moment: string) =>
+        job(b.s.branch, moment, (transaction) => daily().planReminders(transaction, b.s.branch));
+      const quarter2 = await quarterOf(b.s.year, 2);
+      const start = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select(sql<string>`start_date::text`.as('start'))
+          .where('id', '=', quarter2)
+          .executeTakeFirstOrThrow()
+      ).start;
+      const missing = () =>
+        noticesTo(own.account.id, 'plans.window_missing').then((rows) =>
+          rows.filter((one) => (one.data as { quarter: number }).quarter === 2),
+        );
+      // 15 days before: nothing; 14 days before and the next day: one each.
+      const day = (offset: number) =>
+        new Date(Date.parse(`${start}T07:00:00+05:00`) + offset * 86_400_000).toISOString();
+      // Spec review must-fix 8 and permission review should-fix 7: never to the Academic Vice
+      // Principal of another branch.
+      const other = await base();
+      const elsewhere = await account();
+      await t.kit.giveRole(elsewhere.account.id, {
+        role: 'academic_vice_principal',
+        branchId: other.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await remind(day(-15));
+      expect(await missing()).toEqual([]);
+      await remind(day(-14));
+      await remind(day(-13));
+      expect(await missing()).toHaveLength(2);
+      expect(await noticesTo(elsewhere.account.id, 'plans.window_missing')).toEqual([]);
+    });
+
+    /** The plan the base scene links to its journal in the first quarter. */
+    const planOf = async (b: Awaited<ReturnType<typeof base>>) =>
+      (
+        await t.database.migrator
+          .selectFrom('lesson_plan_journals')
+          .select('plan_id')
+          .where('journal_id', '=', b.journal)
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow()
+      ).plan_id;
+
+    // 09: "Teachers are reminded ... three days before it ends, and on the last day if the plan is
+    // incomplete" (spec review must-fix 8: the two days exactly, nothing on the days around them).
+    it('reminds the plan owner three days before the window ends and on its last day', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      await planOf(b);
+      const opener = await load.classes.account();
+      // Open from 20 to 30 October: it ends at 00:00 of 31 October.
+      await t.database.migrator
+        .insertInto('lesson_plan_windows')
+        .values({
+          branch_id: b.s.branch,
+          quarter_id: b.q1,
+          start_date: '2026-10-20',
+          end_date: '2026-10-30',
+          starts_at: new Date('2026-10-20T00:00:00+05:00'),
+          ends_at: new Date('2026-10-31T00:00:00+05:00'),
+          opened_at: new Date('2026-10-19T09:00:00+05:00'),
+          opened_by: opener,
+        })
+        .execute();
+      const remind = (date: string) =>
+        job(b.s.branch, `${date}T07:00:00+05:00`, (transaction) =>
+          daily().planReminders(transaction, b.s.branch),
+        );
+      const kinds = ['plans.window_ending', 'plans.window_last_day'] as const;
+      const sent = async () =>
+        Object.fromEntries(
+          await Promise.all(
+            kinds.map(
+              async (kind) => [kind, (await noticesTo(teacher.account.id, kind)).length] as const,
+            ),
+          ),
+        );
+      await remind('2026-10-26');
+      expect(await sent()).toEqual({ 'plans.window_ending': 0, 'plans.window_last_day': 0 });
+      await remind('2026-10-27');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 0 });
+      expect(await noticesTo(teacher.account.id, 'plans.window_ending')).toEqual([
+        { data: { quarter: 1, endDate: '2026-10-30' } },
+      ]);
+      await remind('2026-10-28');
+      await remind('2026-10-29');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 0 });
+      await remind('2026-10-30');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 1 });
+      await remind('2026-10-31');
+      expect(await sent()).toEqual({ 'plans.window_ending': 1, 'plans.window_last_day': 1 });
+    });
+
+    // edge/lesson-plans: "The teacher is reminded on days 1, 3 and 7, then weekly" (spec review
+    // must-fix 8: days 1, 3, 7 and 14, nothing between).
+    it('reminds the owner of a prepared request not sent on days 1, 3, 7 and 14', async () => {
+      const teacher = await account();
+      const b = await base({ teacher: teacher.account.id });
+      const plan = await planOf(b);
+      await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: b.s.branch,
+          plan_id: plan,
+          journal_id: b.journal,
+          quarter_id: b.q1,
+          kind: 'replan',
+          status: 'prepared',
+          from_date: '2026-10-26',
+          prepared_at: new Date('2026-10-20T09:00:00+05:00'),
+          updated_at: new Date('2026-10-20T09:00:00+05:00'),
+        })
+        .execute();
+      for (let offset = 0; offset <= 15; offset += 1) {
+        const moment = new Date(Date.parse('2026-10-20T07:00:00+05:00') + offset * 86_400_000);
+        await job(b.s.branch, moment.toISOString(), (transaction) =>
+          daily().planReminders(transaction, b.s.branch),
+        );
+      }
+      const notices = await noticesTo(teacher.account.id, 'plans.request_unsent');
+      expect(notices.map((one) => (one.data as { days: number }).days)).toEqual([1, 3, 7, 14]);
+    });
+
+    it('removes the kept rows of a forced delete past its restore time and keeps the store row with a summary', async () => {
+      const b = await base();
+      const deleter = await load.classes.account();
+      const stored = await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', '2026-09-25T10:00:00+05:00', true)`.execute(
+          transaction,
+        );
+        return transaction
+          .insertInto('forced_deletes')
+          .values({
+            branch_id: b.s.branch,
+            record_type: 'lesson',
+            record_id: b.lessons.l12.id,
+            rows: JSON.stringify({ lessons: [{ id: 'kept' }], journal_cells: [{}, {}] }),
+            reason: 'Entered by mistake',
+            deleted_by: deleter,
+            deleted_at: new Date(0),
+            restore_until: new Date(0),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+      });
+      const purge = (moment: string) =>
+        job(b.s.branch, moment, (transaction) =>
+          daily().forcedDeletePurge(transaction, b.s.branch),
+        );
+      // Restore until 25 October 10:00: a minute before, nothing.
+      await purge('2026-10-25T09:59:00+05:00');
+      const before = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select(['rows', 'purged_at'])
+        .where('id', '=', stored.id)
+        .executeTakeFirstOrThrow();
+      expect(before.purged_at).toBeNull();
+      // Spec review must-fix 8: at exactly the restore time, it is removed.
+      await purge('2026-10-25T10:00:00+05:00');
+      const after = await t.database.migrator
+        .selectFrom('forced_deletes')
+        .select(['rows', 'purged_at', 'reason'])
+        .where('id', '=', stored.id)
+        .executeTakeFirstOrThrow();
+      expect(after).toEqual({
+        rows: {},
+        purged_at: new Date('2026-10-25T10:00:00+05:00'),
+        reason: 'Entered by mistake',
+      });
+      const entry = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['actor_id', 'new_value'])
+        .where('action', '=', 'forced_delete.purged')
+        .where('branch_id', '=', b.s.branch)
+        .executeTakeFirstOrThrow();
+      expect(entry.actor_id).toBeNull();
+      expect(entry.new_value).toEqual({
+        forcedDeletes: [
+          {
+            id: stored.id,
+            recordType: 'lesson',
+            recordId: b.lessons.l12.id,
+            rows: { lessons: 1, journal_cells: 2 },
+          },
+        ],
+      });
     });
   });
 });

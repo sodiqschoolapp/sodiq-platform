@@ -18,10 +18,18 @@ import { listSearch, type Column, type ListSearch } from '@/components/list/list
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText, schoolDateText } from '@/lib/dates';
 import { CloseQuarterDialog } from './close-quarter-dialog';
+import {
+  ChangesList,
+  RecalculationSection,
+  ReopenDialog,
+  ReopenedJournalPanel,
+  ReopeningLine,
+} from './reopening';
 import {
   closeQuarter,
   closingQuery,
@@ -87,6 +95,8 @@ export function ClosingPage(): React.JSX.Element {
       if (answer !== null) setClosing(null);
     },
   });
+  // Task 9.2c: the reopening dialog.
+  const [reopening, setReopening] = useState<string | null>(null);
   const periods = data?.items.filter((item) => item.kind === 'plan_periods') ?? [];
   const endPeriods = useMutation({
     mutationFn: async (quarterId: string) => {
@@ -237,6 +247,10 @@ export function ClosingPage(): React.JSX.Element {
                 {t('results.closing.closeQuarter')}
               </Button>
             </span>
+          ) : data?.canEdit === true && data.quarterId !== null && data.state === 'closed' ? (
+            <Button variant="secondary" onClick={() => setReopening(crypto.randomUUID())}>
+              {t('results.reopening.action')}
+            </Button>
           ) : undefined
         }
       />
@@ -288,6 +302,58 @@ export function ClosingPage(): React.JSX.Element {
                 : t('results.closing.closedNone')}
             </p>
           </div>
+        )}
+        {data?.reopening !== null && data?.reopening !== undefined && (
+          <div className="grid gap-2 text-sm" data-reopened="branch">
+            <ul>
+              <ReopeningLine reopening={data.reopening} />
+            </ul>
+            <h2 className={SECTION_TITLE}>{t('results.reopening.changes')}</h2>
+            <ChangesList changes={data.changes} />
+          </div>
+        )}
+        {data?.state === 'closed' &&
+          data.quarterId !== null &&
+          data.reopenedJournals.map((journal) => (
+            <ReopenedJournalPanel
+              key={journal.reopening.id}
+              quarterId={data.quarterId ?? ''}
+              journal={journal}
+              canEdit={data.canEdit}
+            />
+          ))}
+        {data !== undefined && data.check !== null && (
+          <p className="text-sm text-muted-foreground" data-check="true">
+            {t('results.check.line', {
+              date: momentText(language, data.check.checkedAt),
+              count: data.check.journals.reduce((sum, one) => sum + one.differences, 0),
+            })}
+          </p>
+        )}
+        {data !== undefined && data.reopenings.length > 0 && (
+          <details className="text-sm">
+            <summary>{t('results.reopening.history', { count: data.reopenings.length })}</summary>
+            <ul className="mt-2 grid gap-2">
+              {data.reopenings.map((one) => (
+                <ReopeningLine key={one.id} reopening={one} />
+              ))}
+            </ul>
+          </details>
+        )}
+        {data?.state === 'closed' && data.quarterId !== null && (
+          <RecalculationSection
+            key={data.quarterId}
+            quarterId={data.quarterId}
+            canApply={data.canApply}
+          />
+        )}
+        {reopening !== null && data !== undefined && (
+          <ReopenDialog
+            key={reopening}
+            checklist={data}
+            onDone={() => setReopening(null)}
+            onCancel={() => setReopening(null)}
+          />
         )}
         {closing !== null && data !== undefined && (
           <CloseQuarterDialog
@@ -370,6 +436,8 @@ function countOf(item: ClosingItem): number {
       return item.parts.length;
     case 'no_teacher':
       return item.days.length;
+    case 'check_difference':
+      return item.differences;
     default:
       return 1;
   }
@@ -473,6 +541,15 @@ function ItemDetails({ row }: { row: Row }) {
       );
     case 'plan_periods':
       return <p>{t('results.closing.planPeriods', { count: row.requests })}</p>;
+    case 'check_difference':
+      return (
+        <p>
+          {t('results.check.difference', {
+            count: row.differences,
+            date: momentText(language, row.checkedAt),
+          })}
+        </p>
+      );
     case 'plan_incomplete':
       return (
         <ul className="grid gap-1">

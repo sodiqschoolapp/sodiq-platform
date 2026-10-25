@@ -35,12 +35,13 @@ type Field = 'kind' | 'teacherId' | 'roomId' | 'reason' | 'confirm';
  * The corrections a started lesson takes (task 5.6a-4): a restore for a
  * cancel with a reason; a cancel, the person who taught it or its room for a
  * lesson not cancelled; none for one cancelled by another cause (an exam).
+ * Task 9.2c (From 9.2b): in a closed quarter no cancel and no restore.
  */
 export function correctionKinds(lesson: DayLesson): Kind[] {
   if (!lesson.canCorrect) return [];
-  if (lesson.cancelCause === 'reason') return ['restore'];
+  if (lesson.cancelCause === 'reason') return lesson.quarterClosed ? [] : ['restore'];
   if (lesson.cancelCause !== null) return [];
-  return ['cancel', 'teacher', 'room'];
+  return lesson.quarterClosed ? ['teacher', 'room'] : ['cancel', 'teacher', 'room'];
 }
 
 /**

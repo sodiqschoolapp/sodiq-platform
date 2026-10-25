@@ -13,7 +13,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { clockOf } from '../plans/plan-read.js';
-import { lockOpenQuarter } from '../setup/closed-quarters.js';
+import { lockOpenJournalQuarter } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { holdSubjectSwitches } from '../setup/subject-switches.js';
 import { ownerFactsOf } from '../timetable/journal-owners.js';
@@ -517,7 +517,7 @@ export class RatingService {
           // rating exam, the date, "not held" and "exempt" too (which take no edit period), is
           // refused in a closed quarter; the quarter is locked after the scope checks and before
           // the first row lock (`.claude/rules/database.md`; permission review, M4).
-          await lockOpenQuarter(transaction, quarterId);
+          await lockOpenJournalQuarter(transaction, quarterId, journalId);
           await holdSubjectSwitches(transaction, unlocked.subjectId);
           const [journal] = await journalRows(transaction, branchId, { journalId });
           if (journal === undefined) throw notFound();

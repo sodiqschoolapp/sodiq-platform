@@ -297,6 +297,36 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: reopening and the nightly check (task 9.2c)
+
+Plan approved on pull request #231 with corrections 1 to 3 (the closed part of an exemption as `edge/exemptions` writes it; the closed-year correction on 9.5a; `results_recalculation` for the apply only); decisions 1 to 22 confirmed there, decision 4 changed. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). The outcomes of "not covered" items and their carry at closing are 9.2d | Decision 1; a plans feature with its own table, routes and screen |
+| **Look first** (an index changed). `quarter_closings_in_force_key` is restricted to `cause = 'close'`: a journal re-close and an applied recalculation are versions in force beside the branch close | Decision 2; the rule it guards is unchanged |
+| **Look first** (a spec reading). A reopening ends at 00:00 branch time of the day after the reopening day plus 1 to 14 days; after it the entries are refused again, the decisions and the re-close stay possible until the re-close | Decisions 3 and 21; review must-fix 1 |
+| **Look first** (a spec reading, changed by correction 1). A whole-branch reopening opens the quarter except what stays frozen; a journal's opens that journal's rows; the closed part of an exemption is applied when every journal its days reach is reopened, or the whole branch | Decision 4 as changed; `edge/exemptions` |
+| **Look first** (a spec reading). In a reopened quarter or journal only corrections and unlocks decided after the close apply | Decision 5 |
+| **Look first** (a calculation reading). The nightly check compares cells with their history, works and rating entries with their last line, every outcome (a refusal is a difference), and each record in force with the module and with its inputs read again | Decision 6; review must-fix 5 |
+| **Look first** (a spec reading). "Alerts the developer": an in-app notice to the Super Admins and a log line; the phone alerts are 10.2's | Decision 7 |
+| **Look first** (a job that reaches every branch; pg-boss's schedule on). `schedule.tick` every 15 minutes enqueues each branch's daily work in a transaction of that branch; `scheduled_runs` once per branch, kind and day; `pgboss.schedule` rights in 0135 | Decision 9 |
+| **Look first** (a new permission area). `results_recalculation` `edit`, the Super Admin only, for the apply | Decision 10, correction 3 |
+| Changed results compare kind, shown result, grade and decision with the record in force before the reopening; stored on the closing row and in its audit entry | Decision 8 |
+| Reopening needs `quarter_closing` `edit` and a reason; any quarter may be reopened; a closed year never | Decisions 11 and 12 |
+| A branch re-close asks the start quarter's choice again; a journal re-close keeps it | Decision 13 |
+| A journal re-close stores its listed students' records and names; a recalculation only the records it changes | Decision 14 |
+| The check at 02:00, the notices at 07:00 branch time; "about to lock" once per lesson and person; the plan reminders as decisions 17, 19, 20 | Decisions 15 to 20 |
+| The purge clears `rows` and keeps the store row; no "run the check now" route | Decisions 18 and 22 |
+| **Build decision.** The migrator's fixture writes pass the new guards of `quarter_closings`, `quarter_reopenings` and `forced_deletes` (`session_user <> 'sodiq_app'`), as the journal judge does | The 9.2b tests stand in for a reopening with the migrator |
+| **Build decision.** A work's insert writes no history line (0119): the check compares a work with lines only, and compares the values of a work and a rating entry, not the version | A work's version counts changes that write no line (a position) |
+| **Build decision.** An unlock stops covering after a close of the branch or a re-close of its own journal, not after an applied recalculation or another journal's re-close | Decision 5 read per journal |
+| **Build decision.** The exam date and "not held" of a rating exam in a reopened quarter are a corrector's only | "Only corrections and explicit unlocks apply" |
+| **Build decision.** An exemption of some subjects is checked against its journals when its subject rows are written (a deferred trigger); its row's own insert passes a closed quarter only when one of its journals is reopened | The subjects are not known at the row's insert |
+| **Build decision.** A journal's re-close whose warnings name another journal: 404 when it is no journal of the branch's year, 409 `closing_warnings_changed` when it is one (the branch close answers the same way) | Permission review should-fix 9 |
+| **Build decision.** A reopening named by a journal the close did not store answers 409 `closing_journal_not_closed`, not the plan's 404: the journal exists and the reader may read it | Spec review must-fix 6 |
+| **Build decision.** An unlock request or approval of a lesson with no journal takes the quarter's own check (`lockOpenQuarter`) | Permission review note 10: never a plain error (500) |
+
 ## 25 October 2026: closing a quarter (task 9.2b)
 
 Plan approved on pull request #230 with corrections 1 to 4 (`closable` beside the lock-now kinds; the start quarter from `countsFromOf`; the lock order against the close's parents; the lock cap at the first close); decisions 1 to 15 confirmed there, decision 7 changed. Flagged on issue #42.

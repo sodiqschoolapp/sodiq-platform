@@ -555,6 +555,74 @@ export const NOTIFICATION_KINDS = {
    * the close locked.
    */
   'results.quarter_locked_now': z.strictObject({ quarter: z.int().min(1).max(4) }),
+  /**
+   * Task 9.2c (`edge/calculation`, "A bug is found after results were closed and exported":
+   * "the teachers concerned are told"): a recalculation applied, to the owner of each journal.
+   */
+  'results.recalculated': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    version: z.int().min(1),
+  }),
+  /**
+   * Task 9.2c (`edge/system-behaviour`, "The nightly check": "A difference alerts the
+   * developer"; plan decision 7): to every Super Admin, counts only.
+   */
+  'results.check_difference': z.strictObject({
+    date: schoolDateSchema,
+    differences: z.int().min(1),
+    journals: z.int().min(1),
+  }),
+  /** "A check that did not run also raises an alert" (task 9.2c), to every Super Admin. */
+  'results.check_missed': z.strictObject({ date: schoolDateSchema }),
+  /**
+   * Task 9.2c (`07`, Closing a quarter: "After the last day the Academic Vice Principal is
+   * reminded until the quarter is closed"): once per day and person.
+   */
+  'results.closing_overdue': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    lastDay: schoolDateSchema,
+  }),
+  /** Task 9.2c (`09`, The plan window: "three days before it ends"), to each plan owner. */
+  'plans.window_ending': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    endDate: schoolDateSchema,
+  }),
+  /** `09`: "and on the last day if the plan is incomplete". */
+  'plans.window_last_day': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    unit: z.string().min(1).max(4000),
+  }),
+  /**
+   * `edge/lesson-plans`, "The window is never opened": "If none exists 14 days before a quarter
+   * starts, the Academic Vice Principal is reminded daily".
+   */
+  'plans.window_missing': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    startDate: schoolDateSchema,
+  }),
+  /**
+   * `edge/lesson-plans`, "A teacher never sends the prepared request": "The teacher is reminded
+   * on days 1, 3 and 7, then weekly".
+   */
+  'plans.request_unsent': z.strictObject({
+    unit: z.string().min(1).max(4000),
+    quarter: z.int().min(1).max(4),
+    days: z.int().min(1),
+  }),
+  /**
+   * Task 9.2c (`10`, Notifications: "Lesson about to lock with data missing | Teacher | In the
+   * app"): once per lesson and person, within the 48 hours before the lock.
+   */
+  'journal.lesson_about_to_lock': z.strictObject({
+    date: schoolDateSchema,
+    unit: z.string().min(1).max(120),
+    subject: z.strictObject({
+      uz: z.string().min(1).max(200),
+      ru: z.string().min(1).max(200),
+      en: z.string().min(1).max(200),
+    }),
+    locksAt: z.iso.datetime({ offset: true }),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

@@ -18,7 +18,12 @@ import { RESULT_FLAGS } from './results.js';
  * - `POST /api/results/closing/:quarterId/plan-periods/end`: "end them all".
  * - `POST /api/results/closing/:quarterId/remind`: the list to each teacher concerned.
  * - `POST /api/results/closing/:quarterId/close`: the close of the quarter for the whole branch
- *   (task 9.2b, pull request #230).
+ *   (task 9.2b, pull request #230), also again after a reopening (task 9.2c).
+ * - `POST /api/results/closing/:quarterId/reopen`: the reopening of the whole branch or of one
+ *   journal (task 9.2c, pull request #231).
+ * - `POST /api/results/closing/:quarterId/journals/:journalId/close`: a reopened journal closed again.
+ * - `GET /api/results/closing/:quarterId/recalculation`: "recalculate and compare".
+ * - `POST /api/results/closing/:quarterId/recalculation/apply`: "apply with a reason".
  */
 
 /** "The checklist opens two weeks earlier" (`07`, decision 4 of the plan). */
@@ -164,6 +169,16 @@ export const closingItemSchema = z.discriminatedUnion('kind', [
     incomplete: z.int().min(0),
   }),
   z.object({ kind: z.literal('plan_periods'), ...itemBase, requests: z.int().min(1) }),
+  /**
+   * `edge/system-behaviour`, "The nightly check": "A difference ... blocks closing that journal"
+   * (task 9.2c): the differences of the journal in the branch's latest finished check.
+   */
+  z.object({
+    kind: z.literal('check_difference'),
+    ...itemBase,
+    differences: z.int().min(1),
+    checkedAt: z.iso.datetime({ offset: true }),
+  }),
   // Warnings.
   z.object({
     kind: z.literal('no_attendance'),
@@ -213,6 +228,7 @@ export const CLOSING_BLOCKING: readonly ClosingItemKind[] = [
   'extension_open',
   'edit_period',
   'plan_periods',
+  'check_difference',
 ];
 
 /**
@@ -278,6 +294,153 @@ export const closingClosedSchema = z.object({
 
 export type ClosingClosed = z.infer<typeof closingClosedSchema>;
 
+/** A result as it is shown, to list the results that changed (task 9.2c, plan decision 8). */
+export const closingOutcomeSchema = z.object({
+  kind: z.enum(['number', 'exempt', 'not_assessed', 'no_result']),
+  /** The result rounded as it is shown, for a number. */
+  shown: z.int().nullable(),
+  grade: z.int().min(2).max(5).nullable(),
+  decision: z.enum(CLOSING_DECISIONS).nullable(),
+});
+
+export type ClosingOutcome = z.infer<typeof closingOutcomeSchema>;
+
+/**
+ * `edge/journal`: "Closing again lists every result that changed": a student and subject whose
+ * result differs from the record in force before the reopening; `before` null for a new one.
+ */
+export const closingChangeSchema = z.object({
+  student: closingStudentSchema,
+  subject: journalSubjectSchema,
+  journalId: z.uuid(),
+  before: closingOutcomeSchema.nullable(),
+  after: closingOutcomeSchema,
+});
+
+export type ClosingChange = z.infer<typeof closingChangeSchema>;
+
+/** The reopening of a quarter (task 9.2c): for the whole branch, or for one journal. */
+export const closingReopenInputSchema = z.strictObject({
+  journalId: z.uuid().nullable(),
+  reason: z.string().trim().min(1).max(500),
+  /** "For a set number of days" (`edge/journal`; plan decision 21). */
+  days: z.int().min(1).max(14),
+});
+
+export type ClosingReopenInput = z.infer<typeof closingReopenInputSchema>;
+
+export const closingReopeningSchema = z.object({
+  id: z.uuid(),
+  /** `null`: the whole branch. */
+  journal: z
+    .object({ id: z.uuid(), unit: journalUnitSchema, subject: journalSubjectSchema })
+    .nullable(),
+  reason: z.string(),
+  days: z.int().min(1).max(14),
+  reopenedAt: z.iso.datetime({ offset: true }),
+  reopenedBy: z.string(),
+  /** Entries are taken until this moment (plan decision 3). */
+  openUntil: z.iso.datetime({ offset: true }),
+  /** The end has passed: only the decisions and the close again are left. */
+  ended: z.boolean(),
+  /** Closed again; `null` while unfinished. */
+  closedAgainVersion: z.int().min(1).nullable(),
+});
+
+export type ClosingReopening = z.infer<typeof closingReopeningSchema>;
+
+/** A reopened journal on the checklist of a closed quarter: its own items and changes. */
+export const closingReopenedJournalSchema = z.object({
+  reopening: closingReopeningSchema,
+  closable: z.boolean(),
+  lockNowNeeded: z.boolean(),
+  blocking: z.int().min(0),
+  warnings: z.int().min(0),
+  items: z.array(closingItemSchema),
+  changes: z.array(closingChangeSchema),
+});
+
+export type ClosingReopenedJournal = z.infer<typeof closingReopenedJournalSchema>;
+
+/** A journal of the close in force, with the names stored with it, for the reopening's choice. */
+export const closingClosedJournalSchema = z.object({
+  id: z.uuid(),
+  unitName: z.string(),
+  subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+});
+
+/** The latest finished nightly check of the branch (task 9.2c). */
+export const closingCheckSchema = z.object({
+  checkedAt: z.iso.datetime({ offset: true }),
+  /** The differences of this quarter, by journal. */
+  journals: z.array(z.object({ journalId: z.uuid(), differences: z.int().min(1) })),
+});
+
+/** The close of one reopened journal again (task 9.2c): its warnings seen, "lock now". */
+export const closingJournalCloseInputSchema = z.strictObject({
+  warnings: closingCloseInputSchema.shape.warnings,
+  lockNow: z.boolean(),
+});
+
+export type ClosingJournalCloseInput = z.infer<typeof closingJournalCloseInputSchema>;
+
+export const closingReopenedSchema = z.object({
+  id: z.uuid(),
+  openUntil: z.iso.datetime({ offset: true }),
+});
+
+export type ClosingReopened = z.infer<typeof closingReopenedSchema>;
+
+/**
+ * "Recalculate and compare" (`edge/calculation`, "A bug is found after results were closed and
+ * exported"): each record in force the current module calculates otherwise. Changes nothing.
+ */
+export const closingRecalculationSchema = z.object({
+  quarterId: z.uuid(),
+  currentVersion: z.int().min(1),
+  rows: z.array(
+    z.object({
+      student: closingStudentSchema,
+      subject: journalSubjectSchema,
+      journalId: z.uuid(),
+      storedVersion: z.int().min(1),
+      /** The paths of the outcome that differ. */
+      differences: z.array(z.string()),
+      /** The code the current module refuses the stored inputs with, else `null`. */
+      refused: z.string().nullable(),
+      before: closingOutcomeSchema,
+      /** `null` when the module refuses the stored inputs. */
+      after: closingOutcomeSchema.nullable(),
+    }),
+  ),
+});
+
+export type ClosingRecalculation = z.infer<typeof closingRecalculationSchema>;
+
+/** "Applying them is a separate action with a reason": the rows the person saw, each once. */
+export const closingRecalculationApplyInputSchema = z.strictObject({
+  reason: z.string().trim().min(1).max(500),
+  students: z
+    .array(z.strictObject({ subjectId: z.uuid(), studentId: z.uuid() }))
+    .min(1)
+    .max(5000)
+    .refine(
+      (rows) =>
+        new Set(rows.map((row) => `${row.subjectId.toLowerCase()}|${row.studentId.toLowerCase()}`))
+          .size === rows.length,
+      { message: 'Each result is named once.' },
+    ),
+});
+
+export type ClosingRecalculationApplyInput = z.infer<typeof closingRecalculationApplyInputSchema>;
+
+export const closingRecalculationAppliedSchema = z.object({
+  version: z.int().min(1),
+  stored: z.int().min(0),
+});
+
+export type ClosingRecalculationApplied = z.infer<typeof closingRecalculationAppliedSchema>;
+
 /** The close in force of a closed quarter, as stored. */
 export const closingRecordSchema = z.object({
   closedAt: z.iso.datetime({ offset: true }),
@@ -319,6 +482,20 @@ export const closingChecklistSchema = z.object({
   earlierOpen: z.boolean(),
   /** The close in force; `null` while the quarter is open. */
   closing: closingRecordSchema.nullable(),
+  /** Every reopening of the quarter, oldest first (task 9.2c). */
+  reopenings: z.array(closingReopeningSchema),
+  /** The unfinished whole-branch reopening of an open state, else `null`. */
+  reopening: closingReopeningSchema.nullable(),
+  /** While the whole branch is reopened: the results that changed since the version before. */
+  changes: z.array(closingChangeSchema),
+  /** A closed quarter: its journals, to reopen one. */
+  closedJournals: z.array(closingClosedJournalSchema),
+  /** A closed quarter: the journals reopened and not closed again. */
+  reopenedJournals: z.array(closingReopenedJournalSchema),
+  /** The latest finished nightly check of the branch, or `null`. */
+  check: closingCheckSchema.nullable(),
+  /** The reader may apply a recalculation (`results_recalculation` `edit`). */
+  canApply: z.boolean(),
   /** The reader may decide, end the plan periods and remind. */
   canEdit: z.boolean(),
   blocking: z.int().min(0),

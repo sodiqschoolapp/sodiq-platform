@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/dialog';
 
 /** The warnings of a checklist as the close takes them: each kind and journal once. */
-export function warningsSeen(checklist: ClosingChecklist): ClosingCloseInput['warnings'] {
+export function warningsSeen(
+  checklist: Pick<ClosingChecklist, 'items'>,
+): ClosingCloseInput['warnings'] {
   const seen = new Map<string, ClosingCloseInput['warnings'][number]>();
   for (const item of checklist.items) {
     const kind = CLOSING_WARNINGS.find((one) => one === item.kind);

@@ -414,6 +414,61 @@ export class PlansService {
     });
   }
 
+  /**
+   * Task 9.2c (`09`, The plan window: "three days before it ends, and on the last day if the
+   * plan is incomplete"; plan decision 17): every planned journal of the branch with lessons in
+   * the quarter, its owner on the reference date, whether its plan is complete and the end of the
+   * window in force for that owner (an extension included). For the daily reminders, which run
+   * for no person: no reader's scope.
+   */
+  async remindersIn(
+    transaction: Transaction,
+    branchId: string,
+    yearId: string,
+    quarter: PlanQuarter,
+  ): Promise<
+    { journal: JournalRow; ownerId: string | null; complete: boolean; endsAt: Date | null }[]
+  > {
+    const { today, timeZone, now } = await clockOf(transaction, branchId);
+    const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
+      plannedJournal(journal),
+    );
+    const facts = await ownerFactsOf(
+      transaction,
+      branchId,
+      journals.map((journal) => ({
+        id: journal.id,
+        academic_year_id: journal.academicYearId,
+        class_id: journal.classId,
+        group_id: journal.groupId,
+        subject_id: journal.subjectId,
+      })),
+    );
+    const counts = await this.rowCounts(transaction, journals, [quarter]);
+    const filled = await this.filledCounts(transaction, journals, [quarter], counts);
+    const found = [];
+    for (const journal of journals) {
+      const key = `${journal.id}|${quarter.id}`;
+      const rows = counts.get(key) ?? 0;
+      if (rows === 0) continue;
+      const owner = ownerOn(
+        facts.runs.get(journal.id) ?? [],
+        facts.periods.get(journal.id) ?? [],
+        facts.out,
+        referenceDateOf(quarter, today),
+      );
+      const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
+      const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
+      found.push({
+        journal,
+        ownerId,
+        complete: (filled.get(key)?.topics ?? 0) >= rows,
+        endsAt: windowStateOf(window, now).endsAt,
+      });
+    }
+    return found;
+  }
+
   /** The number of rows (lessons not cancelled) of each journal in each quarter. */
   private async rowCounts(
     transaction: Transaction,

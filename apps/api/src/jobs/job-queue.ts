@@ -71,8 +71,8 @@ export class JobQueue implements BeforeApplicationShutdown {
       reindex: false,
       registerInstance: false,
       supervise: worker,
-      // Scheduled jobs arrive with the nightly check (task 9.2c).
-      schedule: false,
+      // Task 9.2c (plan decision 9): the worker runs pg-boss's cron, the API only sends.
+      schedule: worker,
     });
     // pg-boss also emits plain objects: a fault while fetching has no name and
     // carries the queue it happened in.
@@ -93,6 +93,15 @@ export class JobQueue implements BeforeApplicationShutdown {
         if (definition.options !== undefined) {
           // The definition in the code is the source of the options.
           await boss.updateQueue(definition.name, definition.options);
+        }
+        if (worker && definition.cron !== undefined) {
+          // Stored once per name; a second worker writes the same row again.
+          await boss.schedule(
+            definition.name,
+            definition.cron,
+            { branchIds: [], data: {} },
+            { tz: 'UTC' },
+          );
         }
       }
     } catch (error) {

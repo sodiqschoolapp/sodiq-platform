@@ -12,6 +12,18 @@ import {
   closingQuarterParamsSchema,
   closingQuerySchema,
   closingRemindedSchema,
+  closingJournalCloseInputSchema,
+  closingRecalculationAppliedSchema,
+  closingRecalculationApplyInputSchema,
+  closingRecalculationSchema,
+  closingReopenedSchema,
+  closingReopenInputSchema,
+  type ClosingJournalCloseInput,
+  type ClosingRecalculation,
+  type ClosingRecalculationApplied,
+  type ClosingRecalculationApplyInput,
+  type ClosingReopened,
+  type ClosingReopenInput,
   type ClosingChecklist,
   type ClosingClosed,
   type ClosingCloseInput,
@@ -120,5 +132,75 @@ export class ClosingController {
     @RequestId() requestId: string,
   ): Promise<ClosingClosed> {
     return this.closing.close(access, params.quarterId, input, key, requestId);
+  }
+
+  /**
+   * `edge/journal`, Closing and reopening: "Reopening is for one journal or the whole branch,
+   * for a set number of days"; `07`: "Reopening needs a reason and is logged" (task 9.2c).
+   * Repeat-safe.
+   */
+  @Post(':quarterId/reopen')
+  @HttpCode(200)
+  @Requires('quarter_closing', 'edit')
+  @Returns(closingReopenedSchema)
+  reopen(
+    @CurrentAccess() access: Access,
+    @ValidParams(closingQuarterParamsSchema) params: { quarterId: string },
+    @ValidBody(closingReopenInputSchema) input: ClosingReopenInput,
+    @RequestKey() key: string,
+    @RequestId() requestId: string,
+  ): Promise<ClosingReopened> {
+    return this.closing.reopen(access, params.quarterId, input, key, requestId);
+  }
+
+  /** A reopened journal closed again (task 9.2c): "Closing again lists every result that changed". */
+  @Post(':quarterId/journals/:journalId/close')
+  @HttpCode(200)
+  @Requires('quarter_closing', 'edit')
+  @Returns(closingClosedSchema)
+  closeJournal(
+    @CurrentAccess() access: Access,
+    @ValidParams(closingJournalParamsSchema) params: { quarterId: string; journalId: string },
+    @ValidBody(closingJournalCloseInputSchema) input: ClosingJournalCloseInput,
+    @RequestKey() key: string,
+    @RequestId() requestId: string,
+  ): Promise<ClosingClosed> {
+    return this.closing.closeJournal(
+      access,
+      params.quarterId,
+      params.journalId,
+      input,
+      key,
+      requestId,
+    );
+  }
+
+  /**
+   * `edge/calculation`, "A bug is found after results were closed and exported": "A 'recalculate
+   * and compare' tool lists the differences without changing anything" (task 9.2c).
+   */
+  @Get(':quarterId/recalculation')
+  @Requires('quarter_closing', 'view')
+  @Returns(closingRecalculationSchema)
+  recalculation(
+    @CurrentAccess() access: Access,
+    @ValidParams(closingQuarterParamsSchema) params: { quarterId: string },
+  ): Promise<ClosingRecalculation> {
+    return this.closing.recalculation(access, params.quarterId);
+  }
+
+  /** "Applying them is a separate action with a reason" (task 9.2c, decision 10). Repeat-safe. */
+  @Post(':quarterId/recalculation/apply')
+  @HttpCode(200)
+  @Requires('results_recalculation', 'edit')
+  @Returns(closingRecalculationAppliedSchema)
+  applyRecalculation(
+    @CurrentAccess() access: Access,
+    @ValidParams(closingQuarterParamsSchema) params: { quarterId: string },
+    @ValidBody(closingRecalculationApplyInputSchema) input: ClosingRecalculationApplyInput,
+    @RequestKey() key: string,
+    @RequestId() requestId: string,
+  ): Promise<ClosingRecalculationApplied> {
+    return this.closing.applyRecalculation(access, params.quarterId, input, key, requestId);
   }
 }

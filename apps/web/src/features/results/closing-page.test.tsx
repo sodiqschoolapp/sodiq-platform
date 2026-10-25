@@ -57,6 +57,13 @@ const CHECKLIST: ClosingChecklist = {
   startQuarter: false,
   earlierOpen: false,
   closing: null,
+  reopenings: [],
+  reopening: null,
+  changes: [],
+  closedJournals: [],
+  reopenedJournals: [],
+  check: null,
+  canApply: false,
   canEdit: true,
   blocking: 1,
   warnings: 1,
@@ -382,5 +389,218 @@ describe('the closing checklist', () => {
     });
     expect(screen.queryByRole('button', { name: en.results.closing.closeQuarter })).toBeNull();
     expect(screen.queryByRole('button', { name: en.results.closing.remind })).toBeNull();
+  });
+
+  // Task 9.2c: reopening, closing again and "recalculate and compare".
+  const CLOSED: ClosingChecklist = {
+    ...CHECKLIST,
+    state: 'closed',
+    blocking: 0,
+    warnings: 0,
+    items: [],
+    closing: {
+      closedAt: '2026-10-31T13:00:00.000Z',
+      closedBy: 'Karimova Aziza',
+      version: 1,
+      lockNow: false,
+      startQuarter: null,
+      warnings: [],
+    },
+    closedJournals: [
+      {
+        id: JOURNAL.id,
+        unitName: '7 Oxford',
+        subjectNames: SUBJECT.names,
+      },
+    ],
+  };
+  const REOPENING = {
+    id: uid(70),
+    journal: JOURNAL,
+    reason: 'A mark was typed in the wrong row',
+    days: 3,
+    reopenedAt: '2026-11-02T04:00:00.000Z',
+    reopenedBy: 'Karimova Aziza',
+    openUntil: '2026-11-05T19:00:00.000Z',
+    ended: false,
+    closedAgainVersion: null,
+  };
+
+  it('reopens a journal with a reason and days, checked before it is sent', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () => json(CLOSED),
+      [`POST /api/results/closing/${Q1}/reopen`]: () =>
+        json({ id: uid(70), openUntil: '2026-11-05T19:00:00.000Z' }),
+    });
+    renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.reopening.action }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.reopening.action }));
+    expect(within(dialog).getByRole('alert').textContent).toBe(en.results.reopening.missing);
+    expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(false);
+    fireEvent.change(within(dialog).getByLabelText(en.results.reopening.what), {
+      target: { value: JOURNAL.id },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.results.reopening.days), {
+      target: { value: '5' },
+    });
+    fireEvent.change(within(dialog).getByLabelText(en.results.reopening.reason), {
+      target: { value: 'A mark was typed in the wrong row' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.reopening.action }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === `POST /api/results/closing/${Q1}/reopen`)
+          .map((call) => call.body),
+      ).toEqual([{ journalId: JOURNAL.id, reason: 'A mark was typed in the wrong row', days: 5 }]);
+    });
+  });
+
+  it('shows a reopened journal with the results that changed, and closes it again', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({
+          ...CLOSED,
+          reopenings: [REOPENING],
+          reopenedJournals: [
+            {
+              reopening: REOPENING,
+              closable: true,
+              lockNowNeeded: false,
+              blocking: 0,
+              warnings: 1,
+              items: [NO_RESULT],
+              changes: [
+                {
+                  student: DILSHOD,
+                  subject: SUBJECT,
+                  journalId: JOURNAL.id,
+                  before: { kind: 'no_result', shown: null, grade: null, decision: null },
+                  after: { kind: 'number', shown: 100, grade: 5, decision: 'keep' },
+                },
+              ],
+            },
+          ],
+        }),
+      [`POST /api/results/closing/${Q1}/journals/${JOURNAL.id}/close`]: () =>
+        json({ closedAt: '2026-11-03T05:00:00.000Z', version: 2, stored: 3, voided: 0 }),
+    });
+    renderApp('/results/closing');
+    const panel = await waitFor(() => {
+      const found = document.querySelector(`[data-reopened-journal="${JOURNAL.id}"]`);
+      if (!(found instanceof HTMLElement)) throw new Error('The panel.');
+      return found;
+    });
+    const row = panel.querySelector(`[data-student="${DILSHOD.id}"]`);
+    expect([...(row?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent)).toEqual([
+      'Ergashev Dilshod · 0000053',
+      'Mathematics',
+      en.results.reopening.outcomes.no_result,
+      '100, grade 5',
+    ]);
+    fireEvent.click(within(panel).getByRole('button', { name: en.results.reopening.closeAgain }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('checkbox'));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.reopening.closeAgain }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route.endsWith(`/journals/${JOURNAL.id}/close`))
+          .map((call) => call.body),
+      ).toEqual([{ warnings: [{ kind: 'no_result', journalId: JOURNAL.id }], lockNow: false }]);
+    });
+  });
+
+  it('recalculates and compares on request, and applies with a reason for the Super Admin', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ language: 'en', assignments: [{ role: 'super_admin', branchId: null }] })),
+      'GET /api/results/closing': () => json({ ...CLOSED, canApply: true }),
+      [`GET /api/results/closing/${Q1}/recalculation`]: () =>
+        json({
+          quarterId: Q1,
+          currentVersion: 2,
+          rows: [
+            {
+              student: BEK,
+              subject: SUBJECT,
+              journalId: JOURNAL.id,
+              storedVersion: 1,
+              differences: ['result.shown'],
+              refused: null,
+              before: { kind: 'number', shown: 49, grade: 2, decision: null },
+              after: { kind: 'number', shown: 50, grade: 3, decision: null },
+            },
+          ],
+        }),
+      [`POST /api/results/closing/${Q1}/recalculation/apply`]: () =>
+        json({ version: 2, stored: 1 }),
+    });
+    renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.recalculation.compare }));
+    const table = await waitFor(() => {
+      const found = document.querySelector('[data-recalculation="differences"]');
+      if (found === null) throw new Error('The differences.');
+      return found;
+    });
+    expect(
+      [...table.querySelectorAll(`[data-student="${BEK.id}"] td`)].map((cell) => cell.textContent),
+    ).toEqual([
+      'Toshev Bek · 0000051',
+      'Mathematics',
+      '49, grade 2 · calculation version 1',
+      '50, grade 3',
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: en.results.recalculation.apply }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.results.reopening.reason), {
+      target: { value: 'A rounding bug of an earlier release' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.recalculation.apply }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route.endsWith('/recalculation/apply'))
+          .map((call) => call.body),
+      ).toEqual([
+        {
+          reason: 'A rounding bug of an earlier release',
+          students: [{ subjectId: SUBJECT.id, studentId: BEK.id }],
+        },
+      ]);
+    });
+  });
+
+  it('offers no apply of a recalculation to the Academic Vice Principal', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () => json(CLOSED),
+      [`GET /api/results/closing/${Q1}/recalculation`]: () =>
+        json({
+          quarterId: Q1,
+          currentVersion: 2,
+          rows: [
+            {
+              student: BEK,
+              subject: SUBJECT,
+              journalId: JOURNAL.id,
+              storedVersion: 1,
+              differences: ['result.shown'],
+              refused: null,
+              before: { kind: 'number', shown: 49, grade: 2, decision: null },
+              after: { kind: 'number', shown: 50, grade: 3, decision: null },
+            },
+          ],
+        }),
+    });
+    renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.recalculation.compare }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-recalculation="differences"]')).not.toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: en.results.recalculation.apply })).toBeNull();
   });
 });
