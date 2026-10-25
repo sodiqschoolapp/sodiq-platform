@@ -257,6 +257,7 @@ describe('the student results (08, Student results)', () => {
           provisional: true,
           leftOut: ['homework'],
           basedOn: null,
+          kept: false,
         },
       });
 

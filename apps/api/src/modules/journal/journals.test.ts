@@ -309,6 +309,7 @@ describe('the journal grid', () => {
           provisional: false,
           leftOut: [],
           basedOn: null,
+          kept: false,
         },
       });
       expect(zokirov?.months?.['2026-10']).toEqual(zokirov?.quarter);
@@ -336,6 +337,7 @@ describe('the journal grid', () => {
         provisional: true,
         leftOut: ['classwork', 'homework'],
         basedOn: null,
+        kept: false,
       });
 
       // Left and came back: the gap is closed cells, not absences (edge/calculation).
@@ -391,6 +393,7 @@ describe('the journal grid', () => {
           provisional: true,
           leftOut: ['homework'],
           basedOn: null,
+          kept: false,
         },
       });
     });
@@ -418,6 +421,7 @@ describe('the journal grid', () => {
             provisional: true,
             leftOut: ['homework'],
             basedOn: null,
+            kept: false,
           },
         });
       },
@@ -467,6 +471,7 @@ describe('the journal grid', () => {
           provisional: false,
           leftOut: [],
           basedOn: null,
+          kept: false,
         },
       });
     });
@@ -497,6 +502,7 @@ describe('the journal grid', () => {
         provisional: true,
         leftOut: ['ratingExam'],
         basedOn: null,
+        kept: false,
       });
       // The month uses the quarter's weights without the exam, labelled so (decision 23).
       expect(zokirov?.months?.['2026-10']?.result).toEqual({
@@ -506,6 +512,7 @@ describe('the journal grid', () => {
         provisional: false,
         leftOut: [],
         basedOn: null,
+        kept: false,
       });
     });
   });

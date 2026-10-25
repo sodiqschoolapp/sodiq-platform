@@ -195,7 +195,10 @@ export class ClosingService {
       if (student === undefined || subject === undefined) throw notFound();
       const flagged = await this.flaggedOf(transaction, scene, subjectId);
       const one = flagged.find((row) => row.studentId === studentId);
-      if (one === undefined) throw notFlagged();
+      // A result with no flag now (an outdated decision only) can only be cleared.
+      if (one === undefined || (input.decision !== null && one.row.flags.length === 0)) {
+        throw notFlagged();
+      }
       if (scene.today < scene.opensOn) throw notOpen();
       const stored = await this.lockDecision(transaction, scene, subjectId, studentId);
       if ((stored?.version ?? null) !== input.version) {
@@ -248,7 +251,7 @@ export class ClosingService {
       // Locked in the order of the student id (one order for every writer of these rows).
       for (const studentId of input.students.map((id) => id.toLowerCase()).sort()) {
         const one = listed.get(studentId);
-        if (one === undefined) {
+        if (one === undefined || (input.decision !== null && one.row.flags.length === 0)) {
           refused.push({ studentId, code: 'closing_not_flagged' });
           continue;
         }
