@@ -100,6 +100,7 @@ export type AccountKey =
   | 'attendanceTeacher'
   | 'attendanceTutor'
   | 'plansTeacher'
+  | 'outcomesTeacher'
   | 'mastersTeacher'
   | 'mastersHead'
   | 'requestsTeacher'

@@ -1,6 +1,6 @@
 # Lesson plans
 
-Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that task 8.8 added.
+Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 8.8 and 9.2d added.
 
 ## A work added after the lesson
 
@@ -27,6 +27,21 @@ Not written yet for most of the plans: plans and their items, shared plans, the 
 - The count is every classwork and homework of the items on the plan's rows, "not held" ones included.
 - A plan below the minimum shows "Below the minimum works" on the plans list, the plan page and the completeness report once its window has ended.
 
+## Items not covered at the end of the quarter
+
+<!-- Sources: edge/lesson-plans ("Items are still 'not covered' at the end of the quarter"); 09 ("'Not covered' items are never dropped silently"); 07 (Closing a quarter); task 9.2d, decisions 1 to 14 -->
+
+**What it is.** An item that no longer fits in the quarter is listed under **Not covered** on the plan page. Each such item gets one outcome: merged into a lesson, carried into the next quarter, or dropped with a reason.
+
+**Rules.**
+
+- **Merge into a lesson** (the plan's teacher): choose a lesson of the quarter. An empty lesson takes the item. A lesson with an item takes its topic (joined with "; "), objectives, links and works. A lesson already held gets the "edited after the lesson" mark. Inside the window this is free; after it, it needs an approved edit request.
+- **Carry to next quarter** (the plan's teacher, the same window or request): the item waits under **Carried in** on the next quarter's plan of the same class or group. From there the teacher places it at a lesson with **Place at a lesson**; the items after it move one lesson on, up to the first empty one. A carried-in item that is never placed counts as not covered of that quarter too.
+- **Drop** (the approver of the teacher's edit requests only: the subject's Head Teacher, the Senior Head Teacher or the Academic Vice Principal): a reason is required. Nobody drops in their own plan. Removing a not-covered item any other way (the order of the rows, "Clear") is refused.
+- In a shared plan the outcome is per class: an item not covered in one class keeps its place in the other. It cannot be merged into a lesson that holds an item while the other class still has it at a lesson.
+- **At closing**: items still without an outcome are carried into the next quarter automatically, by the branch close and by a journal's re-close. In the last quarter of the year (and when the next quarter is already closed) nothing can be carried: the checklist lists "Plan items not covered, nothing can be carried" as blocking until each is merged or dropped. A journal that ended inside the quarter (a subject removed from the class) is closed with its plan: its items are neither carried nor blocking.
+- Every outcome is kept, with who decided and when, under **Outcomes of items not covered**, in the plan export and in the audit log.
+
 ## Plan reports
 
 <!-- Sources: spec 09 (Reports), edge/lesson-plans; task 8.8, decisions 1 and 12 to 17 -->
@@ -50,7 +65,7 @@ Not written yet for most of the plans: plans and their items, shared plans, the 
 
 <!-- Sources: edge/lesson-plans ("A wrongly copied plan must be removed; an inspector asks for a printout"); task 8.8, decision 2 -->
 
-**What it is.** The plan page has **Print**, **PDF** and **Excel**. The file holds every row (number, date, topic, works, objectives, materials) with its marks: moved from, edited after the lesson, topic not delivered, homework not given, works not held, and the items not covered.
+**What it is.** The plan page has **Print**, **PDF** and **Excel**. The file holds every row (number, date, topic, works, objectives, materials) with its marks: moved from, edited after the lesson, topic not delivered, homework not given, works not held, the items not covered, the items carried in from the quarter before, and the outcomes of the quarter's items not covered.
 
 **Rules.**
 

@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 9.2d Outcomes of "not covered" items and the carry at closing
+
+- 0136: `lesson_plan_outcomes` (one per item, journal and quarter, append-only; `merged` with the row's date, `carried` with the copy, `dropped` with a reason; `automatic` for the close's carry; refused in a closed quarter, and `carried` from the last quarter or into a closed one) and `lesson_plan_tray` (the "carried in" copies, kept by journal and quarter; moved to the copy by a separation); `quarter_next`.
+- Routes: `POST /api/plans/journals/:journalId/not-covered/:itemId/merge`, `.../carry`, `.../drop` (`plan_requests` `edit`, the approver of the owner's requests, never the owner) and `POST /api/plans/journals/:journalId/carried/:itemId/place`; the plan answers `carriedIn`, `outcomes`, `canDrop`, `carryClosed`; the queue edit and "Clear" refuse `plan_not_covered_drop` for an item past the last row of any journal of the plan.
+- The close and a journal's re-close carry the unresolved items before the closing row (`carryUnresolved`, `closing.service.ts`), audited `plan.not_covered_carried`, the answer's `carried`; the checklist's blocking `plan_not_covered` where no carry is possible (last quarter, or the next one closed), journals that ended inside the quarter left out. The progress report, the checklist and the plan export count the tray. Web: the not-covered list with Merge, Carry and Drop, the "Carried in" tray with Place, the outcomes; texts in three languages; handbook `07-lesson-plans.md` and `08-results.md`.
+- Left out: nothing of the Build line.
+
+The next sessions must know:
+
+- "Not covered" is an item past the last row of its journal **or** in its tray (`notCoveredItemIds` / `trayCounts` of `apps/api/src/modules/plans/plan-outcomes.ts`); a writer that takes an item out of a journal's list goes through `leaveNotCovered`, which closes the gap past the last row and clears an item no journal holds.
+- A copy of items must also carry the journal's tray when it separates (`separateTray`).
+
 ## 25 October 2026: task 9.2c Reopening and the nightly check
 
 - 0135: versions of a quarter's results (`quarter_closings.cause`: `close`, `journal_close`, `recalculation`; the in-force index restricted to `close`), `quarter_reopenings` (whole branch or one journal, 1 to 14 days, `open_until` from the moment), `quarter_is_closed` with a passed reopening, `quarter_journal_open_guard` and `lesson_journal`; the journal guards, the judge, the unlock coverage (decided before a close never covers it) and the decisions follow a reopening; exemptions apply the closed part when every journal reached is reopened (`exemption_quarter_applies`); `result_checks` / `result_check_differences`, `scheduled_runs`, `lesson_lock_notices`, the forced-delete purge, pg-boss's schedule rights.

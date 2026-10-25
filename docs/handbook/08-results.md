@@ -118,6 +118,7 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - A closed quarter takes no mark, number, comment, correction, unlock, reason of absence, plan change, cancel of a lesson, forced delete, move of a student, leaving or return dated in it, and no change of its weights, its late and skipped values or its dates.
 - An exemption that reaches into a closed quarter is applied to the days after it only; the days in the closed quarter stay as they are.
 - Plan requests still waiting become void.
+- Lesson plan items still "not covered" are carried into the next quarter's plan, under "Carried in" (task 9.2d). In the last quarter of the year they block the close until each is merged into a lesson or dropped (see Lesson plans, "Items not covered at the end of the quarter").
 - The student's results show a closed quarter as it was kept, and the year result once quarter 4 is closed. A "not official" start quarter is left out of the year result.
 - A journal file of a closed quarter says "Final" with the closing date and version, and keeps the class, subject and teacher names of the day of the close.
 - If anything fails during the close, the quarter stays open and nothing is kept.
