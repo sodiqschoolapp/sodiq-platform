@@ -1518,6 +1518,21 @@ export class StudentMerges {
       }
       throw error;
     }
+    // Task 9.2b: the final results of closed quarters (0133), carried as the decisions are; a
+    // result of both records in one close and subject refuses the merge.
+    try {
+      await transaction
+        .updateTable('quarter_final_results')
+        .set({ student_id: input.keptId })
+        .where('student_id', '=', input.mergedId)
+        .execute();
+    } catch (error) {
+      const failure = error as { code?: unknown; constraint?: unknown };
+      if (failure.code === '23505' && failure.constraint === 'quarter_final_results_key') {
+        throw new ApiException('student_merge_result_overlap', 409);
+      }
+      throw error;
+    }
     await transaction
       .updateTable('journal_voids')
       .set({ student_id: input.keptId })

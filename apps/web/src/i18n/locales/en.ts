@@ -766,6 +766,7 @@ export const en = {
       'The new journals already hold entries of the student since the move, so it cannot be undone. Make a transfer back instead.',
     student_merge_journal_overlap:
       'Both records hold journal entries for the same lesson. Clear one of them first.',
+    student_merge_result_overlap: 'Both records have a final result of the same subject in a closed quarter, so they cannot be merged. Ask the Super Admin to check which record is right.',
     student_merge_decision_overlap:
       'Both records hold a decision on a flagged result for the same subject and quarter. Clear one of them on the closing checklist first.',
     student_merge_journal_cut:

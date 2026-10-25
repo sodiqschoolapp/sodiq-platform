@@ -1112,6 +1112,8 @@ export const ERROR_CODES = [
   'student_merge_journal_overlap',
   /** Both records hold a decision on a flagged result of the same subject and quarter (task 9.2a). */
   'student_merge_decision_overlap',
+  /** Both records hold a final result of the same subject in the same close (task 9.2b). */
+  'student_merge_result_overlap',
   /** The merged record holds journal entries on days the merge cuts: they are voided with a reason first (From 3.3d; task 8.6). */
   'student_merge_journal_cut',
   /** The lesson is no orphan lesson now: it is complete, not held, or the teacher it counts for is in the school (edge/journal; task 8.7). */

@@ -6,4 +6,4 @@
  * (task 4.3, decision 11): a needless raise costs a "recalculate and compare" that finds nothing,
  * a missed one could hide a changed result. `version.test.ts` pins the source of each version.
  */
-export const CALC_VERSION = 3;
+export const CALC_VERSION = 4;

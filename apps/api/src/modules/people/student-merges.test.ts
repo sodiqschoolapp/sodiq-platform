@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { CellsKit, markInStore } from '../../testing/cells-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
@@ -181,6 +182,8 @@ describe('the merge of two student records', () => {
       t.database.migrator.selectFrom('journal_voids').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('journal_optional_cells').selectAll().orderBy('id').execute(),
       t.database.migrator.selectFrom('forced_deletes').selectAll().orderBy('id').execute(),
+      // Task 9.2b: the final results of closed quarters a merge carries.
+      t.database.migrator.selectFrom('quarter_final_results').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 
@@ -583,6 +586,103 @@ describe('the merge of two student records', () => {
       const before = await rowsOf();
       const response = await merge(first.id, twice.uid, east);
       refusedWith(response, 409, 'student_merge_decision_overlap');
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    /**
+     * Task 9.2b: a final result of the student in a close of quarter 4 of the year (a close of
+     * its own, so the merge's other writes meet no closed quarter), as the close stores one.
+     */
+    async function finalResult(
+      branch: string,
+      year: string,
+      classId: string,
+      studentId: string,
+      subject: string,
+    ) {
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', year)
+        .where('number', '=', 4)
+        .executeTakeFirstOrThrow();
+      const open = await t.database.migrator
+        .selectFrom('quarter_closings')
+        .select('id')
+        .where('quarter_id', '=', quarter.id)
+        .executeTakeFirst();
+      const closing =
+        open?.id ??
+        (await closeQuarter(t.database, {
+          branchId: branch,
+          quarterId: quarter.id,
+          accountId: await classes.account(),
+        }));
+      const journal =
+        (
+          await t.database.migrator
+            .selectFrom('journals')
+            .select('id')
+            .where('class_id', '=', classId)
+            .where('subject_id', '=', subject)
+            .executeTakeFirst()
+        )?.id ??
+        (
+          await t.database.migrator
+            .insertInto('journals')
+            .values({
+              branch_id: branch,
+              academic_year_id: year,
+              class_id: classId,
+              subject_id: subject,
+              runs: sql`'{[2026-09-01,)}'::datemultirange`,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      return (
+        await t.database.migrator
+          .insertInto('quarter_final_results')
+          .values({
+            branch_id: branch,
+            closing_id: closing,
+            quarter_id: quarter.id,
+            subject_id: subject,
+            student_id: studentId,
+            journal_id: journal,
+            kind: 'closing',
+            record: JSON.stringify({ format: 1, kind: 'closing' }),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+    }
+
+    it('carries a final result of a closed quarter to the kept record (task 9.2b)', async () => {
+      const { east, eastYear, classId } = await eastWith('East final result carry');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      const id = await finalResult(east, eastYear, classId, twice.id, subject);
+      merged(await merge(first.id, twice.uid, east));
+      const row = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select('student_id')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(row.student_id).toBe(first.id);
+    });
+
+    it('refuses a final result of both records in one close and subject (student_merge_result_overlap), and changes nothing', async () => {
+      const { east, eastYear, classId } = await eastWith('East final result overlap');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      await finalResult(east, eastYear, classId, first.id, subject);
+      await finalResult(east, eastYear, classId, twice.id, subject);
+      const before = await rowsOf();
+      const response = await merge(first.id, twice.uid, east);
+      refusedWith(response, 409, 'student_merge_result_overlap');
       expect(await rowsOf()).toEqual(before);
     });
 
