@@ -14,6 +14,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { RecordingPdf, refusedFile } from '../../testing/pdf-kit.js';
@@ -308,6 +309,42 @@ describe('journal exports', () => {
       const values = sheet?.rows.map((row) => row.values) ?? [];
       expect(values[3]).toEqual(['Provisional · 27.10.2026 12:00']);
       expect(values[4]).toEqual(['Results from 05.10.2026']);
+    });
+
+    // Task 9.2b (From 8.9): edge/journal, "A results table is exported in week 6": "'Final' with
+    // the closing date and version"; edge/academic-year: "prints of closed periods use" the names
+    // as they were.
+    it('writes "Final" with the closing date and version, and the names stored with the close, once the quarter is closed', async () => {
+      const principal = await account();
+      const x = await scene();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      const closing = await closeQuarter(t.database, {
+        branchId: x.s.branch,
+        quarterId: x.q1,
+        accountId: principal.account.id,
+      });
+      await t.database.migrator
+        .insertInto('quarter_closing_journals')
+        .values({
+          branch_id: x.s.branch,
+          closing_id: closing,
+          journal_id: x.journal,
+          unit_name: '7 Oxford (as closed)',
+          subject_names: JSON.stringify({ uz: 'Fizika', ru: 'Физика', en: 'Physics as closed' }),
+          teacher_name: 'Dilnoza Karimova',
+        })
+        .execute();
+      await at(principal, '2026-11-12T10:00:00+05:00');
+      const answer = await exportOf(principal, x.s.branch, x.journal, {
+        format: 'xlsx',
+        quarterId: x.q1,
+      });
+      expect(answer.status, codeOf(answer)).toBe(200);
+      const [sheet] = await sheetsOf(answer.body as Buffer);
+      const values = sheet?.rows.map((row) => row.values) ?? [];
+      expect(values[1]).toEqual(['7 Oxford (as closed) · Physics as closed · Quarter 1']);
+      expect(values[2]).toEqual(['Teacher: Dilnoza Karimova']);
+      expect(values[3]).toEqual(['Final · closed 31.10.2026 · version 1']);
     });
 
     it('writes the grid of the reader to Excel: header and stamp, real numbers and dates, the fixed name order, the folded section and one audit entry', async () => {

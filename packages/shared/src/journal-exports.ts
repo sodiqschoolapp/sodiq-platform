@@ -94,6 +94,8 @@ export interface JournalExportTexts {
   readonly teacher: string;
   readonly noTeacher: string;
   readonly provisional: string;
+  /** Task 9.2b (From 8.9): a file of a closed quarter, with the closing date and version. */
+  readonly final: string;
   /** Task 9.1 (`edge/academic-year`, start quarter): "from <date>". */
   readonly countsFrom: string;
   readonly page: string;
@@ -146,6 +148,7 @@ const en: JournalExportTexts = {
   teacher: 'Teacher: {{name}}',
   noTeacher: 'No teacher',
   provisional: 'Provisional · {{moment}}',
+  final: 'Final · closed {{date}} · version {{version}}',
   countsFrom: 'Results from {{date}}',
   page: 'Page {{page}}',
   columns: {
@@ -204,6 +207,7 @@ const ru: JournalExportTexts = {
   teacher: 'Учитель: {{name}}',
   noTeacher: 'Нет учителя',
   provisional: 'Предварительно · {{moment}}',
+  final: 'Окончательно · закрыта {{date}} · версия {{version}}',
   countsFrom: 'Результаты с {{date}}',
   page: 'Страница {{page}}',
   columns: {
@@ -263,6 +267,7 @@ const uz: JournalExportTexts = {
   teacher: 'Oʻqituvchi: {{name}}',
   noTeacher: 'Oʻqituvchi yoʻq',
   provisional: 'Dastlabki · {{moment}}',
+  final: 'Yakuniy · yopilgan {{date}} · {{version}}-versiya',
   countsFrom: 'Natijalar {{date}} dan',
   page: '{{page}}-sahifa',
   columns: {

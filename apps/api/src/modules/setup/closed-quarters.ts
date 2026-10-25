@@ -96,3 +96,47 @@ export async function closedQuarters(
     .execute();
   return new Set(rows.map((row) => row.quarter_id));
 }
+
+/**
+ * The close in force of a journal's quarter as its files state it, with the names stored with it
+ * (task 9.2b, From 8.9; `edge/academic-year`: "Closed quarters and years keep the names as they
+ * were, and prints of closed periods use those"); `null` while the quarter is open.
+ */
+export async function journalFinalOf(
+  transaction: Transaction,
+  quarterId: string,
+  journalId: string,
+): Promise<{
+  closedAt: Date;
+  version: number;
+  names: {
+    unit: string;
+    subject: { uz: string; ru: string; en: string };
+    teacher: string | null;
+  } | null;
+} | null> {
+  const closing = await closingOf(transaction, quarterId);
+  if (closing === undefined) return null;
+  const stored = await transaction
+    .selectFrom('quarter_closing_journals')
+    .select(['unit_name', 'subject_names', 'teacher_name'])
+    .where('closing_id', '=', closing.id)
+    .where('journal_id', '=', journalId)
+    .executeTakeFirst();
+  const subject = stored?.subject_names as { uz?: unknown; ru?: unknown; en?: unknown } | undefined;
+  return {
+    closedAt: closing.closed_at,
+    version: closing.version,
+    names:
+      stored === undefined ||
+      typeof subject?.uz !== 'string' ||
+      typeof subject.ru !== 'string' ||
+      typeof subject.en !== 'string'
+        ? null
+        : {
+            unit: stored.unit_name,
+            subject: { uz: subject.uz, ru: subject.ru, en: subject.en },
+            teacher: stored.teacher_name,
+          },
+  };
+}

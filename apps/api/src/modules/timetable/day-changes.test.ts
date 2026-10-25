@@ -17,6 +17,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { inOrderOnLesson, markedLesson } from '../../testing/cells-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -617,6 +618,24 @@ describe('one-day changes: cancel and restore', () => {
     return lesson.id;
   }
 
+  /**
+   * Task 9.2b: the quarter of a dated lesson closed as the close writes it (`closeQuarter`),
+   * every fixture row written before.
+   */
+  async function closeQuarterOf(s: Scene, lessonId: string) {
+    const block = await t.database.migrator
+      .selectFrom('lessons')
+      .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+      .select('lesson_blocks.quarter_id')
+      .where('lessons.id', '=', lessonId)
+      .executeTakeFirstOrThrow();
+    await closeQuarter(t.database, {
+      branchId: s.branch,
+      quarterId: block.quarter_id,
+      accountId: await load.classes.account(),
+    });
+  }
+
   async function waiting(): Promise<number> {
     const found = await sql<{ n: number }>`
       select count(distinct l.pid)::int as n
@@ -864,6 +883,27 @@ describe('one-day changes: cancel and restore', () => {
         expect(await everything()).toEqual(after);
         expect(await t.entries(`lesson.${action}`, lesson.id)).toHaveLength(1);
       }
+    });
+
+    // Task 9.2b (From 5.6a-1; edge/timetable, "A lesson that already has attendance must be
+    // cancelled": "Not possible in a closed quarter."): a lesson not started, which the route
+    // takes otherwise, in a closed quarter.
+    it('is refused in a closed quarter, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      await closeQuarterOf(s, lesson.id);
+      const before = await everything();
+      refusedWith(await cancel(s.branch, lesson.id), 409, 'quarter_closed');
+      expect(await everything()).toEqual(before);
+      expect(await t.entries('lesson.cancel', lesson.id)).toEqual([]);
+    });
+
+    it('still cancels a lesson of the next quarter when the quarter before is closed', async () => {
+      const s = await scene();
+      await closeQuarterOf(s, (await lessonOf(s, NEXT_MONDAY)).id);
+      const lesson = await lessonOf(s, '2026-11-09');
+      changed(await cancel(s.branch, lesson.id));
+      expect(await rowOf(lesson.id)).toMatchObject({ cancel_cause: 'reason' });
     });
   });
 
@@ -1223,6 +1263,27 @@ describe('one-day changes: cancel and restore', () => {
         old_value: { teacherId: first.staffId },
         new_value: { teacherId: second.staffId, notices: { notified: 2 } },
       });
+    });
+
+    // Task 9.2b (From 5.6a-1): the restore of a one-day cancel in a closed quarter.
+    it('is refused in a closed quarter, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, NEXT_MONDAY);
+      changed(await cancel(s.branch, lesson.id));
+      await closeQuarterOf(s, lesson.id);
+      const before = await everything();
+      refusedWith(await restore(s.branch, lesson.id), 409, 'quarter_closed');
+      expect(await everything()).toEqual(before);
+      expect(await t.entries('lesson.restore', lesson.id)).toEqual([]);
+    });
+
+    it('still restores a lesson of the next quarter when the quarter before is closed', async () => {
+      const s = await scene();
+      const lesson = await lessonOf(s, '2026-11-09');
+      changed(await cancel(s.branch, lesson.id));
+      await closeQuarterOf(s, (await lessonOf(s, NEXT_MONDAY)).id);
+      changed(await restore(s.branch, lesson.id));
+      expect(await rowOf(lesson.id)).toMatchObject({ cancel_cause: null });
     });
   });
 
@@ -3526,6 +3587,35 @@ describe('one-day changes: cancel and restore', () => {
       );
       expect((await shownOf(s, s.classId, FRIDAY, lesson)).canCorrect).toBe(false);
       expect(await everything()).toEqual(closed);
+    });
+
+    // Task 9.2b (From 5.6a-1; edge/timetable: "Not possible in a closed quarter."): the cancel
+    // and the restore of a past lesson of a closed quarter are refused; a teacher or a room
+    // recorded touches no attendance and no mark and stays possible (decided without the owner).
+    it('refuses a cancel and a restore of a lesson of a closed quarter, and nothing changes', async () => {
+      const s = await scene();
+      const lesson = await pastOne(s);
+      const cancelled = await pastOne(s, { date: '2026-10-02' });
+      changed(await correct(s.branch, cancelled, { kind: 'cancel' }));
+      await closeQuarterOf(s, lesson);
+      const before = await everything();
+      refusedWith(await correct(s.branch, lesson, { kind: 'cancel' }), 409, 'quarter_closed');
+      refusedWith(
+        await correct(s.branch, cancelled, { kind: 'restore', reason: 'It took place' }),
+        409,
+        'quarter_closed',
+      );
+      expect(await everything()).toEqual(before);
+      expect(await rowOf(lesson)).toMatchObject({ cancel_cause: null });
+      expect(await rowOf(cancelled)).toMatchObject({ cancel_cause: 'reason' });
+    });
+
+    it('still records a room of a lesson of a closed quarter', async () => {
+      const s = await scene();
+      const lesson = await pastOne(s);
+      await closeQuarterOf(s, lesson);
+      changed(await correct(s.branch, lesson, { kind: 'room', roomId: s.spareRoom }));
+      expect(await rowOf(lesson)).toMatchObject({ room_id: s.spareRoom });
     });
 
     it('is refused to the Principal, and answers 404 for another branch’s or an unknown lesson, teacher and room, as the Academic Vice Principal and the Super Admin; nothing changes', async () => {

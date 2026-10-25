@@ -7,6 +7,7 @@ import {
   type JournalLesson,
   type JournalStudent,
   type Language,
+  schoolDateOf,
 } from '@sodiq/shared';
 import type { Cell, Sheet } from '../../http/xlsx.js';
 import { momentText } from '../timetable/views-export.service.js';
@@ -33,6 +34,27 @@ export interface JournalFileInput {
   timeZone: string;
   /** The moment the grid was read at: the stamp "Provisional · <date> <time>" (decision 5). */
   asOf: Date;
+  /**
+   * Task 9.2b (From 8.9): the close in force of the file's quarter, with the names stored with
+   * it; `null` (or left out) while the quarter is open. A file is one quarter's grid, so all its
+   * days lie in that quarter.
+   */
+  final?: JournalFinal | null;
+}
+
+/** The close of a journal's quarter as a file states it (`edge/journal`, "Final" with the closing date and version). */
+export interface JournalFinal {
+  readonly closedAt: Date;
+  readonly version: number;
+  /**
+   * The names as they were (`edge/academic-year`: "prints of closed periods use those");
+   * `null` for a journal the close did not name.
+   */
+  readonly names: {
+    readonly unit: string;
+    readonly subject: { readonly uz: string; readonly ru: string; readonly en: string };
+    readonly teacher: string | null;
+  } | null;
 }
 
 /** The ISO weekday of a school date, Monday 0 to Sunday 6. */
@@ -103,16 +125,18 @@ function figuresOf(student: JournalStudent, month: string | null): JournalFigure
 /** "Sinf jurnali", then Class · Subject · Quarter · Month, "Teacher: name", the stamp (`07`, Opening a journal). */
 export function journalHeader(input: JournalFileInput, texts: JournalExportTexts): string[] {
   const { grid } = input;
+  const stored = input.final?.names ?? null;
+  const teacher = stored === null ? (grid.teacher?.name ?? null) : stored.teacher;
   const line = [
-    grid.journal.unit.name,
-    grid.journal.subject.names[input.language],
+    stored?.unit ?? grid.journal.unit.name,
+    (stored?.subject ?? grid.journal.subject.names)[input.language],
     fillText(texts.quarter, { number: String(grid.quarter.number) }),
     ...(input.month === null ? [] : [fillText(texts.month, { month: input.month })]),
   ].join(' · ');
   return [
     texts.title,
     line,
-    grid.teacher === null ? texts.noTeacher : fillText(texts.teacher, { name: grid.teacher.name }),
+    teacher === null ? texts.noTeacher : fillText(texts.teacher, { name: teacher }),
     stampOf(input, texts),
     // Task 9.1 (`edge/academic-year`: "labelled 'from' with the date, ... in prints and in exports").
     ...(grid.legend.countsFrom === null
@@ -121,8 +145,18 @@ export function journalHeader(input: JournalFileInput, texts: JournalExportTexts
   ];
 }
 
-/** `edge/journal`, "A results table is exported in week 6": "Provisional" with date and time (decision 5). */
+/**
+ * `edge/journal`, "A results table is exported in week 6": "Every export and print states
+ * 'Provisional' with date and time, or 'Final' with the closing date and version" (decision 5;
+ * task 9.2b, From 8.9).
+ */
 export function stampOf(input: JournalFileInput, texts: JournalExportTexts): string {
+  if (input.final !== undefined && input.final !== null) {
+    return fillText(texts.final, {
+      date: dateText(schoolDateOf(input.final.closedAt, input.timeZone)),
+      version: String(input.final.version),
+    });
+  }
   return fillText(texts.provisional, { moment: momentText(input.asOf, input.timeZone) });
 }
 

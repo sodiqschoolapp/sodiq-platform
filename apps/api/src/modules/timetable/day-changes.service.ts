@@ -43,6 +43,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons, settledByTaught } from './away-read.js';
 import { dataHeldBy } from './lesson-data.js';
@@ -87,6 +88,9 @@ export const DAY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_full: 'restore_blocked',
   room_shared_capacity: 'restore_blocked',
   lesson_block_student_twice: 'restore_blocked',
+  // Task 9.2b (From 5.6a-1): a 0133 guard met by the change of a closed
+  // quarter's lesson refuses as the lock of the quarter would.
+  quarters_closed: 'quarter_closed',
 };
 
 /**
@@ -118,6 +122,8 @@ export const CORRECTION_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   room_shared_full: 'correction_blocked',
   room_shared_capacity: 'correction_blocked',
   lesson_block_student_twice: 'correction_blocked',
+  // Task 9.2b (From 5.6a-1): the same for a correction's cancel or restore.
+  quarters_closed: 'quarter_closed',
 };
 
 /**
@@ -492,6 +498,15 @@ export class TimetableDayChanges {
    * started (decision 3). A correction (`past`, task 5.6a-4) takes the other
    * side of the same boundary: `lesson_not_started` unless it, or the
    * earlier half of its pair, has started (review correction 2).
+   *
+   * Task 9.2b (From 5.6a-1; edge/timetable, "A lesson that already has
+   * attendance must be cancelled": "Not possible in a closed quarter."): with
+   * `quarterOpen`, a cancel or a restore takes the lesson's quarter
+   * (`lesson_blocks.quarter_id`) open in a statement of its own before its
+   * first row lock (.claude/rules/database.md), so a close held open makes it
+   * wait and a close that committed refuses it `quarter_closed`, before the
+   * check of the start: the lesson of a closed quarter is final whether or not
+   * it has started.
    */
   async lockedLesson(
     transaction: Transaction,
@@ -499,8 +514,21 @@ export class TimetableDayChanges {
     id: string,
     toDate?: string,
     past = false,
+    quarterOpen = false,
   ) {
     const yearId = await this.yearOf(transaction, branchId, id);
+    if (quarterOpen) {
+      const quarter = await transaction
+        .selectFrom('lessons')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .select('lesson_blocks.quarter_id')
+        .where('lessons.id', '=', id)
+        .where('lessons.branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (quarter !== undefined) {
+        await lockOpenQuarter(transaction, quarter.quarter_id);
+      }
+    }
     await lockPublishChain(transaction, branchId, yearId);
     const dated = await transaction
       .selectFrom('lessons')
@@ -542,7 +570,14 @@ export class TimetableDayChanges {
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
-    const { lesson, pair, week, moment } = await this.lockedLesson(transaction, branchId, id);
+    const { lesson, pair, week, moment } = await this.lockedLesson(
+      transaction,
+      branchId,
+      id,
+      undefined,
+      false,
+      true,
+    );
     if (lesson.cancelCause !== null) {
       throw new ApiException('lesson_cancelled', 409);
     }
@@ -585,7 +620,14 @@ export class TimetableDayChanges {
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
-    const { lesson, pair, week, moment } = await this.lockedLesson(transaction, branchId, id);
+    const { lesson, pair, week, moment } = await this.lockedLesson(
+      transaction,
+      branchId,
+      id,
+      undefined,
+      false,
+      true,
+    );
     if (lesson.cancelCause !== 'reason') {
       throw new ApiException('lesson_not_restorable', 409);
     }
@@ -940,12 +982,17 @@ export class TimetableDayChanges {
     requestId: string,
   ): Promise<DayChangeAnswer> {
     const branchId = branchOf(access);
+    // Task 9.2b (From 5.6a-1): a cancel and a restore of a lesson of a closed
+    // quarter are refused (edge/timetable: "Not possible in a closed
+    // quarter."); a teacher or a room recorded changes no attendance and no
+    // mark, so it stays possible (decided without the owner, task 9.2b).
     const { lesson, week, moment } = await this.lockedLesson(
       transaction,
       branchId,
       id,
       undefined,
       true,
+      input.kind === 'cancel' || input.kind === 'restore',
     );
     const year = await transaction
       .selectFrom('lesson_blocks')

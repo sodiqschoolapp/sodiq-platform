@@ -33,6 +33,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { PHOTO_STORE, type PhotoStore } from '../people/photo-store.js';
+import { journalFinalOf } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { printHtml } from '../timetable/views-file.js';
 import {
@@ -210,6 +211,8 @@ export class JournalExports {
       return {
         grid,
         asOf: await transactionMoment(transaction),
+        // Task 9.2b (From 8.9): "Final" with the closing date and version once closed.
+        final: await journalFinalOf(transaction, grid.quarter.id, grid.journal.id),
         ...(await this.placeOf(transaction, access.accountId, branchId)),
       };
     });
@@ -220,6 +223,7 @@ export class JournalExports {
       language: read.language,
       timeZone: read.timeZone,
       asOf: read.asOf,
+      final: read.final,
     };
     const name = `${read.grid.journal.unit.name} ${read.grid.journal.subject.names[read.language]}`;
     const written = journalSheet(file, texts, sheetNameOf(name, new Set()));
@@ -557,14 +561,19 @@ export class JournalExports {
             start.yearId,
           );
           const grids: JournalGrid[] = [];
+          const finals = new Map<string, Awaited<ReturnType<typeof journalFinalOf>>>();
           for (const journal of journals) {
-            grids.push(
-              await this.grids.gridIn(transaction, access, row.branch_id, journal.id, {
-                quarterId: row.quarter_id,
-              }),
+            const grid = await this.grids.gridIn(transaction, access, row.branch_id, journal.id, {
+              quarterId: row.quarter_id,
+            });
+            grids.push(grid);
+            // Task 9.2b (From 8.9): "Final" with the closing date and version once closed.
+            finals.set(
+              grid.journal.id,
+              await journalFinalOf(transaction, row.quarter_id, grid.journal.id),
             );
           }
-          return { grids, asOf: await transactionMoment(transaction) };
+          return { grids, finals, asOf: await transactionMoment(transaction) };
         },
         { snapshot: true },
       );
@@ -575,6 +584,7 @@ export class JournalExports {
         language: start.language,
         timeZone: start.timeZone,
         asOf: read.asOf,
+        final: read.finals.get(grid.journal.id) ?? null,
       }));
       const taken = new Set<string>();
       const sheets = files.map((file) =>
