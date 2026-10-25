@@ -3083,6 +3083,28 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             warnings: warningsOf({ ...ready, items: journal?.items ?? [] }),
             lockNow: false,
           };
+          // Permission review should-fix 9: a warning naming another journal of the branch is
+          // none of this journal's (409); one of another branch or unknown is not found (404).
+          const naming = (journalId: string) => ({
+            ...closeBody,
+            warnings: [...closeBody.warnings, { kind: 'no_teacher' as const, journalId }],
+          });
+          const stale = await calls.post(
+            b.s.branch,
+            journalClosePath(b.q1, b.journal),
+            naming(otherJournal),
+            randomUUID(),
+          );
+          expect([stale.status, codeOf(stale)]).toEqual([409, 'closing_warnings_changed']);
+          for (const journalId of [other.journal, UNKNOWN]) {
+            const unknown = await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, b.journal),
+              naming(journalId),
+              randomUUID(),
+            );
+            expect([unknown.status, codeOf(unknown)]).toEqual([404, 'not_found']);
+          }
           const done = await calls.post(
             b.s.branch,
             journalClosePath(b.q1, b.journal),
@@ -3477,8 +3499,24 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
     // edge/calculation, "A bug is found after results were closed and exported" (decision 10).
     it('lists a record the current module calculates otherwise, and applies it with a reason as a new version', async () => {
-      const b = await closed();
-      const other = await base();
+      const owner = await account();
+      const b = await closeBase(await base({ teacher: owner.account.id }));
+      // Permission review should-fix 8: the owner of the other class's journal, which has no
+      // change, and a teacher of another branch's journal are told nothing.
+      // The scene makes that teacher without an account; linked here as one made with it (the
+      // link is fixed once made, so the migrator writes past that guard).
+      const unchanged = await account();
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table staff disable trigger user`.execute(transaction);
+        await transaction
+          .updateTable('staff')
+          .set({ account_id: unchanged.account.id })
+          .where('id', '=', b.s.otherTeacher.staffId)
+          .execute();
+        await sql`alter table staff enable trigger user`.execute(transaction);
+      });
+      const elsewhere = await account();
+      const other = await base({ teacher: elsewhere.account.id });
       const admin = await sharedAdmin(0);
       const applyKey = randomUUID();
       await vice(
@@ -3634,6 +3672,13 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .where('branch_id', '=', b.s.branch)
         .execute();
       expect(notices.map((one) => one.data)).toEqual([{ quarter: 1, version: 2 }]);
+      const told = await t.database.migrator
+        .selectFrom('notifications')
+        .select('account_id')
+        .where('kind', '=', 'results.recalculated')
+        .where('account_id', 'in', [owner.account.id, unchanged.account.id, elsewhere.account.id])
+        .execute();
+      expect(told).toEqual([{ account_id: owner.account.id }]);
     });
 
     // edge/system-behaviour: "A difference ... blocks closing that journal" (review must-fix 6).

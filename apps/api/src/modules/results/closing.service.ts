@@ -939,7 +939,19 @@ export class ClosingService {
           ),
         ),
       ];
-      if (named.some((id) => id !== journal.id)) throw notFound();
+      // Another journal named by a warning: 404 when it is no journal of the branch's year; one
+      // that is answers 409 `closing_warnings_changed` below (permission review should-fix 9).
+      const others = named.filter((id) => id !== journal.id);
+      if (others.length > 0) {
+        const found = await transaction
+          .selectFrom('journals')
+          .select('id')
+          .where('id', 'in', others)
+          .where('branch_id', '=', branchId)
+          .where('academic_year_id', '=', journal.academicYearId)
+          .execute();
+        if (found.length !== others.length) throw notFound();
+      }
       await transaction
         .selectFrom('quarters')
         .select('id')
@@ -999,6 +1011,14 @@ export class ClosingService {
       input.warnings.map((one) => `${one.kind}|${one.journalId?.toLowerCase() ?? ''}`),
     );
     if (warnings.some((item) => !seen.has(`${item.kind}|${item.journal?.id ?? ''}`))) {
+      throw new ApiException('closing_warnings_changed', 409);
+    }
+    // A warning of another journal is none of this journal's items.
+    if (
+      input.warnings.some(
+        (one) => one.journalId !== null && one.journalId.toLowerCase() !== journal.id,
+      )
+    ) {
       throw new ApiException('closing_warnings_changed', 409);
     }
     const records = await this.recordsOf(transaction, scene, journal);
