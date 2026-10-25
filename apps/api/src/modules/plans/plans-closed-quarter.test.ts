@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   apiErrorSchema,
   BRANCH_HEADER,
+  planEventDecidedSchema,
   planItemSchema,
   planRequestSchema,
   type PlanItem,
@@ -332,7 +333,7 @@ describe('the plans of a closed quarter', () => {
           'plan_quarter_closed',
         );
       }
-      // The window of the closed quarter is neither opened nor extended.
+      // The window of the closed quarter is not opened (its extension: the test below).
       refused(
         await call('put', `/api/plans/windows/${x.q1}`, x.s.branch, x.vice.cookie, {
           startDate: '2026-10-12',
@@ -361,5 +362,145 @@ describe('the plans of a closed quarter', () => {
         201,
       );
     });
+  });
+
+  it("answers the extension of a closed quarter's window 404 for an unknown or another branch's person and 403 for one's own before refusing it", async () => {
+    // Permission review M1: the 404 and the own-request refusal come before the closed quarter.
+    const x = await scene({ windows: true });
+    const y = await scene({ windows: false });
+    // The owner is an Academic Vice Principal too: their own window is theirs to ask for.
+    await t.kit.giveRole(x.owner.account.id, {
+      role: 'academic_vice_principal',
+      branchId: x.s.branch,
+      validFrom: VALID_FROM,
+    });
+    // The windows end on 20 October and 20 November: an extension to a later day of the quarter
+    // passes every check but the closed quarter.
+    for (const [quarterId, endDate] of [
+      [x.q1, '2026-10-20'],
+      [x.q2, '2026-11-20'],
+    ] as const) {
+      await t.database.migrator
+        .updateTable('lesson_plan_windows')
+        .set({ end_date: endDate, ends_at: new Date(`${endDate}T23:59:59.999+05:00`) })
+        .where('quarter_id', '=', quarterId)
+        .execute();
+    }
+    await close(x);
+    const before = [await rowsOf(x.s.branch), await rowsOf(y.s.branch)];
+    const extend = (quarterId: string, cookie: string, staffId: string, endDate: string) =>
+      call('post', `/api/plans/windows/${quarterId}/extensions`, x.s.branch, cookie, {
+        staffId,
+        endDate,
+      });
+    await at(BEFORE_LESSONS, async () => {
+      for (const staffId of [randomUUID(), y.s.teacher.staffId]) {
+        const answer = await extend(x.q1, x.vice.cookie, staffId, '2026-10-27');
+        expect(answer.status, JSON.stringify(answer.body)).toBe(404);
+      }
+      const own = await extend(x.q1, x.owner.cookie, x.s.teacher.staffId, '2026-10-27');
+      expect(own.status, JSON.stringify(own.body)).toBe(403);
+      expect(codeOf(own)).toBe('own_request');
+      refused(
+        await extend(x.q1, x.vice.cookie, x.s.teacher.staffId, '2026-10-27'),
+        'plan_quarter_closed',
+      );
+    });
+    expect(await rowsOf(x.s.branch)).toEqual(before[0]);
+    expect(await rowsOf(y.s.branch)).toEqual(before[1]);
+    // The next quarter is open: the same extension of its window is given.
+    await at(BEFORE_LESSONS, async () => {
+      ok(await extend(x.q2, x.vice.cookie, x.s.teacher.staffId, '2026-11-27'));
+    });
+    const given = await t.database.migrator
+      .selectFrom('lesson_plan_window_extensions')
+      .select('end_date')
+      .where('branch_id', '=', x.s.branch)
+      .where('staff_id', '=', x.s.teacher.staffId)
+      .execute();
+    expect(given).toHaveLength(1);
+  });
+
+  it("skips a closed quarter's request in a decision by event, and refuses a Head Teacher of another subject by scope", async () => {
+    const x = await scene({ windows: false });
+    const asked = await at(BEFORE_LESSONS, async () =>
+      planRequestSchema.parse(
+        ok(
+          await call(
+            'post',
+            `/api/plans/journals/${x.journal}/requests`,
+            x.s.branch,
+            x.owner.cookie,
+            { quarterId: x.q1, kind: 'text', lessonIds: [x.q1Lessons[0] ?? ''], reason: 'Typo' },
+          ),
+          201,
+        ).body,
+      ),
+    );
+    // An event names the request (as the follow of a timetable change writes it), before the close.
+    const eventId = randomUUID();
+    await t.database.migrator
+      .insertInto('lesson_plan_request_causes')
+      .values({
+        branch_id: x.s.branch,
+        request_id: asked.id,
+        kind: 'not_covered',
+        on_date: '2026-10-19',
+        items: 1,
+        staff_id: null,
+        at: new Date(BEFORE_LESSONS),
+        event_id: eventId,
+      })
+      .execute();
+    const other = await account();
+    const otherSubject = await load.classes.subject({ grades: [7], journalType: 'graded' });
+    await t.kit.giveRole(other.account.id, {
+      role: 'head_teacher',
+      branchId: x.s.branch,
+      subjectIds: [otherSubject],
+      validFrom: VALID_FROM,
+    });
+    await close(x);
+    const before = await rowsOf(x.s.branch);
+    await at(BEFORE_LESSONS, async () => {
+      // `edge/lesson-plans`: "Nothing is possible in a closed quarter": counted as skipped.
+      const answer = await call(
+        'post',
+        '/api/plans/requests/decide-event',
+        x.s.branch,
+        x.head.cookie,
+        {
+          eventId,
+          days: 2,
+        },
+      );
+      expect(planEventDecidedSchema.parse(ok(answer).body)).toEqual({
+        approved: [],
+        skipped: [asked.id],
+        others: 0,
+      });
+      // Permission review S1: the scope is refused before the closed quarter.
+      for (const body of [
+        { decision: 'approve', days: 2 },
+        { decision: 'refuse', reason: 'No' },
+      ]) {
+        const scoped = await call(
+          'post',
+          `/api/plans/requests/${asked.id}/decide`,
+          x.s.branch,
+          other.cookie,
+          body,
+        );
+        expect(scoped.status, JSON.stringify(scoped.body)).toBe(403);
+        expect(codeOf(scoped)).toBe('plan_scope');
+      }
+    });
+    expect(await rowsOf(x.s.branch)).toEqual(before);
+    const stored = await t.database.migrator
+      .selectFrom('lesson_plan_requests')
+      .select('status')
+      .where('id', '=', asked.id)
+      .executeTakeFirstOrThrow();
+    expect(stored.status).toBe('sent');
   });
 });

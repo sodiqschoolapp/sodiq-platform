@@ -211,6 +211,7 @@ describe('the journal of a closed quarter', () => {
       'journal_cells',
       'journal_works',
       'journal_comments',
+      'journal_rating_exams',
       'journal_rating_entries',
       'journal_unlocks',
       'notifications',
@@ -408,5 +409,101 @@ describe('the journal of a closed quarter', () => {
       }),
     );
     expect(journalUnlockSchema.parse(ok(refusal).body).status).toBe('refused');
+  });
+
+  // Permission review of 9.2b, M4 (From 8.4; `edge/journal`, Closing and reopening): the
+  // Academic Vice Principal's date, "not held" and "exempt" of the rating exam take no edit
+  // period (no `decideWrite`); the route locks the quarter itself after its scope checks.
+  it('refuses the rating exam date, "not held" and "exempt" of the Academic Vice Principal in a closed quarter (From 8.4)', async () => {
+    const x = await scene();
+    const ratingBase = `/api/journal/journals/${x.journal}/rating/${x.q1}`;
+    await as(
+      x.owner,
+      x.branch,
+      async (calls) => {
+        ok(await calls.put(`${ratingBase}/date`, { date: '2026-10-19', version: null }));
+      },
+      LAST_MINUTE,
+    );
+    await close(x);
+    const before = await rowsOf(x.branch);
+    await as(x.vice, x.branch, async (calls) => {
+      closed(await calls.put(`${ratingBase}/date`, { date: '2026-10-26', version: 1 }));
+      closed(await calls.put(`${ratingBase}/not-held`, { notHeld: true, version: 1 }));
+      closed(
+        await calls.post(`${ratingBase}/entries`, {
+          studentId: x.ahmedov,
+          entry: { kind: 'exempt' },
+          reason: null,
+          version: null,
+        }),
+      );
+    });
+    expect(await rowsOf(x.branch)).toEqual(before);
+  });
+
+  // Permission review of 9.2b, S1: the scope is checked before the closed quarter, so a
+  // refusal tells nothing of a record the reader may not write.
+  it('answers the scope refusal before the closed quarter: attendance, a reason of absence and an unlock decision', async () => {
+    const x = await scene();
+    // A Teacher of the branch who does not teach the lesson.
+    const stranger = await account();
+    await t.kit.giveRole(stranger.account.id, {
+      role: 'teacher',
+      branchId: x.branch,
+      validFrom: VALID_FROM,
+    });
+    // The Tutor of the other class.
+    const tutor = await account();
+    const tutorRole = await t.kit.giveRole(tutor.account.id, {
+      role: 'tutor',
+      branchId: x.branch,
+      validFrom: VALID_FROM,
+    });
+    await load.classes.person(x.branch, ['uz'], { accountId: tutor.account.id });
+    await load.classes.tutorRow(x.branch, x.otherClass, tutorRole.id);
+    // A Head Teacher of another subject.
+    const otherHead = await account();
+    await t.kit.giveRole(otherHead.account.id, {
+      role: 'head_teacher',
+      branchId: x.branch,
+      subjectIds: [await load.classes.subject({ grades: [7], journalType: 'graded' })],
+      validFrom: VALID_FROM,
+    });
+    const sent = journalUnlockSchema.parse(
+      ok(
+        await as(
+          x.owner,
+          x.branch,
+          (calls) => calls.post(`/api/journal/lessons/${x.first}/unlocks`, { reason: 'I was ill' }),
+          MOMENT,
+        ),
+        201,
+      ).body,
+    );
+    await close(x);
+    const before = await rowsOf(x.branch);
+    await as(stranger, x.branch, async (calls) => {
+      const saved = await calls.post(`/api/journal/lessons/${x.second}/attendance`, {
+        saves: [{ studentId: x.ahmedov, mark: 1, version: null }],
+      });
+      expect([saved.status, codeOf(saved)]).toEqual([403, 'journal_entry_scope']);
+    });
+    await as(tutor, x.branch, async (calls) => {
+      const reason = await calls.put(reasonPath(x, '2026-10-19'), {
+        category: 'illness',
+        note: '',
+      });
+      expect([reason.status, codeOf(reason)]).toEqual([403, 'absence_scope']);
+    });
+    await as(otherHead, x.branch, async (calls) => {
+      const decided = await calls.post(`/api/journal/unlocks/${sent.id}/decide`, {
+        decision: 'approve',
+        days: 1,
+        version: 1,
+      });
+      expect([decided.status, codeOf(decided)]).toEqual([403, 'journal_unlock_scope']);
+    });
+    expect(await rowsOf(x.branch)).toEqual(before);
   });
 });

@@ -645,7 +645,7 @@ describe('group transfers and the History tab', () => {
   // with dated quarters (quarter 1 to 4 October, quarter 2 from 5 October), built before
   // quarter 1 is closed: a closed quarter refuses the fixture's rows too.
   describe('a closed quarter', () => {
-    it('refuses a group move, its change and its undo dated in a closed quarter, and takes a move dated after it', async () => {
+    it('refuses a group move, its change and its undo dated in a closed quarter, 404 for another branch, 403 out of scope, and takes a move dated after it', async () => {
       const branch = await t.newBranch();
       const own = await classes.year(branch);
       const quarters = await t.database.migrator.transaction().execute(async (transaction) => {
@@ -705,6 +705,25 @@ describe('group transfers and the History tab', () => {
       // A move scheduled in quarter 2, whose change would date it in quarter 1.
       ok(await move(one, '2026-10-20'));
       const scheduled = await lastMoveId(one.studentId);
+      // Another branch's student, group row, group and scheduled move (the north of the kit),
+      // for the 404s (permission review of task 9.2b, S2).
+      const northClass = await schoolClass();
+      const northStudent = await pupil(northClass);
+      const [northA, northB] = [
+        await group(headSubject, [northClass]),
+        await group(headSubject, [northClass]),
+      ];
+      await placeInGroup(northA, northStudent.id);
+      const northMember = await memberOf(northStudent.id, northA);
+      ok(await moveGroup(northStudent.id, northMember, northB, '2026-10-19'));
+      const northMove = await lastMoveId(northStudent.id);
+      // A Head Teacher of this branch for another subject (S1).
+      const otherHead = await t.kit.completeSession('Jasur', 'Normatov');
+      await t.kit.giveRole(otherHead.account.id, {
+        role: 'head_teacher',
+        branchId: branch,
+        subjectIds: [await classes.subject({ grades: [7] })],
+      });
       await closeQuarter(t.database, {
         branchId: branch,
         quarterId: quarters[0] ?? '',
@@ -733,6 +752,60 @@ describe('group transfers and the History tab', () => {
         ),
         404,
         'not_found',
+      );
+      // Another branch's student, row, group or move is 404 too, not the quarter's 409 (S2).
+      for (const body of [
+        { studentId: northStudent.id, memberId: northMember, toGroupId: b },
+        { studentId: three.studentId, memberId: northMember, toGroupId: b },
+        { ...three, toGroupId: northB },
+      ]) {
+        refusedWith(
+          await t.post('/api/groups/transfers', branch, { ...body, from: '2026-10-01' }, t.admin),
+          404,
+          'not_found',
+        );
+      }
+      for (const [path, extra] of [
+        ['change', { toGroupId: b, from: '2026-10-01' }],
+        ['cancel', {}],
+        ['undo', { reason: 'Moved by mistake.' }],
+      ] as const) {
+        refusedWith(
+          await t.post(`/api/groups/transfers/${northMove}/${path}`, branch, extra, t.admin),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await t.post(
+          `/api/groups/transfers/${scheduled}/change`,
+          branch,
+          { toGroupId: northB, from: '2026-10-01' },
+          t.admin,
+        ),
+        404,
+        'not_found',
+      );
+      // A Head Teacher of another subject is out of scope: 403, not the quarter's 409 (S1).
+      refusedWith(
+        await t.post(
+          '/api/groups/transfers',
+          branch,
+          { ...three, toGroupId: b, from: '2026-10-01' },
+          otherHead.cookie,
+        ),
+        403,
+        'permission_denied',
+      );
+      refusedWith(
+        await t.post(
+          `/api/groups/transfers/${scheduled}/change`,
+          branch,
+          { toGroupId: b, from: '2026-10-01' },
+          otherHead.cookie,
+        ),
+        403,
+        'permission_denied',
       );
       refusedWith(
         await t.post(

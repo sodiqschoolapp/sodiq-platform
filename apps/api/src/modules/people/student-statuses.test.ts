@@ -743,7 +743,7 @@ describe('leaving, return and delete of a student', () => {
   // dated quarters (quarter 1 to 4 October, quarter 2 from 5 October), its students written
   // before quarter 1 is closed: a closed quarter refuses the fixture's rows too.
   describe('a closed quarter (task 9.2b)', () => {
-    it('refuses a leaving, an undo and a return dated in a closed quarter, and takes them dated after it', async () => {
+    it('refuses a leaving, an undo, a return and a restore dated in a closed quarter, 404 for another branch, and takes them dated after it', async () => {
       const branch = await t.newBranch();
       await t.database.migrator.transaction().execute(async (transaction) => {
         const year = await transaction
@@ -800,6 +800,39 @@ describe('leaving, return and delete of a student', () => {
           reason: null,
           version: await version(id),
         });
+      // A graduated student of the branch, graduated from 20 September (written as
+      // `graduated()` does), for the restore (permission review of task 9.2b, M3).
+      const done = await create({ classId }, branch);
+      await t.database.migrator
+        .deleteFrom('class_memberships')
+        .where('student_id', '=', done.id)
+        .execute();
+      await t.database.migrator
+        .updateTable('student_statuses')
+        .set({ valid_until: '2026-09-20' })
+        .where('student_id', '=', done.id)
+        .execute();
+      await t.database.migrator
+        .insertInto('student_statuses')
+        .values({
+          student_id: done.id,
+          branch_id: branch,
+          status: 'graduated',
+          valid_from: '2026-09-20',
+          cause: 'graduation',
+        })
+        .execute();
+      const restore = async (id: string, from: string, into = classId) =>
+        t.post(`/api/people/students/${id}/restore`, branch, {
+          from,
+          classId: into,
+          reason: 'Grade 10, not 11.',
+          version: await version(id),
+        });
+      // Another branch's students (the north of the kit), for the 404s (S2).
+      const northStudent = await create();
+      const northGraduate = await graduated();
+      const northClass = (await t.classOf(t.north, 7, '2026-10-01')) ?? UNKNOWN;
       // Left from 1 October, a day of quarter 1, while it was open.
       accepted(await leave(leaving.id, '2026-09-30'));
       await closeQuarter(t.database, {
@@ -834,6 +867,41 @@ describe('leaving, return and delete of a student', () => {
         'date_in_closed_quarter',
       );
       refusedWith(await giveBack(leaving.id, '2026-10-02'), 409, 'date_in_closed_quarter');
+      refusedWith(await restore(done.id, '2026-10-01'), 409, 'date_in_closed_quarter');
+      // Another branch's student or class is 404, not the quarter's 409 (S2).
+      const { version: northVersion } = northStudent;
+      for (const [path, body] of [
+        ['leaving', { lastDay: '2026-10-01', reason: 'The family moved.', version: northVersion }],
+        ['leaving/undo', { reason: 'Entered by mistake.', version: northVersion }],
+        [
+          'return',
+          {
+            from: '2026-10-01',
+            grade: 7,
+            classId,
+            contract: { number: 'LV-QUARTER/north', signedOn: '2026-10-01' },
+            reason: null,
+            version: northVersion,
+          },
+        ],
+      ] as const) {
+        refusedWith(
+          await t.post(`/api/people/students/${northStudent.id}/${path}`, branch, body),
+          404,
+          'not_found',
+        );
+      }
+      refusedWith(
+        await t.post(`/api/people/students/${northGraduate.id}/restore`, branch, {
+          from: '2026-10-01',
+          classId,
+          reason: 'Grade 10, not 11.',
+          version: northGraduate.version,
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(await restore(done.id, '2026-10-01', northClass), 404, 'not_found');
       expect(await snapshot()).toEqual(before);
       // Dates in quarter 2 are taken.
       const left = accepted(await leave(staying.id, '2026-10-06'));
@@ -847,6 +915,7 @@ describe('leaving, return and delete of a student', () => {
         ['inactive', '2026-10-01', '2026-10-05'],
         ['active', '2026-10-05', null],
       ]);
+      expect(accepted(await restore(done.id, '2026-10-05'))).toMatchObject({ status: 'active' });
     });
   });
 

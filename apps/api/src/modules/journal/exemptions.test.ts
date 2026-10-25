@@ -1609,5 +1609,127 @@ describe('exemptions', () => {
       });
       expect(await rowOf(id)).toMatchObject({ start: '2026-11-01', end: '2026-11-25' });
     });
+    /**
+     * An exemption of `s.other` from `start` to `end`, the student moved from 27 October to the
+     * other class of `target`, and the offer the receiving branch is given; built before the
+     * close of the receiving branch's quarter 1 (a closed quarter takes no membership in it).
+     */
+    async function offered(
+      s: Awaited<ReturnType<typeof scene>>,
+      target: Awaited<ReturnType<typeof scene>>,
+      startDate: string,
+      endDate: string,
+    ): Promise<string> {
+      await make(s, startDate, endDate, s.other);
+      await adminAt(MOMENT);
+      try {
+        const read = await t.get(`/api/people/students/${s.other}`, s.branch, t.admin);
+        const released = await t.post(
+          `/api/people/students/${s.other}/branch-move`,
+          s.branch,
+          {
+            toBranchId: target.branch,
+            from: '2026-10-27',
+            version: (read.body as { version: number }).version,
+          },
+          t.admin,
+        );
+        expect(released.status, JSON.stringify(released.body)).toBe(200);
+        const move = await t.database.migrator
+          .selectFrom('student_branch_moves')
+          .select('id')
+          .where('student_id', '=', s.other)
+          .executeTakeFirstOrThrow();
+        const accepted = await t.post(
+          `/api/people/branch-moves/${move.id}/accept`,
+          target.branch,
+          { classId: target.otherClass, groups: [] },
+          t.admin,
+        );
+        expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+      } finally {
+        await adminAt(START);
+      }
+      const offer = await t.database.migrator
+        .selectFrom('exemption_move_offers')
+        .select('id')
+        .where('student_id', '=', s.other)
+        .where('branch_id', '=', target.branch)
+        .executeTakeFirstOrThrow();
+      return offer.id;
+    }
+
+    /** Closes quarter 1 of the scene's branch. */
+    const closeFirst = async (s: Awaited<ReturnType<typeof scene>>) => {
+      const q1 = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: q1.id,
+        accountId: s.vice.account.id,
+      });
+    };
+
+    /** The offer, the receiving branch's exemptions of the student and its confirm entries. */
+    const offerState = async (offerId: string, branch: string, studentId: string) => ({
+      offer: await t.database.migrator
+        .selectFrom('exemption_move_offers')
+        .select(['decision', 'exemption_id'])
+        .where('id', '=', offerId)
+        .executeTakeFirstOrThrow(),
+      exemptions: await t.database.migrator
+        .selectFrom('exemptions')
+        .select('id')
+        .where('student_id', '=', studentId)
+        .where('branch_id', '=', branch)
+        .execute(),
+      confirms: (await t.entries('exemption.offer_confirm', studentId)).length,
+    });
+
+    it('confirms a move offer that starts in a closed quarter of the receiving branch from the first day after it (task 9.2b, From 8.5)', async () => {
+      const s = await scene();
+      const target = await scene();
+      const offerId = await offered(s, target, '2026-10-19', '2026-11-20');
+      await closeFirst(target);
+      await as(target.branch, target.vice, [], async ({ post }) => {
+        const preview = await post(`/api/exemptions/move-offers/${offerId}/confirm/preview`);
+        expect(preview.status, JSON.stringify(preview.body)).toBe(200);
+        expect(exemptionPreviewSchema.parse(preview.body).closedPart).toEqual({
+          startDate: '2026-10-27',
+          endDate: '2026-10-31',
+        });
+        const confirmed = await post(`/api/exemptions/move-offers/${offerId}/confirm`, {
+          choices: [],
+        });
+        expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
+        expect(exemptionSchema.parse(confirmed.body)).toMatchObject({
+          startDate: '2026-11-01',
+          endDate: '2026-11-20',
+          movedFrom: true,
+        });
+      });
+    });
+
+    it('refuses to confirm a move offer wholly inside a closed quarter of the receiving branch, writing nothing (task 9.2b, From 8.5)', async () => {
+      const s = await scene();
+      const target = await scene();
+      const offerId = await offered(s, target, '2026-10-19', '2026-10-29');
+      await closeFirst(target);
+      const before = await offerState(offerId, target.branch, s.other);
+      expect(before.offer).toEqual({ decision: null, exemption_id: null });
+      await as(target.branch, target.vice, [], async ({ post }) => {
+        const preview = await post(`/api/exemptions/move-offers/${offerId}/confirm/preview`);
+        expect([preview.status, codeOf(preview)]).toEqual([409, 'exemption_closed_quarter']);
+        const confirmed = await post(`/api/exemptions/move-offers/${offerId}/confirm`, {
+          choices: [],
+        });
+        expect([confirmed.status, codeOf(confirmed)]).toEqual([409, 'exemption_closed_quarter']);
+      });
+      expect(await offerState(offerId, target.branch, s.other)).toEqual(before);
+    });
   });
 });

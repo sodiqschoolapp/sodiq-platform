@@ -467,6 +467,10 @@ describe('the move of a student to another branch', () => {
         release(id, { to: receiving, from, branch: sending, cookie: t.admin });
       // Released from a day of quarter 1 while it was open.
       const moveId = accepted(await releaseOf(two, '2026-10-01')).branchMove?.id ?? '';
+      // Another branch's student, class and release (the north of the kit, released to the
+      // south), for the 404s (permission review of task 9.2b, S2).
+      const north = await pupil();
+      const northRelease = accepted(await release(north.student.id)).branchMove?.id ?? '';
       await closeQuarter(t.database, {
         branchId: sending,
         quarterId: quarters[0] ?? '',
@@ -491,6 +495,33 @@ describe('the move of a student to another branch', () => {
         404,
         'not_found',
       );
+      // Another branch's student, class or release is 404 too, not the quarter's 409 (S2).
+      refusedWith(
+        await release(north.student.id, {
+          to: receiving,
+          from: '2026-10-01',
+          branch: sending,
+          cookie: t.admin,
+          version: north.student.version,
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await accept(moveId, { classId: north.classId }, t.admin, receiving),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await accept(northRelease, { classId: yale }, t.admin, receiving),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await accept(moveId, { classId: north.classId }, t.admin, t.north),
+        404,
+        'not_found',
+      );
       refusedWith(
         await accept(moveId, { classId: yale }, t.admin, receiving),
         409,
@@ -507,6 +538,63 @@ describe('the move of a student to another branch', () => {
       expect(await classRowsOf(three)).toEqual([
         expect.objectContaining({ class_id: oxford, valid_until: '2026-10-05' }),
         expect.objectContaining({ class_id: yale, valid_from: '2026-10-05' }),
+      ]);
+    });
+
+    // Task 9.2b (permission review, S3): the accept writes the receiving branch's rows from the
+    // date, so a closed quarter of the RECEIVING branch alone refuses it; the sending branch's
+    // quarters stay open (undated).
+    it('refuses an accept dated in a closed quarter of the receiving branch only', async () => {
+      const sending = await t.newBranch();
+      const receiving = await t.newBranch();
+      const sendingYear = await classes.year(sending);
+      const receivingYear = await classes.year(receiving);
+      const first = await t.database.migrator.transaction().execute(async (transaction) => {
+        const ids: string[] = [];
+        for (const [number, start, end] of [
+          [1, '2026-09-01', '2026-10-04'],
+          [2, '2026-10-05', '2026-12-27'],
+          [3, '2027-01-11', '2027-03-20'],
+          [4, '2027-03-28', '2027-05-31'],
+        ] as const) {
+          const row = await transaction
+            .updateTable('quarters')
+            .set({ start_date: start, end_date: end })
+            .where('academic_year_id', '=', receivingYear)
+            .where('number', '=', number)
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          ids.push(row.id);
+        }
+        return ids[0] ?? '';
+      });
+      const oxford = await classes.schoolClass(sending, sendingYear, { grade: 7 });
+      const yale = await classes.schoolClass(receiving, receivingYear, { grade: 7 });
+      const studentId = await members.student(sending, { startsOn: '2026-09-01' });
+      await members.member({ branch: sending, classId: oxford, studentId, from: '2026-09-01' });
+      const moveId =
+        accepted(
+          await release(studentId, {
+            to: receiving,
+            from: '2026-10-01',
+            branch: sending,
+            cookie: t.admin,
+          }),
+        ).branchMove?.id ?? '';
+      await closeQuarter(t.database, {
+        branchId: receiving,
+        quarterId: first,
+        accountId: await classes.account(),
+      });
+      const before = await rowsOf();
+      refusedWith(
+        await accept(moveId, { classId: yale }, t.admin, receiving),
+        409,
+        'branch_move_quarter_closed',
+      );
+      expect(await rowsOf()).toEqual(before);
+      expect(await classRowsOf(studentId)).toEqual([
+        expect.objectContaining({ class_id: oxford, valid_until: '2027-06-01', ended_by: null }),
       ]);
     });
 

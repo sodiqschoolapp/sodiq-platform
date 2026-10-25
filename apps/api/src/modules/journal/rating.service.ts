@@ -13,6 +13,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { clockOf } from '../plans/plan-read.js';
+import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { holdSubjectSwitches } from '../setup/subject-switches.js';
 import { ownerFactsOf } from '../timetable/journal-owners.js';
@@ -61,6 +62,13 @@ const RATING_REFUSALS = {
   ...LOCK_REFUSALS,
 } as const;
 
+/** What the scope check of a write reads: the reader and their rights on the journal. */
+interface Frame {
+  readonly access: Access;
+  readonly branchId: string;
+  readonly rights: RatingRights;
+}
+
 interface Scene {
   readonly access: Access;
   readonly branchId: string;
@@ -94,46 +102,55 @@ export class RatingService {
     input: RatingDate,
     requestId: string,
   ): Promise<RatingExam> {
-    return this.write(access, journalId, quarterId, requestId, async (transaction, scene) => {
-      if (!scene.rights.teacher && scene.rights.vicePrincipal === null) throw scopeRefusal();
-      const { fromExam } = await ratingDateOf(transaction, journalId, quarterId);
-      if (fromExam) throw new ApiException('rating_exam_linked', 409);
-      const row = await this.lockedRow(transaction, scene);
-      if (row.version !== input.version && !(row.fresh && input.version === null)) {
-        throw new ApiException('rating_exam_stale', 409);
-      }
-      if (row.examDate === input.date) return;
-      // Task 8.4 (decision 6): the teacher's date is refused once the exam is locked; the
-      // Academic Vice Principal's takes no unlock.
-      if (scene.rights.vicePrincipal === null) {
-        const locksAt = await lockOf(transaction, {
-          kind: 'rating',
-          journalId: scene.journal.id,
-          quarterId,
-        });
-        if (locksAt !== null && (await transactionMoment(transaction)) >= locksAt) {
-          throw lockedRefusal(locksAt);
+    return this.write(
+      access,
+      journalId,
+      quarterId,
+      requestId,
+      (_transaction, frame) => {
+        if (!frame.rights.teacher && frame.rights.vicePrincipal === null) throw scopeRefusal();
+        return Promise.resolve();
+      },
+      async (transaction, scene) => {
+        const { fromExam } = await ratingDateOf(transaction, journalId, quarterId);
+        if (fromExam) throw new ApiException('rating_exam_linked', 409);
+        const row = await this.lockedRow(transaction, scene);
+        if (row.version !== input.version && !(row.fresh && input.version === null)) {
+          throw new ApiException('rating_exam_stale', 409);
         }
-      }
-      await transaction
-        .updateTable('journal_rating_exams')
-        .set({ exam_date: input.date, changed_by: scene.access.accountId })
-        .where('id', '=', row.id)
-        .execute();
-      await this.audit.record(transaction, {
-        branchId: scene.branchId,
-        actorId: scene.access.accountId,
-        assignmentId: scene.rights.teacher
-          ? entryAssignment(scene.access)
-          : (scene.rights.vicePrincipal ?? scene.access.assignmentId),
-        action: 'journal.rating_date',
-        record: { type: 'journal', id: journalId },
-        oldValue: { date: row.examDate },
-        newValue: { date: input.date },
-        details: { quarterId },
-        requestId,
-      });
-    });
+        if (row.examDate === input.date) return;
+        // Task 8.4 (decision 6): the teacher's date is refused once the exam is locked; the
+        // Academic Vice Principal's takes no unlock.
+        if (scene.rights.vicePrincipal === null) {
+          const locksAt = await lockOf(transaction, {
+            kind: 'rating',
+            journalId: scene.journal.id,
+            quarterId,
+          });
+          if (locksAt !== null && (await transactionMoment(transaction)) >= locksAt) {
+            throw lockedRefusal(locksAt);
+          }
+        }
+        await transaction
+          .updateTable('journal_rating_exams')
+          .set({ exam_date: input.date, changed_by: scene.access.accountId })
+          .where('id', '=', row.id)
+          .execute();
+        await this.audit.record(transaction, {
+          branchId: scene.branchId,
+          actorId: scene.access.accountId,
+          assignmentId: scene.rights.teacher
+            ? entryAssignment(scene.access)
+            : (scene.rights.vicePrincipal ?? scene.access.assignmentId),
+          action: 'journal.rating_date',
+          record: { type: 'journal', id: journalId },
+          oldValue: { date: row.examDate },
+          newValue: { date: input.date },
+          details: { quarterId },
+          requestId,
+        });
+      },
+    );
   }
 
   /** "Not held" for the journal and quarter: the Academic Vice Principal (decision 7). */
@@ -148,44 +165,53 @@ export class RatingService {
     },
     requestId: string,
   ): Promise<RatingExam> {
-    return this.write(access, journalId, quarterId, requestId, async (transaction, scene) => {
-      const vicePrincipal = scene.rights.vicePrincipal;
-      if (vicePrincipal === null) throw scopeRefusal();
-      const row = await this.lockedRow(transaction, scene);
-      if (row.version !== input.version && !(row.fresh && input.version === null)) {
-        throw new ApiException('rating_exam_stale', 409);
-      }
-      if (row.notHeld === input.notHeld) return;
-      if (input.notHeld && !input.confirm) {
-        const counted = await transaction
-          .selectFrom('journal_rating_entries')
-          .select(sql<number>`count(*)::int`.as('count'))
-          .where('rating_exam_id', '=', row.id)
-          .where('kind', 'is not', null)
-          .executeTakeFirstOrThrow();
-        if (counted.count > 0) {
-          throw new ApiException('rating_exam_entries', 409, undefined, [
-            { path: 'notHeld', code: 'entries', message: 'Entries exist.', count: counted.count },
-          ]);
+    return this.write(
+      access,
+      journalId,
+      quarterId,
+      requestId,
+      (_transaction, frame) => {
+        const vicePrincipal = frame.rights.vicePrincipal;
+        if (vicePrincipal === null) throw scopeRefusal();
+        return Promise.resolve(vicePrincipal);
+      },
+      async (transaction, scene, vicePrincipal) => {
+        const row = await this.lockedRow(transaction, scene);
+        if (row.version !== input.version && !(row.fresh && input.version === null)) {
+          throw new ApiException('rating_exam_stale', 409);
         }
-      }
-      await transaction
-        .updateTable('journal_rating_exams')
-        .set({ not_held: input.notHeld, changed_by: scene.access.accountId })
-        .where('id', '=', row.id)
-        .execute();
-      await this.audit.record(transaction, {
-        branchId: scene.branchId,
-        actorId: scene.access.accountId,
-        assignmentId: vicePrincipal,
-        action: 'journal.rating_not_held',
-        record: { type: 'journal', id: journalId },
-        oldValue: { notHeld: row.notHeld },
-        newValue: { notHeld: input.notHeld },
-        details: { quarterId },
-        requestId,
-      });
-    });
+        if (row.notHeld === input.notHeld) return;
+        if (input.notHeld && !input.confirm) {
+          const counted = await transaction
+            .selectFrom('journal_rating_entries')
+            .select(sql<number>`count(*)::int`.as('count'))
+            .where('rating_exam_id', '=', row.id)
+            .where('kind', 'is not', null)
+            .executeTakeFirstOrThrow();
+          if (counted.count > 0) {
+            throw new ApiException('rating_exam_entries', 409, undefined, [
+              { path: 'notHeld', code: 'entries', message: 'Entries exist.', count: counted.count },
+            ]);
+          }
+        }
+        await transaction
+          .updateTable('journal_rating_exams')
+          .set({ not_held: input.notHeld, changed_by: scene.access.accountId })
+          .where('id', '=', row.id)
+          .execute();
+        await this.audit.record(transaction, {
+          branchId: scene.branchId,
+          actorId: scene.access.accountId,
+          assignmentId: vicePrincipal,
+          action: 'journal.rating_not_held',
+          record: { type: 'journal', id: journalId },
+          oldValue: { notHeld: row.notHeld },
+          newValue: { notHeld: input.notHeld },
+          details: { quarterId },
+          requestId,
+        });
+      },
+    );
   }
 
   /**
@@ -206,8 +232,8 @@ export class RatingService {
       journalId,
       quarterId,
       requestId,
-      async (transaction, scene) => {
-        if (!scene.rights.teacher && scene.rights.vicePrincipal === null) throw scopeRefusal();
+      async (transaction, frame) => {
+        if (!frame.rights.teacher && frame.rights.vicePrincipal === null) throw scopeRefusal();
         const existing = await ratingRowOf(transaction, journalId, quarterId);
         const storedBefore =
           existing === null
@@ -228,24 +254,27 @@ export class RatingService {
         // Task 8.4: a correction of the Academic Vice Principal or the Super Admin carries the
         // entry's own reason (review correction 2) and takes no unlock.
         const corrector = input.correction
-          ? correctorAssignment(scene.access, scene.branchId)
+          ? correctorAssignment(frame.access, frame.branchId)
           : null;
         if (input.correction && corrector === null) {
           throw new ApiException('journal_correction_role', 403);
         }
         // Nobody approves their own (`02`, Own requests; decision 17): the journal's teacher
         // takes the unlock path for their own entries (code review 2, finding 1).
-        if (input.correction && scene.rights.teacher) {
+        if (input.correction && frame.rights.teacher) {
           throw new ApiException('own_request', 403);
         }
         const assignmentId =
           corrector ??
           (touchesExempt
-            ? scene.rights.vicePrincipal
-            : scene.rights.teacher
-              ? entryAssignment(scene.access)
+            ? frame.rights.vicePrincipal
+            : frame.rights.teacher
+              ? entryAssignment(frame.access)
               : null);
         if (assignmentId === null) throw scopeRefusal();
+        return { existing, setsExempt, assignmentId };
+      },
+      async (transaction, scene, { existing, setsExempt, assignmentId }) => {
         if (input.correction && input.reason === null) {
           throw new ApiException('rating_exam_reason', 409);
         }
@@ -442,16 +471,18 @@ export class RatingService {
 
   /**
    * The frame of every write: the journal and quarter of the branch (404),
-   * the ids of the body (404), the reader's rights, the subject row FOR SHARE
-   * before the switch is read (item 8 of the plan), the quarter's switch, then
-   * the work, and the rating exam as it stands after it.
+   * the ids of the body (404), the reader's rights and the scope of the write
+   * (403), the quarter locked open (task 9.2b), the subject row FOR SHARE before
+   * the switch is read (item 8 of the plan), the quarter's switch, then the
+   * work, and the rating exam as it stands after it.
    */
-  private write(
+  private write<Scoped>(
     access: Access,
     journalId: string,
     quarterId: string,
     requestId: string,
-    work: (transaction: Transaction, scene: Scene) => Promise<void>,
+    scope: (transaction: Transaction, frame: Frame) => Promise<Scoped>,
+    work: (transaction: Transaction, scene: Scene, scoped: Scoped) => Promise<void>,
     studentIds: readonly string[] = [],
   ): Promise<RatingExam> {
     const branchId = branchOf(access);
@@ -481,6 +512,12 @@ export class RatingService {
             today,
           });
           if (!rights.teacher && rights.vicePrincipal === null) throw scopeRefusal();
+          const scoped = await scope(transaction, { access, branchId, rights });
+          // Task 9.2b (From 8.4; `edge/journal`, Closing and reopening): every write of the
+          // rating exam, the date, "not held" and "exempt" too (which take no edit period), is
+          // refused in a closed quarter; the quarter is locked after the scope checks and before
+          // the first row lock (`.claude/rules/database.md`; permission review, M4).
+          await lockOpenQuarter(transaction, quarterId);
           await holdSubjectSwitches(transaction, unlocked.subjectId);
           const [journal] = await journalRows(transaction, branchId, { journalId });
           if (journal === undefined) throw notFound();
@@ -497,7 +534,7 @@ export class RatingService {
             requestId,
             staffId,
           };
-          await work(transaction, scene);
+          await work(transaction, scene, scoped);
           const answer = await ratingExamOf(transaction, {
             journal,
             quarterId,

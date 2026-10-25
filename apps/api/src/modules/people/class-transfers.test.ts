@@ -432,7 +432,7 @@ describe('class transfers', () => {
     // "Backdating is for the Academic Vice Principal, in an open quarter". A branch of its own
     // with dated quarters, built before quarter 1 is closed (a closed quarter refuses the
     // fixture's rows too).
-    it('refuses a move and the undo of a move dated in a closed quarter, and takes a move dated after it', async () => {
+    it('refuses a move, the change and the undo of a move dated in a closed quarter, 404 for another branch, and takes a move dated after it', async () => {
       const branch = await t.newBranch();
       const own = await classes.year(branch);
       const quarters = await datedQuarters(own);
@@ -445,7 +445,17 @@ describe('class transfers', () => {
         await members.member({ branch, classId: oxford, studentId: student, from: '2026-09-01' });
         return student;
       };
-      const [one, two, three] = [await pupilOf(), await pupilOf(), await pupilOf()];
+      const [one, two, three, four] = [
+        await pupilOf(),
+        await pupilOf(),
+        await pupilOf(),
+        await pupilOf(),
+      ];
+      // Another branch's student, class and scheduled move (the north of the kit), for the 404s
+      // (permission review of task 9.2b, S2).
+      const northClass = await schoolClass();
+      const northStudent = await pupil(northClass);
+      const northMove = moveOf(ok(await transfer(northStudent.id, await schoolClass())));
       const versionOf = async (id: string) =>
         studentDetailSchema.parse((await t.get(`/api/people/students/${id}`, branch, t.admin)).body)
           .version;
@@ -463,6 +473,9 @@ describe('class transfers', () => {
           (await t.get(`/api/people/students/${two}`, branch, t.admin)).body,
         ),
       );
+      // A move scheduled in quarter 2, whose change would date it in quarter 1 (permission
+      // review of task 9.2b, M3).
+      const scheduled = moveOf(ok(await move(four, '2026-10-20')));
       await closeQuarter(t.database, {
         branchId: branch,
         quarterId: quarters[0] ?? '',
@@ -474,6 +487,8 @@ describe('class transfers', () => {
       for (const [studentId, toClassId] of [
         [UNKNOWN, yale],
         [one, UNKNOWN],
+        [northStudent.id, yale],
+        [one, northClass],
       ]) {
         refusedWith(
           await t.post(
@@ -496,8 +511,40 @@ describe('class transfers', () => {
         409,
         'class_quarter_closed',
       );
+      // The change of the scheduled move to a date in quarter 1 (M3).
+      refusedWith(
+        await t.post(
+          `/api/classes/transfers/${scheduled}/change`,
+          branch,
+          { version: await versionOf(four), toClassId: yale, from: '2026-10-01' },
+          t.admin,
+        ),
+        409,
+        'class_quarter_closed',
+      );
+      // Another branch's move is 404 on every route, the date in the closed quarter or not (S2).
+      for (const [path, extra] of [
+        ['change', { toClassId: yale, from: '2026-10-01' }],
+        ['cancel', {}],
+        ['undo', { reason: 'Moved by mistake.' }],
+      ] as const) {
+        refusedWith(
+          await t.post(
+            `/api/classes/transfers/${northMove}/${path}`,
+            branch,
+            { version: northStudent.version + 1, ...extra },
+            t.admin,
+          ),
+          404,
+          'not_found',
+        );
+      }
       expect(await rowsOf()).toEqual(before);
       expect(await held(one)).toEqual([[oxford, '2026-09-01', '2027-06-01']]);
+      expect(await held(four)).toEqual([
+        [oxford, '2026-09-01', '2026-10-20'],
+        [yale, '2026-10-20', '2027-06-01'],
+      ]);
       // "The part in an open quarter is applied": the first day of quarter 2 is taken.
       ok(await move(three, '2026-10-05'));
       expect(await held(three)).toEqual([
