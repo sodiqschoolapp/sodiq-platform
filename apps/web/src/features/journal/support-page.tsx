@@ -211,6 +211,8 @@ export function SupportPage(): React.JSX.Element {
     { label: t('home.title'), to: '/' as const },
     { label: t('journal.page.title'), to: '/journal' as const },
   ];
+  // Every picker is set (the link from a cell's history): the grids it needs are still read.
+  const chosen = journalId !== null && date !== null && search.student !== undefined;
   const failed = journals.isError ? journals : first.isError ? first : grid.isError ? grid : null;
   return (
     <>
@@ -274,6 +276,8 @@ export function SupportPage(): React.JSX.Element {
           first.data !== undefined &&
           quarterId === null ? (
           <EmptyState text={t('journal.support.noQuarter')} />
+        ) : chosen && (first.isPending || (quarterId !== null && grid.isPending)) ? (
+          <LoadingOutline />
         ) : query === null ? (
           <EmptyState text={t('journal.support.empty')} />
         ) : support.isError ? (

@@ -5721,7 +5721,7 @@ export const uz: Texts<'one' | 'other'> = {
       requested: 'Soʻralgan',
       period: 'Davr',
       format: 'Format',
-      asOf: 'Holati',
+      asOf: 'Olingan vaqti',
       status: 'Holat',
       file: 'Fayl',
       readyUntil: 'Tayyor, havola {{moment}} gacha ishlaydi',

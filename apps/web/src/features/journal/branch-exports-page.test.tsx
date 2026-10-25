@@ -342,6 +342,27 @@ describe('the support view', () => {
     expect(calls.some((one) => one.route === 'GET /api/journal/support')).toBe(false);
   });
 
+  it('shows the loading outline, not the empty state, while the grid of a complete address is read', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': as('academic_vice_principal'),
+      'GET /api/journal/journals': () =>
+        json({
+          years: [],
+          yearId: null,
+          journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+        }),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => new Promise<Response>(() => undefined),
+      'GET /api/journal/support': () => json(SUPPORT),
+    });
+    renderApp(`/journal/support?journal=${JOURNAL}&student=${STUDENT}&date=2026-10-26`, 'en');
+    await screen.findByRole('heading', { name: en.journal.support.title });
+    await waitFor(() => {
+      expect(document.querySelector('[role="status"][aria-busy="true"]')).not.toBeNull();
+    });
+    expect(screen.queryByText(en.journal.support.empty)).toBeNull();
+    expect(calls.some((one) => one.route === 'GET /api/journal/support')).toBe(false);
+  });
+
   it('renders the answer of the server', async () => {
     fakeApi({
       'GET /api/auth/session': as('academic_vice_principal'),

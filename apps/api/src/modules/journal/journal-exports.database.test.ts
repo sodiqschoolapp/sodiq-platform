@@ -221,6 +221,37 @@ describe('journal exports and refusals in the database', () => {
         ),
       );
       expect(again).toMatchObject({ code: CHECK_VIOLATION, constraint: 'journal_export_status' });
+      // A failed export moves nowhere: not to ready, not back to queued.
+      const failed = await queued(north, MOMENT);
+      await inBranch(north, MOMENT, (transaction) =>
+        transaction
+          .updateTable('journal_exports')
+          .set({ status: 'failed', failure: 'journal_export_failed' })
+          .where('id', '=', failed.id)
+          .execute(),
+      );
+      for (const set of [
+        {
+          status: 'ready',
+          failure: null,
+          as_of: new Date(MOMENT),
+          file_key: 'exports/late/file',
+          journals: 1,
+          rows: 1,
+        },
+        { status: 'queued', failure: null },
+      ]) {
+        const moved = await refusal(
+          inBranch(north, MOMENT, (transaction) =>
+            transaction
+              .updateTable('journal_exports')
+              .set(set)
+              .where('id', '=', failed.id)
+              .execute(),
+          ),
+        );
+        expect(moved).toMatchObject({ code: CHECK_VIOLATION, constraint: 'journal_export_status' });
+      }
     });
 
     it('refuses a second queued export of one person in a branch, and takes one in another branch', async () => {

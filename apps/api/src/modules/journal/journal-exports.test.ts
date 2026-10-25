@@ -786,6 +786,21 @@ describe('journal exports', () => {
         'Provisional · 27.10.2026 12:05',
       ]);
       expect(await t.entries('journal.branch_export_download', item.id)).toHaveLength(1);
+      // The entry is committed before the store is read: a store that fails leaves it standing.
+      const get = store.get.bind(store);
+      store.get = () => Promise.reject(new Error('The store is away.'));
+      try {
+        const away = await fileCall(
+          principal,
+          x.s.branch,
+          'get',
+          `/api/journal/exports/${item.id}/file`,
+        );
+        expect(away.status).toBe(500);
+      } finally {
+        store.get = get;
+      }
+      expect(await t.entries('journal.branch_export_download', item.id)).toHaveLength(2);
       await at(principal, '2026-10-28T12:05:00+05:00');
       refusedFile(
         await fileCall(principal, x.s.branch, 'get', `/api/journal/exports/${item.id}/file`),
@@ -806,7 +821,7 @@ describe('journal exports', () => {
         404,
         'not_found',
       );
-      expect(await t.entries('journal.branch_export_download', item.id)).toHaveLength(1);
+      expect(await t.entries('journal.branch_export_download', item.id)).toHaveLength(2);
       const elsewhere = await t.newBranch();
       await give(principal, [{ role: 'principal', branchId: elsewhere }]);
       await at(principal, '2026-10-28T09:00:00+05:00');
@@ -999,7 +1014,8 @@ describe('journal exports', () => {
       for (const sheet of sheets) {
         const rows = sheet.rows.slice(6).map((one) => one.values);
         const named = rows.find((one) => one[1] === 'Yoqubova Dono' || one[1] === 'Oʻktamov Bek');
-        expect(named?.includes(2) ?? false).toBe(false);
+        expect(named).toBeDefined();
+        expect(named?.includes(2)).toBe(false);
       }
       // The mark is stored: a later read has it.
       const cell = await t.database.migrator
