@@ -443,6 +443,24 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 9.2c: the reopening, a journal closed again, "recalculate and compare" (`quarter_closing`),
+  // and its apply (`results_recalculation` `edit`, decision 10, Look first).
+  'POST /api/results/closing/:quarterId/reopen': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/results/closing/:quarterId/journals/:journalId/close': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/results/closing/:quarterId/recalculation': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'POST /api/results/closing/:quarterId/recalculation/apply': {
+    branch: 'request',
+    roles: ['super_admin'],
+  },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

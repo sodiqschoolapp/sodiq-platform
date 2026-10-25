@@ -135,6 +135,12 @@ export const dayLessonSchema = z.object({
    */
   canCorrect: z.boolean(),
   /**
+   * Task 9.2c (From 9.2b, Left out): the lesson's quarter is closed. The correction's cancel and
+   * restore are "Not possible in a closed quarter" (`edge/timetable`, After publishing); its
+   * teacher and room still are.
+   */
+  quarterClosed: z.boolean(),
+  /**
    * Task 5.7b-1: the substitution in force on the lesson, with the teacher
    * replaced (`null` when the lesson had nobody); `null` when none is.
    */

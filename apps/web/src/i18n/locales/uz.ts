@@ -705,6 +705,19 @@ export const uz: Texts<'one' | 'other'> = {
     date_in_closed_quarter: 'Sana yopilgan chorakda. Ochiq chorakdagi sanani tanlang.',
     plan_quarter_closed:
       'Bu rejaning choragi yopilgan, shuning uchun rejani oʻzgartirib boʻlmaydi.',
+    quarter_not_closed:
+      'Bu chorak yopilmagan, shuning uchun qayta ochadigan yoki yana yopadigan narsa yoʻq. Roʻyxatni qayta yuklang.',
+    quarter_reopened:
+      'Bu chorak yoki jurnal allaqachon qayta ochilgan. Qayta ochishdan oldin uni yana yoping.',
+    quarter_journal_reopened:
+      'Bu chorakning bir jurnali qayta ochilgan. Butun filialni qayta ochishdan oldin uni yana yoping.',
+    closing_journal_not_closed:
+      'Bu jurnal chorak bilan yopilmagan, shuning uchun qayta ochadigan narsa yoʻq.',
+    closing_journal_not_reopened:
+      'Bu jurnal qayta ochilmagan, shuning uchun yana yopadigan narsa yoʻq. Roʻyxatni qayta yuklang.',
+    recalculation_changed:
+      'Roʻyxatni ochganingizdan beri farqlar oʻzgardi. Yana solishtiring, keyin qoʻllang.',
+    recalculation_nothing: 'Saqlangan barcha natijalar joriy hisobga mos: qoʻllaydigan narsa yoʻq.',
     exemption_closed_quarter:
       'Bu oʻzgarish yopilgan chorak kunlariga tegadi, ular esa oʻzgarmaydi. Faqat ochiq chorak kunlarini oʻzgartirish mumkin.',
     journal_entry_scope:
@@ -3323,6 +3336,9 @@ export const uz: Texts<'one' | 'other'> = {
         decision_set: 'Belgilangan natija boʻyicha qaror qabul qilindi',
         decision_cleared: 'Belgilangan natija boʻyicha qaror bekor qilindi',
         quarter_closed: 'Chorak yopildi',
+        quarter_reopened: 'Chorak qayta ochildi',
+        journal_closed_again: 'Qayta ochilgan jurnal yana yopildi',
+        recalculation_applied: 'Qayta hisoblangan natijalar qoʻllandi',
       },
       calendar_entry: {
         create: 'Kalendar kuni qoʻshildi',
@@ -3626,6 +3642,7 @@ export const uz: Texts<'one' | 'other'> = {
         forced_delete: 'Dars butunlay oʻchirildi',
       },
       forced_delete: {
+        purged: 'Oʻchirilgan darslarning saqlangan maʼlumotlari olib tashlandi',
         restore: 'Oʻchirilgan dars tiklandi',
       },
       teaching_load: {
@@ -3986,6 +4003,12 @@ export const uz: Texts<'one' | 'other'> = {
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
       results: {
         closing_reminder: '{{quarter}}-chorak tez orada yopiladi. Tugatilishi kerak: {{items}}.',
+        recalculated:
+          '{{quarter}}-chorak natijalari qayta hisoblanib, {{version}}-versiya sifatida saqlandi.',
+        check_difference:
+          '{{date}} kungi tungi tekshiruv {{journals}} ta jurnalda {{differences}} ta farq topdi.',
+        check_missed: '{{date}} kungi tungi tekshiruv bajarilmadi.',
+        closing_overdue: '{{quarter}}-chorak {{lastDay}} kuni tugadi va hali yopilmagan.',
         quarter_locked_now:
           '{{quarter}}-chorak «hozir qulflash» bilan yopildi: uning tahrirlash muddati ichidagi darslaringiz va undagi qulfdan chiqarishlaringiz qulflandi.',
       },
@@ -4009,10 +4032,19 @@ export const uz: Texts<'one' | 'other'> = {
           '{{name}} {{unit}}, {{quarter}}-chorak dars rejasini oʻzgartirishni soʻramoqda.',
         request_approved:
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz tasdiqlandi: {{until}} gacha ochiq.',
+        window_ending: '{{quarter}}-chorak dars rejasi oynasi {{endDate}} kuni tugaydi.',
+        window_last_day:
+          'Bugun {{quarter}}-chorak dars rejasi oynasining oxirgi kuni. Hali toʻliq emas: {{unit}}.',
+        window_missing:
+          '{{startDate}} kuni boshlanadigan {{quarter}}-chorak uchun dars rejasi oynasi ochilmagan.',
+        request_unsent:
+          '{{unit}}, {{quarter}}-chorak uchun tayyorlangan tahrir soʻrovi hali yuborilmagan.',
         request_refused:
           '{{unit}}, {{quarter}}-chorak boʻyicha soʻrovingiz rad etildi: {{reason}}.',
       },
       journal: {
+        lesson_about_to_lock:
+          '{{unit}}, {{subject}} fanining {{date}} kungi darsi {{locksAt}} da maʼlumot toʻliq boʻlmasdan yopiladi.',
         exemption_granted:
           '{{student}}: $t(notifications.exemptionKinds.{{kind}}), {{from}} – {{until}} {{times}}.',
         exemption_changed:
@@ -6516,6 +6548,65 @@ export const uz: Texts<'one' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    reopening: {
+      action: 'Qayta ochish',
+      title: 'Chorakni qayta ochish',
+      text: 'Darslar yopiqligicha qoladi: faqat tuzatishlar va bundan keyin tasdiqlangan ochishlar amal qiladi. Hozir saqlangan natijalar versiya sifatida saqlanadi, yana yopishda oʻzgargan har bir natija koʻrsatiladi.',
+      what: 'Nimani qayta ochish',
+      journalOption: '{{unit}} · {{subject}}',
+      wholeBranch: 'Butun filial',
+      days: 'Necha kunga, 1 dan 14 gacha',
+      reason: 'Sabab',
+      missing: 'Sababni va 1 dan 14 gacha kunlar sonini yozing.',
+      by: '{{date}} kuni {{name}} qayta ochdi',
+      openUntil: '{{date}} gacha ochiq',
+      ended: 'kiritish {{date}} kuni tugadi: uni yana yoping',
+      closedAgain: 'yana yopildi, {{version}}-versiya',
+      history_one: '{{count}} ta qayta ochish',
+      history_other: '{{count}} ta qayta ochish',
+      changes: 'Oʻzgargan natijalar',
+      noChanges: 'Hech bir natija oʻzgarmadi.',
+      student: 'Oʻquvchi',
+      subject: 'Fan',
+      before: 'Oldin',
+      after: 'Hozir',
+      noRecord: 'yangi',
+      number: '{{shown}}, baho {{grade}}',
+      outcomes: {
+        exempt: 'Ozod',
+        not_assessed: 'Baholanmadi',
+        no_result: 'Natija yoʻq',
+      },
+      closeAgain: 'Yana yopish',
+      closeAgainTitle: '{{journal}} ni yana yopish',
+      closeAgainText_one:
+        'Qayta ochilgandan beri {{count}} ta natija oʻzgardi. Bu jurnal natijalarining yangi versiyasi saqlanadi, oldingisi ham qoladi.',
+      closeAgainText_other:
+        'Qayta ochilgandan beri {{count}} ta natija oʻzgardi. Bu jurnal natijalarining yangi versiyasi saqlanadi, oldingisi ham qoladi.',
+      closedAgainNow: 'Yana yopildi: {{version}}-versiya saqlandi.',
+    },
+    recalculation: {
+      title: 'Qayta hisoblash va solishtirish',
+      compare: 'Qayta hisoblash va solishtirish',
+      same: 'Saqlangan barcha natijalar {{version}}-versiya hisobiga mos.',
+      stored: 'Saqlangan',
+      now: 'Hozir hisoblangan',
+      version: 'hisob versiyasi {{version}}',
+      refused: 'joriy hisob bu yozuvni qabul qilmaydi',
+      apply: 'Sabab bilan qoʻllash',
+      applyTitle_one: '{{count}} ta qayta hisoblangan natijani qoʻllash',
+      applyTitle_other: '{{count}} ta qayta hisoblangan natijani qoʻllash',
+      applyText:
+        'Bu natijalarning yangi versiyasi saqlanadi, oldingilari ham qoladi va tegishli oʻqituvchilarga xabar beriladi.',
+    },
+    check: {
+      line_one: '{{date}} kungi tungi tekshiruv: bu chorakda {{count}} ta farq.',
+      line_other: '{{date}} kungi tungi tekshiruv: bu chorakda {{count}} ta farq.',
+      difference_one:
+        '{{date}} kungi tungi tekshiruv bu jurnalda {{count}} ta farq topdi. U saqlangan tarixdan tiklanadi; keyingi tekshiruv uni olib tashlaydi.',
+      difference_other:
+        '{{date}} kungi tungi tekshiruv bu jurnalda {{count}} ta farq topdi. Ular saqlangan tarixdan tiklanadi; keyingi tekshiruv ularni olib tashlaydi.',
+    },
     closing: {
       reminderLine: '{{kind}}: {{unit}}, {{subject}} ({{count}})',
       closeQuarter: 'Chorakni yopish',
@@ -6621,6 +6712,7 @@ export const uz: Texts<'one' | 'other'> = {
         plan_incomplete: 'Dars rejasi toʻliq emas',
         no_result: 'Natijasi yoʻq oʻquvchilar',
         part_without_data: 'Vazni bor, maʼlumoti yoʻq qism',
+        check_difference: 'Tungi tekshiruv farq topdi',
         no_teacher: 'Oʻqituvchi yoʻq',
       },
     },

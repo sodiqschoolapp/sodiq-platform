@@ -38,7 +38,7 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
-import { closingOf } from '../setup/closed-quarters.js';
+import { closingOf, recordsInForce, reopenedJournals } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { awayLessons } from '../timetable/away-read.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
@@ -352,20 +352,29 @@ export class JournalGridReader {
     }
     // Task 9.2b: a closed quarter's figures carry no "provisional" marker (`07` rule 8).
     const closing = await closingOf(transaction, quarter.id);
-    const quarterClosed = closing !== undefined;
+    // Task 9.2c: a journal with an unfinished reopening is read live and provisional.
+    const quarterClosed =
+      closing !== undefined &&
+      !(await reopenedJournals(transaction, [quarter.id])).has(`${quarter.id}|${journal.id}`);
+    // The journal's own rows take entries (task 9.2c, `quarter_journal_open`), and whether the
+    // quarter was ever closed (then only corrections and unlocks decided after apply).
+    const entryState = await sql<{ open: boolean; ever: boolean }>`
+      select quarter_journal_open(${quarter.id}::uuid, ${journal.id}::uuid) as open,
+        quarter_ever_closed(${quarter.id}::uuid) as ever
+    `.execute(transaction);
+    const entriesClosed = entryState.rows[0]?.open !== true;
+    const everClosed = entryState.rows[0]?.ever === true;
     // Task 9.2b (decision 1, Look first; spec review of the code, must-fix 2): a closed quarter's
-    // results are its stored final records, never calculated again.
+    // results are its stored final records, never calculated again; the record in force is the
+    // highest version that holds one (task 9.2c).
     const finalRecords = new Map(
-      closing === undefined
+      !quarterClosed
         ? []
-        : (
-            await transaction
-              .selectFrom('quarter_final_results')
-              .select(['student_id', 'record'])
-              .where('closing_id', '=', closing.id)
-              .where('subject_id', '=', journal.subjectId)
-              .execute()
-          ).map((row) => [row.student_id, row.record as unknown]),
+        : [
+            ...(
+              await recordsInForce(transaction, quarter.id, { subjectId: journal.subjectId })
+            ).values(),
+          ].map((row) => [row.studentId, row.record]),
     );
     // edge/00-definitions, Reference date: the quarter's last day, or today while it is open.
     const referenceDate =
@@ -1053,11 +1062,12 @@ export class JournalGridReader {
         staffId,
         now,
         enters: theirs(lesson),
-        // Task 9.2b: no unlock is asked in a closed quarter (From 8.4).
-        requests: requests && !quarterClosed,
+        // Task 9.2b: no unlock is asked in a closed quarter (From 8.4); 9.2c: open for a
+        // reopened journal until its end.
+        requests: requests && !entriesClosed,
         // A corrector's own lesson takes the unlock path (decision 17; code review 2, finding 1).
         corrects:
-          !quarterClosed &&
+          !entriesClosed &&
           corrects &&
           held.get(lesson.id) === true &&
           shape === 'whole' &&
@@ -1068,15 +1078,18 @@ export class JournalGridReader {
         },
       });
     // Task 9.2b: a closed quarter takes no entry, a correction included (From 8.4).
+    // Task 9.2c (plan decision 5): in a reopened quarter or journal only corrections and unlocks
+    // decided after the close apply; an orphan assignment or an optional cell gives no entry.
     const canEnter = (lesson: GridLessonRow): boolean =>
-      !quarterClosed &&
+      !entriesClosed &&
       theirs(lesson) &&
-      (lockOf(lesson).window !== 'locked' || assigned.has(lesson.id));
+      (lockOf(lesson).window !== 'locked' || (!everClosed && assigned.has(lesson.id)));
     // Task 8.7 (From 8.6): an optional or reopened cell of a locked lesson takes the reader's
     // entry until its end; the cells guard takes it as a late entry (0123, 0127).
     const reopened = await reopenedCellsOf(transaction, lessonIds, now);
     const openCell = (lesson: GridLessonRow, studentId: string): boolean =>
-      !quarterClosed &&
+      !entriesClosed &&
+      !everClosed &&
       theirs(lesson) &&
       lockOf(lesson).window === 'locked' &&
       (optional.has(`${lesson.id}|${studentId}`) || reopened.has(`${lesson.id}|${studentId}`));

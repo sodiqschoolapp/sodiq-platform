@@ -51,6 +51,7 @@ import {
   subjectQuarterLessons,
   type StudentSubjectQuarter,
 } from '../journal/subject-quarter-lessons.js';
+import { recordsInForce, reopenedJournals } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 
 /**
@@ -181,17 +182,19 @@ export class StudentResultsService {
           const quarterly = one.weights.quarterly;
           if (quarterly === null) continue;
           const closing = closings.get(quarter.id);
+          const found =
+            closing === undefined
+              ? { record: undefined, reopened: false }
+              : await storedRecordOf(context.transaction, quarter.id, subjectId, studentId);
+          const stored = found.record;
           const input = inputOf(
             context,
             one,
             quarterly,
             await decisionOf(context.transaction, quarter.id, subjectId, context.studentId),
-            closing !== undefined,
+            // A journal with an unfinished reopening is read live and provisional (task 9.2c).
+            closing !== undefined && !found.reopened,
           );
-          const stored =
-            closing === undefined
-              ? undefined
-              : await storedRecordOf(context.transaction, closing.id, subjectId, studentId);
           const outcome =
             stored === undefined ? studentQuarterOutcome(input) : storedQuarterOutcome(stored);
           outcomes.set(quarter.number, outcome);
@@ -740,6 +743,7 @@ async function closingsOf(
     .select(['id', 'quarter_id', 'start_quarter'])
     .where('quarter_id', 'in', [...quarterIds])
     .where('reopened_at', 'is', null)
+    .where('cause', '=', 'close')
     .execute();
   return new Map(
     rows.map((row) => [row.quarter_id, { id: row.id, startQuarter: row.start_quarter }]),
@@ -756,19 +760,23 @@ const notOfficialOf = (
     ),
   );
 
-/** The final record of a student and subject stored by a close (task 9.2b), as stored. */
+/**
+ * The final record in force of a student and subject (task 9.2b), as stored: the highest version
+ * in force that holds one (task 9.2c); `undefined` when the journal it is listed under has an
+ * unfinished reopening, which is read live.
+ */
 async function storedRecordOf(
   transaction: Transaction,
-  closingId: string,
+  quarterId: string,
   subjectId: string,
   studentId: string,
-): Promise<unknown> {
-  const row = await transaction
-    .selectFrom('quarter_final_results')
-    .select('record')
-    .where('closing_id', '=', closingId)
-    .where('subject_id', '=', subjectId)
-    .where('student_id', '=', studentId)
-    .executeTakeFirst();
-  return row?.record;
+): Promise<{ record: unknown; reopened: boolean }> {
+  const found = (await recordsInForce(transaction, quarterId, { subjectId, studentId })).get(
+    `${subjectId}|${studentId}`,
+  );
+  if (found === undefined) return { record: undefined, reopened: false };
+  if ((await reopenedJournals(transaction, [quarterId])).has(`${quarterId}|${found.journalId}`)) {
+    return { record: undefined, reopened: true };
+  }
+  return { record: found.record, reopened: false };
 }

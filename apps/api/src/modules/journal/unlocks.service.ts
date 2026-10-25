@@ -20,7 +20,7 @@ import { decisionReach, firstTier, type RequestOn } from '../access/request-rout
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { lockOpenQuarter, refusingClosedQuarter } from '../setup/closed-quarters.js';
+import { lockOpenJournalQuarter, refusingClosedQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, personOutOf } from '../timetable/journal-owners.js';
 import {
@@ -259,8 +259,15 @@ export class UnlocksService {
         throw new ApiException('journal_entry_scope', 403);
       }
       refuseState(await entryStateOf(transaction, lesson, now));
-      // Task 9.2b (From 8.4): no unlock request in a closed quarter.
-      if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
+      // Task 9.2b (From 8.4): no unlock request in a closed quarter; 9.2c: a reopened journal
+      // takes one until its end.
+      if (quarterId !== null) {
+        await lockOpenJournalQuarter(
+          transaction,
+          quarterId,
+          lesson.journalId ?? (await lessonJournalOf(transaction, branchId, lesson.id)),
+        );
+      }
       return this.send(transaction, access, branchId, {
         target: { kind: 'lesson', lessonId: lesson.id },
         staffId,
@@ -305,7 +312,7 @@ export class UnlocksService {
         throw new ApiException('rating_exam_off', 409);
       }
       // Task 9.2b (From 8.4): no unlock request in a closed quarter; nothing is locked before.
-      await lockOpenQuarter(transaction, quarterId);
+      await lockOpenJournalQuarter(transaction, quarterId, journal.id);
       return this.send(transaction, access, branchId, {
         target: { kind: 'rating', journalId: journal.id, quarterId },
         staffId,
@@ -448,7 +455,14 @@ export class UnlocksService {
         );
         if (reach !== 'decide') throw scopeRefusal();
         // Task 9.2b (From 8.4): an approval in a closed quarter is refused; a refusal still works.
-        if (quarterId !== null) await lockOpenQuarter(transaction, quarterId);
+        // 9.2c: a reopened journal takes one until its end.
+        if (quarterId !== null) {
+          await lockOpenJournalQuarter(
+            transaction,
+            quarterId,
+            row.journal_id ?? (await lessonJournalOf(transaction, branchId, row.lesson_id)),
+          );
+        }
         if (row.status !== 'sent') throw new ApiException('journal_unlock_decided', 409);
         if (await outToday(transaction, branchId, row.staff_id, today)) {
           throw new ApiException('journal_unlock_cancelled', 409);
@@ -616,6 +630,22 @@ async function lessonQuarterOf(
     where l.id = ${lessonId}::uuid and l.branch_id = ${branchId}::uuid
   `.execute(transaction);
   return found.rows[0]?.quarter ?? null;
+}
+
+/** The journal of a dated lesson of the branch (`lesson_journal`, 0135). */
+async function lessonJournalOf(
+  transaction: Transaction,
+  branchId: string,
+  lessonId: string | null,
+): Promise<string> {
+  const found = await sql<{ journal: string | null }>`
+    select lesson_journal(l.id) as journal from lessons l
+    where l.id = ${lessonId}::uuid and l.branch_id = ${branchId}::uuid
+  `.execute(transaction);
+  const journal = found.rows[0]?.journal ?? null;
+  // A request names a lesson of the branch, which has a journal (`journals`, 0081).
+  if (journal === null) throw new Error('The lesson of the request has no journal.');
+  return journal;
 }
 
 /** The quarter of a request: the rating exam's, or its lesson's. */

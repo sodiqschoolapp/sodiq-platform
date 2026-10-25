@@ -82,7 +82,13 @@ export type ViewDay = z.infer<typeof viewDaySchema>;
 
 /** A lesson as the views show it: the day page's lesson without its action flags. */
 export const viewLessonSchema = dayLessonSchema
-  .omit({ canCancel: true, canRestore: true, canCorrect: true, canSubstitute: true })
+  .omit({
+    canCancel: true,
+    canRestore: true,
+    canCorrect: true,
+    canSubstitute: true,
+    quarterClosed: true,
+  })
   .extend({
     /** The class, or the classes the group draws from: the rows of the school view. */
     classIds: z.array(z.uuid()),

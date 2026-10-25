@@ -630,6 +630,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   date_in_closed_quarter: 'The date is in a closed quarter.',
   plan_quarter_closed: 'The quarter of the plan is closed.',
   exemption_closed_quarter: 'The change would touch days of a closed quarter.',
+  quarter_not_closed: 'The quarter is not closed.',
+  quarter_reopened: 'The quarter or the journal is already reopened.',
+  quarter_journal_reopened: 'A journal of the quarter is reopened.',
+  closing_journal_not_closed: 'The journal was not closed with the quarter.',
+  closing_journal_not_reopened: 'The journal is not reopened.',
+  recalculation_changed: 'The differences listed now are not the ones sent.',
+  recalculation_nothing: 'The stored results match the current calculation.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

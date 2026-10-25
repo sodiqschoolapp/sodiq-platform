@@ -540,6 +540,7 @@ export interface ForcedDeletes {
   deleted_at: Timestamp;
   deleted_by: string;
   id: Generated<string>;
+  purged_at: Timestamp | null;
   reason: string;
   record_id: string;
   record_type: string;
@@ -1072,6 +1073,14 @@ export interface LessonHistory {
   written_xact: Generated<string>;
 }
 
+export interface LessonLockNotices {
+  account_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  lesson_id: string;
+}
+
 export interface LessonPlanAbsorbed {
   absorbing_lesson_id: string;
   branch_id: string;
@@ -1373,11 +1382,16 @@ export interface QuarterClosingJournals {
 
 export interface QuarterClosings {
   branch_id: string;
+  cause: Generated<string>;
+  changes: Generated<Json>;
   closed_at: Timestamp;
   closed_by: string;
+  created_xact: Generated<string>;
   id: Generated<string>;
+  journal_id: string | null;
   lock_now: boolean;
   quarter_id: string;
+  reason: string | null;
   reopened_at: Timestamp | null;
   start_quarter: string | null;
   version: number;
@@ -1394,6 +1408,21 @@ export interface QuarterFinalResults {
   record: Json;
   student_id: string;
   subject_id: string;
+}
+
+export interface QuarterReopenings {
+  branch_id: string;
+  closing_id: string;
+  created_xact: Generated<string>;
+  days: number;
+  ended_by_closing_id: string | null;
+  id: Generated<string>;
+  journal_id: string | null;
+  open_until: Timestamp;
+  quarter_id: string;
+  reason: string;
+  reopened_at: Timestamp;
+  reopened_by: string;
 }
 
 export interface QuarterResultDecisions {
@@ -1449,6 +1478,27 @@ export interface RequestKeys {
   scope: string;
 }
 
+export interface ResultCheckDifferences {
+  branch_id: string;
+  check_id: string;
+  detail: Json;
+  id: Generated<string>;
+  journal_id: string;
+  kind: string;
+  quarter_id: string;
+  student_id: string | null;
+  subject_id: string | null;
+}
+
+export interface ResultChecks {
+  branch_id: string;
+  day: string;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  started_at: Timestamp;
+  summary: Generated<Json>;
+}
+
 export interface RoomClosures {
   applies_from: Timestamp;
   applies_until: Timestamp;
@@ -1474,6 +1524,14 @@ export interface Rooms {
   shared: Generated<boolean>;
   status: string;
   type: string;
+}
+
+export interface ScheduledRuns {
+  branch_id: string;
+  day: string;
+  enqueued_at: Timestamp;
+  id: Generated<string>;
+  kind: string;
 }
 
 export interface SchemaMigrations {
@@ -2100,6 +2158,7 @@ export interface DB {
   lesson_day_changes: LessonDayChanges;
   lesson_exam_cancels: LessonExamCancels;
   lesson_history: LessonHistory;
+  lesson_lock_notices: LessonLockNotices;
   lesson_plan_absorbed: LessonPlanAbsorbed;
   lesson_plan_files: LessonPlanFiles;
   lesson_plan_follow_marks: LessonPlanFollowMarks;
@@ -2127,13 +2186,17 @@ export interface DB {
   quarter_closing_journals: QuarterClosingJournals;
   quarter_closings: QuarterClosings;
   quarter_final_results: QuarterFinalResults;
+  quarter_reopenings: QuarterReopenings;
   quarter_result_decisions: QuarterResultDecisions;
   quarters: Quarters;
   relative_accounts: RelativeAccounts;
   relatives: Relatives;
   request_keys: RequestKeys;
+  result_check_differences: ResultCheckDifferences;
+  result_checks: ResultChecks;
   room_closures: RoomClosures;
   rooms: Rooms;
+  scheduled_runs: ScheduledRuns;
   schema_migrations: SchemaMigrations;
   second_step_recovery_codes: SecondStepRecoveryCodes;
   sessions: Sessions;

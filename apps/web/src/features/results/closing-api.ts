@@ -6,7 +6,13 @@ import {
   closingJournalDecisionSchema,
   closingPeriodsEndedSchema,
   closingRemindedSchema,
+  closingRecalculationAppliedSchema,
+  closingRecalculationSchema,
+  closingReopenedSchema,
   type ClosingCloseInput,
+  type ClosingJournalCloseInput,
+  type ClosingRecalculationApplyInput,
+  type ClosingReopenInput,
   type ClosingDecisionInput,
   type ClosingJournalDecisionInput,
 } from '@sodiq/shared';
@@ -88,3 +94,57 @@ export const closeQuarter = (quarterId: string, body: ClosingCloseInput, key: st
       body,
     }),
   ).then((answer) => closingClosedSchema.parse(answer));
+
+/** The reopening of a quarter or one journal (task 9.2c): one key per dialog. */
+export const reopenQuarter = (quarterId: string, body: ClosingReopenInput, key: string) =>
+  answerOf(
+    api.POST('/api/results/closing/{quarterId}/reopen', {
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { quarterId } },
+      body,
+    }),
+  ).then((answer) => closingReopenedSchema.parse(answer));
+
+/** A reopened journal closed again (task 9.2c): one key per dialog. */
+export const closeJournalAgain = (
+  quarterId: string,
+  journalId: string,
+  body: ClosingJournalCloseInput,
+  key: string,
+) =>
+  answerOf(
+    api.POST('/api/results/closing/{quarterId}/journals/{journalId}/close', {
+      params: {
+        header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key },
+        path: { quarterId, journalId },
+      },
+      body,
+    }),
+  ).then((answer) => closingClosedSchema.parse(answer));
+
+/** "Recalculate and compare" (task 9.2c): read when the person asks for it. */
+export const recalculationQuery = (branchId: string | null, quarterId: string, asked: boolean) =>
+  queryOptions({
+    queryKey: [...closingKey(branchId), quarterId, 'recalculation'],
+    queryFn: async () =>
+      closingRecalculationSchema.parse(
+        await answerOf(
+          api.GET('/api/results/closing/{quarterId}/recalculation', {
+            params: { header: branchHeader(), path: { quarterId } },
+          }),
+        ),
+      ),
+    enabled: branchId !== null && asked,
+  });
+
+/** "Apply with a reason" (task 9.2c): one key per dialog. */
+export const applyRecalculation = (
+  quarterId: string,
+  body: ClosingRecalculationApplyInput,
+  key: string,
+) =>
+  answerOf(
+    api.POST('/api/results/closing/{quarterId}/recalculation/apply', {
+      params: { header: { ...branchHeader(), [REQUEST_KEY_HEADER]: key }, path: { quarterId } },
+      body,
+    }),
+  ).then((answer) => closingRecalculationAppliedSchema.parse(answer));

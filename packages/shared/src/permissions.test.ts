@@ -560,6 +560,14 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the apply of a recalculation to the Super Admin alone (task 9.2c, decision 10)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.results_recalculation[role], role).toEqual(
+        role === 'super_admin' ? ['edit'] : [],
+      );
+    }
+  });
+
   it('gives the support view to the Super Admin and the Academic Vice Principal (task 8.9, decision 2)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.journal_support[role], role).toEqual(
@@ -610,6 +618,7 @@ describe('a frozen permission table', () => {
       'quarter_closing',
       'quarters',
       'relatives',
+      'results_recalculation',
       'rooms',
       'settings',
       'staff',

@@ -35,6 +35,12 @@ export interface JobDefinition<Data> {
    * repeat-safe from the stored state it reads.
    */
   transaction?: 'none';
+  /**
+   * A cron expression in UTC (task 9.2c, plan decision 9): the worker schedules the job with
+   * pg-boss, which sends it with no branch and the data `{}`. Only for a job whose data is
+   * empty and whose handler finds its own work from stored state and the clock.
+   */
+  cron?: string;
 }
 
 const JOB_NAME = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;

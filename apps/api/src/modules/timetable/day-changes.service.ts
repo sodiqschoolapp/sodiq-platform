@@ -1573,6 +1573,21 @@ export async function dayLessonsOf(
       .execute(),
   ]);
   const closedBlocks = new Set(closed.map((one) => one.id));
+  // Task 9.2c (From 9.2b): the blocks of a closed quarter, as `quarter_is_closed` reads it.
+  const closedQuarterBlocks = new Set(
+    (
+      await transaction
+        .selectFrom('lesson_blocks')
+        .select('id')
+        .where(
+          'id',
+          'in',
+          lessons.map((one) => one.blockId),
+        )
+        .where(sql<boolean>`quarter_is_closed(lesson_blocks.quarter_id)`)
+        .execute()
+    ).map((one) => one.id),
+  );
   const classOf = new Map(classes.map((one) => [one.id, classDisplayName(one.grade, one.name)]));
   const groupOf = new Map(groups.map((one) => [one.id, one.name]));
   const subjectOf = new Map(
@@ -1672,6 +1687,7 @@ export async function dayLessonsOf(
         ? (roomOut.get(one.id)?.cause ?? null)
         : null,
       canCorrect: started && !closedBlocks.has(one.blockId),
+      quarterClosed: closedQuarterBlocks.has(one.blockId),
       substitution: substitutionOf(substitutions.get(one.id)),
       canSubstitute: one.cancelCause === null && !started && !closedBlocks.has(one.blockId),
     };

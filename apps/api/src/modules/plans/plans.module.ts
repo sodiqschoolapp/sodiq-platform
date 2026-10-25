@@ -75,7 +75,7 @@ import { PlansService } from './plans.service.js';
       inject: [CONFIG],
     },
   ],
-  // Task 9.2a: the closing checklist reads the plan reports.
-  exports: [PlanFollow, PlanReportsService],
+  // Task 9.2a: the closing checklist reads the plan reports; 9.2c: the daily reminders, the plans.
+  exports: [PlanFollow, PlanReportsService, PlansService],
 })
 export class PlansModule {}

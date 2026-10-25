@@ -31,6 +31,15 @@ import { WeekChange } from './week-change';
  * does not know (a newer server) gets a text that says so instead of nothing
  * (`edge/system-behaviour`: a tab from before a release keeps working).
  */
+/** The kinds of task 9.2c whose data holds school dates, written as the screen writes them. */
+const DATED_KINDS: ReadonlySet<string> = new Set([
+  'results.check_difference',
+  'results.check_missed',
+  'results.closing_overdue',
+  'plans.window_ending',
+  'plans.window_missing',
+]);
+
 export function useNotificationText(): (item: Notification) => string {
   const { t, i18n } = useTranslation();
   return (item) => {
@@ -76,6 +85,31 @@ export function useNotificationText(): (item: Notification) => string {
             .join('; '),
         },
       });
+    }
+    // Task 9.2c: "about to lock" names the subject in the language shown and the moment of
+    // the lock; the dates of the daily notices as the screen writes them.
+    if (item.kind === 'journal.lesson_about_to_lock') {
+      const notice = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
+      if (!notice.success) return t('notifications.kinds.unknown');
+      return t('notifications.kinds.journal.lesson_about_to_lock', {
+        replace: {
+          unit: notice.data.unit,
+          subject: nameOf(notice.data.subject, i18n.language),
+          date: schoolDateText(notice.data.date, i18n.language),
+          locksAt: formatMoment(i18n.language, notice.data.locksAt),
+        },
+      });
+    }
+    if (DATED_KINDS.has(item.kind)) {
+      const data = Object.fromEntries(
+        Object.entries(item.data).map(([name, value]) => [
+          name,
+          typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+            ? schoolDateText(value, i18n.language)
+            : value,
+        ]),
+      );
+      return t(key as 'notifications.kinds.unknown', { replace: data });
     }
     // The key exists; the type of `t` cannot know a key built from data. The
     // data fills the {{names}} only (`replace`): a field called `count` or
