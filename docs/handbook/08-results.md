@@ -121,6 +121,50 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - The student's results show a closed quarter as it was kept, and the year result once quarter 4 is closed. A "not official" start quarter is left out of the year result.
 - A journal file of a closed quarter says "Final" with the closing date and version, and keeps the class, subject and teacher names of the day of the close.
 - If anything fails during the close, the quarter stays open and nothing is kept.
-- Reopening a quarter comes later (task 9.2c).
+- A closed quarter can be reopened (see Reopening a quarter).
 
 **What the person sees.** A save in a closed quarter: "This quarter is closed: its journals and results are final, so this change is not made."
+
+## Reopening a quarter
+
+<!-- Sources: spec 07 (Editing rules and locks: "Reopening needs a reason and is logged"), edge/journal (Closing and reopening), edge/exemptions (The range starts in a closed quarter), edge/calculation (A bug is found after results were closed and exported); task 9.2c, pull request #231 -->
+
+**What it is.** Opening a closed quarter again for a few days, to fix a mistake, for the whole branch or for one journal. The results kept at the close stay kept; closing again keeps a new version beside them.
+
+**Who can use it.** The Academic Vice Principal and the Super Admin, from the closing checklist of the closed quarter.
+
+**How it works.**
+
+1. Press **Reopen**, choose the whole branch or one journal, the number of days (1 to 14) and write the reason.
+2. While it is reopened, lessons stay locked: only the Academic Vice Principal's corrections and unlocks approved from then on change the journal.
+3. The checklist lists every result that changed since the close, with what it was and what it is now.
+4. When the days end, entries stop again; the decisions of the checklist and the close stay possible.
+5. Close again: the whole branch with **Close the quarter**, a reopened journal with **Close again** in its panel. Each close keeps a new version of the results; the earlier one stays.
+
+**Rules.**
+
+- A journal reopened opens that journal only; the whole branch reopened opens the quarter for every change a closed quarter refuses, except its late and skipped values and its dates.
+- An exemption reaching into a reopened quarter is applied there only when every journal it reaches is reopened, or the whole branch.
+- One reopening at a time for a journal, and none of the whole branch while a journal is reopened.
+- A closed year is never reopened.
+- The results of a reopened journal are shown as they are now, provisional, until it is closed again.
+
+## Recalculate and compare, and the nightly check
+
+<!-- Sources: edge/calculation (A bug is found after results were closed and exported), edge/system-behaviour (The nightly check); task 9.2c, pull request #231 -->
+
+**What it is.** Two checks that the kept results are right. "Recalculate and compare" on the closing checklist of a closed quarter lists every kept result the current calculation would give otherwise; nothing changes. Every night the platform also checks each branch.
+
+**Who can use it.** Everyone who reads the closing checklist sees the list; only the Super Admin applies it.
+
+**How it works.**
+
+1. Press **Recalculate and compare** on a closed quarter.
+2. The Super Admin may **Apply with a reason**: a new version of those results is kept, the old ones stay, and the teachers of the journals concerned get a notice.
+3. Each night at 02:00 the check compares every mark with its history and every kept result with the calculation and with its marks. A difference is shown on the checklist, blocks closing that journal, and the Super Admins get a notice; the next night's check clears it once it is repaired. A night without a check also sends the Super Admins a notice.
+
+**Rules.**
+
+- The Academic Vice Principal is reminded each morning of a quarter whose last day has passed and that is not closed.
+- Teachers are reminded three days before their lesson plan window ends and on its last day when the plan is incomplete; the Academic Vice Principal daily when no window is open 14 days before a quarter; a teacher of a prepared edit request on days 1, 3 and 7, then weekly; a teacher of a lesson that locks within 48 hours with data missing, once.
+- The kept data of a lesson deleted for good is removed 30 days after the delete, and a summary stays in the audit log.

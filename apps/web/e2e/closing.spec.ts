@@ -68,8 +68,27 @@ test('an Academic Vice Principal closes a quarter that ended', async ({ page }) 
   await expect(page.locator('[data-closing-state="closed"]')).toContainText('Closed on');
   await expect(page.locator('[data-closing-state="closed"]')).toContainText('version 1');
   await expect(page.getByText(en.results.closing.closedNone)).toBeVisible();
-  // A closed quarter has no action left.
+  // A closed quarter has no close left.
   await expect(
     page.getByRole('button', { name: en.results.closing.closeQuarter, exact: true }),
   ).toHaveCount(0);
+
+  // Task 9.2c (edge/journal, Closing and reopening): the whole branch reopened for 3 days with a
+  // reason, then closed again as version 2; the reopening is listed with the version it ended.
+  await page.getByRole('button', { name: en.results.reopening.action, exact: true }).click();
+  const reopen = page.getByRole('dialog');
+  await reopen
+    .getByLabel(en.results.reopening.reason, { exact: true })
+    .fill('A mark was typed in the wrong row');
+  await reopen.getByRole('button', { name: en.results.reopening.action, exact: true }).click();
+  await expect(reopen).toHaveCount(0);
+  await expect(page.locator('[data-reopened="branch"]')).toContainText(
+    'A mark was typed in the wrong row',
+  );
+  await expect(page.getByText(en.results.reopening.noChanges)).toBeVisible();
+  await page.getByRole('button', { name: en.results.closing.closeQuarter, exact: true }).click();
+  const again = page.getByRole('dialog');
+  await again.getByRole('button', { name: en.results.closing.close.action, exact: true }).click();
+  await expect(again).toHaveCount(0);
+  await expect(page.locator('[data-closing-state="closed"]')).toContainText('version 2');
 });

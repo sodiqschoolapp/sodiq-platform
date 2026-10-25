@@ -291922,6 +291922,9 @@
                           "canCorrect": {
                             "type": "boolean"
                           },
+                          "quarterClosed": {
+                            "type": "boolean"
+                          },
                           "substitution": {
                             "nullable": true,
                             "type": "object",
@@ -291987,6 +291990,7 @@
                           "away",
                           "roomOut",
                           "canCorrect",
+                          "quarterClosed",
                           "substitution",
                           "canSubstitute"
                         ],
@@ -294118,6 +294122,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -294183,6 +294190,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -296308,6 +296316,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -296373,6 +296384,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -298502,6 +298514,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -298567,6 +298582,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -300707,6 +300723,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -300772,6 +300791,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -302998,6 +303018,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -303063,6 +303086,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -308866,6 +308890,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -308931,6 +308958,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -311054,6 +311082,9 @@
                         "canCorrect": {
                           "type": "boolean"
                         },
+                        "quarterClosed": {
+                          "type": "boolean"
+                        },
                         "substitution": {
                           "nullable": true,
                           "type": "object",
@@ -311119,6 +311150,7 @@
                         "away",
                         "roomOut",
                         "canCorrect",
+                        "quarterClosed",
                         "substitution",
                         "canSubstitute"
                       ],
@@ -320921,6 +320953,9 @@
                               "canCorrect": {
                                 "type": "boolean"
                               },
+                              "quarterClosed": {
+                                "type": "boolean"
+                              },
                               "substitution": {
                                 "nullable": true,
                                 "type": "object",
@@ -320986,6 +321021,7 @@
                               "away",
                               "roomOut",
                               "canCorrect",
+                              "quarterClosed",
                               "substitution",
                               "canSubstitute"
                             ],
@@ -321207,6 +321243,9 @@
                                 "canCorrect": {
                                   "type": "boolean"
                                 },
+                                "quarterClosed": {
+                                  "type": "boolean"
+                                },
                                 "substitution": {
                                   "nullable": true,
                                   "type": "object",
@@ -321272,6 +321311,7 @@
                                 "away",
                                 "roomOut",
                                 "canCorrect",
+                                "quarterClosed",
                                 "substitution",
                                 "canSubstitute"
                               ],
@@ -321529,6 +321569,9 @@
                           "canCorrect": {
                             "type": "boolean"
                           },
+                          "quarterClosed": {
+                            "type": "boolean"
+                          },
                           "substitution": {
                             "nullable": true,
                             "type": "object",
@@ -321594,6 +321637,7 @@
                           "away",
                           "roomOut",
                           "canCorrect",
+                          "quarterClosed",
                           "substitution",
                           "canSubstitute"
                         ],
@@ -321789,6 +321833,9 @@
                           "canCorrect": {
                             "type": "boolean"
                           },
+                          "quarterClosed": {
+                            "type": "boolean"
+                          },
                           "substitution": {
                             "nullable": true,
                             "type": "object",
@@ -321854,6 +321901,7 @@
                           "away",
                           "roomOut",
                           "canCorrect",
+                          "quarterClosed",
                           "substitution",
                           "canSubstitute"
                         ],
@@ -334839,6 +334887,9 @@
                           "canCorrect": {
                             "type": "boolean"
                           },
+                          "quarterClosed": {
+                            "type": "boolean"
+                          },
                           "substitution": {
                             "nullable": true,
                             "type": "object",
@@ -334904,6 +334955,7 @@
                           "away",
                           "roomOut",
                           "canCorrect",
+                          "quarterClosed",
                           "substitution",
                           "canSubstitute"
                         ],
@@ -335117,6 +335169,9 @@
                                 "canCorrect": {
                                   "type": "boolean"
                                 },
+                                "quarterClosed": {
+                                  "type": "boolean"
+                                },
                                 "substitution": {
                                   "nullable": true,
                                   "type": "object",
@@ -335182,6 +335237,7 @@
                                 "away",
                                 "roomOut",
                                 "canCorrect",
+                                "quarterClosed",
                                 "substitution",
                                 "canSubstitute"
                               ],
@@ -337654,6 +337710,9 @@
                               "canCorrect": {
                                 "type": "boolean"
                               },
+                              "quarterClosed": {
+                                "type": "boolean"
+                              },
                               "substitution": {
                                 "nullable": true,
                                 "type": "object",
@@ -337719,6 +337778,7 @@
                               "away",
                               "roomOut",
                               "canCorrect",
+                              "quarterClosed",
                               "substitution",
                               "canSubstitute"
                             ],

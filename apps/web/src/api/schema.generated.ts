@@ -58215,6 +58215,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -58609,6 +58610,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -58994,6 +58996,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -59379,6 +59382,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -59767,6 +59771,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -60174,6 +60179,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -61181,6 +61187,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -61564,6 +61571,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -63261,6 +63269,7 @@ export interface operations {
                                 /** @enum {string|null} */
                                 roomOut: "closed" | "under_repair" | "closure" | null;
                                 canCorrect: boolean;
+                                quarterClosed: boolean;
                                 substitution: {
                                     /** Format: uuid */
                                     id: string;
@@ -63329,6 +63338,7 @@ export interface operations {
                                 /** @enum {string|null} */
                                 roomOut: "closed" | "under_repair" | "closure" | null;
                                 canCorrect: boolean;
+                                quarterClosed: boolean;
                                 substitution: {
                                     /** Format: uuid */
                                     id: string;
@@ -63402,6 +63412,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -63463,6 +63474,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -65778,6 +65790,7 @@ export interface operations {
                             /** @enum {string|null} */
                             roomOut: "closed" | "under_repair" | "closure" | null;
                             canCorrect: boolean;
+                            quarterClosed: boolean;
                             substitution: {
                                 /** Format: uuid */
                                 id: string;
@@ -65845,6 +65858,7 @@ export interface operations {
                                 /** @enum {string|null} */
                                 roomOut: "closed" | "under_repair" | "closure" | null;
                                 canCorrect: boolean;
+                                quarterClosed: boolean;
                                 substitution: {
                                     /** Format: uuid */
                                     id: string;
@@ -66423,6 +66437,7 @@ export interface operations {
                                 /** @enum {string|null} */
                                 roomOut: "closed" | "under_repair" | "closure" | null;
                                 canCorrect: boolean;
+                                quarterClosed: boolean;
                                 substitution: {
                                     /** Format: uuid */
                                     id: string;
