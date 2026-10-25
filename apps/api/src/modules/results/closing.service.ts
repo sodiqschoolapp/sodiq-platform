@@ -40,7 +40,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { clockOf } from '../plans/plan-read.js';
 import { PlanReportsService } from '../plans/plan-reports.service.js';
 import { periodOpen } from '../plans/plan-window.js';
-import { closedQuarters, closingOf } from '../setup/closed-quarters.js';
+import { closedQuarters, closingOf, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { accountNames } from '../timetable/edit-lock.js';
 import { countsFromOf, goLiveOf } from '../journal/start-quarter.js';
@@ -478,7 +478,17 @@ export class ClosingService {
           key,
           scope: 'results.quarter_close',
           accountId: access.accountId,
-          input: { quarterId: scene.quarter.id, ...input },
+          // The warnings in one order, so the same list sent in another order is the same request
+          // (permission review should-fix 9).
+          input: {
+            quarterId: scene.quarter.id,
+            ...input,
+            warnings: [...input.warnings]
+              .map((one) => ({ kind: one.kind, journalId: one.journalId?.toLowerCase() ?? null }))
+              .sort((a, b) =>
+                `${a.kind}|${a.journalId ?? ''}`.localeCompare(`${b.kind}|${b.journalId ?? ''}`),
+              ),
+          },
         },
         () => this.closeLocked(transaction, access, scene, input, requestId),
       );
@@ -750,9 +760,9 @@ export class ClosingService {
 
   /** A write of the checklist in a closed quarter is refused (task 9.2b). */
   private async refuseClosed(transaction: Transaction, scene: Scene): Promise<void> {
-    if ((await closingOf(transaction, scene.quarter.id)) !== undefined) {
-      throw new ApiException('quarter_closed', 409);
-    }
+    // The quarter held `for key share` before the write's rows: a close at the same moment waits
+    // for this write, or this write for the close and is refused (permission review should-fix 8).
+    await lockOpenQuarter(transaction, scene.quarter.id);
   }
 
   /** The close in force, as the checklist answers it; `null` while open. */

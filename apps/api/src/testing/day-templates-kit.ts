@@ -279,6 +279,8 @@ export async function dayTemplatesKit(
         'quarter_closings',
         'quarter_closing_journals',
         'quarter_final_results',
+        // Task 9.2b (permission review should-fix 6): the notice of "lock now".
+        'notifications',
       ] as const) {
         rows[table] = await database.migrator
           .selectFrom(table)

@@ -1390,6 +1390,14 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         expect([whole.status, codeOf(whole)]).toEqual([409, 'closing_not_open']);
         const ended = await post(b.s.branch, `/api/results/closing/${b.q1}/plan-periods/end`);
         expect([ended.status, codeOf(ended)]).toEqual([409, 'closing_not_open']);
+        // Task 9.2b (permission review must-fix 5): the close too.
+        const closed = await post(
+          b.s.branch,
+          `/api/results/closing/${b.q1}/close`,
+          { warnings: [], lockNow: true, startQuarter: null },
+          randomUUID(),
+        );
+        expect([closed.status, codeOf(closed)]).toEqual([409, 'closing_not_open']);
       },
       '2026-10-16T12:00:00+05:00',
     );
@@ -1805,6 +1813,11 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       CLOSE,
     );
     expect(closed.version).toBe(1);
+    // The Principal reads the close too, and has no action (permission review should-fix 7).
+    await as(await account(), [{ role: 'principal', branchId: b.s.branch }], async ({ get }) => {
+      const read = checklistOf(await get(b.s.branch, path(b.q1)));
+      expect([read.state, read.canEdit, read.closing?.version]).toEqual(['closed', false, 1]);
+    });
     expect(
       await t.database.migrator
         .selectFrom('quarter_closings')
@@ -2070,6 +2083,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     expect(await t.auditCount()).toBe(auditBefore);
     expect(await t.rowsOf(s.branch)).toEqual(rowsBefore.north);
     expect(await t.rowsOf(other.branch)).toEqual(rowsBefore.south);
+    const rowsBeforeRoles = await t.rowsOf(s.branch);
+    const auditBeforeRoles = await t.auditCount();
     for (const role of ['principal', 'teacher', 'head_teacher'] as const) {
       await as(
         await account(),
@@ -2086,6 +2101,17 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         CLOSE,
       );
     }
+    expect(await t.rowsOf(s.branch)).toEqual(rowsBeforeRoles);
+    // The role given to each account writes its own entry; the close writes none.
+    expect(
+      await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', 'in', ['results.quarter_closed', 'plan.requests_voided'])
+        .where('branch_id', '=', s.branch)
+        .execute(),
+    ).toEqual([]);
+    expect(auditBeforeRoles).toBeGreaterThan(0);
     // The key: used once, then a repeat with another branch's or an unknown quarter is 404,
     // another account's use is 409, and a refused role is 403, never the stored answer.
     await as(
