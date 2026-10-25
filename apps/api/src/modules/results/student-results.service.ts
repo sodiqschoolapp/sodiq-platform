@@ -39,7 +39,7 @@ import {
   type GridWeights,
   type JournalRow,
 } from '../journal/journal-grid.query.js';
-import { teaches } from '../journal/journal-scope.js';
+import { roleReadingOf, teaches } from '../journal/journal-scope.js';
 import { subjectsOf } from '../journal/leaving-results.service.js';
 import { countsFromOf, goLiveOf, notInSystem } from '../journal/start-quarter.js';
 import { studentRowReading, type StudentRowReading } from '../journal/student-row-reading.js';
@@ -314,8 +314,18 @@ export class StudentResultsService {
         },
         subjectId,
       );
-      // No journal of the subject in the quarter: nothing of it to show.
-      if (one === undefined) throw notFound();
+      // No journal of the subject in the quarter: nothing of it to show. Only a reader of the
+      // subject by role learns that (404); anyone else gets the scope refusal it would get for a
+      // journal it may not read, so a subject outside the scope tells nothing (.claude/rules/api.md).
+      if (one === undefined) {
+        const byRole = roleReadingOf(context.access, {
+          subjectId,
+          classId: null,
+          groupClassIds: [],
+        });
+        if (byRole === null) throw new ApiException('permission_denied', 403);
+        throw notFound();
+      }
       if (one.reading === null) throw new ApiException('permission_denied', 403);
       const whole = one.reading === 'whole' && !one.attendanceOnly;
       const values = valuesOf(one.weights);
@@ -655,8 +665,11 @@ async function membershipReadings(context: Context, year: YearRow): Promise<Stud
         day: readingDay(span, context.today),
         staffId: context.staffId,
       });
-      readings.push(reading);
-      if (reading === 'whole') return readings;
+      // A journal attendance only in every quarter has no result to read (decision 10).
+      const graded = journal.quarters.some((one) => !one.attendanceOnly);
+      const counted = reading === 'whole' && !graded ? 'attendance' : reading;
+      readings.push(counted);
+      if (counted === 'whole') return readings;
     }
   }
   return readings;

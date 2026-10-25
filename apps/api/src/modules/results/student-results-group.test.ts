@@ -1,4 +1,9 @@
-import { BRANCH_HEADER, studentResultLessonsSchema, studentResultsSchema } from '@sodiq/shared';
+import {
+  BRANCH_HEADER,
+  studentLeavingResultsSchema,
+  studentResultLessonsSchema,
+  studentResultsSchema,
+} from '@sodiq/shared';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -67,6 +72,8 @@ describe('the student results of a group subject', () => {
     nurova: { kind: 'score'; score: number } | { kind: 'did_not_sit' | 'exempt' } | null;
     qosimov: { kind: 'score'; score: number } | { kind: 'did_not_sit' | 'exempt' } | null;
     notHeld?: boolean;
+    /** Nurova leaves the school with the last day 12 October. */
+    nurovaLeaves?: boolean;
   }) {
     const branch = await t.newBranch();
     const { year, quarters } = await cells.lessons.year(branch);
@@ -101,23 +108,38 @@ describe('the student results of a group subject', () => {
         .executeTakeFirstOrThrow()
     ).id;
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const placed = async (name: string, classId: string) => {
+    const placed = async (name: string, classId: string, leaves = false) => {
       const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+      const leavingId = leaves
+        ? await members.leaving(t.database.migrator, branch, id, '2026-10-13')
+        : null;
+      const ends =
+        leavingId === null ? {} : { until: '2026-10-13', endedBy: 'leaving' as const, leavingId };
       await t.database.migrator
         .updateTable('students')
         .set({ last_name: name })
         .where('id', '=', id)
         .execute();
       await t.database.migrator.transaction().execute(async (transaction) => {
-        await members.member({ branch, classId, studentId: id, from: '2026-09-01' }, transaction);
+        await members.member(
+          { branch, classId, studentId: id, from: '2026-09-01', ...ends },
+          transaction,
+        );
         await members.groupMember(
-          { branch, groupId: group, subjectId: cells.subject, studentId: id, from: '2026-09-01' },
+          {
+            branch,
+            groupId: group,
+            subjectId: cells.subject,
+            studentId: id,
+            from: '2026-09-01',
+            ...ends,
+          },
           transaction,
         );
       });
       return id;
     };
-    const nurova = await placed('Nurova', oxford);
+    const nurova = await placed('Nurova', oxford, entries.nurovaLeaves === true);
     const qosimov = await placed('Qosimov', cambridge);
     const lesson = await cells.groupLesson(branch, year, group, '2026-10-12');
     // The lesson's teacher is its pattern entry's: a held lesson (edge/00-definitions).
@@ -278,5 +300,32 @@ describe('the student results of a group subject', () => {
         outcome: { kind: 'number', shown: 100, provisional: true },
       });
     });
+  });
+
+  // The permission review of the code, must-fix 2: the same reading at leaving
+  // (`GET /api/people/students/:id/leaving-results`; edge/calculation, a result at leaving).
+  it('gives the result at leaving of a group subject to the Tutor of the student’s class on the last day, not to the other class’s', async () => {
+    const s = await scene({
+      nurova: { kind: 'score', score: 70 },
+      qosimov: null,
+      nurovaLeaves: true,
+    });
+    const path = `/api/people/students/${s.nurova}/leaving-results`;
+    for (const [classId, subjects] of [
+      [s.oxford, [cells.subject]],
+      [s.cambridge, []],
+    ] as const) {
+      const tutor = await account();
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(s.branch, classId, tutor.account.id);
+      // The Head Tutor's reading of the record (a student who left is of no class now).
+      await as(tutor, s.branch, [{ role: 'head_tutor', branchId: s.branch }], async (get) => {
+        const response = await get(path);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        const answer = studentLeavingResultsSchema.parse(response.body);
+        expect(answer.lastDay).toBe('2026-10-12');
+        expect(answer.results.map((one) => one.subject.id)).toEqual(subjects);
+      });
+    }
   });
 });

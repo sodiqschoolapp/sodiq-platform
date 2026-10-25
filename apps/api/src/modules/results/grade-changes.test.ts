@@ -424,4 +424,46 @@ describe('the preview and the reason of a change of weights or values', () => {
     }
     expect(await rowsOf()).toEqual(before);
   });
+
+  // The permission review of the code, must-fix 3: the writes now tell teachers, so their 404
+  // tests compare the notices too, with a reason sent and an owned journal and a stored
+  // distribution in both branches, so that a leaked id would reach the notice.
+  it('answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged', async () => {
+    const x = await scene();
+    const other = await scene();
+    const before = await rowsOf();
+    const subject = x.s.subject;
+    const withReason = { ...CHANGED, reason: 'Agreed by the department' };
+    for (const [method, path, body] of [
+      [
+        'put',
+        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}`,
+        withReason,
+      ],
+      ['put', `/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}`, withReason],
+      ['put', `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}`, withReason],
+      [
+        'post',
+        `/api/setup/subjects/${subject}/quarter-weights/copy`,
+        { yearId: other.s.year, reason: 'x' },
+      ],
+      [
+        'post',
+        `/api/setup/subjects/${subject}/quarter-weights/copy`,
+        { yearId: UNKNOWN, reason: 'x' },
+      ],
+      [
+        'post',
+        `/api/setup/subjects/${UNKNOWN}/quarter-weights/copy`,
+        { yearId: x.s.year, reason: 'x' },
+      ],
+    ] as const) {
+      const response = await at(() =>
+        method === 'put' ? t.put(path, x.s.branch, body) : t.post(path, x.s.branch, body),
+      );
+      expect(response.status, `${path} ${JSON.stringify(response.body)}`).toBe(404);
+    }
+    expect(await rowsOf()).toEqual(before);
+    expect(await noticesOf(other.owner.account.id)).toEqual([]);
+  });
 });
