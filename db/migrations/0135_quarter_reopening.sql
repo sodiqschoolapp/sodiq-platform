@@ -1121,8 +1121,10 @@ as $$
 declare
   moment timestamptz;
 begin
-  -- The migrator's fixtures (tests) are not the application.
-  if session_user <> 'sodiq_app'
+  -- The migrator's fixtures (tests) are not the application, nor a function of
+  -- the owner's that the application calls (`forced_deletes_merge_carry` of a
+  -- student merge, 0128, which carries the kept rows to the kept record).
+  if session_user <> 'sodiq_app' or current_user <> 'sodiq_app'
     or (new.rows, new.purged_at) is not distinct from (old.rows, old.purged_at) then
     return new;
   end if;

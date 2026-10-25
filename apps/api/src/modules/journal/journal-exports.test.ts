@@ -323,16 +323,17 @@ describe('journal exports', () => {
         quarterId: x.q1,
         accountId: principal.account.id,
       });
+      // The kit's close stores the names as they are now (task 9.2c); they are given other
+      // values here, so the export shows the stored ones, not the journal's of today.
       await t.database.migrator
-        .insertInto('quarter_closing_journals')
-        .values({
-          branch_id: x.s.branch,
-          closing_id: closing,
-          journal_id: x.journal,
+        .updateTable('quarter_closing_journals')
+        .set({
           unit_name: '7 Oxford (as closed)',
           subject_names: JSON.stringify({ uz: 'Fizika', ru: 'Физика', en: 'Physics as closed' }),
           teacher_name: 'Dilnoza Karimova',
         })
+        .where('closing_id', '=', closing)
+        .where('journal_id', '=', x.journal)
         .execute();
       await at(principal, '2026-11-12T10:00:00+05:00');
       const answer = await exportOf(principal, x.s.branch, x.journal, {
