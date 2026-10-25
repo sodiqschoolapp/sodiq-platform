@@ -11,6 +11,8 @@ import {
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeQuarter } from '../../testing/closing-kit.js';
+import { linesOf } from '../../testing/pdf-kit.js';
+import { binary } from '../../testing/xlsx-kit.js';
 import {
   dayTemplatesKit,
   START,
@@ -735,6 +737,35 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
       ),
     );
     ok(await join());
+  });
+
+  it("lists the outcomes and the carried-in items in the plan's Excel file", async () => {
+    const { x, last } = await notCoveredScene();
+    ok(await carry(x, last.id));
+    await t.database.migrator
+      .updateTable('accounts')
+      .set({ language: 'en' })
+      .where('id', '=', x.owner.account.id)
+      .execute();
+    const textOf = async (quarterId: string) => {
+      const sheet = await at(START, () =>
+        request(t.kit.server)
+          .post(`/api/plans/journals/${x.journal}/export`)
+          .set('Cookie', x.owner.cookie)
+          .set(BRANCH_HEADER, x.s.branch)
+          .buffer(true)
+          .parse(binary)
+          .send({ quarterId, format: 'xlsx' }),
+      );
+      expect(sheet.status).toBe(200);
+      return JSON.stringify((await linesOf(sheet.body as Buffer)).lines.map((line) => line.values));
+    };
+    const q2 = await textOf(x.q2);
+    expect(q2).toContain('Topic 8');
+    expect(q2).toContain('carried to the next quarter');
+    const q3 = await textOf(x.q3);
+    expect(q3).toContain('Carried in');
+    expect(q3).toContain('Topic 8');
   });
 
   it("answers 404 for another branch's or an unknown journal, item and lesson, changing nothing", async () => {

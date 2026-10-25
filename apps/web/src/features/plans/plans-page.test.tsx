@@ -152,6 +152,10 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
     },
   ],
   notCovered: [],
+  carriedIn: [],
+  outcomes: [],
+  canDrop: false,
+  carryClosed: false,
   request: null,
   window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31' },
   flag: null,
@@ -537,6 +541,120 @@ describe('Lesson plans', () => {
 });
 
 // Task 7.2, pull request #215: the plan window and edit requests.
+// Task 9.2d, pull request #233: edge/lesson-plans, "Items are still 'not covered' at the end of the
+// quarter": merged into a lesson, carried, or dropped with a reason by the approver; the tray.
+describe('the outcomes of items not covered', () => {
+  const PAST = { ...ITEM, id: uid(61), position: 4, topic: 'Percentages' };
+
+  it('lets the owner carry after a confirm and merge into the lesson chosen', async () => {
+    const plan = { ...planOf(true), notCovered: [PAST] };
+    const calls = open({
+      path: `/plans/${JOURNAL}`,
+      plan,
+      routes: {
+        [`POST /api/plans/journals/${JOURNAL}/not-covered/${PAST.id}/carry`]: () => json(plan),
+        [`POST /api/plans/journals/${JOURNAL}/not-covered/${PAST.id}/merge`]: () => json(plan),
+      },
+    });
+    const section = await screen.findByRole('region', { name: en.plans.plan.notCovered });
+    expect(within(section).queryByRole('button', { name: en.plans.outcomes.drop })).toBeNull();
+    fireEvent.click(within(section).getByRole('button', { name: en.plans.outcomes.carry }));
+    const confirm = await screen.findByRole('alertdialog');
+    expect(confirm.textContent).toContain('Percentages');
+    fireEvent.click(within(confirm).getByRole('button', { name: en.plans.outcomes.carry }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/carry'))?.body).toEqual({ quarterId: Q1 });
+    });
+    fireEvent.click(within(section).getByRole('button', { name: en.plans.outcomes.merge }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByRole('combobox', { name: en.plans.outcomes.row }), {
+      target: { value: LESSONS[2] },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.plans.outcomes.merge }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/merge'))?.body).toEqual({
+        quarterId: Q1,
+        position: 3,
+        lessonId: LESSONS[2],
+      });
+    });
+  });
+
+  it('gives the approver Drop only, with a reason required', async () => {
+    const plan = { ...planOf(false), notCovered: [PAST], canDrop: true };
+    const calls = open({
+      role: 'head_teacher',
+      path: `/plans/${JOURNAL}`,
+      plan,
+      routes: {
+        [`POST /api/plans/journals/${JOURNAL}/not-covered/${PAST.id}/drop`]: () => json(plan),
+      },
+    });
+    const section = await screen.findByRole('region', { name: en.plans.plan.notCovered });
+    expect(within(section).queryByRole('button', { name: en.plans.outcomes.carry })).toBeNull();
+    expect(within(section).queryByRole('button', { name: en.plans.outcomes.merge })).toBeNull();
+    fireEvent.click(within(section).getByRole('button', { name: en.plans.outcomes.drop }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.plans.outcomes.drop }));
+    expect(await within(dialog).findByText(en.plans.outcomes.reasonNeeded)).toBeTruthy();
+    expect(calls.some((call) => call.route.endsWith('/drop'))).toBe(false);
+    fireEvent.change(within(dialog).getByRole('textbox', { name: en.plans.outcomes.reason }), {
+      target: { value: 'Covered in the excursion' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.plans.outcomes.drop }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/drop'))?.body).toEqual({
+        quarterId: Q1,
+        reason: 'Covered in the excursion',
+      });
+    });
+  });
+
+  it('shows the tray with Place, no carry where none is possible, and the outcomes', async () => {
+    const tray = { ...PAST, id: uid(62), topic: 'Ratios' };
+    const { position: _position, ...trayItem } = tray;
+    void _position;
+    const plan: Plan = {
+      ...planOf(true),
+      carriedIn: [trayItem],
+      carryClosed: true,
+      outcomes: [
+        {
+          id: uid(80),
+          itemId: uid(81),
+          topic: 'Decimals',
+          kind: 'carried',
+          targetDate: null,
+          reason: '',
+          automatic: true,
+          decidedBy: 'Saidova Nodira',
+          decidedAt: '2026-10-31T13:00:00.000Z',
+        },
+        {
+          id: uid(82),
+          itemId: uid(83),
+          topic: 'Angles',
+          kind: 'dropped',
+          targetDate: null,
+          reason: 'Repeated topic',
+          automatic: false,
+          decidedBy: null,
+          decidedAt: '2026-10-30T13:00:00.000Z',
+        },
+      ],
+    };
+    open({ path: `/plans/${JOURNAL}`, plan });
+    const section = await screen.findByRole('region', { name: en.plans.outcomes.carriedIn });
+    expect(within(section).getByText('Ratios')).toBeTruthy();
+    expect(within(section).getByRole('button', { name: en.plans.outcomes.place })).toBeTruthy();
+    expect(within(section).queryByRole('button', { name: en.plans.outcomes.carry })).toBeNull();
+    const outcomes = screen.getByRole('region', { name: en.plans.outcomes.title });
+    const lines = [...outcomes.querySelectorAll('li')].map((one) => one.textContent);
+    expect(lines[0]).toContain(en.plans.outcomes.kind.carriedAutomatic);
+    expect(lines[1]).toContain('dropped: Repeated topic');
+  });
+});
+
 describe('the plan window and edit requests', () => {
   const ended = (plan: Plan): Plan => ({
     ...plan,
