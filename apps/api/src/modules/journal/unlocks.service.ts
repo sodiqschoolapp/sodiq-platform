@@ -20,7 +20,11 @@ import { decisionReach, firstTier, type RequestOn } from '../access/request-rout
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { lockOpenJournalQuarter, refusingClosedQuarter } from '../setup/closed-quarters.js';
+import {
+  lockOpenJournalQuarter,
+  lockOpenQuarter,
+  refusingClosedQuarter,
+} from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, personOutOf } from '../timetable/journal-owners.js';
 import {
@@ -262,7 +266,7 @@ export class UnlocksService {
       // Task 9.2b (From 8.4): no unlock request in a closed quarter; 9.2c: a reopened journal
       // takes one until its end.
       if (quarterId !== null) {
-        await lockOpenJournalQuarter(
+        await lockOpenLessonQuarter(
           transaction,
           quarterId,
           lesson.journalId ?? (await lessonJournalOf(transaction, branchId, lesson.id)),
@@ -457,7 +461,7 @@ export class UnlocksService {
         // Task 9.2b (From 8.4): an approval in a closed quarter is refused; a refusal still works.
         // 9.2c: a reopened journal takes one until its end.
         if (quarterId !== null) {
-          await lockOpenJournalQuarter(
+          await lockOpenLessonQuarter(
             transaction,
             quarterId,
             row.journal_id ?? (await lessonJournalOf(transaction, branchId, row.lesson_id)),
@@ -637,15 +641,27 @@ async function lessonJournalOf(
   transaction: Transaction,
   branchId: string,
   lessonId: string | null,
-): Promise<string> {
+): Promise<string | null> {
   const found = await sql<{ journal: string | null }>`
     select lesson_journal(l.id) as journal from lessons l
     where l.id = ${lessonId}::uuid and l.branch_id = ${branchId}::uuid
   `.execute(transaction);
-  const journal = found.rows[0]?.journal ?? null;
-  // A request names a lesson of the branch, which has a journal (`journals`, 0081).
-  if (journal === null) throw new Error('The lesson of the request has no journal.');
-  return journal;
+  return found.rows[0]?.journal ?? null;
+}
+
+/**
+ * Locks the quarter of a lesson and refuses when it is closed for the lesson's journal; a lesson
+ * with no journal has no journal's reopening, so the quarter's own state decides (permission
+ * review note 10: never a plain error, which would answer 500).
+ */
+function lockOpenLessonQuarter(
+  transaction: Transaction,
+  quarterId: string,
+  journalId: string | null,
+): Promise<void> {
+  return journalId === null
+    ? lockOpenQuarter(transaction, quarterId)
+    : lockOpenJournalQuarter(transaction, quarterId, journalId);
 }
 
 /** The quarter of a request: the rating exam's, or its lesson's. */
