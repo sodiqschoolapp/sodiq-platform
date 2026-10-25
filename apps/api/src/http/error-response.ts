@@ -611,6 +611,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   closing_not_flagged: 'The result is not flagged.',
   closing_decision_not_allowed: 'The decision does not fit the result.',
   closing_decision_changed: 'The decision was changed since it was read.',
+  closing_nothing_to_clear: 'No decision is stored to clear.',
+  closing_list_changed: 'The student was not in the list sent.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

@@ -94,6 +94,7 @@ export type AccountKey =
   | 'deliveryTeacher'
   | 'exportsPrincipal'
   | 'resultsPrincipal'
+  | 'closingVice'
   | 'attendanceTeacher'
   | 'attendanceTutor'
   | 'plansTeacher'

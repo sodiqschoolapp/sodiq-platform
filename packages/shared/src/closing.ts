@@ -78,7 +78,12 @@ export const closingJournalDecisionSchema = z.object({
   refused: z.array(
     z.object({
       studentId: z.uuid(),
-      code: z.enum(['closing_not_flagged', 'closing_decision_not_allowed']),
+      code: z.enum([
+        'closing_not_flagged',
+        'closing_decision_not_allowed',
+        'closing_decision_changed',
+        'closing_list_changed',
+      ]),
     }),
   ),
 });

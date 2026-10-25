@@ -662,6 +662,10 @@ export const en = {
       '"Exempt" fits only a result flagged for few lessons alone that an exemption explains. Choose "Keep" or "Not assessed".',
     closing_decision_changed:
       'Someone changed this decision since you opened the checklist. Reload it and decide again.',
+    closing_nothing_to_clear:
+      'No decision is stored for this result, so there is nothing to clear. Reload the checklist.',
+    closing_list_changed:
+      'This student was listed after you opened the checklist and was not decided. Reload it and decide again.',
     journal_entry_scope:
       'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
     lesson_attendance_only:
@@ -6476,6 +6480,8 @@ export const en = {
       refused: {
         closing_not_flagged: 'not flagged any more',
         closing_decision_not_allowed: 'this decision does not fit',
+        closing_decision_changed: 'changed by someone else since you opened the list',
+        closing_list_changed: 'listed after you opened the list, not decided',
       },
       kinds: {
         rating_missing: 'Rating exam entries missing',

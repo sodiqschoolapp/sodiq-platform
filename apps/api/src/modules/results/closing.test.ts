@@ -6,6 +6,7 @@ import {
   type ClosingChecklist,
   type ClosingItem,
 } from '@sodiq/shared';
+import ExcelJS from 'exceljs';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { Response } from 'supertest';
@@ -22,6 +23,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, QUARTERS, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
+import { binary } from '../../testing/xlsx-kit.js';
 import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
 
@@ -224,6 +226,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     from: string,
     until: string,
     times: readonly [string, string] | null = null,
+    subject: string | null = null,
   ) => {
     const writer = await load.classes.account();
     await t.app.get(Transactions).run([scene.branch], async (transaction) => {
@@ -232,7 +235,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         actorId: writer,
         action: 'exemption.create',
       });
-      await transaction
+      const made = await transaction
         .insertInto('exemptions')
         .values({
           branch_id: scene.branch,
@@ -240,7 +243,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           year_id: scene.year,
           batch_id: '019a0000-0000-7000-8000-0000000000a1',
           kind: 'temporary',
-          all_subjects: true,
+          all_subjects: subject === null,
           start_date: from,
           end_date: until,
           start_time: times?.[0] ?? null,
@@ -252,7 +255,14 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           version: 0,
           changed_at: new Date(0),
         })
-        .execute();
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      if (subject !== null) {
+        await transaction
+          .insertInto('exemption_subjects')
+          .values({ branch_id: scene.branch, exemption_id: made.id, subject_id: subject })
+          .execute();
+      }
     });
   };
 
@@ -262,8 +272,11 @@ describe('the closing checklist (07, Closing a quarter)', () => {
    * 19th with no number (attendance only); Dilshod with nothing; Zafar exempt all quarter; Lola
    * present on the 12th, who left the school on the 20th.
    */
-  async function base() {
-    const s = await publishedScene(t, load, { graded: true });
+  async function base(accounts?: { readonly teacher?: string }) {
+    const s = await publishedScene(t, load, {
+      graded: true,
+      ...(accounts === undefined ? {} : { accounts }),
+    });
     const [l12, l19, l26] = await lessonsOf(s.classId);
     if (l12 === undefined || l19 === undefined || l26 === undefined) {
       throw new Error('Three lessons.');
@@ -280,6 +293,11 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       '2026-10-20',
     );
     await exempt(s, zafar, '2026-09-01', '2026-10-31');
+    // Nothing entered, each with an exemption of one day: all subjects, and this subject only.
+    const yulduz = await student(s.branch, { first: 'Yulduz', last: 'Sobirova' }, whole);
+    const komil = await student(s.branch, { first: 'Komil', last: 'Valiyev' }, whole);
+    await exempt(s, yulduz, '2026-10-12', '2026-10-12');
+    await exempt(s, komil, '2026-10-19', '2026-10-19', null, s.subject);
     const cw = await work(s.branch, l12.id);
     await saveOn(s.branch, l12.date, [
       { lessonId: l12.id, studentId: aziz, value: 1 },
@@ -299,7 +317,20 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       .execute();
     const journal = await journalOf(s.classId, s.subject);
     const q1 = await quarterOf(s.year, 1);
-    return { s, aziz, bek, dilshod, zafar, lola, journal, q1, cw, lessons: { l12, l19, l26 } };
+    return {
+      s,
+      aziz,
+      bek,
+      dilshod,
+      zafar,
+      lola,
+      yulduz,
+      komil,
+      journal,
+      q1,
+      cw,
+      lessons: { l12, l19, l26 },
+    };
   }
 
   /** The entries of the closing routes (a role given in a test writes entries of its own). */
@@ -315,6 +346,67 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         ])
         .execute()
     ).length;
+
+  /** An approved plan period of a journal, open until 29 October (7.2), written as 0117 stores it. */
+  const openPlanPeriod = async (
+    branch: string,
+    subject: string,
+    journal: string,
+    quarter: string,
+  ) => {
+    const decider = await load.classes.account();
+    const link = await t.database.migrator
+      .selectFrom('lesson_plan_journals')
+      .select('plan_id')
+      .where('journal_id', '=', journal)
+      .where('quarter_id', '=', quarter)
+      .executeTakeFirst();
+    const plan =
+      link?.plan_id ??
+      (
+        await t.database.migrator
+          .insertInto('lesson_plans')
+          .values({ branch_id: branch, quarter_id: quarter, subject_id: subject })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+    if (link === undefined) {
+      await t.database.migrator
+        .insertInto('lesson_plan_journals')
+        .values({ branch_id: branch, plan_id: plan, journal_id: journal, quarter_id: quarter })
+        .execute();
+    }
+    return (
+      await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: branch,
+          plan_id: plan,
+          journal_id: journal,
+          quarter_id: quarter,
+          kind: 'text',
+          status: 'approved',
+          prepared_at: new Date('2026-10-26T09:00:00+05:00'),
+          updated_at: new Date('2026-10-26T10:00:00+05:00'),
+          sent_at: new Date('2026-10-26T09:00:00+05:00'),
+          requested_by: decider,
+          decided_by: decider,
+          decided_at: new Date('2026-10-26T10:00:00+05:00'),
+          days: 3,
+          open_until: new Date('2026-10-29T00:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+  };
+
+  const notificationsOf = (branch: string) =>
+    t.database.migrator
+      .selectFrom('notifications')
+      .selectAll()
+      .where('branch_id', '=', branch)
+      .orderBy('id')
+      .execute();
 
   const path = (quarterId?: string) =>
     quarterId === undefined
@@ -549,7 +641,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     await saveOn(b.s.branch, b.lessons.l12.date, [
       { lessonId: b.lessons.l12.id, studentId: b.bek, workId: b.cw, value: 7 },
     ]);
-    await vice(b.s.branch, async ({ get, post }) => {
+    await vice(b.s.branch, async ({ get, post, put }) => {
       const list = checklistOf(await get(b.s.branch, path(b.q1)));
       const outdated = itemsOf(list, 'decision_outdated', b.journal);
       expect(
@@ -570,6 +662,13 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         decided: [],
         refused: [{ studentId: b.bek, code: 'closing_not_flagged' }],
       });
+      const lateOne = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: 'keep',
+        version: 1,
+      });
+      expect([lateOne.status, codeOf(lateOne)]).toEqual([409, 'closing_not_flagged']);
       // A whole journal: the outdated one cleared, a student not listed is named as refused.
       const cleared = await post(
         b.s.branch,
@@ -591,7 +690,15 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       );
       expect([repeated.status, codeOf(repeated)]).toEqual([400, 'validation_failed']);
     });
-    expect((await t.entries('results.decision_cleared')).length).toBeGreaterThanOrEqual(1);
+    const cleared = (await t.entries('results.decision_cleared')).filter(
+      (entry) => (entry.new_value as { studentId?: string } | null)?.studentId === b.bek,
+    );
+    expect(cleared.map((entry) => [entry.old_value, entry.new_value])).toEqual([
+      [
+        { decision: 'not_assessed' },
+        { quarterId: b.q1, subjectId: b.s.subject, studentId: b.bek, decision: null },
+      ],
+    ]);
   });
 
   it('allows "Exempt" only when few lessons is the one flag, and decides a whole journal naming the others', async () => {
@@ -935,6 +1042,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           [b.dilshod, false],
           // Zafar is exempt all quarter, so on the exam day too: pending.
           [b.zafar, true],
+          [b.yulduz, false],
+          [b.komil, false],
         ].sort(),
       );
       // 07: "A lesson is temporarily unlocked for editing" (the person it covers).
@@ -1026,22 +1135,26 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     const otherQuarter = await quarterOf(other.year, 1);
     const key = randomUUID();
     const browser = await account();
-    await as(
-      browser,
-      [{ role: 'academic_vice_principal', branchId: b.s.branch }],
-      async ({ post }) => {
-        const sent = await post(b.s.branch, remind, {}, key);
-        // The class's teacher and the other class's teacher, each with their own items.
-        expect([sent.status, sent.body]).toEqual([200, { sent: 2 }]);
-        const repeat = await post(b.s.branch, remind, {}, key);
-        expect([repeat.status, repeat.body]).toEqual([200, { sent: 2 }]);
-        // A repeat of the key with another branch's or an unknown quarter is 404.
-        for (const id of [otherQuarter, UNKNOWN]) {
-          const refused = await post(b.s.branch, `/api/results/closing/${id}/remind`, {}, key);
-          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
-        }
-      },
-    );
+    await t.kit.giveRole(browser.account.id, {
+      role: 'academic_vice_principal',
+      branchId: b.s.branch,
+      validFrom: new Date('2026-09-01T00:00:00+05:00'),
+    });
+    // A reminder changes no data: no audit entry (review decision 12).
+    const auditBefore = await t.auditCount();
+    await as(browser, [], async ({ post }) => {
+      const sent = await post(b.s.branch, remind, {}, key);
+      // The class's teacher and the other class's teacher, each with their own items.
+      expect([sent.status, sent.body]).toEqual([200, { sent: 2 }]);
+      const repeat = await post(b.s.branch, remind, {}, key);
+      expect([repeat.status, repeat.body]).toEqual([200, { sent: 2 }]);
+      // A repeat of the key with another branch's or an unknown quarter is 404.
+      for (const id of [otherQuarter, UNKNOWN]) {
+        const refused = await post(b.s.branch, `/api/results/closing/${id}/remind`, {}, key);
+        expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+      }
+    });
+    expect(await t.auditCount()).toBe(auditBefore);
     const notices = await t.database.migrator
       .selectFrom('notifications')
       .select(['kind', 'data', 'account_id'])
@@ -1079,7 +1192,6 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(refused.status).toBe(403);
     });
     // No audit entry for a reminder (no data changes).
-    expect(await t.entries('results.closing_remind')).toEqual([]);
   });
 
   it('lets the Principal read and refuses every write to the Principal and a Teacher, changing nothing', async () => {
@@ -1122,6 +1234,16 @@ describe('the closing checklist (07, Closing a quarter)', () => {
   it("answers 404 for another branch's or an unknown quarter, journal, subject and student, changing no row", async () => {
     const b = await base();
     const other = await base();
+    // Rows the plan-period route would change, in both branches (.claude/rules/api.md).
+    await openPlanPeriod(b.s.branch, b.s.subject, b.journal, b.q1);
+    await openPlanPeriod(other.s.branch, other.s.subject, other.journal, other.q1);
+    const browser = await account();
+    await t.kit.giveRole(browser.account.id, {
+      role: 'academic_vice_principal',
+      branchId: b.s.branch,
+      validFrom: new Date('2026-09-01T00:00:00+05:00'),
+    });
+    const key = randomUUID();
     const rowsBefore = {
       north: await t.rowsOf(b.s.branch),
       south: await t.rowsOf(other.s.branch),
@@ -1130,56 +1252,372 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       .selectFrom('quarter_result_decisions')
       .selectAll()
       .execute();
-    const browser = await account();
-    const auditBefore = await closingAudit();
-    await as(
-      browser,
-      [{ role: 'academic_vice_principal', branchId: b.s.branch }],
-      async ({ get, put, post }) => {
-        for (const quarter of [other.q1, UNKNOWN]) {
-          const read = await get(b.s.branch, path(quarter));
-          expect([read.status, codeOf(read)]).toEqual([404, 'not_found']);
-          const decided = await put(b.s.branch, `/api/results/closing/${quarter}/decisions`, {
-            subjectId: b.s.subject,
-            studentId: b.bek,
-            decision: 'keep',
-            version: null,
-          });
-          expect([decided.status, codeOf(decided)]).toEqual([404, 'not_found']);
-          for (const tail of ['plan-periods/end', `journals/${b.journal}/decisions`]) {
-            const body = tail.startsWith('journals') ? { decision: 'keep', students: [b.bek] } : {};
-            const refused = await post(b.s.branch, `/api/results/closing/${quarter}/${tail}`, body);
-            expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
-          }
-        }
-        for (const journal of [other.journal, UNKNOWN]) {
-          const refused = await post(
-            b.s.branch,
-            `/api/results/closing/${b.q1}/journals/${journal}/decisions`,
-            { decision: 'keep', students: [b.bek] },
-          );
+    const auditBefore = await t.auditCount();
+    const noticesBefore = [
+      await notificationsOf(b.s.branch),
+      await notificationsOf(other.s.branch),
+    ];
+    await as(browser, [], async ({ get, put, post }) => {
+      for (const quarter of [other.q1, UNKNOWN]) {
+        const read = await get(b.s.branch, path(quarter));
+        expect([read.status, codeOf(read)]).toEqual([404, 'not_found']);
+        const decided = await put(b.s.branch, `/api/results/closing/${quarter}/decisions`, {
+          subjectId: b.s.subject,
+          studentId: b.bek,
+          decision: 'keep',
+          version: null,
+        });
+        expect([decided.status, codeOf(decided)]).toEqual([404, 'not_found']);
+        for (const tail of ['plan-periods/end', `journals/${b.journal}/decisions`]) {
+          const body = tail.startsWith('journals') ? { decision: 'keep', students: [b.bek] } : {};
+          const refused = await post(b.s.branch, `/api/results/closing/${quarter}/${tail}`, body);
           expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
         }
-        for (const [subjectId, studentId] of [
-          [UNKNOWN, b.bek],
-          [b.s.subject, other.bek],
-          [b.s.subject, UNKNOWN],
-        ] as const) {
-          const refused = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
-            subjectId,
-            studentId,
-            decision: 'keep',
-            version: null,
-          });
-          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
-        }
-      },
+        const reminded = await post(b.s.branch, `/api/results/closing/${quarter}/remind`, {}, key);
+        expect([reminded.status, codeOf(reminded)]).toEqual([404, 'not_found']);
+      }
+      for (const journal of [other.journal, UNKNOWN]) {
+        const refused = await post(
+          b.s.branch,
+          `/api/results/closing/${b.q1}/journals/${journal}/decisions`,
+          { decision: 'keep', students: [b.bek] },
+        );
+        expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+      }
+      for (const [subjectId, studentId] of [
+        [UNKNOWN, b.bek],
+        [b.s.subject, other.bek],
+        [b.s.subject, UNKNOWN],
+      ] as const) {
+        const refused = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+          subjectId,
+          studentId,
+          decision: 'keep',
+          version: null,
+        });
+        expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+      }
+      // Another branch's and an unknown student in a whole journal's list: named, never
+      // written (the body ids of .claude/rules/api.md).
+      const whole = await post(
+        b.s.branch,
+        `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
+        { decision: 'keep', students: [other.bek, UNKNOWN] },
+      );
+      expect(whole.status, JSON.stringify(whole.body)).toBe(200);
+      expect(whole.body).toEqual({
+        decided: [],
+        refused: [
+          ...[other.bek, UNKNOWN]
+            .sort()
+            .map((studentId) => ({ studentId, code: 'closing_not_flagged' })),
+          { studentId: b.bek, code: 'closing_list_changed' },
+        ],
+      });
+    });
+    expect(await t.auditCount()).toBe(auditBefore);
+    expect([await notificationsOf(b.s.branch), await notificationsOf(other.s.branch)]).toEqual(
+      noticesBefore,
     );
-    expect(await closingAudit()).toBe(auditBefore);
     expect(
       await t.database.migrator.selectFrom('quarter_result_decisions').selectAll().execute(),
     ).toEqual(decisionsBefore);
     expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
     expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+  });
+
+  it('refuses every write before the checklist opens, and a clear with nothing stored', async () => {
+    const b = await base();
+    const decisions = `/api/results/closing/${b.q1}/decisions`;
+    const before = await closingAudit();
+    await vice(
+      b.s.branch,
+      async ({ put, post }) => {
+        const one = await put(b.s.branch, decisions, {
+          subjectId: b.s.subject,
+          studentId: b.bek,
+          decision: 'keep',
+          version: null,
+        });
+        expect([one.status, codeOf(one)]).toEqual([409, 'closing_not_open']);
+        const whole = await post(
+          b.s.branch,
+          `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
+          { decision: 'keep', students: [b.bek] },
+        );
+        expect([whole.status, codeOf(whole)]).toEqual([409, 'closing_not_open']);
+        const ended = await post(b.s.branch, `/api/results/closing/${b.q1}/plan-periods/end`);
+        expect([ended.status, codeOf(ended)]).toEqual([409, 'closing_not_open']);
+      },
+      '2026-10-16T12:00:00+05:00',
+    );
+    expect(await closingAudit()).toBe(before);
+    await vice(b.s.branch, async ({ put }) => {
+      const clear = await put(b.s.branch, decisions, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: null,
+        version: null,
+      });
+      expect([clear.status, codeOf(clear)]).toEqual([409, 'closing_nothing_to_clear']);
+    });
+    expect(await closingAudit()).toBe(before);
+  });
+
+  it('leaves homework given at the last lesson of the quarter out of the open items', async () => {
+    const b = await base();
+    // 07: "Homework given at the last lesson of the quarter is not an open item; it belongs to
+    // the next quarter." A homework given by hand on the 26th (stored where it is given).
+    await t.database.migrator
+      .insertInto('journal_works')
+      .values({
+        branch_id: b.s.branch,
+        lesson_id: b.lessons.l26.id,
+        source_lesson_id: b.lessons.l26.id,
+        kind: 'homework',
+        total: 10,
+      })
+      .execute();
+    await saveOn(b.s.branch, b.lessons.l26.date, [
+      { lessonId: b.lessons.l26.id, studentId: b.aziz, value: 1 },
+    ]);
+    const lessonsWith = (list: ClosingChecklist) =>
+      itemsOf(list, 'numbers_missing', b.journal).flatMap((one) => one.lessons.map((l) => l.id));
+    const list = await vice(b.s.branch, async ({ get }) =>
+      checklistOf(await get(b.s.branch, path(b.q1))),
+    );
+    expect(lessonsWith(list)).toEqual([b.lessons.l12.id]);
+    // A classwork of the 26th with no number for Aziz is an open item: the check can fail.
+    await work(b.s.branch, b.lessons.l26.id);
+    const after = await vice(b.s.branch, async ({ get }) =>
+      checklistOf(await get(b.s.branch, path(b.q1))),
+    );
+    expect(lessonsWith(after)).toEqual([b.lessons.l12.id, b.lessons.l26.id]);
+  });
+
+  it('warns of a lesson plan that is not complete (07; From 8.8)', async () => {
+    const b = await base();
+    const list = await vice(b.s.branch, async ({ get }) =>
+      checklistOf(await get(b.s.branch, path(b.q1))),
+    );
+    const plans = itemsOf(list, 'plan_incomplete', b.journal);
+    expect(plans.map((one) => [one.state, one.empty, one.notCovered, one.belowMinimum])).toEqual([
+      ['not_started', 3, 0, false],
+    ]);
+    expect(plans[0]?.teacher?.id).toBe(b.s.teacher.staffId);
+  });
+
+  it('lists an unlocked rating exam under its journal', async () => {
+    const b = await base();
+    const { s } = b;
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ rating_exam: true })
+      .where('id', '=', s.subject)
+      .execute();
+    await t.database.migrator
+      .updateTable('subject_quarter_weights')
+      .set({ attendance: 20, classwork: 20, homework: 20, rating_exam: 40 })
+      .where('subject_id', '=', s.subject)
+      .where('branch_id', '=', s.branch)
+      .execute();
+    const teacherAccount = (
+      await t.database.migrator
+        .selectFrom('staff')
+        .select('account_id')
+        .where('id', '=', s.teacher.staffId)
+        .executeTakeFirstOrThrow()
+    ).account_id;
+    if (teacherAccount === null) throw new Error('The teacher has an account.');
+    const decider = await load.classes.account();
+    const unlock = { id: '' };
+    for (const [moment, write] of [
+      [
+        '2026-10-26T09:00:00+05:00',
+        async (transaction: Parameters<Parameters<Transactions['run']>[1]>[0]) => {
+          unlock.id = (
+            await transaction
+              .insertInto('journal_unlocks')
+              .values({
+                branch_id: s.branch,
+                target: 'rating',
+                journal_id: b.journal,
+                quarter_id: b.q1,
+                staff_id: s.teacher.staffId,
+                requested_by: teacherAccount,
+                reason: 'The exam scores were typed late',
+                requested_at: new Date(0),
+                status: 'sent',
+                version: 0,
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow()
+          ).id;
+        },
+      ],
+      [
+        '2026-10-26T10:00:00+05:00',
+        async (transaction: Parameters<Parameters<Transactions['run']>[1]>[0]) => {
+          await transaction
+            .updateTable('journal_unlocks')
+            .set({ status: 'approved', days: 3, decided_by: decider })
+            .where('id', '=', unlock.id)
+            .execute();
+        },
+      ],
+    ] as const) {
+      t.clock.set(moment);
+      try {
+        await t.app.get(Transactions).run([s.branch], async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: s.branch,
+            actorId: decider,
+            action: 'journal.unlock_decide',
+          });
+          await write(transaction);
+        });
+      } finally {
+        t.clock.set(START);
+      }
+    }
+    const list = await vice(s.branch, async ({ get }) =>
+      checklistOf(await get(s.branch, path(b.q1))),
+    );
+    expect(itemsOf(list, 'unlocked', b.journal).map((one) => [one.lessons, one.rating])).toEqual([
+      [[], true],
+    ]);
+  });
+
+  it('answers a decision in a closed year with year_closed, storing nothing', async () => {
+    const b = await base();
+    await t.database.migrator
+      .updateTable('academic_years')
+      .set({ status: 'closed' })
+      .where('id', '=', b.s.year)
+      .execute();
+    await vice(b.s.branch, async ({ put }) => {
+      const refused = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: 'keep',
+        version: null,
+      });
+      expect([refused.status, codeOf(refused)]).toEqual([409, 'year_closed']);
+    });
+    const stored = await t.database.migrator
+      .selectFrom('quarter_result_decisions')
+      .select('id')
+      .where('student_id', '=', b.bek)
+      .execute();
+    expect(stored).toEqual([]);
+  });
+
+  it('gives the Super Admin the writes and canEdit, and a Principal here who is a Vice Principal elsewhere none', async () => {
+    const b = await base();
+    const other = await publishedScene(t, load, { graded: true });
+    // The kit's Super Admin, its sessions moved to the moment and back afterwards.
+    const admins = await t.database.migrator
+      .selectFrom('sessions')
+      .innerJoin('assignments', 'assignments.account_id', 'sessions.account_id')
+      .select(['sessions.id', 'sessions.created_at', 'sessions.last_used_at'])
+      .where('assignments.role', '=', 'super_admin')
+      .execute();
+    const setAdmins = (moment: Date | null) =>
+      Promise.all(
+        admins.map((one) =>
+          t.database.migrator
+            .updateTable('sessions')
+            .set({
+              created_at: moment ?? one.created_at,
+              last_used_at: moment ?? one.last_used_at,
+            })
+            .where('id', '=', one.id)
+            .execute(),
+        ),
+      );
+    await setAdmins(new Date(MOMENT));
+    t.clock.set(MOMENT);
+    try {
+      const list = checklistOf(await t.get(path(b.q1), b.s.branch));
+      expect(list.canEdit).toBe(true);
+      const decided = await t.put(`/api/results/closing/${b.q1}/decisions`, b.s.branch, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: 'keep',
+        version: null,
+      });
+      expect([decided.status, decided.body]).toEqual([200, { decision: 'keep', version: 1 }]);
+    } finally {
+      t.clock.set(START);
+      await setAdmins(null);
+    }
+    await as(
+      await account(),
+      [
+        { role: 'principal', branchId: b.s.branch },
+        { role: 'academic_vice_principal', branchId: other.branch },
+      ],
+      async ({ get, put }) => {
+        expect(checklistOf(await get(b.s.branch, path(b.q1))).canEdit).toBe(false);
+        const refused = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+          subjectId: b.s.subject,
+          studentId: b.bek,
+          decision: 'not_assessed',
+          version: 1,
+        });
+        expect(refused.status).toBe(403);
+      },
+    );
+  });
+
+  it('shows the decided state to every reader of the result: the teacher, the Head Teacher and the file', async () => {
+    const teacher = await account();
+    const b = await base({ teacher: teacher.account.id });
+    await vice(b.s.branch, async ({ put }) => {
+      const set = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: b.bek,
+        decision: 'not_assessed',
+        version: null,
+      });
+      expect(set.status, JSON.stringify(set.body)).toBe(200);
+    });
+    const gridPath = `/api/journal/journals/${b.journal}?quarterId=${b.q1}`;
+    const resultOf = (response: Response) =>
+      journalGridSchema.parse(response.body).students.find((one) => one.id === b.bek)?.quarter
+        ?.result;
+    await as(teacher, [{ role: 'teacher', branchId: b.s.branch }], async ({ get }) => {
+      expect(resultOf(await get(b.s.branch, gridPath))).toEqual({ kind: 'not_assessed' });
+      // The file of the journal says so too (07, last paragraph; journal-export.ts).
+      const file = await t
+        .post(
+          `/api/journal/journals/${b.journal}/export`,
+          b.s.branch,
+          { format: 'xlsx', quarterId: b.q1 },
+          teacher.cookie,
+        )
+        .buffer(true)
+        .parse(binary);
+      expect(file.status).toBe(200);
+      // Every cell of the sheet, row by row (the file's heading rows are narrower than its table).
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.body as ArrayBuffer);
+      const lines: unknown[][] = [];
+      workbook.worksheets[0]?.eachRow((row) => {
+        lines.push((row.values as unknown[]).slice(1));
+      });
+      const bekRow = lines.find((row) =>
+        row.some((cell) => typeof cell === 'string' && cell.includes('Toshev')),
+      );
+      // The teacher's language is Uzbek: "Baholanmagan" (Not assessed).
+      expect(bekRow).toContain('Baholanmagan');
+    });
+    await as(
+      await account(),
+      [{ role: 'head_teacher', branchId: b.s.branch, subjectIds: [b.s.subject] }],
+      async ({ get }) => {
+        expect(resultOf(await get(b.s.branch, gridPath))).toEqual({ kind: 'not_assessed' });
+      },
+    );
   });
 });

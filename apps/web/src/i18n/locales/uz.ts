@@ -677,6 +677,10 @@ export const uz: Texts<'one' | 'other'> = {
       '«Ozod» faqat ozod qilish bilan izohlanadigan, faqat kam dars uchun belgilangan natijaga mos keladi. «Qoldirish» yoki «Baholanmagan»ni tanlang.',
     closing_decision_changed:
       'Siz roʻyxatni ochganingizdan keyin kimdir bu qarorni oʻzgartirdi. Uni yangilab, qayta qaror qiling.',
+    closing_nothing_to_clear:
+      'Bu natija uchun qaror saqlanmagan, bekor qiladigan narsa yoʻq. Roʻyxatni yangilang.',
+    closing_list_changed:
+      'Bu oʻquvchi siz roʻyxatni ochganingizdan keyin qoʻshildi va u boʻyicha qaror qabul qilinmadi. Roʻyxatni yangilab, qayta qaror qiling.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
@@ -6535,6 +6539,8 @@ export const uz: Texts<'one' | 'other'> = {
       refused: {
         closing_not_flagged: 'endi belgilanmagan',
         closing_decision_not_allowed: 'bu qaror mos kelmaydi',
+        closing_decision_changed: 'roʻyxat ochilgandan keyin boshqa kishi tomonidan oʻzgartirildi',
+        closing_list_changed: 'roʻyxatga keyin qoʻshildi, qaror qabul qilinmadi',
       },
       kinds: {
         rating_missing: 'Reyting imtihoni yozuvlari yoʻq',

@@ -1142,6 +1142,10 @@ export const ERROR_CODES = [
   'closing_decision_not_allowed',
   /** The decision was changed by someone else since it was read (task 9.2a). */
   'closing_decision_changed',
+  /** There is no stored decision to clear on this result (task 9.2a). */
+  'closing_nothing_to_clear',
+  /** A student flagged under the journal now was not in the list sent: decide again from the list as it is (task 9.2a). */
+  'closing_list_changed',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

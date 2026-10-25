@@ -3,6 +3,8 @@ import type { ResultFlag } from '@sodiq/calc';
 import {
   CLOSING_BLOCKING,
   CLOSING_OPENS_DAYS_BEFORE,
+  PERMISSIONS,
+  permits,
   closingChecklistSchema,
   closingDecisionSchema,
   closingJournalDecisionSchema,
@@ -36,6 +38,7 @@ import { periodOpen } from '../plans/plan-window.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { journalsWithoutTeacher, ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
+import { exemptedIn } from './closing.query.js';
 import { allowedDecisions, quarterOutcomes, type JournalOutcomes } from './quarter-outcomes.js';
 
 /**
@@ -76,8 +79,6 @@ const REMINDED = new Set<ClosingItem['kind']>([
   'no_result',
   'part_without_data',
 ]);
-
-const WHOLE = new Set(['super_admin', 'academic_vice_principal']);
 
 interface Scene {
   readonly branchId: string;
@@ -124,8 +125,11 @@ export class ClosingService {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const { today, now, timeZone } = await clockOf(transaction, branchId);
       const chosen = await this.chosenQuarter(transaction, branchId, query.quarterId, today);
+      // The permission table decides, as the guard does: `quarter_closing` `edit` in this branch.
       const canEdit = access.assignments.some(
-        (one) => WHOLE.has(one.role) && (one.branchId === null || one.branchId === branchId),
+        (one) =>
+          (one.branchId === null || one.branchId === branchId) &&
+          permits(PERMISSIONS, one.role, 'quarter_closing', 'edit'),
       );
       if (chosen.quarter === null) {
         return closingChecklistSchema.parse({
@@ -193,19 +197,21 @@ export class ClosingService {
         .where('id', '=', subjectId)
         .executeTakeFirst();
       if (student === undefined || subject === undefined) throw notFound();
+      if (scene.today < scene.opensOn) throw notOpen();
       const flagged = await this.flaggedOf(transaction, scene, subjectId);
       const one = flagged.find((row) => row.studentId === studentId);
       // A result with no flag now (an outdated decision only) can only be cleared.
       if (one === undefined || (input.decision !== null && one.row.flags.length === 0)) {
         throw notFlagged();
       }
-      if (scene.today < scene.opensOn) throw notOpen();
       const stored = await this.lockDecision(transaction, scene, subjectId, studentId);
       if ((stored?.version ?? null) !== input.version) {
         throw new ApiException('closing_decision_changed', 409);
       }
       if (input.decision === null) {
-        if (stored?.decision === null || stored === undefined) throw notFlagged();
+        if (stored?.decision === null || stored === undefined) {
+          throw new ApiException('closing_nothing_to_clear', 409);
+        }
       } else if (!one.row.allowed.includes(input.decision)) {
         throw new ApiException('closing_decision_not_allowed', 409);
       }
@@ -262,7 +268,7 @@ export class ClosingService {
         const stored = await this.lockDecision(transaction, scene, journal.subjectId, studentId);
         if ((stored?.version ?? null) !== one.row.version) {
           // Changed since this transaction read it: not overwritten silently.
-          refused.push({ studentId, code: 'closing_not_flagged' });
+          refused.push({ studentId, code: 'closing_decision_changed' });
           continue;
         }
         await this.write(transaction, access, scene, {
@@ -273,6 +279,12 @@ export class ClosingService {
           requestId,
         });
         decided.push(studentId);
+      }
+      // Matched one to one: a student listed now that the person did not see is named, never
+      // decided unseen (.claude/rules/journal.md, the list confirmed as seen).
+      const sent = new Set(input.students.map((id) => id.toLowerCase()));
+      for (const studentId of [...listed.keys()].sort()) {
+        if (!sent.has(studentId)) refused.push({ studentId, code: 'closing_list_changed' });
       }
       return closingJournalDecisionSchema.parse({ decided, refused });
     });
@@ -518,7 +530,7 @@ export class ClosingService {
     let version: number;
     if (stored === undefined) {
       // Two first decisions at one moment: the second meets the unique key and is told.
-      const made = await refusingDecisionKey(() =>
+      const made = await refusingDecisionWrites(() =>
         transaction
           .insertInto('quarter_result_decisions')
           .values({
@@ -537,16 +549,18 @@ export class ClosingService {
       id = made.id;
       version = made.version;
     } else {
-      const made = await transaction
-        .updateTable('quarter_result_decisions')
-        .set({
-          decision: input.decision,
-          decided_by: access.accountId,
-          version: stored.version + 1,
-        })
-        .where('id', '=', stored.id)
-        .returning(['id', 'version'])
-        .executeTakeFirstOrThrow();
+      const made = await refusingDecisionWrites(() =>
+        transaction
+          .updateTable('quarter_result_decisions')
+          .set({
+            decision: input.decision,
+            decided_by: access.accountId,
+            version: stored.version + 1,
+          })
+          .where('id', '=', stored.id)
+          .returning(['id', 'version'])
+          .executeTakeFirstOrThrow(),
+      );
       id = made.id;
       version = made.version;
     }
@@ -776,9 +790,9 @@ export class ClosingService {
     for (const entry of grouped((id) => (statuses.get(id)?.answer?.unmarked ?? 0) > 0)) {
       push('no_attendance', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }
-    for (const entry of grouped((id) =>
-      [...(statuses.get(id)?.waiting.values() ?? [])].some((students) => students.length > 0),
-    )) {
+    // A counted work of the lesson with no total, or a number waited for missing (07, Lesson
+    // status; the homework checked at a lesson is counted there, never where it was given).
+    for (const entry of grouped((id) => (statuses.get(id)?.answer?.worksMissing ?? 0) > 0)) {
       push('numbers_missing', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }
 
@@ -819,8 +833,8 @@ export class ClosingService {
         const date = unlock.lesson_date;
         if (unlock.lesson_id === null || date === null) continue;
         if (date < quarter.startDate || date > quarter.endDate) continue;
-        journalId =
-          (await statusesJournal(transaction, branchId, unlock.lesson_id, now, statuses)) ?? null;
+        // An unlocked lesson is a held one; a lesson cancelled since is no item.
+        journalId = statuses.get(unlock.lesson_id)?.journalId ?? null;
         lesson = { id: unlock.lesson_id, date };
       }
       if (journalId === null || !journalById.has(journalId)) continue;
@@ -1082,52 +1096,20 @@ async function heldLessonsOf(
   }));
 }
 
-/** The journal of an unlocked lesson outside the held list (none is expected). */
-async function statusesJournal(
-  transaction: Transaction,
-  branchId: string,
-  lessonId: string,
-  now: Date,
-  known: ReadonlyMap<string, { journalId: string | null }>,
-): Promise<string | null> {
-  const found = known.get(lessonId);
-  if (found !== undefined) return found.journalId;
-  return (
-    (await lessonStatuses(transaction, branchId, [lessonId], now)).get(lessonId)?.journalId ?? null
-  );
-}
-
-/** The students with an exemption in force in the quarter, as `student|subject` or `student|*`. */
-async function exemptedIn(
-  transaction: Transaction,
-  quarter: QuarterRef,
-  studentIds: readonly string[],
-): Promise<Set<string>> {
-  if (studentIds.length === 0) return new Set();
-  const found = await sql<{ student_id: string; subject_key: string }>`
-    select distinct s.student_id, s.subject_key
-    from exemption_spans s
-    where s.live
-      and s.student_id = any(${[...studentIds]}::uuid[])
-      and s.span && tsrange(${quarter.startDate}::date::timestamp, (${quarter.endDate}::date + 1)::timestamp, '[)')
-  `.execute(transaction);
-  return new Set(
-    found.rows.map((row) =>
-      row.subject_key === '00000000-0000-0000-0000-000000000000'
-        ? `${row.student_id}|*`
-        : `${row.student_id}|${row.subject_key}`,
-    ),
-  );
-}
-
-/** A first decision of two at one moment meets the unique key: told, never a 500. */
-async function refusingDecisionKey<T>(work: () => Promise<T>): Promise<T> {
+/**
+ * A first decision of two at one moment meets the unique key, and a decision in a closed year
+ * meets the guard of 0132: each told, never a 500.
+ */
+async function refusingDecisionWrites<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
     const failure = error as { code?: unknown; constraint?: unknown };
     if (failure.code === '23505' && failure.constraint === 'quarter_result_decisions_key') {
       throw new ApiException('closing_decision_changed', 409);
+    }
+    if (failure.code === '23514' && failure.constraint === 'academic_years_closed') {
+      throw new ApiException('year_closed', 409);
     }
     throw error;
   }
