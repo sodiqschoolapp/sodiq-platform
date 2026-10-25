@@ -25,6 +25,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 
@@ -1551,6 +1552,81 @@ describe('exemptions', () => {
       });
       const id = await make(s, '2026-10-26', '2026-11-12');
       expect(await rowOf(id)).toMatchObject({ start: '2026-10-26', end: '2026-11-12' });
+    });
+
+    // Spec review must-fix 2, through the route: closed days that reach two journals of the
+    // student (the class's and a group's) are applied only once both are reopened.
+    it('applies the closed part only once both journals its days reach are reopened', async () => {
+      const cells = await CellsKit.create(t.database.migrator);
+      let groupJournal = '';
+      const { s } = await closedScene(async (scene) => {
+        const group = await cells.lessons.load.classes.group(
+          scene.branch,
+          scene.year,
+          cells.subject,
+          [scene.classId],
+        );
+        await cells.lessons.inGroup(scene.branch, group, cells.subject, scene.ahmedov);
+        await cells.groupLesson(scene.branch, scene.year, group, '2026-10-27');
+        groupJournal =
+          (
+            await t.database.migrator
+              .selectFrom('journals')
+              .select('id')
+              .where('group_id', '=', group)
+              .executeTakeFirst()
+          )?.id ??
+          (
+            await t.database.migrator
+              .insertInto('journals')
+              .values({
+                branch_id: scene.branch,
+                academic_year_id: scene.year,
+                class_id: null,
+                group_id: group,
+                subject_id: cells.subject,
+                runs: '{[2026-09-01,)}',
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow()
+          ).id;
+        return [];
+      });
+      const q1 = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', s.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const reached = await sql<{ journal: string }>`
+        select distinct lesson_journal(l.id) as journal from lessons l
+        where l.class_id = ${s.classId}::uuid and l.lesson_date between '2026-10-26' and '2026-10-31'
+          and l.cancel_cause is null
+      `.execute(t.database.migrator);
+      expect(reached.rows.length).toBeGreaterThan(0);
+      for (const { journal } of reached.rows) {
+        await reopenQuarter(t.database, {
+          branchId: s.branch,
+          quarterId: q1,
+          journalId: journal,
+          accountId: s.vice.account.id,
+          at: '2026-10-27T09:00:00+05:00',
+        });
+      }
+      // The class's journals reopened, the group's not: the closed part is left out.
+      const partly = await make(s, '2026-10-26', '2026-11-12');
+      expect(await rowOf(partly)).toMatchObject({ start: '2026-11-01' });
+      await reopenQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: q1,
+        journalId: groupJournal,
+        accountId: s.vice.account.id,
+        at: '2026-10-27T09:00:00+05:00',
+      });
+      const whole = await make(s, '2026-10-26', '2026-11-12', s.boboyev);
+      expect(await rowOf(whole)).toMatchObject({ start: '2026-10-26', end: '2026-11-12' });
     });
 
     it('ends a range that began in the closed quarter at its last day, takes an end after it, and refuses a longer one into it', async () => {
