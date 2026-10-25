@@ -627,7 +627,8 @@ export class JournalExports {
         await this.audit.record(transaction, {
           branchId: row.branch_id,
           actorId: row.account_id,
-          assignmentId: row.assignment_id,
+          // The assignment that allowed the run (its access was read again for it).
+          assignmentId: access.assignmentId,
           action: 'journal.branch_export_ready',
           record: { type: 'journal_export', id: row.id },
           details: {

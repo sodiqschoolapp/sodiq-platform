@@ -11,7 +11,7 @@ import type { Access } from '../access/permission.guard.js';
  * `journal_save_refusals` (0131), in a transaction of its own after the
  * refused one rolled back; then the refusal is answered unchanged. Nothing is
  * written for a lesson or journal outside the branch, or for a student who is
- * not the branch's (404: they name nothing the view can show), and a failure
+ * neither the branch's nor a member of the journal (404: they name nothing the view can show), and a failure
  * to record never changes the answer.
  */
 
@@ -110,16 +110,34 @@ export class SaveRefusals {
       if (journalId === undefined) return;
       const ids = [...new Set(save.cells.map((cell) => cell.studentId.toLowerCase()))];
       if (ids.length === 0) return;
-      const students = new Set(
-        (
-          await transaction
-            .selectFrom('students')
-            .select('id')
-            .where('id', 'in', ids)
-            .where('branch_id', '=', branchId)
-            .execute()
-        ).map((row) => row.id.toLowerCase()),
-      );
+      // The students of the branch, and the members of the journal's class or group: a former
+      // member now in another branch keeps the refusals the support view shows (decision 15).
+      const journal = await transaction
+        .selectFrom('journals')
+        .select(['class_id', 'group_id'])
+        .where('id', '=', journalId)
+        .executeTakeFirstOrThrow();
+      const ofBranch = await transaction
+        .selectFrom('students')
+        .select('id')
+        .where('id', 'in', ids)
+        .where('branch_id', '=', branchId)
+        .execute();
+      const members =
+        journal.class_id !== null
+          ? await transaction
+              .selectFrom('class_memberships')
+              .select('student_id as id')
+              .where('class_id', '=', journal.class_id)
+              .where('student_id', 'in', ids)
+              .execute()
+          : await transaction
+              .selectFrom('group_memberships')
+              .select('student_id as id')
+              .where('group_id', '=', journal.group_id ?? '')
+              .where('student_id', 'in', ids)
+              .execute();
+      const students = new Set([...ofBranch, ...members].map((row) => row.id.toLowerCase()));
       const cells = save.cells.filter((cell) => students.has(cell.studentId.toLowerCase()));
       if (cells.length === 0) return;
       const moment = await transactionMoment(transaction);

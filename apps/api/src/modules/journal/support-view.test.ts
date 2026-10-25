@@ -14,7 +14,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { MembersKit } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { SaveRefusals } from './save-refusals.js';
 
@@ -207,7 +207,7 @@ describe('the support view', () => {
       expect(cells).toEqual([{ student_id: s.ahmedov, mark: 1 }]);
     });
 
-    it('writes nothing for an unknown lesson, another branch, a student of no branch of the reader, or a save that passes', async () => {
+    it("writes nothing for an unknown lesson, another branch's lesson or journal on each of the three routes, or a save that passes, and drops a student of another branch from a refusal", async () => {
       const owner = await account();
       const s = await scene(owner.account.id);
       const elsewhere = await scene((await account()).account.id);
@@ -232,6 +232,38 @@ describe('the support view', () => {
         ),
       ).toBe('not_found');
       expect(
+        codeOf(
+          await post(owner, s.branch, `/api/journal/lessons/${elsewhere.first}/scores`, {
+            saves: [
+              {
+                studentId: elsewhere.ahmedov,
+                column: { workId: randomUUID() },
+                score: 1,
+                version: null,
+              },
+            ],
+          }),
+        ),
+      ).toBe('not_found');
+      const elsewhereQuarter = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', elsewhere.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      expect(
+        codeOf(
+          await post(
+            owner,
+            s.branch,
+            `/api/journal/journals/${elsewhere.journal}/rating/${elsewhereQuarter}/entries`,
+            { studentId: elsewhere.ahmedov, entry: null, reason: null, version: null },
+          ),
+        ),
+      ).toBe('not_found');
+      expect(
         (
           await post(owner, s.branch, `/api/journal/lessons/${s.third}/attendance`, {
             saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
@@ -243,6 +275,21 @@ describe('the support view', () => {
         .select('id')
         .execute();
       expect(after).toHaveLength(before.length);
+      // A refused save (the 12th is locked) naming a student of another branch: only the
+      // branch's student is recorded.
+      const locked = await post(owner, s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+        saves: [
+          { studentId: s.boboyev, mark: 1, version: null },
+          { studentId: elsewhere.boboyev, mark: 1, version: null },
+        ],
+      });
+      expect(codeOf(locked)).toBe('journal_locked');
+      const recorded = await t.database.migrator
+        .selectFrom('journal_save_refusals')
+        .select('student_id')
+        .where('student_id', 'in', [s.boboyev, elsewhere.boboyev])
+        .execute();
+      expect(recorded.map((one) => one.student_id)).toEqual([s.boboyev]);
     });
 
     it('records a refused number and a refused rating entry, and a failure to record changes no answer', async () => {
@@ -543,6 +590,70 @@ describe('the support view', () => {
       expect([...times].sort()).toEqual(times);
     });
 
+    it('names a late entry with its approver, a refusal outside the scope and a leaving line, and finds a student now in another branch', async () => {
+      const owner = await account();
+      const vice = await account();
+      const stranger = await account();
+      const s = await scene(owner.account.id);
+      const elsewhere = await t.newBranch();
+      await give(owner, [{ role: 'teacher', branchId: s.branch }]);
+      await give(vice, [{ role: 'academic_vice_principal', branchId: s.branch }]);
+      await give(stranger, [{ role: 'teacher', branchId: s.branch }]);
+      // The 12th is locked: the teacher asks for an unlock, the vice approves it.
+      await at(owner, MOMENT);
+      const asked = await post(owner, s.branch, `/api/journal/lessons/${s.first}/unlocks`, {
+        reason: 'Marks of the paper register',
+      });
+      expect(asked.status, JSON.stringify(asked.body)).toBe(201);
+      const unlock = asked.body as { id: string; version: number };
+      await at(vice, '2026-10-27T12:05:00+05:00');
+      const decided = await post(vice, s.branch, `/api/journal/unlocks/${unlock.id}/decide`, {
+        decision: 'approve',
+        days: 1,
+        version: unlock.version,
+      });
+      expect(decided.status, JSON.stringify(decided.body)).toBe(200);
+      await at(owner, '2026-10-27T12:10:00+05:00');
+      const late = await post(owner, s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+        saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+      });
+      expect(late.status, JSON.stringify(late.body)).toBe(200);
+      // A teacher of no lesson of the journal: refused outside the scope, and recorded.
+      await at(stranger, '2026-10-27T12:15:00+05:00');
+      const outside = await post(stranger, s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+        saves: [{ studentId: s.ahmedov, mark: 0, version: null }],
+      });
+      expect(codeOf(outside)).toBe('journal_entry_scope');
+      // A leaving's void of the mark, as 0127 writes its history line (`changed_how` leaving).
+      await atMoment('2026-10-27T12:20:00+05:00', async (transaction) => {
+        await sql`select set_config('app.void_reason', 'Left for another school', true)`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('journal_cells')
+          .set({ mark: null, changed_how: 'leaving', changed_by: vice.account.id })
+          .where('lesson_id', '=', s.first)
+          .where('student_id', '=', s.ahmedov)
+          .execute();
+      });
+      // "My grade disappeared" after the student moved to another branch: still found.
+      await moveStudentBranch(t.database.migrator, s.ahmedov, s.branch, elsewhere);
+      await at(vice, '2026-10-27T12:30:00+05:00');
+      const view = await supportOf(vice, s.branch, {
+        studentId: s.ahmedov,
+        journalId: s.journal,
+        date: '2026-10-12',
+      });
+      expect(view.student.id).toBe(s.ahmedov);
+      const cells = ofKind(view, 'cell');
+      expect(cells.map((one) => one.how)).toEqual(['late_entry', 'leaving']);
+      expect(cells[0]?.approvedBy?.accountId).toBe(vice.account.id);
+      expect(cells[1]?.reason).toBe('Left for another school');
+      expect(ofKind(view, 'refusal').map((one) => [one.code, one.by.accountId])).toEqual([
+        ['journal_entry_scope', stranger.account.id],
+      ]);
+    });
+
     it('lists a total and "not held" of the date\'s works, and refuses another branch\'s journal, a student with no membership and a date outside the year', async () => {
       const owner = await account();
       const vice = await account();
@@ -600,6 +711,14 @@ describe('the support view', () => {
       expect(
         await refused(`studentId=${randomUUID()}&journalId=${s.journal}&date=2026-10-26`),
       ).toBe('not_found');
+      expect(
+        await refused(`studentId=${s.ahmedov}&journalId=${randomUUID()}&date=2026-10-26`),
+      ).toBe('not_found');
+      // A student of the branch who is not a member of this journal (the other class).
+      const outsider = await student(s.branch, s.otherClass, 'Karimov');
+      expect(await refused(`studentId=${outsider}&journalId=${s.journal}&date=2026-10-26`)).toBe(
+        'not_found',
+      );
       expect(await refused(`studentId=${s.ahmedov}&journalId=${s.journal}&date=2026-11-02`)).toBe(
         'journal_no_quarter',
       );

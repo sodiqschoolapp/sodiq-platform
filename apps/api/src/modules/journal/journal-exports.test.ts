@@ -9,7 +9,7 @@ import {
 import ExcelJS from 'exceljs';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
@@ -21,6 +21,7 @@ import { Audit } from '../audit/audit.service.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
 import { saveCells } from './cells.js';
 import { JournalExports } from './journal-exports.service.js';
+import { JournalGridReader } from './journal-grid.service.js';
 
 const store = new MemoryPhotoStore();
 const pdf = new RecordingPdf();
@@ -505,6 +506,82 @@ describe('journal exports', () => {
       expect(pdf.last).not.toContain('competition');
       t.clock.set(START);
     });
+
+    it('follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused', async () => {
+      const x = await scene();
+      const elsewhere = await scene();
+      const body = { format: 'xlsx', quarterId: x.q1 };
+      const allowed = async (browser: Browser, branch: string, journal: string, quarter = x.q1) => {
+        await at(browser, MOMENT);
+        const answer = await exportOf(browser, branch, journal, { ...body, quarterId: quarter });
+        expect(answer.status, codeOf(answer)).toBe(200);
+      };
+      const refused = async (browser: Browser, branch: string, journal: string, quarter = x.q1) => {
+        await at(browser, MOMENT);
+        refusedFile(
+          await exportOf(browser, branch, journal, { ...body, quarterId: quarter }),
+          403,
+          'journal_scope',
+        );
+      };
+      // Head Teachers: of the journal's subject, and of another subject in the same branch.
+      const head = await account();
+      await give(head, [{ role: 'head_teacher', branchId: x.s.branch, subjectIds: [x.s.subject] }]);
+      await allowed(head, x.s.branch, x.journal);
+      const otherHead = await account();
+      await give(otherHead, [
+        { role: 'head_teacher', branchId: x.s.branch, subjectIds: [elsewhere.s.subject] },
+      ]);
+      await refused(otherHead, x.s.branch, x.journal);
+      // A Senior Head Teacher of the other scene's subject: let in there, refused here.
+      const senior = await account();
+      await give(senior, [{ role: 'senior_head_teacher', subjectIds: [elsewhere.s.subject] }]);
+      await allowed(senior, elsewhere.s.branch, elsewhere.journal, elsewhere.q1);
+      await refused(senior, x.s.branch, x.journal);
+      // Tutors: of the class, and of the other class of the branch.
+      const tutorOf = async (classId: string) => {
+        const browser = await account();
+        const [assignment] = await give(browser, [{ role: 'tutor', branchId: x.s.branch }]);
+        await load.classes.person(x.s.branch, ['uz'], { accountId: browser.account.id });
+        await load.classes.tutorRow(x.s.branch, classId, assignment ?? '');
+        return browser;
+      };
+      await allowed(await tutorOf(x.s.classId), x.s.branch, x.journal);
+      await refused(await tutorOf(x.s.otherClass), x.s.branch, x.journal);
+      t.clock.set(START);
+    });
+
+    it('answers 404 for an unknown journal and a quarter of another branch, and writes nothing in either branch', async () => {
+      const principal = await account();
+      const x = await scene();
+      const elsewhere = await scene();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      await at(principal, MOMENT);
+      const entries = () =>
+        t.database.migrator
+          .selectFrom('audit_log')
+          .select(['id', 'branch_id'])
+          .where('action', 'like', 'journal.%export%')
+          .where('branch_id', 'in', [x.s.branch, elsewhere.s.branch])
+          .orderBy('id')
+          .execute();
+      const before = await entries();
+      refusedFile(
+        await exportOf(principal, x.s.branch, randomUUID(), { format: 'xlsx', quarterId: x.q1 }),
+        404,
+        'not_found',
+      );
+      refusedFile(
+        await exportOf(principal, x.s.branch, x.journal, {
+          format: 'pdf',
+          quarterId: elsewhere.q1,
+        }),
+        404,
+        'not_found',
+      );
+      expect(await entries()).toEqual(before);
+      t.clock.set(START);
+    });
   });
 
   describe('of the branch', () => {
@@ -532,14 +609,35 @@ describe('journal exports', () => {
       expect(
         codeOf(await askBranch(vice, x.s.branch, { ...body, quarterId: randomUUID() }, key)),
       ).toBe('not_found');
+      // The used key with another branch's quarter: 404, never the stored answer.
+      const elsewhereQuarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('branch_id', '<>', x.s.branch)
+        .executeTakeFirstOrThrow();
+      expect(
+        codeOf(await askBranch(vice, x.s.branch, { ...body, quarterId: elsewhereQuarter.id }, key)),
+      ).toBe('not_found');
       await at(teacher, MOMENT);
       expect(codeOf(await askBranch(teacher, x.s.branch, body, key))).toBe('journal_export_scope');
-      const rows = await t.database.migrator
+      // One export in every branch, and one request entry: the repeats wrote nothing anywhere.
+      const rows = await t.database.migrator.selectFrom('journal_exports').select('id').execute();
+      expect(
+        rows.filter((one) => one.id === journalExportRequestedSchema.parse(first.body).export.id),
+      ).toHaveLength(1);
+      const created = await t.database.migrator
         .selectFrom('journal_exports')
         .select('id')
-        .where('branch_id', '=', x.s.branch)
+        .where('account_id', 'in', [vice.account.id, other.account.id, teacher.account.id])
         .execute();
-      expect(rows).toHaveLength(1);
+      expect(created).toHaveLength(1);
+      const requested = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '=', 'journal.branch_export')
+        .where('actor_id', 'in', [vice.account.id, other.account.id, teacher.account.id])
+        .execute();
+      expect(requested).toHaveLength(1);
       t.clock.set(START);
     });
 
@@ -636,6 +734,12 @@ describe('journal exports', () => {
         404,
         'not_found',
       );
+      refusedFile(
+        await fileCall(vice, x.s.branch, 'get', `/api/journal/exports/${randomUUID()}/file`),
+        404,
+        'not_found',
+      );
+      expect(await t.entries('journal.branch_export_download', item.id)).toHaveLength(1);
       const elsewhere = await t.newBranch();
       await give(principal, [{ role: 'principal', branchId: elsewhere }]);
       await at(principal, '2026-10-28T09:00:00+05:00');
@@ -764,6 +868,79 @@ describe('journal exports', () => {
           await askBranch(vice, x.s.branch, { format: 'xlsx', quarterId: x.q2, month: '2026-10' }),
         ),
       ).toBe('journal_month_outside');
+      t.clock.set(START);
+    });
+
+    it('reads every journal from one snapshot: a mark saved between the reads of two journals is in neither file', async () => {
+      const vice = await account();
+      const x = await scene();
+      await give(vice, [{ role: 'academic_vice_principal', branchId: x.s.branch }]);
+      const other = await student(x.s.branch, x.s.otherClass, { first: 'Dono', last: 'Yoqubova' });
+      const [otherFirst] = await lessonsOf({ classId: x.s.otherClass });
+      const [ownFirst] = x.lessons;
+      if (otherFirst === undefined || ownFirst === undefined)
+        throw new Error('Lessons on the 12th.');
+      const otherJournal = await journalOf(x.s.otherClass);
+      await at(vice, MOMENT);
+      const item = journalExportRequestedSchema.parse(
+        (await askBranch(vice, x.s.branch, { format: 'xlsx', quarterId: x.q1 })).body,
+      ).export;
+      // After the first journal is read, another transaction commits a mark in the other one.
+      const reader = t.app.get(JournalGridReader);
+      const original = reader.gridIn.bind(reader);
+      let saved = false;
+      const spy = vi.spyOn(reader, 'gridIn').mockImplementation(async (...args) => {
+        const grid = await original(...args);
+        if (!saved) {
+          saved = true;
+          const [lesson, studentId] =
+            args[3] === x.journal ? [otherFirst.id, other] : [ownFirst.id, x.oktamov];
+          await t.database.migrator.transaction().execute(async (transaction) => {
+            await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+            await transaction
+              .insertInto('journal_cells')
+              .values({
+                branch_id: x.s.branch,
+                lesson_id: lesson,
+                student_id: studentId,
+                mark: 2,
+                version: 1,
+                changed_by: vice.account.id,
+                changed_how: 'entry',
+                changed_at: new Date(0),
+              })
+              .execute();
+          });
+        }
+        return grid;
+      });
+      try {
+        await t.app
+          .get(JournalExports)
+          .runBranchExport({ exportId: item.id }, { branchIds: [x.s.branch] });
+      } finally {
+        spy.mockRestore();
+      }
+      expect(saved).toBe(true);
+      const row = await exportRow(item.id);
+      expect(row.status).toBe('ready');
+      const sheets = await sheetsOf(await store.get(row.file_key ?? ''));
+      expect(sheets).toHaveLength(2);
+      // Neither sheet has the mark 2 typed meanwhile; the journals were read at one moment.
+      for (const sheet of sheets) {
+        const rows = sheet.rows.slice(6).map((one) => one.values);
+        const named = rows.find((one) => one[1] === 'Yoqubova Dono' || one[1] === 'Oʻktamov Bek');
+        expect(named?.includes(2) ?? false).toBe(false);
+      }
+      // The mark is stored: a later read has it.
+      const cell = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select('mark')
+        .where('student_id', 'in', [other, x.oktamov])
+        .where('mark', '=', 2)
+        .execute();
+      expect(cell).toHaveLength(1);
+      expect(otherJournal).not.toBe(x.journal);
       t.clock.set(START);
     });
 
