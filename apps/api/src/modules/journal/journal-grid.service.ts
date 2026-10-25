@@ -79,6 +79,7 @@ import {
 import { gridComments } from './comments.query.js';
 import { firstsOfDoubles } from './doubles.query.js';
 import { countsFromOf, goLiveOf } from './start-quarter.js';
+import { decisionsOf, type StoredDecision } from '../results/quarter-decisions.js';
 import { ratingExamOf, ratingRightsOf } from './rating.js';
 import { roleReadingOf, shapeOf, teaches, type JournalScopeKey } from './journal-scope.js';
 import {
@@ -657,6 +658,16 @@ export class JournalGridReader {
           });
     // Task 8.6 (decision 10): the optional cells open now.
     const optional = await optionalCellsOf(transaction, lessonIds, now);
+    // Task 9.2a (decision 1, Look first): the decisions of the closing checklist.
+    const decisions =
+      shape === 'lessons'
+        ? new Map<string, StoredDecision>()
+        : await decisionsOf(
+            transaction,
+            quarter.id,
+            journal.subjectId,
+            students.map((student) => student.id),
+          );
 
     const exactOf = new Map<string, { quarter: Exact; months: Map<string, Exact> }>();
     // Who typed each attendance cell (task 6.3, decision 16).
@@ -826,7 +837,7 @@ export class JournalGridReader {
                 countsFrom,
                 leftSubjectOn: across?.leftSubjectOn ?? null,
                 atLeaving: across?.atLeaving ?? null,
-                decision: null,
+                decision: decisions.get(student.id)?.decision ?? null,
               })
             : null;
         const { averages } = result;
@@ -838,38 +849,46 @@ export class JournalGridReader {
           result:
             outcome?.kind === 'exempt'
               ? { kind: 'exempt' }
-              : result.kind === 'no_result'
-                ? { kind: 'no_result' }
-                : (() => {
-                    // A month leaves the rating exam out by the rule itself, labelled so,
-                    // never provisional for it (decision 23).
-                    const leftOut = result.leftOut.filter(
-                      (one) => inMonth === null || one.part !== 'ratingExam',
-                    );
-                    return {
-                      kind: 'number' as const,
-                      shown: Number(result.shown),
-                      grade: result.grade,
-                      provisional:
-                        inMonth === null
-                          ? result.provisional
-                          : leftOut.some((one) => one.reason === 'no_data'),
-                      leftOut: leftOut.map((one): JournalPart => one.part),
-                      // A result at leaving is labelled with its lessons too (edge/calculation:
-                      // "partial, labelled, with the number of lessons").
-                      basedOn:
-                        outcome?.kind === 'number' &&
-                        (outcome.flags.includes('few_lessons') || outcome.atLeaving !== null)
-                          ? outcome.basedOn
-                          : null,
-                    };
-                  })(),
+              : outcome?.kind === 'not_assessed'
+                ? { kind: 'not_assessed' }
+                : result.kind === 'no_result'
+                  ? { kind: 'no_result' }
+                  : (() => {
+                      // A month leaves the rating exam out by the rule itself, labelled so,
+                      // never provisional for it (decision 23).
+                      const leftOut = result.leftOut.filter(
+                        (one) => inMonth === null || one.part !== 'ratingExam',
+                      );
+                      return {
+                        kind: 'number' as const,
+                        shown: Number(result.shown),
+                        grade: result.grade,
+                        provisional:
+                          inMonth === null
+                            ? result.provisional
+                            : leftOut.some((one) => one.reason === 'no_data'),
+                        leftOut: leftOut.map((one): JournalPart => one.part),
+                        // A result at leaving is labelled with its lessons too (edge/calculation:
+                        // "partial, labelled, with the number of lessons").
+                        basedOn:
+                          outcome?.kind === 'number' &&
+                          (outcome.flags.includes('few_lessons') || outcome.atLeaving !== null)
+                            ? outcome.basedOn
+                            : null,
+                        kept: outcome?.kind === 'number' && outcome.decision === 'keep',
+                      };
+                    })(),
         };
         return {
           figures,
           exact: {
             ...averages,
-            result: result.kind === 'number' && outcome?.kind !== 'exempt' ? result.value : null,
+            // Only a number is averaged (edge/00-definitions, Result states): a decided
+            // "Exempt" or "Not assessed" leaves the bottom row (task 9.2a).
+            result:
+              result.kind === 'number' && (outcome === null || outcome.kind === 'number')
+                ? result.value
+                : null,
           },
         };
       };

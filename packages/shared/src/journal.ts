@@ -74,9 +74,13 @@ const shownResultSchema = z.discriminatedUnion('kind', [
      * one third of the quarter's lessons remain; `null` otherwise. A quarter figure only.
      */
     basedOn: z.object({ expected: z.int().min(0), held: z.int().min(0) }).nullable(),
+    /** Task 9.2a: a flagged result the Academic Vice Principal decided to keep. */
+    kept: z.boolean().default(false),
   }),
   /** Task 8.5: every lesson of the student was exempt: no number and no grade. */
   z.object({ kind: z.literal('exempt') }),
+  /** Task 9.2a: decided "Not assessed" on the closing checklist (`edge/calculation`). */
+  z.object({ kind: z.literal('not_assessed') }),
   z.object({ kind: z.literal('no_result') }),
 ]);
 

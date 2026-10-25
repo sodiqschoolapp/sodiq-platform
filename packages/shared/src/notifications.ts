@@ -514,6 +514,41 @@ export const NOTIFICATION_KINDS = {
     from: schoolDateSchema,
     until: schoolDateSchema,
   }),
+  /**
+   * Task 9.2a (`07`, Closing a quarter: "a 'remind' button that sends the list to
+   * the teachers concerned"; review decision 3): one notice per teacher, with the
+   * teacher's own items of the quarter's checklist.
+   */
+  'results.closing_reminder': z.strictObject({
+    quarter: z.int().min(1).max(4),
+    items: z
+      .array(
+        z.strictObject({
+          kind: z.enum([
+            'rating_missing',
+            'undecided',
+            'decision_outdated',
+            'unlocked',
+            'edit_period',
+            'plan_periods',
+            'no_attendance',
+            'numbers_missing',
+            'plan_incomplete',
+            'no_result',
+            'part_without_data',
+          ]),
+          unit: z.string().min(1).max(120),
+          subject: z.strictObject({
+            uz: z.string().min(1).max(200),
+            ru: z.string().min(1).max(200),
+            en: z.string().min(1).max(200),
+          }),
+          count: z.int().min(1),
+        }),
+      )
+      .min(1)
+      .max(200),
+  }),
 } as const satisfies Record<string, z.ZodType>;
 
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS;

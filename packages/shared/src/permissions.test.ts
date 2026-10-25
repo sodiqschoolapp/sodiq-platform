@@ -549,6 +549,17 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the closing checklist to the Super Admin and the Academic Vice Principal, read to the Principal (task 9.2a, decision 2)', () => {
+    const closing: Record<string, readonly string[]> = {
+      super_admin: ['view', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view', 'edit'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.quarter_closing[role], role).toEqual(closing[role] ?? []);
+    }
+  });
+
   it('gives the support view to the Super Admin and the Academic Vice Principal (task 8.9, decision 2)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.journal_support[role], role).toEqual(
@@ -596,6 +607,7 @@ describe('a frozen permission table', () => {
       'plan_requests',
       'plan_windows',
       'plans',
+      'quarter_closing',
       'quarters',
       'relatives',
       'rooms',

@@ -607,6 +607,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   vacancy_in_load: 'A load row names the vacancy, so it cannot be deleted.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
+  closing_not_open: 'The closing checklist of the quarter is not open yet.',
+  closing_not_flagged: 'The result is not flagged.',
+  closing_decision_not_allowed: 'The decision does not fit the result.',
+  closing_decision_changed: 'The decision was changed since it was read.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

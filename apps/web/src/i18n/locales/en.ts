@@ -3235,6 +3235,10 @@ export const en = {
       quarter: {
         attendance_values: 'Attendance values of a quarter set',
       },
+      results: {
+        decision_set: 'Decision on a flagged result set',
+        decision_cleared: 'Decision on a flagged result cleared',
+      },
       calendar_entry: {
         create: 'Calendar day added',
         edit: 'Calendar day changed',
@@ -3463,6 +3467,7 @@ export const en = {
         request_approve: 'Plan edit request approved',
         request_refuse: 'Plan edit request refused',
         request_finish: 'Plan editing finished early',
+        periods_ended: 'Plan editing periods of a quarter ended',
         request_void: 'Plan edit requests cancelled by a new teacher',
         queue_edit: 'Order of plan rows changed',
         shared: 'Class or group joined a shared plan',

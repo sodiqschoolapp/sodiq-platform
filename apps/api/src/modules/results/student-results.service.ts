@@ -8,6 +8,7 @@ import {
   shownPercent,
   studentQuarterOutcome,
   yearResult,
+  type FlagDecision,
   type QuarterOutcome,
   type StudentQuarterInput,
   type StudentQuarterOutcome,
@@ -32,6 +33,7 @@ import { NO_PLACES, studentPlaces, studentReaderOf } from '../access/class-scope
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
 import { ownStaffOf } from '../journal/attendance-entry.js';
+import { decisionOf } from './quarter-decisions.js';
 import {
   gridWeights,
   journalRows,
@@ -74,8 +76,9 @@ import { notFound } from '../setup/setup-refusals.js';
  * - A graded quarter with no quarterly distribution that fits its switches
  *   (`gridWeights`, decision 13) has no result: the grid shows none either, so
  *   it has no row in Results.
- * - No decision on a flag is stored before 9.2a and no quarter is closed
- *   before 9.2b: `decision: null`, `quarterClosed: false`.
+ * - The decision on a flag is the closing checklist's (task 9.2a,
+ *   `quarter-decisions.ts`); no quarter is closed before 9.2b:
+ *   `quarterClosed: false`.
  * - The year result is answered once the year is closed (decision 1, Look first).
  */
 
@@ -167,7 +170,12 @@ export class StudentResultsService {
           if (one === undefined || one.attendanceOnly) continue;
           const quarterly = one.weights.quarterly;
           if (quarterly === null) continue;
-          const input = inputOf(context, one, quarterly);
+          const input = inputOf(
+            context,
+            one,
+            quarterly,
+            await decisionOf(context.transaction, quarter.id, subjectId, context.studentId),
+          );
           const outcome = studentQuarterOutcome(input);
           outcomes.set(quarter.number, outcome);
           if (one.reading !== 'whole') {
@@ -558,6 +566,7 @@ function inputOf(
   context: Context,
   one: SubjectQuarter,
   quarterly: NonNullable<GridWeights['quarterly']>,
+  decision: FlagDecision | null,
 ): StudentQuarterInput {
   return {
     weights: quarterly,
@@ -569,7 +578,7 @@ function inputOf(
     countsFrom: countsFromOf(context.goLive, one.quarter),
     leftSubjectOn: one.found.leftSubjectOn,
     atLeaving: one.found.atLeaving,
-    decision: null,
+    decision,
   };
 }
 

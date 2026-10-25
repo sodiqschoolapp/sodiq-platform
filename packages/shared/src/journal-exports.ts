@@ -118,6 +118,8 @@ export interface JournalExportTexts {
   };
   readonly cancelled: string;
   readonly exempt: string;
+  /** Task 9.2a: a result decided "Not assessed". */
+  readonly notAssessed: string;
   readonly noResult: string;
   readonly provisionalResult: string;
   readonly basedOn: string;
@@ -167,6 +169,7 @@ const en: JournalExportTexts = {
   },
   cancelled: 'Cancelled',
   exempt: 'Exempt',
+  notAssessed: 'Not assessed',
   noResult: 'No result',
   provisionalResult: 'provisional',
   basedOn: 'based on {{held}} of {{expected}} lessons',
@@ -224,6 +227,7 @@ const ru: JournalExportTexts = {
   },
   cancelled: 'Отменён',
   exempt: 'Освобождён',
+  notAssessed: 'Не аттестован',
   noResult: 'Нет итога',
   provisionalResult: 'предварительно',
   basedOn: 'по {{held}} из {{expected}} уроков',
@@ -282,6 +286,7 @@ const uz: JournalExportTexts = {
   },
   cancelled: 'Bekor qilingan',
   exempt: 'Ozod',
+  notAssessed: 'Baholanmagan',
   noResult: 'Natija yoʻq',
   provisionalResult: 'dastlabki',
   basedOn: '{{expected}} ta darsdan {{held}} tasi asosida',

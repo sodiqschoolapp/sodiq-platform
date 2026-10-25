@@ -3277,6 +3277,10 @@ export const uz: Texts<'one' | 'other'> = {
       quarter: {
         attendance_values: 'Chorak davomat qiymatlari belgilandi',
       },
+      results: {
+        decision_set: 'Belgilangan natija boʻyicha qaror qabul qilindi',
+        decision_cleared: 'Belgilangan natija boʻyicha qaror bekor qilindi',
+      },
       calendar_entry: {
         create: 'Kalendar kuni qoʻshildi',
         edit: 'Kalendar kuni oʻzgartirildi',
@@ -3505,6 +3509,7 @@ export const uz: Texts<'one' | 'other'> = {
         request_approve: 'Rejani oʻzgartirish soʻrovi tasdiqlandi',
         request_refuse: 'Rejani oʻzgartirish soʻrovi rad etildi',
         request_finish: 'Rejani tahrirlash muddatidan oldin tugatildi',
+        periods_ended: 'Chorak rejalarini tahrirlash muddatlari tugatildi',
         request_void: 'Yangi oʻqituvchi tufayli oʻzgartirish soʻrovlari bekor qilindi',
         queue_edit: 'Reja qatorlari tartibi oʻzgartirildi',
         shared: 'Sinf yoki guruh umumiy rejaga qoʻshildi',

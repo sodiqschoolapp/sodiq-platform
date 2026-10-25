@@ -3387,6 +3387,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       quarter: {
         attendance_values: 'Заданы значения посещаемости четверти',
       },
+      results: {
+        decision_set: 'Принято решение по отмеченному итогу',
+        decision_cleared: 'Снято решение по отмеченному итогу',
+      },
       calendar_entry: {
         create: 'День календаря добавлен',
         edit: 'День календаря изменён',
@@ -3615,6 +3619,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         request_approve: 'Запрос на изменение плана одобрен',
         request_refuse: 'Запрос на изменение плана отклонён',
         request_finish: 'Изменение плана завершено досрочно',
+        periods_ended: 'Завершены периоды изменения планов четверти',
         request_void: 'Запросы на изменение отменены из-за нового учителя',
         queue_edit: 'Изменён порядок строк плана',
         shared: 'Класс или группа присоединены к общему плану',

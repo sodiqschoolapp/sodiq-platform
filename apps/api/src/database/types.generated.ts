@@ -1361,6 +1361,18 @@ export interface PatternEntries {
   weekday: number;
 }
 
+export interface QuarterResultDecisions {
+  branch_id: string;
+  decided_at: Timestamp;
+  decided_by: string;
+  decision: string | null;
+  id: Generated<string>;
+  quarter_id: string;
+  student_id: string;
+  subject_id: string;
+  version: Generated<number>;
+}
+
 export interface Quarters {
   academic_year_id: string;
   branch_id: string;
@@ -2077,6 +2089,7 @@ export interface DB {
   pattern_block_classes: PatternBlockClasses;
   pattern_blocks: PatternBlocks;
   pattern_entries: PatternEntries;
+  quarter_result_decisions: QuarterResultDecisions;
   quarters: Quarters;
   relative_accounts: RelativeAccounts;
   relatives: Relatives;
