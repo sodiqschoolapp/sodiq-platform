@@ -494,6 +494,45 @@ function LessonMode({
           </span>
         )}
       </h2>
+      {/* Task 8.8 (`09`, In the journal): "In lesson mode on a phone, topic, classwork and
+          homework are at the top of the screen". */}
+      <div className="grid gap-1 text-sm" data-lesson-plan-top="true">
+        <p>
+          <span className="font-semibold">{t('journal.card.topic')}</span>{' '}
+          {lesson.topic === null || lesson.topic === '' ? t('journal.works.noPlan') : lesson.topic}
+        </p>
+        {lesson.works.some((work) => work.kind === 'classwork') && (
+          <p>
+            <span className="font-semibold">{t('journal.card.classworks')}</span>{' '}
+            {lesson.works
+              .filter((work) => work.kind === 'classwork')
+              .map(
+                (work) => work.title ?? t('journal.grid.classworkShort', { number: work.position }),
+              )
+              .join(', ')}
+          </p>
+        )}
+        {lesson.works.some((work) => work.kind === 'homework') && (
+          <p>
+            <span className="font-semibold">{t('journal.card.checkedToday')}</span>{' '}
+            {lesson.works
+              .filter((work) => work.kind === 'homework')
+              .map(
+                (work) => work.title ?? t('journal.grid.homeworkShort', { number: work.position }),
+              )
+              .join(', ')}
+          </p>
+        )}
+        {lesson.given.some((one) => !one.notGiven) && (
+          <p>
+            <span className="font-semibold">{t('journal.card.givenToday')}</span>{' '}
+            {lesson.given
+              .filter((one) => !one.notGiven)
+              .map((one, at) => one.title ?? t('journal.grid.homeworkShort', { number: at + 1 }))
+              .join(', ')}
+          </p>
+        )}
+      </div>
       {lesson.canEnter && (
         <div>
           <Button

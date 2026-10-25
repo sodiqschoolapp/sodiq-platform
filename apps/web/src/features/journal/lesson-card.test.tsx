@@ -266,4 +266,21 @@ describe('the lesson card', () => {
     expect(within(dialog).queryAllByRole('checkbox')).toEqual([]);
     expect(dialog.textContent).not.toContain('Ten sums');
   });
+
+  it('puts topic, classwork and homework at the top of lesson mode', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-19`);
+    const top = await waitFor(() => {
+      const found = document.querySelector('[data-lesson-plan-top]');
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(top?.textContent).toContain('Fractions and their common denominators in practice');
+    expect(top?.textContent).toContain('Test');
+    expect(top?.textContent).toContain('Read');
+  });
 });

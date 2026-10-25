@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/lib/dates';
+import { PlanMinimumsSection } from './plan-minimums';
 import { invalidatePlans, planWindowsQuery, savePlanWindow } from './plans-api';
 
 /**
@@ -55,6 +56,10 @@ export function PlanWindowsPage(): React.JSX.Element {
           ))}
         </div>
       )}
+      {/* Task 8.8 (decision 11): the minimum works of each subject per quarter. */}
+      <div className="mt-4">
+        <PlanMinimumsSection />
+      </div>
     </>
   );
 }

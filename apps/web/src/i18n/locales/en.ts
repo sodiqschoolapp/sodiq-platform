@@ -748,18 +748,14 @@ export const en = {
       'The lesson cannot come back: a lesson of its works already has 10 works of that kind added by hand. Remove one of them first.',
     plan_work_has_data:
       'This work has a total or numbers in the journal, so it cannot be removed from the plan. Mark it "not held" in the journal instead.',
-    no_plan_item:
-      'This lesson has no plan item, so there is no topic or homework to mark.',
-    delivery_stale:
-      'Someone changed this mark since you opened the lesson card. Open it again.',
+    no_plan_item: 'This lesson has no plan item, so there is no topic or homework to mark.',
+    delivery_stale: 'Someone changed this mark since you opened the lesson card. Open it again.',
     not_delivered_copy_used:
       'The copy of this topic in "not covered" was already changed or placed in the plan, so the mark cannot be undone. Change the plan through an edit request instead.',
-    homework_not_in_lesson:
-      'This homework is not one given at this lesson.',
+    homework_not_in_lesson: 'This homework is not one given at this lesson.',
     homework_has_entries:
       'This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead.',
-    journal_work_not_given:
-      'This homework was marked "not given", so nothing is entered for it.',
+    journal_work_not_given: 'This homework was marked "not given", so nothing is entered for it.',
     plan_minimum_stale:
       'Someone changed this minimum since you opened the page. Reload it and try again.',
     entry_not_started:
@@ -5265,6 +5261,88 @@ export const en = {
     },
   },
   plans: {
+    reports: {
+      title: 'Plan reports',
+      noTeacher: 'No teacher',
+      teacher: 'Teacher',
+      unit: 'Class or group',
+      state: 'State',
+      flag: 'Warning',
+      empty: 'No plans in this quarter.',
+      completeness: 'Completeness',
+      progressTitle: 'Progress',
+      requestsTitle: 'Edit requests',
+      report: 'Report',
+      part: 'Show',
+      byTeacher: 'By teacher',
+      byPlan: 'By plan',
+      quarter: 'Quarter',
+      department: 'Department',
+      allDepartments: 'All departments',
+      excel: 'Excel',
+      branchCounts: 'Branch: {{complete}} of {{plans}} plans complete ({{percent}})',
+      counts: {
+        plans: 'Plans',
+        complete: 'Complete',
+        incomplete: 'Incomplete',
+        noTopic: 'Lessons with no topic',
+        notStarted: 'Not started',
+        overdue: 'Overdue',
+        windowNotOpened: 'Window not opened',
+        belowMinimum: 'Below the minimum',
+        percentComplete: 'Complete, %',
+      },
+      progress: {
+        planned: 'Lessons planned',
+        held: 'Lessons held',
+        delivered: 'Topics delivered',
+        notCovered: 'Items not covered',
+        behind: 'Behind the plan',
+        behindYes: 'Behind',
+        plannedWorks: 'Planned works',
+        notHeld: 'Works not held',
+        percentNotHeld: 'Share not held',
+      },
+      requests: {
+        kind: 'Kind',
+        status: 'Status',
+        decidedBy: 'Decided by',
+        decidedOn: '{{name}}, {{date}}',
+        changes: 'What was changed',
+        changeOn: 'changed on {{date}}',
+        topicChange: '{{date}}: {{before}} → {{after}}',
+        kinds: {
+          text: 'Text',
+          replan: 'Re-plan',
+          extension: 'Extension',
+        },
+        statuses: {
+          prepared: 'Prepared',
+          sent: 'Sent',
+          approved: 'Approved',
+          refused: 'Refused',
+          void: 'Void',
+        },
+      },
+    },
+    minimum: {
+      below: 'Below the minimum works',
+      belowDetail:
+        '{{classworks}} of {{minimumClassworks}} classworks, {{homeworks}} of {{minimumHomeworks}} homeworks',
+      title: 'Minimum works per quarter',
+      subject: 'Subject',
+      classworks: 'Classworks',
+      homeworks: 'Homeworks',
+      save: 'Save',
+      saved: 'Saved.',
+      empty: 'No graded subjects yet.',
+      hint: 'A plan below the minimum is a warning once the window has ended. 0 is no minimum.',
+    },
+    marks: {
+      notDelivered: 'Topic not delivered',
+      notGiven: 'Not given: {{titles}}',
+      copyOf: 'Not delivered on {{date}}',
+    },
     page: {
       title: 'Lesson plans',
       caption: 'Lesson plans',
@@ -5287,6 +5365,7 @@ export const en = {
       incomplete_other: '{{count}} rows without a topic',
     },
     plan: {
+      marks: 'Marks',
       title: 'Lesson plan',
       caption: 'Rows of the plan',
       quarter: 'Quarter',

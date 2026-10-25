@@ -41,6 +41,8 @@ export function PlansPage(): React.JSX.Element {
   const list = useQuery(plansQuery(branchId, search.year ?? null));
   const mayWindows = useMayView('plan_windows');
   const mayDecide = useMayView('plan_requests', 'edit');
+  // Task 8.8: the plan reports (decision 1).
+  const mayReports = useMayView('plan_reports');
   // Task 7.3: the masters for every reader of them; the parallel classes for the roles that oversee a subject.
   const mayMasters = useMayView('plan_masters');
   const { role } = useView();
@@ -81,7 +83,9 @@ export function PlansPage(): React.JSX.Element {
           // Task 7.2: overdue, window not opened, vacancy.
           const flagged = state.flag === null ? text : `${text} · ${t(`plans.flag.${state.flag}`)}`;
           // Task 7.3: "master updated" (decision 12).
-          return state.masterUpdated ? `${flagged} · ${t('plans.updated.mark')}` : flagged;
+          const updated = state.masterUpdated ? `${flagged} · ${t('plans.updated.mark')}` : flagged;
+          // Task 8.8 (decision 11): below the subject's minimum works once the window has ended.
+          return state.belowMinimum === null ? updated : `${updated} · ${t('plans.minimum.below')}`;
         },
       })),
     ],
@@ -127,6 +131,11 @@ export function PlansPage(): React.JSX.Element {
             {mayWindows && (
               <Link to="/plans/windows" className="text-link">
                 {t('plans.windows.title')}
+              </Link>
+            )}
+            {mayReports && (
+              <Link to="/plans/reports" className="text-link">
+                {t('plans.reports.title')}
               </Link>
             )}
             {mayDecide && (

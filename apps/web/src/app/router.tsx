@@ -70,6 +70,7 @@ import { PlanMastersPage } from '@/features/plans/plan-masters-page';
 import { PlanParallelPage } from '@/features/plans/plan-parallel-page';
 import { PlanRequestsPage } from '@/features/plans/plan-requests-page';
 import { PlanWindowsPage } from '@/features/plans/plan-windows-page';
+import { PlanReportsPage, planReportsSearch } from '@/features/plans/plan-reports-page';
 import { PlansPage } from '@/features/plans/plans-page';
 import { planSearch, plansSearch } from '@/features/plans/plans-search';
 import {
@@ -438,6 +439,14 @@ const planWindowsRoute = createRoute({
   component: guarded('plan_windows', PlanWindowsPage),
 });
 
+/** The plan reports (task 8.8): completeness, progress and edit requests. */
+const planReportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/plans/reports',
+  validateSearch: planReportsSearch,
+  component: guarded('plan_reports', PlanReportsPage),
+});
+
 /** The master plans of a year (task 7.3). */
 const planMastersRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -694,6 +703,7 @@ const routeTree = rootRoute.addChildren([
     journalRoute,
     plansRoute,
     planWindowsRoute,
+    planReportsRoute,
     planRequestsRoute,
     planMastersRoute,
     planMasterRoute,

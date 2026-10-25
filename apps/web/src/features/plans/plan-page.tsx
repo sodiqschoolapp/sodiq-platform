@@ -9,14 +9,15 @@ import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
-import { useView } from '@/features/access/use-view';
+import { useMayView, useView } from '@/features/access/use-view';
+import { TimetableFileButtons } from '@/features/timetable/timetable-file-buttons';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { PlanRowPanel } from './plan-row-panel';
 import { ExtendWindow, RequestsSection, WindowLine } from './plan-requests';
 import { MasterMark } from './plan-master-updated';
 import { SharedWith, SharingActions } from './plan-sharing';
-import { planQuery } from './plans-api';
+import { exportPlan, planQuery } from './plans-api';
 import type { PlanSearch } from './plans-search';
 
 /** "Mon 9 Nov · slot 1": a row's date and lesson slot. */
@@ -43,6 +44,7 @@ export function PlanPage(): React.JSX.Element {
   const search: PlanSearch = useSearch({ from: '/app/plans/$journalId' });
   const { branchId } = useView();
   const plan = useQuery(planQuery(branchId, journalId, search.quarter ?? null));
+  const mayExport = useMayView('plans', 'export');
   const language = i18n.language;
   const data = plan.data;
 
@@ -104,6 +106,26 @@ export function PlanPage(): React.JSX.Element {
         cell: (row) => (row.item?.homeworks ?? []).map((one) => one.title).join(', '),
       },
       {
+        // Task 8.8: the journal's marks on a held row (`edge/lesson-plans`, "A substitute
+        // supervises the class").
+        key: 'marks',
+        header: t('plans.plan.marks'),
+        cell: (row) =>
+          [
+            row.notDelivered ? t('plans.marks.notDelivered') : '',
+            row.notGiven.length === 0
+              ? ''
+              : t('plans.marks.notGiven', {
+                  titles: (row.item?.homeworks ?? [])
+                    .filter((work) => row.notGiven.includes(work.id))
+                    .map((work) => work.title)
+                    .join(', '),
+                }),
+          ]
+            .filter((one) => one !== '')
+            .join(' · '),
+      },
+      {
         key: 'files',
         header: t('plans.plan.files'),
         cell: (row) => {
@@ -138,6 +160,14 @@ export function PlanPage(): React.JSX.Element {
           { label: t('home.title'), to: '/' },
           { label: t('plans.page.title'), to: '/plans' },
         ]}
+        actions={
+          // Task 8.8 (decision 2): "Plans export to PDF and Excel with their marks".
+          data === undefined || !mayExport ? undefined : (
+            <TimetableFileButtons
+              send={(format) => exportPlan(journalId, data.quarterId, format)}
+            />
+          )
+        }
       />
       {plan.isError ? (
         <ErrorState
@@ -172,6 +202,13 @@ export function PlanPage(): React.JSX.Element {
                 <dd>{empty}</dd>
               </div>
               {data.closed && <dd>{t('plans.plan.closed')}</dd>}
+              {data.belowMinimum !== null && (
+                <dd data-below-minimum="true">
+                  {t('plans.minimum.below')}
+                  {': '}
+                  {t('plans.minimum.belowDetail', data.belowMinimum)}
+                </dd>
+              )}
               <WindowLine plan={data} />
             </dl>
             <SharingActions plan={data} />
@@ -210,7 +247,7 @@ export function PlanPage(): React.JSX.Element {
  * end of the plan"; "'Not covered' items are never dropped silently").
  */
 function NotCovered({ plan }: { plan: Plan }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-not-covered">
       <h2 id="plan-not-covered" className={SECTION_TITLE}>
@@ -218,7 +255,16 @@ function NotCovered({ plan }: { plan: Plan }) {
       </h2>
       <ul className="grid gap-1">
         {plan.notCovered.map((item) => (
-          <li key={item.id}>{item.topic}</li>
+          <li key={item.id}>
+            {item.topic}
+            {item.notDeliveredFrom !== null && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                {t('plans.marks.copyOf', {
+                  date: schoolDateText(item.notDeliveredFrom, i18n.language, false),
+                })}
+              </span>
+            )}
+          </li>
         ))}
       </ul>
     </section>

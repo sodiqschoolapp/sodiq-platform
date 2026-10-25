@@ -742,14 +742,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Урок нельзя вернуть: на уроке его работ уже 10 работ этого вида, добавленных вручную. Сначала уберите одну из них.',
     plan_work_has_data:
       'У этой работы есть максимум или числа в журнале, поэтому её нельзя убрать из плана. Вместо этого отметьте её в журнале «не проводилась».',
-    no_plan_item:
-      'У этого урока нет пункта плана, поэтому нечего отмечать.',
+    no_plan_item: 'У этого урока нет пункта плана, поэтому нечего отмечать.',
     delivery_stale:
       'Эту отметку изменили после того, как вы открыли карточку урока. Откройте её снова.',
     not_delivered_copy_used:
       'Копию этой темы в списке «не пройдено» уже изменили или поставили в план, поэтому отметку нельзя отменить. Измените план через запрос на изменение.',
-    homework_not_in_lesson:
-      'Это домашнее задание задано не на этом уроке.',
+    homework_not_in_lesson: 'Это домашнее задание задано не на этом уроке.',
     homework_has_entries:
       'У этого домашнего задания в журнале уже есть максимум, баллы, перенос или отметка «не проводилось», поэтому его нельзя отметить «не задано». Отметьте его «не проводилось».',
     journal_work_not_given:
@@ -5562,6 +5560,88 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   plans: {
+    reports: {
+      title: 'Отчёты по планам',
+      noTeacher: 'Без учителя',
+      teacher: 'Учитель',
+      unit: 'Класс или группа',
+      state: 'Состояние',
+      flag: 'Предупреждение',
+      empty: 'В этой четверти нет планов.',
+      completeness: 'Заполненность',
+      progressTitle: 'Прохождение',
+      requestsTitle: 'Запросы на изменение',
+      report: 'Отчёт',
+      part: 'Показать',
+      byTeacher: 'По учителям',
+      byPlan: 'По планам',
+      quarter: 'Четверть',
+      department: 'Кафедра',
+      allDepartments: 'Все кафедры',
+      excel: 'Excel',
+      branchCounts: 'Филиал: заполнено {{complete}} из {{plans}} планов ({{percent}})',
+      counts: {
+        plans: 'Планы',
+        complete: 'Заполнены',
+        incomplete: 'Не заполнены',
+        noTopic: 'Уроки без темы',
+        notStarted: 'Не начаты',
+        overdue: 'Просрочены',
+        windowNotOpened: 'Окно не открыто',
+        belowMinimum: 'Ниже минимума',
+        percentComplete: 'Заполнено, %',
+      },
+      progress: {
+        planned: 'Уроков запланировано',
+        held: 'Уроков проведено',
+        delivered: 'Тем пройдено',
+        notCovered: 'Пунктов не пройдено',
+        behind: 'Отстаёт от плана',
+        behindYes: 'Отстаёт',
+        plannedWorks: 'Запланированные работы',
+        notHeld: 'Работы не проводились',
+        percentNotHeld: 'Доля не проведённых',
+      },
+      requests: {
+        kind: 'Вид',
+        status: 'Статус',
+        decidedBy: 'Решил',
+        decidedOn: '{{name}}, {{date}}',
+        changes: 'Что изменено',
+        changeOn: 'изменено {{date}}',
+        topicChange: '{{date}}: {{before}} → {{after}}',
+        kinds: {
+          text: 'Текст',
+          replan: 'Перепланирование',
+          extension: 'Продление',
+        },
+        statuses: {
+          prepared: 'Подготовлен',
+          sent: 'Отправлен',
+          approved: 'Одобрен',
+          refused: 'Отклонён',
+          void: 'Недействителен',
+        },
+      },
+    },
+    minimum: {
+      below: 'Ниже минимума работ',
+      belowDetail:
+        '{{classworks}} из {{minimumClassworks}} классных работ, {{homeworks}} из {{minimumHomeworks}} домашних заданий',
+      title: 'Минимум работ за четверть',
+      subject: 'Предмет',
+      classworks: 'Классные работы',
+      homeworks: 'Домашние задания',
+      save: 'Сохранить',
+      saved: 'Сохранено.',
+      empty: 'Пока нет предметов с оценками.',
+      hint: 'План ниже минимума — предупреждение после окончания окна. 0 — без минимума.',
+    },
+    marks: {
+      notDelivered: 'Тема не пройдена',
+      notGiven: 'Не задано: {{titles}}',
+      copyOf: 'Не пройдено {{date}}',
+    },
     page: {
       title: 'Планы уроков',
       caption: 'Планы уроков',
@@ -5586,6 +5666,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       incomplete_other: '{{count}} строки без темы',
     },
     plan: {
+      marks: 'Отметки',
       title: 'План уроков',
       caption: 'Строки плана',
       quarter: 'Четверть',

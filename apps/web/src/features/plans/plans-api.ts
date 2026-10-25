@@ -1,4 +1,10 @@
 import {
+  planCompletenessSchema,
+  planMinimumsSchema,
+  planProgressSchema,
+  planRequestsReportSchema,
+  type PlanMinimumSave,
+  type PlanReportExport,
   planEventDecidedSchema,
   planRequestSchema,
   planRequestsSchema,
@@ -410,4 +416,99 @@ export const planParallelQuery = (
         ),
       ),
     enabled: branchId !== null && query !== null,
+  });
+
+/** Task 8.8: the minimum works of the subjects in the branch. */
+export const planMinimumsQuery = (branchId: string | null) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'minimums'],
+    queryFn: async () =>
+      planMinimumsSchema.parse(
+        await answerOf(api.GET('/api/plans/minimums', { params: { header: branchHeader() } })),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 8.8: sets the minimum of one subject on the version read. */
+export const savePlanMinimum = (body: PlanMinimumSave) =>
+  answerOf(api.PUT('/api/plans/minimums', { params: { header: branchHeader() }, body })).then(
+    (answer) => planMinimumsSchema.parse(answer),
+  );
+
+/** Task 8.8: the filters of the plan reports. */
+export interface PlanReportFilters {
+  quarterId?: string | undefined;
+  departmentId?: string | undefined;
+  teacherId?: string | undefined;
+}
+
+const reportQuery = (filters: PlanReportFilters) => ({
+  ...(filters.quarterId === undefined ? {} : { quarterId: filters.quarterId }),
+  ...(filters.departmentId === undefined ? {} : { departmentId: filters.departmentId }),
+  ...(filters.teacherId === undefined ? {} : { teacherId: filters.teacherId }),
+});
+
+export const planCompletenessQuery = (branchId: string | null, filters: PlanReportFilters) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'reports', 'completeness', reportQuery(filters)],
+    queryFn: async () =>
+      planCompletenessSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/reports/completeness', {
+            params: { header: branchHeader(), query: reportQuery(filters) },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const planProgressQuery = (branchId: string | null, filters: PlanReportFilters) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'reports', 'progress', reportQuery(filters)],
+    queryFn: async () =>
+      planProgressSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/reports/progress', {
+            params: { header: branchHeader(), query: reportQuery(filters) },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+export const planRequestsReportQuery = (branchId: string | null, filters: PlanReportFilters) =>
+  queryOptions({
+    queryKey: [...plansKey(branchId), 'reports', 'requests', reportQuery(filters)],
+    queryFn: async () =>
+      planRequestsReportSchema.parse(
+        await answerOf(
+          api.GET('/api/plans/reports/requests', {
+            params: { header: branchHeader(), query: reportQuery(filters) },
+          }),
+        ),
+      ),
+    enabled: branchId !== null,
+  });
+
+/** Task 8.8: a plan report in Excel, saved under the server's name. */
+export async function exportPlanReport(
+  report: PlanReportExport['report'],
+  filters: PlanReportFilters,
+): Promise<void> {
+  const result = await api.POST('/api/plans/reports/export', {
+    params: { header: branchHeader() },
+    body: { report, ...reportQuery(filters) },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(result));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(result.response.headers.get('Content-Disposition'), `${report}.xlsx`));
+}
+
+/** Task 8.8: a plan's PDF or Excel, as the generated client answers it (`TimetableFileButtons`). */
+export const exportPlan = (journalId: string, quarterId: string, format: 'pdf' | 'xlsx') =>
+  api.POST('/api/plans/journals/{journalId}/export', {
+    params: { header: branchHeader(), path: { journalId } },
+    body: { quarterId, format },
+    parseAs: 'blob',
   });
