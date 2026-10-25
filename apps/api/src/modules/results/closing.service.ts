@@ -718,7 +718,7 @@ export class ClosingService {
     const changes =
       reopening === undefined
         ? []
-        : changesAgainst(await recordsBefore(transaction, quarter.id, reopening), records);
+        : changesAgainst(await recordsBefore(transaction, quarter.id, reopening), records, 'all');
 
     const closing = await transaction
       .insertInto('quarter_closings')
@@ -1005,6 +1005,7 @@ export class ClosingService {
     const changes = changesAgainst(
       await recordsBefore(transaction, quarter.id, reopening),
       records,
+      { journalId: journal.id },
     );
     const branchClose = await closingOf(transaction, quarter.id);
     const closing = await transaction
@@ -1428,7 +1429,11 @@ export class ClosingService {
         });
       }
     }
-    const changes = changesAgainst(before, now);
+    const changes = changesAgainst(
+      before,
+      now,
+      reopening.journal_id === null ? 'all' : { journalId: reopening.journal_id },
+    );
     const names = await studentNames(
       transaction,
       changes.map((one) => one.studentId),

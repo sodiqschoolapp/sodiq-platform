@@ -49,8 +49,9 @@ export function sameShown(a: ClosingOutcome, b: ClosingOutcome): boolean {
 /**
  * The records in force before a reopening, by `<subject>|<student>` (decision 8): for a
  * whole-branch reopening, those of the versions it took out of force (their `reopened_at` is its
- * moment), the highest version holding one; for a journal's reopening, the records in force now
- * (its versions stay in force until the re-close).
+ * moment), the highest version holding one; for a journal's reopening, the records in force at
+ * its moment (its versions stay in force until the re-close; a recalculation applied during it is
+ * not its baseline: spec review should-fix 1).
  */
 export async function recordsBefore(
   transaction: Transaction,
@@ -74,7 +75,10 @@ export async function recordsBefore(
     .where((where) =>
       reopening.journal_id === null
         ? where('c.reopened_at', '=', reopening.reopened_at)
-        : where('c.reopened_at', 'is', null),
+        : where.and([
+            where('c.reopened_at', 'is', null),
+            where('c.closed_at', '<=', reopening.reopened_at),
+          ]),
     )
     .orderBy('c.version')
     .execute();
@@ -111,10 +115,18 @@ export interface RawChange {
   readonly after: ClosingOutcome;
 }
 
-/** The results now whose shown outcome differs from the record before, in the order given. */
+const NO_RESULT: ClosingOutcome = { kind: 'no_result', shown: null, grade: null, decision: null };
+
+/**
+ * The results now whose shown outcome differs from the record before, in the order given; then,
+ * with `missing`, each record before with no result now (of every journal, or of the one named),
+ * as "no result" (`edge/journal`: "Closing again lists every result that changed"; spec review
+ * should-fix 2). A recalculation lists only the students it applies, so it names none.
+ */
 export function changesAgainst(
   before: ReadonlyMap<string, RecordInForce>,
   now: readonly ResultNow[],
+  missing: 'all' | { readonly journalId: string } | null = null,
 ): RawChange[] {
   const changes: RawChange[] = [];
   for (const one of now) {
@@ -127,6 +139,21 @@ export function changesAgainst(
       journalId: one.journalId,
       before: shown,
       after: one.shown,
+    });
+  }
+  if (missing === null) return changes;
+  const present = new Set(now.map((one) => `${one.subjectId}|${one.studentId}`));
+  for (const [key, record] of before) {
+    if (present.has(key)) continue;
+    if (missing !== 'all' && record.journalId !== missing.journalId) continue;
+    const shown = storedShown(record.record);
+    if (sameShown(shown, NO_RESULT)) continue;
+    changes.push({
+      subjectId: record.subjectId,
+      studentId: record.studentId,
+      journalId: record.journalId,
+      before: shown,
+      after: NO_RESULT,
     });
   }
   return changes;

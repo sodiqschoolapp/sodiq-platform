@@ -53,15 +53,26 @@ export const forcedDeletePurgeJob = defineJob({
   data: dayData,
 });
 
-/** Each daily kind, its branch-time hour (plan decision 15) and its job. */
+/**
+ * Each daily kind, its branch-time hour (plan decision 15) and its job. `after`: the kind waits
+ * until that long after the day's run of another kind was enqueued, so that "did not run" never
+ * reads a check still running when a worker that was down sends both in one tick (spec review
+ * note; the check expires after an hour).
+ */
 export const DAILY_WORK: readonly {
   readonly kind: string;
   readonly at: string;
   readonly job: JobDefinition<DailyData>;
+  readonly after?: { readonly kind: string; readonly minutes: number };
 }[] = [
   { kind: 'results.check', at: '02:00', job: resultCheckJob },
   { kind: 'timetable.forced_delete_purge', at: '02:00', job: forcedDeletePurgeJob },
-  { kind: 'results.check_missed', at: '07:00', job: checkMissedJob },
+  {
+    kind: 'results.check_missed',
+    at: '07:00',
+    job: checkMissedJob,
+    after: { kind: 'results.check', minutes: 60 },
+  },
   { kind: 'results.closing_overdue', at: '07:00', job: closingOverdueJob },
   { kind: 'plans.reminders', at: '07:00', job: planRemindersJob },
   { kind: 'journal.about_to_lock', at: '07:00', job: aboutToLockJob },

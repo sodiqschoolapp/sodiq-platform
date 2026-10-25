@@ -3574,6 +3574,17 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toEqual([
         { data: { date: '2026-11-03', differences: 1, journals: 1 } },
       ]);
+      // edge/system-behaviour: "Every job can be repeated safely": a retry of the finished day's
+      // run stores no second run and sends no second notice (spec review note).
+      await check(b.s.branch, '2026-11-03T02:30:00+05:00');
+      const runs = await t.database.migrator
+        .selectFrom('result_checks')
+        .select('id')
+        .where('branch_id', '=', b.s.branch)
+        .where('day', '=', '2026-11-03')
+        .execute();
+      expect(runs).toHaveLength(1);
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toHaveLength(1);
     });
 
     it('catches an entry of a closed quarter changed past the guards', async () => {
@@ -3722,6 +3733,26 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         order by name
       `.execute(t.database.migrator);
       expect(queued.rows.map((one) => one.name)).toEqual((await runs()).map((one) => one.kind));
+      // The worker down from 07:00 to 08:00 of the next day: the check is sent at 08:00 and "did
+      // not run" one hour after it, never in the same tick (spec review note).
+      const dayOf = async (day: string) =>
+        (await runs()).filter((one) => one.day === day).map((one) => one.kind);
+      await tick('2026-10-29T08:00:00+05:00');
+      expect(await dayOf('2026-10-29')).toEqual([
+        'journal.about_to_lock',
+        'plans.reminders',
+        'results.check',
+        'results.closing_overdue',
+        'timetable.forced_delete_purge',
+      ]);
+      await tick('2026-10-29T08:59:00+05:00');
+      expect(await dayOf('2026-10-29')).not.toContain('results.check_missed');
+      await tick('2026-10-29T09:00:00+05:00');
+      expect(await dayOf('2026-10-29')).toContain('results.check_missed');
+      // A tick late by a day: the day it missed is never sent, the new day once.
+      await tick('2026-10-31T02:00:00+05:00');
+      expect(await dayOf('2026-10-30')).toEqual([]);
+      expect(await dayOf('2026-10-31')).toEqual(['results.check', 'timetable.forced_delete_purge']);
     });
 
     // 07: "After the last day the Academic Vice Principal is reminded until the quarter is closed."

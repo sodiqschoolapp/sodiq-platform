@@ -83,6 +83,19 @@ export class DailyWork {
         const time = clockTimeOf(now, branch.time_zone);
         for (const work of DAILY_WORK) {
           if (time < work.at) continue;
+          if (work.after !== undefined) {
+            const earlier = await transaction
+              .selectFrom('scheduled_runs')
+              .select('enqueued_at')
+              .where('branch_id', '=', branch.id)
+              .where('kind', '=', work.after.kind)
+              .where('day', '=', today)
+              .executeTakeFirst();
+            const minutes = work.after.minutes * 60_000;
+            if (earlier !== undefined && now.getTime() - earlier.enqueued_at.getTime() < minutes) {
+              continue;
+            }
+          }
           const made = await transaction
             .insertInto('scheduled_runs')
             .values({
@@ -113,8 +126,18 @@ export class DailyWork {
    */
   async check(data: DailyData, branchIds: readonly string[]): Promise<void> {
     const branchId = onlyBranch(branchIds);
-    const run = await this.transactions.run([branchId], async (transaction) =>
-      transaction
+    // Safe to repeat (`edge/system-behaviour`): a retry after the day's run finished does
+    // nothing; one after a run that stopped half-way checks again.
+    const run = await this.transactions.run([branchId], async (transaction) => {
+      const finished = await transaction
+        .selectFrom('result_checks')
+        .select('id')
+        .where('branch_id', '=', branchId)
+        .where('day', '=', data.day)
+        .where('finished_at', 'is not', null)
+        .executeTakeFirst();
+      if (finished !== undefined) return null;
+      return transaction
         .insertInto('result_checks')
         .values({
           branch_id: branchId,
@@ -123,8 +146,9 @@ export class DailyWork {
           started_at: await transactionMoment(transaction),
         })
         .returning('id')
-        .executeTakeFirstOrThrow(),
-    );
+        .executeTakeFirstOrThrow();
+    });
+    if (run === null) return;
     const found = await this.transactions.run(
       [branchId],
       (transaction) => checkBranch(transaction, branchId),
