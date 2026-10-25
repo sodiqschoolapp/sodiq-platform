@@ -1,4 +1,5 @@
 import {
+  gradeChangesSchema,
   attendanceValuesRecordSchema,
   CLASS_DAILY_LESSONS_MAX,
   CLASS_DAILY_LESSONS_MIN,
@@ -27,7 +28,9 @@ import { answerOf } from '@/api/failure';
 import { NumberField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
+import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
+import { useChangeReason } from '@/features/results/change-reason';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import {
@@ -235,6 +238,8 @@ function QuarterValuesForm({
       ),
     onSuccess: () => invalidateSettings(queryClient),
   });
+  // Task 9.1: the grades the change alters, and its reason, before it is saved.
+  const reasons = useChangeReason();
   const form = useRecordForm({
     schema: attendanceValuesRecordSchema,
     initial: { lateValue: String(quarter.lateValue), skippedValue: String(quarter.skippedValue) },
@@ -243,11 +248,22 @@ function QuarterValuesForm({
       skippedValue: wholeNumber(typed.skippedValue),
     }),
     save: async (record) => {
-      await save.mutateAsync(record);
+      const preview = gradeChangesSchema.parse(
+        await answerOf(
+          api.POST('/api/setup/quarters/{id}/attendance-values/preview', {
+            params: { header: branchHeader(), path: { id: quarter.id } },
+            body: record,
+          }),
+        ),
+      );
+      const reason = await reasons.ask(preview);
+      if (reason === null) throw new SaveCancelled();
+      await save.mutateAsync(reason === undefined ? record : { ...record, reason });
     },
   });
   return (
     <RecordForm form={form} label={label}>
+      {reasons.dialog}
       <div className="grid grid-cols-2 gap-3">
         <NumberField label={t('setup.settings.lateValue')} {...form.bind('lateValue')} />
         <NumberField label={t('setup.settings.skippedValue')} {...form.bind('skippedValue')} />

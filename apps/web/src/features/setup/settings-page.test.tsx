@@ -1,5 +1,11 @@
 import { GRADE_BANDS } from '@sodiq/calc';
-import type { AttendanceValuesList, BranchSettings, Role, TravelTimeList } from '@sodiq/shared';
+import type {
+  AttendanceValuesList,
+  BranchSettings,
+  GradeChanges,
+  Role,
+  TravelTimeList,
+} from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -24,6 +30,32 @@ const SETTINGS: BranchSettings = {
 };
 
 const QUARTER_ID = '0199b000-0000-7000-8000-000000000011';
+
+const JOURNAL_ID = '0199b000-0000-7000-8000-000000000021';
+
+/** Task 9.1: the preview of a change of quarter 1's values. */
+const PREVIEW: GradeChanges = {
+  reasonRequired: true,
+  quarters: [
+    {
+      quarterId: QUARTER_ID,
+      number: 1,
+      journals: [
+        {
+          journalId: JOURNAL_ID,
+          unit: { kind: 'class', id: '0199b000-0000-7000-8000-000000000022', name: '7 Oxford' },
+          subject: {
+            id: '0199b000-0000-7000-8000-000000000023',
+            names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+            colour: 'blue',
+          },
+          grades: 3,
+          results: 4,
+        },
+      ],
+    },
+  ],
+};
 
 const VALUES: AttendanceValuesList = {
   years: [
@@ -83,6 +115,8 @@ describe('the settings page', () => {
       'PUT /api/setup/settings/early-warning': (body) => json({ ...SETTINGS, ...(body as object) }),
       [`PUT /api/setup/quarters/${QUARTER_ID}/attendance-values`]: (body) =>
         json({ ...VALUES.years[0]?.quarters[0], ...(body as object) }),
+      // Task 9.1: the change alters a grade in one journal and needs a reason.
+      [`POST /api/setup/quarters/${QUARTER_ID}/attendance-values/preview`]: () => json(PREVIEW),
     });
     renderApp('/setup/settings');
     const warning = await section(en.setup.settings.earlyWarningTitle);
@@ -110,13 +144,57 @@ describe('the settings page', () => {
     const late = quarter.getByLabelText(en.setup.settings.lateValue);
     fireEvent.change(late, { target: { value: '75' } });
     fireEvent.click(quarter.getByRole('button', { name: en.form.save }));
+    // Task 9.1 (edge/calculation: "with the same preview"): the grades that change in each
+    // journal, and the reason, before the save is sent.
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    const journal = dialog.getByText(
+      (_, element) => element?.getAttribute('data-journal') === JOURNAL_ID,
+    );
+    expect(journal.textContent).toContain('7 Oxford');
+    expect(journal.textContent).toContain(en.results.change.grades_other.replace('{{count}}', '3'));
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
+    expect(await dialog.findByText(en.results.change.reasonMissing)).toBeDefined();
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'Council decision' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
     await waitFor(() => {
       expect(
         calls.find(
           (call) => call.route === `PUT /api/setup/quarters/${QUARTER_ID}/attendance-values`,
         )?.body,
-      ).toEqual({ lateValue: 75, skippedValue: 0 });
+      ).toEqual({ lateValue: 75, skippedValue: 0, reason: 'Council decision' });
     });
+    expect(
+      calls.find(
+        (call) => call.route === `POST /api/setup/quarters/${QUARTER_ID}/attendance-values/preview`,
+      )?.body,
+    ).toEqual({ lateValue: 75, skippedValue: 0 });
+  });
+
+  it('sends nothing when the person goes back from the reason of a change', async () => {
+    const calls = settingsApi('super_admin', {
+      [`POST /api/setup/quarters/${QUARTER_ID}/attendance-values/preview`]: () => json(PREVIEW),
+    });
+    renderApp('/setup/settings');
+    const quarter = within(
+      await screen.findByRole('form', {
+        name: en.setup.settings.quarterOfYear
+          .replace('{{year}}', '2026–2027')
+          .replace('{{number}}', '1'),
+      }),
+    );
+    fireEvent.change(quarter.getByLabelText(en.setup.settings.lateValue), {
+      target: { value: '75' },
+    });
+    fireEvent.click(quarter.getByRole('button', { name: en.form.save }));
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.back }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(calls.some((call) => call.route.startsWith('PUT /api/setup/quarters/'))).toBe(false);
+    expect(quarter.getByLabelText<HTMLInputElement>(en.setup.settings.lateValue).value).toBe('75');
   });
 
   // Task 5.2, decision 2: one value per branch; empty is not set.

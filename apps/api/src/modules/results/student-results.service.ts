@@ -402,30 +402,23 @@ export class StudentResultsService {
   }
 }
 
-/** The year named (404 when unknown or of another branch), else the current one, else `null`. */
+/**
+ * The year named (404 when unknown or of another branch); else the current one;
+ * else the newest that has started (a year not yet marked current can hold lessons);
+ * else `null`.
+ */
 async function yearOf(context: Context, yearId: string | undefined): Promise<YearRow | null> {
-  let query = context.transaction
-    .selectFrom('academic_years')
-    .select([
-      'id',
-      'status',
-      sql<string>`start_date::text`.as('start_date'),
-      sql<string>`end_date::text`.as('end_date'),
-    ])
-    .where('branch_id', '=', context.branchId);
-  query =
-    yearId === undefined ? query.where('status', '=', 'current') : query.where('id', '=', yearId);
-  const row = await query.executeTakeFirst();
-  if (row === undefined) {
-    if (yearId !== undefined) throw notFound();
-    return null;
+  const years = await yearsOf(context);
+  if (yearId !== undefined) {
+    const named = years.find((one) => one.id === yearId.toLowerCase());
+    if (named === undefined) throw notFound();
+    return named;
   }
-  return {
-    id: row.id,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    status: yearStatus(row.status),
-  };
+  return (
+    years.find((one) => one.status === 'current') ??
+    years.find((one) => one.startDate <= context.today) ??
+    null
+  );
 }
 
 /** The years of the branch, newest first, for the selector. */

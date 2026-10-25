@@ -5980,6 +5980,22 @@ try {
     password: exportsPrincipal.firstPassword,
   };
 
+  // Task 9.1: another Principal of the same branch opens a student's Results tab and the
+  // lessons behind a result. All names are invented.
+  const resultsPrincipal = await create('Madina', 'Tursunova');
+  await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: resultsPrincipal.id,
+      role: 'principal',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.resultsPrincipal = {
+    login: resultsPrincipal.login,
+    password: resultsPrincipal.firstPassword,
+  };
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.

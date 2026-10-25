@@ -23,7 +23,7 @@ import { JOURNAL_PARTS, journalSubjectSchema, journalUnitSchema } from './journa
  */
 
 export const studentResultsQuerySchema = z.object({
-  /** The academic year; the current one of the branch when left out. */
+  /** The academic year; when left out, the current one, else the newest that has started. */
   yearId: z.uuid().optional(),
 });
 
@@ -38,9 +38,9 @@ export type StudentResultLessonsQuery = z.infer<typeof studentResultLessonsQuery
 
 /** Which tabs the reader has (the tabs follow the server, never the role). */
 export const studentResultTabsSchema = z.object({
-  /** The reader reads the student's row of some journal of the current year whole. */
+  /** The reader reads the student's row of some journal of the year shown by default whole. */
   results: z.boolean(),
-  /** The reader reads the student's row of some journal of the current year at all. */
+  /** The reader reads the student's row of some journal of that year at all. */
   attendance: z.boolean(),
 });
 

@@ -206,6 +206,7 @@ const SUPPORT: JournalSupport = {
     daily: { attendance: 20, classwork: 40, homework: 40 },
     quarterly: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
     weightsChangedOn: null,
+    countsFrom: null,
   },
   lines: [
     {

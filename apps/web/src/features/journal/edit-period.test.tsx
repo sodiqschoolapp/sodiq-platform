@@ -105,7 +105,14 @@ const gridOf = (old: EditLock, students = [student(1, 'Zokirov')]): JournalGrid 
   reminders: [],
   lastTotal: null,
   bottom: null,
-  legend: { lateValue: 50, skippedValue: 0, daily: null, quarterly: null, weightsChangedOn: null },
+  legend: {
+    lateValue: 50,
+    skippedValue: 0,
+    daily: null,
+    quarterly: null,
+    weightsChangedOn: null,
+    countsFrom: null,
+  },
 });
 
 function open(grid: JournalGrid, role: 'teacher' | 'academic_vice_principal') {

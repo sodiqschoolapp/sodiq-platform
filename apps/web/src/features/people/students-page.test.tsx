@@ -3454,3 +3454,181 @@ describe('the Class filter', () => {
     expect(screen.queryByText(en.people.students.classesNotRead)).toBeNull();
   });
 });
+
+// Task 9.1: the Results and Attendance tabs of the profile (`04`, Profile tabs; `08`, Student
+// results: "Clicking a figure opens the lessons behind it"). The tabs follow the server.
+describe('the Results and Attendance tabs', () => {
+  const YEAR_ID = uid(60);
+  const Q1 = uid(61);
+  const SUBJECT = {
+    id: uid(62),
+    names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+    colour: 'blue' as const,
+  };
+  const UNIT = { kind: 'class' as const, id: uid(63), name: '7 Oxford' };
+  const YEAR = { id: YEAR_ID, startDate: '2026-09-01', endDate: '2027-05-31', status: 'current' };
+  const QUARTERS = [
+    { id: Q1, number: 1, startDate: '2026-09-01', endDate: '2026-10-31', notInSystem: false },
+  ];
+  const routes = (tabs: { results: boolean; attendance: boolean }): Record<string, Handler> => ({
+    [`GET /api/results/students/${OTKIR.id}/tabs`]: () => json(tabs),
+    [`GET /api/results/students/${OTKIR.id}`]: () =>
+      json({
+        year: YEAR,
+        years: [YEAR],
+        quarters: QUARTERS,
+        subjects: [
+          {
+            subject: SUBJECT,
+            quarters: [
+              {
+                quarterId: Q1,
+                unit: UNIT,
+                attendance: 50,
+                classwork: 90,
+                homework: null,
+                ratingExam: null,
+                ratingShown: false,
+                outcome: {
+                  kind: 'number',
+                  shown: 77,
+                  grade: 4,
+                  provisional: true,
+                  leftOut: ['homework'],
+                  flags: [],
+                },
+                basedOn: { expected: 3, held: 3 },
+                countsFrom: '2026-10-05',
+                leftSubjectOn: null,
+                atLeaving: null,
+              },
+            ],
+            year: null,
+          },
+        ],
+      }),
+    [`GET /api/results/students/${OTKIR.id}/attendance`]: () =>
+      json({
+        year: YEAR,
+        years: [YEAR],
+        quarters: QUARTERS,
+        subjects: [
+          {
+            subject: SUBJECT,
+            quarters: [
+              {
+                quarterId: Q1,
+                unit: UNIT,
+                attendanceOnly: false,
+                average: 50,
+                counts: { present: 1, absent: 1, late: 0, skipped: 0, exempt: 0, unmarked: 1 },
+              },
+            ],
+          },
+        ],
+      }),
+    [`GET /api/results/students/${OTKIR.id}/lessons`]: () =>
+      json({
+        subject: SUBJECT,
+        quarter: { id: Q1, number: 1 },
+        reading: 'whole',
+        lessons: [
+          {
+            lessonId: uid(64),
+            date: '2026-10-12',
+            unit: { journalId: uid(65), name: '7 Oxford' },
+            mark: 1,
+            attendanceValue: 100,
+            classworks: [
+              {
+                workId: uid(66),
+                title: 'Fractions',
+                position: 1,
+                score: 9,
+                total: 10,
+                percent: 90,
+              },
+            ],
+            homeworks: [],
+          },
+        ],
+        ratingExam: null,
+      }),
+  });
+
+  const openTab = async (name: string) => {
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const tabs = await within(panel).findByRole('radiogroup');
+    fireEvent.click(await within(tabs).findByRole('radio', { name }));
+    return panel;
+  };
+
+  it('shows the figures the server gives, and opens the lessons behind a result', async () => {
+    const calls = openList('principal', routes({ results: true, attendance: true }));
+    const panel = await openTab(en.people.students.tabs.results);
+    const row = await waitFor(() => {
+      const found = panel.querySelector(`tr[data-subject="${SUBJECT.id}"]`);
+      if (found === null) throw new Error('No row yet.');
+      return found as HTMLElement;
+    });
+    const cell = (part: string) => row.querySelector(`[data-part="${part}"]`)?.textContent;
+    expect(cell('attendance')).toBe('50');
+    expect(cell('classwork')).toBe('90');
+    expect(cell('homework')).toBe(en.results.none);
+    expect(cell('result')).toBe('77');
+    expect(cell('grade')).toBe('4');
+    expect(row.textContent).toContain(en.results.labels.provisional);
+    expect(row.textContent).toContain(
+      en.results.labels.countsFrom.replace('{{date}}', schoolDateText('2026-10-05', 'en')),
+    );
+
+    fireEvent.click(
+      within(row).getByRole('button', {
+        name: en.results.openLessons
+          .replace('{{part}}', en.results.parts.result)
+          .replace('{{subject}}', 'Mathematics'),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    const lesson = await waitFor(() => {
+      const found = dialog.querySelector(`tr[data-lesson="${uid(64)}"]`);
+      if (found === null) throw new Error('No lesson yet.');
+      return found as HTMLElement;
+    });
+    expect(lesson.querySelector('[data-part="classwork"]')?.textContent).toBe(
+      'Fractions: 9 of 10, 90%',
+    );
+    expect(lesson.querySelector('[data-part="attendance"]')?.textContent).toBe('1 (counts 100)');
+    const asked = calls.find(
+      (call) => call.route === `GET /api/results/students/${OTKIR.id}/lessons`,
+    );
+    expect(asked?.query).toBe(`?subjectId=${SUBJECT.id}&quarterId=${Q1}`);
+  });
+
+  it('shows the attendance with the counts of the marks', async () => {
+    openList('principal', routes({ results: true, attendance: true }));
+    const panel = await openTab(en.people.students.tabs.attendance);
+    const row = await waitFor(() => {
+      const found = panel.querySelector(`tr[data-subject="${SUBJECT.id}"]`);
+      if (found === null) throw new Error('No row yet.');
+      return found as HTMLElement;
+    });
+    expect(row.querySelector('[data-part="attendance"]')?.textContent).toBe('50');
+    expect(row.querySelector('[data-count="absent"]')?.textContent).toBe('1');
+    expect(row.querySelector('[data-count="unmarked"]')?.textContent).toBe('1');
+  });
+
+  it('offers only the tabs the server answers', async () => {
+    openList('head_tutor', routes({ results: false, attendance: true }));
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const tabs = await within(panel).findByRole('radiogroup');
+    expect(
+      await within(tabs).findByRole('radio', { name: en.people.students.tabs.attendance }),
+    ).toBeDefined();
+    expect(within(tabs).queryByRole('radio', { name: en.people.students.tabs.results })).toBeNull();
+  });
+});
