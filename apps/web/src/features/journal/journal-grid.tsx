@@ -581,6 +581,12 @@ export function JournalGridView({
             if (result.kind === 'exempt') {
               return <span data-result="exempt">{t('journal.grid.exemptResult')}</span>;
             }
+            // Task 9.2a: decided "Not assessed" on the closing checklist (edge/calculation).
+            if (result.kind === 'not_assessed') {
+              return (
+                <span data-result="not_assessed">{t('journal.grid.notAssessedResult')}</span>
+              );
+            }
             return (
               <span data-result={result.shown}>
                 {result.shown}
@@ -603,6 +609,11 @@ export function JournalGridView({
                     title={result.leftOut.map((part) => t(`journal.grid.parts.${part}`)).join(', ')}
                   >
                     {t('journal.grid.leftOutShort')}
+                  </span>
+                )}
+                {result.kept && (
+                  <span className="ml-1 text-xs text-muted-foreground" data-kept="true">
+                    {t('journal.grid.keptShort')}
                   </span>
                 )}
                 {/* Task 8.6 (07, Transfers): "the carried-in averages with a marker". */}

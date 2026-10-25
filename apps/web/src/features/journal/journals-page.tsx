@@ -39,6 +39,8 @@ export function JournalsPage(): React.JSX.Element {
   // Task 8.7: the counts per teacher and the orphan lessons.
   const discipline = useMayView('journal_discipline');
   const orphans = useMayView('journal_orphans');
+  // Task 9.2a: the closing checklist of a quarter.
+  const closing = useMayView('quarter_closing');
   // Task 8.9: the export of the branch (decision 3: the server answers who may) and the support view.
   const exportsList = useQuery(journalExportsQuery(branchId));
   const branchExports = exportsList.data?.canExportBranch === true;
@@ -104,7 +106,14 @@ export function JournalsPage(): React.JSX.Element {
         title={t('journal.page.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          absences || unlocks || exemptions || discipline || orphans || branchExports || support ? (
+          absences ||
+          unlocks ||
+          exemptions ||
+          discipline ||
+          orphans ||
+          branchExports ||
+          support ||
+          closing ? (
             <span className="flex flex-wrap gap-4">
               {absences && (
                 <Link to="/journal/student-absences" className="text-link">
@@ -129,6 +138,11 @@ export function JournalsPage(): React.JSX.Element {
               {orphans && (
                 <Link to="/journal/orphans" className="text-link">
                   {t('journal.orphans.title')}
+                </Link>
+              )}
+              {closing && (
+                <Link to="/results/closing" className="text-link">
+                  {t('results.closing.title')}
                 </Link>
               )}
               {branchExports && (

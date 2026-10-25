@@ -669,6 +669,14 @@ export const uz: Texts<'one' | 'other'> = {
     journal_export_stale: 'Eksport oʻz vaqtida tugamadi. Uni qaytadan soʻrang.',
     journal_export_expired:
       'Bu eksport havolasi 24 soat ishladi va muddati tugadi. Yangi eksport soʻrang.',
+    closing_not_open:
+      'Bu chorakni yopish roʻyxati hali ochilmagan. U oxirgi kundan ikki hafta oldin ochiladi.',
+    closing_not_flagged:
+      'Bu natija endi belgilanmagan, qaror qabul qilish shart emas. Roʻyxatni yangilang.',
+    closing_decision_not_allowed:
+      '«Ozod» faqat ozod qilish bilan izohlanadigan, faqat kam dars uchun belgilangan natijaga mos keladi. «Qoldirish» yoki «Baholanmagan»ni tanlang.',
+    closing_decision_changed:
+      'Siz roʻyxatni ochganingizdan keyin kimdir bu qarorni oʻzgartirdi. Uni yangilab, qayta qaror qiling.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
@@ -3940,6 +3948,9 @@ export const uz: Texts<'one' | 'other'> = {
     kinds: {
       unknown:
         'Ilovaning bu versiyasi hali koʻrsata olmaydigan bildirishnoma. Sahifani qayta yuklang.',
+      results: {
+        closing_reminder: '{{quarter}}-chorak tez orada yopiladi. Tugatilishi kerak: {{items}}.',
+      },
       setup: {
         quarter_weights_changed:
           '{{subject}} fanining vaznlari ({{quarters}}) {{date}} kuni oʻzgardi: {{reason}}.',
@@ -5814,6 +5825,7 @@ export const uz: Texts<'one' | 'other'> = {
       results: {
         exempt: 'Ozod',
         no_result: 'Natija yoʻq',
+        not_assessed: 'Baholanmagan',
       },
       work: '{{title}}: {{total}} dan {{score}}, {{percent}}%',
       mark: 'Belgi {{mark}}',
@@ -6172,6 +6184,8 @@ export const uz: Texts<'one' | 'other'> = {
       optionalUntil: '{{date}} gacha ixtiyoriy',
       backFromExemption: 'ozod qilishdan qaytdi',
       exemptResult: 'Ozod',
+      notAssessedResult: 'Baholanmagan',
+      keptShort: 'qoldirildi',
       basedOn: '{{held}} darsdan {{expected}} tasi boʻyicha',
       exemptCell: {
         temporary: 'Vaqtincha ozod',
@@ -6461,6 +6475,84 @@ export const uz: Texts<'one' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    closing: {
+      reminderLine: '{{kind}}: {{unit}}, {{subject}} ({{count}})',
+      title: 'Chorakni yopish roʻyxati',
+      quarter: 'Chorak',
+      item: 'Band',
+      severity: 'Taʼsiri',
+      blocking: 'Yopishga toʻsqinlik qiladi',
+      warning: 'Ogohlantirish',
+      teacher: 'Oʻqituvchi',
+      unit: 'Sinf yoki guruh',
+      subject: 'Fan',
+      count: 'Soni',
+      remind: 'Oʻqituvchilarga eslatish',
+      reminded_one: '{{count}} oʻqituvchiga eslatma yuborildi.',
+      reminded_other: '{{count}} oʻqituvchiga eslatma yuborildi.',
+      endPeriods: 'Rejani tahrirlash muddatlarini tugatish',
+      endPeriodsTitle_one: '{{count}} ta ochiq rejani tahrirlash muddati tugatilsinmi?',
+      endPeriodsTitle_other: '{{count}} ta ochiq rejani tahrirlash muddati tugatilsinmi?',
+      noQuarter: 'Filialda hali sanalari belgilangan chorak yoʻq.',
+      opensOn: 'Roʻyxat {{date}} kuni ochiladi.',
+      closable: 'Yopishga hech narsa toʻsqinlik qilmaydi.',
+      counts: 'Toʻsqinlik qiladi: {{blocking}} · ogohlantirishlar: {{warnings}}',
+      notOpenYet: 'Roʻyxat chorak tugashidan ikki hafta oldin ochiladi.',
+      nothingLeft: 'Bu chorakda tugatiladigan narsa qolmadi.',
+      openJournal: 'Jurnalni ochish: {{journal}}',
+      pending: 'imtihon kuni ozod, kutilmoqda',
+      ratingUnlocked: 'Reyting imtihoni ochib qoʻyilgan.',
+      extension: '{{from}} – {{to}} uchun tuzatish muddati {{until}} gacha uzaytirilgan',
+      editPeriod_one: '{{count}} ta dars hali tuzatish muddatida, tugallanmagan: {{incomplete}}',
+      editPeriod_other: '{{count}} ta dars hali tuzatish muddatida, tugallanmagan: {{incomplete}}',
+      planPeriods_one: '{{count}} ta rejani tahrirlash muddati ochiq',
+      planPeriods_other: '{{count}} ta rejani tahrirlash muddati ochiq',
+      noTopic_one: '{{count}} ta mavzusiz dars',
+      noTopic_other: '{{count}} ta mavzusiz dars',
+      notCovered_one: '{{count}} ta band oʻtilmagan',
+      notCovered_other: '{{count}} ta band oʻtilmagan',
+      belowMinimum: 'Baholangan ishlar fan talab qilganidan kam',
+      days: '{{from}} – {{until}}',
+      basedOn: '{{held}} ta darsdan {{expected}} tasi asosida',
+      stored: 'qaror: {{decision}}',
+      clear: 'Bekor qilish',
+      wholeJournal: 'Butun jurnal uchun',
+      planStates: {
+        complete: 'Reja toʻliq',
+        incomplete: 'Reja toʻliq emas',
+        not_started: 'Reja boshlanmagan',
+      },
+      flags: {
+        few_lessons: 'kam dars',
+        attendance_only: 'faqat davomat',
+        left_subject: 'fandan chiqqan',
+      },
+      decisions: {
+        keep: 'Raqamni qoldirish',
+        exempt: 'Ozod',
+        not_assessed: 'Baholanmagan',
+      },
+      refused: {
+        closing_not_flagged: 'endi belgilanmagan',
+        closing_decision_not_allowed: 'bu qaror mos kelmaydi',
+      },
+      kinds: {
+        rating_missing: 'Reyting imtihoni yozuvlari yoʻq',
+        undecided: 'Belgilangan natijalar boʻyicha qaror yoʻq',
+        decision_outdated: 'Qaror eskirgan: uni bekor qiling yoki qayta qaror qiling',
+        weights_missing: 'Bu chorak uchun vaznlar yoʻq',
+        unlocked: 'Vaqtincha ochilgan',
+        extension_open: 'Tuzatish muddati uzaytirilgan',
+        edit_period: 'Tuzatish muddatidagi darslar',
+        plan_periods: 'Rejani tahrirlash muddatlari ochiq',
+        no_attendance: 'Davomati yoʻq darslar',
+        numbers_missing: 'Baholari yoʻq rejalashtirilgan ishlar',
+        plan_incomplete: 'Dars rejasi toʻliq emas',
+        no_result: 'Natijasi yoʻq oʻquvchilar',
+        part_without_data: 'Vazni bor, maʼlumoti yoʻq qism',
+        no_teacher: 'Oʻqituvchi yoʻq',
+      },
+    },
     year: 'Oʻquv yili',
     yearOption: '{{from}} – {{to}}',
     quarter: 'Chorak',

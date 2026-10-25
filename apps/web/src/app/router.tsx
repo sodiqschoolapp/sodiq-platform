@@ -80,6 +80,7 @@ import {
 import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unlock-requests-page';
 import { DisciplinePage, disciplineSearch } from '@/features/journal/discipline-page';
 import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
+import { ClosingPage, closingSearch } from '@/features/results/closing-page';
 import { BranchExportsPage, branchExportsSearch } from '@/features/journal/branch-exports-page';
 import { SupportPage, supportSearch } from '@/features/journal/support-page';
 import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
@@ -418,6 +419,14 @@ const supportRoute = createRoute({
   component: guarded('journal_support', SupportPage),
 });
 
+/** The closing checklist of a quarter (task 9.2a). */
+const closingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/closing',
+  validateSearch: closingSearch,
+  component: guarded('quarter_closing', ClosingPage),
+});
+
 const orphansRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/journal/orphans',
@@ -716,6 +725,7 @@ const routeTree = rootRoute.addChildren([
     unlockRequestsRoute,
     disciplineRoute,
     orphansRoute,
+    closingRoute,
     branchExportsRoute,
     supportRoute,
     exemptionsRoute,

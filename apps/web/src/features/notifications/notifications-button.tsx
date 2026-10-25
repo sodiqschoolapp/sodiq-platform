@@ -54,6 +54,29 @@ export function useNotificationText(): (item: Notification) => string {
         },
       });
     }
+    // Task 9.2a: the reminder of the closing checklist lists the teacher's own items, each
+    // named in the language shown (`07`: "sends the list to the teachers concerned").
+    if (item.kind === 'results.closing_reminder') {
+      const reminder = NOTIFICATION_KINDS[item.kind].safeParse(item.data);
+      if (!reminder.success) return t('notifications.kinds.unknown');
+      return t('notifications.kinds.results.closing_reminder', {
+        replace: {
+          quarter: reminder.data.quarter,
+          items: reminder.data.items
+            .map((one) =>
+              t('results.closing.reminderLine', {
+                replace: {
+                  kind: t(`results.closing.kinds.${one.kind}`),
+                  unit: one.unit,
+                  subject: nameOf(one.subject, i18n.language),
+                  count: one.count,
+                },
+              }),
+            )
+            .join('; '),
+        },
+      });
+    }
     // The key exists; the type of `t` cannot know a key built from data. The
     // data fills the {{names}} only (`replace`): a field called `count` or
     // `context` must not change the lookup.

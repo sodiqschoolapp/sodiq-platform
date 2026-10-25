@@ -654,6 +654,14 @@ export const en = {
     journal_export_stale: 'The export was not finished in time. Ask for it again.',
     journal_export_expired:
       'The link of this export worked for 24 hours and has expired. Ask for a new export.',
+    closing_not_open:
+      'The closing checklist of this quarter is not open yet. It opens two weeks before the last day.',
+    closing_not_flagged:
+      'This result is not flagged any more, so there is nothing to decide. Reload the checklist.',
+    closing_decision_not_allowed:
+      '"Exempt" fits only a result flagged for few lessons alone that an exemption explains. Choose "Keep" or "Not assessed".',
+    closing_decision_changed:
+      'Someone changed this decision since you opened the checklist. Reload it and decide again.',
     journal_entry_scope:
       'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
     lesson_attendance_only:
@@ -3891,6 +3899,9 @@ export const en = {
     // The text of each kind of NOTIFICATION_KINDS (packages/shared), filled with its data.
     kinds: {
       unknown: 'A notification this version of the app cannot show yet. Reload the page.',
+      results: {
+        closing_reminder: 'Quarter {{quarter}} closes soon. Still to finish: {{items}}.',
+      },
       setup: {
         quarter_weights_changed:
           'The weights of {{subject}} for {{quarters}} changed on {{date}}: {{reason}}.',
@@ -5757,6 +5768,7 @@ export const en = {
       results: {
         exempt: 'Exempt',
         no_result: 'No result',
+        not_assessed: 'Not assessed',
       },
       work: '{{title}}: {{score}} of {{total}}, {{percent}}%',
       mark: 'Mark {{mark}}',
@@ -6114,6 +6126,8 @@ export const en = {
       optionalUntil: 'Optional until {{date}}',
       backFromExemption: 'back from exemption',
       exemptResult: 'Exempt',
+      notAssessedResult: 'Not assessed',
+      keptShort: 'kept',
       basedOn: 'based on {{expected}} of {{held}} lessons',
       exemptCell: {
         temporary: 'Temporarily exempt',
@@ -6402,6 +6416,84 @@ export const en = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    closing: {
+      reminderLine: '{{kind}} in {{unit}}, {{subject}} ({{count}})',
+      title: 'Closing checklist',
+      quarter: 'Quarter',
+      item: 'Item',
+      severity: 'Effect',
+      blocking: 'Blocks closing',
+      warning: 'Warning',
+      teacher: 'Teacher',
+      unit: 'Class or group',
+      subject: 'Subject',
+      count: 'Count',
+      remind: 'Remind teachers',
+      reminded_one: 'A reminder was sent to {{count}} teacher.',
+      reminded_other: 'Reminders were sent to {{count}} teachers.',
+      endPeriods: 'End plan periods',
+      endPeriodsTitle_one: 'End {{count}} open plan editing period?',
+      endPeriodsTitle_other: 'End {{count}} open plan editing periods?',
+      noQuarter: 'The branch has no quarter with dates yet.',
+      opensOn: 'The checklist opens on {{date}}.',
+      closable: 'Nothing blocks closing.',
+      counts: 'Blocking: {{blocking}} · warnings: {{warnings}}',
+      notOpenYet: 'The checklist opens two weeks before the quarter ends.',
+      nothingLeft: 'Nothing is left to finish in this quarter.',
+      openJournal: 'Open the journal: {{journal}}',
+      pending: 'exempt on the exam day, pending',
+      ratingUnlocked: 'The rating exam is unlocked.',
+      extension: 'Edit period of {{from}} – {{to}} extended until {{until}}',
+      editPeriod_one: '{{count}} lesson still inside the edit period, {{incomplete}} incomplete',
+      editPeriod_other: '{{count}} lessons still inside the edit period, {{incomplete}} incomplete',
+      planPeriods_one: '{{count}} plan editing period is open',
+      planPeriods_other: '{{count}} plan editing periods are open',
+      noTopic_one: '{{count}} lesson without a topic',
+      noTopic_other: '{{count}} lessons without a topic',
+      notCovered_one: '{{count}} item not covered',
+      notCovered_other: '{{count}} items not covered',
+      belowMinimum: 'Fewer graded works than the subject asks',
+      days: '{{from}} – {{until}}',
+      basedOn: 'based on {{expected}} of {{held}} lessons',
+      stored: 'decided: {{decision}}',
+      clear: 'Clear',
+      wholeJournal: 'For the whole journal',
+      planStates: {
+        complete: 'Plan complete',
+        incomplete: 'Plan incomplete',
+        not_started: 'Plan not started',
+      },
+      flags: {
+        few_lessons: 'few lessons',
+        attendance_only: 'attendance only',
+        left_subject: 'left the subject',
+      },
+      decisions: {
+        keep: 'Keep the number',
+        exempt: 'Exempt',
+        not_assessed: 'Not assessed',
+      },
+      refused: {
+        closing_not_flagged: 'not flagged any more',
+        closing_decision_not_allowed: 'this decision does not fit',
+      },
+      kinds: {
+        rating_missing: 'Rating exam entries missing',
+        undecided: 'Flagged results undecided',
+        decision_outdated: 'Decision outdated: clear it or decide again',
+        weights_missing: 'No weights for this quarter',
+        unlocked: 'Temporarily unlocked',
+        extension_open: 'Edit period extended',
+        edit_period: 'Lessons inside the edit period',
+        plan_periods: 'Plan editing periods open',
+        no_attendance: 'Lessons with no attendance',
+        numbers_missing: 'Planned works with numbers missing',
+        plan_incomplete: 'Lesson plan incomplete',
+        no_result: 'Students with no result',
+        part_without_data: 'A part with a weight and no data',
+        no_teacher: 'No teacher',
+      },
+    },
     year: 'Academic year',
     yearOption: '{{from}} – {{to}}',
     quarter: 'Quarter',
