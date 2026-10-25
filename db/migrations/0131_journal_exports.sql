@@ -112,7 +112,9 @@ $$;
 -- Append-only: no update or delete.
 grant select, insert on journal_save_refusals to sodiq_app;
 
--- The moment of a refusal is the transaction's, never one the application sends.
+-- The moment of a refusal is the transaction's, never another one: a row whose moment
+-- differs is refused (a BEFORE trigger cannot move a row to another partition by changing
+-- its key, so it checks rather than writes).
 create function journal_save_refusals_write() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -125,7 +127,10 @@ begin
     raise exception 'journal_cell_moment'
       using errcode = 'check_violation', constraint = 'journal_cell_moment';
   end if;
-  new.refused_at := moment;
+  if new.refused_at is distinct from moment then
+    raise exception 'journal_cell_moment'
+      using errcode = 'check_violation', constraint = 'journal_cell_moment';
+  end if;
   return new;
 end
 $$;

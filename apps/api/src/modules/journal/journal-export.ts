@@ -481,7 +481,7 @@ export function journalHtml(
     ].join('')}</tbody></table>`;
   };
   const header = journalHeader(input, texts);
-  return `<div class="${first ? 'journal' : 'journal next-day'}"><h2>${escapeHtml(header[1] ?? '')}</h2><div class="stamp">${header
+  return `<div class="${first ? 'journal-part' : 'journal-part next-day'}"><h2>${escapeHtml(header[1] ?? '')}</h2><div class="stamp">${header
     .slice(2)
     .map((one) => `<p>${escapeHtml(one)}</p>`)
     .join('')}</div>${parts.map(tableOf).join('')}<div class="stamp">${legendLines(input, texts)

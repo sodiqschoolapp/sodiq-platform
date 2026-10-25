@@ -141,7 +141,7 @@ export class SaveRefusals {
             version_sent: cell.version,
             code,
             account_id: access.accountId,
-            // The trigger writes the transaction's moment over it.
+            // The transaction's moment: the trigger refuses any other.
             refused_at: moment,
             request_id: requestId ?? null,
           })),
