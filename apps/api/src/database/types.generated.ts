@@ -1361,6 +1361,41 @@ export interface PatternEntries {
   weekday: number;
 }
 
+export interface QuarterClosingJournals {
+  branch_id: string;
+  closing_id: string;
+  id: Generated<string>;
+  journal_id: string;
+  subject_names: Json;
+  teacher_name: string | null;
+  unit_name: string;
+}
+
+export interface QuarterClosings {
+  branch_id: string;
+  closed_at: Timestamp;
+  closed_by: string;
+  id: Generated<string>;
+  lock_now: boolean;
+  quarter_id: string;
+  reopened_at: Timestamp | null;
+  start_quarter: string | null;
+  version: number;
+  warnings: Json;
+}
+
+export interface QuarterFinalResults {
+  branch_id: string;
+  closing_id: string;
+  id: Generated<string>;
+  journal_id: string;
+  kind: string;
+  quarter_id: string;
+  record: Json;
+  student_id: string;
+  subject_id: string;
+}
+
 export interface QuarterResultDecisions {
   branch_id: string;
   decided_at: Timestamp;
@@ -2089,6 +2124,9 @@ export interface DB {
   pattern_block_classes: PatternBlockClasses;
   pattern_blocks: PatternBlocks;
   pattern_entries: PatternEntries;
+  quarter_closing_journals: QuarterClosingJournals;
+  quarter_closings: QuarterClosings;
+  quarter_final_results: QuarterFinalResults;
   quarter_result_decisions: QuarterResultDecisions;
   quarters: Quarters;
   relative_accounts: RelativeAccounts;
