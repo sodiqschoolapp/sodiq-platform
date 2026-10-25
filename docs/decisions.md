@@ -297,6 +297,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: closing a quarter (task 9.2b)
+
+Plan approved on pull request #230 with corrections 1 to 4 (`closable` beside the lock-now kinds; the start quarter from `countsFromOf`; the lock order against the close's parents; the lock cap at the first close); decisions 1 to 15 confirmed there, decision 7 changed. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a calculation reading). A closed quarter's figures are read from the stored record (`storedQuarterOutcome`, `storedQuarterInputs` of `packages/calc`), never calculated again; the grid passes `quarterClosed: true` | Decision 1; `07`; `edge/calculation`, "A release never changes closed results silently" |
+| **Look first** (a spec reading). "Closing" is the close's `for update` on the quarter row in one transaction; every writer takes the quarter `for key share` before its first row lock; no stored "closing" state | Decision 2; `edge/journal`, Closing and reopening |
+| **Look first** (a spec reading). "Lock now and close" ends nothing by update: `journal_lock_moment` is capped at the first close and a closed quarter refuses every person's write; one notice `results.quarter_locked_now` per teacher | Decision 3, correction 4 |
+| **Look first** (a spec reading). An exemption write that reaches a closed quarter applies the days after the last closed day (`closedPart` in the preview); a range wholly inside is refused; an end inside the closed part stops at its last day; a void of a range that began in it becomes an end at that day | Decision 4; `07`, Problem cases |
+| **Look first** (a new notice kind; system writes). The person's kinds are refused by `journal_closed_quarter` before the edit guards; system writes at their own writers; the merge carries | Decision 5 |
+| Quarters close in order; a quarter "not in the system" closes with no records | Decision 6 |
+| The start quarter is the one whose `countsFromOf` is not null; its close needs "keep" or "not official" | Decision 7 as changed (correction 2) |
+| Warnings sent as seen, matched one to one, stored with the close | Decision 8 |
+| Late and skipped values and the dates frozen once a quarter has a closing row, also after a reopening; the quarterly weights refuse only a close in force (`subject_quarter_weights_closed_quarter`) | Decision 9; build: the weights trigger reads the close in force |
+| One record per student and graded subject; no copy of its values in columns | Decision 10, review should-fix 6 |
+| The close voids the prepared and sent plan requests | Decision 11 |
+| A membership or status write is refused when it changes a day of a closed quarter; the first inactive day of a leaving is the day checked | Decision 12; build (people group) |
+| "Final · closed <date> · version <n>" for a file of a closed quarter, with the names as they were | Decision 13 |
+| The year result once quarter 4 is closed or the year | Decision 14 |
+| **Build decision.** A correction of kind teacher or room of a lesson of a closed quarter is still taken; only cancel and restore are refused | The From line names those two; neither changes a mark |
+| **Build decision.** A longer end of an exemption that would reach into a closed quarter is refused `exemption_closed_quarter` | One range cannot skip the closed days |
+| **Build decision.** The ids that answer 404 are read before the quarter lock; `move_in_past` (403) now comes before `student_changed` on the move routes | `.claude/rules/api.md`, 404 before a refusal |
+| **Build decision.** The journal writes take the quarter in `decideWrite`, after `lockedLesson`'s lesson `for share` | The close locks no lesson, so the two cannot wait on each other |
+| **Build decision.** The bulk cancel's check (preview) of a date in a closed quarter lists its lessons; the save refuses | The check writes nothing |
+
 ## 25 October 2026: the closing checklist (task 9.2a)
 
 Plan approved on pull request #229 with corrections 1 to 4 (the request-key tests of "remind"; the whole-journal list matched one to one by id; the reading before the refusals; `closable` from the last day); decisions 1 to 13 confirmed there. Flagged on issue #42.

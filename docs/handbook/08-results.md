@@ -1,6 +1,6 @@
 # Results
 
-This page holds the parts that task 9.1 added. Ratings, the results table, subject mastery and the closing of a quarter are not built yet (tasks 9.2a to 9.4).
+This page holds the parts that tasks 9.1 to 9.2b added. Reopening a quarter, the nightly check, ratings, the results table and subject mastery are not built yet (tasks 9.2c to 9.4).
 
 ## A student's results and attendance
 
@@ -92,6 +92,35 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - "Exempt" is offered only when "few lessons" is the one flag and an exemption explains it.
 - A decision shows at once in the journal, the student's results and the files: "Not assessed" and a decided "Exempt" have no number and are left out of the class averages.
 - A student who left the school or the branch is not on the list.
-- Nothing is closed here: the quarter can be closed from its last day, when nothing blocks.
+- The quarter is closed from this page, from its last day (see Closing a quarter).
 
 **What the person sees.** When the data changed since the list was read: "This result is not flagged any more, so there is nothing to decide. Reload the checklist."
+
+## Closing a quarter
+
+<!-- Sources: spec 07 (Editing rules and locks; Closing a quarter; Exemptions, Problem cases), edge/journal (Closing and reopening), edge/academic-year (Start quarter; names as they were), edge/calculation; task 9.2b, pull request #230 -->
+
+**What it is.** The close of a quarter for the whole branch in one step. From then on the quarter's journals are read only and every result is kept as final, as it was on the day of the close.
+
+**Who can use it.** The Academic Vice Principal and the Super Admin, from the closing checklist.
+
+**How it works.**
+
+1. On the quarter's last day or later, with nothing left that blocks, press **Close the quarter** on the closing checklist.
+2. Tick that you have looked at the warnings: they are kept with the close.
+3. When lessons are still inside their edit period, or a lesson is unlocked, tick **Lock now and close**: those lessons lock at the moment of the close, and their teachers get a notice.
+4. In the branch's start quarter, choose **Keep the platform results** or **Not official**.
+5. The page then shows when the quarter was closed, by whom, the version and the warnings kept.
+
+**Rules.**
+
+- Quarters close in order: quarter 2 waits until quarter 1 is closed.
+- A closed quarter takes no mark, number, comment, correction, unlock, reason of absence, plan change, cancel of a lesson, forced delete, move of a student, leaving or return dated in it, and no change of its weights, its late and skipped values or its dates.
+- An exemption that reaches into a closed quarter is applied to the days after it only; the days in the closed quarter stay as they are.
+- Plan requests still waiting become void.
+- The student's results show a closed quarter as it was kept, and the year result once quarter 4 is closed. A "not official" start quarter is left out of the year result.
+- A journal file of a closed quarter says "Final" with the closing date and version, and keeps the class, subject and teacher names of the day of the close.
+- If anything fails during the close, the quarter stays open and nothing is kept.
+- Reopening a quarter comes later (task 9.2c).
+
+**What the person sees.** A save in a closed quarter: "This quarter is closed: its journals and results are final. Only a reopening of the quarter allows a change."

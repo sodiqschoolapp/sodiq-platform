@@ -1186,7 +1186,7 @@ How to read the task lines:
   - From 8.8 (pull request #226, decision 11): `edge/lesson-plans`, "A plan has 40 topics and not one graded work": "Falling below it is a warning at the end of the window and on the closing checklist"; `07`, Closing a quarter: "Lesson plans incomplete, or items 'not covered' | Warning". The warning reads `belowMinimum` of the plans list (`minimumMarkOf` of `apps/api/src/modules/plans/plan-minimums.ts`, the minimums of `subject_plan_minimums`, 0130) and the items past the last row of each journal (`notCovered`).
   - From 8.6 (pull request #224, decision 5, Look first): `edge/calculation`, "A student left the school before the quarter ended": the result at leaving is stored as a final record (`finalQuarterRecord(…, 'at_leaving')`) at the quarter's close, for every student who left the school or the branch in the quarter; until then it is worked out on read (`GET /api/people/students/:id/leaving-results`). The student is left out of the checklist and the class averages; the "left the subject on <date>" flag of a student still in the branch (`leftSubjectOn`, read with `subject-quarter-lessons.ts`) is decided here: keep or "Not assessed".
 
-- [ ] **9.2b Closing a quarter**
+- [x] **9.2b Closing a quarter**
   - Read: `07` (Closing a quarter), `edge/journal` (Closing and reopening), `edge/academic-year`, `edge/system-behaviour`.
   - Build: close for the whole branch in one step; stored final results with their inputs; the start-quarter choice ("keep" or "not official").
   - Done when: closing against a simultaneous cell save is tested.
@@ -1216,6 +1216,10 @@ How to read the task lines:
   - Read: `edge/journal` (Closing and reopening), `edge/system-behaviour`.
   - Build: reopen rules; the nightly job that recalculates open journals and stored results, alerts on a difference and blocks closing that journal.
   - Done when: a deliberately corrupted stored result is caught by the check in a test.
+  - From 9.2b (pull request #230, review should-fix 7): a quarter is closed while it has a `quarter_closings` row (0133) with no `reopened_at`; the reopening writes `reopened_at` (its own grant) and, for `edge/journal` "Reopening is for one journal or the whole branch", a per-journal reopening that `quarter_open_guard` / `quarter_days_open_guard` and `journal_closed_quarter` consult. The close after it is version 2 (`quarter_closings_write`), and "Closing again lists every result that changed" compares with the earlier version's `quarter_final_results`.
+  - From 9.2b (decision 3, Look first): the lessons stay locked after a reopening at the first close (`journal_lock_moment` caps at version 1's `closed_at`); an unlock approved before the close must not cover the reopened quarter ("only corrections and explicit unlocks apply"): read `decided_at` against the reopening.
+  - From 9.2b (Left out): `edge/lesson-plans`, "Items are still 'not covered' at the end of the quarter": "Items unresolved at closing are carried automatically. In quarter 4 only merge or drop exist." The close does not carry them yet (the outcomes of a plan item and the carried-in tray are not built).
+  - From 9.2b (Left out): the timetable's day view still offers the correction's cancel and restore of a lesson of a closed quarter (`canCorrect` covers every kind); the server refuses them `quarter_closed`. Turn the two kinds off there for a closed quarter.
   - From 9.2a (pull request #229, review decision 3): `07`, Closing a quarter: "Closing is never automatic. After the last day the Academic Vice Principal is reminded until the quarter is closed." A scheduled job, decided from the quarter's last day and its closed state with the injected clock, once per day and person; a difference found by the nightly check is a blocking item of the checklist (`closing.service.ts`).
   - From 4.3 (pull request #104, `edge/calculation`, "A bug is found after results were closed and exported"): the "recalculate and compare" tool over `recalculateAndCompare` (lists the differences, changes nothing; a record the current module refuses is listed with its code, `refused`, not thrown) and "apply with a reason", which keeps the old results and tells the teachers concerned; the nightly check uses the same function.
   - From 5.8b (pull request #195, decision 8; `edge/people-roles-accounts`: "after that the data is removed and a summary stays in the audit log"): a nightly job removes the rows of a forced delete whose `restore_until` (`forced_deletes`, 0105) has passed and was not restored, decided from the stored moment and the injected clock, and writes a summary entry in the audit log; the store row itself stays with its reason. 5.8b keeps the rows and only refuses their restore.
@@ -1224,6 +1228,7 @@ How to read the task lines:
 
 - [ ] **9.3a Rating**
   - Read: `08` (Rating).
+  - From 9.2b (pull request #230, decision 1, Look first): a closed quarter's results are read from `quarter_final_results` (`storedQuarterOutcome` of `packages/calc`), never calculated again, as the student results read them (`student-results.service.ts`); a start quarter closed "not official" (`quarter_closings.start_quarter`) is left out of the year result.
   - Build: the rating lists with their filters, including language and branch, and Excel export.
   - Done when: students without a result are handled as the spec says.
   - From 4.3 (pull request #104, row table): reads `edge/calculation` ("Two students both show 84", "One student has 9 subjects, another 11", the result at leaving left out of the rating) and `07` Effect on totals (Rating: a student with "Exempt" is not ranked; across subjects the student is marked as having fewer subjects); only a number outcome is ranked.
@@ -1261,6 +1266,7 @@ How to read the task lines:
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
   - Build: the daily export to R2; written steps for restoring to a side copy; Sentry, Grafana Cloud and UptimeRobot alerts to Telegram; the sign-in-and-save check every 5 minutes with a test teacher account.
   - Done when: the owner has restored a backup once by following the written steps.
+  - From 9.2b (pull request #230, Left out): `edge/system-behaviour`, the alerts: "a failed publish or close". A close that fails rolls back and answers 500; the alert reads it.
   - From the owner (15 October 2026): a daily scheduled task that reads the day's error reports, slow requests and job runs of the live system and sends the owner a short report of anything unusual (a page that fails, a job that did not run, a request much slower than usual), beside the fixed alerts; it reads and reports only.
   - From 8.9 (pull request #227, decision 4): the files of the branch exports stay in the store under `exports/` after their 24 hours (`journal_exports`, 0131): a cleanup removes the files of expired and failed exports; the alerts of `edge/system-behaviour` ("a jump in refused saves", "failed jobs") read `journal_save_refusals` (0131) and the failed exports.
 
