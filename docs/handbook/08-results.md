@@ -123,4 +123,4 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - If anything fails during the close, the quarter stays open and nothing is kept.
 - Reopening a quarter comes later (task 9.2c).
 
-**What the person sees.** A save in a closed quarter: "This quarter is closed: its journals and results are final. Only a reopening of the quarter allows a change."
+**What the person sees.** A save in a closed quarter: "This quarter is closed: its journals and results are final, so this change is not made."

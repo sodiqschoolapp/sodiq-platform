@@ -2043,11 +2043,12 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     expect(entries).toHaveLength(1);
   });
 
-  it("answers 404 for another branch's or an unknown quarter, 403 to a role it refuses, and checks the key", async () => {
+  it("answers 404 for another branch's or an unknown quarter and journal, 403 to a role it refuses, and checks the key", async () => {
     const s = await publishedScene(t, load, { graded: true });
     const other = await publishedScene(t, load, { graded: true });
     const q1 = await quarterOf(s.year, 1);
     const otherQuarter = await quarterOf(other.year, 1);
+    const foreignJournal = await journalOf(other.classId, other.subject);
     await t.database.migrator
       .updateTable('branch_edit_days')
       .set({ edit_days: 1 })
@@ -2073,6 +2074,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             s.branch,
             closePath(id),
             { warnings, lockNow: false, startQuarter: null },
+            randomUUID(),
+          );
+          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+        }
+        // A journal named by a warning of the body (code round 1, finding 1): another branch's
+        // and an unknown one are 404, with a body the close otherwise takes (below, 200).
+        for (const journalId of [foreignJournal, UNKNOWN]) {
+          const refused = await post(
+            s.branch,
+            closePath(q1),
+            {
+              warnings: [...warnings, { kind: 'no_teacher', journalId }],
+              lockNow: false,
+              startQuarter: null,
+            },
             randomUUID(),
           );
           expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);

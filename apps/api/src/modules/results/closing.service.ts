@@ -465,6 +465,31 @@ export class ClosingService {
   ): Promise<ClosingClosed> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
+      // The journals the warnings name are of the branch and of the quarter's year, read before
+      // any lock (code round 1, finding 1; `.claude/rules/api.md`: an id in the body answers 404).
+      const named = [
+        ...new Set(
+          input.warnings.flatMap((one) =>
+            one.journalId === null ? [] : [one.journalId.toLowerCase()],
+          ),
+        ),
+      ];
+      if (named.length > 0) {
+        const found = await transaction
+          .selectFrom('journals')
+          .select('id')
+          .where('id', 'in', named)
+          .where('branch_id', '=', branchId)
+          .where('academic_year_id', '=', (query) =>
+            query
+              .selectFrom('quarters')
+              .select('academic_year_id')
+              .where('id', '=', quarterId.toLowerCase())
+              .where('branch_id', '=', branchId),
+          )
+          .execute();
+        if (found.length !== named.length) throw notFound();
+      }
       // The quarter row locked first, then read (spec review of the code, must-fix 1): a save of
       // its dates that commits meanwhile is waited for, never read from before it.
       const locked = await transaction

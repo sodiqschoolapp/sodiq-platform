@@ -290,6 +290,30 @@ describe('the closing checklist', () => {
     });
   });
 
+  // The plan's Tests, Web: "the close dialog (... refusal texts)" (code round 1, finding 2).
+  it('shows a refusal of the close with its text and keeps the dialog open', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({ ...CHECKLIST, closable: true, blocking: 0, warnings: 0, items: [] }),
+      [`POST /api/results/closing/${Q1}/close`]: () =>
+        Response.json(
+          { error: { code: 'closing_warnings_changed', message: 'x', requestId: 'r' } },
+          { status: 409 },
+        ),
+    });
+    renderApp('/results/closing');
+    fireEvent.click(await screen.findByRole('button', { name: en.results.closing.closeQuarter }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.results.closing.close.action }));
+    await waitFor(() => {
+      expect(within(dialog).getByRole('alert').textContent).toContain(
+        en.errors.closing_warnings_changed,
+      );
+    });
+    expect(screen.getByRole('dialog')).toBe(dialog);
+  });
+
   it('keeps the close off while it is not closable, and draws the ticks anew for a new list of warnings', async () => {
     let answer: ClosingChecklist = {
       ...CHECKLIST,
