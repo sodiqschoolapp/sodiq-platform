@@ -667,7 +667,7 @@ export const en = {
     closing_list_changed:
       'This student was listed after you opened the checklist and was not decided. Reload it and decide again.',
     quarter_closed:
-      'This quarter is closed: its journals and results are final. Only a reopening of the quarter allows a change.',
+      'This quarter is closed: its journals and results are final, so this change is not made.',
     closing_before_last_day: 'A quarter can be closed on its last day or later.',
     closing_earlier_open:
       'Close the earlier quarters of the year first: quarters are closed in order.',
@@ -690,7 +690,7 @@ export const en = {
     date_in_closed_quarter: 'The date is in a closed quarter. Choose a date in an open quarter.',
     plan_quarter_closed: 'The quarter of this plan is closed, so the plan cannot change.',
     exemption_closed_quarter:
-      'Every day of the exemption is in a closed quarter. Choose days in an open quarter.',
+      'This change would touch days of a closed quarter, and those days stay as they are. Only days in an open quarter can change.',
     journal_entry_scope:
       'You can enter only the lessons you teach, substitute or whose journal is yours. Open your own lesson from the home page.',
     lesson_attendance_only:
@@ -6571,6 +6571,7 @@ export const en = {
     emptyQuarter: 'No subject you can see has a held lesson in this quarter.',
     notInSystem:
       'Not in the system: this quarter ended before the branch started using the platform.',
+    notOfficial: 'Not official: this quarter is left out of the year result.',
     none: '—',
     notAssessed: 'Not assessed',
     attendanceOnly: 'Attendance only',

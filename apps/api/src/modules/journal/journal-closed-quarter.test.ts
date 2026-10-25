@@ -362,6 +362,100 @@ describe('the journal of a closed quarter', () => {
     expect(await rowsOf(x.branch)).toEqual(before);
   });
 
+  // Spec review of 9.2b, finding 3 (07, Editing rules and locks: "Journals of that quarter
+  // become read only"): the Teacher's own ordinary save, not a correction, inside the lesson's
+  // 7 edit days but after the close (no "lock now"), is refused by the closed quarter alone.
+  it("refuses the Teacher's own save of a work's numbers, a comment and a rating entry in a closed quarter, inside the edit days", async () => {
+    const x = await scene();
+    const ratingBase = `/api/journal/journals/${x.journal}/rating/${x.q1}`;
+    // Taken on the lesson of Monday 26 October before the close.
+    const work = await as(
+      x.owner,
+      x.branch,
+      async (calls) => {
+        const added = ok(
+          await calls.post(`/api/journal/lessons/${x.third}/works`, { kind: 'classwork' }),
+        ).body as { id: string; version: number };
+        ok(
+          await calls.put(`/api/journal/lessons/${x.third}/works/total`, {
+            column: { workId: added.id },
+            total: 10,
+            version: added.version,
+          }),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${x.third}/scores`, {
+            saves: [
+              { studentId: x.ahmedov, column: { workId: added.id }, score: 7, version: null },
+            ],
+          }),
+        );
+        ok(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'note', lessonId: x.third, studentId: x.ahmedov },
+            body: 'Worked well',
+            visibility: 'staff',
+            version: null,
+          }),
+        );
+        ok(await calls.put(`${ratingBase}/date`, { date: '2026-10-26', version: null }));
+        ok(
+          await calls.post(`${ratingBase}/entries`, {
+            studentId: x.ahmedov,
+            entry: { kind: 'score', score: 70 },
+            reason: null,
+            version: null,
+          }),
+        );
+        return added.id;
+      },
+      '2026-10-27T09:00:00+05:00',
+    );
+    await close(x);
+    const before = await rowsOf(x.branch);
+    // Saturday 31 October, 19:00: an hour after the close, the lesson of the 26th and the exam
+    // of that day are still inside their 7 edit days.
+    await as(
+      x.owner,
+      x.branch,
+      async (calls) => {
+        closed(
+          await calls.post(`/api/journal/lessons/${x.third}/scores`, {
+            saves: [{ studentId: x.ahmedov, column: { workId: work }, score: 8, version: 1 }],
+          }),
+        );
+        closed(
+          await calls.put(`/api/journal/lessons/${x.third}/works/total`, {
+            column: { workId: work },
+            total: 12,
+            version: 2,
+            // The work has a number: the change of its total is confirmed.
+            confirm: true,
+          }),
+        );
+        closed(
+          await calls.put('/api/journal/comments', {
+            on: { target: 'note', lessonId: x.third, studentId: x.ahmedov },
+            body: 'Worked very well',
+            visibility: 'staff',
+            version: 1,
+          }),
+        );
+        closed(
+          await calls.post(`${ratingBase}/entries`, {
+            studentId: x.ahmedov,
+            entry: { kind: 'score', score: 75 },
+            // A change of a stored entry takes a reason; it is still no correction.
+            reason: 'Marked again',
+            version: 1,
+          }),
+        );
+      },
+      '2026-10-31T19:00:00+05:00',
+    );
+    expect(await rowsOf(x.branch)).toEqual(before);
+  });
+
   it('refuses an unlock request in a closed quarter and the approval of one sent before the close; its refusal still works (From 8.4)', async () => {
     const x = await scene();
     const ratingBase = `/api/journal/journals/${x.journal}/rating/${x.q1}`;

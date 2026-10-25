@@ -2169,17 +2169,18 @@ describe('the closing checklist (07, Closing a quarter)', () => {
   // edge/system-behaviour, required tests: "closing against a cell save"; edge/journal, "Close is
   // pressed while saves are still arriving" (the task's Done when; plan decision 2).
   describe('closing against a cell save', () => {
-    const waiters = async () => {
+    // The requests that wait on the held side's process (`.claude/rules/api.md`: a same-moment
+    // test asserts that the request waited on the held transaction, `pg_blocking_pids`).
+    const blockedBy = async (pid: number) => {
       const found = await sql<{ n: number }>`
-        select count(distinct l.pid)::int as n
-        from pg_locks l join pg_stat_activity a on a.pid = l.pid
-        where a.datname = current_database() and not l.granted
+        select count(*)::int as n from pg_stat_activity a
+        where a.datname = current_database() and ${pid}::int = any(pg_blocking_pids(a.pid))
       `.execute(t.database.migrator);
       return found.rows[0]?.n ?? 0;
     };
-    const untilWaiting = async () => {
+    const untilWaiting = async (pid: number) => {
       for (let tries = 0; tries < 800; tries += 1) {
-        if ((await waiters()) >= 1) return;
+        if ((await blockedBy(pid)) >= 1) return;
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
       throw new Error('Nothing waited on the held side.');
@@ -2195,8 +2196,8 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       const released = new Promise<void>((resolve) => {
         release = resolve;
       });
-      let ready: () => void = () => undefined;
-      const isReady = new Promise<void>((resolve) => {
+      let ready: (pid: number) => void = () => undefined;
+      const isReady = new Promise<number>((resolve) => {
         ready = resolve;
       });
       t.clock.set(moment);
@@ -2204,7 +2205,10 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .get(Transactions)
         .run([branch], async (transaction) => {
           await work(transaction);
-          ready();
+          const process = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+            transaction,
+          );
+          ready(process.rows[0]?.pid ?? 0);
           await released;
         })
         .catch((error: unknown) => error);
@@ -2225,7 +2229,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           { lessonId: b.lessons.l26.id, studentId: b.aziz, workId: null, value: 2, version: null },
         ]);
       });
-      await held.isReady;
+      const pid = await held.isReady;
       const answer = await vice(
         b.s.branch,
         async ({ post }) => {
@@ -2237,7 +2241,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
               randomUUID(),
             ).then(resolve, reject);
           });
-          await untilWaiting();
+          await untilWaiting(pid);
           held.release();
           return started;
         },
@@ -2277,7 +2281,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           })
           .execute();
       });
-      await held.isReady;
+      const pid = await held.isReady;
       const saved = await as(
         teacher,
         [{ role: 'teacher', branchId: b.s.branch }],
@@ -2290,7 +2294,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
               randomUUID(),
             ).then(resolve, reject);
           });
-          await untilWaiting();
+          await untilWaiting(pid);
           held.release();
           return started;
         },

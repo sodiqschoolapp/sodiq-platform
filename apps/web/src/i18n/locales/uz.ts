@@ -682,7 +682,7 @@ export const uz: Texts<'one' | 'other'> = {
     closing_list_changed:
       'Bu oʻquvchi siz roʻyxatni ochganingizdan keyin qoʻshildi va u boʻyicha qaror qabul qilinmadi. Roʻyxatni yangilab, qayta qaror qiling.',
     quarter_closed:
-      'Chorak yopilgan: uning jurnallari va natijalari yakuniy. Oʻzgartirish faqat chorak qayta ochilgandan keyin mumkin.',
+      'Chorak yopilgan: uning jurnallari va natijalari yakuniy, shuning uchun bu oʻzgarish kiritilmadi.',
     closing_before_last_day: 'Chorakni uning oxirgi kunida yoki undan keyin yopish mumkin.',
     closing_earlier_open:
       'Avval yilning oldingi choraklarini yoping: choraklar tartib bilan yopiladi.',
@@ -706,7 +706,7 @@ export const uz: Texts<'one' | 'other'> = {
     plan_quarter_closed:
       'Bu rejaning choragi yopilgan, shuning uchun rejani oʻzgartirib boʻlmaydi.',
     exemption_closed_quarter:
-      'Ozod qilishning barcha kunlari yopilgan choraklarda. Ochiq chorakdagi kunlarni tanlang.',
+      'Bu oʻzgarish yopilgan chorak kunlariga tegadi, ular esa oʻzgarmaydi. Faqat ochiq chorak kunlarini oʻzgartirish mumkin.',
     journal_entry_scope:
       'Faqat oʻzingiz oʻtadigan, oʻrniga kirgan yoki jurnali sizniki boʻlgan darslarga kiritish mumkin. Darsingizni bosh sahifadan oching.',
     lesson_attendance_only:
@@ -6632,6 +6632,7 @@ export const uz: Texts<'one' | 'other'> = {
     emptyQuarter: 'Bu chorakda siz koʻradigan fanlar boʻyicha oʻtilgan dars yoʻq.',
     notInSystem:
       'Tizimda emas: bu chorak filial platformadan foydalanishni boshlashidan oldin tugagan.',
+    notOfficial: 'Rasmiy emas: bu chorak yillik natijaga kirmaydi.',
     none: '—',
     notAssessed: 'Baholanmagan',
     attendanceOnly: 'Faqat davomat',

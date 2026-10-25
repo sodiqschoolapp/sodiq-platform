@@ -465,13 +465,17 @@ export class ClosingService {
   ): Promise<ClosingClosed> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(transaction, branchId, quarterId);
-      await transaction
+      // The quarter row locked first, then read (spec review of the code, must-fix 1): a save of
+      // its dates that commits meanwhile is waited for, never read from before it.
+      const locked = await transaction
         .selectFrom('quarters')
         .select('id')
-        .where('id', '=', scene.quarter.id)
+        .where('id', '=', quarterId.toLowerCase())
+        .where('branch_id', '=', branchId)
         .forUpdate()
-        .execute();
+        .executeTakeFirst();
+      if (locked === undefined) throw notFound();
+      const scene = await this.sceneOf(transaction, branchId, quarterId);
       const once = await this.requestKeys.runOnce(
         transaction,
         {

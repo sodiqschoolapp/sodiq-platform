@@ -582,6 +582,16 @@ describe('the student results (08, Student results)', () => {
     });
     // The year waits for the fourth quarter.
     expect(closedOne.subjects[0]?.year).toBeNull();
+    // The journal of the closed quarter shows the stored result too (spec review of the code,
+    // must-fix 2), never the entries calculated again.
+    const grid = await as(reader, [], async (get) =>
+      journalGridSchema.parse(
+        (await get(s.scene.branch, `/api/journal/journals/${s.journal}?quarterId=${q1}`)).body,
+      ),
+    );
+    const aziz = grid.students.find((one) => one.id === s.aziz);
+    expect(aziz?.quarter?.classwork).toBe(100);
+    expect(aziz?.quarter?.result).toMatchObject({ kind: 'number', shown: 100, provisional: false });
     await closeQuarter(t.database, {
       branchId: s.scene.branch,
       quarterId: q4,

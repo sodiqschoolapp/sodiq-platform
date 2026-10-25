@@ -385,7 +385,7 @@ describe('closing a quarter in the database', () => {
     });
 
     // edge/system-behaviour: the moments 23:59 and 00:00 for quarter end.
-    it('refuses a save on the last day of the closed quarter at 23:59 and takes one on the next quarter', async () => {
+    it('refuses a save on the last day of the closed quarter at 23:59 and takes one at 00:00 of the next quarter', async () => {
       const { branch, first, year, classId, student } = await scene();
       const last = await cells.lesson(branch, year, classId, '2026-10-31');
       const opening = await cells.lesson(branch, year, classId, NEXT_DAY);
@@ -393,7 +393,7 @@ describe('closing a quarter in the database', () => {
       expect(
         await refusal(mark(branch, '2026-10-31T23:59:00+05:00', { lesson: last, student })),
       ).toMatchObject(CLOSED);
-      const saved = await mark(branch, '2026-11-09T23:59:00+05:00', { lesson: opening, student });
+      const saved = await mark(branch, '2026-11-09T00:00:00+05:00', { lesson: opening, student });
       expect(saved.changed_how).toBe('entry');
     });
 
@@ -674,6 +674,155 @@ describe('closing a quarter in the database', () => {
               })
               .execute(),
           ),
+        ),
+      ).toMatchObject(CLOSED);
+    });
+
+    // Spec review of task 9.2b, finding 1: an approved plan opening (0130,
+    // `journal_plan_opening_covers`) makes a work's cell a late entry after the lesson's lock,
+    // and is no way past the close (07, Editing rules and locks: "Journals of that quarter
+    // become read only").
+    it('refuses a work cell under an approved plan opening after the close, which it took before', async () => {
+      const { branch, year, first, classId, lesson, student } = await scene();
+      const teacher = await cells.lessons.load.classes.person(branch, ['uz']);
+      await database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: teacher.staffId })
+        .where('id', '=', lesson)
+        .execute();
+      const journal =
+        (
+          await database.migrator
+            .selectFrom('journals')
+            .select('id')
+            .where('class_id', '=', classId)
+            .where('subject_id', '=', cells.subject)
+            .executeTakeFirst()
+        )?.id ??
+        (
+          await database.migrator
+            .insertInto('journals')
+            .values({
+              branch_id: branch,
+              academic_year_id: year,
+              class_id: classId,
+              group_id: null,
+              subject_id: cells.subject,
+              runs: '{[2026-09-01,)}',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const plan = (
+        await database.migrator
+          .selectFrom('lesson_plan_journals')
+          .select('plan_id')
+          .where('journal_id', '=', journal)
+          .where('quarter_id', '=', first)
+          .executeTakeFirstOrThrow()
+      ).plan_id;
+      const item = await database.migrator
+        .insertInto('lesson_plan_items')
+        .values({
+          branch_id: branch,
+          plan_id: plan,
+          topic: 'Fractions',
+          objectives: 'Add fractions',
+          links: [],
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const planWork = await database.migrator
+        .insertInto('lesson_plan_works')
+        .values({
+          branch_id: branch,
+          item_id: item.id,
+          kind: 'classwork',
+          position: 1,
+          title: 'Quiz',
+          description: 'About the quiz',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const requestId = (
+        await database.migrator
+          .insertInto('lesson_plan_requests')
+          .values({
+            branch_id: branch,
+            plan_id: plan,
+            journal_id: journal,
+            quarter_id: first,
+            kind: 'text',
+            status: 'approved',
+            reason: 'A quiz was given',
+            requested_by: teacher.accountId,
+            sent_at: new Date('2026-10-27T09:00:00+05:00'),
+            decided_by: vice,
+            decided_at: new Date('2026-10-27T10:00:00+05:00'),
+            days: 10,
+            // Ten school days with the break: open past the close, so only the close refuses
+            // the cell after it.
+            open_until: new Date('2026-11-20T23:59:59.999+05:00'),
+            prepared_at: new Date('2026-10-27T09:00:00+05:00'),
+            updated_at: new Date('2026-10-27T10:00:00+05:00'),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await database.migrator
+        .insertInto('lesson_plan_work_openings')
+        .values({ branch_id: branch, plan_work_id: planWork.id, request_id: requestId })
+        .execute();
+      const work = await database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: branch,
+          lesson_id: lesson,
+          source_lesson_id: lesson,
+          plan_work_id: planWork.id,
+          position: 1,
+          kind: 'classwork',
+          total: 10,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      // A second student of the class, written before the close (the fixture cannot after it).
+      const [other] = await cells.lessons.pupils(branch, classId, 1);
+      const score = (moment: string, pupil = student) =>
+        inBranch(branch, moment, async (transaction) => {
+          await setting(transaction, 'app.plan_request_id', requestId);
+          return transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: branch,
+              lesson_id: lesson,
+              student_id: pupil,
+              work_id: work.id,
+              score: 8,
+              version: 1,
+              changed_by: teacher.accountId,
+              changed_how: 'entry',
+              changed_at: new Date(0),
+            })
+            .returning(['id', 'changed_how'])
+            .executeTakeFirstOrThrow();
+        });
+      // After the lesson's lock (14 October and 7 edit days), before the close: taken.
+      const taken = await score('2026-10-28T10:00:00+05:00');
+      expect(taken.changed_how).toBe('late_entry');
+      await close(branch, first);
+      // A new cell under the opening, and a change of the one it took.
+      expect(await refusal(score(AFTER, other ?? ''))).toMatchObject(CLOSED);
+      expect(
+        await refusal(
+          inBranch(branch, AFTER, async (transaction) => {
+            await setting(transaction, 'app.plan_request_id', requestId);
+            await transaction
+              .updateTable('journal_cells')
+              .set({ score: 9, changed_by: teacher.accountId, changed_how: 'entry' })
+              .where('id', '=', taken.id)
+              .execute();
+          }),
         ),
       ).toMatchObject(CLOSED);
     });

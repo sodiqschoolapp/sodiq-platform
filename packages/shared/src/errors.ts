@@ -1176,7 +1176,7 @@ export const ERROR_CODES = [
   'date_in_closed_quarter',
   /** The plan's quarter is closed (task 9.2b). */
   'plan_quarter_closed',
-  /** The exemption's days are all in closed quarters (task 9.2b). */
+  /** The change of an exemption would touch days of a closed quarter (task 9.2b). */
   'exemption_closed_quarter',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
