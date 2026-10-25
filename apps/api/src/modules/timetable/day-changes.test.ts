@@ -3597,7 +3597,22 @@ describe('one-day changes: cancel and restore', () => {
       const lesson = await pastOne(s);
       const cancelled = await pastOne(s, { date: '2026-10-02' });
       changed(await correct(s.branch, cancelled, { kind: 'cancel' }));
+      // Task 9.2c (From 9.2b): the day view says the quarter is closed, so the screen offers
+      // the teacher and the room of the correction only.
+      const where = await t.database.migrator
+        .selectFrom('lessons')
+        .select(['class_id', sql<string>`lesson_date::text`.as('date')])
+        .where('id', '=', lesson)
+        .executeTakeFirstOrThrow();
+      const shown = async () =>
+        (
+          (await day(s.branch, where.class_id ?? '', where.date)).body as {
+            lessons: { id: string; quarterClosed: boolean; canCorrect: boolean }[];
+          }
+        ).lessons.find((one) => one.id === lesson);
+      expect(await shown()).toMatchObject({ quarterClosed: false, canCorrect: true });
       await closeQuarterOf(s, lesson);
+      expect(await shown()).toMatchObject({ quarterClosed: true, canCorrect: true });
       const before = await everything();
       refusedWith(await correct(s.branch, lesson, { kind: 'cancel' }), 409, 'quarter_closed');
       refusedWith(

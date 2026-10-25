@@ -30,7 +30,7 @@ import { binary } from '../../testing/xlsx-kit.js';
 import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
 import { DailyWork } from './daily/daily.service.js';
-import { closeQuarter } from '../../testing/closing-kit.js';
+import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the checklist of quarter 1 (to 31 October) is open. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -2327,6 +2327,291 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .where('student_id', '=', b.bek)
         .execute();
       expect(cell).toEqual([]);
+    });
+
+    // Task 9.2c: the reopening and the journal's re-close against a correction, and a
+    // recalculation applied against a journal's re-close (review must-fix 3; should-fix 9).
+    const REOPEN_AT = '2026-11-02T09:00:00+05:00';
+    const INSIDE_AT = '2026-11-03T10:00:00+05:00';
+
+    /** The Academic Vice Principal's correction of Aziz on the 19th, present (was absent). */
+    const correctAziz = (calls: Calls, b: Awaited<ReturnType<typeof base>>) =>
+      calls.post(
+        b.s.branch,
+        `/api/journal/lessons/${b.lessons.l19.id}/attendance`,
+        {
+          saves: [{ studentId: b.aziz, mark: 1, version: 1 }],
+          correction: { reason: 'The register shows him present' },
+        },
+        randomUUID(),
+      );
+
+    const reopenJournal = (b: Awaited<ReturnType<typeof base>>, accountId: string) =>
+      reopenQuarter(t.database, {
+        branchId: b.s.branch,
+        quarterId: b.q1,
+        journalId: b.journal,
+        accountId,
+        at: REOPEN_AT,
+      });
+
+    /** What a journal's re-close writes first: the quarter for update, its version. */
+    const journalCloseRow =
+      (b: Awaited<ReturnType<typeof base>>, by: string) => async (transaction: Transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', b.q1)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: by,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: 'journal_close',
+            journal_id: b.journal,
+          })
+          .execute();
+      };
+
+    it('a correction waits for a reopening held open and is taken once it commits', async () => {
+      const b = await closed();
+      const closer = await load.classes.account();
+      const held = hold(b.s.branch, REOPEN_AT, async (transaction) => {
+        const closing = await transaction
+          .selectFrom('quarter_closings')
+          .select('id')
+          .where('quarter_id', '=', b.q1)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .insertInto('quarter_reopenings')
+          .values({
+            branch_id: b.s.branch,
+            quarter_id: b.q1,
+            closing_id: closing.id,
+            journal_id: null,
+            reason: 'A mark was typed in the wrong row',
+            days: 3,
+            reopened_at: new Date(0),
+            open_until: new Date(0),
+            reopened_by: closer,
+          })
+          .execute();
+      });
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            correctAziz(calls, b).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+    });
+
+    it('a correction in a reopened journal waits for its re-close held open and is refused', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const held = hold(b.s.branch, INSIDE_AT, journalCloseRow(b, by));
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            correctAziz(calls, b).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([answer.status, codeOf(answer)]).toEqual([409, 'quarter_closed']);
+    });
+
+    it('the re-close of a journal waits for a correction held open and stores the corrected result', async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const corrector = await account();
+      await t.kit.giveRole(corrector.account.id, {
+        role: 'academic_vice_principal',
+        branchId: b.s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      const warnings = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          return warningsOf({ ...list, items: list.reopenedJournals[0]?.items ?? [] });
+        },
+        INSIDE_AT,
+      );
+      // The held side does what the correction does: the cell saved with its reason.
+      const held = hold(b.s.branch, INSIDE_AT, async (transaction) => {
+        await sql`select set_config('app.correction_reason', 'The register shows him present', true)`.execute(
+          transaction,
+        );
+        await saveCells(transaction, t.app.get(Audit), { accountId: corrector.account.id }, [
+          { lessonId: b.lessons.l19.id, studentId: b.aziz, workId: null, value: 1, version: 1 },
+        ]);
+      });
+      const pid = await held.isReady;
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                b.s.branch,
+                `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+                { warnings, lockNow: false },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+      const record = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .innerJoin('quarter_closings', 'quarter_closings.id', 'quarter_final_results.closing_id')
+        .select('record')
+        .where('quarter_closings.version', '=', 2)
+        .where('quarter_final_results.quarter_id', '=', b.q1)
+        .where('quarter_final_results.student_id', '=', b.aziz)
+        .executeTakeFirstOrThrow();
+      const lessons = (record.record as { inputs: { lessons: { mark: number | null }[] } }).inputs
+        .lessons;
+      // The 12th (1), the 19th corrected while the re-close waited (1), the 26th (none).
+      expect(lessons.map((one) => one.mark)).toEqual([1, 1, null]);
+    });
+
+    it("a recalculation applied waits for a journal's re-close held open, and a re-close waits for it", async () => {
+      const b = await closed();
+      const by = await load.classes.account();
+      await reopenJournal(b, by);
+      const admin = await account();
+      // A record the module would not make, of a student of the journal.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('quarter_final_results')
+          .set({ record: sql`jsonb_set(record, '{outcome,result,grade}', '2'::jsonb)` })
+          .where('quarter_id', '=', b.q1)
+          .where('student_id', '=', b.aziz)
+          .execute();
+        await sql`alter table quarter_final_results enable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+      });
+      const apply = {
+        reason: 'A rounding bug of an earlier release',
+        students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+      };
+      // The re-close held first: the apply waits on the quarter and stores the next version.
+      const held = hold(b.s.branch, INSIDE_AT, journalCloseRow(b, by));
+      const pid = await held.isReady;
+      const answer = await as(
+        admin,
+        [{ role: 'super_admin' }],
+        async ({ post }) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            post(
+              b.s.branch,
+              `/api/results/closing/${b.q1}/recalculation/apply`,
+              apply,
+              randomUUID(),
+            ).then(resolve, reject);
+          });
+          await untilWaiting(pid);
+          held.release();
+          return started;
+        },
+        INSIDE_AT,
+      );
+      expect(await held.done).toBeUndefined();
+      expect([answer.status, answer.body]).toEqual([200, { version: 3, stored: 1 }]);
+      // The other order: an apply held (the quarter for update, its version written) makes a
+      // reopening of the journal wait, which then reads the close in force and is taken.
+      const c = await closed();
+      const held2 = hold(c.s.branch, REOPEN_AT, async (transaction) => {
+        await transaction
+          .selectFrom('quarters')
+          .select('id')
+          .where('id', '=', c.q1)
+          .forUpdate()
+          .execute();
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: c.s.branch,
+            quarter_id: c.q1,
+            version: 0,
+            closed_at: new Date(0),
+            closed_by: by,
+            lock_now: false,
+            start_quarter: null,
+            warnings: '[]',
+            cause: 'recalculation',
+            reason: 'A rounding bug of an earlier release',
+          })
+          .execute();
+      });
+      const pid2 = await held2.isReady;
+      const reopened = await vice(
+        c.s.branch,
+        async (calls) => {
+          const started = new Promise<Response>((resolve, reject) => {
+            calls
+              .post(
+                c.s.branch,
+                `/api/results/closing/${c.q1}/reopen`,
+                { journalId: c.journal, reason: 'A mark was typed in the wrong row', days: 3 },
+                randomUUID(),
+              )
+              .then(resolve, reject);
+          });
+          await untilWaiting(pid2);
+          held2.release();
+          return started;
+        },
+        REOPEN_AT,
+      );
+      expect(await held2.done).toBeUndefined();
+      expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+      const versions = await t.database.migrator
+        .selectFrom('quarter_closings')
+        .select(['version', 'cause'])
+        .where('quarter_id', '=', c.q1)
+        .orderBy('version')
+        .execute();
+      expect(versions).toEqual([
+        { version: 1, cause: 'close' },
+        { version: 2, cause: 'recalculation' },
+      ]);
     });
   });
 
