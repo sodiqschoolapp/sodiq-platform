@@ -417,6 +417,27 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/results/students/:id/tabs': { branch: 'request', roles: STUDENT_VIEWERS },
   'GET /api/results/students/:id/attendance': { branch: 'request', roles: STUDENT_VIEWERS },
   'GET /api/results/students/:id/lessons': { branch: 'request', roles: STUDENT_VIEWERS },
+  // Task 9.2a (decision 2, Look first): the closing checklist, `quarter_closing`.
+  'GET /api/results/closing': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  'PUT /api/results/closing/:quarterId/decisions': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/results/closing/:quarterId/journals/:journalId/decisions': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/results/closing/:quarterId/plan-periods/end': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/results/closing/:quarterId/remind': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

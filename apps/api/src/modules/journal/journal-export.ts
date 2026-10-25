@@ -168,6 +168,7 @@ function resultCells(figures: JournalFigures | null, texts: JournalExportTexts):
   const result = figures?.result ?? null;
   if (result === null) return [null, null];
   if (result.kind === 'exempt') return [texts.exempt, null];
+  if (result.kind === 'not_assessed') return [texts.notAssessed, null];
   if (result.kind === 'no_result') return [texts.noResult, null];
   return [result.shown, result.grade];
 }

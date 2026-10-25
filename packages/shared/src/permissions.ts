@@ -718,6 +718,20 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
   }),
+  /**
+   * The closing checklist of a quarter (task 9.2a, pull request #229, decision
+   * 2, Look first): `07`, Editing rules and locks: "The Academic Vice
+   * Principal closes a quarter, using the checklist"; `02`: the Super Admin
+   * does everything every other role can, the Principal views everything in
+   * the branch and changes nothing. `edit`: the decisions on flagged
+   * results, "end them all" of the open plan periods and "remind". A new area
+   * for new routes; no role is widened.
+   */
+  quarter_closing: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view', 'edit'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

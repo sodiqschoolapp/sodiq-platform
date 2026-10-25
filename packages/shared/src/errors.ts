@@ -1110,6 +1110,8 @@ export const ERROR_CODES = [
   'move_has_entries',
   /** Both records hold journal data on one key (the same lesson and work, rating exam or comment target): the details name the lessons (From 3.3d; task 8.6). */
   'student_merge_journal_overlap',
+  /** Both records hold a decision on a flagged result of the same subject and quarter (task 9.2a). */
+  'student_merge_decision_overlap',
   /** The merged record holds journal entries on days the merge cuts: they are voided with a reason first (From 3.3d; task 8.6). */
   'student_merge_journal_cut',
   /** The lesson is no orphan lesson now: it is complete, not held, or the teacher it counts for is in the school (edge/journal; task 8.7). */
@@ -1134,6 +1136,18 @@ export const ERROR_CODES = [
   'journal_export_stale',
   /** The link of the export works for 24 hours (task 8.9, decision 4). */
   'journal_export_expired',
+  /** The closing checklist of the quarter is not open yet: it opens two weeks before the last day (`07`; task 9.2a). */
+  'closing_not_open',
+  /** The result is not flagged, or is a result at leaving: there is nothing to decide (task 9.2a). */
+  'closing_not_flagged',
+  /** The decision does not fit the result: "Exempt" only when few lessons is the one flag and an exemption explains it (task 9.2a). */
+  'closing_decision_not_allowed',
+  /** The decision was changed by someone else since it was read (task 9.2a). */
+  'closing_decision_changed',
+  /** There is no stored decision to clear on this result (task 9.2a). */
+  'closing_nothing_to_clear',
+  /** A student flagged under the journal now was not in the list sent: decide again from the list as it is (task 9.2a). */
+  'closing_list_changed',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

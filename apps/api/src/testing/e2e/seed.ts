@@ -5996,6 +5996,19 @@ try {
     password: resultsPrincipal.firstPassword,
   };
 
+  // Task 9.2a: the Academic Vice Principal of the same branch opens the closing checklist; its
+  // quarter 1 ends 20 days from today, so the checklist says when it opens. All names are invented.
+  const closingVice = await create('Shahnoza', 'Umarova');
+  await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: closingVice.id,
+      role: 'academic_vice_principal',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.closingVice = { login: closingVice.login, password: closingVice.firstPassword };
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.

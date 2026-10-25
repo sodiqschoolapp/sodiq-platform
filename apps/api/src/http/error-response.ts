@@ -518,6 +518,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   orphan_assignment_withdrawn: 'The assignment is already withdrawn.',
   discipline_range: 'The range is longer than 92 days or crosses academic years.',
   student_merge_journal_overlap: 'Both records hold journal data on the same lesson.',
+  student_merge_decision_overlap: 'Both records hold a decision on the same subject and quarter.',
   student_merge_journal_cut: 'The merged record holds journal entries on days the merge cuts.',
   work_not_in_lesson: 'The work is not a column of this lesson.',
   lesson_has_plan_item: 'The lesson has a plan item; its works come from the plan.',
@@ -607,6 +608,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   vacancy_in_load: 'A load row names the vacancy, so it cannot be deleted.',
   request_refused: 'The request was refused.',
   internal_error: 'Something went wrong on the server.',
+  closing_not_open: 'The closing checklist of the quarter is not open yet.',
+  closing_not_flagged: 'The result is not flagged.',
+  closing_decision_not_allowed: 'The decision does not fit the result.',
+  closing_decision_changed: 'The decision was changed since it was read.',
+  closing_nothing_to_clear: 'No decision is stored to clear.',
+  closing_list_changed: 'The student was not in the list sent.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

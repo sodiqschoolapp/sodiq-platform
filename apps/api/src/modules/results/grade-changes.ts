@@ -1,18 +1,9 @@
-import { studentQuarterOutcome, type StudentQuarterOutcome } from '@sodiq/calc';
-import { schoolDateOf, subjectColourSchema, type GradeChanges } from '@sodiq/shared';
+import type { StudentQuarterOutcome } from '@sodiq/calc';
+import { subjectColourSchema, type GradeChanges } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
-import {
-  gridWeights,
-  journalRows,
-  switchesIn,
-  type JournalRow,
-} from '../journal/journal-grid.query.js';
-import { countsFromOf, goLiveOf } from '../journal/start-quarter.js';
-import {
-  subjectQuarterLessons,
-  type StudentSubjectQuarter,
-} from '../journal/subject-quarter-lessons.js';
+import type { JournalRow } from '../journal/journal-grid.query.js';
+import { quarterOutcomes } from './quarter-outcomes.js';
 
 /**
  * The shown result of every member of the graded journals of a quarter
@@ -57,36 +48,6 @@ const stateOf = (outcome: StudentQuarterOutcome | null): ShownState => {
   };
 };
 
-/** The members of a journal in the quarter: its class rows, or its group rows of the subject. */
-async function membersOf(
-  transaction: Transaction,
-  journal: JournalRow,
-  quarter: QuarterRef,
-): Promise<string[]> {
-  const rows =
-    journal.classId !== null
-      ? await transaction
-          .selectFrom('class_memberships')
-          .select('student_id')
-          .distinct()
-          .where('class_id', '=', journal.classId)
-          .whereRef('valid_from', '<', 'valid_until')
-          .where('valid_from', '<=', quarter.endDate)
-          .where('valid_until', '>', quarter.startDate)
-          .execute()
-      : await transaction
-          .selectFrom('group_memberships')
-          .select('student_id')
-          .distinct()
-          .where('group_id', '=', journal.groupId ?? '')
-          .where('subject_id', '=', journal.subjectId)
-          .whereRef('valid_from', '<', 'valid_until')
-          .where('valid_from', '<=', quarter.endDate)
-          .where('valid_until', '>', quarter.startDate)
-          .execute();
-  return rows.map((row) => row.student_id);
-}
-
 /**
  * The shown results of the quarter's graded journals of the subjects named
  * (every subject when `subjectIds` is `null`), in the branch of the transaction.
@@ -101,74 +62,19 @@ export async function quarterGrades(
     readonly subjectIds: readonly string[] | null;
   },
 ): Promise<QuarterGrades> {
-  const { quarter } = input;
-  // Before its first day no lesson of the quarter is held: no result to change.
-  if (quarter.startDate > schoolDateOf(input.now, input.timeZone)) {
-    return { quarter, journals: new Map(), states: new Map() };
-  }
-  const journals = (
-    await journalRows(transaction, input.branchId, { yearId: quarter.academicYearId })
-  ).filter(
-    (journal) =>
-      (input.subjectIds === null || input.subjectIds.includes(journal.subjectId)) &&
-      switchesIn(journal, quarter.id)?.attendanceOnly === false,
-  );
-  const countsFrom = countsFromOf(await goLiveOf(transaction, input.branchId), quarter);
+  const found = await quarterOutcomes(transaction, input);
   const states = new Map<string, Map<string, ShownState>>();
-  const bySubject = new Map<string, JournalRow[]>();
-  for (const journal of journals) {
-    bySubject.set(journal.subjectId, [...(bySubject.get(journal.subjectId) ?? []), journal]);
+  for (const [journalId, one] of found.journals) {
+    states.set(
+      journalId,
+      new Map([...one.members].map(([studentId, member]) => [studentId, stateOf(member.outcome)])),
+    );
   }
-  for (const [subjectId, own] of bySubject) {
-    const members = new Map<string, string[]>();
-    for (const journal of own)
-      members.set(journal.id, await membersOf(transaction, journal, quarter));
-    const studentIds = [...new Set([...members.values()].flat())];
-    const weights = await gridWeights(transaction, input.branchId, subjectId, quarter.id);
-    const found: ReadonlyMap<string, StudentSubjectQuarter> =
-      weights.quarterly === null
-        ? new Map()
-        : await subjectQuarterLessons(transaction, {
-            branchId: input.branchId,
-            timeZone: input.timeZone,
-            now: input.now,
-            academicYearId: quarter.academicYearId,
-            subjectId,
-            quarter,
-            studentIds,
-          });
-    for (const journal of own) {
-      const ratingShown =
-        switchesIn(journal, quarter.id)?.ratingExam === true &&
-        weights.quarterly !== null &&
-        weights.quarterly.ratingExam !== null;
-      const shown = new Map<string, ShownState>();
-      for (const studentId of members.get(journal.id) ?? []) {
-        const one = found.get(studentId);
-        const outcome =
-          weights.quarterly === null || one === undefined || one.heldInJournals === 0
-            ? null
-            : studentQuarterOutcome({
-                weights: weights.quarterly,
-                attendanceValues: {
-                  lateValue: weights.lateValue,
-                  skippedValue: weights.skippedValue,
-                },
-                lessons: one.lessons.map((lesson) => lesson.lesson),
-                ratingExam: ratingShown ? one.ratingExam : null,
-                quarterClosed: false,
-                heldInJournals: one.heldInJournals,
-                countsFrom,
-                leftSubjectOn: one.leftSubjectOn,
-                atLeaving: one.atLeaving,
-                decision: null,
-              });
-        shown.set(studentId, stateOf(outcome));
-      }
-      states.set(journal.id, shown);
-    }
-  }
-  return { quarter, journals: new Map(journals.map((one) => [one.id, one])), states };
+  return {
+    quarter: input.quarter,
+    journals: new Map([...found.journals].map(([id, one]) => [id, one.journal])),
+    states,
+  };
 }
 
 /** The journals where a member's shown grade or result changed, with the counts. */

@@ -249,6 +249,7 @@ describe('results that follow the student (07, Transfers)', () => {
             provisional: true,
             leftOut: ['homework'],
             basedOn: null,
+            kept: false,
           },
         });
         // The old journal keeps the student folded with the same full result.
@@ -603,6 +604,7 @@ describe('results that follow the student (07, Transfers)', () => {
             provisional: true,
             leftOut: ['classwork', 'homework'],
             basedOn: null,
+            kept: false,
           },
         });
       });

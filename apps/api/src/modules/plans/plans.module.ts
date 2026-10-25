@@ -75,6 +75,7 @@ import { PlansService } from './plans.service.js';
       inject: [CONFIG],
     },
   ],
-  exports: [PlanFollow],
+  // Task 9.2a: the closing checklist reads the plan reports.
+  exports: [PlanFollow, PlanReportsService],
 })
 export class PlansModule {}

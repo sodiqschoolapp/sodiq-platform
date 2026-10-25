@@ -648,6 +648,17 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     journal_export_stale: 'Экспорт не был готов вовремя. Запросите его снова.',
     journal_export_expired:
       'Ссылка на этот экспорт работала 24 часа и истекла. Запросите новый экспорт.',
+    closing_not_open:
+      'Чек-лист закрытия этой четверти ещё не открыт. Он открывается за две недели до последнего дня.',
+    closing_not_flagged: 'Этот итог больше не отмечен, решать нечего. Обновите чек-лист.',
+    closing_decision_not_allowed:
+      '«Освобождён» подходит только итогу, отмеченному лишь за малое число уроков, которое объясняет освобождение. Выберите «Оставить число» или «Не аттестован».',
+    closing_decision_changed:
+      'Кто-то изменил это решение после того, как вы открыли чек-лист. Обновите его и решите снова.',
+    closing_nothing_to_clear:
+      'Для этого итога решение не сохранено, снимать нечего. Обновите чек-лист.',
+    closing_list_changed:
+      'Этот ученик появился в списке после того, как вы открыли чек-лист, и решение по нему не принято. Обновите его и решите снова.',
     journal_entry_scope:
       'Вносить можно только в уроки, которые вы ведёте, заменяете или чей журнал ваш. Откройте свой урок с главной страницы.',
     lesson_attendance_only:
@@ -721,6 +732,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'В новых журналах уже есть записи ученика после перевода, поэтому его нельзя отменить. Сделайте обратный перевод.',
     student_merge_journal_overlap:
       'Обе записи содержат данные журнала по одному и тому же уроку. Сначала очистите одну из них.',
+    student_merge_decision_overlap:
+      'У обеих записей есть решение по отмеченному итогу за один предмет и четверть. Сначала снимите одно из них в чек-листе закрытия.',
     student_merge_journal_cut:
       'В объединяемой записи есть записи журнала в дни, которые объединение отрезает. Сначала аннулируйте их с указанием причины.',
     student_status_exemption_overlap:
@@ -3387,6 +3400,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       quarter: {
         attendance_values: 'Заданы значения посещаемости четверти',
       },
+      results: {
+        decision_set: 'Принято решение по отмеченному итогу',
+        decision_cleared: 'Снято решение по отмеченному итогу',
+      },
       calendar_entry: {
         create: 'День календаря добавлен',
         edit: 'День календаря изменён',
@@ -3615,6 +3632,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         request_approve: 'Запрос на изменение плана одобрен',
         request_refuse: 'Запрос на изменение плана отклонён',
         request_finish: 'Изменение плана завершено досрочно',
+        periods_ended: 'Завершены периоды изменения планов четверти',
         request_void: 'Запросы на изменение отменены из-за нового учителя',
         queue_edit: 'Изменён порядок строк плана',
         shared: 'Класс или группа присоединены к общему плану',
@@ -4080,6 +4098,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     kinds: {
       unknown:
         'Уведомление, которое эта версия приложения пока не может показать. Перезагрузите страницу.',
+      results: {
+        closing_reminder: 'Четверть {{quarter}} скоро закрывается. Осталось завершить: {{items}}.',
+      },
       setup: {
         quarter_weights_changed:
           'Веса предмета {{subject}} ({{quarters}}) изменены {{date}}: {{reason}}.',
@@ -6072,6 +6093,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       results: {
         exempt: 'Освобождён',
         no_result: 'Нет итога',
+        not_assessed: 'Не аттестован',
       },
       work: '{{title}}: {{score}} из {{total}}, {{percent}}%',
       mark: 'Отметка {{mark}}',
@@ -6451,6 +6473,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       optionalUntil: 'Необязательно до {{date}}',
       backFromExemption: 'вернулся после освобождения',
       exemptResult: 'Освобождён',
+      notAssessedResult: 'Не аттестован',
+      keptShort: 'оставлен',
       basedOn: 'по {{expected}} из {{held}} уроков',
       exemptCell: {
         temporary: 'Временно освобождён',
@@ -6770,6 +6794,98 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    closing: {
+      reminderLine: '{{kind}}: {{unit}}, {{subject}} ({{count}})',
+      title: 'Чек-лист закрытия',
+      quarter: 'Четверть',
+      item: 'Пункт',
+      severity: 'Влияние',
+      blocking: 'Блокирует закрытие',
+      warning: 'Предупреждение',
+      teacher: 'Учитель',
+      unit: 'Класс или группа',
+      subject: 'Предмет',
+      count: 'Количество',
+      remind: 'Напомнить учителям',
+      reminded_one: 'Напоминание отправлено {{count}} учителю.',
+      reminded_few: 'Напоминания отправлены {{count}} учителям.',
+      reminded_many: 'Напоминания отправлены {{count}} учителям.',
+      reminded_other: 'Напоминания отправлены {{count}} учителям.',
+      endPeriods: 'Завершить периоды изменения планов',
+      endPeriodsTitle_one: 'Завершить {{count}} открытый период изменения плана?',
+      endPeriodsTitle_few: 'Завершить {{count}} открытых периода изменения планов?',
+      endPeriodsTitle_many: 'Завершить {{count}} открытых периодов изменения планов?',
+      endPeriodsTitle_other: 'Завершить {{count}} открытых периода изменения планов?',
+      noQuarter: 'В филиале ещё нет четверти с датами.',
+      opensOn: 'Чек-лист откроется {{date}}.',
+      closable: 'Ничто не мешает закрытию.',
+      counts: 'Блокирует: {{blocking}} · предупреждений: {{warnings}}',
+      notOpenYet: 'Чек-лист открывается за две недели до конца четверти.',
+      nothingLeft: 'В этой четверти нечего завершать.',
+      openJournal: 'Открыть журнал: {{journal}}',
+      pending: 'освобождён в день экзамена, ожидает',
+      ratingUnlocked: 'Рейтинговый экзамен разблокирован.',
+      extension: 'Срок исправлений за {{from}} – {{to}} продлён до {{until}}',
+      editPeriod_one: '{{count}} урок ещё в сроке исправлений, незавершённых: {{incomplete}}',
+      editPeriod_few: '{{count}} урока ещё в сроке исправлений, незавершённых: {{incomplete}}',
+      editPeriod_many: '{{count}} уроков ещё в сроке исправлений, незавершённых: {{incomplete}}',
+      editPeriod_other: '{{count}} урока ещё в сроке исправлений, незавершённых: {{incomplete}}',
+      planPeriods_one: 'Открыт {{count}} период изменения плана',
+      planPeriods_few: 'Открыто {{count}} периода изменения планов',
+      planPeriods_many: 'Открыто {{count}} периодов изменения планов',
+      planPeriods_other: 'Открыто {{count}} периода изменения планов',
+      noTopic_one: '{{count}} урок без темы',
+      noTopic_few: '{{count}} урока без темы',
+      noTopic_many: '{{count}} уроков без темы',
+      noTopic_other: '{{count}} урока без темы',
+      notCovered_one: '{{count}} пункт не пройден',
+      notCovered_few: '{{count}} пункта не пройдено',
+      notCovered_many: '{{count}} пунктов не пройдено',
+      notCovered_other: '{{count}} пункта не пройдено',
+      belowMinimum: 'Оценённых работ меньше, чем требует предмет',
+      days: '{{from}} – {{until}}',
+      basedOn: 'по {{expected}} из {{held}} уроков',
+      stored: 'решение: {{decision}}',
+      clear: 'Снять',
+      wholeJournal: 'Для всего журнала',
+      planStates: {
+        complete: 'План заполнен',
+        incomplete: 'План не заполнен',
+        not_started: 'План не начат',
+      },
+      flags: {
+        few_lessons: 'мало уроков',
+        attendance_only: 'только посещаемость',
+        left_subject: 'выбыл из предмета',
+      },
+      decisions: {
+        keep: 'Оставить число',
+        exempt: 'Освобождён',
+        not_assessed: 'Не аттестован',
+      },
+      refused: {
+        closing_not_flagged: 'больше не отмечен',
+        closing_decision_not_allowed: 'это решение не подходит',
+        closing_decision_changed: 'изменено другим человеком после открытия списка',
+        closing_list_changed: 'появился в списке позже, решение не принято',
+      },
+      kinds: {
+        rating_missing: 'Нет записей рейтингового экзамена',
+        undecided: 'Отмеченные итоги без решения',
+        decision_outdated: 'Решение устарело: снимите его или решите снова',
+        weights_missing: 'Нет весов на эту четверть',
+        unlocked: 'Временно разблокировано',
+        extension_open: 'Срок исправлений продлён',
+        edit_period: 'Уроки в сроке исправлений',
+        plan_periods: 'Открыты периоды изменения планов',
+        no_attendance: 'Уроки без посещаемости',
+        numbers_missing: 'Запланированные работы без оценок',
+        plan_incomplete: 'План уроков не заполнен',
+        no_result: 'Ученики без итога',
+        part_without_data: 'Часть с весом без данных',
+        no_teacher: 'Нет учителя',
+      },
+    },
     year: 'Учебный год',
     yearOption: '{{from}} – {{to}}',
     quarter: 'Четверть',

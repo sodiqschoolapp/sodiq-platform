@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 October 2026: task 9.2a Closing checklist
+
+- 0132: `quarter_result_decisions` (one per student, subject and quarter; cleared is `null`; moment from the transaction; no write in a closed year). Area `quarter_closing`. Routes: `GET /api/results/closing`, `PUT /api/results/closing/:quarterId/decisions`, `POST .../journals/:journalId/decisions`, `POST .../plan-periods/end`, `POST .../remind` (`closing.service.ts`).
+- Every reader of a quarter result passes the stored decision to `studentQuarterOutcome` (`quarter-decisions.ts`); `quarter-outcomes.ts` holds the outcomes of a quarter's graded journals (the grade preview is built on it). Web: `/results/closing` (from the Journals page), "Not assessed" and "kept" in the grid and its files, the reminder notice.
+- Left out, with From lines: the close, "lock now and close", acknowledged warnings, the result at leaving stored, the closed-quarter refusal of a decision (9.2b); the daily reminder after the last day (9.2c).
+
+The next sessions must know:
+
+- The checklist items are worked out on read (`ClosingService.itemsOf`); a new blocking item goes into `CLOSING_BLOCKING` of `packages/shared/src/closing.ts`.
+- A student is listed under the journal of the latest membership of the subject in the quarter (`listedJournalOf`); a student at leaving never.
+- The journal figure of a number has `kept`; a fixture of a grid answer sets it.
+
 ## 25 October 2026: task 9.1 Quarter results and the student results page
 
 - No migration. Routes: `GET /api/results/students/:id` (Results), `/attendance`, `/lessons` (the lessons behind a figure), `/tabs` (`students` `view`, each subject only to a reader of its journal, `student-row-reading.ts`); `POST .../preview` of a quarter's late and skipped values, of a quarterly distribution and of the copy; the three writes take a `reason` (`reason_required` for a change of stored values) and a weights change tells the subject's teachers (`setup.quarter_weights_changed`).

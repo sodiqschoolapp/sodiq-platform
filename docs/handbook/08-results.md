@@ -68,3 +68,30 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - The journal legend shows "changed on" with the date of the last weights change.
 
 **What the person sees.** Without a reason: "This change alters stored results. Give a reason for it."
+
+## The closing checklist
+
+<!-- Sources: spec 07 (Closing a quarter; Exemptions, Effect on totals), edge/journal (Closing and reopening), edge/calculation; task 9.2a, pull request #229, decisions 1 to 13 -->
+
+**What it is.** One page that lists everything still unfinished in a quarter, before the quarter is closed: what blocks closing, and what is only a warning. The Academic Vice Principal decides here the results that are flagged.
+
+**Who can use it.** The Academic Vice Principal and the Super Admin decide, end plan periods and remind teachers; the Principal reads it. Open it from Journal → **Closing checklist**.
+
+**How it works.**
+
+1. Choose the quarter. The list opens two weeks before the quarter's last day; before that the page says on which day it opens.
+2. Each line names the item, whether it blocks closing, the teacher, the class or group and the subject. Open a line to see its students or lessons and a link to the journal.
+3. A flagged result ("few lessons", "attendance only", "left the subject") is decided per student with **Keep the number**, **Exempt** or **Not assessed**, or for the whole journal at once.
+4. **Remind teachers** sends each teacher concerned a notice with their own unfinished items.
+5. **End plan periods** ends every open plan editing period of the quarter.
+
+**Rules.**
+
+- Blocking: a rating exam entry missing (also "exempt on the exam day, pending"), a flagged result undecided, a decision that no longer fits the data ("decision outdated"), a subject with no weights for the quarter, a lesson unlocked or an edit period extended, lessons still inside the edit period, open plan editing periods.
+- Warnings: lessons with no attendance, planned works with numbers missing, lesson plans incomplete or items not covered, students with no result and no exemption, a part with a weight and no data in the whole journal, a journal with no teacher.
+- "Exempt" is offered only when "few lessons" is the one flag and an exemption explains it.
+- A decision shows at once in the journal, the student's results and the files: "Not assessed" and a decided "Exempt" have no number and are left out of the class averages.
+- A student who left the school or the branch is not on the list.
+- Nothing is closed here: the quarter can be closed from its last day, when nothing blocks.
+
+**What the person sees.** When the data changed since the list was read: "This result is not flagged any more, so there is nothing to decide. Reload the checklist."

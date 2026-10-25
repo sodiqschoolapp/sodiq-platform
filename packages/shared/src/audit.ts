@@ -317,6 +317,9 @@ export const AUDIT_ACTION_GROUPS = {
     'absence_reason.file_add',
     'absence_reason.file_remove',
     'absence_reason.file_open',
+    // Task 9.2a: a decision on a flagged result set or cleared on the closing checklist.
+    'results.decision_set',
+    'results.decision_cleared',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).
@@ -363,6 +366,8 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.master_kept',
     // Task 8.8: the minimum works of subjects per quarter set by the Academic Vice Principal.
     'plan.minimums',
+    // Task 9.2a: the open plan periods of a quarter ended from the closing checklist.
+    'plan.periods_ended',
   ],
   exports: [
     // Task 8.9: a journal in Excel or PDF, and the branch export: asked for, ready, downloaded.

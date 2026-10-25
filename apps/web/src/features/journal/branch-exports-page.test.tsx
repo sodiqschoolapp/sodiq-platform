@@ -197,7 +197,15 @@ const SUPPORT: JournalSupport = {
     classwork: null,
     homework: null,
     ratingExam: null,
-    result: { kind: 'number', shown: 75, grade: 4, provisional: true, leftOut: [], basedOn: null },
+    result: {
+      kind: 'number',
+      shown: 75,
+      grade: 4,
+      provisional: true,
+      leftOut: [],
+      basedOn: null,
+      kept: false,
+    },
   },
   ratingDate: null,
   legend: {

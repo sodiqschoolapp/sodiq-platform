@@ -527,6 +527,65 @@ describe('the merge of two student records', () => {
       ]);
     });
 
+    /** A decision of the closing checklist (task 9.2a, 0132), written at the kit's moment. */
+    async function decision(branch: string, year: string, studentId: string, subject: string) {
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', year)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      const by = await classes.account();
+      return t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${t.clock.now().toISOString()}, true)`.execute(
+          transaction,
+        );
+        return (
+          await transaction
+            .insertInto('quarter_result_decisions')
+            .values({
+              branch_id: branch,
+              quarter_id: quarter.id,
+              subject_id: subject,
+              student_id: studentId,
+              decision: 'keep',
+              decided_by: by,
+              decided_at: new Date(0),
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+    }
+
+    it('carries a decision on a flagged result to the kept record (task 9.2a)', async () => {
+      const { east, eastYear, classId } = await eastWith('East decision carry');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      const id = await decision(east, eastYear, twice.id, subject);
+      merged(await merge(first.id, twice.uid, east));
+      const row = await t.database.migrator
+        .selectFrom('quarter_result_decisions')
+        .select(['student_id', 'decision', 'version'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({ student_id: first.id, decision: 'keep', version: 1 });
+    });
+
+    it('refuses a decision of both records on one subject and quarter (student_merge_decision_overlap), and changes nothing', async () => {
+      const { east, eastYear, classId } = await eastWith('East decision overlap');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      await decision(east, eastYear, first.id, subject);
+      await decision(east, eastYear, twice.id, subject);
+      const before = await rowsOf();
+      const response = await merge(first.id, twice.uid, east);
+      refusedWith(response, 409, 'student_merge_decision_overlap');
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('refuses data of both records on one lesson (student_merge_journal_overlap), and changes nothing', async () => {
       const { cells, east, eastYear, classId } = await eastWith('East journal overlap');
       const first = await pupil({ branch: east, classId, from: '2026-09-02' });
