@@ -322,6 +322,9 @@ Plan approved on pull request #230 with corrections 1 to 4 (`closable` beside th
 | **Build decision.** The ids that answer 404 are read before the quarter lock; `move_in_past` (403) now comes before `student_changed` on the move routes | `.claude/rules/api.md`, 404 before a refusal |
 | **Build decision.** The journal writes take the quarter in `decideWrite`, after `lockedLesson`'s lesson `for share` | The close locks no lesson, so the two cannot wait on each other |
 | **Build decision.** The bulk cancel's check (preview) of a date in a closed quarter lists its lessons; the save refuses | The check writes nothing |
+| **Build decision.** The journal grid and its "Final" files read a closed quarter's figures and outcome from `quarter_final_results` too | Spec review of the code, must-fix 2; decision 1 |
+| **Build decision.** A void of an exemption that began in a closed quarter becomes an end at that quarter's last day | As decision 4 does for an end |
+| **Build decision.** 0134: an end set on an open-ended student status is checked against closed quarters to the end of time (0133 checked the end day only) | Spec review of the code, should-fix 3; an end taken away is already refused by `dated_rows_only_shrink` |
 
 ## 25 October 2026: the closing checklist (task 9.2a)
 
