@@ -19,6 +19,9 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { hoursOf, publishedScene } from '../../testing/published-scene.js';
+import { MemoryPhotoStore, planFileKey } from '../people/photo-store.js';
+
+const store = new MemoryPhotoStore();
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -279,7 +282,7 @@ describe('plans in the journal', () => {
       .execute();
 
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true });
+    t = await dayTemplatesKit({ jobs: true, photoStore: store });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -358,7 +361,7 @@ describe('plans in the journal', () => {
         });
       }
       const tutor = await account();
-      await as(tutor, s.branch, [{ role: 'tutor', branchId: s.branch }], async () => undefined);
+      await as(tutor, s.branch, [{ role: 'tutor', branchId: s.branch }], () => Promise.resolve());
       const assignment = await t.database.migrator
         .selectFrom('assignments')
         .select('id')
@@ -706,7 +709,7 @@ describe('plans in the journal', () => {
     it('lets the substitute in force set it, and tells the owner; another teacher is refused', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
-      await itemAt(s, s.third);
+      const third = await itemAt(s, s.third);
       const sub = await account();
       const otherSubject = await load.classes.subject({ grades: [7] });
       const substitute = await load.teacher(s.branch, {
@@ -731,9 +734,31 @@ describe('plans in the journal', () => {
             confirm: true,
           }),
       );
+      // A file of the item, and one of the item of another lesson (plan review correction 1).
+      const fileOf = async (itemId: string) => {
+        const file = await t.database.migrator
+          .insertInto('lesson_plan_files')
+          .values({
+            branch_id: s.branch,
+            item_id: itemId,
+            name: 'Sheet.pdf',
+            type: 'application/pdf',
+            bytes: 4,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await store.put(planFileKey(itemId, file.id), Buffer.from('%PDF'), 'application/pdf');
+        return file.id;
+      };
+      const own = await fileOf(third.itemId);
+      const elsewhere = await fileOf((await itemAt(s, s.second)).itemId);
       await as(sub, s.branch, teacherIn(s), async (calls) => {
         const card = await cardOf(calls, s.third);
         expect(card).toMatchObject({ whole: true, canMark: true, topic: 'Fractions' });
+        expect(card.files.map((one) => one.id)).toEqual([own]);
+        expect((await calls.get(`/api/plans/files/${own}`)).status).toBe(200);
+        const other = await calls.get(`/api/plans/files/${elsewhere}`);
+        expect(codeOf(other)).toBe('plan_scope');
         ok(
           await calls.put(`/api/journal/lessons/${s.third}/delivery`, {
             notDelivered: true,
@@ -753,6 +778,18 @@ describe('plans in the journal', () => {
         .where('kind', '=', 'plans.not_delivered')
         .execute();
       expect(notices).toEqual([{ kind: 'plans.not_delivered', account_id: owner.account.id }]);
+      // The substitution withdrawn: the substitute reads the file no more.
+      ok(
+        await request(t.kit.server)
+          .post(`/api/timetable/lessons/${s.third}/substitution/withdraw`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send({ reason: 'The seminar is cancelled' }),
+      );
+      await as(sub, s.branch, teacherIn(s), async (calls) => {
+        expect(codeOf(await calls.get(`/api/plans/files/${own}`))).toBe('plan_scope');
+      });
       const stranger = await account();
       await load.teacher(s.branch, { accountId: stranger.account.id });
       await as(stranger, s.branch, teacherIn(s), async (calls) => {

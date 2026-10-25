@@ -3,7 +3,16 @@ import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
+import { ChromiumPdfRenderer, PDF_RENDERER } from '../../http/pdf.js';
 import { LessonCardController } from './lesson-card.controller.js';
+import { PlanExports } from './plan-exports.service.js';
+import { PlanMinimumsService } from './plan-minimums.js';
+import {
+  PlanExportController,
+  PlanMinimumsController,
+  PlanReportsController,
+} from './plan-reports.controller.js';
+import { PlanReportsService } from './plan-reports.service.js';
 import { PlanDelivery } from './plan-delivery.service.js';
 import { PlanFiles } from './plan-files.service.js';
 import { PlanFollow } from './plan-follow.js';
@@ -24,6 +33,10 @@ import { PlansService } from './plans.service.js';
   // `journals/:journalId` paths would not take `windows` or `requests`.
   // Task 7.3: the masters, before `PlansController` too.
   controllers: [
+    // Task 8.8: the reports, the minimums and the export, before `PlansController`.
+    PlanReportsController,
+    PlanMinimumsController,
+    PlanExportController,
     PlanWindowsController,
     PlanRequestsController,
     PlanMastersController,
@@ -46,6 +59,15 @@ import { PlansService } from './plans.service.js';
     PlanMasterTakes,
     // Task 8.8: the lesson card, "topic not delivered" and "homework not given".
     PlanDelivery,
+    // Task 8.8: the minimum works, the plan reports and the exports of a plan and the reports.
+    PlanMinimumsService,
+    PlanReportsService,
+    PlanExports,
+    {
+      provide: PDF_RENDERER,
+      useFactory: (config: AppConfig) => new ChromiumPdfRenderer(config),
+      inject: [CONFIG],
+    },
     // The files of plan items go to the photos' store under `plans/` (task 7.1a, decision 1).
     {
       provide: PHOTO_STORE,

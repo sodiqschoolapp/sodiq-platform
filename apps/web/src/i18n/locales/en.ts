@@ -760,6 +760,8 @@ export const en = {
       'This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead.',
     journal_work_not_given:
       'This homework was marked "not given", so nothing is entered for it.',
+    plan_minimum_stale:
+      'Someone changed this minimum since you opened the page. Reload it and try again.',
     entry_not_started:
       'This lesson has not started yet. Attendance can be entered from its start time.',
     lesson_not_held:

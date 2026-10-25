@@ -533,6 +533,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   homework_not_in_lesson: 'The homework is not given at this lesson.',
   homework_has_entries: 'The homework has entries in the journal.',
   journal_work_not_given: 'The homework is marked "not given".',
+  plan_minimum_stale: 'The minimum was changed since it was read.',
   restore_works_full: 'The lesson of a restored work has 10 works of its kind added by hand.',
   entry_not_started: 'The lesson has not started.',
   lesson_not_held: 'The lesson needs a teacher or is unresolved.',

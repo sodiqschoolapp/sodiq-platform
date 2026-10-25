@@ -435,15 +435,30 @@ describe('a frozen permission table', () => {
     }
   });
 
-  it('gives the plans to their readers and their writing to the Teacher, the owner in the route (task 7.1a, decision 2)', () => {
+  it('gives the plans to their readers and their writing to the Teacher, the owner in the route (task 7.1a, decision 2), and their export to the readers (task 8.8, decision 2)', () => {
     const readers = ['principal', 'academic_vice_principal', 'senior_head_teacher', 'head_teacher'];
     for (const role of ROLES) {
       expect(PERMISSIONS.plans[role], role).toEqual(
         role === 'teacher' || role === 'super_admin'
-          ? ['view', 'edit']
+          ? ['view', 'edit', 'export']
           : readers.includes(role)
-            ? ['view']
+            ? ['view', 'export']
             : [],
+      );
+    }
+  });
+
+  it('gives the plan reports to management and the Head Teachers (task 8.8, decision 1)', () => {
+    const readers = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.plan_reports[role], role).toEqual(
+        readers.includes(role) ? ['view', 'export'] : [],
       );
     }
   });
@@ -564,6 +579,7 @@ describe('a frozen permission table', () => {
       'journal_unlocks',
       'personal_data_report',
       'plan_masters',
+      'plan_reports',
       'plan_requests',
       'plan_windows',
       'plans',

@@ -1013,6 +1013,8 @@ export const ERROR_CODES = [
   'homework_has_entries',
   /** Task 8.8 (decision 4): a planned homework marked "not given" takes no entry. */
   'journal_work_not_given',
+  /** Task 8.8: the minimum of the subject was changed since it was read. */
+  'plan_minimum_stale',
   /** A restored lesson's work added by hand finds every one of the 10 places of its lesson taken meanwhile (task 8.1, code review round 1). */
   'restore_works_full',
   /** A change of the journal type or the rating exam switch names the quarter it takes effect from, and only such a change names one (task 8.2, decision 16). */

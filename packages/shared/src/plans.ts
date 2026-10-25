@@ -185,6 +185,11 @@ export const planItemSchema = z.object({
    * (`09`: "it carries an \"edited after the lesson\" mark").
    */
   editedAfterLesson: z.boolean(),
+  /**
+   * Task 8.8: the date of the lesson whose "topic not delivered" put this copy into "not
+   * covered" (`edge/lesson-plans`, "A substitute supervises the class"), else `null`.
+   */
+  notDeliveredFrom: schoolDateSchema.nullable(),
 });
 
 export type PlanItem = z.infer<typeof planItemSchema>;
@@ -201,6 +206,10 @@ export const planRowSchema = z.object({
   slot: z.int().min(1).nullable(),
   /** `edge/00-definitions`, Held lesson, as the journal reads it. */
   held: z.boolean(),
+  /** Task 8.8: "topic not delivered" set on the row's lesson in the journal. */
+  notDelivered: z.boolean(),
+  /** Task 8.8: the homeworks of the row's item marked "not given" at its lesson. */
+  notGiven: z.array(z.uuid()),
   /** Task 7.2: the lesson's start has passed (the fixed part; a held row takes only Text). */
   started: z.boolean(),
   /** Task 7.2: what the reader may write on this row now (the window or an open period). */
@@ -210,19 +219,33 @@ export const planRowSchema = z.object({
 
 export type PlanRow = z.infer<typeof planRowSchema>;
 
-const planUnitSchema = z.object({
+/**
+ * Task 8.8 (decision 11; `edge/lesson-plans`: "Each subject can have a minimum number of
+ * classworks and homeworks per quarter ... Falling below it is a warning at the end of the
+ * window"): the works a plan holds against its subject's minimum, once the window has ended.
+ */
+export const planMinimumMarkSchema = z.object({
+  classworks: z.int().min(0),
+  homeworks: z.int().min(0),
+  minimumClassworks: z.int().min(0),
+  minimumHomeworks: z.int().min(0),
+});
+
+export type PlanMinimumMark = z.infer<typeof planMinimumMarkSchema>;
+
+export const planUnitSchema = z.object({
   kind: z.enum(['class', 'group']),
   id: z.uuid(),
   name: z.string(),
 });
 
-const planSubjectSchema = z.object({
+export const planSubjectSchema = z.object({
   id: z.uuid(),
   names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
   colour: subjectColourSchema,
 });
 
-const planQuarterSchema = z.object({
+export const planQuarterSchema = z.object({
   id: z.uuid(),
   number: z.int().min(1).max(4),
   startDate: schoolDateSchema,
@@ -317,6 +340,8 @@ export const planSchema = z.object({
   }),
   /** Task 7.2: overdue, window not opened, or vacancy; `null` otherwise. */
   flag: z.enum(PLAN_FLAGS).nullable(),
+  /** Task 8.8: below the subject's minimum works once the window has ended. */
+  belowMinimum: planMinimumMarkSchema.nullable(),
   /** Task 7.2: the requests of this plan and journal not prepared, newest first. */
   requests: z.array(z.lazy(() => planRequestSchema)),
   /**
@@ -434,6 +459,8 @@ export const planListSchema = z.object({
           flag: z.enum(PLAN_FLAGS).nullable(),
           /** Task 7.3: the plan's master has changes the plan can take (`09`: "master updated"). */
           masterUpdated: z.boolean(),
+          /** Task 8.8: below the subject's minimum works once the window has ended. */
+          belowMinimum: planMinimumMarkSchema.nullable(),
         }),
       ),
     }),

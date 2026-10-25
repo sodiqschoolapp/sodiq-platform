@@ -777,6 +777,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu uy vazifasining jurnalda allaqachon maksimal balli, ballari, koʻchirilishi yoki «oʻtkazilmadi» belgisi bor, shuning uchun uni «berilmadi» deb belgilab boʻlmaydi. Uni «oʻtkazilmadi» deb belgilang.',
     journal_work_not_given:
       'Bu uy vazifasi «berilmadi» deb belgilangan, shuning uchun unga hech narsa kiritilmaydi.',
+    plan_minimum_stale:
+      'Siz sahifani ochganingizdan keyin bu minimum oʻzgartirildi. Sahifani yangilab, qayta urinib koʻring.',
     entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
     lesson_not_held:
       'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',

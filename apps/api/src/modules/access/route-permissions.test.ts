@@ -167,6 +167,15 @@ const PLAN_READERS: readonly Role[] = [
 /** The writers of `plans` (task 7.1a, decision 2): the owner in the route; the Super Admin owns none. */
 const PLAN_WRITERS: readonly Role[] = ['super_admin', 'teacher'];
 
+/** Task 8.8, decision 1: who reads the plan reports (own subjects for the Head Teachers, in the route). */
+const PLAN_REPORT_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+];
+
 /** Task 7.3, decision 2: who keeps master plans (the keeper of the subject in the route). */
 const PLAN_MASTER_KEEPERS: readonly Role[] = [
   'super_admin',
@@ -808,6 +817,13 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   // Task 8.7: "not graded", the reminders, the counts per teacher and the orphan lessons.
   'POST /api/journal/lessons/:lessonId/not-graded': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 8.8: the lesson card (every reader of the journal) and its marks (the lesson's teacher).
+  'GET /api/journal/lessons/:lessonId/card': { branch: 'request', roles: VIEW_READERS },
+  'PUT /api/journal/lessons/:lessonId/delivery': { branch: 'request', roles: JOURNAL_WRITERS },
+  'PUT /api/journal/lessons/:lessonId/homework-given': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
   'GET /api/journal/reminders': { branch: 'request', roles: VIEW_READERS },
   'GET /api/journal/discipline': {
     branch: 'request',
@@ -957,6 +973,14 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/plans/journals/:journalId': { branch: 'request', roles: PLAN_READERS },
   // Task 7.1b: the item of one lesson (a reader of the plan or the lesson's substitute).
   'GET /api/plans/lessons/:lessonId': { branch: 'request', roles: PLAN_READERS },
+  // Task 8.8: the export of a plan (decision 2), the reports (decision 1) and the minimums.
+  'POST /api/plans/journals/:journalId/export': { branch: 'request', roles: PLAN_READERS },
+  'GET /api/plans/reports/completeness': { branch: 'request', roles: PLAN_REPORT_READERS },
+  'GET /api/plans/reports/progress': { branch: 'request', roles: PLAN_REPORT_READERS },
+  'GET /api/plans/reports/requests': { branch: 'request', roles: PLAN_REPORT_READERS },
+  'POST /api/plans/reports/export': { branch: 'request', roles: PLAN_REPORT_READERS },
+  'GET /api/plans/minimums': { branch: 'request', roles: PLAN_READERS },
+  'PUT /api/plans/minimums': { branch: 'request', roles: PLAN_WINDOW_WRITERS },
   'POST /api/plans/journals/:journalId/items': { branch: 'request', roles: PLAN_WRITERS },
   // Task 7.1c: share, separate and copy (the owner of every journal of the plan, plans.test.ts).
   'POST /api/plans/journals/:journalId/share': { branch: 'request', roles: PLAN_WRITERS },

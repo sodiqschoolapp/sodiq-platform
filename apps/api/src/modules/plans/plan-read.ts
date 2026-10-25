@@ -256,9 +256,12 @@ export async function planItems(
   const items = await transaction
     .selectFrom('lesson_plan_items')
     .innerJoin('lesson_plan_places', 'lesson_plan_places.item_id', 'lesson_plan_items.id')
+    // Task 8.8: the lesson a copy "topic not delivered" made came from.
+    .leftJoin('lessons', 'lessons.id', 'lesson_plan_items.not_delivered_from')
     .select([
       'lesson_plan_items.id',
       'lesson_plan_places.position',
+      sql<string | null>`lessons.lesson_date::text`.as('not_delivered_from'),
       'lesson_plan_items.topic',
       'lesson_plan_items.objectives',
       'lesson_plan_items.links',
@@ -326,6 +329,7 @@ export async function planItems(
     movedFrom: item.moved_from,
     copiedFrom: item.copied_from === null ? null : (sources.get(item.copied_from) ?? null),
     editedAfterLesson: item.edited_after_lesson,
+    notDeliveredFrom: item.not_delivered_from,
   }));
 }
 

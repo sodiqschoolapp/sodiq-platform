@@ -569,15 +569,32 @@ export const PERMISSIONS = freezeTable({
    * the route, and the Super Admin's as the table holds for every area
    * (`checkTable`), which the route refuses with `plan_scope` as it owns no
    * plan. The Tutor reads topic and homework through the journal (8.8);
-   * a substitute's reading of one item is 7.1b's.
+   * a substitute's reading of one item is 7.1b's. Task 8.8 (decision 2, Look
+   * first): `export` for the six readers: `edge/lesson-plans`: "Plans export
+   * to PDF and Excel with their marks"; a reader exports only the plans the
+   * route lets them read.
    */
   plans: rows({
-    super_admin: ['view', 'edit'],
-    principal: ['view'],
-    academic_vice_principal: ['view'],
-    senior_head_teacher: ['view'],
-    head_teacher: ['view'],
-    teacher: ['view', 'edit'],
+    super_admin: ['view', 'edit', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    teacher: ['view', 'edit', 'export'],
+  }),
+  /**
+   * The plan reports (task 8.8, pull request #226, decision 1, Look first):
+   * `09`, Reports: "Completeness. For each teacher, department and branch";
+   * "Progress"; "Edit requests". `02`: the Academic Vice Principal
+   * "Analytics", the Head Teacher "Oversees the subjects given to them", the
+   * Principal views. The route decides the scope: the branch, or own subjects.
+   */
+  plan_reports: rows({
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
   }),
   /**
    * The plan window (task 7.2, pull request #215, decision 1, Look first):
