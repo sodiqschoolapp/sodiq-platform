@@ -297,6 +297,28 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: the closing checklist (task 9.2a)
+
+Plan approved on pull request #229 with corrections 1 to 4 (the request-key tests of "remind"; the whole-journal list matched one to one by id; the reading before the refusals; `closable` from the last day); decisions 1 to 13 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a calculation reading). A stored decision (`quarter_result_decisions`, 0132) is the `decision` of `studentQuarterOutcome` for every reader at once: the grid and its files, the student results, the grade preview and the checklist (`quarter-decisions.ts`, `quarter-outcomes.ts`). Only a number is averaged: the grid's bottom row leaves a decided "Exempt" and "Not assessed" out | Review decision 1; `edge/calculation`; `edge/00-definitions`, Result states |
+| **Look first** (new permission area). `quarter_closing`: view for the Super Admin, the Principal and the Academic Vice Principal; edit (decisions, "end them all", "remind") for the Super Admin and the Academic Vice Principal | Review decision 2; `07`; `02` |
+| **Look first** (a spec line against a rule line). "Remind" is a route that sends one notice per teacher concerned with the teacher's own items (`results.closing_reminder`), on request: `07` asks it in words; no exception line is added to `.claude/rules/api.md`. Items with no teacher (weights missing, no teacher, an extension) go to nobody | Review decision 3 |
+| "Weights that do not total 100" reads as "no quarterly distribution valid for the quarter" (`gridWeights(...).quarterly === null`), for a journal with a held lesson in the quarter | Review decision 4; 0020 refuses a total other than 100 |
+| The checklist answers `not_open` with no items before the last day minus 14 days; decisions and "end them all" are refused `closing_not_open` before then; `closable` needs no blocking item and today on or after the last day | Review decision 5, correction 4 |
+| "Lessons still inside the edit period" is a blocking item with the incomplete ones counted; "lock now and close" is 9.2b's | Review decision 6 |
+| A student who moved between journals of a subject is listed once, under the journal of the latest membership; a whole-journal decision reaches only the students listed there | Review decision 7 |
+| Warnings are listed, not acknowledged: the acknowledgement is stored with the closing record (9.2b) | Review decision 8 |
+| No reason for a decision; who and when are stored, the audit entry holds the old and the new decision | Review decision 9 |
+| A student at leaving is on no item; the final record at leaving is written by the close (9.2b) | Review decision 10 |
+| "Exempt" only where the module applies it; the whole-journal "Exempt" names the students it does not fit and decides the rest; a result no longer flagged is refused `closing_not_flagged` one by one and named so in a whole journal | Review decisions 11 and 13, correction 2 |
+| "End them all" sets `finished_at` of the open approved requests of the quarter, one audit entry `plan.periods_ended`, no notice | Review decision 12 |
+| **Build decision.** The checklist is `GET /api/results/closing?quarterId=` (the current quarter when left out) and its quarter selector lists the dated quarters of that quarter's year | The page opens on the current quarter without a second query |
+| **Build decision.** The page is `/results/closing`, linked from the Journals page and the Ctrl+K index; the menu item "Results" stays unbuilt until 9.3 | The menu shows an item only when its page exists (0.8c) |
+| **Build decision.** The journal figure "number" gains `kept` (a flagged result kept), and the result a `not_assessed` kind; the files write "Not assessed" | Shown where the result is shown |
+
 ## 25 October 2026: journal exports and the support view (task 8.9)
 
 Plan approved on pull request #227 with correction 1 (every `changed_how` named in the support view); decisions 1 to 15 confirmed there. Flagged on issue #42.
