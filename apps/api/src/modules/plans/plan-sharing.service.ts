@@ -242,6 +242,16 @@ export class PlanSharing {
         // the order of the path's journal; its held rows stay empty.
         const { started } = await this.startedOf(transaction, scene, joining);
         const page = await this.plans.placesOf(transaction, target, journalId);
+        // Task 8.8 (decision 8): a copy "topic not delivered" put into "not covered" belongs to
+        // the journal of its lesson; a joining journal is not laid with it.
+        for (const copy of await transaction
+          .selectFrom('lesson_plan_items')
+          .select('id')
+          .where('id', 'in', [...page.keys(), '00000000-0000-0000-0000-000000000000'])
+          .where('not_delivered_from', 'is not', null)
+          .execute()) {
+          page.delete(copy.id);
+        }
         if (theirs === null) {
           await transaction
             .insertInto('lesson_plan_journals')

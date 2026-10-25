@@ -139,6 +139,13 @@ export async function followSeparation(
       });
     const result = await update.executeTakeFirst();
     moved += Number(result.numUpdatedRows);
+    // Task 8.8: a homework marked "not given" in this journal stays marked on the copy.
+    await transaction
+      .updateTable('journal_homework_not_given')
+      .set({ plan_work_id: pair.copy_id })
+      .where('plan_work_id', '=', pair.old_id)
+      .where('journal_id', '=', journalId)
+      .execute();
   }
   return moved;
 }

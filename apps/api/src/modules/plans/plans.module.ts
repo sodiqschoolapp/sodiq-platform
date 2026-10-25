@@ -3,6 +3,8 @@ import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
+import { LessonCardController } from './lesson-card.controller.js';
+import { PlanDelivery } from './plan-delivery.service.js';
 import { PlanFiles } from './plan-files.service.js';
 import { PlanFollow } from './plan-follow.js';
 import { PlanMasterTakes } from './plan-master-takes.service.js';
@@ -26,6 +28,8 @@ import { PlansService } from './plans.service.js';
     PlanRequestsController,
     PlanMastersController,
     PlansController,
+    // Task 8.8: the lesson card of the journal and its marks.
+    LessonCardController,
   ],
   providers: [
     PlansService,
@@ -40,6 +44,8 @@ import { PlansService } from './plans.service.js';
     // Task 7.3: master plans, their copies and the parallel classes.
     PlanMastersService,
     PlanMasterTakes,
+    // Task 8.8: the lesson card, "topic not delivered" and "homework not given".
+    PlanDelivery,
     // The files of plan items go to the photos' store under `plans/` (task 7.1a, decision 1).
     {
       provide: PHOTO_STORE,

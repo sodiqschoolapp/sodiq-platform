@@ -192,7 +192,14 @@ describe('lessonColumns', () => {
       ['w2', 'L1'],
     ]);
     expect(columns.get('L1')?.given).toEqual([
-      { workId: 'w2', planWorkId: null, title: null, checkAt: 'L2', ungraded: null },
+      {
+        workId: 'w2',
+        planWorkId: null,
+        title: null,
+        checkAt: 'L2',
+        ungraded: null,
+        notGiven: false,
+      },
     ]);
   });
 
@@ -371,6 +378,75 @@ describe('lessonColumns', () => {
           }
         },
       ),
+    );
+  });
+});
+
+// Task 8.8, pull request #226: `edge/lesson-plans`, "A substitute supervises the class": "the
+// next lesson gets no column for a homework not given".
+describe('lessonColumns, a homework not given', () => {
+  const planned = new Map([
+    ['L1', [hw('h1'), hw('h2')]],
+    ['L2', [cw('c2')]],
+  ]);
+
+  it('removes its column at the next lesson (Done when) and keeps the other homework', () => {
+    const before = run({ lessons: [lesson(1), lesson(2)], planned });
+    expect(titles(before, 'L2', 'homework')).toEqual(['h1', 'h2']);
+    const columns = run({ lessons: [lesson(1), lesson(2)], planned, notGiven: new Set(['L1/h1']) });
+    expect(titles(columns, 'L2', 'homework')).toEqual(['h2']);
+    expect(titles(columns, 'L2', 'classwork')).toEqual(['c2']);
+    const given = columns.get('L1')?.given ?? [];
+    expect(given.find((one) => one.planWorkId === 'h1')).toMatchObject({
+      notGiven: true,
+      checkAt: null,
+      ungraded: null,
+    });
+    expect(given.find((one) => one.planWorkId === 'h2')).toMatchObject({
+      notGiven: false,
+      checkAt: 'L2',
+    });
+  });
+
+  it('hides a stored row written and cleared, which holds nothing (spec review must-fix 1)', () => {
+    const columns = run({
+      lessons: [lesson(1), lesson(2)],
+      planned,
+      stored: [stored('w1', { kind: 'homework', planWorkId: 'h1', lessonId: 'L2', version: 3 })],
+      notGiven: new Set(['L1/h1']),
+    });
+    expect(titles(columns, 'L2', 'homework')).toEqual(['h2']);
+    expect(columns.get('L2')?.notHeld).toEqual([]);
+  });
+
+  it('keeps a stored row that holds data on the grid (nothing typed leaves it)', () => {
+    const columns = run({
+      lessons: [lesson(1), lesson(2)],
+      planned,
+      stored: [stored('w1', { kind: 'homework', planWorkId: 'h1', lessonId: 'L2', total: 10 })],
+      notGiven: new Set(['L1/h1']),
+    });
+    expect(titles(columns, 'L2', 'homework')).toEqual(['h1', 'h2']);
+  });
+
+  it('brings the column back once the mark is undone', () => {
+    const columns = run({ lessons: [lesson(1), lesson(2)], planned, notGiven: new Set() });
+    expect(titles(columns, 'L2', 'homework')).toEqual(['h1', 'h2']);
+  });
+
+  it('never shows more columns with a mark than without (property)', () => {
+    fc.assert(
+      fc.property(fc.subarray(['L1/h1', 'L1/h2']), (marked) => {
+        const without = run({ lessons: [lesson(1), lesson(2)], planned });
+        const withMarks = run({
+          lessons: [lesson(1), lesson(2)],
+          planned,
+          notGiven: new Set(marked),
+        });
+        expect(withMarks.get('L2')?.columns.length).toBe(
+          (without.get('L2')?.columns.length ?? 0) - marked.length,
+        );
+      }),
     );
   });
 });

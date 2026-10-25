@@ -2160,3 +2160,18 @@ export {
   type Reminders,
   type StatusLesson,
 } from './journal-status.js';
+export {
+  cardCheckedSchema,
+  cardGivenSchema,
+  homeworkGivenAnswerSchema,
+  homeworkGivenSchema,
+  lessonCardSchema,
+  lessonDeliveryAnswerSchema,
+  lessonDeliverySchema,
+  NOT_GIVEN_MAX,
+  type HomeworkGiven,
+  type HomeworkGivenAnswer,
+  type LessonCard,
+  type LessonDelivery,
+  type LessonDeliveryAnswer,
+} from './journal-plans.js';

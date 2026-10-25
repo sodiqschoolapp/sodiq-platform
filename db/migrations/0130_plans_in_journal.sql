@@ -64,7 +64,7 @@ create policy branch_filter on journal_lesson_deliveries for all to sodiq_app
 
 grant select on journal_lesson_deliveries to sodiq_app;
 grant insert (branch_id, lesson_id, journal_id, item_id, copy_item_id, not_delivered, changed_by,
-  changed_how) on journal_lesson_deliveries to sodiq_app;
+  changed_how, changed_at) on journal_lesson_deliveries to sodiq_app;
 grant update (copy_item_id, not_delivered, version, changed_by, changed_how)
   on journal_lesson_deliveries to sodiq_app;
 
@@ -104,9 +104,10 @@ create policy branch_filter on journal_homework_not_given for all to sodiq_app
   with check (branch_id = any ((select app_branch_ids())::uuid[]));
 
 grant select on journal_homework_not_given to sodiq_app;
-grant insert (branch_id, lesson_id, journal_id, plan_work_id, changed_by, changed_how)
+grant insert (branch_id, lesson_id, journal_id, plan_work_id, changed_by, changed_how, set_at)
   on journal_homework_not_given to sodiq_app;
-grant update (changed_by, changed_how, undone_at) on journal_homework_not_given to sodiq_app;
+grant update (changed_by, changed_how, undone_at, plan_work_id) on journal_homework_not_given
+  to sodiq_app;
 
 -- Whether a homework given at a lesson is marked "not given" now.
 create function journal_homework_not_given_live(lesson_ref uuid, plan_work_ref uuid)
@@ -267,6 +268,12 @@ as $$
 declare
   moment timestamptz;
 begin
+  -- A separation moves the mark to the copy of its plan work (`followSeparation`): no line.
+  if tg_op = 'UPDATE' and new.plan_work_id is distinct from old.plan_work_id
+    and new.undone_at is not distinct from old.undone_at
+    and new.changed_how = old.changed_how then
+    return new;
+  end if;
   if tg_op = 'UPDATE' and old.undone_at is not null then
     raise exception 'journal_not_given_final'
       using errcode = 'check_violation', constraint = 'journal_not_given_final';

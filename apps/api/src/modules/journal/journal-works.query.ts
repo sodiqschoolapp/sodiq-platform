@@ -80,6 +80,8 @@ export async function storedWorks(
 
 /** The item of a lesson's plan row: its topic and works (task 8.7: "lessons with no topic"). */
 export interface LessonItem {
+  /** Task 8.8: the item, for the lesson card and "topic not delivered". */
+  readonly itemId: string;
   readonly topic: string;
   readonly works: readonly PlannedWork[];
 }
@@ -182,9 +184,64 @@ export async function planItemsOf(
     worksOf.set(work.item_id, list);
   }
   for (const [lessonId, itemId] of lessonItem) {
-    found.set(lessonId, { topic: topicOf.get(itemId) ?? '', works: worksOf.get(itemId) ?? [] });
+    found.set(lessonId, {
+      itemId,
+      topic: topicOf.get(itemId) ?? '',
+      works: worksOf.get(itemId) ?? [],
+    });
   }
   return found;
+}
+
+/**
+ * The number of each lesson of a journal in its quarter (task 8.8; `edge/lesson-plans`, "Lesson
+ * numbers after a cancellation": "The number is the position among lessons that are not
+ * cancelled. It is worked out for display."), as `planItemsOf` numbers the rows; a cancelled
+ * lesson and a lesson outside every dated quarter have none.
+ */
+export function lessonNumbersOf(
+  journal: JournalRow,
+  lessons: readonly GridLessonRow[],
+): Map<string, number> {
+  const found = new Map<string, number>();
+  for (const quarter of journal.quarters) {
+    if (quarter.startDate === null || quarter.endDate === null) continue;
+    const { startDate, endDate } = quarter;
+    lessons
+      .filter((one) => one.cancelCause === null && startDate <= one.date && one.date <= endDate)
+      .forEach((lesson, index) => found.set(lesson.id, index + 1));
+  }
+  return found;
+}
+
+/**
+ * Task 8.8: the planned homeworks marked "not given" at lessons, as `<lesson>/<plan work>`, and
+ * the lessons whose topic is marked "not delivered" (`edge/lesson-plans`, "A substitute
+ * supervises the class").
+ */
+export async function deliveryMarksOf(
+  transaction: Transaction,
+  lessonIds: readonly string[],
+): Promise<{ notGiven: Set<string>; notDelivered: Set<string> }> {
+  if (lessonIds.length === 0) return { notGiven: new Set(), notDelivered: new Set() };
+  const [given, delivered] = await Promise.all([
+    transaction
+      .selectFrom('journal_homework_not_given')
+      .select(['lesson_id', 'plan_work_id'])
+      .where('lesson_id', 'in', [...lessonIds])
+      .where('undone_at', 'is', null)
+      .execute(),
+    transaction
+      .selectFrom('journal_lesson_deliveries')
+      .select('lesson_id')
+      .where('lesson_id', 'in', [...lessonIds])
+      .where('not_delivered', '=', true)
+      .execute(),
+  ]);
+  return {
+    notGiven: new Set(given.map((row) => `${row.lesson_id}/${row.plan_work_id}`)),
+    notDelivered: new Set(delivered.map((row) => row.lesson_id)),
+  };
 }
 
 /** The works of the plan item of each lesson of one journal (`planItemsOf`). */
@@ -285,6 +342,10 @@ export interface JournalsColumns {
   readonly items: ReadonlyMap<string, LessonItem | null>;
   /** Each lesson's `edge/00-definitions` Held lesson at `now`. */
   readonly held: ReadonlySet<string>;
+  /** Task 8.8: the homeworks marked "not given" (`<lesson>/<plan work>`). */
+  readonly notGiven: ReadonlySet<string>;
+  /** Task 8.8: the lessons whose topic is marked "not delivered". */
+  readonly notDelivered: ReadonlySet<string>;
 }
 
 /**
@@ -300,7 +361,7 @@ export async function journalsColumns(
 ): Promise<JournalsColumns> {
   const lessonsOf = await yearLessonsOf(transaction, journals, timeZone);
   const all = [...lessonsOf.values()].flat();
-  const [away, items, stored, closed] = await Promise.all([
+  const [away, items, stored, closed, marks] = await Promise.all([
     awayLessons(
       transaction,
       all.map((one) => ({ id: one.id, teacherId: one.teacherId, startsAt: one.startsAt })),
@@ -313,6 +374,10 @@ export async function journalsColumns(
     journalsClosedEarly(
       transaction,
       journals.map((one) => one.id),
+    ),
+    deliveryMarksOf(
+      transaction,
+      all.map((one) => one.id),
     ),
   ]);
   const held = new Set<string>();
@@ -355,11 +420,12 @@ export async function journalsColumns(
         planned,
         stored: own,
         journalClosed: closed.has(journal.id),
+        notGiven: marks.notGiven,
       }),
       stored: own,
     });
   }
-  return { journals: found, items, held };
+  return { journals: found, items, held, ...marks };
 }
 
 /** The columns of every lesson of the journal in its year, at the moment `now`. */

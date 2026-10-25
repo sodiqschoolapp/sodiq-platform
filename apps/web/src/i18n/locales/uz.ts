@@ -765,6 +765,18 @@ export const uz: Texts<'one' | 'other'> = {
       'Dars qaytmaydi: uning ishlari bogʻlangan darsda qoʻlda qoʻshilgan shu turdagi 10 ta ish bor. Avval ulardan birini olib tashlang.',
     plan_work_has_data:
       'Bu ishning jurnalda jami yoki sonlari bor, shuning uchun uni rejadan olib tashlab boʻlmaydi. Uning oʻrniga jurnalda «oʻtkazilmadi» deb belgilang.',
+    no_plan_item:
+      'Bu darsning reja bandi yoʻq, shuning uchun belgilaydigan mavzu yoki uy vazifasi yoʻq.',
+    delivery_stale:
+      'Siz dars kartasini ochganingizdan keyin bu belgi oʻzgartirildi. Uni qayta oching.',
+    not_delivered_copy_used:
+      '«Oʻtilmagan» roʻyxatidagi bu mavzu nusxasi allaqachon oʻzgartirilgan yoki rejaga qoʻyilgan, shuning uchun belgini bekor qilib boʻlmaydi. Rejani tahrir soʻrovi orqali oʻzgartiring.',
+    homework_not_in_lesson:
+      'Bu uy vazifasi shu darsda berilmagan.',
+    homework_has_entries:
+      'Bu uy vazifasining jurnalda allaqachon maksimal balli, ballari, koʻchirilishi yoki «oʻtkazilmadi» belgisi bor, shuning uchun uni «berilmadi» deb belgilab boʻlmaydi. Uni «oʻtkazilmadi» deb belgilang.',
+    journal_work_not_given:
+      'Bu uy vazifasi «berilmadi» deb belgilangan, shuning uchun unga hech narsa kiritilmaydi.',
     entry_not_started: 'Dars hali boshlanmagan. Davomat dars boshlangan vaqtdan kiritiladi.',
     lesson_not_held:
       'Bu darsda oʻqituvchi yozilmagan (oʻqituvchi kerak yoki hal qilinmagan), shuning uchun hech narsa kiritib boʻlmaydi. Avval oʻquv ishlari boʻyicha direktor oʻrinbosari buni hal qiladi.',
@@ -3386,6 +3398,9 @@ export const uz: Texts<'one' | 'other'> = {
         restore: 'Guruh tiklandi',
         export: 'Guruhlar eksport qilindi',
       },
+      plan_report: {
+        export: 'Dars rejalari hisoboti eksport qilindi',
+      },
       timetable_view: {
         export: 'Dars jadvali chop etildi yoki yuklab olindi',
       },
@@ -3448,12 +3463,16 @@ export const uz: Texts<'one' | 'other'> = {
         not_graded: '«Baholanmagan» belgilandi',
         orphan_assign: 'Oʻqituvchisiz dars biriktirildi',
         orphan_withdraw: 'Oʻqituvchisiz dars biriktiruvi bekor qilindi',
+        topic_not_delivered: 'Mavzu oʻtilmadi deb belgilandi yoki belgi bekor qilindi',
+        homework_not_given: 'Uy vazifasi berilmadi deb belgilandi yoki belgi bekor qilindi',
       },
       plan: {
         create: 'Dars rejasi boshlandi',
         item_create: 'Reja qatori toʻldirildi',
         item_edit: 'Reja qatori oʻzgartirildi',
         item_clear: 'Reja qatori tozalandi',
+        minimums: 'Fanlar boʻyicha ishlar minimumi oʻzgartirildi',
+        export: 'Dars rejasi chop etildi yoki eksport qilindi',
         file_add: 'Reja qatoriga fayl qoʻshildi',
         file_remove: 'Reja qatoridan fayl oʻchirildi',
         items_followed: 'Reja qatorlari dars jadvali oʻzgarishiga ergashdi',
@@ -3901,6 +3920,8 @@ export const uz: Texts<'one' | 'other'> = {
           'Dars rejalaringiz dars jadvali oʻzgarishi bilan surildi. Siz uchun oʻzgartirish soʻrovi tayyorlandi: {{requested}}. Faqat surilgan: {{moved}}.',
         followed_counts:
           'Fanlaringiz boʻyicha dars rejalari dars jadvali oʻzgarishi bilan surildi: {{plans}}. Tayyorlangan oʻzgartirish soʻrovlari: {{requests}}.',
+        not_delivered:
+          '{{unit}} sinfining {{date}} kungi darsi mavzusi oʻtilmadi. U rejangizning «oʻtilmagan» roʻyxatida, siz uchun tahrir soʻrovi tayyorlandi.',
         window_opened:
           '{{quarter}}-chorak dars rejasi oynasi {{startDate}} dan {{endDate}} gacha ochiq.',
         window_changed:

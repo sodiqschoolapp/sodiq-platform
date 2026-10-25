@@ -356,6 +356,14 @@ export const NOTIFICATION_KINDS = {
     requests: z.int().min(0),
   }),
   /**
+   * Task 8.8 (decision 18): the substitute set "topic not delivered" on a lesson of the owner's
+   * plan; a copy of the item went to "not covered" and an edit request is prepared.
+   */
+  'plans.not_delivered': z.strictObject({
+    unit: z.string().min(1).max(120),
+    date: schoolDateSchema,
+  }),
+  /**
    * Task 7.2: `09`, The plan window: "Teachers are reminded when the window
    * opens"; sent once at the opening to each owner of a plan of the quarter,
    * and when its dates move.

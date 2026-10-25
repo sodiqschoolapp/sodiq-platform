@@ -748,6 +748,18 @@ export const en = {
       'The lesson cannot come back: a lesson of its works already has 10 works of that kind added by hand. Remove one of them first.',
     plan_work_has_data:
       'This work has a total or numbers in the journal, so it cannot be removed from the plan. Mark it "not held" in the journal instead.',
+    no_plan_item:
+      'This lesson has no plan item, so there is no topic or homework to mark.',
+    delivery_stale:
+      'Someone changed this mark since you opened the lesson card. Open it again.',
+    not_delivered_copy_used:
+      'The copy of this topic in "not covered" was already changed or placed in the plan, so the mark cannot be undone. Change the plan through an edit request instead.',
+    homework_not_in_lesson:
+      'This homework is not one given at this lesson.',
+    homework_has_entries:
+      'This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead.',
+    journal_work_not_given:
+      'This homework was marked "not given", so nothing is entered for it.',
     entry_not_started:
       'This lesson has not started yet. Attendance can be entered from its start time.',
     lesson_not_held:
@@ -3348,6 +3360,9 @@ export const en = {
         restore: 'Group restored',
         export: 'Groups exported',
       },
+      plan_report: {
+        export: 'Lesson plan report exported',
+      },
       timetable_view: {
         export: 'Timetable printed or exported',
       },
@@ -3410,12 +3425,16 @@ export const en = {
         not_graded: 'Not graded set',
         orphan_assign: 'Orphan lesson assigned',
         orphan_withdraw: 'Orphan lesson assignment withdrawn',
+        topic_not_delivered: 'Topic marked not delivered, or the mark undone',
+        homework_not_given: 'Homework marked not given, or the mark undone',
       },
       plan: {
         create: 'Lesson plan started',
         item_create: 'Plan row filled',
         item_edit: 'Plan row changed',
         item_clear: 'Plan row cleared',
+        minimums: 'Minimum works of subjects changed',
+        export: 'Lesson plan printed or exported',
         file_add: 'File added to a plan row',
         file_remove: 'File removed from a plan row',
         items_followed: 'Plan rows followed a timetable change',
@@ -3856,6 +3875,8 @@ export const en = {
           'Your lesson plans moved with a change of the timetable. An edit request is prepared for you: {{requested}}. Moved only: {{moved}}.',
         followed_counts:
           'Lesson plans of your subjects moved with a change of the timetable: {{plans}}. Edit requests prepared: {{requests}}.',
+        not_delivered:
+          'The topic of the lesson of {{unit}} on {{date}} was not delivered. It is in "not covered" of your plan, and an edit request is prepared for you.',
         window_opened:
           'The lesson plan window of quarter {{quarter}} is open from {{startDate}} to {{endDate}}.',
         window_changed:

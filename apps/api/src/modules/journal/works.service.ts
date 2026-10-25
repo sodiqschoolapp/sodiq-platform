@@ -62,6 +62,8 @@ const WORK_REFUSALS = {
   journal_work_carry_once: 'work_carried',
   journal_works_limit: 'journal_works_limit',
   journal_cell_delete: 'work_holds_data',
+  // Task 8.8 (decision 4): a planned homework marked "not given" takes no entry (0130).
+  journal_work_not_given: 'journal_work_not_given',
   // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
   journal_locked: 'journal_locked',
   journal_correction_role: 'journal_correction_role',
@@ -322,6 +324,16 @@ export class WorksService {
   ): Promise<{ row: WorkRow; moved: boolean }> {
     let row: WorkRow | undefined;
     let moved = false;
+    // Task 8.8 (decision 4): the plan work of a planned homework first, FOR NO KEY UPDATE, as
+    // "homework not given" takes it: the mark and a first entry meet in one order.
+    if (column.kind === 'homework' && column.planWorkId !== null) {
+      await transaction
+        .selectFrom('lesson_plan_works')
+        .select('id')
+        .where('id', '=', column.planWorkId)
+        .forNoKeyUpdate()
+        .execute();
+    }
     if (column.workId === null) {
       if (column.planWorkId === null || column.sourceLessonId === null) {
         throw new ApiException('work_not_in_lesson', 409);
