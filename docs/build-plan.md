@@ -1387,3 +1387,5 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
 ## After Release 1
 
 Release 2 (portal, SMS and Telegram notices, stipend, automatic UIDs) and Release 3 (HR, nurse, psychologist, library, mobile apps) get their own plans when Release 1 is live. Do not start them early.
+
+From 9.2c (for the stipend task of Release 2): once a stipend list is confirmed for a quarter, only the Super Admin may reopen that quarter, and the awards a reopening affects are flagged for the Super Admin, never changed (`edge/journal`, "The stipend list was already confirmed for a quarter that is reopened"). 9.2c lets the Academic Vice Principal reopen, as no stipend exists in Release 1.
