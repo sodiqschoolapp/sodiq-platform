@@ -6042,6 +6042,57 @@ try {
     seeded.closeVice = { login: closeVice.login, password: closeVice.firstPassword };
   }
 
+  // Task 9.2c: a branch of its own whose quarter 1 ended yesterday, with one journal: its
+  // Academic Vice Principal closes the quarter, reopens that journal alone and closes it again
+  // (edge/journal, Closing and reopening). All names are invented.
+  {
+    const reopenBranch = await insertBranch(migrator, 'Reopening browser test branch');
+    const reopenKit = new LoadKit(migrator);
+    const reopenYear = await reopenKit.classes.year(
+      reopenBranch,
+      'current',
+      startDate,
+      isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+    );
+    await migrator
+      .updateTable('quarters')
+      .set({
+        start_date: startDate,
+        end_date: isoDate(new Date(tashkentToday.getTime() - dayMs)),
+      })
+      .where('academic_year_id', '=', reopenYear)
+      .where('number', '=', 1)
+      .execute();
+    const reopenClass = await reopenKit.classes.schoolClass(reopenBranch, reopenYear, {
+      name: 'Reopening A',
+    });
+    const reopenSubject = await reopenKit.classes.subject({
+      name: 'Reopening club',
+      journalType: 'attendance_only',
+    });
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: reopenBranch,
+        academic_year_id: reopenYear,
+        class_id: reopenClass,
+        group_id: null,
+        subject_id: reopenSubject,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    const reopenVice = await create('Dildora', 'Rahimova');
+    await transactions.run([reopenBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: reopenVice.id,
+        role: 'academic_vice_principal',
+        branchId: reopenBranch,
+        givenBy: null,
+      }),
+    );
+    seeded.reopenVice = { login: reopenVice.login, password: reopenVice.firstPassword };
+  }
+
   // Task 7.1a: a branch of its own for lesson plans: a class with a teacher of
   // its "Planning" (a graded subject) and two lessons, tomorrow and in eight
   // days at 08:00. The browser test fills the plan's two rows. All names are invented.

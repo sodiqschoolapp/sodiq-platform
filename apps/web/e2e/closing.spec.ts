@@ -92,3 +92,54 @@ test('an Academic Vice Principal closes a quarter that ended', async ({ page }) 
   await expect(again).toHaveCount(0);
   await expect(page.locator('[data-closing-state="closed"]')).toContainText('version 2');
 });
+
+// Task 9.2c (edge/journal, Closing and reopening: "Reopening is for one journal or the whole
+// branch"; spec review should-fix 3). The Academic Vice Principal of the "Reopening browser test
+// branch", whose quarter 1 ended yesterday with one journal, closes the quarter, reopens that
+// journal alone, and closes it again from its own panel as version 2.
+test('an Academic Vice Principal reopens one journal and closes it again', async ({ page }) => {
+  const account = accountOf('reopenVice');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const secret = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(secret));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/results/closing');
+  await page.getByRole('button', { name: en.results.closing.closeQuarter, exact: true }).click();
+  const close = page.getByRole('dialog');
+  await expect(close).toBeVisible();
+  await close.getByRole('button', { name: en.results.closing.close.action, exact: true }).click();
+  await expect(close).toHaveCount(0);
+  await expect(page.locator('[data-closing-state="closed"]')).toContainText('version 1');
+
+  await page.getByRole('button', { name: en.results.reopening.action, exact: true }).click();
+  const reopen = page.getByRole('dialog');
+  await reopen
+    .getByRole('combobox', { name: en.results.reopening.what, exact: true })
+    .selectOption({ label: '7 Reopening A · Reopening club' });
+  await reopen
+    .getByLabel(en.results.reopening.reason, { exact: true })
+    .fill('A mark was typed in the wrong row');
+  await reopen.getByRole('button', { name: en.results.reopening.action, exact: true }).click();
+  await expect(reopen).toHaveCount(0);
+  const panel = page.getByRole('region', { name: '7 Reopening A · Reopening club' });
+  await expect(panel).toContainText('A mark was typed in the wrong row');
+  // The branch stays closed while one journal is reopened.
+  await expect(page.locator('[data-closing-state="closed"]')).toContainText('version 1');
+
+  await panel.getByRole('button', { name: en.results.reopening.closeAgain, exact: true }).click();
+  const again = page.getByRole('dialog');
+  await expect(again).toBeVisible();
+  await again.getByRole('button', { name: en.results.reopening.closeAgain, exact: true }).click();
+  await expect(again).toHaveCount(0);
+  // The reopening is listed with the version its close stored.
+  await expect(page.locator('[data-reopening]')).toContainText('closed again, version 2');
+});
