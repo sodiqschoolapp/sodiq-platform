@@ -5,6 +5,9 @@ import {
   journalGridSchema,
   lessonCardSchema,
   lessonDeliveryAnswerSchema,
+  planCompletenessSchema,
+  planProgressSchema,
+  planRequestsReportSchema,
   type JournalGrid,
   type JournalLesson,
   type LessonCard,
@@ -1118,6 +1121,234 @@ describe('plans in the journal', () => {
         constraint: 'journal_locked',
       });
       await write(owner.account.id);
+    });
+  });
+
+  describe('the plan reports, the minimums and the export', () => {
+    /** A window of quarter 1 that ended on 20 October, as the migrator. */
+    const endedWindow = (s: Scene) =>
+      sql`
+        insert into lesson_plan_windows
+          (branch_id, quarter_id, start_date, end_date, starts_at, ends_at, opened_at, opened_by)
+        select q.branch_id, q.id, date '2026-09-01', date '2026-10-20',
+          (date '2026-09-01')::timestamp at time zone b.time_zone,
+          ((date '2026-10-21')::timestamp at time zone b.time_zone) - interval '1 millisecond',
+          now(), (select a.id from accounts a order by a.id limit 1)
+        from quarters q join branches b on b.id = q.branch_id
+        where q.id = ${s.q1}
+      `.execute(t.database.migrator);
+
+    const vice = (s: Scene) => [{ role: 'academic_vice_principal' as const, branchId: s.branch }];
+
+    it('counts completeness per teacher, department and branch, and shows the minimum once the window has ended', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first, { classworks: ['Test'] });
+      await endedWindow(s);
+      const head = await account();
+      await as(head, s.branch, vice(s), async (calls) => {
+        const minimums = ok(await calls.get('/api/plans/minimums')) as {
+          subjects: { subject: { id: string }; version: number | null }[];
+          canEdit: boolean;
+        };
+        expect(minimums.canEdit).toBe(true);
+        expect(minimums.subjects.some((one) => one.subject.id === s.subject)).toBe(true);
+        ok(
+          await calls.put('/api/plans/minimums', {
+            subjectId: s.subject,
+            classworks: 2,
+            homeworks: 1,
+            version: null,
+          }),
+        );
+        const stale = await calls.put('/api/plans/minimums', {
+          subjectId: s.subject,
+          classworks: 3,
+          homeworks: 1,
+          version: null,
+        });
+        expect(codeOf(stale)).toBe('plan_minimum_stale');
+        const report = planCompletenessSchema.parse(
+          ok(await calls.get(`/api/plans/reports/completeness?quarterId=${s.q1}`)),
+        );
+        const plan = report.plans.find((one) => one.journalId === s.journal);
+        expect(plan).toMatchObject({
+          state: 'incomplete',
+          rows: 3,
+          empty: 2,
+          flag: 'overdue',
+          belowMinimum: { classworks: 1, homeworks: 0, minimumClassworks: 2, minimumHomeworks: 1 },
+        });
+        expect(plan?.teacher?.id).toBe(s.teacher.staffId);
+        const counts = report.teachers.find((one) => one.teacher?.id === s.teacher.staffId)?.counts;
+        expect(counts).toMatchObject({
+          incomplete: 1,
+          noTopic: 2,
+          overdue: 1,
+          belowMinimum: 1,
+          percentComplete: 0,
+        });
+        expect(report.branch.plans).toBeGreaterThanOrEqual(1);
+        const list = ok(await calls.get('/api/plans')) as {
+          plans: { journalId: string; quarters: { quarterId: string; belowMinimum: unknown }[] }[];
+        };
+        expect(
+          list.plans
+            .find((one) => one.journalId === s.journal)
+            ?.quarters.find((one) => one.quarterId === s.q1)?.belowMinimum,
+        ).not.toBeNull();
+      });
+      // A Head Teacher of another subject sees none of it.
+      const other = await account();
+      const otherSubject = await load.classes.subject({ grades: [7] });
+      await as(
+        other,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
+        async (calls) => {
+          const report = planCompletenessSchema.parse(
+            ok(await calls.get(`/api/plans/reports/completeness?quarterId=${s.q1}`)),
+          );
+          expect(report.plans).toEqual([]);
+          const refused = await calls.put('/api/plans/minimums', {
+            subjectId: s.subject,
+            classworks: 0,
+            homeworks: 0,
+            version: 1,
+          });
+          expect(refused.status).toBe(403);
+        },
+      );
+      const entries = await entriesOf('plan.minimums');
+      expect(entries.at(-1)?.new_value).toEqual({ classworks: 2, homeworks: 1 });
+    });
+
+    it('reports progress: held against delivered, behind, not covered and the share of "not held"', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const first = await itemAt(s, s.first, { classworks: ['Test', 'Quiz'] });
+      await itemAt(s, s.second, { topic: 'Decimals' });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.second}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/works/not-held`, {
+            column: { planWorkId: first.classworks[0], sourceLessonId: s.first },
+            notHeld: true,
+            version: null,
+            confirm: false,
+          }),
+        );
+      });
+      const head = await account();
+      await as(head, s.branch, vice(s), async (calls) => {
+        const report = planProgressSchema.parse(
+          ok(await calls.get(`/api/plans/reports/progress?quarterId=${s.q1}`)),
+        );
+        expect(report.plans.find((one) => one.journalId === s.journal)).toMatchObject({
+          rows: 3,
+          planned: 2,
+          held: 3,
+          delivered: 1,
+          notCovered: 1,
+          behind: true,
+        });
+        expect(report.teachers.find((one) => one.teacher?.id === s.teacher.staffId)).toMatchObject({
+          plannedWorks: 2,
+          notHeld: 1,
+          percentNotHeld: 50,
+        });
+      });
+    });
+
+    it('lists the edit requests per teacher with who decided and what changed', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first);
+      const planId = await planOf(s.journal, s.q1);
+      const decider = await account();
+      await load.classes.person(s.branch, ['uz'], { accountId: decider.account.id });
+      const stored = await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: s.branch,
+          plan_id: planId,
+          journal_id: s.journal,
+          quarter_id: s.q1,
+          kind: 'text',
+          status: 'refused',
+          reason: 'A typing mistake',
+          requested_by: owner.account.id,
+          sent_at: new Date('2026-10-20T09:00:00+05:00'),
+          decided_by: decider.account.id,
+          decided_at: new Date('2026-10-21T10:00:00+05:00'),
+          prepared_at: new Date('2026-10-20T09:00:00+05:00'),
+          updated_at: new Date('2026-10-21T10:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const head = await account();
+      await as(head, s.branch, vice(s), async (calls) => {
+        const report = planRequestsReportSchema.parse(
+          ok(await calls.get(`/api/plans/reports/requests?quarterId=${s.q1}`)),
+        );
+        const teacher = report.teachers.find((one) => one.teacher?.id === s.teacher.staffId);
+        expect(teacher?.total).toBe(1);
+        expect(teacher?.requests[0]).toMatchObject({
+          id: stored.id,
+          kind: 'text',
+          status: 'refused',
+          decidedOn: '2026-10-21',
+          changes: [],
+        });
+        expect(teacher?.requests[0]?.decidedBy).not.toBeNull();
+        const file = await request(t.kit.server)
+          .post('/api/plans/reports/export')
+          .set('Cookie', head.cookie)
+          .set(BRANCH_HEADER, s.branch)
+          .send({ report: 'requests', quarterId: s.q1 });
+        expect(file.status).toBe(200);
+      });
+    });
+
+    it('exports a plan with its marks, and refuses a teacher who does not read it', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await itemAt(s, s.first, { homeworks: ['Read'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/delivery`, {
+            notDelivered: true,
+            version: null,
+          }),
+        );
+        const before = (await entriesOf('plan.export')).length;
+        const file = await request(t.kit.server)
+          .post(`/api/plans/journals/${s.journal}/export`)
+          .set('Cookie', owner.cookie)
+          .set(BRANCH_HEADER, s.branch)
+          .send({ quarterId: s.q1, format: 'xlsx' });
+        expect(file.status, JSON.stringify(file.body)).toBe(200);
+        const entries = await entriesOf('plan.export');
+        expect(entries).toHaveLength(before + 1);
+        expect(entries.at(-1)?.details).toMatchObject({ format: 'xlsx', rows: 3, notCovered: 1 });
+      });
+      const stranger = await account();
+      await load.teacher(s.branch, { accountId: stranger.account.id });
+      const before = (await entriesOf('plan.export')).length;
+      await as(stranger, s.branch, teacherIn(s), async () => {
+        const refused = await request(t.kit.server)
+          .post(`/api/plans/journals/${s.journal}/export`)
+          .set('Cookie', stranger.cookie)
+          .set(BRANCH_HEADER, s.branch)
+          .send({ quarterId: s.q1, format: 'xlsx' });
+        expect(refused.status).toBe(403);
+      });
+      expect(await entriesOf('plan.export')).toHaveLength(before);
     });
   });
 });
