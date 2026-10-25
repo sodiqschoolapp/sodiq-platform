@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX, CHECKBOX_TARGET, FIELD } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET, FIELD, SECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -288,7 +288,7 @@ export function ReopenedJournalPanel({
       aria-label={name}
       data-reopened-journal={journal.reopening.journal?.id}
     >
-      <h2 className="font-semibold">{name}</h2>
+      <h2 className={SECTION_TITLE}>{name}</h2>
       <ul>
         <ReopeningLine reopening={journal.reopening} />
       </ul>
@@ -313,7 +313,7 @@ export function ReopenedJournalPanel({
           ))}
         </ul>
       )}
-      <h3 className="font-semibold">{t('results.reopening.changes')}</h3>
+      <h3 className={SECTION_TITLE}>{t('results.reopening.changes')}</h3>
       <ChangesList changes={journal.changes} />
       {close.data !== undefined && close.data !== null && (
         <p role="status">
@@ -457,7 +457,7 @@ export function RecalculationSection({
   const applicable = rows.filter((row) => row.refused === null);
   return (
     <section className="grid gap-3 text-sm" aria-label={t('results.recalculation.title')}>
-      <h2 className="font-semibold">{t('results.recalculation.title')}</h2>
+      <h2 className={SECTION_TITLE}>{t('results.recalculation.title')}</h2>
       {!asked ? (
         <div>
           <Button variant="secondary" onClick={() => setAsked(true)}>

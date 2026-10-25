@@ -18,6 +18,7 @@ import { listSearch, type Column, type ListSearch } from '@/components/list/list
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText, schoolDateText } from '@/lib/dates';
@@ -307,7 +308,7 @@ export function ClosingPage(): React.JSX.Element {
             <ul>
               <ReopeningLine reopening={data.reopening} />
             </ul>
-            <h2 className="font-semibold">{t('results.reopening.changes')}</h2>
+            <h2 className={SECTION_TITLE}>{t('results.reopening.changes')}</h2>
             <ChangesList changes={data.changes} />
           </div>
         )}
