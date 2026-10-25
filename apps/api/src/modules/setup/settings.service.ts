@@ -257,7 +257,8 @@ export class Settings {
   /**
    * Answer 20: late and skipped of one quarter. A quarter of a closed year is
    * refused by `quarters_closed_year_guard` (`year_closed`, decision 3); an id
-   * of another branch or an unknown one is 404.
+   * of another branch or an unknown one is 404. Task 9.2b (From 1.6): a quarter
+   * that has been closed, also one reopened since, is refused `quarter_closed`.
    */
   setAttendanceValues(
     access: Access,
@@ -300,79 +301,106 @@ export class Settings {
     requestId: string,
     preview: boolean,
   ): Promise<QuarterAttendanceValues> {
-    return refusingConstraints(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const branch = await this.branchOf(transaction, branchId, true);
-        const quarter = await transaction
-          .selectFrom('quarters')
-          .select(QUARTER_COLUMNS)
-          .where('id', '=', quarterId)
-          .where('branch_id', '=', branchId)
-          .forUpdate()
-          .executeTakeFirst();
-        if (quarter === undefined) {
-          throw notFound();
-        }
-        const changes = changesOf(valuesOf(quarter), {
-          lateValue: record.lateValue,
-          skippedValue: record.skippedValue,
-        });
-        const year = await transaction
-          .selectFrom('academic_years')
-          .select('status')
-          .where('id', '=', quarter.academic_year_id)
-          .executeTakeFirstOrThrow();
-        // Task 9.1 (decision 5): a change in an open quarter needs a reason; a closed
-        // year refuses it in the database (`quarters_closed_year_guard`).
-        const reasonRequired = changes !== null && year.status !== 'closed';
-        if (changes === null) {
-          if (preview) throw new PreviewDone({ reasonRequired, quarters: [] });
-          return toQuarter(quarter);
-        }
-        if (!preview && reasonRequired && record.reason === undefined) {
-          throw new ApiException('reason_required', 409);
-        }
-        const ref = await quarterRefOf(transaction, quarterId);
-        const grades = (now: Date) =>
-          ref === undefined
-            ? undefined
-            : quarterGrades(transaction, {
-                branchId,
-                timeZone: branch.time_zone,
-                now,
-                quarter: ref,
-                subjectIds: null,
-              });
-        const now = this.clock.now();
-        const before = preview ? await grades(now) : undefined;
-        const row = await transaction
-          .updateTable('quarters')
-          .set({ late_value: record.lateValue, skipped_value: record.skippedValue })
-          .where('id', '=', quarterId)
-          .returning(QUARTER_COLUMNS)
-          .executeTakeFirstOrThrow();
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'quarter.attendance_values',
-          record: { type: 'quarter', id: quarterId },
-          oldValue: changes.oldValue,
-          newValue: changes.newValue,
-          ...(record.reason === undefined ? {} : { details: { reason: record.reason } }),
-          requestId,
-        });
-        if (preview) {
-          const after = await grades(now);
-          throw new PreviewDone({
-            reasonRequired,
-            quarters:
-              before === undefined || after === undefined ? [] : [compareGrades(before, after)],
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          // Task 9.2b: the quarter row first, `for update` (the strongest lock the save takes,
+          // so two saves of one quarter wait at it), then the branch row
+          // (`.claude/rules/database.md`: a close holds the quarter `for update` and then writes
+          // rows that take the branch `for key share`).
+          const quarter = await transaction
+            .selectFrom('quarters')
+            .select(QUARTER_COLUMNS)
+            .where('id', '=', quarterId)
+            .where('branch_id', '=', branchId)
+            .forUpdate()
+            .executeTakeFirst();
+          if (quarter === undefined) {
+            throw notFound();
+          }
+          const changes = changesOf(valuesOf(quarter), {
+            lateValue: record.lateValue,
+            skippedValue: record.skippedValue,
           });
-        }
-        return toQuarter(row);
-      }),
+          // Task 9.2b (From 1.6; plan decision 9): `edge/calculation`, "A closed quarter keeps
+          // the values it was closed with, also when reopened": a quarter with any closing row,
+          // read after its lock, refuses a change, as `quarters_closed_guard` (0133) does.
+          if (changes !== null && (await this.everClosed(transaction, quarterId))) {
+            throw new ApiException('quarter_closed', 409);
+          }
+          const branch = await this.branchOf(transaction, branchId, true);
+          const year = await transaction
+            .selectFrom('academic_years')
+            .select('status')
+            .where('id', '=', quarter.academic_year_id)
+            .executeTakeFirstOrThrow();
+          // Task 9.1 (decision 5): a change in an open quarter needs a reason; a closed
+          // year refuses it in the database (`quarters_closed_year_guard`).
+          const reasonRequired = changes !== null && year.status !== 'closed';
+          if (changes === null) {
+            if (preview) throw new PreviewDone({ reasonRequired, quarters: [] });
+            return toQuarter(quarter);
+          }
+          if (!preview && reasonRequired && record.reason === undefined) {
+            throw new ApiException('reason_required', 409);
+          }
+          const ref = await quarterRefOf(transaction, quarterId);
+          const grades = (now: Date) =>
+            ref === undefined
+              ? undefined
+              : quarterGrades(transaction, {
+                  branchId,
+                  timeZone: branch.time_zone,
+                  now,
+                  quarter: ref,
+                  subjectIds: null,
+                });
+          const now = this.clock.now();
+          const before = preview ? await grades(now) : undefined;
+          const row = await transaction
+            .updateTable('quarters')
+            .set({ late_value: record.lateValue, skipped_value: record.skippedValue })
+            .where('id', '=', quarterId)
+            .returning(QUARTER_COLUMNS)
+            .executeTakeFirstOrThrow();
+          await this.audit.record(transaction, {
+            branchId,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'quarter.attendance_values',
+            record: { type: 'quarter', id: quarterId },
+            oldValue: changes.oldValue,
+            newValue: changes.newValue,
+            ...(record.reason === undefined ? {} : { details: { reason: record.reason } }),
+            requestId,
+          });
+          if (preview) {
+            const after = await grades(now);
+            throw new PreviewDone({
+              reasonRequired,
+              quarters:
+                before === undefined || after === undefined ? [] : [compareGrades(before, after)],
+            });
+          }
+          return toQuarter(row);
+        }),
+      // Task 9.2b: the database's refusal (`quarters_closed_guard`, 0133) answers as the check.
+      { quarters_closed: 'quarter_closed' },
     );
+  }
+
+  /**
+   * Task 9.2b (From 1.6): whether the quarter has ever been closed, a close in force or one
+   * reopened since (9.2c), as `quarters_closed_guard` reads it. Read after the quarter's lock.
+   */
+  private async everClosed(transaction: Transaction, quarterId: string): Promise<boolean> {
+    const row = await transaction
+      .selectFrom('quarter_closings')
+      .select('id')
+      .where('quarter_id', '=', quarterId)
+      .limit(1)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /**

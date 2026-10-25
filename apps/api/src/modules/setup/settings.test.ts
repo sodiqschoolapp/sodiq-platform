@@ -8,6 +8,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
@@ -385,6 +386,97 @@ describe('the settings of a branch', () => {
       expect(errorCode(response)).toBe('year_closed');
       expect(await quartersOf(branch)).toEqual(before);
       expect(await t.auditCount()).toBe(count);
+    });
+
+    /** The id of an account of the kit, the closer of a quarter closed by the test. */
+    const closerId = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('accounts')
+          .select('id')
+          .orderBy('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    // Task 9.2b (From 1.6; plan decision 9): `edge/calculation`, "A closed quarter keeps the
+    // values it was closed with, also when reopened".
+    it('refuse a closed quarter, in the save and its preview, and still take the next open quarter', async () => {
+      const branch = await t.newBranch();
+      const { quarterIds } = await insertYear(branch, '2026-09-01', '2027-06-30', 'current', DATED);
+      const closed = quarterIds[0] ?? '';
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: closed,
+        accountId: await closerId(),
+      });
+      const before = await quartersOf(branch);
+      const count = await t.auditCount();
+      const body = { lateValue: 60, skippedValue: 5, reason: 'Agreed by the teachers council' };
+
+      const response = await put(`/api/setup/quarters/${closed}/attendance-values`, branch, body);
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('quarter_closed');
+      const preview = await t.post(
+        `/api/setup/quarters/${closed}/attendance-values/preview`,
+        branch,
+        body,
+      );
+      expect(preview.status).toBe(409);
+      expect(errorCode(preview)).toBe('quarter_closed');
+      expect(await quartersOf(branch)).toEqual(before);
+      expect(await t.auditCount()).toBe(count);
+      expect(await t.entries('quarter.attendance_values', closed)).toHaveLength(0);
+
+      // A save that changes nothing is answered as it is.
+      const same = await put(`/api/setup/quarters/${closed}/attendance-values`, branch, {
+        lateValue: 50,
+        skippedValue: 0,
+      });
+      expect(same.status).toBe(200);
+      expect(await t.auditCount()).toBe(count);
+
+      const next = quarterIds[1] ?? '';
+      const taken = await put(`/api/setup/quarters/${next}/attendance-values`, branch, body);
+      expect(taken.status).toBe(200);
+      expect(taken.body).toMatchObject({ id: next, lateValue: 60, skippedValue: 5 });
+    });
+
+    it('refuse a quarter closed and reopened since, as the database does', async () => {
+      const branch = await t.newBranch();
+      const { quarterIds } = await insertYear(branch, '2026-09-01', '2027-06-30', 'current', DATED);
+      const closed = quarterIds[0] ?? '';
+      const closingId = await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: closed,
+        accountId: await closerId(),
+      });
+      // Stands for the reopening of 9.2c.
+      await t.database.migrator
+        .updateTable('quarter_closings')
+        .set({ reopened_at: new Date('2026-11-02T09:00:00+05:00') })
+        .where('id', '=', closingId)
+        .execute();
+      const before = await quartersOf(branch);
+      const count = await t.auditCount();
+
+      const response = await put(`/api/setup/quarters/${closed}/attendance-values`, branch, {
+        lateValue: 60,
+        skippedValue: 5,
+        reason: 'Agreed by the teachers council',
+      });
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('quarter_closed');
+      expect(await quartersOf(branch)).toEqual(before);
+      expect(await t.auditCount()).toBe(count);
+
+      // The database refuses it too (`quarters_closed_guard`).
+      await expect(
+        t.database.migrator
+          .updateTable('quarters')
+          .set({ late_value: 60 })
+          .where('id', '=', closed)
+          .execute(),
+      ).rejects.toMatchObject({ code: '23514', constraint: 'quarters_closed' });
     });
 
     it('answer 404 for a quarter of another branch and an unknown one, with the quarters of both branches unchanged', async () => {

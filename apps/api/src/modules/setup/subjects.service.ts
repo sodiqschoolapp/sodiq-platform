@@ -55,6 +55,7 @@ import {
   type QuarterGrades,
 } from '../results/grade-changes.js';
 import { weightsNoticeAccounts } from '../results/weights-notice.js';
+import { lockOpenQuarter } from './closed-quarters.js';
 import { switchKey, switchesOf, type QuarterSwitches } from './subject-switches.js';
 import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
@@ -729,7 +730,9 @@ export class Subjects {
   /**
    * One quarter's distribution (`05`: "set for each quarter separately"). Its
    * shape follows the rating switch (decision 3); a quarter of a closed year
-   * is refused (decision 12).
+   * is refused (decision 12). Task 9.2b (From 2.1): a closed quarter is
+   * refused `quarter_closed` (`05`: "Weights of a quarter can change until the
+   * quarter is closed").
    */
   setQuarterWeights(
     access: Access,
@@ -767,47 +770,56 @@ export class Subjects {
     preview: boolean,
   ): Promise<SubjectQuarterWeights> {
     const branchId = branchOf(access);
-    return refusingConstraints(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const subject = await this.lockGraded(transaction, id);
-        const quarter = await transaction
-          .selectFrom('quarters')
-          .select(['id', 'academic_year_id'])
-          .where('id', '=', quarterId)
-          .executeTakeFirst();
-        if (quarter === undefined) {
-          throw notFound();
-        }
-        await this.lockOpenYear(transaction, quarter.academic_year_id);
-        // Task 8.2 (correction 1): the shape and the rounds of the quarter's switches.
-        const switches = await this.switchesIn(transaction, subject.id, quarterId);
-        if ((weights.ratingExam !== null) !== switches.rating_exam) {
-          throw refused('weights_shape_mismatch');
-        }
-        const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
-        const before = await grades.read(quarterId);
-        const change = await this.writeQuarter(
-          transaction,
-          access,
-          branchId,
-          subject,
-          switches,
-          quarterId,
-          weights,
-          requestId,
-        );
-        await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
-          { quarterId, change, before },
-        ]);
-        return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
-      }),
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.readSubjectId(transaction, id);
+          const quarter = await transaction
+            .selectFrom('quarters')
+            .select(['id', 'academic_year_id'])
+            .where('id', '=', quarterId)
+            .executeTakeFirst();
+          if (quarter === undefined) {
+            throw notFound();
+          }
+          // Task 9.2b (From 2.1; `05`: "Weights of a quarter can change until the quarter is
+          // closed"): the quarter `for key share` in a statement of its own before the subject's
+          // lock (`.claude/rules/database.md`; review correction 3); a closed one is refused.
+          await lockOpenQuarter(transaction, quarterId);
+          const subject = await this.lockGraded(transaction, id);
+          await this.lockOpenYear(transaction, quarter.academic_year_id);
+          // Task 8.2 (correction 1): the shape and the rounds of the quarter's switches.
+          const switches = await this.switchesIn(transaction, subject.id, quarterId);
+          if ((weights.ratingExam !== null) !== switches.rating_exam) {
+            throw refused('weights_shape_mismatch');
+          }
+          const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+          const before = await grades.read(quarterId);
+          const change = await this.writeQuarter(
+            transaction,
+            access,
+            branchId,
+            subject,
+            switches,
+            quarterId,
+            weights,
+            requestId,
+          );
+          await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
+            { quarterId, change, before },
+          ]);
+          return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
+        }),
+      // Task 9.2b: the refusal of `subject_quarter_weights_closed_quarter` (0133) as the check's.
+      { quarters_closed: 'quarter_closed' },
     );
   }
 
   /**
    * Copies quarter 1's distribution of a year to quarters 2 to 4 of that year,
    * over what they hold (answer 6, decision 16). All or nothing: a refusal
-   * leaves every quarter as it was.
+   * leaves every quarter as it was. Task 9.2b (From 2.1): a closed quarter
+   * among quarters 2 to 4 refuses the copy, `quarter_closed`.
    */
   copyQuarterOne(
     access: Access,
@@ -837,89 +849,106 @@ export class Subjects {
   ): Promise<SubjectQuarterWeights> {
     const { yearId } = record;
     const branchId = branchOf(access);
-    return refusingConstraints(() =>
-      this.transactions.run(access.branchIds, async (transaction) => {
-        const subject = await this.lockGraded(transaction, id);
-        const year = await transaction
-          .selectFrom('academic_years')
-          .select('id')
-          .where('id', '=', yearId)
-          .executeTakeFirst();
-        if (year === undefined) {
-          throw notFound();
-        }
-        await this.lockOpenYear(transaction, yearId);
-        const quarters = await transaction
-          .selectFrom('quarters')
-          .select(['id', 'number'])
-          .where('academic_year_id', '=', yearId)
-          .orderBy('number')
-          .execute();
-        const first = quarters.find((quarter) => quarter.number === 1);
-        const switches = await switchesOf(
-          transaction,
-          [id],
-          quarters.map((quarter) => quarter.id),
-        );
-        const firstSwitches =
-          first === undefined ? undefined : switches.get(switchKey(id, first.id));
-        const source =
-          first === undefined || firstSwitches === undefined
-            ? undefined
-            : await transaction
-                .selectFrom('subject_quarter_weights')
-                .select(['attendance', 'classwork', 'homework', 'rating_exam'])
-                .where('branch_id', '=', branchId)
-                .where('subject_id', '=', id)
-                .where('quarter_id', '=', first.id)
-                .where('weights_round', '=', firstSwitches.weights_round)
-                .where('rating_round', '=', firstSwitches.rating_round)
-                .executeTakeFirst();
-        if (
-          source === undefined ||
-          firstSwitches === undefined ||
-          !fits(source, firstSwitches.rating_exam)
-        ) {
-          throw refused('quarter_one_not_set');
-        }
-        const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
-        const written: Written[] = [];
-        for (const quarter of quarters) {
-          if (quarter.number !== 1) {
-            const own = switches.get(switchKey(id, quarter.id));
-            // Task 8.2: a quarter whose switches differ from quarter 1's takes no copy.
-            if (
-              own === undefined ||
-              !fits(source, own.rating_exam) ||
-              own.journal_type !== 'graded'
-            ) {
-              throw refused('weights_shape_mismatch');
-            }
-            const before = await grades.read(quarter.id);
-            const change = await this.writeQuarter(
-              transaction,
-              access,
-              branchId,
-              subject,
-              own,
-              quarter.id,
-              { ...quarterOf(source), reason: record.reason },
-              requestId,
-            );
-            written.push({ quarterId: quarter.id, change, before });
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.readSubjectId(transaction, id);
+          const year = await transaction
+            .selectFrom('academic_years')
+            .select('id')
+            .where('id', '=', yearId)
+            .executeTakeFirst();
+          if (year === undefined) {
+            throw notFound();
           }
-        }
-        await this.afterWrite(
-          transaction,
-          access,
-          branchId,
-          subject,
-          grades,
-          record.reason,
-          written,
-        );
-        return this.readQuarters(transaction, branchId, subject, yearId);
-      }),
+          // Task 9.2b (From 2.1): the quarters the copy writes, 2 to 4, each `for key share` in a
+          // statement of its own, in the order of the id, before the subject's lock
+          // (`.claude/rules/database.md`; review correction 3); a closed one refuses the copy.
+          const targets = await transaction
+            .selectFrom('quarters')
+            .select('id')
+            .where('academic_year_id', '=', yearId)
+            .where('number', '<>', 1)
+            .orderBy('id')
+            .execute();
+          for (const target of targets) {
+            await lockOpenQuarter(transaction, target.id);
+          }
+          const subject = await this.lockGraded(transaction, id);
+          await this.lockOpenYear(transaction, yearId);
+          const quarters = await transaction
+            .selectFrom('quarters')
+            .select(['id', 'number'])
+            .where('academic_year_id', '=', yearId)
+            .orderBy('number')
+            .execute();
+          const first = quarters.find((quarter) => quarter.number === 1);
+          const switches = await switchesOf(
+            transaction,
+            [id],
+            quarters.map((quarter) => quarter.id),
+          );
+          const firstSwitches =
+            first === undefined ? undefined : switches.get(switchKey(id, first.id));
+          const source =
+            first === undefined || firstSwitches === undefined
+              ? undefined
+              : await transaction
+                  .selectFrom('subject_quarter_weights')
+                  .select(['attendance', 'classwork', 'homework', 'rating_exam'])
+                  .where('branch_id', '=', branchId)
+                  .where('subject_id', '=', id)
+                  .where('quarter_id', '=', first.id)
+                  .where('weights_round', '=', firstSwitches.weights_round)
+                  .where('rating_round', '=', firstSwitches.rating_round)
+                  .executeTakeFirst();
+          if (
+            source === undefined ||
+            firstSwitches === undefined ||
+            !fits(source, firstSwitches.rating_exam)
+          ) {
+            throw refused('quarter_one_not_set');
+          }
+          const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+          const written: Written[] = [];
+          for (const quarter of quarters) {
+            if (quarter.number !== 1) {
+              const own = switches.get(switchKey(id, quarter.id));
+              // Task 8.2: a quarter whose switches differ from quarter 1's takes no copy.
+              if (
+                own === undefined ||
+                !fits(source, own.rating_exam) ||
+                own.journal_type !== 'graded'
+              ) {
+                throw refused('weights_shape_mismatch');
+              }
+              const before = await grades.read(quarter.id);
+              const change = await this.writeQuarter(
+                transaction,
+                access,
+                branchId,
+                subject,
+                own,
+                quarter.id,
+                { ...quarterOf(source), reason: record.reason },
+                requestId,
+              );
+              written.push({ quarterId: quarter.id, change, before });
+            }
+          }
+          await this.afterWrite(
+            transaction,
+            access,
+            branchId,
+            subject,
+            grades,
+            record.reason,
+            written,
+          );
+          return this.readQuarters(transaction, branchId, subject, yearId);
+        }),
+      // Task 9.2b: the refusal of `subject_quarter_weights_closed_quarter` (0133) as the check's.
+      { quarters_closed: 'quarter_closed' },
     );
   }
 
@@ -956,6 +985,21 @@ export class Subjects {
     }
     if (department.archived_at !== null) {
       throw refused(archived);
+    }
+  }
+
+  /**
+   * Task 9.2b: that the subject exists, read without a lock (`not_found` when there is none),
+   * so a write that locks a quarter before the subject answers 404 first.
+   */
+  private async readSubjectId(transaction: Transaction, id: string): Promise<void> {
+    const row = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (row === undefined) {
+      throw notFound();
     }
   }
 

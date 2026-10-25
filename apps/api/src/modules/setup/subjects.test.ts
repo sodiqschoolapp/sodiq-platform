@@ -17,6 +17,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 // Five minutes on: the Super Admin's idle limit is 15.
@@ -964,6 +965,78 @@ describe('subjects', () => {
       });
       expect(errorCode(copy)).toBe('year_closed');
       expect(await rows()).toEqual(before);
+    });
+
+    /** The id of an account of the kit, the closer of a quarter closed by a test. */
+    const closerId = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('accounts')
+          .select('id')
+          .orderBy('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    // Task 9.2b (From 2.1): `05`, "Weights of a quarter can change until the quarter is closed."
+    it('of a closed quarter are refused, in the save, the copy and their previews; nothing is written', async () => {
+      const branch = await t.newBranch();
+      const { yearId, quarterIds } = await insertYear(branch, '2026-09-01', 'current');
+      const subject = await create({}, branch);
+      const first = quarterIds[0] ?? '';
+      const closed = quarterIds[1] ?? '';
+      const path = (quarter: string) =>
+        `/api/setup/subjects/${subject.id}/quarter-weights/${quarter}`;
+      expect((await put(path(first), branch, RATED)).status).toBe(200);
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: closed,
+        accountId: await closerId(),
+      });
+      const before = await rows();
+      const audit = await auditCount();
+
+      const response = await put(path(closed), branch, RATED);
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('quarter_closed');
+      const preview = await t.post(`${path(closed)}/preview`, branch, RATED);
+      expect(preview.status).toBe(409);
+      expect(errorCode(preview)).toBe('quarter_closed');
+      const copyPath = `/api/setup/subjects/${subject.id}/quarter-weights/copy`;
+      const copy = await t.post(copyPath, branch, { yearId });
+      expect(copy.status).toBe(409);
+      expect(errorCode(copy)).toBe('quarter_closed');
+      const copyPreview = await t.post(`${copyPath}/preview`, branch, { yearId });
+      expect(copyPreview.status).toBe(409);
+      expect(errorCode(copyPreview)).toBe('quarter_closed');
+      expect(await rows()).toEqual(before);
+      expect(await auditCount()).toBe(audit);
+
+      // A later open quarter still takes its distribution.
+      expect((await put(path(quarterIds[2] ?? ''), branch, RATED)).status).toBe(200);
+    });
+
+    it('copy from a closed quarter 1 to the open quarters 2 to 4', async () => {
+      const branch = await t.newBranch();
+      const { yearId, quarterIds } = await insertYear(branch, '2026-09-01', 'current');
+      const subject = await create({}, branch);
+      const first = quarterIds[0] ?? '';
+      expect(
+        (await put(`/api/setup/subjects/${subject.id}/quarter-weights/${first}`, branch, RATED))
+          .status,
+      ).toBe(200);
+      await closeQuarter(t.database, {
+        branchId: branch,
+        quarterId: first,
+        accountId: await closerId(),
+      });
+
+      const copy = await t.post(`/api/setup/subjects/${subject.id}/quarter-weights/copy`, branch, {
+        yearId,
+      });
+      expect(copy.status).toBe(200);
+      expect(
+        subjectQuarterWeightsSchema.parse(copy.body).quarters.map((quarter) => quarter.weights),
+      ).toEqual([RATED, RATED, RATED, RATED]);
     });
 
     // Decision 3: a distribution counts only when its shape fits the switch;

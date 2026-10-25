@@ -24,6 +24,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
+import { closeQuarter } from '../../testing/closing-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
@@ -1414,6 +1415,199 @@ describe('exemptions', () => {
         ).toBe(200);
       });
       expect(await listed()).toEqual([]);
+    });
+  });
+  // Task 9.2b (From 8.5; plan decision 4): 07, Problem cases, "The dates fall in a closed
+  // quarter": "The part inside a closed quarter is refused until that quarter is reopened,
+  // because final results would change. The part in an open quarter is applied."
+  // edge/exemptions, "The range starts in a closed quarter and ends in an open one."
+  describe('a closed quarter (07, Problem cases: "The dates fall in a closed quarter")', () => {
+    /** The scene with quarter 1 (to 31 October) closed after the exemptions given were made. */
+    async function closedScene(
+      before: (s: Awaited<ReturnType<typeof scene>>) => Promise<string[]> = () =>
+        Promise.resolve([]),
+    ) {
+      const s = await scene();
+      const ids = await before(s);
+      const q1 = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', s.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      await closeQuarter(t.database, {
+        branchId: s.branch,
+        quarterId: q1,
+        accountId: s.vice.account.id,
+      });
+      return { s, ids };
+    }
+
+    const make = (
+      s: Awaited<ReturnType<typeof scene>>,
+      startDate: string,
+      endDate: string,
+      student = s.ahmedov,
+    ) =>
+      as(s.branch, s.vice, [], async ({ post }) => {
+        const made = await post(
+          '/api/exemptions',
+          body({ studentIds: [student], startDate, endDate }),
+        );
+        expect(made.status, JSON.stringify(made.body)).toBe(200);
+        return exemptionCreatedSchema.parse(made.body).exemptions[0]?.id ?? '';
+      });
+
+    const rowOf = (id: string) =>
+      t.database.migrator
+        .selectFrom('exemptions')
+        .select([
+          sql<string>`start_date::text`.as('start'),
+          sql<string>`end_date::text`.as('end'),
+          'voided_at',
+        ])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    it('applies a new range from the first day after the closed quarter, and refuses one wholly inside', async () => {
+      const { s } = await closedScene();
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const preview = await post(
+          '/api/exemptions/preview',
+          body({ studentIds: [s.ahmedov], startDate: '2026-10-26', endDate: '2026-11-12' }),
+        );
+        expect(preview.status, JSON.stringify(preview.body)).toBe(200);
+        expect(exemptionPreviewSchema.parse(preview.body).closedPart).toEqual({
+          startDate: '2026-10-26',
+          endDate: '2026-10-31',
+        });
+        const inside = await post(
+          '/api/exemptions',
+          body({ studentIds: [s.boboyev], startDate: '2026-10-12', endDate: '2026-10-20' }),
+        );
+        expect([inside.status, codeOf(inside)]).toEqual([409, 'exemption_closed_quarter']);
+      });
+      const id = await make(s, '2026-10-26', '2026-11-12');
+      expect(await rowOf(id)).toMatchObject({ start: '2026-11-01', end: '2026-11-12' });
+      // Nothing was written for the refused one.
+      const boboyev = await t.database.migrator
+        .selectFrom('exemptions')
+        .select('id')
+        .where('student_id', '=', s.boboyev)
+        .execute();
+      expect(boboyev).toEqual([]);
+    });
+
+    it('ends a range that began in the closed quarter at its last day, takes an end after it, and refuses a longer one into it', async () => {
+      const { s, ids } = await closedScene(async (scene) => [
+        await make(scene, '2026-10-12', '2026-11-12'),
+      ]);
+      const [id = ''] = ids;
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const preview = await post(`/api/exemptions/${id}/end/preview`, {
+          version: 1,
+          endDate: '2026-10-20',
+          choices: [],
+        });
+        expect(preview.status, JSON.stringify(preview.body)).toBe(200);
+        expect(exemptionPreviewSchema.parse(preview.body).closedPart).toEqual({
+          startDate: '2026-10-21',
+          endDate: '2026-10-31',
+        });
+        const ended = await post(`/api/exemptions/${id}/end`, {
+          version: 1,
+          endDate: '2026-10-20',
+          choices: [],
+        });
+        expect(ended.status, JSON.stringify(ended.body)).toBe(200);
+        expect(exemptionSchema.parse(ended.body).endDate).toBe('2026-10-31');
+        const longer = await post(`/api/exemptions/${id}/end`, {
+          version: 2,
+          endDate: '2026-11-20',
+          choices: [],
+        });
+        // From the closed quarter's last day a longer end reaches open days only: taken.
+        expect(longer.status, JSON.stringify(longer.body)).toBe(200);
+      });
+      const shortOne = await make(s, '2026-11-09', '2026-11-12', s.boboyev);
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const ended = await post(`/api/exemptions/${shortOne}/end`, {
+          version: 1,
+          endDate: '2026-11-10',
+          choices: [],
+        });
+        expect(exemptionSchema.parse(ended.body).endDate).toBe('2026-11-10');
+      });
+    });
+
+    it('refuses to lengthen a range that ended inside the closed quarter', async () => {
+      const { s, ids } = await closedScene(async (scene) => [
+        await make(scene, '2026-10-12', '2026-10-20'),
+      ]);
+      const [id = ''] = ids;
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const longer = await post(`/api/exemptions/${id}/end`, {
+          version: 1,
+          endDate: '2026-11-12',
+          choices: [],
+        });
+        expect([longer.status, codeOf(longer)]).toEqual([409, 'exemption_closed_quarter']);
+        const voided = await post(`/api/exemptions/${id}/void`, {
+          version: 1,
+          reason: 'Entered for the wrong student',
+        });
+        expect([voided.status, codeOf(voided)]).toEqual([409, 'exemption_closed_quarter']);
+      });
+      expect(await rowOf(id)).toMatchObject({ end: '2026-10-20', voided_at: null });
+    });
+
+    it('voids the open part only of a range that began in the closed quarter', async () => {
+      const { s, ids } = await closedScene(async (scene) => [
+        await make(scene, '2026-10-12', '2026-11-12'),
+      ]);
+      const [id = ''] = ids;
+      await as(s.branch, s.vice, [], async ({ post }) => {
+        const preview = await post(`/api/exemptions/${id}/void/preview`, { version: 1 });
+        expect(exemptionPreviewSchema.parse(preview.body).closedPart).toEqual({
+          startDate: '2026-10-12',
+          endDate: '2026-10-31',
+        });
+        const voided = await post(`/api/exemptions/${id}/void`, {
+          version: 1,
+          reason: 'Entered for the wrong student',
+        });
+        expect(voided.status, JSON.stringify(voided.body)).toBe(200);
+        expect(exemptionSchema.parse(voided.body)).toMatchObject({ endDate: '2026-10-31' });
+      });
+      expect(await rowOf(id)).toMatchObject({
+        start: '2026-10-12',
+        end: '2026-10-31',
+        voided_at: null,
+      });
+    });
+
+    it('moves the start of an edit back into the closed quarter to the first open day', async () => {
+      const { s, ids } = await closedScene(async (scene) => [
+        await make(scene, '2026-11-20', '2026-11-25'),
+      ]);
+      const [id = ''] = ids;
+      await as(s.branch, s.vice, [], async ({ patch }) => {
+        const edited = await patch(`/api/exemptions/${id}`, {
+          version: 1,
+          kind: 'temporary',
+          subjectIds: null,
+          startDate: '2026-10-25',
+          endDate: '2026-11-25',
+          slots: null,
+          category: 'illness',
+          detail: 'A certificate from the clinic',
+          choices: [],
+        });
+        expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      });
+      expect(await rowOf(id)).toMatchObject({ start: '2026-11-01', end: '2026-11-25' });
     });
   });
 });

@@ -41,6 +41,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { PHOTO_STORE, type PhotoStore } from '../people/photo-store.js';
 import { fileMatchesType } from '../plans/file-type.js';
+import { lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { namedAccounts } from './cell-lines.query.js';
 import {
@@ -73,6 +74,9 @@ export const EXEMPTION_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   exemption_outside_year: 'exemption_outside_year',
   exemption_full_end: 'exemption_outside_year',
   exemption_closed_year: 'exemption_closed_year',
+  // Task 9.2b: the guard of 0133.
+  exemption_closed_quarter: 'exemption_closed_quarter',
+  quarters_closed: 'exemption_closed_quarter',
   exemption_started: 'exemption_started',
   exemption_voided: 'exemption_voided',
   exemption_subjects_state: 'exemption_started',
@@ -621,16 +625,27 @@ export class Exemptions {
     await refuseForeignChoices(transaction, input.choices);
     await this.refuseForeign(transaction, input.studentIds, input.subjectIds);
     const year = await this.yearOf(transaction, branchId, input.startDate);
+    const endDate = input.kind === 'full' ? year.end : (input.endDate ?? input.startDate);
+    if (endDate > year.end) throw new ApiException('exemption_outside_year', 409);
+    // Task 9.2b (From 8.5): the part in a closed quarter is refused, the rest applied; the
+    // quarters of the open part locked before the cells (`.claude/rules/database.md`).
+    const open = await openStartOf(transaction, branchId, input.startDate, endDate);
+    await lockOpenQuarters(
+      transaction,
+      branchId,
+      open.startDate,
+      endDate,
+      'exemption_closed_quarter',
+    );
     const cover: Cover = {
       kind: input.kind,
       allSubjects: input.subjectIds === null,
       subjectIds: input.subjectIds ?? [],
-      startDate: input.startDate,
-      endDate: input.kind === 'full' ? year.end : (input.endDate ?? input.startDate),
+      startDate: open.startDate,
+      endDate,
       startTime: input.slots?.start ?? null,
       endTime: input.slots?.end ?? null,
     };
-    if (cover.endDate > year.end) throw new ApiException('exemption_outside_year', 409);
     const students = [...input.studentIds].sort();
     await lockStudents(transaction, students);
     const windows: StudentWindow[] = students.map((studentId) => ({
@@ -682,6 +697,7 @@ export class Exemptions {
     if (preview) {
       throw new PreviewDone({
         yearEnd: year.end,
+        closedPart: open.closedPart,
         students: students.map((studentId) => {
           const effect = settled.effects.get(studentId);
           const met = overlaps.get(studentId);
@@ -726,6 +742,7 @@ export class Exemptions {
           endDate: cover.endDate,
           slots: slotsOf(cover),
           category: input.category,
+          closedPart: open.closedPart,
         },
         details: effectDetails(settled, studentId),
         ...(requestId === undefined ? {} : { requestId }),
@@ -915,12 +932,23 @@ export class Exemptions {
     if (exists === undefined) throw notFound();
     if (input.subjectIds !== null)
       await this.refuseForeign(transaction, [exists.student_id], input.subjectIds);
+    const year = await this.yearOf(transaction, branchId, input.startDate);
+    const endDate = input.kind === 'full' ? year.end : (input.endDate ?? input.startDate);
+    // Task 9.2b (From 8.5): an edit happens before the stored start, so the stored days are all
+    // open; a start moved back into a closed quarter keeps the open part only.
+    const open = await openStartOf(transaction, branchId, input.startDate, endDate);
+    await lockOpenQuarters(
+      transaction,
+      branchId,
+      open.startDate,
+      endDate,
+      'exemption_closed_quarter',
+    );
     await lockStudents(transaction, [exists.student_id]);
     const row = await this.locked(transaction, branchId, id, input.version);
     const today = await todayIn(transaction, branchId);
     // edge/exemptions, row 4: "Before the start date every field can be changed".
     if (row.start_date <= today) throw new ApiException('exemption_started', 409);
-    const year = await this.yearOf(transaction, branchId, input.startDate);
     // The year stays: an exemption of another year is entered on its own.
     if (year.id !== row.year_id) throw new ApiException('exemption_outside_year', 409);
     const old = await coverOfRow(transaction, row);
@@ -928,8 +956,8 @@ export class Exemptions {
       kind: input.kind,
       allSubjects: input.subjectIds === null,
       subjectIds: input.subjectIds ?? [],
-      startDate: input.startDate,
-      endDate: input.kind === 'full' ? year.end : (input.endDate ?? input.startDate),
+      startDate: open.startDate,
+      endDate,
       startTime: input.slots?.start ?? null,
       endTime: input.slots?.end ?? null,
     };
@@ -984,7 +1012,9 @@ export class Exemptions {
       exemptionOf: () => Promise.resolve(id),
       preview,
     });
-    if (preview) throw new PreviewDone(previewAnswer(settled, [row.student_id], year.end));
+    if (preview) {
+      throw new PreviewDone(previewAnswer(settled, [row.student_id], year.end, open.closedPart));
+    }
     const names = await studentNames(transaction, [row.student_id]);
     await this.audit.record(transaction, {
       branchId,
@@ -1066,18 +1096,65 @@ export class Exemptions {
     await refuseForeignChoices(transaction, choices);
     const heads = await transaction
       .selectFrom('exemptions')
-      .select(['id', 'student_id'])
+      .select([
+        'id',
+        'student_id',
+        sql<string>`start_date::text`.as('start_date'),
+        sql<string>`end_date::text`.as('end_date'),
+      ])
       .where('id', 'in', [...ids])
       .where('branch_id', '=', branchId)
       .execute();
     if (heads.length !== ids.length) throw notFound();
+    // Task 9.2b (From 8.5; plan decision 4): the days an end changes inside a closed quarter
+    // are refused, the rest applied: an earlier end stops at the closed quarter's last day; a
+    // longer one may not reach into a closed quarter (it would leave a gap in one range). The
+    // quarters of the days that change are locked before the cells.
+    const ends = new Map<string, { end: string; closedPart: ClosedPart }>();
+    for (const head of [...heads].sort((x, y) => x.id.localeCompare(y.id))) {
+      if (endDate > head.end_date) {
+        const from = addDays(head.end_date, 1);
+        if ((await lastClosedDay(transaction, branchId, from, endDate)) !== null) {
+          throw new ApiException('exemption_closed_quarter', 409);
+        }
+        await lockOpenQuarters(transaction, branchId, from, endDate, 'exemption_closed_quarter');
+        ends.set(head.id, { end: endDate, closedPart: null });
+      } else if (endDate < head.end_date) {
+        const from = addDays(endDate, 1);
+        const last = await lastClosedDay(transaction, branchId, from, head.end_date);
+        if (last !== null && head.end_date <= last) {
+          throw new ApiException('exemption_closed_quarter', 409);
+        }
+        const end = last ?? endDate;
+        await lockOpenQuarters(
+          transaction,
+          branchId,
+          addDays(end, 1),
+          head.end_date,
+          'exemption_closed_quarter',
+        );
+        ends.set(head.id, {
+          end,
+          closedPart: last === null ? null : { startDate: from, endDate: last },
+        });
+      } else {
+        ends.set(head.id, { end: endDate, closedPart: null });
+      }
+    }
     await lockStudents(
       transaction,
       heads.map((one) => one.student_id),
     );
     const rows: StoredRow[] = [];
-    for (const id of [...ids].sort())
-      rows.push(await this.locked(transaction, branchId, id, version));
+    for (const id of [...ids].sort()) {
+      const row = await this.locked(transaction, branchId, id, version);
+      // Decided on the dates read before the locks: a change since is told, never written over.
+      if (row.end_date !== heads.find((one) => one.id === row.id)?.end_date) {
+        throw new ApiException('exemption_stale', 409);
+      }
+      rows.push(row);
+    }
+    const endOf = (row: StoredRow) => ends.get(row.id)?.end ?? endDate;
     const windows: StudentWindow[] = [];
     const covers = new Map<string, Cover>();
     let yearEnd = endDate;
@@ -1092,12 +1169,12 @@ export class Exemptions {
         .executeTakeFirstOrThrow();
       yearEnd = year.end;
       if (endDate > year.end) throw new ApiException('exemption_outside_year', 409);
-      const longer = endDate > row.end_date;
+      const longer = endOf(row) > row.end_date;
       if (longer) {
         const met = await this.overlapOf(
           transaction,
           row.student_id,
-          { ...cover, endDate },
+          { ...cover, endDate: endOf(row) },
           row.id,
         );
         if (met !== undefined) throw overlapRefusal(row.student_id, met);
@@ -1105,14 +1182,14 @@ export class Exemptions {
       windows.push({
         studentId: row.student_id,
         from: row.start_date,
-        until: longer ? endDate : row.end_date,
+        until: longer ? endOf(row) : row.end_date,
       });
     }
     const before = await expectedIn(transaction, branchId, windows);
     for (const row of rows) {
       await transaction
         .updateTable('exemptions')
-        .set({ end_date: endDate, end_cause: 'end' })
+        .set({ end_date: endOf(row), end_cause: 'end' })
         .where('id', '=', row.id)
         .execute();
     }
@@ -1129,6 +1206,7 @@ export class Exemptions {
       settled,
       rows.map((row) => row.student_id),
       yearEnd,
+      [...ends.values()].find((one) => one.closedPart !== null)?.closedPart ?? null,
     );
     if (preview) return answer;
     const names = await studentNames(
@@ -1138,6 +1216,7 @@ export class Exemptions {
     for (const row of rows) {
       const cover = covers.get(row.id);
       if (cover === undefined) continue;
+      const end = endOf(row);
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
@@ -1145,14 +1224,26 @@ export class Exemptions {
         action: 'exemption.end',
         record: { type: 'student', id: row.student_id },
         oldValue: { exemptionId: row.id, endDate: row.end_date },
-        newValue: { exemptionId: row.id, endDate },
-        details: { batchId: row.batch_id, ...effectDetails(settled, row.student_id) },
+        newValue: { exemptionId: row.id, endDate: end },
+        details: {
+          batchId: row.batch_id,
+          ...effectDetails(settled, row.student_id),
+          ...(end === endDate ? {} : { asked: endDate }),
+        },
         ...(requestId === undefined ? {} : { requestId }),
       });
-      await this.tell(transaction, access, row.student_id, names, { ...cover, endDate }, 'ended', {
-        from: row.start_date,
-        until: endDate > row.end_date ? endDate : row.end_date,
-      });
+      await this.tell(
+        transaction,
+        access,
+        row.student_id,
+        names,
+        { ...cover, endDate: end },
+        'ended',
+        {
+          from: row.start_date,
+          until: end > row.end_date ? end : row.end_date,
+        },
+      );
     }
     await noticeReopened(transaction, this.notifications, {
       branchId,
@@ -1212,18 +1303,53 @@ export class Exemptions {
     await withActor(transaction, access.accountId);
     const heads = await transaction
       .selectFrom('exemptions')
-      .select(['id', 'student_id'])
+      .select([
+        'id',
+        'student_id',
+        sql<string>`start_date::text`.as('start_date'),
+        sql<string>`end_date::text`.as('end_date'),
+      ])
       .where('id', 'in', [...ids])
       .where('branch_id', '=', branchId)
       .execute();
     if (heads.length !== ids.length) throw notFound();
+    // Task 9.2b (From 8.5; plan decision 4): a void takes away every day of the exemption; the
+    // days inside a closed quarter are refused, so an exemption that began in one ends at its
+    // last day instead (the open part only), and one wholly inside is refused. The quarters of
+    // the days that change are locked before the cells.
+    const kept = new Map<string, string>();
+    let closedPart: ClosedPart = null;
+    for (const head of [...heads].sort((x, y) => x.id.localeCompare(y.id))) {
+      const last = await lastClosedDay(transaction, branchId, head.start_date, head.end_date);
+      if (last !== null && head.end_date <= last) {
+        throw new ApiException('exemption_closed_quarter', 409);
+      }
+      if (last !== null) {
+        kept.set(head.id, last);
+        closedPart ??= { startDate: head.start_date, endDate: last };
+      }
+      await lockOpenQuarters(
+        transaction,
+        branchId,
+        last === null ? head.start_date : addDays(last, 1),
+        head.end_date,
+        'exemption_closed_quarter',
+      );
+    }
     await lockStudents(
       transaction,
       heads.map((one) => one.student_id),
     );
     const rows: StoredRow[] = [];
-    for (const id of [...ids].sort())
-      rows.push(await this.locked(transaction, branchId, id, version));
+    for (const id of [...ids].sort()) {
+      const row = await this.locked(transaction, branchId, id, version);
+      // Decided on the dates read before the locks: a change since is told, never written over.
+      const head = heads.find((one) => one.id === row.id);
+      if (row.start_date !== head?.start_date || row.end_date !== head.end_date) {
+        throw new ApiException('exemption_stale', 409);
+      }
+      rows.push(row);
+    }
     const windows = rows.map((row) => ({
       studentId: row.student_id,
       from: row.start_date,
@@ -1232,6 +1358,15 @@ export class Exemptions {
     const before = await expectedIn(transaction, branchId, windows);
     const moment = await transactionMoment(transaction);
     for (const row of rows) {
+      const end = kept.get(row.id);
+      if (end !== undefined) {
+        await transaction
+          .updateTable('exemptions')
+          .set({ end_date: end, end_cause: 'end' })
+          .where('id', '=', row.id)
+          .execute();
+        continue;
+      }
       await transaction
         .updateTable('exemptions')
         .set({
@@ -1268,6 +1403,7 @@ export class Exemptions {
       settled,
       rows.map((row) => row.student_id),
       yearEnd,
+      closedPart,
     );
     if (preview) return answer;
     const names = await studentNames(
@@ -1276,6 +1412,36 @@ export class Exemptions {
     );
     for (const row of rows) {
       const cover = await coverOfRow(transaction, row);
+      const end = kept.get(row.id);
+      if (end !== undefined) {
+        // The open part only: an end at the closed quarter's last day, with the void's reason.
+        await this.audit.record(transaction, {
+          branchId,
+          actorId: access.accountId,
+          assignmentId: access.assignmentId,
+          action: 'exemption.end',
+          record: { type: 'student', id: row.student_id },
+          oldValue: { exemptionId: row.id, endDate: row.end_date },
+          newValue: { exemptionId: row.id, endDate: end },
+          reason,
+          details: {
+            batchId: row.batch_id,
+            asked: 'void',
+            ...effectDetails(settled, row.student_id),
+          },
+          ...(requestId === undefined ? {} : { requestId }),
+        });
+        await this.tell(
+          transaction,
+          access,
+          row.student_id,
+          names,
+          { ...cover, endDate: end },
+          'ended',
+          { from: row.start_date, until: row.end_date },
+        );
+        continue;
+      }
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
@@ -1617,16 +1783,39 @@ export class Exemptions {
     // A student who moved on or whose record this branch no longer reads is not offered (the
     // list leaves the offer out), and nothing is written for them (permission review 8).
     await this.refuseForeign(transaction, [head.student_id], null);
+    // Task 9.2b (From 8.5): the quarters of the offer's open part locked before the cells.
+    const dates = await transaction
+      .selectFrom('exemption_move_offers')
+      .select([
+        'kind',
+        sql<string>`start_date::text`.as('start_date'),
+        sql<string>`end_date::text`.as('end_date'),
+      ])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    const yearOfOffer = await this.yearOf(transaction, branchId, dates.start_date);
+    const offerEnd =
+      dates.kind === 'full' || dates.end_date > yearOfOffer.end ? yearOfOffer.end : dates.end_date;
+    const opened = await openStartOf(transaction, branchId, dates.start_date, offerEnd);
+    await lockOpenQuarters(
+      transaction,
+      branchId,
+      opened.startDate,
+      offerEnd,
+      'exemption_closed_quarter',
+    );
     await lockStudents(transaction, [head.student_id]);
     const offer = await this.lockedOffer(transaction, branchId, id);
     const year = await this.yearOf(transaction, branchId, offer.start_date);
     const kind = exemptionKindSchema.parse(offer.kind);
+    const endDate = kind === 'full' || offer.end_date > year.end ? year.end : offer.end_date;
+    const open = await openStartOf(transaction, branchId, offer.start_date, endDate);
     const cover: Cover = {
       kind,
       allSubjects: offer.all_subjects,
       subjectIds: offer.all_subjects ? [] : [...offer.subject_ids].sort(),
-      startDate: offer.start_date,
-      endDate: kind === 'full' || offer.end_date > year.end ? year.end : offer.end_date,
+      startDate: open.startDate,
+      endDate,
       startTime: timeOf(offer.start_time),
       endTime: timeOf(offer.end_time),
     };
@@ -1663,7 +1852,7 @@ export class Exemptions {
       exemptionOf: () => Promise.resolve(exemptionId),
       preview,
     });
-    const answer = previewAnswer(settled, [offer.student_id], year.end);
+    const answer = previewAnswer(settled, [offer.student_id], year.end, open.closedPart);
     if (preview) return answer;
     await transaction
       .updateTable('exemption_move_offers')
@@ -1825,9 +2014,11 @@ function previewAnswer(
   settled: Settled,
   studentIds: readonly string[],
   yearEnd: string,
+  closedPart: ClosedPart = null,
 ): ExemptionPreview {
   return {
     yearEnd,
+    closedPart,
     students: [...new Set(studentIds)].map((studentId) => {
       const effect = settled.effects.get(studentId);
       return {
@@ -2075,4 +2266,51 @@ export async function readStored(
     throw new ApiException('files_unavailable', 503);
   }
   return new StoredFile(type, name, asciiOf(name), content);
+}
+
+/** The days of a change kept as they are by a closed quarter (task 9.2b). */
+type ClosedPart = ExemptionPreview['closedPart'];
+
+/**
+ * The last day of a closed quarter of the branch that the days `from` to `until` meet, or
+ * `null` (task 9.2b, plan decision 4: a change is applied to the days after it). A reader: the
+ * quarters of the open part are locked by `lockOpenQuarters`.
+ */
+async function lastClosedDay(
+  transaction: Transaction,
+  branchId: string,
+  from: string,
+  until: string,
+): Promise<string | null> {
+  if (until < from) return null;
+  const row = await transaction
+    .selectFrom('quarters')
+    .innerJoin('quarter_closings', (join) =>
+      join
+        .onRef('quarter_closings.quarter_id', '=', 'quarters.id')
+        .on('quarter_closings.reopened_at', 'is', null),
+    )
+    .select(sql<string | null>`max(quarters.end_date)::text`.as('last'))
+    .where('quarters.branch_id', '=', branchId)
+    .where('quarters.start_date', '<=', until)
+    .where('quarters.end_date', '>=', from)
+    .executeTakeFirst();
+  return row?.last ?? null;
+}
+
+/**
+ * The start of a new or moved range after the closed quarters it meets: `07`, Problem cases,
+ * "The part inside a closed quarter is refused until that quarter is reopened ... The part in
+ * an open quarter is applied" (From 8.5). A range wholly inside closed quarters is refused.
+ */
+async function openStartOf(
+  transaction: Transaction,
+  branchId: string,
+  startDate: string,
+  endDate: string,
+): Promise<{ startDate: string; closedPart: ClosedPart }> {
+  const last = await lastClosedDay(transaction, branchId, startDate, endDate);
+  if (last === null) return { startDate, closedPart: null };
+  if (endDate <= last) throw new ApiException('exemption_closed_quarter', 409);
+  return { startDate: addDays(last, 1), closedPart: { startDate, endDate: last } };
 }

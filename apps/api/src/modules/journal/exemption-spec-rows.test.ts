@@ -21,6 +21,8 @@ const DATABASE = 'apps/api/src/modules/journal/exemptions.database.test.ts';
 const PAGE = 'apps/web/src/features/journal/exemptions-page.test.tsx';
 const GRID = 'apps/web/src/features/journal/journal-page.test.tsx';
 const CALC = 'packages/calc/src/outcome.test.ts';
+const CLOSE_DATABASE = 'apps/api/src/modules/results/quarter-close.database.test.ts';
+const CLOSED_QUARTER = 'a closed quarter (07, Problem cases: "The dates fall in a closed quarter")';
 
 const PROBLEM_CASES: readonly Row[] = [
   {
@@ -47,9 +49,9 @@ const PROBLEM_CASES: readonly Row[] = [
   {
     case: 'The dates fall in a closed quarter.',
     rule: '397a8839d8eade9c',
-    tests: [],
-    // No quarter closes before 9.2b (decision 6): its From line refuses the closed part.
-    tasks: ['9.2b'],
+    // Task 9.2b (From 8.5): the closed part refused, the open part applied.
+    tests: [[ROUTES, CLOSED_QUARTER], [CLOSE_DATABASE, 'closing a quarter in the database']],
+    tasks: [],
   },
   {
     case: 'A teacher finds a student missing for a reason that deserves an exemption.',
@@ -136,8 +138,8 @@ const EDGE_ROWS: readonly Row[] = [
   {
     case: 'The range starts in a closed quarter and ends in an open one.',
     rule: 'f31e1926e056f340',
-    tests: [],
-    tasks: ['9.2b'],
+    tests: [[ROUTES, CLOSED_QUARTER]],
+    tasks: [],
   },
   {
     case: 'A surgery exemption runs from May to September.',
