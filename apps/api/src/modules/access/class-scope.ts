@@ -45,6 +45,8 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
   'rating',
   // Task 9.4a: the early-warning list of the students of own classes, in all subjects.
   'early_warning',
+  // Task 9.4b: the attendance today of own classes on the Tutor's home.
+  'attendance_today',
 ];
 
 /**

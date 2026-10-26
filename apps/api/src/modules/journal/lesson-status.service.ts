@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DISCIPLINE_DAYS_MAX,
   disciplineSchema,
+  lessonsTodaySchema,
   orphanAssignmentSchema,
   orphanLessonsSchema,
   remindersSchema,
@@ -9,6 +10,7 @@ import {
   type Discipline,
   type DisciplineQuery,
   type DisciplineRow,
+  type LessonsToday,
   type OrphanAssign,
   type OrphanAssignment,
   type OrphanLessons,
@@ -115,6 +117,33 @@ function startedLessons(
     .where('lessons.lesson_date', '<=', to)
     .where('lessons.starts_at', '<=', now)
     .where('lessons.cancel_cause', 'is', null);
+}
+
+/**
+ * The subjects of the counts the reader may read (decision 6): `null` for the branch (the Super
+ * Admin, the Principal, the Academic Vice Principal); own subjects for a Head Teacher and a
+ * Senior Head Teacher; the subjects of the Tutor departments for the Head Tutor.
+ */
+async function subjectScopeOf(
+  transaction: Transaction,
+  access: Access,
+): Promise<Set<string> | null> {
+  if (access.permitting.some((one) => WHOLE_ROLES.includes(one.role))) return null;
+  const scope = new Set(
+    access.permitting
+      .filter((one) => SUBJECT_ROLES.includes(one.role))
+      .flatMap((one) => one.subjectIds),
+  );
+  if (access.permitting.some((one) => one.role === 'head_tutor')) {
+    const tutors = await transaction
+      .selectFrom('subjects')
+      .innerJoin('departments', 'departments.id', 'subjects.department_id')
+      .select('subjects.id')
+      .where('departments.tutors', '=', true)
+      .execute();
+    for (const one of tutors) scope.add(one.id);
+  }
+  return scope;
 }
 
 @Injectable()
@@ -316,6 +345,80 @@ export class LessonStatusService {
   }
 
   /**
+   * The lessons of today and their status (task 9.4b; `08`, Home pages by role, Academic Vice
+   * Principal: "Lessons today and their status"; From 8.7): the same status reader and the same
+   * scope as the counts per teacher. The held lessons by status, the incomplete ones named with
+   * the teacher each counts for (`lessonsCounted`), and the lessons whose start has not come.
+   */
+  today(access: Access): Promise<LessonsToday> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const { now, timeZone, today } = await clockOf(transaction, branchId);
+      const scope = await subjectScopeOf(transaction, access);
+      const subjects = scope === null ? null : [...scope];
+      if (subjects !== null && subjects.length === 0) {
+        return lessonsTodaySchema.parse({
+          date: today,
+          ahead: 0,
+          held: 0,
+          notStarted: 0,
+          inProgress: 0,
+          complete: 0,
+          incomplete: [],
+        });
+      }
+      let started = startedLessons(transaction, branchId, today, today, now, timeZone);
+      if (subjects !== null) started = started.where('lessons.subject_id', 'in', subjects);
+      const rows: CandidateRow[] = await started.execute();
+      let later = transaction
+        .selectFrom('lessons')
+        .select((eb) => eb.fn.countAll<string>().as('count'))
+        .where('branch_id', '=', branchId)
+        .where('lesson_date', '=', today)
+        .where('starts_at', '>', now)
+        .where('cancel_cause', 'is', null);
+      if (subjects !== null) later = later.where('subject_id', 'in', subjects);
+      const ahead = Number((await later.executeTakeFirstOrThrow()).count);
+      const { statuses, counted, journals } = await this.statusesOf(
+        transaction,
+        branchId,
+        rows,
+        now,
+      );
+      const describe = await this.describer(transaction, rows, statuses, journals);
+      const counts = { held: 0, notStarted: 0, inProgress: 0, complete: 0 };
+      const incomplete: { row: CandidateRow; staffId: string | null; status: string }[] = [];
+      for (const row of rows) {
+        const answer = statuses.get(row.id)?.answer ?? null;
+        if (answer === null) continue;
+        counts.held += 1;
+        if (answer.status === 'not_started') counts.notStarted += 1;
+        if (answer.status === 'in_progress') counts.inProgress += 1;
+        if (answer.status === 'complete') counts.complete += 1;
+        if (answer.status !== 'complete') {
+          incomplete.push({ row, staffId: counted.get(row.id) ?? null, status: answer.status });
+        }
+      }
+      const names = await staffNames(transaction, [
+        ...new Set(incomplete.flatMap((one) => (one.staffId === null ? [] : [one.staffId]))),
+      ]);
+      incomplete.sort(
+        (a, b) => a.row.start_minutes - b.row.start_minutes || (a.row.id < b.row.id ? -1 : 1),
+      );
+      return lessonsTodaySchema.parse({
+        date: today,
+        ahead,
+        ...counts,
+        incomplete: incomplete.map((one) => ({
+          lesson: { ...describe(one.row), status: one.status },
+          teacher:
+            one.staffId === null ? null : { id: one.staffId, name: names.get(one.staffId) ?? '' },
+        })),
+      });
+    });
+  }
+
+  /**
    * The counts per teacher (decisions 6 and 14 with correction 1): the held lessons dated in
    * the range that the reader may read, counted for the teacher each counts for. The scope
    * is the branch for the Super Admin, the Principal and the Academic Vice Principal; own
@@ -336,24 +439,7 @@ export class LessonStatusService {
       ) {
         throw new ApiException('discipline_range', 409);
       }
-      const whole = access.permitting.some((one) => WHOLE_ROLES.includes(one.role));
-      let scope: Set<string> | null = null;
-      if (!whole) {
-        scope = new Set(
-          access.permitting
-            .filter((one) => SUBJECT_ROLES.includes(one.role))
-            .flatMap((one) => one.subjectIds),
-        );
-        if (access.permitting.some((one) => one.role === 'head_tutor')) {
-          const tutors = await transaction
-            .selectFrom('subjects')
-            .innerJoin('departments', 'departments.id', 'subjects.department_id')
-            .select('subjects.id')
-            .where('departments.tutors', '=', true)
-            .execute();
-          for (const one of tutors) scope.add(one.id);
-        }
-      }
+      const scope = await subjectScopeOf(transaction, access);
       const subjects = await transaction
         .selectFrom('subjects')
         .innerJoin('departments', 'departments.id', 'subjects.department_id')

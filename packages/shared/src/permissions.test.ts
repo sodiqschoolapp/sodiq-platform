@@ -595,6 +595,26 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the attendance today to the readers of the home pages of `08` (task 9.4b, decision 1)', () => {
+    const rows: Partial<Record<Role, readonly string[]>> = {
+      super_admin: ['view'],
+      spiritual_vice_principal: ['view'],
+      head_tutor: ['view'],
+      tutor: ['view'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.attendance_today[role], role).toEqual(rows[role] ?? []);
+    }
+  });
+
+  it('gives the branch summary to the Principal and the Super Admin (task 9.4b, decision 1)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.branch_summary[role], role).toEqual(
+        role === 'super_admin' || role === 'principal' ? ['view'] : [],
+      );
+    }
+  });
+
   it('gives the apply of a recalculation to the Super Admin alone (task 9.2c, decision 10)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.results_recalculation[role], role).toEqual(
@@ -625,8 +645,10 @@ describe('a frozen permission table', () => {
       'academic_years',
       'account_access',
       'accounts',
+      'attendance_today',
       'audit_log',
       'branch_moves',
+      'branch_summary',
       'branches',
       'calendar',
       'classes',

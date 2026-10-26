@@ -900,3 +900,41 @@ function sheetOf(
     ]),
   };
 }
+
+/**
+ * Results by grade for the branch summary (task 9.4b, plan decision 5): per grade 1 to 11 of the
+ * year's classes, the mean of its students' figures across subjects by the rule of the class
+ * figure (`classFigure`), read as the classes list reads them (`outcomesOf`: the stored records
+ * of a closed quarter, never calculated again), students on the reference date.
+ */
+export async function gradeFiguresOf(
+  transaction: Transaction,
+  access: Access,
+  clock: { branchId: string; timeZone: string; now: Date; today: string },
+  quarter: QuarterRef,
+): Promise<{ grade: number; value: number | null; rated: number; students: number }[]> {
+  const context: Context = { transaction, access, ...clock };
+  const referenceDate = referenceDateOf(quarter, context.today);
+  const state = await quarterStateOf(context, quarter);
+  const outcomes = await outcomesOf(context, quarter, state, null);
+  const byGrade = new Map<number, string[]>();
+  for (const one of await classesOfYear(context, quarter.academicYearId)) {
+    const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);
+    byGrade.set(one.grade, [...(byGrade.get(one.grade) ?? []), ...members]);
+  }
+  return [...byGrade]
+    .sort((a, b) => a[0] - b[0])
+    .flatMap(([grade, members]) => {
+      const unique = [...new Set(members)];
+      if (unique.length === 0) return [];
+      const values = [...figuresOf(outcomes, unique).values()].map((figure) => figure.value);
+      return [
+        {
+          grade,
+          value: tenths(classFigure(values)),
+          rated: values.filter((value) => value !== null).length,
+          students: unique.length,
+        },
+      ];
+    });
+}

@@ -5385,6 +5385,22 @@ try {
   }
   seeded.earlyTutor = { login: earlyTutor.login, password: earlyTutor.firstPassword };
 
+  // Task 9.4b: the Principal of the "Journal browser test branch", also its Head Tutor, opens the
+  // home page of each role: the branch summary, then the attendance of all classes today
+  // (`08`, Home pages by role). All names are invented.
+  const homeLeader = await create('Nodira', 'Saidova');
+  for (const role of ['principal', 'head_tutor'] as const) {
+    await transactions.run([journalBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: homeLeader.id,
+        role,
+        branchId: journalBranch,
+        givenBy: null,
+      }),
+    );
+  }
+  seeded.homeLeader = { login: homeLeader.login, password: homeLeader.firstPassword };
+
   // Task 6.3: a branch of its own for attendance entry: a class of three
   // students, a teacher of its statistics with one lesson yesterday at 08:00
   // (started whatever the hour of the test; spec review of the code, should-fix 7), and the class's Tutor with a staff record. The

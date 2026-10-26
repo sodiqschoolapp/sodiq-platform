@@ -2,6 +2,8 @@ import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import {
   disciplineQuerySchema,
   disciplineSchema,
+  lessonsTodayQuerySchema,
+  lessonsTodaySchema,
   orphanAssignSchema,
   orphanAssignmentParamsSchema,
   orphanAssignmentSchema,
@@ -11,6 +13,8 @@ import {
   remindersSchema,
   type Discipline,
   type DisciplineQuery,
+  type LessonsToday,
+  type LessonsTodayQuery,
   type OrphanAssign,
   type OrphanAssignment,
   type OrphanLessons,
@@ -46,6 +50,17 @@ export class LessonStatusController {
     @CurrentAccess() access: Access,
   ): Promise<Reminders> {
     return this.status.ownReminders(access);
+  }
+
+  /** Task 9.4b: `08`, Home pages by role, Academic Vice Principal, "Lessons today and their status". */
+  @Get('lessons-today')
+  @Requires('journal_discipline', 'view')
+  @Returns(lessonsTodaySchema)
+  lessonsToday(
+    @ValidQuery(lessonsTodayQuerySchema) _query: LessonsTodayQuery,
+    @CurrentAccess() access: Access,
+  ): Promise<LessonsToday> {
+    return this.status.today(access);
   }
 
   /** `07`, Lesson status: "Head Teachers and the Academic Vice Principal see the same counts per teacher". */

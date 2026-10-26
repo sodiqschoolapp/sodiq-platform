@@ -80,6 +80,10 @@ import {
   type TimetableVersionParams,
   versionExportRequestSchema,
   type VersionExportRequest,
+  conflictsSummaryQuerySchema,
+  conflictsSummarySchema,
+  type ConflictsSummary,
+  type ConflictsSummaryQuery,
 } from '@sodiq/shared';
 import type { PdfFile } from '../../http/pdf.js';
 import { RequestId } from '../../http/request-id.js';
@@ -118,6 +122,17 @@ export class TimetableController {
     private readonly withdrawer: TimetableWithdraw,
     private readonly exports: TimetableVersionExports,
   ) {}
+
+  /** Task 9.4b: the conflict counts of the drafts and of the version in force, for the home page. */
+  @Get('conflicts-summary')
+  @Requires('timetable', 'view')
+  @Returns(conflictsSummarySchema)
+  conflictsSummary(
+    @ValidQuery(conflictsSummaryQuerySchema) _query: ConflictsSummaryQuery,
+    @CurrentAccess() access: Access,
+  ): Promise<ConflictsSummary> {
+    return this.pattern.conflictsSummary(access);
+  }
 
   @Get('versions')
   @Requires('timetable', 'view')

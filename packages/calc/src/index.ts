@@ -1,6 +1,13 @@
 // The calculation module. Every percentage, average, result and grade comes from here.
 export { attendanceValue, type AttendanceMark, type AttendanceValues } from './attendance.js';
 export {
+  absentNow,
+  attendanceBelow,
+  dailyAttendance,
+  type AttendanceCell,
+  type DailyAttendance,
+} from './daily-attendance.js';
+export {
   lessonScore,
   type DailyWeights,
   type LessonParts,

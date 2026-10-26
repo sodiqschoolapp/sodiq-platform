@@ -81,6 +81,13 @@ const NO_LESSONS = {
 /** The home kinds that show the person's own lessons since task 5.9b, not the empty page. */
 const TEACHING_HOME: ReadonlySet<string> = new Set(['teaching', 'tutor']);
 
+/** Task 9.4b: a heading of the first screen of each kind that is not a teaching home. */
+const FIRST_HEADING: Readonly<Record<string, string>> = {
+  attendance_overview: en.home.attendance.allClasses,
+  academic_vice_principal: en.home.vice.lessonsToday,
+  branch_summary: en.home.summary.students,
+};
+
 const heading = (name: string) => screen.findByRole('heading', { name });
 const side = () => within(screen.getByRole('navigation', { name: en.layout.menu }));
 
@@ -149,9 +156,15 @@ describe('the menu and the home page of each role', () => {
       // Task 5.9b: the own lessons of every branch, here none.
       expect(await screen.findByText(en.home.lessons.noToday)).toBeDefined();
       expect(screen.queryByRole('heading', { name: en.home.emptyTitle })).toBeNull();
+    } else if (HOME_KIND[role] !== 'later_release') {
+      // Task 9.4b: the first screen of the kind (`08`, Home pages by role).
+      expect(
+        await screen.findByRole('heading', { name: FIRST_HEADING[HOME_KIND[role]] }),
+      ).toBeDefined();
+      expect(screen.queryByRole('heading', { name: en.home.emptyTitle })).toBeNull();
     } else {
-      // Home is the empty page of the design system until its tasks fill it,
-      // with one short line of its own per kind (pull request #80, decision 3).
+      // A role of a later release: the empty page with one short line of its own
+      // (pull request #80, decision 3).
       const line = await screen.findByText(en.home[HOME_KIND[role]]);
       expect(line.tagName).toBe('P');
       expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
@@ -172,7 +185,7 @@ describe('the role switcher', () => {
       'GET /api/timetable/home': () => json(NO_LESSONS),
     });
 
-  it('starts with the first role of the table and changes menu and home without a call', async () => {
+  it('starts with the first role of the table and changes menu and home, asking only for the new home cards', async () => {
     const calls = twoRoles();
     renderApp('/');
     await heading(en.home.title);
@@ -201,7 +214,25 @@ describe('the role switcher', () => {
     expect(side().queryByText(en.menu.plans)).not.toBeNull();
     expect(side().queryByText(en.menu.people)).toBeNull();
     expect(side().queryByText(en.menu.classes)).toBeNull();
-    expect(calls).toHaveLength(before);
+    // Task 9.4b: only the reads of the Teacher's home ask again (its cards, and its lessons, now
+    // drawn in another place of the page); the menu and the rights ask nothing.
+    await waitFor(() => {
+      expect(calls.slice(before).map((call) => call.route)).toContain(
+        'GET /api/results/early-warning',
+      );
+    });
+    const HOME_READS = new Set([
+      'GET /api/results/early-warning?for=own_journals',
+      'GET /api/timetable/home',
+      'GET /api/journal/reminders',
+      'GET /api/journal/exemptions-today',
+    ]);
+    expect(
+      calls
+        .slice(before)
+        .map((call) => `${call.route}${call.query ?? ''}`)
+        .filter((route) => !HOME_READS.has(route)),
+    ).toEqual([]);
     expect(window.sessionStorage.getItem(ROLE_STORAGE_KEY)).toBe('teacher');
     expect(screen.getByRole('button', { name: roleButton('teacher') })).toBeDefined();
   });

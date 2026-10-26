@@ -14,6 +14,8 @@ import { ExemptionsController, ExemptionsTodayController } from './exemptions.co
 import { Exemptions } from './exemptions.service.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AttendanceController } from './attendance.controller.js';
+import { AttendanceTodayController } from './attendance-today.controller.js';
+import { AttendanceTodayService } from './attendance-today.service.js';
 import { AttendanceService } from './attendance.service.js';
 import { CellActionsService } from './cell-actions.service.js';
 import { CommentsController } from './comments.controller.js';
@@ -53,6 +55,8 @@ import { WorksService } from './works.service.js';
     LeavingResultsController,
     // Task 8.7: the reminders, the counts per teacher and the orphan lessons.
     LessonStatusController,
+    // Task 9.4b: the attendance of classes for the home pages.
+    AttendanceTodayController,
     // Task 8.9: the exports of journals.
     JournalExportsController,
     SupportViewController,
@@ -60,6 +64,7 @@ import { WorksService } from './works.service.js';
   providers: [
     JournalGridReader,
     AttendanceService,
+    AttendanceTodayService,
     StudentAbsences,
     WorksService,
     RatingService,

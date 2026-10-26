@@ -7,6 +7,17 @@ import { relativeNoValidPhoneQuery, studentNoClassQuery } from '@/features/peopl
 import { TeachingHome } from '@/features/timetable/teaching-home';
 import { attentionQuery } from '@/features/timetable/timetable-api';
 import { AttentionTiles } from './attention-tiles';
+import {
+  AttendanceOverview,
+  BranchSummary,
+  ConflictsCard,
+  EarlyWarningCard,
+  LessonsTodayCard,
+  MyJournalsCard,
+  QuarterProgressCard,
+  RequestsCard,
+  TutorClasses,
+} from './home-cards';
 import { NoClassTile } from './no-class-tile';
 import { NoValidPhoneTile } from './no-valid-phone-tile';
 import { useView } from './use-view';
@@ -26,9 +37,18 @@ export function HomePage() {
       <PageHeader title={t('home.title')} />
       {kind === 'academic_vice_principal' ? (
         <ViceHome />
-      ) : kind === 'teaching' || kind === 'tutor' ? (
-        // Task 5.9b: the own lessons of every branch; the rest of `08` comes with the journal and 9.4b.
-        <TeachingHome />
+      ) : kind === 'teaching' ? (
+        <TeachingFirst />
+      ) : kind === 'tutor' ? (
+        // Task 9.4b: the own classes, then the Tutor's own lessons (5.9b).
+        <div className="grid gap-6">
+          <TutorClasses />
+          <TeachingHome />
+        </div>
+      ) : kind === 'attendance_overview' ? (
+        <AttendanceOverview />
+      ) : kind === 'branch_summary' ? (
+        <BranchSummary />
       ) : (
         <EmptyState
           title={t('home.emptyTitle')}
@@ -36,6 +56,26 @@ export function HomePage() {
         />
       )}
     </section>
+  );
+}
+
+/**
+ * The home of a Teacher, a Head Teacher and a Senior Head Teacher (`08`, first row; task 9.4b):
+ * today's lessons with their status and the reminders (5.9b, 8.7), quick entry to each journal,
+ * the early-warning list for own journals, and for the Head Teachers the requests waiting.
+ */
+function TeachingFirst() {
+  const { role } = useView();
+  const heads = role === 'head_teacher' || role === 'senior_head_teacher';
+  return (
+    <div className="grid gap-6">
+      <TeachingHome />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MyJournalsCard />
+        <EarlyWarningCard scope={{ kind: 'own_journals' }} />
+        {heads && <RequestsCard unlocks />}
+      </div>
+    </div>
   );
 }
 
@@ -69,12 +109,18 @@ function ViceHome() {
     !attention.isError;
   return (
     <div className="grid gap-6">
+      {/* Task 9.4b: the rest of `08`'s row; the free now board comes with 5.7c. */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <LessonsTodayCard />
+        <QuarterProgressCard />
+        <ConflictsCard />
+        <RequestsCard unlocks={false} />
+      </div>
       <NoClassTile />
       <NoValidPhoneTile />
       <AttentionTiles />
-      {nothing && (
-        <EmptyState title={t('home.emptyTitle')} text={t('home.academic_vice_principal')} />
-      )}
+      {nothing && <p className="text-muted-foreground">{t('home.vice.nothingWaiting')}</p>}
+      <EarlyWarningCard scope={{ kind: 'all' }} title={t('home.earlyWarning.forBranch')} />
     </div>
   );
 }

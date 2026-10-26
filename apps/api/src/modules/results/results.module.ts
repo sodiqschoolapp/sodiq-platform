@@ -17,6 +17,8 @@ import {
 } from './daily/daily-jobs.js';
 import { dailyBranchOf, DailyWork } from './daily/daily.service.js';
 import { EarlyWarningController } from './early-warning.controller.js';
+import { BranchSummaryController } from './branch-summary.controller.js';
+import { BranchSummaryService } from './branch-summary.service.js';
 import { EarlyWarningService } from './early-warning.service.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
@@ -34,8 +36,17 @@ import { StudentResultsService } from './student-results.service.js';
     ClosingController,
     RatingController,
     EarlyWarningController,
+    // Task 9.4b: the branch summary of the home page.
+    BranchSummaryController,
   ],
-  providers: [StudentResultsService, ClosingService, DailyWork, RatingService, EarlyWarningService],
+  providers: [
+    StudentResultsService,
+    ClosingService,
+    DailyWork,
+    RatingService,
+    EarlyWarningService,
+    BranchSummaryService,
+  ],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(

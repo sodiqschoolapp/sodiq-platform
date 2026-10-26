@@ -72,7 +72,8 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
  * that no banner shows; the branches without an Academic Vice Principal
  * (task 2.3b-2), none; the own lessons of the home page of a role that
  * teaches (task 5.9b), none, since the default session is a Teacher's; its
- * exemption cards (task 8.5), none.
+ * exemption cards (task 8.5), none; the cards of the home pages (task 9.4b),
+ * each empty.
  */
 const SHELL_ANSWERS: Record<string, Handler> = {
   'GET /api/access/super-admins': () => json({ active: 2 }),
@@ -91,6 +92,75 @@ const SHELL_ANSWERS: Record<string, Handler> = {
     json({ date: '2026-10-19', exemptToday: [], backToday: [] }),
   // Task 8.7: the reminders of the teaching home.
   'GET /api/journal/reminders': () => json({ today: '2026-10-19', reminders: [] }),
+  // Task 9.4b: the cards of the home pages.
+  'GET /api/results/early-warning': () =>
+    json({
+      quarter: null,
+      quarters: [],
+      thresholds: {
+        lowResult: 50,
+        resultDrop: 15,
+        attendancePercent: 80,
+        absencesInRow: 3,
+        gradedWorks: 5,
+      },
+      daysAgoDate: null,
+      entries: [],
+    }),
+  'GET /api/plans/requests': () => json({ requests: [], events: [] }),
+  'GET /api/journal/unlocks': () => json({ requests: [] }),
+  'GET /api/journal/attendance-today': () =>
+    json({
+      date: '2026-10-19',
+      weekFrom: '2026-10-19',
+      threshold: 80,
+      total: { attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null },
+      classes: [],
+    }),
+  'GET /api/journal/lessons-today': () =>
+    json({
+      date: '2026-10-19',
+      ahead: 0,
+      held: 0,
+      notStarted: 0,
+      inProgress: 0,
+      complete: 0,
+      incomplete: [],
+    }),
+  'GET /api/timetable/conflicts-summary': () => json({ drafts: [], published: null }),
+  'GET /api/results/branch-summary': () =>
+    json({
+      date: '2026-10-19',
+      students: 0,
+      staff: 0,
+      attendanceToday: { attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null },
+      quarter: null,
+      grades: [],
+    }),
+  'GET /api/results/closing': () =>
+    json({
+      quarters: [],
+      quarterId: null,
+      state: 'not_open',
+      opensOn: null,
+      lastDay: null,
+      closable: false,
+      lockNowNeeded: false,
+      startQuarter: false,
+      earlierOpen: false,
+      closing: null,
+      reopenings: [],
+      reopening: null,
+      changes: [],
+      closedJournals: [],
+      reopenedJournals: [],
+      check: null,
+      canApply: false,
+      canEdit: false,
+      blocking: 0,
+      warnings: 0,
+      items: [],
+    }),
 };
 
 export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {

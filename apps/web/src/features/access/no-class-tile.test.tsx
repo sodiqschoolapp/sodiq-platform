@@ -75,7 +75,7 @@ describe('the "No class" counter of the home page', () => {
       'GET /api/people/students/no-class': () => json({ count: 0 }),
     });
     renderApp('/');
-    await screen.findByText(en.home.academic_vice_principal);
+    await screen.findByText(en.home.vice.nothingWaiting);
     await waitFor(() => {
       expect(calls.some((call) => call.route === 'GET /api/people/students/no-class')).toBe(true);
     });
@@ -135,7 +135,7 @@ describe('the "No class" counter of the home page', () => {
         'GET /api/auth/session': () => json(sessionAs(role)),
       });
       renderApp('/');
-      await screen.findByText(en.home.branch_summary);
+      await screen.findByRole('heading', { name: en.home.summary.students });
       await waitFor(() => {
         expect(tile()).toBeNull();
       });

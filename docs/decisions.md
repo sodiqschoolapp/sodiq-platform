@@ -297,6 +297,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 26 October 2026: the home pages (task 9.4b)
+
+Plan approved on pull request #236 with corrections 1 to 4; decisions 1 to 12 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (new permission areas for new routes). `attendance_today` (`view`: Super Admin, Head Tutor, Spiritual Vice Principal, Tutor, class-scoped) and `branch_summary` (`view`: Super Admin, Principal); "absent now" names only for the Tutor's own classes and the Super Admin | `08`, Home pages by role; `02`; review correction 3 (decision 1) |
+| **Look first** (a role reads less on its home). The Head Teachers' early-warning card reads own journals (`for=own_journals`), the Tutor's each own class (`classId`); both only narrow | `08`, Teacher and Tutor rows (decision 2) |
+| **Look first** (a calculation reading). The week and the branch are one ratio of cells, never a mean of percents; a cell's exemption is the journal's reading, so a lesson left "as attended" counts | `edge/journal`, Daily attendance percent (decision 3, correction 1) |
+| **Look first** (a setting reused). "Classes below a set percent" reads `branch_settings.attendance_percent`. Proposed `/spec-change` for `03`, Settings: "Class attendance alert: the daily percent below which a class is shown on the Head Tutor's home page (default 80)." | Decision 4 |
+| **Look first** (a calculation reading). "Results by grade" is the mean quarter result of each grade's students by `classFigure`, stored records for a closed quarter. Proposed `/spec-change` for `08`, Principal row: "results by grade (the mean quarter result of each grade's students)" | Decision 5 |
+| **Look first** (the calculation module's version raised). `CALC_VERSION` 7 for `dailyAttendance`, `attendanceBelow` and `absentNow`; no existing formula changes | `version.ts`; `attendanceBelow` moved from the route into the module at code review (Calculation in one place) |
+| **Look first** (a spec row read narrowly). "Not exempt now" reads a live exemption of all subjects whose span holds the moment in branch time; an exemption of one subject (physical education) does not hide an absence from the school | `edge/journal`, "'Absent now'": absent is mark 0, absence from school; spec review of the code, should-fix 2 |
+| `classId` on the early-warning list is the Tutor's class card only: a class not among the reader's own classes as Tutor is refused (403), the Super Admin's included; the whole list stays open to the Super Admin | Permission review of the code |
+| `GET /api/journal/attendance-today` reads today only (no date in the query): every row of `08` says "today" | Permission review should-fix 2 |
+| Timetable conflicts: each draft and the version in force with the counts of `checkTimetable` over its pattern, as the grid and the readiness count them | Decision 6, correction 2 |
+| Quarter progress: the quarter's dates and the closing checklist's counts; the count of school days passed of approved decision 7 is not built (no reader counts school days of a quarter yet; From line on 9.3b) | Decision 7, changed at build |
+| "Absent now" is mark 0 only; "exempt now" is a live exemption of all subjects holding the moment in branch time | Decision 8 |
+| Requests waiting: plan requests and unlock requests the reader may decide for the Head Teachers; plan requests for the Academic Vice Principal | Decision 9 |
+| Students active and started; staff not out for good (`staff_out_for_good`), vacancies left out | Decision 10 |
+| **Build decision.** "Quick entry to each journal" lists the journals of the week's own lessons in the branch in use (from the teaching home), not the Journals page, which for a Head Teacher lists the subject's journals | `08`, Teacher row |
+| **Build decision.** The Tutor's class card reads the class's timetable of the day through the class view (5.9a) | `08`, Tutor row |
+
 ## 26 October 2026: the early-warning list (task 9.4a)
 
 Plan approved on pull request #235 with corrections 1 and 2 (marking handled is refused in a closed quarter with `quarter_closed`; a handled run of absences returns when a new run began after the handling); decisions 1 to 15 confirmed there, decision 11 changed by correction 2. Flagged on issue #42.

@@ -71,7 +71,7 @@ describe('the "no valid phone" counter of the home page', () => {
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
     });
     renderApp('/');
-    await screen.findByText(en.home.academic_vice_principal);
+    await screen.findByText(en.home.vice.nothingWaiting);
     await waitFor(() => {
       expect(calls.some((call) => call.route === 'GET /api/people/relatives/no-valid-phone')).toBe(
         true,

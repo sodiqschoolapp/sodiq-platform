@@ -85,6 +85,7 @@ describe('class scope', () => {
       'absence_reasons',
       'rating',
       'early_warning',
+      'attendance_today',
     ]);
   });
 
