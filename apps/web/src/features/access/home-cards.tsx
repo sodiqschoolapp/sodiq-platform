@@ -221,7 +221,7 @@ export function TutorClassCard({
   const lessons = (view.data?.lessons ?? []).filter((lesson) => lesson.date === date);
   const absent = one.absentNow ?? [];
   return (
-    <Card title={t('home.tutor.classTitle', { name: one.class.name })} name="tutor-class">
+    <Card title={t('home.tutorClass.classTitle', { name: one.class.name })} name="tutor-class">
       <dl className="grid gap-1">
         <div>
           <dt className="inline font-semibold">{t('home.attendance.today')}: </dt>
@@ -237,9 +237,9 @@ export function TutorClassCard({
         </div>
       </dl>
       <div className="grid gap-1" data-absent-now="">
-        <h3 className="font-semibold">{t('home.tutor.absentNow')}</h3>
+        <h3 className="font-semibold">{t('home.tutorClass.absentNow')}</h3>
         {absent.length === 0 ? (
-          <p className="text-muted-foreground">{t('home.tutor.nobodyAbsent')}</p>
+          <p className="text-muted-foreground">{t('home.tutorClass.nobodyAbsent')}</p>
         ) : (
           <ul className="grid gap-1">
             {absent.map((entry) => (
@@ -251,7 +251,7 @@ export function TutorClassCard({
         )}
       </div>
       <div className="grid gap-1" data-class-today="">
-        <h3 className="font-semibold">{t('home.tutor.timetable')}</h3>
+        <h3 className="font-semibold">{t('home.tutorClass.timetable')}</h3>
         {waiting(view) ??
           (lessons.length === 0 ? (
             <p className="text-muted-foreground">{t('home.lessons.noToday')}</p>
@@ -265,7 +265,7 @@ export function TutorClassCard({
                       to: timeText(lesson.end),
                     }),
                     lesson.subject.names[language],
-                    ...(lesson.cancelCause === null ? [] : [t('home.tutor.cancelled')]),
+                    ...(lesson.cancelCause === null ? [] : [t('home.tutorClass.cancelled')]),
                   ].join(' · ')}
                 </li>
               ))}
@@ -287,7 +287,7 @@ export function TutorClasses(): React.JSX.Element {
   if (classes.length === 0) {
     return (
       <section className={PANEL}>
-        <p className="text-muted-foreground">{t('home.tutor.noClass')}</p>
+        <p className="text-muted-foreground">{t('home.tutorClass.noClass')}</p>
       </section>
     );
   }

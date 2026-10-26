@@ -3208,7 +3208,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       unlocks_other: '{{count}} запроса на открытие',
     },
     journals: { title: 'Мои журналы', none: 'На этой неделе нет уроков.' },
-    tutor: {
+    tutorClass: {
       classTitle: 'Класс {{name}}',
       absentNow: 'Отсутствуют сейчас',
       nobodyAbsent: 'Никто.',
