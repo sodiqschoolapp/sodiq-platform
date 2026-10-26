@@ -3491,6 +3491,9 @@ export const uz: Texts<'one' | 'other'> = {
       plan_report: {
         export: 'Dars rejalari hisoboti eksport qilindi',
       },
+      rating: {
+        export: 'Reyting eksport qilindi',
+      },
       timetable_view: {
         export: 'Dars jadvali chop etildi yoki yuklab olindi',
       },

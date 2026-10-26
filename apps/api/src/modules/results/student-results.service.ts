@@ -51,8 +51,8 @@ import {
   subjectQuarterLessons,
   type StudentSubjectQuarter,
 } from '../journal/subject-quarter-lessons.js';
-import { recordsInForce, reopenedJournals } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { storedRecordsOf } from './stored-records.js';
 
 /**
  * A student's results and attendance on the profile (task 9.1; `08`, Student
@@ -761,9 +761,8 @@ const notOfficialOf = (
   );
 
 /**
- * The final record in force of a student and subject (task 9.2b), as stored: the highest version
- * in force that holds one (task 9.2c); `undefined` when the journal it is listed under has an
- * unfinished reopening, which is read live.
+ * The final record in force of a student and subject (task 9.2b), as stored (`storedRecordsOf`);
+ * `undefined` when the journal it is listed under has an unfinished reopening, which is read live.
  */
 async function storedRecordOf(
   transaction: Transaction,
@@ -771,12 +770,9 @@ async function storedRecordOf(
   subjectId: string,
   studentId: string,
 ): Promise<{ record: unknown; reopened: boolean }> {
-  const found = (await recordsInForce(transaction, quarterId, { subjectId, studentId })).get(
-    `${subjectId}|${studentId}`,
+  return (
+    (await storedRecordsOf(transaction, quarterId, { subjectId, studentId })).get(
+      `${subjectId}|${studentId}`,
+    ) ?? { record: undefined, reopened: false }
   );
-  if (found === undefined) return { record: undefined, reopened: false };
-  if ((await reopenedJournals(transaction, [quarterId])).has(`${quarterId}|${found.journalId}`)) {
-    return { record: undefined, reopened: true };
-  }
-  return { record: found.record, reopened: false };
 }

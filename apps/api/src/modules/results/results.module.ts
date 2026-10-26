@@ -16,17 +16,19 @@ import {
   scheduleTickJob,
 } from './daily/daily-jobs.js';
 import { dailyBranchOf, DailyWork } from './daily/daily.service.js';
+import { RatingController } from './rating.controller.js';
+import { RatingService } from './rating.service.js';
 import { StudentResultsController } from './student-results.controller.js';
 import { StudentResultsService } from './student-results.service.js';
 
 /**
- * Results of students (task 9.1 on): read from the journal through `packages/calc`. Task 9.2c:
+ * Results of students (task 9.1 on) and the rating (task 9.3a): read from the journal through `packages/calc`. Task 9.2c:
  * the schedule's tick and the daily work of each branch (`daily/`).
  */
 @Module({
   imports: [AccessModule, NotificationsModule, PlansModule],
-  controllers: [StudentResultsController, ClosingController],
-  providers: [StudentResultsService, ClosingService, DailyWork],
+  controllers: [StudentResultsController, ClosingController, RatingController],
+  providers: [StudentResultsService, ClosingService, DailyWork, RatingService],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(

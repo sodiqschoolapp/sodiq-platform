@@ -394,6 +394,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 8.8: a plan's PDF or Excel with its marks, and the plan reports in Excel.
     'plan.export',
     'plan_report.export',
+    // Task 9.3a: a rating list in Excel.
+    'rating.export',
     'building.export',
     'room.export',
     'division.export',

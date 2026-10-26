@@ -3601,6 +3601,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       plan_report: {
         export: 'Отчёт по планам уроков выгружен',
       },
+      rating: {
+        export: 'Рейтинг выгружен',
+      },
       timetable_view: {
         export: 'Расписание распечатано или выгружено',
       },

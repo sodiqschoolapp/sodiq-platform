@@ -3449,6 +3449,9 @@ export const en = {
       plan_report: {
         export: 'Lesson plan report exported',
       },
+      rating: {
+        export: 'Rating exported',
+      },
       timetable_view: {
         export: 'Timetable printed or exported',
       },
