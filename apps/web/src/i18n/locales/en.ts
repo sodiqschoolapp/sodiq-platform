@@ -668,6 +668,8 @@ export const en = {
       'This student was listed after you opened the checklist and was not decided. Reload it and decide again.',
     quarter_closed:
       'This quarter is closed: its journals and results are final, so this change is not made.',
+    early_warning_not_listed:
+      'This reason is no longer listed for the student: the figures changed or someone marked it handled. Reload the list.',
     closing_before_last_day: 'A quarter can be closed on its last day or later.',
     closing_earlier_open:
       'Close the earlier quarters of the year first: quarters are closed in order.',
@@ -3309,6 +3311,9 @@ export const en = {
         quarter_reopened: 'Quarter reopened',
         journal_closed_again: 'Reopened journal closed again',
         recalculation_applied: 'Recalculated results applied',
+      },
+      early_warning: {
+        handled: 'Early-warning entry marked handled',
       },
       calendar_entry: {
         create: 'Calendar day added',
@@ -6534,6 +6539,52 @@ export const en = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    earlyWarning: {
+      title: 'Early warning',
+      caption: 'Students who need attention',
+      quarter: 'Quarter',
+      quarterNumber: 'Quarter {{number}}',
+      student: 'Student',
+      subject: 'Subject',
+      unit: 'Class or group',
+      reasons: 'Reasons',
+      result: 'Result',
+      trend: 'Current work',
+      attendance: 'Attendance',
+      reason: {
+        low_result: 'Low result',
+        result_drop: 'Result dropped',
+        low_attendance: 'Low attendance',
+        absences_in_row: 'Absences in a row',
+      },
+      reasonText: {
+        low_result: 'Result {{figure}}, below {{threshold}}',
+        result_drop: 'Result down by {{figure}}',
+        low_attendance: 'Attendance {{figure}}%, below {{threshold}}%',
+        absences_in_row: 'Absences in a row: {{figure}}',
+      },
+      against: {
+        days_ago: 'against 28 days ago',
+        previous_quarter: 'against the previous quarter',
+      },
+      trendText: 'Now {{now}} · 28 days ago {{daysAgo}} · previous quarter {{previous}}',
+      works: 'Graded works',
+      run: 'Absences in a row',
+      attendanceOnly: 'Attendance only',
+      openJournal: 'Open the journal',
+      handledBefore: 'Marked handled on {{date}} by {{name}} at {{figure}}: {{note}}',
+      handledBeforeNoNote: 'Marked handled on {{date}} by {{name}} at {{figure}}',
+      handle: 'Mark handled',
+      note: 'Staff note',
+      which: 'Reason',
+      handled: 'Marked handled.',
+      closed: 'The quarter is closed: entries can no longer be marked handled.',
+      empty: 'No student needs attention in this list.',
+      nothing: 'No quarter has started yet.',
+      thresholds:
+        'Judged from {{works}} graded works. Thresholds: result below {{lowResult}}, a drop of {{resultDrop}}, attendance below {{attendancePercent}}%, {{absencesInRow}} absences in a row.',
+      link: 'Early warning',
+    },
     ratingList: {
       title: 'Rating',
       kind: 'List',

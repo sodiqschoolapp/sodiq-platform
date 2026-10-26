@@ -683,6 +683,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu oʻquvchi siz roʻyxatni ochganingizdan keyin qoʻshildi va u boʻyicha qaror qabul qilinmadi. Roʻyxatni yangilab, qayta qaror qiling.',
     quarter_closed:
       'Chorak yopilgan: uning jurnallari va natijalari yakuniy, shuning uchun bu oʻzgarish kiritilmadi.',
+    early_warning_not_listed:
+      'Bu sabab endi oʻquvchi uchun koʻrsatilmaydi: raqamlar oʻzgargan yoki uni allaqachon belgilashgan. Roʻyxatni yangilang.',
     closing_before_last_day: 'Chorakni uning oxirgi kunida yoki undan keyin yopish mumkin.',
     closing_earlier_open:
       'Avval yilning oldingi choraklarini yoping: choraklar tartib bilan yopiladi.',
@@ -3351,6 +3353,9 @@ export const uz: Texts<'one' | 'other'> = {
         quarter_reopened: 'Chorak qayta ochildi',
         journal_closed_again: 'Qayta ochilgan jurnal yana yopildi',
         recalculation_applied: 'Qayta hisoblangan natijalar qoʻllandi',
+      },
+      early_warning: {
+        handled: 'Erta ogohlantirish yozuvi koʻrib chiqildi deb belgilandi',
       },
       calendar_entry: {
         create: 'Kalendar kuni qoʻshildi',
@@ -6593,6 +6598,52 @@ export const uz: Texts<'one' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    earlyWarning: {
+      title: 'Erta ogohlantirish',
+      caption: 'Diqqat talab qiladigan oʻquvchilar',
+      quarter: 'Chorak',
+      quarterNumber: '{{number}}-chorak',
+      student: 'Oʻquvchi',
+      subject: 'Fan',
+      unit: 'Sinf yoki guruh',
+      reasons: 'Sabablar',
+      result: 'Natija',
+      trend: 'Joriy ish',
+      attendance: 'Davomat',
+      reason: {
+        low_result: 'Past natija',
+        result_drop: 'Natija pasaygan',
+        low_attendance: 'Past davomat',
+        absences_in_row: 'Ketma-ket qoldirilgan darslar',
+      },
+      reasonText: {
+        low_result: 'Natija {{figure}}, {{threshold}} dan past',
+        result_drop: 'Natija {{figure}} ga pasaygan',
+        low_attendance: 'Davomat {{figure}}%, {{threshold}}% dan past',
+        absences_in_row: 'Ketma-ket qoldirilgan: {{figure}}',
+      },
+      against: {
+        days_ago: '28 kun oldingiga nisbatan',
+        previous_quarter: 'oldingi chorakka nisbatan',
+      },
+      trendText: 'Hozir {{now}} · 28 kun oldin {{daysAgo}} · oldingi chorak {{previous}}',
+      works: 'Baholangan ishlar',
+      run: 'Ketma-ket qoldirilgan',
+      attendanceOnly: 'Faqat davomat',
+      openJournal: 'Jurnalni ochish',
+      handledBefore: '{{date}} kuni {{name}} koʻrib chiqildi deb belgilagan ({{figure}}): {{note}}',
+      handledBeforeNoNote: '{{date}} kuni {{name}} koʻrib chiqildi deb belgilagan ({{figure}})',
+      handle: 'Koʻrib chiqildi deb belgilash',
+      note: 'Xodimlar uchun izoh',
+      which: 'Sabab',
+      handled: 'Koʻrib chiqildi deb belgilandi.',
+      closed: 'Chorak yopilgan: endi koʻrib chiqildi deb belgilab boʻlmaydi.',
+      empty: 'Bu roʻyxatda diqqat talab qiladigan oʻquvchi yoʻq.',
+      nothing: 'Hali birorta chorak boshlanmagan.',
+      thresholds:
+        'Kamida {{works}} ta baholangan ishdan keyin baholanadi. Chegaralar: natija {{lowResult}} dan past, {{resultDrop}} ga pasayish, davomat {{attendancePercent}}% dan past, ketma-ket {{absencesInRow}} ta qoldirish.',
+      link: 'Erta ogohlantirish',
+    },
     ratingList: {
       title: 'Reyting',
       kind: 'Roʻyxat',

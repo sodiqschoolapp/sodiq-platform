@@ -85,6 +85,7 @@ export function RatingPage(): React.JSX.Element {
   const search: RatingSearch = useSearch({ from: '/app/results/rating' });
   const { branchId } = useView();
   const mayClose = useMayView('quarter_closing');
+  const mayWarn = useMayView('early_warning');
   const choices = useQuery(ratingChoicesQuery(branchId, search.year));
   const data = choices.data;
 
@@ -380,6 +381,11 @@ export function RatingPage(): React.JSX.Element {
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
           <>
+            {mayWarn && (
+              <Link to="/results/early-warning" className="text-link self-center text-sm">
+                {t('results.earlyWarning.link')}
+              </Link>
+            )}
             {mayClose && (
               <Link to="/results/closing" className="text-link self-center text-sm">
                 {t('results.ratingList.closingLink')}
