@@ -18,7 +18,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { plannedJournal } from '../journal/journal-grid.query.js';
-import { lockOpenQuarter } from '../setup/closed-quarters.js';
+import { lockOpenJournalQuarter, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { gateDetail, type GatePass, type GateTarget } from './plan-gate.js';
 import {
@@ -346,7 +346,9 @@ export class PlanOutcomesService {
       if (reach !== 'decide') throw new ApiException('plan_scope', 403);
       if (!plannedJournal(scene.journal)) throw new ApiException('plan_attendance_only', 409);
       if (scene.closed) throw new ApiException('plan_year_closed', 409);
-      await lockOpenQuarter(transaction, scene.quarter.id, 'plan_quarter_closed');
+      // A reopened journal takes the drop (0135): it is the one way out of a re-close blocked on
+      // `plan_not_covered` in the last quarter or with the next quarter closed (code review round 1).
+      await lockOpenJournalQuarter(transaction, scene.quarter.id, journalId, 'plan_quarter_closed');
       if (!scene.open) throw new ApiException('plan_closed', 409);
       await this.plans.lockPlanOf(transaction, journalId, scene.quarter.id);
       const rows = await this.plans.rowsOfJournal(transaction, scene, journalId);

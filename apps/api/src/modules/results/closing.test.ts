@@ -4809,5 +4809,84 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         .execute();
       expect(endedOutcomes).toEqual([]);
     });
+
+    // Code review round 1: the planned "journal re-close in the last quarter is refused
+    // `closing_blocked` the same way", where `quarter_next` is null.
+    it('refuses the re-close of a reopened journal of the last quarter while an item is left, and re-closes once it is dropped', async () => {
+      const b = await base();
+      const q4 = await quarterOf(b.s.year, 4);
+      const closer = await account();
+      for (const number of [1, 2, 3, 4]) {
+        await closeQuarter(t.database, {
+          branchId: b.s.branch,
+          quarterId: await quarterOf(b.s.year, number),
+          accountId: closer.account.id,
+        });
+      }
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${q4}/reopen`,
+            { journalId: b.journal, reason: 'A plan item was left behind', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+        },
+        '2027-06-01T09:00:00+05:00',
+      );
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[3][0], QUARTERS[3][1]);
+      const item = await pastItem(b.s.branch, b.s.subject, b.journal, q4, rows, 'Percentages');
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(q4)));
+          const panel = list.reopenedJournals[0];
+          expect(
+            (panel?.items ?? [])
+              .filter((one) => one.kind === 'plan_not_covered')
+              .map((one) => [one.journal?.id, one.notCovered]),
+          ).toEqual([[b.journal, 1]]);
+          expect(panel?.closable).toBe(false);
+          const closePanel = `/api/results/closing/${q4}/journals/${b.journal}/close`;
+          const blocked = await calls.post(
+            b.s.branch,
+            closePanel,
+            { warnings: warningsOf({ ...list, items: panel?.items ?? [] }), lockNow: false },
+            randomUUID(),
+          );
+          expect([blocked.status, codeOf(blocked)]).toEqual([409, 'closing_blocked']);
+          // "Only merge or drop exist": the Academic Vice Principal drops it in the reopened journal.
+          const dropped = await calls.post(
+            b.s.branch,
+            `/api/plans/journals/${b.journal}/not-covered/${item}/drop`,
+            { quarterId: q4, reason: 'Covered in the revision lessons' },
+          );
+          expect(dropped.status, JSON.stringify(dropped.body)).toBe(200);
+          const after = checklistOf(await calls.get(b.s.branch, path(q4)));
+          const cleared = after.reopenedJournals[0];
+          expect((cleared?.items ?? []).filter((one) => one.kind === 'plan_not_covered')).toEqual(
+            [],
+          );
+          const done = await calls.post(
+            b.s.branch,
+            closePanel,
+            { warnings: warningsOf({ ...after, items: cleared?.items ?? [] }), lockNow: false },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(closingClosedSchema.parse(done.body).carried).toBe(0);
+          // Closed again, the journal refuses a drop as any closed quarter does.
+          const again = await calls.post(
+            b.s.branch,
+            `/api/plans/journals/${b.journal}/not-covered/${item}/drop`,
+            { quarterId: q4, reason: 'Covered in the revision lessons' },
+          );
+          expect([again.status, codeOf(again)]).toEqual([409, 'plan_quarter_closed']);
+        },
+        '2027-06-02T10:00:00+05:00',
+      );
+    });
   });
 });
