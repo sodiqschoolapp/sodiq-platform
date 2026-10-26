@@ -188,6 +188,19 @@ const RATING_READERS: readonly Role[] = [
   'teacher',
 ];
 
+/** Task 9.4a, decision 1: the readers of the early-warning list (`08`, Who sees it). */
+const EARLY_WARNING_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+];
+
 /** Task 7.3, decision 2: who keeps master plans (the keeper of the subject in the route). */
 const PLAN_MASTER_KEEPERS: readonly Role[] = [
   'super_admin',
@@ -479,6 +492,12 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/results/rating/class': { branch: 'request', roles: RATING_READERS },
   'GET /api/results/rating/classes': { branch: 'request', roles: RATING_READERS },
   'POST /api/results/rating/export': { branch: 'request', roles: RATING_READERS },
+  // Task 9.4a, decision 1: the list; marking handled for the Tutor, the Teacher and the Super Admin.
+  'GET /api/results/early-warning': { branch: 'request', roles: EARLY_WARNING_READERS },
+  'POST /api/results/early-warning/handled': {
+    branch: 'request',
+    roles: ['super_admin', 'tutor', 'teacher'],
+  },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

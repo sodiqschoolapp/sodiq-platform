@@ -761,6 +761,27 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view', 'export'],
     teacher: ['view', 'export'],
   }),
+  /**
+   * The early-warning list (task 9.4a, plan decision 1, Look first): `08`, Early-warning list,
+   * "Who sees it": "A teacher for own journals; a Tutor for own class in all subjects; a Head
+   * Teacher for own subjects; a Senior Head Teacher for own subjects in every branch; the Head
+   * Tutor and the Vice Principal for Spiritual and Moral Education for attendance; the Academic
+   * Vice Principal and Principal for the branch"; `02`, Head Teacher, Scope: "the early-warning
+   * list". `edit`: "A Tutor or teacher can add a staff-only note ... and mark the entry as
+   * handled", and the Super Admin, who can do everything every other role can (`02`). The route
+   * decides the scope and the reasons shown. A new area for new routes; no role is widened.
+   */
+  early_warning: rows({
+    super_admin: ['view', 'edit'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view', 'edit'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view', 'edit'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

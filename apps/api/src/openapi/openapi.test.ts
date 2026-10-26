@@ -280,6 +280,8 @@ describe('OpenAPI document', () => {
         '/api/results/closing/{quarterId}/recalculation/apply',
         '/api/results/closing/{quarterId}/remind',
         '/api/results/closing/{quarterId}/reopen',
+        '/api/results/early-warning',
+        '/api/results/early-warning/handled',
         '/api/results/rating/choices',
         '/api/results/rating/class',
         '/api/results/rating/classes',

@@ -43,6 +43,8 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
   // Task 9.3a, decision 4 with review correction 2: the ratings of own classes and of the
   // groups whose every class is an own class.
   'rating',
+  // Task 9.4a: the early-warning list of the students of own classes, in all subjects.
+  'early_warning',
 ];
 
 /**

@@ -329,6 +329,8 @@ export const AUDIT_ACTION_GROUPS = {
     'results.quarter_reopened',
     'results.journal_closed_again',
     'results.recalculation_applied',
+    // Task 9.4a: a reason of the early-warning list marked handled, with a staff-only note.
+    'early_warning.handled',
   ],
   // Task 7.1a: a plan made on its first write, an item created, saved or cleared, a file added
   // or removed. The entries are the plan's history (old and new values of what changed).
