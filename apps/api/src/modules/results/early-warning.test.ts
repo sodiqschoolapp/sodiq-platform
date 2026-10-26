@@ -474,6 +474,7 @@ describe('the early-warning list (08, Early-warning list)', () => {
             ).toBe(true);
             expect(entry.figures.result, one.name).toBeNull();
             expect(entry.figures.currentWork.now, one.name).toBeNull();
+            expect(entry.figures.gradedWorks, one.name).toBeNull();
           }
         }
       });
@@ -606,6 +607,66 @@ describe('the early-warning list (08, Early-warning list)', () => {
       figure: 0,
       note: 'Spoke to the parents.',
     });
+
+    // The list's quarter is a record of the branch: another branch's, or an unknown one, is 404.
+    await as(owner, branch, [], async ({ get }) => {
+      for (const quarterId of [otherQuarter, UNKNOWN]) {
+        const response = await get(`${PATH}?quarterId=${quarterId}`);
+        expect(response.status, quarterId).toBe(404);
+        expect(codeOf(response)).toBe('not_found');
+      }
+    });
+
+    // The Tutor of the first class marks too (permission review, must-fix 1); the Tutor of the
+    // other class is past the guard and refused in the route. The Tutor is also a Teacher of the
+    // branch who teaches no journal of the class: the row and its audit entry name the Tutor's
+    // assignment, the one that allows the mark (should-fix 1).
+    const tutor = await account();
+    await load.classes.person(branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(branch, c.s.classId, tutor.account.id);
+    const otherTutor = await account();
+    await load.classes.person(branch, ['uz'], { accountId: otherTutor.account.id });
+    await load.tutorOf(branch, c.s.otherClass, otherTutor.account.id);
+    const tutorBody = { ...body, reason: 'absences_in_row', note: '' };
+    await as(otherTutor, branch, [], async ({ post }) => {
+      const response = await post(HANDLED, tutorBody);
+      expect(response.status).toBe(403);
+      expect(codeOf(response)).toBe('permission_denied');
+    });
+    await as(tutor, branch, [{ role: 'teacher', branchId: branch }], async ({ post }) => {
+      const response = await post(HANDLED, tutorBody);
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+    });
+    const tutorRole = await t.database.migrator
+      .selectFrom('assignments')
+      .select('id')
+      .where('account_id', '=', tutor.account.id)
+      .where('role', '=', 'tutor')
+      .executeTakeFirstOrThrow();
+    const tutorRow = (await handledRows([branch])).find(
+      (one) => one.reason === 'absences_in_row',
+    );
+    expect(tutorRow?.assignment_id).toBe(tutorRole.id);
+    expect(
+      (
+        await t.database.migrator
+          .selectFrom('audit_log')
+          .select('assignment_id')
+          .where('record_id', '=', tutorRow?.id ?? '')
+          .executeTakeFirstOrThrow()
+      ).assignment_id,
+    ).toBe(tutorRole.id);
+
+    // The Super Admin marks in the branch (must-fix 2).
+    await as(await superAdmin(), branch, [], async ({ post }) => {
+      const response = await post(HANDLED, { ...body, studentId: c.students.laylo, note: '' });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+    });
+    expect(
+      (await handledRows([branch])).some(
+        (one) => one.student_id === c.students.laylo && one.reason === 'low_attendance',
+      ),
+    ).toBe(true);
   });
 
   /**
@@ -787,6 +848,20 @@ describe('the early-warning list (08, Early-warning list)', () => {
     // Super Admin; nothing is written.
     const before = await handledRows([branch]);
     const auditBefore = await auditCount();
+    // Out of scope comes before closed: a Teacher of the branch who teaches no journal of the
+    // class is refused 403 on the closed quarter (should-fix 5).
+    const spare = await account();
+    await as(spare, branch, [{ role: 'teacher', branchId: branch }], async ({ post }) => {
+      const response = await post(HANDLED, {
+        quarterId: c.q1,
+        studentId: c.students.anvar,
+        subjectId: c.s.subject,
+        reason: 'low_attendance',
+        note: '',
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(403);
+      expect(codeOf(response)).toBe('permission_denied');
+    }, at('2026-12-22'));
     for (const browser of [owner, await superAdmin()]) {
       await as(
         browser,

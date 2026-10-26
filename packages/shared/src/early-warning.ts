@@ -107,7 +107,8 @@ export const earlyWarningEntrySchema = z.object({
     }),
     attendance: figureSchema,
     absenceRun: z.int().min(0),
-    gradedWorks: z.int().min(0),
+    /** `null` for a reader of the attendance reasons only (permission review, should-fix 4). */
+    gradedWorks: z.int().min(0).nullable(),
   }),
   reasons: z.array(reasonSchema).min(1),
   /** The reader may add a note and mark a reason handled. */

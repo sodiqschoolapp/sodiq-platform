@@ -340,7 +340,7 @@ function EntryPanel({
               })}
             </dd>
             <dt className="font-semibold">{t('results.earlyWarning.works')}</dt>
-            <dd>{String(figures.gradedWorks)}</dd>
+            <dd>{figureText(figures.gradedWorks)}</dd>
           </>
         )}
         <dt className="font-semibold">{t('results.earlyWarning.attendance')}</dt>

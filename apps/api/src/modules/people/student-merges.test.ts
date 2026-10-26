@@ -623,6 +623,31 @@ describe('the merge of two student records', () => {
       const subject = await classes.subject({ grades: [7] });
       await decision(east, eastYear, first.id, subject);
       await decision(east, eastYear, twice.id, subject);
+      // Task 9.4a (permission review, should-fix 3): the carry of the entries marked handled runs
+      // before this refusal; the refused merge leaves them where they were.
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', eastYear)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      const by = await classes.account();
+      for (const studentId of [first.id, twice.id]) {
+        await t.database.migrator
+          .insertInto('early_warning_handled')
+          .values({
+            branch_id: east,
+            quarter_id: quarter.id,
+            student_id: studentId,
+            subject_id: subject,
+            reason: 'low_result',
+            figure: 40,
+            handled_by: by,
+            assignment_id: '019a0000-0000-7000-8000-0000000000b3',
+            handled_at: new Date('2026-10-20T09:00:00+05:00'),
+          })
+          .execute();
+      }
       const before = await rowsOf();
       const response = await merge(first.id, twice.uid, east);
       refusedWith(response, 409, 'student_merge_decision_overlap');

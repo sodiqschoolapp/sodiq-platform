@@ -214,9 +214,8 @@ export class EarlyWarningService {
       const referenceDate = referenceDateOf(quarter, context.today);
       const scope = new Scope(context, referenceDate);
       await scope.load([student.id]);
-      if (!(await scope.mayHandle(student.id, judged?.journal ?? null))) {
-        throw new ApiException('permission_denied', 403);
-      }
+      const assignmentId = await scope.handlingAssignment(student.id, judged?.journal ?? null);
+      if (assignmentId === null) throw new ApiException('permission_denied', 403);
       if (quarter.closed) throw new ApiException('quarter_closed', 409);
       const reason = judged?.reasons.find((one) => one.kind === input.reason);
       if (judged === undefined || reason === undefined) {
@@ -241,7 +240,7 @@ export class EarlyWarningService {
           figure,
           note: input.note,
           handled_by: access.accountId,
-          assignment_id: access.assignmentId,
+          assignment_id: assignmentId,
           handled_at: context.now,
         })
         .returning(['id', 'handled_at'])
@@ -249,7 +248,7 @@ export class EarlyWarningService {
       await this.audit.record(transaction, {
         branchId: context.branchId,
         actorId: access.accountId,
-        assignmentId: access.assignmentId,
+        assignmentId,
         action: 'early_warning.handled',
         record: { type: 'early_warning_handled', id: row.id },
         newValue: {
@@ -652,9 +651,26 @@ class Scope {
 
   /** The Teacher of the journal, the Tutor of the student's class, or the Super Admin. */
   async mayHandle(studentId: string, journal: JournalRow | null): Promise<boolean> {
-    if (permittingOf(this.context, ['super_admin']).length > 0) return true;
-    if (this.tutorOf(studentId)) return true;
-    return journal !== null && (await this.ownsJournal(journal));
+    return (await this.handlingAssignment(studentId, journal)) !== null;
+  }
+
+  /**
+   * The assignment that allows the mark, named by the row and its audit entry (permission
+   * review, should-fix 1): the Super Admin's, the Tutor's of the student's class, or the
+   * Teacher's of the journal; `null` when none does.
+   */
+  async handlingAssignment(studentId: string, journal: JournalRow | null): Promise<string | null> {
+    const superAdmin = permittingOf(this.context, ['super_admin'])[0];
+    if (superAdmin !== undefined) return superAdmin.id;
+    const classId = this.classOf.get(studentId);
+    const tutor = permittingOf(this.context, ['tutor']).find(
+      (one) => classId !== undefined && one.classIds.includes(classId),
+    );
+    if (tutor !== undefined) return tutor.id;
+    const teacher = permittingOf(this.context, ['teacher'])[0];
+    return teacher !== undefined && journal !== null && (await this.ownsJournal(journal))
+      ? teacher.id
+      : null;
   }
 }
 
@@ -764,7 +780,7 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
               },
           attendance: shownOf(one.attendance),
           absenceRun: one.absenceRun,
-          gradedWorks: one.gradedWorks,
+          gradedWorks: attendanceOnly ? null : one.gradedWorks,
         },
         reasons: reasons.map(({ reason, before }) => ({
           kind: reason.kind,
