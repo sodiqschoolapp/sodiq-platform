@@ -6943,6 +6943,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       trendText: 'Сейчас {{now}} · 28 дней назад {{daysAgo}} · прошлая четверть {{previous}}',
       works: 'Оценённые работы',
       run: 'Пропуски подряд',
+      percent: '{{value}}%',
       attendanceOnly: 'Только посещаемость',
       openJournal: 'Открыть журнал',
       handledBefore: 'Отмечено как решённое {{date}}, {{name}}, при значении {{figure}}: {{note}}',

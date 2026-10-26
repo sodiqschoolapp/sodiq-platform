@@ -6629,6 +6629,7 @@ export const uz: Texts<'one' | 'other'> = {
       trendText: 'Hozir {{now}} · 28 kun oldin {{daysAgo}} · oldingi chorak {{previous}}',
       works: 'Baholangan ishlar',
       run: 'Ketma-ket qoldirilgan',
+      percent: '{{value}}%',
       attendanceOnly: 'Faqat davomat',
       openJournal: 'Jurnalni ochish',
       handledBefore: '{{date}} kuni {{name}} koʻrib chiqildi deb belgilagan ({{figure}}): {{note}}',

@@ -132,7 +132,9 @@ export function EarlyWarningPage(): React.JSX.Element {
         key: 'attendance',
         header: t('results.earlyWarning.attendance'),
         cell: (row) =>
-          row.figures.attendance === null ? '—' : `${String(row.figures.attendance)}%`,
+          row.figures.attendance === null
+            ? '—'
+            : t('results.earlyWarning.percent', { value: row.figures.attendance }),
         sortValue: (row) => row.figures.attendance,
         numeric: true,
       },
@@ -342,7 +344,11 @@ function EntryPanel({
           </>
         )}
         <dt className="font-semibold">{t('results.earlyWarning.attendance')}</dt>
-        <dd>{figures.attendance === null ? '—' : `${String(figures.attendance)}%`}</dd>
+        <dd>
+          {figures.attendance === null
+            ? '—'
+            : t('results.earlyWarning.percent', { value: figures.attendance })}
+        </dd>
         <dt className="font-semibold">{t('results.earlyWarning.run')}</dt>
         <dd>{String(figures.absenceRun)}</dd>
       </dl>

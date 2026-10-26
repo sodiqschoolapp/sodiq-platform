@@ -6570,6 +6570,7 @@ export const en = {
       trendText: 'Now {{now}} · 28 days ago {{daysAgo}} · previous quarter {{previous}}',
       works: 'Graded works',
       run: 'Absences in a row',
+      percent: '{{value}}%',
       attendanceOnly: 'Attendance only',
       openJournal: 'Open the journal',
       handledBefore: 'Marked handled on {{date}} by {{name}} at {{figure}}: {{note}}',

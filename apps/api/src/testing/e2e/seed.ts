@@ -5262,6 +5262,129 @@ try {
   }
   seeded.journalTeacher = { login: journalTeacher.login, password: journalTeacher.firstPassword };
 
+  // Task 9.4a: the Tutor of 7 Oxford of the "Journal browser test branch" opens the early-warning
+  // list and marks a reason handled with a note. Lola Abdullayeva, absent at every third lesson
+  // and with no number until now, gets 1 of 10 in the first five classworks of the quarter: a low
+  // result and attendance of 71, judged after five graded works (`08`, Early-warning list). No
+  // column and no row is added to the journal its own browser test reads. All names are invented.
+  const earlyTutor = await create('Gulchehra', 'Nazarova');
+  const earlyTutorRole = await transactions.run([journalBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: earlyTutor.id,
+      role: 'tutor',
+      branchId: journalBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const oxford = await migrator
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', journalBranch)
+      .where('name', '=', 'Oxford')
+      .executeTakeFirstOrThrow();
+    await migrator.transaction().execute(async (transaction) => {
+      // A Tutor of a class teaches in its language (`class_tutors_language`): a staff record.
+      const academic = await transaction
+        .selectFrom('divisions')
+        .select('id')
+        .where('name_en', '=', 'Academic')
+        .executeTakeFirstOrThrow();
+      const steam = await transaction
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'STEAM')
+        .executeTakeFirstOrThrow();
+      const person = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: 'S-778802',
+          account_id: earlyTutor.id,
+          first_name: 'Gulchehra',
+          last_name: 'Nazarova',
+          sex: 'female',
+          birth_date: '1988-04-05',
+          phone: '+998935558802',
+          admission_date: '2026-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: person.id, branch_id: journalBranch, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({
+          staff_id: person.id,
+          division_id: academic.id,
+          department_id: steam.id,
+          is_main: true,
+        })
+        .execute();
+      await transaction
+        .insertInto('staff_languages')
+        .values({ staff_id: person.id, language: 'uz' })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: person.id, status: 'active', valid_from: '2026-09-01' })
+        .execute();
+      await transaction
+        .insertInto('class_tutors')
+        .values({
+          branch_id: journalBranch,
+          class_id: oxford.id,
+          assignment_id: earlyTutorRole.id,
+          kind: 'tutor',
+          valid_from: new Date(),
+          own_until: null,
+          given_by: earlyTutor.id,
+        })
+        .execute();
+    });
+    const lola = await migrator
+      .selectFrom('students')
+      .select('id')
+      .where('uid', '=', '9999843')
+      .executeTakeFirstOrThrow();
+    const works = await migrator
+      .selectFrom('journal_works')
+      .innerJoin('lessons', 'lessons.id', 'journal_works.lesson_id')
+      .select([
+        'journal_works.id',
+        'journal_works.lesson_id',
+        sql<string>`lessons.lesson_date::text`.as('date'),
+      ])
+      .where('lessons.class_id', '=', oxford.id)
+      .where('journal_works.kind', '=', 'classwork')
+      .orderBy('lessons.starts_at')
+      .limit(5)
+      .execute();
+    for (const work of works) {
+      await migrator.transaction().execute(async (transaction) => {
+        const moment = `${work.date}T09:00:00+05:00`;
+        await sql`select set_config('app.now', ${moment}, true)`.execute(transaction);
+        await transaction
+          .insertInto('journal_cells')
+          .values({
+            branch_id: journalBranch,
+            lesson_id: work.lesson_id,
+            student_id: lola.id,
+            work_id: work.id,
+            score: 1,
+            version: 1,
+            changed_by: journalTeacher.id,
+            changed_how: 'entry',
+            changed_at: new Date(moment),
+          })
+          .execute();
+      });
+    }
+  }
+  seeded.earlyTutor = { login: earlyTutor.login, password: earlyTutor.firstPassword };
+
   // Task 6.3: a branch of its own for attendance entry: a class of three
   // students, a teacher of its statistics with one lesson yesterday at 08:00
   // (started whatever the hour of the test; spec review of the code, should-fix 7), and the class's Tutor with a staff record. The
@@ -6025,112 +6148,6 @@ try {
     login: ratingPrincipal.login,
     password: ratingPrincipal.firstPassword,
   };
-
-  // Task 9.4a: the Tutor of 7 Bristol of the same branch opens the early-warning list and marks a
-  // reason handled with a note. A third student of the class, Nodir Qosimov, is absent at both
-  // lessons with five classworks of 1 of 10 on yesterday's lesson: a result of 7 and attendance
-  // 0, judged after five graded works (`08`, Early-warning list). An empty number of the other
-  // students counts for nothing (`07`, rule 4). All names are invented.
-  const earlyTutor = await create('Gulchehra', 'Nazarova');
-  const earlyTutorRole = await transactions.run([deliveryBranch], (transaction) =>
-    assignments.give(transaction, {
-      accountId: earlyTutor.id,
-      role: 'tutor',
-      branchId: deliveryBranch,
-      givenBy: null,
-    }),
-  );
-  {
-    const bristol = await migrator
-      .selectFrom('classes')
-      .select('id')
-      .where('branch_id', '=', deliveryBranch)
-      .where('name', '=', 'Bristol')
-      .executeTakeFirstOrThrow();
-    const [yesterdayLesson, todayLesson] = await migrator
-      .selectFrom('lessons')
-      .select(['id', sql<string>`lesson_date::text`.as('date')])
-      .where('branch_id', '=', deliveryBranch)
-      .where('class_id', '=', bristol.id)
-      .orderBy('starts_at')
-      .execute();
-    if (yesterdayLesson === undefined || todayLesson === undefined) {
-      throw new Error('The two lessons of 7 Bristol.');
-    }
-    const nodir = await migrator.transaction().execute(async (transaction) => {
-      await transaction
-        .insertInto('class_tutors')
-        .values({
-          branch_id: deliveryBranch,
-          class_id: bristol.id,
-          assignment_id: earlyTutorRole.id,
-          kind: 'tutor',
-          valid_from: new Date(),
-          own_until: null,
-          given_by: earlyTutor.id,
-        })
-        .execute();
-      return studentInClass(transaction, {
-        branch: deliveryBranch,
-        classId: bristol.id,
-        uid: '9999653',
-        first: 'Nodir',
-        last: 'Qosimov',
-        createdBy: earlyTutor.id,
-        phone: '+998935553303',
-      });
-    });
-    for (const [lesson, moment] of [
-      [yesterdayLesson, `${yesterdayLesson.date}T09:00:00+05:00`],
-      [todayLesson, `${todayLesson.date}T00:30:00+05:00`],
-    ] as const) {
-      await migrator.transaction().execute(async (transaction) => {
-        await sql`select set_config('app.now', ${moment}, true)`.execute(transaction);
-        await transaction
-          .insertInto('journal_cells')
-          .values({
-            branch_id: deliveryBranch,
-            lesson_id: lesson.id,
-            student_id: nodir,
-            mark: 0,
-            version: 1,
-            changed_by: earlyTutor.id,
-            changed_how: 'entry',
-            changed_at: new Date(moment),
-          })
-          .execute();
-        if (lesson.id !== yesterdayLesson.id) return;
-        for (let index = 0; index < 5; index += 1) {
-          const work = await transaction
-            .insertInto('journal_works')
-            .values({
-              branch_id: deliveryBranch,
-              lesson_id: lesson.id,
-              source_lesson_id: lesson.id,
-              kind: 'classwork',
-              total: 10,
-            })
-            .returning('id')
-            .executeTakeFirstOrThrow();
-          await transaction
-            .insertInto('journal_cells')
-            .values({
-              branch_id: deliveryBranch,
-              lesson_id: lesson.id,
-              student_id: nodir,
-              work_id: work.id,
-              score: 1,
-              version: 1,
-              changed_by: earlyTutor.id,
-              changed_how: 'entry',
-              changed_at: new Date(moment),
-            })
-            .execute();
-        }
-      });
-    }
-  }
-  seeded.earlyTutor = { login: earlyTutor.login, password: earlyTutor.firstPassword };
 
   // Task 9.2b: a branch of its own whose quarter 1 ended yesterday, with nothing in it: its
   // Academic Vice Principal closes the quarter from the checklist (07, Closing a quarter).

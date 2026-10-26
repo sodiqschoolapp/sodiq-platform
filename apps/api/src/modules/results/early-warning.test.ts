@@ -694,7 +694,7 @@ describe('the early-warning list (08, Early-warning list)', () => {
 
     const at = (day: string) => `${day}T12:00:00+05:00`;
     // The owner is a Teacher of the branch from 1 September.
-    await as(owner, branch, [{ role: 'teacher', branchId: branch }], async () => undefined);
+    await as(owner, branch, [{ role: 'teacher', branchId: branch }], () => Promise.resolve());
     const read = (day: string) =>
       as(owner, branch, [], async ({ get }) => listOf(await get(PATH)), at(day));
 
