@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 October 2026: task 9.4a Early-warning list
+
+- `packages/calc` (version 6): `currentWorkFigure` (the quarter result without the exam), `ownGradedWorks`, `currentAbsenceRun`, `earlyWarningReasons` with `MIN_GRADED_WORKS` 5. Migration 0137: `early_warning_handled` (append-only, carried by a student merge).
+- Area `early_warning` (`view` for nine roles, `edit` for the Teacher, the Tutor and the Super Admin). Routes `GET /api/results/early-warning` and `POST /api/results/early-warning/handled` (audited `early_warning.handled`; 409 `quarter_closed`, `early_warning_not_listed`); worked out on read (`apps/api/src/modules/results/early-warning.service.ts`).
+- Web: `/results/early-warning` (Results menu; linked from the rating), the side panel with the trend and "Mark handled"; texts under `results.earlyWarning`; handbook `08-results.md`; browser test `early-warning.spec.ts`.
+- Left out: the early-warning parts of the home pages (9.4b, From line); the speed at the real size (From line on 10.1).
+
+The next sessions must know:
+
+- The list of a reader is `listIn` of `early-warning.service.ts`; 9.4b's home pages read the same route (own journals, own class, the branch) rather than judge again.
+- The figures are rounded once for the list (`reasonFigure`); `early_warning_handled.figure` stores that rounded figure.
+
 ## 26 October 2026: task 9.3a Rating
 
 - `packages/calc` (version 5): `ratingPlaces` (exact order, 1, 1, 3), `oneDecimal`, `subjectsFigure` (the mean of the subjects with a number, their count, "fewer subjects"), `classFigure`. No migration.

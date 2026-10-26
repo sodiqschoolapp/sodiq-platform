@@ -297,6 +297,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 26 October 2026: the early-warning list (task 9.4a)
+
+Plan approved on pull request #235 with corrections 1 and 2 (marking handled is refused in a closed quarter with `quarter_closed`; a handled run of absences returns when a new run began after the handling); decisions 1 to 15 confirmed there, decision 11 changed by correction 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new permission area for new routes). `early_warning`: `view` for the Super Admin, the Principal, the Academic Vice Principal, the Spiritual Vice Principal, the Head Tutor, the Tutor, the Senior Head Teacher, the Head Teacher and the Teacher; `edit` (note and handled) for the Teacher, the Tutor and the Super Admin; the route decides the scope | `08`, Who sees it, Handled; `02` (the Super Admin does everything) (decision 1) |
+| **Look first** (a calculation reading). "Low result" is the provisional quarter outcome, the exam included where entered, rounded; only a number raises it | `08`; `edge/calculation`, "Which value gives the grade?" (decision 2) |
+| **Look first** (a calculation reading). "As it stood 28 days ago" is the current-work figure over the lessons dated on or before the reference date less 28 days, in branch time, with the values stored now | `edge/calculation`; the cell history is not replayed (decision 3) |
+| **Look first** (a calculation reading). "15 points lower" compares the rounded figures | `edge/calculation`, thresholds use the rounded number (decision 4) |
+| **Look first** (a calculation reading). Attendance is per subject: the rule-5 average with the quarter's late and skipped values, rounded | `08` judges "a subject" (decision 5) |
+| **Look first** (a calculation reading). The five-works gate applies to every reason; attendance-only subjects are left out. Proposed `/spec-change` if the owner wants them judged: `08`, Not too early: "A subject is judged only after five graded works in the quarter; an attendance-only subject is judged on attendance alone." | `08`, Not too early; the Done when (decision 6) |
+| **Look first** (a spec row read narrowly). The Head Tutor and the Spiritual Vice Principal see the attendance reasons only | `08`: "for attendance" (decision 7) |
+| **Look first** (the calculation module's version raised). `CALC_VERSION` 6 for `currentWorkFigure`, `ownGradedWorks`, `currentAbsenceRun`, `earlyWarningReasons`; no existing formula changes | `version.ts` (decision 14) |
+| An unmarked held lesson ends a run; exempt ones neither break nor extend it; the current run raises the reason | `edge/journal` (decision 8) |
+| The previous quarter is the one before in the same year, its current-work figure from the stored inputs of its close (exam left out), else live | `edge/calculation`, like with like (decision 9) |
+| The quarter containing today by default, else the last started one; a closed quarter read only | `08`, "while there is still time" (decision 10, correction 1) |
+| Handled rows are append-only, the newest per student, subject, quarter and reason in force; "worse" is a lower rounded figure, a larger drop, a longer run or a new run begun after the handling | `08`, Handled (decision 11, correction 2) |
+| The trend is three figures; worked out on read; no export; no notification | Decisions 12, 13, 15 |
+| **Build decision.** One entry per student and subject at the journal of the last membership; the run of absences is of that journal; a student with a result at leaving or who left the subject is not listed | `08`, Transfers; `edge/journal`, "of one journal"; `edge/calculation`, a student who left |
+| **Build decision.** In a closed quarter the result, the current work, the attendance and the works are read from the stored record in force; the run and the figure of 28 days ago need dated lessons and are read live | From 9.2b: a closed quarter is never calculated again |
+| **Build decision.** A Tutor's students are those of own classes on the reference date, so a Tutor sees the rows of own class in a mixed group, all subjects | `08`, "a Tutor for own class in all subjects" |
+| **Build decision.** A student merge carries `early_warning_handled` to the kept record (`journal_merge_carry` of 0128 on the table) | `student-merges.database.test.ts`: every table that names a student is classified |
+| **Build decision.** The menu item "Results" also shows for a reader of `early_warning`; for a role that reads no rating (the Spiritual Vice Principal) it opens the early-warning list | `visibleMenu`; the item would lead to a refused page otherwise |
+
 ## 26 October 2026: the rating (task 9.3a)
 
 Plan approved on pull request #234 with corrections 1 to 4 (the subject and class figures are functions of `packages/calc`; the Tutor's one-subject list covers the groups whose every class is an own class; the closed quarter read through one helper with the student's Results tab, `storedRecordsOf`; `oneDecimal` multiplies by the fraction 10/1); decisions 1 to 13 confirmed there, decision 4 changed by correction 2. Flagged on issue #42.
