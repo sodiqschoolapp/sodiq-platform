@@ -661,6 +661,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Этот ученик появился в списке после того, как вы открыли чек-лист, и решение по нему не принято. Обновите его и решите снова.',
     quarter_closed:
       'Четверть закрыта: её журналы и итоги окончательные, поэтому это изменение не внесено.',
+    early_warning_not_listed:
+      'Эта причина больше не показана для ученика: данные изменились или её уже отметили. Обновите список.',
     closing_before_last_day: 'Четверть можно закрыть в её последний день или позже.',
     closing_earlier_open:
       'Сначала закройте предыдущие четверти года: четверти закрываются по порядку.',
@@ -3461,6 +3463,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         quarter_reopened: 'Четверть открыта заново',
         journal_closed_again: 'Открытый заново журнал закрыт снова',
         recalculation_applied: 'Пересчитанные результаты применены',
+      },
+      early_warning: {
+        handled: 'Запись раннего предупреждения отмечена как решённая',
       },
       calendar_entry: {
         create: 'День календаря добавлен',
@@ -6907,6 +6912,51 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    earlyWarning: {
+      title: 'Раннее предупреждение',
+      caption: 'Ученики, которым нужно внимание',
+      quarter: 'Четверть',
+      quarterNumber: '{{number}} четверть',
+      student: 'Ученик',
+      subject: 'Предмет',
+      unit: 'Класс или группа',
+      reasons: 'Причины',
+      result: 'Итог',
+      trend: 'Текущая работа',
+      attendance: 'Посещаемость',
+      reason: {
+        low_result: 'Низкий итог',
+        result_drop: 'Итог снизился',
+        low_attendance: 'Низкая посещаемость',
+        absences_in_row: 'Пропуски подряд',
+      },
+      reasonText: {
+        low_result: 'Итог {{figure}}, ниже {{threshold}}',
+        result_drop: 'Итог снизился на {{figure}}',
+        low_attendance: 'Посещаемость {{figure}}%, ниже {{threshold}}%',
+        absences_in_row: 'Пропусков подряд: {{figure}}',
+      },
+      against: {
+        days_ago: 'по сравнению с 28 днями ранее',
+        previous_quarter: 'по сравнению с прошлой четвертью',
+      },
+      trendText: 'Сейчас {{now}} · 28 дней назад {{daysAgo}} · прошлая четверть {{previous}}',
+      works: 'Оценённые работы',
+      run: 'Пропуски подряд',
+      percent: '{{value}}%',
+      attendanceOnly: 'Только посещаемость',
+      openJournal: 'Открыть журнал',
+      handledBefore: 'Отмечено как решённое {{date}}, {{name}}, при значении {{figure}}: {{note}}',
+      handledBeforeNoNote: 'Отмечено как решённое {{date}}, {{name}}, при значении {{figure}}',
+      handle: 'Отметить как решённое',
+      note: 'Заметка для сотрудников',
+      which: 'Причина',
+      handled: 'Отмечено как решённое.',
+      closed: 'Четверть закрыта: отметить как решённое больше нельзя.',
+      empty: 'В этом списке нет учеников, которым нужно внимание.',
+      nothing: 'Ни одна четверть ещё не началась.',
+      link: 'Раннее предупреждение',
+    },
     ratingList: {
       title: 'Рейтинг',
       kind: 'Список',

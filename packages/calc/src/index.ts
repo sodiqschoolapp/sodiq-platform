@@ -8,6 +8,18 @@ export {
   type LessonScoreInput,
   type Work,
 } from './daily.js';
+export {
+  currentAbsenceRun,
+  currentWorkFigure,
+  earlyWarningReasons,
+  MIN_GRADED_WORKS,
+  ownGradedWorks,
+  type EarlyWarningInput,
+  type EarlyWarningJudgement,
+  type EarlyWarningKind,
+  type EarlyWarningReason,
+  type EarlyWarningThresholds,
+} from './early-warning.js';
 export { Fraction } from './fraction.js';
 export { groupAverage, type GroupAverage } from './group.js';
 export { GRADE_BANDS, gradeOf, type Grade, type GradeBand } from './grade.js';

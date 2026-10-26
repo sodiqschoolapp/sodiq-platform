@@ -16,6 +16,8 @@ import {
   scheduleTickJob,
 } from './daily/daily-jobs.js';
 import { dailyBranchOf, DailyWork } from './daily/daily.service.js';
+import { EarlyWarningController } from './early-warning.controller.js';
+import { EarlyWarningService } from './early-warning.service.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
 import { StudentResultsController } from './student-results.controller.js';
@@ -27,8 +29,13 @@ import { StudentResultsService } from './student-results.service.js';
  */
 @Module({
   imports: [AccessModule, NotificationsModule, PlansModule],
-  controllers: [StudentResultsController, ClosingController, RatingController],
-  providers: [StudentResultsService, ClosingService, DailyWork, RatingService],
+  controllers: [
+    StudentResultsController,
+    ClosingController,
+    RatingController,
+    EarlyWarningController,
+  ],
+  providers: [StudentResultsService, ClosingService, DailyWork, RatingService, EarlyWarningService],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(

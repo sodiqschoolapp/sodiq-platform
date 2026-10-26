@@ -81,8 +81,9 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
  */
 export const MENU_AREAS: Readonly<Partial<Record<MenuItem, readonly string[]>>> = Object.freeze({
   timetable: ['timetable', 'timetable_views'],
-  // Task 9.3a: "Results" leads to the rating and the closing checklist.
-  results: ['rating', 'quarter_closing'],
+  // Task 9.3a: "Results" leads to the rating and the closing checklist; 9.4a adds the
+  // early-warning list.
+  results: ['rating', 'quarter_closing', 'early_warning'],
 });
 
 /**

@@ -1164,6 +1164,8 @@ export const ERROR_CODES = [
   'closing_list_changed',
   /** The quarter is closed: nothing that would change its results is written (task 9.2b). */
   'quarter_closed',
+  /** The early-warning list does not list this reason for the student and subject now: read the list again (task 9.4a). */
+  'early_warning_not_listed',
   /** A quarter cannot be closed before its last day (`07`; task 9.2b). */
   'closing_before_last_day',
   /** An earlier quarter of the year is still open: quarters are closed in order (task 9.2b). */

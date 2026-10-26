@@ -1,6 +1,6 @@
 # Results
 
-This page holds the parts that tasks 9.1 to 9.3a added. The results table, subject mastery and the other reports (task 9.3b) and the early-warning list (task 9.4a) are not built yet.
+This page holds the parts that tasks 9.1 to 9.4a added. The results table, subject mastery and the other reports (task 9.3b) are not built yet.
 
 ## A student's results and attendance
 
@@ -209,3 +209,46 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 | Two students both show 84.0 but one is exactly 84.04 | That one comes first; they do not share a place. |
 | A Tutor opens a group that mixes two classes | The rating of that group is refused; a group made only of the Tutor's own class is open. |
 | The subject is attendance only in the quarter | It has no rating. |
+
+## The early-warning list
+
+<!-- Sources: spec 08 (Early-warning list), spec 02 (Head Teacher scope), spec 07 (Effect on totals, Calculation rules 5 to 7, Transfers), edge/calculation (Which value gives the grade?, The early-warning list compares a mid-quarter figure without the exam ...), edge/journal (Three absences in a row), edge/00-definitions (Reference date, Result states); task 9.4a, pull request #235 -->
+
+**What it is.** Results → **Early warning** (**Erta ogohlantirish**) lists the students who need attention while there is still time in the quarter to act: one row per student and subject, with the reasons, the figures and the trend, and a link to the journal. It is for staff only; nothing is sent to parents.
+
+**Who can use it.**
+
+| Role | Sees | Marks handled |
+| --- | --- | --- |
+| Super Admin | The branch | Yes |
+| Principal, Academic Vice Principal | The branch | No |
+| Head Teacher, Senior Head Teacher | Own subjects | No |
+| Teacher | Own journals | Yes |
+| Tutor | The students of own classes, in all subjects | Yes |
+| Head Tutor, Vice Principal for Spiritual and Moral Education | Every student, the attendance reasons only | No |
+
+**How it works.**
+
+1. Open Results → Early warning, or the link on the Rating page. The open quarter is shown; an earlier quarter can be chosen.
+2. Open a row to see the trend (the current work now, 28 days ago and in the previous quarter), the graded works, the attendance and the run of absences, and **Open the journal**.
+3. A Tutor or teacher chooses the reason, writes a staff note if wanted, and presses **Mark handled**. The reason leaves the list.
+
+**Rules.**
+
+- A student is listed in a subject for a low result (the quarter result so far, rounded, below the setting, 50 at first), a drop (the current work, rounded, 15 points or more below 28 days ago or the previous quarter), low attendance (the quarter's attendance in the subject, rounded, below 80 percent), or absences in a row (3 held lessons of the journal in a row absent or skipped, counted back from the latest).
+- The current work is attendance, classwork and homework, without the rating exam, so a mid-quarter figure is compared like with like. The previous quarter's is worked out from its kept results, without its exam.
+- A subject is judged only after the student's own five graded works in the quarter: before that, nobody is listed in it, for any reason. Attendance-only subjects have no graded works and are not listed.
+- Exempt lessons are left out of every figure; they neither break nor extend a run of absences. A lesson not marked yet ends the run. A result flagged "based on few lessons" is not listed as a drop.
+- A student who moved is judged on all lessons of the subject in the quarter, in both journals; the run of absences is of the journal the student is in now. A student who left the school or the subject is not listed.
+- A handled reason comes back only when its figure gets worse: a lower result or attendance, a larger drop, a longer run, or a new run of absences that began after it was handled. It then shows the earlier note.
+- The thresholds are the branch's settings (School setup, the Academic Vice Principal changes them); "five graded works" is fixed.
+- A closed quarter is read only: its entries show, but nothing is marked handled.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| One bad mark in the first week | Nobody is listed until five works are graded. |
+| A result of 49.5 | It shows 50 and is not below 50. |
+| A student was absent three times, then present, then absent twice | No run: the present lesson ended the first one. |
+| A handled run of absences ends and a new run of three begins | The reason comes back with the earlier note. |

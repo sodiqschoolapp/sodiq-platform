@@ -23,6 +23,10 @@ export function useMenuPages(): MenuPage[] {
       if (item === 'timetable' && !permits(PERMISSIONS, role, 'timetable', 'view')) {
         return [{ ...page, to: '/timetable/views' as const }];
       }
+      // Task 9.4a: "Results" of a role that reads no rating opens the early-warning list.
+      if (item === 'results' && !permits(PERMISSIONS, role, 'rating', 'view')) {
+        return [{ ...page, to: '/results/early-warning' as const }];
+      }
       return [page];
     });
   }, [role]);

@@ -42,6 +42,8 @@ const CARRIED = [
  */
 const KEPT = [
   'class_memberships',
+  // Task 9.4a: an early-warning entry marked handled stays in the branch of its quarter.
+  'early_warning_handled',
   // Task 8.5 (decision 3): an exemption stays in the branch of its lessons; the
   // receiving branch gets an offer, written in its own branch at the accept.
   'exemption_move_offers',
@@ -319,7 +321,7 @@ describe('branch moves in the database', () => {
         .where('id', '=', student)
         .executeTakeFirstOrThrow();
       expect(students.branch_id).toBe(south);
-      // The kit writes no move and no cell (the cell has its own test above); the
+      // The kit writes no move, no cell and no early-warning mark (the cell has its own test above); the
       // rows it writes are in both branches.
       for (const table of KEPT.filter(
         (one) =>
@@ -329,6 +331,7 @@ describe('branch moves in the database', () => {
           one !== 'journal_rating_entries' &&
           one !== 'quarter_result_decisions' &&
           one !== 'quarter_final_results' &&
+          one !== 'early_warning_handled' &&
           one !== 'student_absence_reasons' &&
           one !== 'exemptions' &&
           one !== 'exemption_move_offers',

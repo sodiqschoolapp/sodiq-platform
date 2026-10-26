@@ -578,6 +578,23 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the early-warning list to the nine readers of `08`, edit to the Tutor and Teacher (task 9.4a, decision 1)', () => {
+    const rows: Partial<Record<Role, readonly string[]>> = {
+      super_admin: ['view', 'edit'],
+      principal: ['view'],
+      academic_vice_principal: ['view'],
+      spiritual_vice_principal: ['view'],
+      head_tutor: ['view'],
+      tutor: ['view', 'edit'],
+      senior_head_teacher: ['view'],
+      head_teacher: ['view'],
+      teacher: ['view', 'edit'],
+    };
+    for (const role of ROLES) {
+      expect(PERMISSIONS.early_warning[role], role).toEqual(rows[role] ?? []);
+    }
+  });
+
   it('gives the apply of a recalculation to the Super Admin alone (task 9.2c, decision 10)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.results_recalculation[role], role).toEqual(
@@ -616,6 +633,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'divisions',
+      'early_warning',
       'exemptions',
       'forced_deletes',
       'group_transfers',

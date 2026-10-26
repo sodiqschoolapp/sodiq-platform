@@ -2276,6 +2276,22 @@ export {
   type StudentResultTabs,
 } from './results.js';
 export {
+  EARLY_WARNING_NOTE_MAX_LENGTH,
+  EARLY_WARNING_REASONS,
+  earlyWarningEntrySchema,
+  earlyWarningHandledSchema,
+  earlyWarningHandleSchema,
+  earlyWarningListSchema,
+  earlyWarningQuerySchema,
+  type EarlyWarningEntry,
+  type EarlyWarningHandle,
+  type EarlyWarningHandled,
+  type EarlyWarningHandleInput,
+  type EarlyWarningList,
+  type EarlyWarningQuery,
+  type EarlyWarningReasonKind,
+} from './early-warning.js';
+export {
   RATING_KINDS,
   RATING_STATES,
   ratingChoicesQuerySchema,

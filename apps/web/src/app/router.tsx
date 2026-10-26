@@ -81,6 +81,7 @@ import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unl
 import { DisciplinePage, disciplineSearch } from '@/features/journal/discipline-page';
 import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
 import { ClosingPage, closingSearch } from '@/features/results/closing-page';
+import { EarlyWarningPage, earlyWarningSearch } from '@/features/results/early-warning-page';
 import { RatingPage, ratingSearch } from '@/features/results/rating-page';
 import { BranchExportsPage, branchExportsSearch } from '@/features/journal/branch-exports-page';
 import { SupportPage, supportSearch } from '@/features/journal/support-page';
@@ -436,6 +437,14 @@ const ratingRoute = createRoute({
   component: guarded('rating', RatingPage),
 });
 
+/** The early-warning list (task 9.4a). */
+const earlyWarningRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/early-warning',
+  validateSearch: earlyWarningSearch,
+  component: guarded('early_warning', EarlyWarningPage),
+});
+
 const orphansRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/journal/orphans',
@@ -734,6 +743,7 @@ const routeTree = rootRoute.addChildren([
     unlockRequestsRoute,
     disciplineRoute,
     ratingRoute,
+    earlyWarningRoute,
     orphansRoute,
     closingRoute,
     branchExportsRoute,

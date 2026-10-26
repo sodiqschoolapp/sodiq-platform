@@ -182,19 +182,22 @@ describe('the menu a role sees', () => {
 
   // Task 9.3a: "Results" opens for a reader of the rating or of the closing checklist; the
   // Vice Principal for Spiritual and Moral Education views neither and does not see it.
-  it('shows Results to the readers of the rating or the closing checklist', () => {
-    expect(MENU_AREAS.results).toEqual(['rating', 'quarter_closing']);
+  it('shows Results to the readers of the rating, the closing checklist or the early-warning list', () => {
+    expect(MENU_AREAS.results).toEqual(['rating', 'quarter_closing', 'early_warning']);
     for (const role of ROLES) {
       const reads =
         permits(PERMISSIONS, role, 'rating', 'view') ||
-        permits(PERMISSIONS, role, 'quarter_closing', 'view');
+        permits(PERMISSIONS, role, 'quarter_closing', 'view') ||
+        permits(PERMISSIONS, role, 'early_warning', 'view');
       expect(visibleMenu(role, EVERYTHING, PERMISSIONS).includes('results'), role).toBe(
         reads && MENU[role].includes('results'),
       );
     }
-    expect(visibleMenu('spiritual_vice_principal', EVERYTHING, PERMISSIONS)).not.toContain(
-      'results',
-    );
+    // Task 9.4a: the Vice Principal for Spiritual and Moral Education reads the early-warning list
+    // for attendance.
+    expect(
+      visibleMenu('spiritual_vice_principal', EVERYTHING, PERMISSIONS).includes('results'),
+    ).toBe(MENU.spiritual_vice_principal.includes('results'));
     expect(visibleMenu('teacher', EVERYTHING, PERMISSIONS)).toContain('results');
   });
 });

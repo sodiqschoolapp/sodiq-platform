@@ -100,12 +100,13 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     icon: MENU_ICONS.journal,
   },
   // The rating (task 9.3a): the area `rating`; the closing checklist is linked from the page.
+  // Task 9.4a: the early-warning list; a role that reads no rating opens it (`use-menu.ts`).
   results: {
     titleKey: 'menu.results',
     shortKey: 'menu.short.results',
     to: '/results/rating',
     icon: MENU_ICONS.results,
-    areas: ['rating'],
+    areas: ['rating', 'early_warning'],
   },
   // The lesson plans (task 7.1a): the area `plans` of the same name decides who sees it.
   plans: {

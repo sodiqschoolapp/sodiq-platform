@@ -119,16 +119,18 @@ describe('the menu and the home page of each role', () => {
     // opens the timetable views (task 5.9a, decision 2): the area `timetable`
     // (task 3.4a, decision 4) is the Super Admin's, the Principal's and the
     // Academic Vice Principal's.
-    // Task 9.3a: "Results" opens for a reader of the rating or the closing checklist only, so the
-    // Vice Principal for Spiritual and Moral Education, who views neither, does not see it.
+    // Task 9.3a: "Results" opens for a reader of the rating or the closing checklist; task 9.4a
+    // adds the early-warning list, so the Vice Principal for Spiritual and Moral Education sees
+    // it too, and it opens the early-warning list for that role.
     expect(links.map((link) => link.textContent)).toEqual(
       visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS).map((item) => en.menu[item]),
     );
-    expect(visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS)).toEqual(
-      role === 'spiritual_vice_principal'
-        ? MENU[role].filter((item) => item !== 'results')
-        : MENU[role],
-    );
+    expect(visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS)).toEqual(MENU[role]);
+    if (role === 'spiritual_vice_principal') {
+      expect(links.find((link) => link.textContent === en.menu.results)?.getAttribute('href')).toBe(
+        '/results/early-warning',
+      );
+    }
     const timetable = links.find((link) => link.textContent === en.menu.timetable);
     // The pages of this test stand in for the built ones; the views of a role
     // with no draft are its own address.

@@ -625,6 +625,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   closing_nothing_to_clear: 'No decision is stored to clear.',
   closing_list_changed: 'The student was not in the list sent.',
   quarter_closed: 'The quarter is closed.',
+  early_warning_not_listed: 'The list does not show this reason now.',
   closing_before_last_day: 'A quarter cannot be closed before its last day.',
   closing_earlier_open: 'An earlier quarter of the year is still open.',
   closing_blocked: 'A blocking item of the checklist is left.',

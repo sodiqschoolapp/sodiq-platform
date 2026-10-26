@@ -84,6 +84,7 @@ describe('class scope', () => {
       'journal',
       'absence_reasons',
       'rating',
+      'early_warning',
     ]);
   });
 

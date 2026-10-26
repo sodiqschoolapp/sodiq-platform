@@ -41,6 +41,8 @@ const MERGE_DOES: Readonly<
   journal_cells: 'carried',
   journal_comments: 'carried',
   journal_rating_entries: 'carried',
+  // Task 9.4a: the early-warning entries marked handled go to the kept record.
+  early_warning_handled: 'carried',
   // Task 9.2a: the decisions on flagged results go to the kept record; two of one quarter
   // and subject refuse the merge by their key.
   quarter_result_decisions: 'carried',

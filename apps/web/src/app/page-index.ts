@@ -91,6 +91,8 @@ export const JOURNAL_PAGES: readonly (IndexedPage & { area: string })[] = [
   { titleKey: 'journal.exemptions.title', to: '/journal/exemptions', area: 'exemptions' },
   // Task 9.2a.
   { titleKey: 'results.closing.title', to: '/results/closing', area: 'quarter_closing' },
+  // Task 9.4a.
+  { titleKey: 'results.earlyWarning.title', to: '/results/early-warning', area: 'early_warning' },
 ];
 
 /** Everything the search of a role lists: its menu pages, the pages under them, the common ones. */
