@@ -387,7 +387,7 @@ export class LessonStatusService {
       );
       const describe = await this.describer(transaction, rows, statuses, journals);
       const counts = { held: 0, notStarted: 0, inProgress: 0, complete: 0 };
-      const incomplete: { row: CandidateRow; staffId: string | null }[] = [];
+      const incomplete: { row: CandidateRow; staffId: string | null; status: string }[] = [];
       for (const row of rows) {
         const answer = statuses.get(row.id)?.answer ?? null;
         if (answer === null) continue;
@@ -396,7 +396,7 @@ export class LessonStatusService {
         if (answer.status === 'in_progress') counts.inProgress += 1;
         if (answer.status === 'complete') counts.complete += 1;
         if (answer.status !== 'complete') {
-          incomplete.push({ row, staffId: counted.get(row.id) ?? null });
+          incomplete.push({ row, staffId: counted.get(row.id) ?? null, status: answer.status });
         }
       }
       const names = await staffNames(transaction, [
@@ -410,7 +410,7 @@ export class LessonStatusService {
         ahead,
         ...counts,
         incomplete: incomplete.map((one) => ({
-          lesson: describe(one.row),
+          lesson: { ...describe(one.row), status: one.status },
           teacher:
             one.staffId === null ? null : { id: one.staffId, name: names.get(one.staffId) ?? '' },
         })),
