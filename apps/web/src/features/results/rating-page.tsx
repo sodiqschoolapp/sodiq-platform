@@ -63,7 +63,7 @@ type ClassRow = RatingClassList['rows'][number];
 type ClassesRow = RatingClassesList['rows'][number];
 
 /** A figure in tenths with one decimal (`edge/calculation`: "Rating lists show one decimal"). */
-function tenthsText(value: number | null, language: string): string {
+export function tenthsText(value: number | null, language: string): string {
   if (value === null) return '—';
   const mark = language === 'en' ? '.' : ',';
   return `${String(Math.trunc(value / 10))}${mark}${String(value % 10)}`;

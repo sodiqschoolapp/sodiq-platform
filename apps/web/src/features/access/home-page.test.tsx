@@ -16,7 +16,9 @@ const NOTHING: Attention = {
   examsNeedRoom: [],
 };
 
-const emptyPage = () => screen.queryByRole('heading', { name: en.home.emptyTitle });
+// Task 9.4b: the Academic Vice Principal's home always has its cards; with nothing waiting it
+// says so in one line.
+const nothingLine = () => screen.queryByText(en.home.vice.nothingWaiting);
 
 /** Waits until both counters of the Academic Vice Principal's home were asked for. */
 async function bothAsked(calls: { route: string }[]): Promise<void> {
@@ -34,13 +36,13 @@ async function bothAsked(calls: { route: string }[]): Promise<void> {
 // empty and error states").
 describe('the home page', () => {
   it('is the empty page with one short line of its kind, no intro and no action', async () => {
-    // The teacher's home lists lessons since task 5.9b; the Principal's is still empty.
-    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('principal')) });
+    // Every role of `08` has its first screen since task 9.4b; a role of a later release is empty.
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs('nurse')) });
     renderApp('/');
     const title = await screen.findByRole('heading', { name: en.home.emptyTitle });
     const panel = title.closest('div.bg-card');
     expect(panel).not.toBeNull();
-    expect(within(panel as HTMLElement).getByText(en.home.branch_summary).tagName).toBe('P');
+    expect(within(panel as HTMLElement).getByText(en.home.later_release).tagName).toBe('P');
     expect(within(panel as HTMLElement).queryByRole('button')).toBeNull();
     expect(within(panel as HTMLElement).queryByRole('link')).toBeNull();
     // Each kind keeps a line of its own, so a test of which home a role gets can fail.
@@ -57,8 +59,8 @@ describe('the home page', () => {
     });
     renderApp('/');
     await bothAsked(calls);
-    expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
-    expect(screen.getByText(en.home.academic_vice_principal)).toBeDefined();
+    expect(await screen.findByText(en.home.vice.nothingWaiting)).toBeDefined();
+    expect(screen.getByText(en.home.vice.nothingWaiting)).toBeDefined();
     expect(screen.queryByRole('region', { name: en.home.noClass.title })).toBeNull();
     expect(screen.queryByRole('region', { name: en.home.noValidPhone.title })).toBeNull();
   });
@@ -75,8 +77,8 @@ describe('the home page', () => {
     const tile = await screen.findByRole('region', { name: en.home.noValidPhone.title });
     // 24 between the tiles and before the empty page (docs/design-system.md, Spacing).
     expect(tile.parentElement?.className).toContain('gap-6');
-    expect(emptyPage()).toBeNull();
-    expect(screen.queryByText(en.home.academic_vice_principal)).toBeNull();
+    expect(nothingLine()).toBeNull();
+    expect(nothingLine()).toBeNull();
   });
 
   it('shows a failed counter with its retry, not the empty page', async () => {
@@ -90,7 +92,7 @@ describe('the home page', () => {
     await bothAsked(calls);
     // The failed tile says so, with a retry; the page is not called empty.
     expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
-    expect(emptyPage()).toBeNull();
+    expect(nothingLine()).toBeNull();
   });
 
   it('drops the empty page when a counter fails on a later refetch', async () => {
@@ -104,12 +106,12 @@ describe('the home page', () => {
     });
     const { queryClient } = renderApp('/');
     await bothAsked(calls);
-    expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+    expect(await screen.findByText(en.home.vice.nothingWaiting)).toBeDefined();
     failing = true;
     await queryClient.refetchQueries();
     // The tile says it failed, with a retry, and the page is not called empty under it.
     expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
-    expect(emptyPage()).toBeNull();
+    expect(nothingLine()).toBeNull();
   });
 
   // Task 5.7a-1 (decisions 9 and 10): the lessons that need a teacher and
@@ -164,7 +166,7 @@ describe('the home page', () => {
       expect(within(other).getByText('English vacancy 2 (vacancy)')).toBeDefined();
       expect(within(other).getByText(/1 lesson/)).toBeDefined();
       expect(within(other).queryByText(en.home.attention.permanent)).toBeNull();
-      expect(emptyPage()).toBeNull();
+      expect(nothingLine()).toBeNull();
     });
 
     it('names an absence the branch cannot name with a text of its own, never a blank (code review finding 1)', async () => {
@@ -276,7 +278,7 @@ describe('the home page', () => {
       expect(
         within(row).getByRole('link', { name: en.home.attention.openExams }).getAttribute('href'),
       ).toBe('/timetable/exams?date=2026-10-19');
-      expect(emptyPage()).toBeNull();
+      expect(nothingLine()).toBeNull();
     });
 
     // Task 5.7a-2b (decisions 2, 7 and 10): the lessons and the exams that need a room.
@@ -338,7 +340,7 @@ describe('the home page', () => {
       const exams = await screen.findByRole('region', { name: en.home.examsNeedRoom.title });
       const row = exams.querySelector(`[data-exam="${uid(33)}"]`) as HTMLElement;
       expect(within(row).getByText('Laboratory 1 · closed for a period')).toBeDefined();
-      expect(emptyPage()).toBeNull();
+      expect(nothingLine()).toBeNull();
     });
 
     it('hides an empty list and keeps the page empty when all four are 0', async () => {
@@ -350,7 +352,7 @@ describe('the home page', () => {
       });
       renderApp('/');
       await bothAsked(calls);
-      expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+      expect(await screen.findByText(en.home.vice.nothingWaiting)).toBeDefined();
       expect(screen.queryByRole('region', { name: en.home.needsTeacher.title })).toBeNull();
       expect(screen.queryByRole('region', { name: en.home.unresolved.title })).toBeNull();
     });
@@ -365,7 +367,7 @@ describe('the home page', () => {
       renderApp('/');
       await bothAsked(calls);
       expect(await screen.findByRole('button', { name: en.problems.retry })).toBeDefined();
-      expect(emptyPage()).toBeNull();
+      expect(nothingLine()).toBeNull();
     });
 
     it('asks nothing of the timetable for a Teacher', async () => {
@@ -393,6 +395,6 @@ describe('the home page', () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionOf({ assignments: [] })) });
     renderApp('/');
     expect(await screen.findByText(en.home.noRole)).toBeDefined();
-    expect(emptyPage()).not.toBeNull();
+    expect(screen.getByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
   });
 });
