@@ -6010,6 +6010,22 @@ try {
   );
   seeded.closingVice = { login: closingVice.login, password: closingVice.firstPassword };
 
+  // Task 9.3a: a Principal of the same branch opens the rating from the menu and exports it.
+  // All names are invented.
+  const ratingPrincipal = await create('Feruza', 'Xolmatova');
+  await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: ratingPrincipal.id,
+      role: 'principal',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.ratingPrincipal = {
+    login: ratingPrincipal.login,
+    password: ratingPrincipal.firstPassword,
+  };
+
   // Task 9.2b: a branch of its own whose quarter 1 ended yesterday, with nothing in it: its
   // Academic Vice Principal closes the quarter from the checklist (07, Closing a quarter).
   // All names are invented.
