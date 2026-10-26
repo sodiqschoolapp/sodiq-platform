@@ -22,6 +22,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 4: task 9.2b, the readers of a stored final record (`storedQuarterOutcome`,
   // `storedQuarterInputs`); no existing formula changes.
   '5b067ddb39578b079fe3babe9fe21dfa871d5e1c94f77ef62d0391bf7bdeddf1',
+  // 5: task 9.3a, the rating (`ratingPlaces`, `oneDecimal`, `subjectsFigure`, `classFigure`); no
+  // existing formula changes.
+  '8644c9d7282f0d84025109034a123f151de3595435dbf2c2b9e284efbe394edf',
 ];
 
 const directory = new URL('./', import.meta.url);
