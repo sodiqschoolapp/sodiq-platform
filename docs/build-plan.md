@@ -1247,7 +1247,7 @@ How to read the task lines:
   - From 6.3 (pull request #211, decision 13, Look first): `edge/journal`, Attendance figures, "Three absences in a row": "Three held lessons in a row of one journal marked 0 or 3. Exempt and cancelled lessons neither break nor extend the run." A function of `packages/calc` (`CLAUDE.md`, Calculation in one place) over the attendance cells (0108), read by the list with the threshold `absences_in_row`.
   - From 8.6 (pull request #224, review correction 5): `08`, Transfers: "A transferred student is judged on their own results, which follow them": a student's figures read the lessons of every journal of the subject the student belonged to in the quarter through `subject-quarter-lessons.ts` (`apps/api/src/modules/journal/`), never one journal's.
 
-- [ ] **9.4b Home pages**
+- [x] **9.4b Home pages**
   - Read: `08` (Home pages by role).
   - Build: the first screen of each role, filling the shells from 0.8c.
   - Done when: each role's first screen matches the table in the spec.
@@ -1269,6 +1269,7 @@ How to read the task lines:
   - From 5.12d (pull request #204, decision 4): a dated double pair still takes one advisory lock per pair at its commit check (`lesson_blocks_double`, 0058): a branch whose year has doubles holds one lock per double lesson of the year in its publish (about 6,800 at 200 doubles a week) and can again run out of the lock table at `max_locks_per_transaction` 64. The real-size run has no doubles; adding them to it shows whether that pair lock needs the treatment 0107 gave the block lock (`created_xact`).
   - From 9.3a (pull request #234, decision 12): the rating is worked out on read: the class list and the classes list read every graded journal of the quarter (`quarterOutcomes`) on each request (`apps/api/src/modules/results/rating.service.ts`). It was not timed at the real size; `08`, Analytics: "Every report opens in under 2 seconds". Time `GET /api/results/rating/classes` for a branch at full size, and prepare totals (9.3b) if it misses.
   - From 9.4a (pull request #235, decision 13): the early-warning list is worked out on read: every graded journal of the quarter, the previous quarter and the lessons of 28 days ago on each request (`apps/api/src/modules/results/early-warning.service.ts`). Time `GET /api/results/early-warning` for a branch at full size as the Academic Vice Principal (`08`: "Every report opens in under 2 seconds").
+  - From 9.4b (pull request #236, decision 12): the home pages are worked out on read: `GET /api/journal/attendance-today` (the cells of every class of the branch, the week from Monday), `GET /api/results/branch-summary` (the quarter's outcomes of every graded journal, as the rating's classes list), `GET /api/timetable/conflicts-summary` (the conflict check of every draft and of the version in force) and `GET /api/journal/lessons-today`. Time each for a branch at full size; `08`: "Every report opens in under 2 seconds".
 
 - [ ] **10.2 Backups, restore drill and monitoring**
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
@@ -1335,6 +1336,7 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - From 5.7a-1 (pull request #185, review correction 4): `06`, Free now board, "Free teacher ... not marked absent": read through `absences_of_teachers` (0096) at the slot's moment.
   - From 5.7a-2b (pull request #187, decisions 5, 7 and 10): `06`, Free now board, "Free room. In use status, with no lesson or exam in that slot": a room closed at the slot by a live closure (`room_closures`, 0098) is not free, read through `roomsOut` of `rooms-out-read.ts`; "Clicking a free room moves a lesson there for that day" settles a lesson or an exam that needs a room (`GET /api/timetable/attention`, `needsRoom` and `examsNeedRoom`), and its check passes `closures: true` to `storedDayCheck` so that `room_closed` refuses a closed room.
   - From 5.7b-1 (pull request #191, decision 10): `06`, Free now board, "Fair load. Beside each free teacher the board shows how many substitutions they have taken this month", counted from `substitution_lessons` (0101, `lesson_date`) with no end or ended `corrected`, by the substitute of its record; "Clicking a free teacher on a lesson that needs one assigns a substitute" runs `POST /api/timetable/lessons/:id/substitute`.
+  - From 9.4b (pull request #236, Left out): `08`, Home pages by role, Academic Vice Principal: "the free now board". The home page (`ViceHome`, `apps/web/src/features/access/home-page.tsx`) shows the board, or a part of it with a link, once it exists.
 
 - [ ] **8.3b Live updates**
   - Read: `edge/journal` (Saving and working together).

@@ -1,6 +1,6 @@
 # Results
 
-This page holds the parts that tasks 9.1 to 9.4a added. The results table, subject mastery and the other reports (task 9.3b) are not built yet.
+This page holds the parts that tasks 9.1 to 9.4b added. The results table, subject mastery and the other reports (task 9.3b) are not built yet.
 
 ## A student's results and attendance
 
@@ -252,3 +252,45 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 | A result of 49.5 | It shows 50 and is not below 50. |
 | A student was absent three times, then present, then absent twice | No run: the present lesson ended the first one. |
 | A handled run of absences ends and a new run of three begins | The reason comes back with the earlier note. |
+
+## The home pages
+
+<!-- Sources: spec 08 (Home pages by role), spec 06 (Teacher home page), spec 07 (Lesson status, Reminders), edge/journal (Attendance figures), edge/lesson-plans ("A teacher never sends the prepared request"), edge/exemptions ("exempt today"); task 9.4b, decisions 1 to 12 and review corrections 1 to 3 -->
+
+**What it is.** **Home** (**Bosh sahifa**) is the first screen after signing in. It shows what the role in use needs today, each part with one click to the place where it is done. The role switcher in the top bar changes it.
+
+**Who can use it.**
+
+| Role | First screen |
+| --- | --- |
+| Teacher | Today's lessons with their status ("3 of 5 lessons complete"), the reminders, the week, **My journals** (the journals of this week's own lessons), the early-warning list of own journals |
+| Head Teacher, Senior Head Teacher | The same, and **Requests waiting for you**: the plan requests and the unlock requests they may decide, the late ones counted |
+| Tutor | One card per own class: today's timetable of the class, who is absent now, attendance today and this week; the early-warning list of the class; then the Tutor's own lessons |
+| Head Tutor, Vice Principal for Spiritual and Moral Education | Attendance of all classes today, the classes below the branch's attendance threshold first and marked |
+| Academic Vice Principal | Lessons today and their status, quarter progress with the closing checklist, timetable conflicts, the plan requests waiting, the lessons and exams that need a teacher or a room, students with no class, parents with no valid phone, the early-warning list of the branch |
+| Principal, Super Admin | The branch summary: students, staff, attendance today, results by grade |
+| Student, Parent, HR, Nurse, Psychologist, Librarian | One line: their part comes in a later release |
+
+**Rules.**
+
+- The attendance percent of a day is the lessons marked present or late, divided by all marked lessons of the students who are not exempt, over class and group lessons of that day. Unmarked lessons are left out and shown as a count. A week is the same over the days from Monday.
+- A lesson the Academic Vice Principal left "as attended" under an exemption counts as marked.
+- Cancelled lessons and lessons that have not started count for nothing.
+- "Absent now" lists a student whose latest marked lesson today is "absent" (0) and who is not exempt at this moment. Late and "at school but not at the lesson" do not count.
+- A class is "below" when its percent today, rounded, is under the attendance threshold of the early-warning list (80 unless the Academic Vice Principal changed it).
+- Results by grade is the mean quarter result of the students of each grade (1 to 11), with one decimal, marked "Provisional" during the quarter and "Final" once it is closed; a closed quarter shows its stored results.
+- Students are counted when active and their start date has come; staff are counted when they have not left, vacancies left out.
+- Timetable conflicts are the errors and warnings of each draft, as its conflict panel counts them, and the warnings of the version in force.
+- Every figure comes from the same calculations as the journal and the reports; the home page never calculates on its own.
+- Not built yet: the Free now board on the Academic Vice Principal's home (task 5.7c).
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| A Tutor of two classes | Two class cards, each with its own early-warning list. |
+| A Tutor who is also a teacher of another class | The class card's early-warning list shows only the own class. |
+| A Head Teacher who teaches no lesson | My journals is empty; the early-warning list of own journals lists nobody. |
+| Nothing is marked yet today | The class shows "Nothing marked yet". |
+| A part fails to load | That card says so with **Retry**; the rest of the page stays. |
+| The Head Tutor opens Home | The attendance figures only; no student names. |
