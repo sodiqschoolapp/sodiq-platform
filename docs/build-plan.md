@@ -1231,7 +1231,7 @@ How to read the task lines:
   - Done when: a close carries an unresolved item into the next quarter's tray, and in quarter 4 refuses to close while one is left.
   - From 9.2c (pull request #231, decision 1, Look first: the split): `edge/lesson-plans`, "Items are still 'not covered' at the end of the quarter": "Each item gets one outcome: merged into a lesson, carried, or dropped with a reason; only the approver can drop. Carried items wait in a 'carried in' tray on the next quarter's plan. Items unresolved at closing are carried automatically. In quarter 4 only merge or drop exist." The items past the last row of each journal are named `notCovered` of the plans list (`unattached` of `GET /api/plans/journals/:journalId`, 7.1b).
 
-- [ ] **9.3a Rating**
+- [x] **9.3a Rating**
   - Read: `08` (Rating).
   - From 9.2b (pull request #230, decision 1, Look first): a closed quarter's results are read from `quarter_final_results` (`storedQuarterOutcome` of `packages/calc`), never calculated again, as the student results read them (`student-results.service.ts`); a start quarter closed "not official" (`quarter_closings.start_quarter`) is left out of the year result.
   - Build: the rating lists with their filters, including language and branch, and Excel export.
@@ -1266,6 +1266,7 @@ How to read the task lines:
   - Done when: every target is met or the gap is written in `docs/progress.md` with a plan.
   - From 5.12c (pull request #203, decisions 2 and 3): the real-size run (`apps/api/src/modules/timetable/real-size.database.test.ts`, `REAL_SIZE=full`) builds the school at its size, publishes it and times the board, a move, the publish and the published week; it runs small in CI. The measure before each release at full size and the 1,000 simultaneous users of `12` (Load) are this task's. Its full run missed two targets: the board's drag check of every slot (406 ms, target 0.2 s) and the publish check (1.2 s, target 1 s).
   - From 5.12d (pull request #204, decision 4): a dated double pair still takes one advisory lock per pair at its commit check (`lesson_blocks_double`, 0058): a branch whose year has doubles holds one lock per double lesson of the year in its publish (about 6,800 at 200 doubles a week) and can again run out of the lock table at `max_locks_per_transaction` 64. The real-size run has no doubles; adding them to it shows whether that pair lock needs the treatment 0107 gave the block lock (`created_xact`).
+  - From 9.3a (pull request #234, decision 12): the rating is worked out on read: the class list and the classes list read every graded journal of the quarter (`quarterOutcomes`) on each request (`apps/api/src/modules/results/rating.service.ts`). It was not timed at the real size; `08`, Analytics: "Every report opens in under 2 seconds". Time `GET /api/results/rating/classes` for a branch at full size, and prepare totals (9.3b) if it misses.
 
 - [ ] **10.2 Backups, restore drill and monitoring**
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.

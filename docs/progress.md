@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 October 2026: task 9.3a Rating
+
+- `packages/calc` (version 5): `ratingPlaces` (exact order, 1, 1, 3), `oneDecimal`, `subjectsFigure` (the mean of the subjects with a number, their count, "fewer subjects"), `classFigure`. No migration.
+- Area `rating` (`view`, `export`, eight staff roles; class-scoped). Routes `GET /api/results/rating/choices`, `/subject`, `/class`, `/classes` and `POST /api/results/rating/export` (Excel stamped "Provisional" or "Final", audited `rating.export`); the scope is decided in the route. A closed quarter is read through `storedRecordsOf` (`apps/api/src/modules/results/stored-records.ts`), shared with the student's Results tab.
+- Web: `/results/rating` (the "Results" menu item, `MENU_AREAS.results`), the three lists with year, quarter, grade and language; texts in three languages under `results.ratingList`; handbook `08-results.md`; browser test `rating.spec.ts`.
+- Left out: the speed at the real size (From line on 10.1); "Own position" (Release 2).
+
+The next sessions must know:
+
+- The rating's outcome of a student and subject is that of the journal of the last membership in the quarter (`outcomesOf`, `rating.service.ts`); the one-subject list takes the requested journal's own.
+- `results.rating` holds the rating exam's texts; the rating page's are under `results.ratingList`.
+
 ## 25 October 2026: task 9.2d Outcomes of "not covered" items and the carry at closing
 
 - 0136: `lesson_plan_outcomes` (one each time an item is not covered in a journal and quarter, append-only; `merged` with the row's date, `carried` with the copy, `dropped` with a reason; `automatic` for the close's carry; refused in a closed quarter, and `carried` from the last quarter or into a closed one) and `lesson_plan_tray` (the "carried in" copies, kept by journal and quarter; moved to the copy by a separation); `quarter_next`.
