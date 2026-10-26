@@ -1791,6 +1791,17 @@ describe('the merge of two student records', () => {
         code: 'uid_merged',
         recordId: kept.id,
       });
+      // From another branch, in another case: "a student of another branch".
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const elsewhere = await t.post('/api/people/students', t.south, {
+        ...body(southClass, '2026-09-02'),
+        uid: ` ${upper.toLowerCase()}`,
+      });
+      refusedWith(elsewhere, 409, 'student_value_taken');
+      const detail = (elsewhere.body as { error: { details: Record<string, unknown>[] } }).error
+        .details[0];
+      expect(detail).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
+      expect(detail?.recordId).toBeUndefined();
       const found = await t.get(`/api/search/students?q=${other.uid.toLowerCase()}`, t.north);
       expect((found.body as { items: { id: string }[] }).items.map((one) => one.id)).toEqual([
         kept.id,

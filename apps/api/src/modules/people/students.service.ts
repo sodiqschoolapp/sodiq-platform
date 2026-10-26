@@ -96,6 +96,7 @@ const TAKEN_FIELDS: Readonly<
 > = {
   students_uid_key_idx: 'uid',
   student_uids_uid_key_idx: 'uid',
+  student_uids_student_uid_key_key: 'uid',
   student_uids_pkey: 'uid',
   students_jshshir_idx: 'jshshir',
   students_document_idx: 'documentNumber',

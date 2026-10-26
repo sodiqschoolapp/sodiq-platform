@@ -275,6 +275,28 @@ describe('the merge of two student records', () => {
     expect(within(panel).getByText(texts.alsoUid)).toBeDefined();
   });
 
+  // Task 9.4c: the other record's UID in any form, spaces left out.
+  it('asks for a UID of letters without its spaces, and not for one longer than 20 characters', async () => {
+    const calls = open(detailOf());
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    await within(panel).findByRole('button', { name: texts.action });
+    const form = await edit(panel, texts.action, texts.action);
+    const field = within(form).getByLabelText(texts.uid);
+    expect(field.getAttribute('inputmode')).toBeNull();
+    expect(within(form).getByText(en.people.students.uidFormat)).toBeDefined();
+    const show = within(form).getByRole('button', { name: texts.show });
+    fireEvent.change(field, { target: { value: 'A'.repeat(21) } });
+    expect(show.hasAttribute('disabled')).toBe(true);
+    fireEvent.change(field, { target: { value: ' si 2607 001' } });
+    expect(show.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(show);
+    await within(form).findByText(texts.kept);
+    expect(
+      calls.find((call) => call.route === `GET /api/people/students/${STUDENT.id}/merge`)?.query,
+    ).toBe('?uid=si2607001');
+  });
+
   // Issue #105, H13: a record whose start date is ahead reads "From <date>".
   it('shows "From <date>" for a record that starts later', async () => {
     open(detailOf(), {

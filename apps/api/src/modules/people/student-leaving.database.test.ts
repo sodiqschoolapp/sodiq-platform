@@ -446,6 +446,17 @@ describe('leaving, return and delete in the database', () => {
         transaction.deleteFrom('students').where('id', '=', id).executeTakeFirst(),
       );
 
+    it('keeps the UID of a deleted student reserved in any spelling (task 9.4c)', async () => {
+      const { id } = await createStudent(north, { uid: 'Dl2607901' });
+      expect((await deleteStudent(north, id)).numDeletedRows).toBe(1n);
+      for (const branch of [north, south]) {
+        await expect(createStudent(branch, { uid: 'dL2607901' })).rejects.toMatchObject({
+          code: UNIQUE_VIOLATION,
+          constraint: 'student_uids_uid_key_idx',
+        });
+      }
+    });
+
     it('takes the contract, the status rows and the account, and keeps the UID reserved', async () => {
       const { id, uid } = await createStudent(north);
       const result = await deleteStudent(north, id);

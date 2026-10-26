@@ -394,6 +394,9 @@ describe('Ctrl+K over students and staff', () => {
       expect(await studentIds('ўт0')).toContain(cyrillic);
       // Not a part from the middle.
       expect(await studentIds('2607001')).not.toContain(si);
+      // Only for a reader of the record, in its branch (permission review).
+      expect(await studentIds('si2607001', tutor)).toEqual([]);
+      expect((await students('si2607001', t.admin, t.south)).items).toEqual([]);
     });
 
     it('orders by the stored fold of the name, then the id', async () => {

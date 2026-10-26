@@ -345,7 +345,11 @@ describe('student records', () => {
       expect((await detail(holder.id)).status).toBe('inactive');
       const response = await t.postStudent(t.north, body({ uid: uid.toLowerCase() }));
       refusedWith(response, 409, 'student_value_taken');
-      expect(detailsOf(response)[0]).toMatchObject({ path: 'uid', recordId: holder.id });
+      expect(detailsOf(response)[0]).toMatchObject({
+        path: 'uid',
+        code: 'already_exists',
+        recordId: holder.id,
+      });
     });
 
     it('refuses it in another case when it was corrected away', async () => {
