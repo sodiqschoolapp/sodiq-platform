@@ -39,7 +39,14 @@ import { StudentResultsService } from './student-results.service.js';
     // Task 9.4b: the branch summary of the home page.
     BranchSummaryController,
   ],
-  providers: [StudentResultsService, ClosingService, DailyWork, RatingService, EarlyWarningService, BranchSummaryService],
+  providers: [
+    StudentResultsService,
+    ClosingService,
+    DailyWork,
+    RatingService,
+    EarlyWarningService,
+    BranchSummaryService,
+  ],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(

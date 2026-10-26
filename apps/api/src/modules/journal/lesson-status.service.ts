@@ -124,7 +124,10 @@ function startedLessons(
  * Admin, the Principal, the Academic Vice Principal); own subjects for a Head Teacher and a
  * Senior Head Teacher; the subjects of the Tutor departments for the Head Tutor.
  */
-async function subjectScopeOf(transaction: Transaction, access: Access): Promise<Set<string> | null> {
+async function subjectScopeOf(
+  transaction: Transaction,
+  access: Access,
+): Promise<Set<string> | null> {
   if (access.permitting.some((one) => WHOLE_ROLES.includes(one.role))) return null;
   const scope = new Set(
     access.permitting
