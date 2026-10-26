@@ -38,10 +38,8 @@ test('the Principal sees the branch summary and, as Head Tutor, the attendance o
   ).toBeVisible();
   const card = page.getByRole('region', { name: en.home.attendance.allClasses, exact: true });
   await expect(card).toBeVisible();
-  await expect(
-    card
-      .getByText(en.home.attendance.branch, { exact: false })
-      .or(card.getByText(en.home.attendance.noClasses, { exact: true })),
-  ).toBeVisible();
+  // The branch's total, and 7 Oxford of the seed among the classes (spec review must-fix 7).
+  await expect(card.locator('[data-total]')).toContainText(en.home.attendance.branch);
+  await expect(card.locator('tbody tr').filter({ hasText: '7 Oxford' })).toHaveCount(1);
   await expect(page.getByRole('button', { name: en.problems.retry })).toHaveCount(0);
 });

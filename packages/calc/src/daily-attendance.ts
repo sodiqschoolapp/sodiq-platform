@@ -12,7 +12,7 @@
  *   not exempt now." Late (2) and skipped (3) are not "absent now" (plan decision 8).
  */
 import { Fraction } from './fraction.js';
-import { CalcInputError } from './input.js';
+import { CalcInputError, wholeNumberIn } from './input.js';
 
 /** One attendance cell: the stored mark (0 to 3, `null` unmarked) and whether the student is exempt. */
 export interface AttendanceCell {
@@ -59,6 +59,15 @@ export function dailyAttendance(cells: readonly AttendanceCell[]): DailyAttendan
     exempt,
     percent: marked === 0 ? null : Fraction.of(BigInt(attended) * 100n, BigInt(marked)),
   };
+}
+
+/**
+ * "Classes below a set percent" (`08`, Head Tutor row): the day's percent, rounded once, under
+ * the branch's threshold (plan decision 4); nothing marked is never below.
+ */
+export function attendanceBelow(figure: DailyAttendance, threshold: number): boolean {
+  const limit = wholeNumberIn(threshold, 'threshold', 0n, 100n);
+  return figure.percent !== null && figure.percent.roundHalfUp() < limit;
 }
 
 /** Whether a student is absent now: `lessons` are the student's held lessons of today in start order. */

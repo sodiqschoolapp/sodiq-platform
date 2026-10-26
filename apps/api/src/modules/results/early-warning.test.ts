@@ -1102,6 +1102,18 @@ describe('the early-warning list (08, Early-warning list)', () => {
     const spare = await account();
     const c = await scene({ teacher: owner.account.id, spare: spare.account.id });
     const { anvar, laylo } = c.students;
+    // Zarnigor, of the other class, is listed on its journal, another teacher's journal of the
+    // owner's subject (spec review of the code, must-fix 5): absent with five works of 1 of 10.
+    const [b12] = await lessonsOf(c.s.otherClass, '2026-10-01', '2026-10-31');
+    if (b12 === undefined) throw new Error('The lesson of the other class.');
+    const zarnigor = await student(c.s.branch, { first: 'Zarnigor', last: 'Zokirova' }, [
+      { classId: c.s.otherClass, from: '2026-09-01' },
+    ]);
+    const works = await classworksOn(c.s.branch, b12.id, 5);
+    await saveOn(c.s.branch, b12.date, [
+      { lessonId: b12.id, studentId: zarnigor, value: 0 },
+      ...works.map((workId) => ({ lessonId: b12.id, studentId: zarnigor, workId, value: 1 })),
+    ]);
     const subjectHead = {
       role: 'head_teacher' as const,
       branchId: c.s.branch,
@@ -1113,6 +1125,12 @@ describe('the early-warning list (08, Early-warning list)', () => {
       c.s.branch,
       [{ role: 'teacher', branchId: c.s.branch }, subjectHead],
       async ({ get }) => {
+        // As Head Teacher the whole list holds the other teacher's journal too.
+        expect(
+          listOf(await get(PATH))
+            .entries.map((entry) => entry.student.id)
+            .sort(),
+        ).toEqual([anvar, laylo, zarnigor].sort());
         const list = listOf(await get(`${PATH}?for=own_journals`));
         expect(list.entries.map((entry) => entry.student.id).sort()).toEqual([anvar, laylo].sort());
       },
@@ -1131,8 +1149,11 @@ describe('the early-warning list (08, Early-warning list)', () => {
           listOf(await get(PATH))
             .entries.map((entry) => entry.student.id)
             .sort(),
-        ).toEqual([anvar, laylo].sort());
+        ).toEqual([anvar, laylo, zarnigor].sort());
         expect(listOf(await get(`${PATH}?for=own_journals`)).entries).toEqual([]);
+        // The query is strict: a misspelled narrowing is refused, never dropped (permission
+        // review should-fix 1).
+        expect((await get(`${PATH}?For=own_journals`)).status).toBe(400);
       },
     );
     // A reader with no Teacher role owns no journal: an empty list, not a refusal.

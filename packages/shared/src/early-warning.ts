@@ -31,7 +31,7 @@ export type EarlyWarningReasonKind = (typeof EARLY_WARNING_REASONS)[number];
 export const EARLY_WARNING_NOTE_MAX_LENGTH = 500;
 
 export const earlyWarningQuerySchema = z
-  .object({
+  .strictObject({
     /** Left out: the quarter containing today, else the last started quarter (plan decision 10). */
     quarterId: z.uuid().optional(),
     /**

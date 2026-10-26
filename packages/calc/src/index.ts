@@ -2,6 +2,7 @@
 export { attendanceValue, type AttendanceMark, type AttendanceValues } from './attendance.js';
 export {
   absentNow,
+  attendanceBelow,
   dailyAttendance,
   type AttendanceCell,
   type DailyAttendance,

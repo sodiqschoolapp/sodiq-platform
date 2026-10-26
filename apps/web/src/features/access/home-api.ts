@@ -24,7 +24,7 @@ export const attendanceTodayQuery = (branchId: string | null) =>
       attendanceTodaySchema.parse(
         await answerOf(
           api.GET('/api/journal/attendance-today', {
-            params: { header: branchHeader(), query: {} },
+            params: { header: branchHeader() },
           }),
         ),
       ),
@@ -38,7 +38,7 @@ export const lessonsTodayQuery = (branchId: string | null) =>
     queryFn: async () =>
       lessonsTodaySchema.parse(
         await answerOf(
-          api.GET('/api/journal/lessons-today', { params: { header: branchHeader(), query: {} } }),
+          api.GET('/api/journal/lessons-today', { params: { header: branchHeader() } }),
         ),
       ),
     enabled: branchId !== null,
@@ -65,7 +65,7 @@ export const conflictsSummaryQuery = (branchId: string | null) =>
       conflictsSummarySchema.parse(
         await answerOf(
           api.GET('/api/timetable/conflicts-summary', {
-            params: { header: branchHeader(), query: {} },
+            params: { header: branchHeader() },
           }),
         ),
       ),

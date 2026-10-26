@@ -172,11 +172,24 @@ export class TimetablePattern {
    */
   readiness(access: Access, id: string): Promise<DraftReadiness> {
     return this.timetable.readiness(access, id, async (transaction, version) => {
-      const { pattern, blocks } = await this.stateOf(transaction, version, access.accountId);
-      const results = checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts);
-      const blocked = results.filter((one) => one.severity === 'blocked').length;
-      return { ready: blocked === 0, blocked, warnings: results.length - blocked };
+      const { blocked, warnings } = await this.panelCounts(transaction, version, access.accountId);
+      return { ready: blocked === 0, blocked, warnings };
     });
+  }
+
+  /**
+   * The counts of a version's conflict panel: the results of `checkTimetable` over its pattern,
+   * blocked and warnings (one place for step 7's readiness and the home page, task 9.4b).
+   */
+  private async panelCounts(
+    transaction: Transaction,
+    version: VersionRow,
+    accountId: string,
+  ): Promise<{ blocked: number; warnings: number }> {
+    const { pattern, blocks } = await this.stateOf(transaction, version, accountId);
+    const results = checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts);
+    const blocked = results.filter((one) => one.severity === 'blocked').length;
+    return { blocked, warnings: results.length - blocked };
   }
 
   /**
@@ -191,21 +204,12 @@ export class TimetablePattern {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.timetable.todayIn(transaction, branchId);
-      const counts = async (version: VersionRow) => {
-        const { pattern, blocks } = await this.stateOf(transaction, version, access.accountId);
-        const results = checkTimetable(
-          checkedPlacements(pattern.model, blocks),
-          pattern.model.facts,
-        );
-        const blocked = results.filter((one) => one.severity === 'blocked').length;
-        return {
-          id: version.id,
-          number: version.number,
-          startsOn: version.starts_on,
-          blocked,
-          warnings: results.length - blocked,
-        };
-      };
+      const counts = async (version: VersionRow) => ({
+        id: version.id,
+        number: version.number,
+        startsOn: version.starts_on,
+        ...(await this.panelCounts(transaction, version, access.accountId)),
+      });
       const drafts = await transaction
         .selectFrom('timetable_versions')
         .select('id')

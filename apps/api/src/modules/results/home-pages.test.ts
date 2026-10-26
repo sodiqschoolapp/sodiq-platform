@@ -16,6 +16,7 @@ import {
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import {
   dayTemplatesKit,
@@ -358,6 +359,11 @@ describe('the home pages (08, Home pages by role)', () => {
       const answer = await as(await superAdmin(), c.s.branch, [], async ({ get }) =>
         attendanceOf(await get(ATTENDANCE)),
       );
+      // The branch's two classes, no class of the other branches of this file (`CLAUDE.md`,
+      // Branch on every row), though the Super Admin's transaction holds every branch.
+      expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
+        [c.s.classId, c.s.otherClass].sort(),
+      );
       // Hamid: present at 08:00, absent at 08:55. Gulnora's 1 then 1 is not.
       expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
         c.b.hamid,
@@ -365,6 +371,32 @@ describe('the home pages (08, Home pages by role)', () => {
       expect(classOf(answer, c.s.classId)?.absentNow?.map((one) => one.student.id)).toEqual([
         c.a.anvar,
       ]);
+    });
+
+    it('names who is absent now only in the own class of a Head Tutor who is also its Tutor (review should-fix 3)', async () => {
+      const both = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: both.account.id });
+      await load.tutorOf(c.s.branch, c.s.otherClass, both.account.id);
+      const answer = await as(
+        both,
+        c.s.branch,
+        [{ role: 'head_tutor', branchId: c.s.branch }],
+        async ({ get }) => attendanceOf(await get(ATTENDANCE)),
+      );
+      expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
+        [c.s.classId, c.s.otherClass].sort(),
+      );
+      expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
+        c.b.hamid,
+      ]);
+      expect(classOf(answer, c.s.classId)?.absentNow).toBeNull();
+    });
+
+    it('takes no date and no other field: today only (permission review should-fix 2)', async () => {
+      const response = await as(await superAdmin(), c.s.branch, [], ({ get }) =>
+        get(`${ATTENDANCE}?date=2026-10-19`),
+      );
+      expect(response.status).toBe(400);
     });
 
     it('reads the day in branch time: at 00:30 on Tuesday the day is empty and the week holds Monday', async () => {
@@ -406,6 +438,11 @@ describe('the home pages (08, Home pages by role)', () => {
     it('refuses the roles of no home row that reads it (403), each with the role in the branch', async () => {
       const refused: Omit<Held, 'validFrom'>[] = [
         { role: 'teacher', branchId: c.s.branch },
+        {
+          role: 'head_teacher',
+          branchId: c.s.branch,
+          subjectIds: [await load.classes.subject({ grades: [7] })],
+        },
         { role: 'principal', branchId: c.s.branch },
         { role: 'academic_vice_principal', branchId: c.s.branch },
       ];
@@ -417,6 +454,65 @@ describe('the home pages (08, Home pages by role)', () => {
         expect(codeOf(response), held.role).toBe('permission_denied');
       }
     });
+  });
+
+  // `edge/journal`, "Daily attendance percent of a class": "over class and group lessons"
+  // (spec review of the code, must-fix 2).
+  it("counts a group lesson's cells for the class of each of its students", async () => {
+    const cells = await CellsKit.create(t.database.migrator);
+    const branch = await t.newBranch();
+    const { year } = await cells.lessons.year(branch);
+    const oxford = await load.classes.schoolClass(branch, year, { grade: 7 });
+    const cambridge = await load.classes.schoolClass(branch, year, { grade: 7 });
+    const group = await load.classes.group(branch, year, cells.subject, [oxford, cambridge]);
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const placed = async (classId: string) => {
+      const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+      // A class row and its group row in one transaction (`class_memberships_need_groups`).
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await members.member({ branch, classId, studentId: id, from: '2026-09-01' }, transaction);
+        await members.groupMember(
+          { branch, groupId: group, subjectId: cells.subject, studentId: id, from: '2026-09-01' },
+          transaction,
+        );
+      });
+      return id;
+    };
+    const alisher = await placed(oxford);
+    const bobur = await placed(cambridge);
+    const lesson = await cells.groupLesson(branch, year, group, '2026-10-26');
+    const teacher = await load.classes.person(branch, ['uz']);
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ teacher_id: teacher.staffId })
+      .where('id', '=', lesson)
+      .execute();
+    await saveAt(branch, '2026-10-26T20:00:00+05:00', [
+      { lessonId: lesson, studentId: alisher, value: 1 },
+      { lessonId: lesson, studentId: bobur, value: 0 },
+    ]);
+    const answer = await as(
+      await superAdmin(),
+      branch,
+      [],
+      async ({ get }) => attendanceOf(await get(ATTENDANCE)),
+      '2026-10-26T21:00:00+05:00',
+    );
+    expect(classOf(answer, oxford)?.day).toEqual({
+      attended: 1,
+      marked: 1,
+      unmarked: 0,
+      exempt: 0,
+      percent: 100,
+    });
+    expect(classOf(answer, cambridge)?.day).toEqual({
+      attended: 0,
+      marked: 1,
+      unmarked: 0,
+      exempt: 0,
+      percent: 0,
+    });
+    expect(classOf(answer, cambridge)?.absentNow?.map((one) => one.student.id)).toEqual([bobur]);
   });
 
   describe('lessons today and their status (08, Academic Vice Principal)', () => {
@@ -464,6 +560,24 @@ describe('the home pages (08, Home pages by role)', () => {
       );
       // The maths of both classes; the second subject is another's.
       expect(subjectHead).toMatchObject({ held: 2, ahead: 0 });
+      // A Senior Head Teacher of the second subject: its lesson at 08:55, still ahead (should-fix 4).
+      const senior = await as(
+        await account(),
+        c.s.branch,
+        [{ role: 'senior_head_teacher', subjectIds: [c.s.secondSubject ?? ''] }],
+        async ({ get }) => lessonsTodaySchema.parse(ok(await get(LESSONS))),
+        at,
+      );
+      expect(senior).toMatchObject({ held: 0, ahead: 1, incomplete: [] });
+      // The Head Tutor reads the subjects of the Tutor departments: none of these.
+      const headTutor = await as(
+        await account(),
+        c.s.branch,
+        [{ role: 'head_tutor', branchId: c.s.branch }],
+        async ({ get }) => lessonsTodaySchema.parse(ok(await get(LESSONS))),
+        at,
+      );
+      expect(headTutor).toMatchObject({ held: 0, ahead: 0, incomplete: [] });
     });
 
     it('refuses a Teacher and a Tutor (403), each with the role in the branch', async () => {
@@ -495,8 +609,26 @@ describe('the home pages (08, Home pages by role)', () => {
         branchId: c.s.branch,
         validFrom: new Date('2026-09-01T00:00:00+05:00'),
       });
+      // A student who left the school on 21 October is inactive: not counted (decision 10).
+      const members = new MembersKit(t.database.migrator, await load.classes.account());
+      const leaver = await members.student(c.s.branch, { startsOn: '2026-09-01', grade: 7 });
+      const leavingId = await members.leaving(
+        t.database.migrator,
+        c.s.branch,
+        leaver,
+        '2026-10-21',
+      );
+      await members.member({
+        branch: c.s.branch,
+        classId: c.s.classId,
+        studentId: leaver,
+        from: '2026-09-01',
+        until: '2026-10-21',
+        endedBy: 'leaving',
+        leavingId,
+      });
       const first = await read();
-      // The nine students of the scene.
+      // The nine students of the scene; the one who left is not counted.
       expect(first.students).toBe(9);
       expect(first.attendanceToday).toEqual({
         attended: 6,
@@ -558,28 +690,38 @@ describe('the home pages (08, Home pages by role)', () => {
         quarterId: q1,
         accountId: await load.classes.account(),
       });
-      // Every stored record of the first class's maths reads 100, unlike its live figures: present
-      // with 10 of 10 and an exam of 100.
-      const record = finalQuarterRecord(
-        {
-          weights: { attendance: 20, classwork: 20, homework: 20, ratingExam: 40 },
-          attendanceValues: { lateValue: 50, skippedValue: 0 },
-          lessons: [{ mark: 1, classworks: [{ score: 10, total: 10 }], homeworks: [] }],
-          ratingExam: { kind: 'score', score: 100 },
-          quarterClosed: true,
-          heldInJournals: 1,
-          countsFrom: null,
-          leftSubjectOn: null,
-          atLeaving: null,
-          decision: null,
-        },
-        'closing',
-      );
-      await t.database.migrator
-        .deleteFrom('quarter_final_results')
-        .where('closing_id', '=', closing)
-        .execute();
-      for (const studentId of Object.values(c.a)) {
+      // The stored records of the close (`quarter_final_results`, as 9.2b writes them): the
+      // first class's maths reads 100 (present, 10 of 10, an exam of 100), the other class's 50
+      // (an exam of 0); neither is the live figure.
+      const recordOf = (exam: number) =>
+        finalQuarterRecord(
+          {
+            weights: { attendance: 20, classwork: 20, homework: 20, ratingExam: 40 },
+            attendanceValues: { lateValue: 50, skippedValue: 0 },
+            lessons: [{ mark: 1, classworks: [{ score: 10, total: 10 }], homeworks: [] }],
+            ratingExam: { kind: 'score', score: exam },
+            quarterClosed: true,
+            heldInJournals: 1,
+            countsFrom: null,
+            leftSubjectOn: null,
+            atLeaving: null,
+            decision: null,
+          },
+          'closing',
+        );
+      const otherJournal = (
+        await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', c.s.otherClass)
+          .where('subject_id', '=', c.s.subject)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const stored = [
+        ...Object.values(c.a).map((studentId) => ({ studentId, journalId: journal, exam: 100 })),
+        ...Object.values(c.b).map((studentId) => ({ studentId, journalId: otherJournal, exam: 0 })),
+      ];
+      for (const one of stored) {
         await t.database.migrator
           .insertInto('quarter_final_results')
           .values({
@@ -587,18 +729,29 @@ describe('the home pages (08, Home pages by role)', () => {
             closing_id: closing,
             quarter_id: q1,
             subject_id: c.s.subject,
-            student_id: studentId,
-            journal_id: journal,
+            student_id: one.studentId,
+            journal_id: one.journalId,
             kind: 'closing',
-            record: JSON.stringify(record),
+            record: JSON.stringify(recordOf(one.exam)),
           })
           .execute();
       }
       const closed = await read();
       expect(closed.quarter).toMatchObject({ id: q1, closed: true });
-      const grade = closed.grades.find((one) => one.grade === 7);
-      // The first class's seven read 100 from their records, the other class's two live 100.
-      expect(grade).toMatchObject({ grade: 7, value: 1000, rated: 9, students: 9 });
+      // Seven of 100 and two of 50: 800 / 9, 88.9; the live figure is 64.3.
+      expect(closed.grades).toEqual([{ grade: 7, value: 889, rated: 9, students: 9 }]);
+      // A cell of the closed quarter cannot change (the database refuses it, `quarters_closed`):
+      // the stored records differ from the live cells instead, and the stored ones are shown.
+      await expect(
+        t.database.migrator
+          .updateTable('journal_cells')
+          .set({ mark: 0 })
+          .where('lesson_id', '=', c.mathsB.id)
+          .where('student_id', '=', c.b.hamid)
+          .where('work_id', 'is', null)
+          .execute(),
+      ).rejects.toThrow(/quarters_closed/);
+      expect((await read()).grades).toEqual([{ grade: 7, value: 889, rated: 9, students: 9 }]);
     });
 
     it("refuses the Academic Vice Principal and a Teacher (403), and answers 404 for another branch's or an unknown quarter", async () => {

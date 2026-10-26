@@ -4,15 +4,14 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 26 October 2026: task 9.4b Home pages
 
-- `packages/calc` (version 7): `dailyAttendance` (cells marked present or late over marked cells of non-exempt students, unmarked counted apart) and `absentNow`. No migration.
+- `packages/calc` (version 7): `dailyAttendance` (cells marked present or late over marked cells of non-exempt students, unmarked counted apart), `attendanceBelow` and `absentNow`. No migration.
 - Areas `attendance_today` (Super Admin, Head Tutor, Spiritual Vice Principal, Tutor, class-scoped) and `branch_summary` (Super Admin, Principal). Routes `GET /api/journal/attendance-today`, `GET /api/journal/lessons-today` (`journal_discipline`), `GET /api/results/branch-summary`, `GET /api/timetable/conflicts-summary` (`timetable`); `GET /api/results/early-warning` narrows with `for=own_journals` or `classId` (an own class of the Tutor, 403 otherwise).
 - Web: the first screen of every role of `08` (`home-page.tsx`, `home-cards.tsx`); texts under `home.attendance`, `home.earlyWarning`, `home.requests`, `home.journals`, `home.tutorClass`, `home.vice`, `home.summary`; handbook `08-results.md`, The home pages; browser test `home-pages.spec.ts`.
-- Left out: the Free now board on the Academic Vice Principal's home (From line on 5.7c); the speed at the real size (From line on 10.1).
+- Left out: the Free now board on the Academic Vice Principal's home (From line on 5.7c); the speed at the real size (From line on 10.1); the school days passed of the quarter (From line on 9.3b).
 
 The next sessions must know:
 
 - The default answers of the home cards are in `SHELL_ANSWERS` of `apps/web/src/testing/render-app.tsx`; a test that needs another answer gives its own.
-- "Quarter progress" shows the quarter's dates and the checklist's counts, not a count of school days (no route counts them yet).
 
 ## 26 October 2026: task 9.4a Early-warning list
 

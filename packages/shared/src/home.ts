@@ -23,10 +23,8 @@ export const attendanceFigureSchema = z.object({
 
 export type AttendanceFigure = z.infer<typeof attendanceFigureSchema>;
 
-export const attendanceTodayQuerySchema = z.strictObject({
-  /** Left out: today in branch time. */
-  date: schoolDateSchema.optional(),
-});
+/** Today in branch time only (`08`: "today"; permission review should-fix 2). */
+export const attendanceTodayQuerySchema = z.strictObject({});
 
 export type AttendanceTodayQuery = z.infer<typeof attendanceTodayQuerySchema>;
 

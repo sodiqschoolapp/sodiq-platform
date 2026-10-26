@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { absentNow, dailyAttendance, type AttendanceCell } from './daily-attendance.js';
+import {
+  absentNow,
+  attendanceBelow,
+  dailyAttendance,
+  type AttendanceCell,
+} from './daily-attendance.js';
 import { Fraction } from './fraction.js';
 
 const cell = (mark: AttendanceCell['mark'], exempt = false): AttendanceCell => ({ mark, exempt });
@@ -36,6 +41,25 @@ describe('dailyAttendance: edge/journal, "Daily attendance percent of a class"',
 
   it('refuses a mark outside 0 to 3', () => {
     expect(() => dailyAttendance([{ mark: 4 as never, exempt: false }])).toThrow();
+  });
+});
+
+describe('attendanceBelow: 08, "classes below a set percent"', () => {
+  it('compares the rounded percent with the threshold', () => {
+    // 64.5 rounds to 65: not below 65; 64.4 rounds to 64: below.
+    const at = (attended: number, marked: number) =>
+      dailyAttendance([
+        ...Array.from({ length: attended }, () => cell(1)),
+        ...Array.from({ length: marked - attended }, () => cell(0)),
+      ]);
+    expect(attendanceBelow(at(129, 200), 65)).toBe(false);
+    expect(attendanceBelow(at(161, 250), 65)).toBe(true);
+    expect(attendanceBelow(at(13, 20), 65)).toBe(false);
+  });
+
+  it('is never below with nothing marked, and refuses a threshold outside 0 to 100', () => {
+    expect(attendanceBelow(dailyAttendance([cell(null)]), 80)).toBe(false);
+    expect(() => attendanceBelow(dailyAttendance([]), 101)).toThrow();
   });
 });
 

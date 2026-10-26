@@ -23,9 +23,10 @@ export class AttendanceTodayController {
   @Requires('attendance_today', 'view')
   @Returns(attendanceTodaySchema)
   read(
-    @ValidQuery(attendanceTodayQuerySchema) query: AttendanceTodayQuery,
+    // Strict and empty: today only.
+    @ValidQuery(attendanceTodayQuerySchema) _query: AttendanceTodayQuery,
     @CurrentAccess() access: Access,
   ): Promise<AttendanceToday> {
-    return this.attendance.read(access, query);
+    return this.attendance.read(access);
   }
 }

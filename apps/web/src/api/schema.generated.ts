@@ -171627,9 +171627,7 @@ export interface operations {
     };
     AttendanceTodayController_read: {
         parameters: {
-            query?: {
-                date?: string;
-            };
+            query?: never;
             header: {
                 "X-Branch-Id": string;
             };

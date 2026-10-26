@@ -1,11 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { absentNow, dailyAttendance, type AttendanceCell, type DailyAttendance } from '@sodiq/calc';
+import {
+  absentNow,
+  attendanceBelow,
+  dailyAttendance,
+  type AttendanceCell,
+  type DailyAttendance,
+} from '@sodiq/calc';
 import {
   attendanceTodaySchema,
+  classDisplayName,
   schoolDateOf,
   type AttendanceFigure,
   type AttendanceToday,
-  type AttendanceTodayQuery,
   type Role,
 } from '@sodiq/shared';
 import { mondayOf } from '@sodiq/timetable-rules';
@@ -70,7 +76,7 @@ const markOf = (value: number | null): AttendanceCell['mark'] =>
 export class AttendanceTodayService {
   constructor(private readonly transactions: Transactions) {}
 
-  read(access: Access, query: AttendanceTodayQuery): Promise<AttendanceToday> {
+  read(access: Access): Promise<AttendanceToday> {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const branch = await transaction
@@ -80,7 +86,7 @@ export class AttendanceTodayService {
         .executeTakeFirstOrThrow();
       const now = await transactionMoment(transaction);
       const today = schoolDateOf(now, branch.time_zone);
-      const date = query.date ?? today;
+      const date = today;
       const weekFrom = mondayOf(date);
 
       const whole = access.permitting.some((one) => WHOLE_ROLES.includes(one.role));
@@ -90,14 +96,7 @@ export class AttendanceTodayService {
           .filter((one) => one.role === 'tutor')
           .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
       );
-      let classQuery = transaction
-        .selectFrom('classes')
-        .innerJoin('academic_years', 'academic_years.id', 'classes.academic_year_id')
-        .select(['classes.id', 'classes.name', 'classes.grade'])
-        .where('classes.branch_id', '=', branchId)
-        .where('classes.archived_at', 'is', null)
-        .where('academic_years.start_date', '<=', date)
-        .where('academic_years.end_date', '>=', date);
+      let classQuery = classesOn(transaction, branchId, date);
       if (!whole) {
         if (own.size === 0) return empty(date, weekFrom, await thresholdOf(transaction, branchId));
         classQuery = classQuery.where('classes.id', 'in', [...own]);
@@ -152,12 +151,11 @@ export class AttendanceTodayService {
       const answer = classes.map((one) => {
         const mine = cells.filter((row) => row.class_id === one.id);
         const day = dailyAttendance(mine.filter((row) => row.lesson_date === date).map(cellOf));
-        const percent = day.percent === null ? null : Number(day.percent.roundHalfUp());
         return {
-          class: { id: one.id, name: one.name, grade: one.grade },
+          class: { id: one.id, name: classDisplayName(one.grade, one.name), grade: one.grade },
           day: shown(day),
           week: shown(dailyAttendance(mine.map(cellOf))),
-          below: percent !== null && percent < threshold,
+          below: attendanceBelow(day, threshold),
           absentNow: named.has(one.id)
             ? (absent.get(one.id) ?? []).flatMap((entry) => {
                 const student = nameOf.get(entry.studentId);
@@ -195,6 +193,18 @@ export class AttendanceTodayService {
       });
     });
   }
+}
+
+/** The classes of the branch not archived, of the academic year holding the date. */
+function classesOn(transaction: Transaction, branchId: string, date: string) {
+  return transaction
+    .selectFrom('classes')
+    .innerJoin('academic_years', 'academic_years.id', 'classes.academic_year_id')
+    .select(['classes.id', 'classes.name', 'classes.grade'])
+    .where('classes.branch_id', '=', branchId)
+    .where('classes.archived_at', 'is', null)
+    .where('academic_years.start_date', '<=', date)
+    .where('academic_years.end_date', '>=', date);
 }
 
 async function thresholdOf(transaction: Transaction, branchId: string): Promise<number> {
@@ -323,11 +333,8 @@ export async function branchAttendanceOn(
   date: string,
   now: Date,
 ): Promise<AttendanceFigure> {
-  const classes = await transaction
-    .selectFrom('classes')
-    .select('id')
-    .where('branch_id', '=', branchId)
-    .execute();
+  // The classes the Head Tutor's total reads too (permission review should-fix 5).
+  const classes = await classesOn(transaction, branchId, date).execute();
   if (classes.length === 0) return shown(dailyAttendance([]));
   const cells = await cellsOf(
     transaction,

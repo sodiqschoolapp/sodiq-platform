@@ -28,9 +28,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 6: task 9.4a, the early-warning list (`currentWorkFigure`, `ownGradedWorks`,
   // `currentAbsenceRun`, `earlyWarningReasons`); no existing formula changes.
   '079763a8afc3703b84e6dd5997bd6d95e1f0a5f15adc9bbe9e6f336d48d5167b',
-  // 7: task 9.4b, the attendance figures of the home pages (`dailyAttendance`, `absentNow`); no
+  // 7: task 9.4b, the attendance figures of the home pages (`dailyAttendance`, `attendanceBelow`, `absentNow`); no
   // existing formula changes.
-  '8f0880fb32ce7f6e0fe805cf7f5e7f0fd0caaf3f0518a6f0b4c43336c26fb23f',
+  '0b9e0d932f80f48b31b768e40f281ee4147dda0dc0a94e9a1112a6a45069d9ae',
 ];
 
 const directory = new URL('./', import.meta.url);
