@@ -203,7 +203,7 @@ test('the teacher carries a not-covered item to the next quarter and places it a
     .first()
     .click();
   await expect(heading(page, '7 Harvard · Planning N')).toBeVisible();
-  const notCovered = page.getByRole('region', { name: en.plans.plan.notCovered });
+  const notCovered = page.getByRole('region', { name: en.plans.plan.notCovered, exact: true });
   await expect(notCovered).toContainText('Map scales');
   await notCovered.getByRole('button', { name: en.plans.outcomes.carry }).click();
   await page
@@ -216,7 +216,10 @@ test('the teacher carries a not-covered item to the next quarter and places it a
   await expect(outcomes).toContainText(en.plans.outcomes.kind.carried);
 
   // Quarter 2: the tray, then the item at its one lesson.
-  await page.getByRole('radio', { name: 'Quarter 2' }).check();
+  await page
+    .getByRole('radiogroup', { name: en.plans.plan.quarter })
+    .getByText('Quarter 2', { exact: true })
+    .click();
   const tray = page.getByRole('region', { name: en.plans.outcomes.carriedIn });
   await expect(tray).toContainText('Map scales');
   await tray.getByRole('button', { name: en.plans.outcomes.place }).click();
