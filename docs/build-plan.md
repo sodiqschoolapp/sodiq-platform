@@ -9,7 +9,7 @@ How to read the task lines:
 - "Done when" is the minimum. The definition of done in `CLAUDE.md` applies to every task from 0.8c on; before that, the parts that do not exist yet (permission guard, languages) are skipped.
 - If a task is still too large for one session, the builder splits it into a, b, c in this file, in the task's own pull request, plans and builds the first part, and flags the split **Look first** on issue #42 (`docs/decisions.md`, 12 October 2026). Nothing waits for a confirmation.
 - A fix task `<id>b` (for example `1.3b`) is a task the owner adds when a decision made without the owner is changed on issue #42 and code must change (`docs/decisions.md`, 11 October 2026, decision 1). It is placed first among the open tasks, so the start routine takes it next; its Read line names the decision it changes.
-- Until go-live the loop does not wait for decisions (`docs/decisions.md`, 12 October 2026). The owner's reviewer prepares each phase's decided-ahead questions while the phase before it runs; answers merged under "Decided ahead" in `docs/decisions.md` before the phase starts are used, and where none came, the loop decides and flags as for any silence of the spec. One owner gate line (`> **Owner gate.** …`) is left, before Phase 10, where the live system, real data and secrets start: the first unticked task after it is not started until the owner deletes the line, after a go-live review of every Look first decision with the owner's reviewer.
+- Until go-live the loop does not wait for decisions (`docs/decisions.md`, 12 October 2026). The owner's reviewer prepares each phase's decided-ahead questions while the phase before it runs; answers merged under "Decided ahead" in `docs/decisions.md` before the phase starts are used, and where none came, the loop decides and flags as for any silence of the spec. One owner gate line (`> **Owner gate.** …`) is left, before Phase 10, where the live system, real data and secrets start: the first unticked task after it is not started until the owner deletes the line, after a go-live review of every Look first decision with the owner's reviewer. The owner lifted it on 26 October 2026 (Phase 10, its order note).
 
 ## Phase 0. Foundations
 
@@ -1257,14 +1257,21 @@ How to read the task lines:
   - From 9.4a (pull request #235): `08`, Home pages by role: "early-warning list for own journals", "for the class", "for the branch". The list of a reader is `GET /api/results/early-warning` (`listIn` of `apps/api/src/modules/results/early-warning.service.ts`), already scoped to own journals, own classes or the branch; the home pages show it, never judge again.
   - From 8.7 (pull request #225, Left out): `08`, Home pages by role, Academic Vice Principal: "Lessons today and their status": the status from `lessonStatuses` (`apps/api/src/modules/journal/lesson-status.query.ts`), each lesson counted by `lessonsCounted` (`lesson-counted.ts`), as the counts per teacher (`GET /api/journal/discipline`) read them. The teaching home already shows the status and "3 of 5 lessons complete" and the reminders (8.7).
 
-- [ ] **9.4c A UID typed in any form** (the owner's spec change of 26 October 2026; placed before the owner gate so the start routine takes it next)
+## Phase 10. Before go-live
+
+Order decided by the owner on 26 October 2026: production (10.4) first for the pilot of Wednesday 28 October 2026, then 9.4c, then 10.1 to 10.3 while the pilot runs. The owner gate before this phase was lifted the same day, after the owner confirmed every decision on issue #42 and answered the decided-ahead questions for this phase.
+
+- [ ] **10.4 Production and the go-live checklist**
+  - Read: `13`, `edge/academic-year`, `14` (Whole system).
+  - Build: the production environment; the first Super Admin; the written go-live and pilot checklists (which data to enter first, which grade pilots, how results are compared).
+  - Done when: production is deployed and the checklists are approved by the owner.
+  - From the owner (26 October 2026, "Decided ahead for Phase 10" in `docs/decisions.md`): the pilot starts at school on the morning of **Wednesday 28 October 2026** with several groups, so this task is built first and production must be ready on Tuesday 27 October. Production at `app.sodiqschool.uz` on Render in Frankfurt: two servers of 2 GB run as Docker with Chromium, so Print and PDF work; the jobs worker; Neon on the Launch plan (7 days of restore). No email for now: password resets are made by an administrator. The deploy to production is a job the owner starts by hand, after 18:00 or at the weekend, Tashkent time; the test environment keeps its automatic deploy and stays. No session connects to the production database or reads its data. The first Super Admin is created by the owner on the server with `pnpm auth:first-account`; no real name enters the repository. The pilot checklist names the groups the school chooses, the order of data entry for them, and a weekly comparison by the Academic Vice Principal of ten students' figures with the paper journal that runs alongside.
+  - Stop-list items of this task (accounts, secrets, production, the deploy job under `.github/`) are approved in advance by the owner for this task; the session still asks the owner for each secret and account step and never handles a secret's value.
+
+- [ ] **9.4c A UID typed in any form** (the owner's spec change of 26 October 2026; after 10.4, as the owner ordered on 26 October 2026)
   - Read: `docs/spec-changes.md` (26 October 2026), `04` (Student record, UID sets), `edge/students-classes-groups` (the two UID rows, the merge row), `edge/academic-year` (unique including archived records), `edge/developer-rules` (Identifiers), `16` (question 12), the plan of pull request #67 (task 2.4a).
   - Build: a student's UID typed in any form, digits, letters or both, 1 to 20 characters once spaces are removed; refused only when empty, too long, or already used by any student of any branch (inactive, graduated, merged-away and corrected-away UIDs included), compared without spaces and ignoring upper and lower case, in the database too: a new migration replaces `students_uid_check` and `student_uids_uid_check` of 0032 and makes the unique indexes compare the normalised form (0032 is not edited). The grade-set warning and `confirmUidSet` are removed. Every UID input takes the one rule from `packages/shared`: the new student form, the UID correction, the student merge's search and Ctrl+K. Texts in three languages.
   - Done when: "SI2607001" and "A15" are saved; "si 2607001" is refused while "SI2607001" exists, also against an archived student, a corrected-away UID and at the same moment; no screen or route warns about the grade's set; the tests that sent `confirmUidSet` or expected the seven-digit refusal are rewritten for the new requirement, none weakened.
-
-> **Owner gate.** The start routine stops here until the owner, after the go-live review of every Look first decision and the decided-ahead round for Phase 10, deletes this line.
-
-## Phase 10. Before go-live
 
 - [ ] **10.1 Speed tests**
   - Read: `12` (Speed targets), `14` (Whole system), `edge/system-behaviour`.
@@ -1284,16 +1291,12 @@ How to read the task lines:
   - From 9.2c (pull request #231, decision 7, Look first): `edge/system-behaviour`, the alerts: "a nightly-check difference", and "A check that did not run also raises an alert". Today the Super Admins get an in-app notice (`results.check_difference`, `results.check_missed`, `apps/api/src/modules/results/daily/`) and one log line; the phone alert reads `result_checks` / `result_check_differences` (0135). The alert that the daily work did not run at all (the worker or pg-boss's cron down, so no `scheduled_runs` row of the day) is this task's too.
   - From the owner (15 October 2026): a daily scheduled task that reads the day's error reports, slow requests and job runs of the live system and sends the owner a short report of anything unusual (a page that fails, a job that did not run, a request much slower than usual), beside the fixed alerts; it reads and reports only.
   - From 8.9 (pull request #227, decision 4): the files of the branch exports stay in the store under `exports/` after their 24 hours (`journal_exports`, 0131): a cleanup removes the files of expired and failed exports; the alerts of `edge/system-behaviour` ("a jump in refused saves", "failed jobs") read `journal_save_refusals` (0131) and the failed exports.
+  - From the owner (26 October 2026, "Decided ahead for Phase 10"): Neon stays on the Launch plan (7 days of restore) until the owner upgrades; the daily export to R2 is the second copy. The phone alerts to Telegram and the owner's daily report are left for later: Sentry and UptimeRobot are set up without phone alerts. The sign-in-and-save check runs in a hidden "Monitoring" branch with one class, one test teacher and invented students, left out of every school report. The owner runs the restore test every month.
 
 - [ ] **10.3 Permission and security review**
   - Read: `02`, `13` (Security), `edge/people-roles-accounts`.
   - Build: the missing route-by-role tests; a written permission checklist for the owner to sign; fixes for what the review finds.
   - Done when: the harness covers every route and the owner has signed the checklist.
-
-- [ ] **10.4 Production and the go-live checklist**
-  - Read: `13`, `edge/academic-year`, `14` (Whole system).
-  - Build: the production environment; the first Super Admin; the written go-live and pilot checklists (which data to enter first, which grade pilots, how results are compared).
-  - Done when: production is deployed and the checklists are approved by the owner.
 
 ## Deferred until after 25 October 2026
 

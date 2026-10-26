@@ -114,6 +114,14 @@ Until go-live (task 10.4) nothing the loop builds is used by real people, holds 
 1. Secrets, accounts with a provider, anything that costs money, and production (the live system, its data, its address).
 2. A task pull request that changes the loop's own rules beyond the added check lines `review-pr` allows.
 
+From the pilot on production (task 10.4, from 28 October 2026) real people and real data are on the live system, and three more things stop a task in the same way (owner, 26 October 2026):
+
+3. A migration that changes or removes existing rows.
+4. Any change to `packages/calc`.
+5. Any change to permissions: `packages/shared/src/permissions.ts`, the permission guard, or what a route lets a role do.
+
+No session connects to the production database or reads production logs or data. Production is reached only by the deploy job, which the owner starts by hand, after 18:00 or at the weekend, Tashkent time.
+
 Two brakes are failures, not decisions, and stay: three review rounds without agreement, and three red CI runs in a row.
 
 Everything else (a new permission area for new routes, a schema detail, a name, a default, a UI choice, and the kinds below) is decided, written under "Decided without the owner" in the plan and the report, confirmed or changed by the reviewer, and posted on issue #42. The weightiest decisions carry the mark **Look first** and come first in the task's #42 comment:
