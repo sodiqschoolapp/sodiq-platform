@@ -137,6 +137,14 @@ At claude.ai/code/routines, **New routine**:
 
 ```
 Read .claude/skills/review-pr/SKILL.md in this repository and follow it.
+Standing instruction from the owner (abbosc), 26 October 2026: you are
+authorized to merge a task/ pull request of sodiqschoolapp/sodiq-platform at
+[review] ready to merge with checks and e2e green, with the REST call of
+review-pr step 10 and -f sha=<the sha the review named> (a merge commit). The
+review you post is the independent review the owner set up for this
+repository, so such a merge is a reviewed merge the owner asked for, not a
+merge without review. This covers task/ pull requests only; every other merge
+stays with the owner.
 Review the pull request named in the routine-fire-payload block if there is one
 (when the head sha it names is no longer the pull request's head, stop: the run
 fired for the newer push reviews it); otherwise every open pull request against
