@@ -30,6 +30,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { ownStaffOf } from '../journal/attendance-entry.js';
+import { addDays } from '../journal/exemption-effects.js';
 import type { JournalRow } from '../journal/journal-grid.query.js';
 import { WHOLE_ROLES } from '../journal/journal-scope.js';
 import type { CountedLesson } from '../journal/subject-quarter-lessons.js';
@@ -92,12 +93,8 @@ const DEFAULT_THRESHOLDS: EarlyWarningThresholds = {
 };
 
 const DAYS_AGO = 28;
-const DAY_MS = 86_400_000;
 
 const lower = (id: string) => id.toLowerCase();
-
-const addDays = (date: string, days: number): string =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 interface Context {
   readonly transaction: Transaction;

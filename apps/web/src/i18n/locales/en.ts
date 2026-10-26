@@ -6582,8 +6582,6 @@ export const en = {
       closed: 'The quarter is closed: entries can no longer be marked handled.',
       empty: 'No student needs attention in this list.',
       nothing: 'No quarter has started yet.',
-      thresholds:
-        'Judged from {{works}} graded works. Thresholds: result below {{lowResult}}, a drop of {{resultDrop}}, attendance below {{attendancePercent}}%, {{absencesInRow}} absences in a row.',
       link: 'Early warning',
     },
     ratingList: {

@@ -6641,8 +6641,6 @@ export const uz: Texts<'one' | 'other'> = {
       closed: 'Chorak yopilgan: endi koʻrib chiqildi deb belgilab boʻlmaydi.',
       empty: 'Bu roʻyxatda diqqat talab qiladigan oʻquvchi yoʻq.',
       nothing: 'Hali birorta chorak boshlanmagan.',
-      thresholds:
-        'Kamida {{works}} ta baholangan ishdan keyin baholanadi. Chegaralar: natija {{lowResult}} dan past, {{resultDrop}} ga pasayish, davomat {{attendancePercent}}% dan past, ketma-ket {{absencesInRow}} ta qoldirish.',
       link: 'Erta ogohlantirish',
     },
     ratingList: {

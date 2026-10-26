@@ -193,15 +193,6 @@ export function EarlyWarningPage(): React.JSX.Element {
               }}
             />
           </div>
-          <p className="text-sm text-muted-foreground" data-thresholds="">
-            {t('results.earlyWarning.thresholds', {
-              works: data.thresholds.gradedWorks,
-              lowResult: data.thresholds.lowResult,
-              resultDrop: data.thresholds.resultDrop,
-              attendancePercent: data.thresholds.attendancePercent,
-              absencesInRow: data.thresholds.absencesInRow,
-            })}
-          </p>
         </div>
         {quarter.closed && (
           <p className="text-sm text-muted-foreground" data-closed="">

@@ -1,6 +1,6 @@
 # Results
 
-This page holds the parts that tasks 9.1 to 9.3a added. The results table, subject mastery and the other reports (task 9.3b) and the early-warning list (task 9.4a) are not built yet.
+This page holds the parts that tasks 9.1 to 9.4a added. The results table, subject mastery and the other reports (task 9.3b) are not built yet.
 
 ## A student's results and attendance
 

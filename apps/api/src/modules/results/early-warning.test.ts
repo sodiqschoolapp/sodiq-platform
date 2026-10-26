@@ -643,9 +643,7 @@ describe('the early-warning list (08, Early-warning list)', () => {
       .where('account_id', '=', tutor.account.id)
       .where('role', '=', 'tutor')
       .executeTakeFirstOrThrow();
-    const tutorRow = (await handledRows([branch])).find(
-      (one) => one.reason === 'absences_in_row',
-    );
+    const tutorRow = (await handledRows([branch])).find((one) => one.reason === 'absences_in_row');
     expect(tutorRow?.assignment_id).toBe(tutorRole.id);
     expect(
       (
@@ -686,6 +684,8 @@ describe('the early-warning list (08, Early-warning list)', () => {
     const first = [{ classId: c.s.classId, from: '2026-09-01' }];
     const ruzimat = await student(branch, { first: 'Ruzimat', last: 'Rasulov' }, first);
     const sevara = await student(branch, { first: 'Sevara', last: 'Saidova' }, first);
+    const timur = await student(branch, { first: 'Timur', last: 'Toirov' }, first);
+    const umid = await student(branch, { first: 'Umid', last: 'Usmonov' }, first);
     const q2 = await quarterOf(c.s, 2);
     const closing = await closeQuarter(t.database, {
       branchId: branch,
@@ -721,6 +721,41 @@ describe('the early-warning list (08, Early-warning list)', () => {
       })
       .execute();
 
+    const umidRecord = finalQuarterRecord(
+      {
+        weights: { attendance: 20, classwork: 20, homework: 20, ratingExam: 40 },
+        attendanceValues: { lateValue: 50, skippedValue: 0 },
+        lessons: [
+          {
+            mark: 0,
+            classworks: [1, 2, 3, 4, 5].map(() => ({ score: 1, total: 10 })),
+            homeworks: [],
+          },
+        ],
+        ratingExam: { kind: 'score', score: 0 },
+        quarterClosed: true,
+        heldInJournals: 3,
+        countsFrom: null,
+        leftSubjectOn: null,
+        atLeaving: null,
+        decision: null,
+      },
+      'closing',
+    );
+    await t.database.migrator
+      .insertInto('quarter_final_results')
+      .values({
+        branch_id: branch,
+        closing_id: closing,
+        quarter_id: c.q1,
+        subject_id: c.s.subject,
+        student_id: umid,
+        journal_id: c.journal,
+        kind: 'closing',
+        record: JSON.stringify(umidRecord),
+      })
+      .execute();
+
     const lessons = await lessonsOf(c.s.classId, '2026-11-09', '2026-12-21');
     expect(lessons.map((one) => one.date)).toEqual([
       '2026-11-09',
@@ -739,10 +774,12 @@ describe('the early-warning list (08, Early-warning list)', () => {
       await saveOn(branch, lesson.date, [
         { lessonId: lesson.id, studentId: ruzimat, value: index < 3 ? 1 : 0 },
         { lessonId: lesson.id, studentId: sevara, value: index === 3 ? 1 : 0 },
+        { lessonId: lesson.id, studentId: timur, value: index < 2 ? 1 : 0 },
         ...(lesson.id === n9.id
           ? [
               ...early.map((workId) => ({ lessonId: n9.id, studentId: ruzimat, workId, value: 9 })),
               ...early.map((workId) => ({ lessonId: n9.id, studentId: sevara, workId, value: 10 })),
+              ...early.map((workId) => ({ lessonId: n9.id, studentId: timur, workId, value: 10 })),
             ]
           : []),
         ...(lesson.id === n30.id
@@ -844,6 +881,17 @@ describe('the early-warning list (08, Early-warning list)', () => {
     expect(reasonsOf(dec22, sevara)).toEqual([['absences_in_row', 3]]);
     expect(entryOf(dec22, sevara)?.reasons[0]?.handledBefore?.figure).toBe(3);
 
+    // The day exactly 28 days ago, in branch time (plan; spec review of the code, must-fix 3).
+    // Timur: present on 9 and 16 November with five works of 10 of 10, absent from 23 November.
+    // On Monday 21 December 28 days ago is 23 November, a lesson day: counted, his attendance
+    // then is 2 of 3 and the figure 88.89, shown 89; left out it would be 100. At 00:30 in
+    // Tashkent the date in UTC is still 20 December: the branch's date decides.
+    for (const moment of ['2026-12-21T12:00:00+05:00', '2026-12-21T00:30:00+05:00']) {
+      const list = await as(owner, branch, [], async ({ get }) => listOf(await get(PATH)), moment);
+      expect(list.daysAgoDate, moment).toBe('2026-11-23');
+      expect(entryOf(list, timur)?.figures.currentWork.daysAgo, moment).toBe(89);
+    }
+
     // Quarter 1 is closed: nothing is marked handled there (review correction 1), also by the
     // Super Admin; nothing is written.
     const before = await handledRows([branch]);
@@ -851,17 +899,23 @@ describe('the early-warning list (08, Early-warning list)', () => {
     // Out of scope comes before closed: a Teacher of the branch who teaches no journal of the
     // class is refused 403 on the closed quarter (should-fix 5).
     const spare = await account();
-    await as(spare, branch, [{ role: 'teacher', branchId: branch }], async ({ post }) => {
-      const response = await post(HANDLED, {
-        quarterId: c.q1,
-        studentId: c.students.anvar,
-        subjectId: c.s.subject,
-        reason: 'low_attendance',
-        note: '',
-      });
-      expect(response.status, JSON.stringify(response.body)).toBe(403);
-      expect(codeOf(response)).toBe('permission_denied');
-    }, at('2026-12-22'));
+    await as(
+      spare,
+      branch,
+      [{ role: 'teacher', branchId: branch }],
+      async ({ post }) => {
+        const response = await post(HANDLED, {
+          quarterId: c.q1,
+          studentId: c.students.anvar,
+          subjectId: c.s.subject,
+          reason: 'low_attendance',
+          note: '',
+        });
+        expect(response.status, JSON.stringify(response.body)).toBe(403);
+        expect(codeOf(response)).toBe('permission_denied');
+      },
+      at('2026-12-22'),
+    );
     for (const browser of [owner, await superAdmin()]) {
       await as(
         browser,
@@ -893,9 +947,60 @@ describe('the early-warning list (08, Early-warning list)', () => {
         expect(closed.quarter?.closed).toBe(true);
         expect(closed.entries.length).toBeGreaterThan(0);
         expect(closed.entries.every((entry) => !entry.canHandle)).toBe(true);
+        // Umid's figures are his stored record's (2.5 shown 3 with the exam, attendance 0, five
+        // works); live he has no number and no work, and would not be listed (must-fix 6).
+        expect(entryOf(closed, umid)?.figures).toMatchObject({
+          result: 3,
+          attendance: 0,
+          gradedWorks: 5,
+          currentWork: { now: 5 },
+        });
         expect(closed.quarters.map((one) => one.number)).toEqual([1, 2]);
       },
       at('2026-12-22'),
+    );
+  });
+
+  // edge/journal, "Three absences in a row": "Exempt and cancelled lessons neither break nor
+  // extend the run" (spec review of the code, must-fix 4), with the branch's own threshold
+  // (From 1.6: `branch_settings.absences_in_row`; should-fix 1). Mondays 12, 19 and 26 October:
+  // Dilshod absent on the 12th and the 26th; the 19th is cancelled. A threshold of 2 lists the
+  // run of two; were the cancelled lesson a break, the run would be one.
+  it('counts a run of absences across a cancelled lesson, against the threshold of the branch', async () => {
+    const s = await publishedScene(t, load, { graded: true });
+    const [l12, l19, l26] = await lessonsOf(s.classId, '2026-10-01', '2026-10-31');
+    if (l12 === undefined || l19 === undefined || l26 === undefined) {
+      throw new Error('The lessons of the class.');
+    }
+    const dilshod = await student(s.branch, { first: 'Dilshod', last: 'Davronov' }, [
+      { classId: s.classId, from: '2026-09-01' },
+    ]);
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: 'School trip' })
+      .where('id', '=', l19.id)
+      .execute();
+    await t.database.migrator
+      .updateTable('branch_settings')
+      .set({ absences_in_row: 2 })
+      .where('branch_id', '=', s.branch)
+      .execute();
+    const works = await classworksOn(s.branch, l12.id, 5);
+    await saveOn(s.branch, l12.date, [
+      { lessonId: l12.id, studentId: dilshod, value: 0 },
+      ...works.map((workId) => ({ lessonId: l12.id, studentId: dilshod, workId, value: 9 })),
+    ]);
+    await saveOn(s.branch, l26.date, [{ lessonId: l26.id, studentId: dilshod, value: 0 }]);
+    await as(
+      await account(),
+      s.branch,
+      [{ role: 'principal', branchId: s.branch }],
+      async ({ get }) => {
+        const list = listOf(await get(PATH));
+        expect(list.thresholds.absencesInRow).toBe(2);
+        expect(entryOf(list, dilshod)?.figures.absenceRun).toBe(2);
+        expect(reasonsOf(list, dilshod)).toContainEqual(['absences_in_row', 2]);
+      },
     );
   });
 });

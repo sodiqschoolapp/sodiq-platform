@@ -129,9 +129,6 @@ describe('the early-warning page', () => {
         ['Saidova Sevara', 'Mathematics', '7 Oxford', 'Absences in a row: 3', '71', '14%'],
       ]);
     });
-    expect(document.querySelector('[data-thresholds]')?.textContent).toBe(
-      'Judged from 5 graded works. Thresholds: result below 50, a drop of 15, attendance below 80%, 3 absences in a row.',
-    );
   });
 
   it('shows the trend, the earlier handling and the journal link in the panel, and marks a reason handled with a note', async () => {
