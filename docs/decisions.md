@@ -28,7 +28,7 @@ Decided once, valid for every task. A session reads this section at its start (`
 
 The owner's answers to the decided-ahead questions for Phase 10, given in chat on 26 October 2026 after confirming every decision on issue #42. `next-task` reads this section for tasks 10.1 to 10.4 and 9.4c; these are answers, not open questions.
 
-**The pilot.** It starts at school on the morning of **Wednesday 28 October 2026**, with several groups. Production must be ready on Tuesday 27 October, so 10.4 is built first, then 9.4c, then 10.1 to 10.3 while the pilot runs (`docs/build-plan.md`, Phase 10). The paper journal runs alongside; every Friday the Academic Vice Principal compares ten students' figures in the platform with the paper ones, and a difference is a bug report.
+**The pilot.** It starts at school on the morning of **Wednesday 28 October 2026**, with several groups. Later the same night the owner ordered 9.4c, 10.3, 10.1 and 10.2 first and 10.4 (production) after them (`docs/build-plan.md`, Phase 10), so the pilot starts once production is ready. The paper journal runs alongside; every Friday the Academic Vice Principal compares ten students' figures in the platform with the paper ones, and a difference is a bug report.
 
 **The live system**
 
