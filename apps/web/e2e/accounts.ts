@@ -96,6 +96,7 @@ export type AccountKey =
   | 'resultsPrincipal'
   | 'closingVice'
   | 'ratingPrincipal'
+  | 'earlyTutor'
   | 'closeVice'
   | 'reopenVice'
   | 'attendanceTeacher'

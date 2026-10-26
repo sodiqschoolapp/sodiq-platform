@@ -181,7 +181,9 @@ describe('the early-warning page', () => {
         },
       ]);
     });
-    expect((await screen.findByText(en.results.earlyWarning.handled)).getAttribute('role')).toBe('status');
+    expect((await screen.findByText(en.results.earlyWarning.handled)).getAttribute('role')).toBe(
+      'status',
+    );
   });
 
   it('offers no "Mark handled" to a reader the server does not let mark, nor in a closed quarter', async () => {

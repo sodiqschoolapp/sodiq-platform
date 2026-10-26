@@ -6026,6 +6026,112 @@ try {
     password: ratingPrincipal.firstPassword,
   };
 
+  // Task 9.4a: the Tutor of 7 Bristol of the same branch opens the early-warning list and marks a
+  // reason handled with a note. A third student of the class, Nodir Qosimov, is absent at both
+  // lessons with five classworks of 1 of 10 on yesterday's lesson: a result of 7 and attendance
+  // 0, judged after five graded works (`08`, Early-warning list). An empty number of the other
+  // students counts for nothing (`07`, rule 4). All names are invented.
+  const earlyTutor = await create('Gulchehra', 'Nazarova');
+  const earlyTutorRole = await transactions.run([deliveryBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: earlyTutor.id,
+      role: 'tutor',
+      branchId: deliveryBranch,
+      givenBy: null,
+    }),
+  );
+  {
+    const bristol = await migrator
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', deliveryBranch)
+      .where('name', '=', 'Bristol')
+      .executeTakeFirstOrThrow();
+    const [yesterdayLesson, todayLesson] = await migrator
+      .selectFrom('lessons')
+      .select(['id', sql<string>`lesson_date::text`.as('date')])
+      .where('branch_id', '=', deliveryBranch)
+      .where('class_id', '=', bristol.id)
+      .orderBy('starts_at')
+      .execute();
+    if (yesterdayLesson === undefined || todayLesson === undefined) {
+      throw new Error('The two lessons of 7 Bristol.');
+    }
+    const nodir = await migrator.transaction().execute(async (transaction) => {
+      await transaction
+        .insertInto('class_tutors')
+        .values({
+          branch_id: deliveryBranch,
+          class_id: bristol.id,
+          assignment_id: earlyTutorRole.id,
+          kind: 'tutor',
+          valid_from: new Date(),
+          own_until: null,
+          given_by: earlyTutor.id,
+        })
+        .execute();
+      return studentInClass(transaction, {
+        branch: deliveryBranch,
+        classId: bristol.id,
+        uid: '9999653',
+        first: 'Nodir',
+        last: 'Qosimov',
+        createdBy: earlyTutor.id,
+        phone: '+998935553303',
+      });
+    });
+    for (const [lesson, moment] of [
+      [yesterdayLesson, `${yesterdayLesson.date}T09:00:00+05:00`],
+      [todayLesson, `${todayLesson.date}T00:30:00+05:00`],
+    ] as const) {
+      await migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config('app.now', ${moment}, true)`.execute(transaction);
+        await transaction
+          .insertInto('journal_cells')
+          .values({
+            branch_id: deliveryBranch,
+            lesson_id: lesson.id,
+            student_id: nodir,
+            mark: 0,
+            version: 1,
+            changed_by: earlyTutor.id,
+            changed_how: 'entry',
+            changed_at: new Date(moment),
+          })
+          .execute();
+        if (lesson.id !== yesterdayLesson.id) return;
+        for (let index = 0; index < 5; index += 1) {
+          const work = await transaction
+            .insertInto('journal_works')
+            .values({
+              branch_id: deliveryBranch,
+              lesson_id: lesson.id,
+              source_lesson_id: lesson.id,
+              kind: 'classwork',
+              total: 10,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: deliveryBranch,
+              lesson_id: lesson.id,
+              student_id: nodir,
+              work_id: work.id,
+              score: 1,
+              version: 1,
+              changed_by: earlyTutor.id,
+              changed_how: 'entry',
+              changed_at: new Date(moment),
+            })
+            .execute();
+        }
+      });
+    }
+  }
+  seeded.earlyTutor = { login: earlyTutor.login, password: earlyTutor.firstPassword };
+
   // Task 9.2b: a branch of its own whose quarter 1 ended yesterday, with nothing in it: its
   // Academic Vice Principal closes the quarter from the checklist (07, Closing a quarter).
   // All names are invented.

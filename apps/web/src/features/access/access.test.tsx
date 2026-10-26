@@ -127,9 +127,9 @@ describe('the menu and the home page of each role', () => {
     );
     expect(visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS)).toEqual(MENU[role]);
     if (role === 'spiritual_vice_principal') {
-      expect(
-        links.find((link) => link.textContent === en.menu.results)?.getAttribute('href'),
-      ).toBe('/results/early-warning');
+      expect(links.find((link) => link.textContent === en.menu.results)?.getAttribute('href')).toBe(
+        '/results/early-warning',
+      );
     }
     const timetable = links.find((link) => link.textContent === en.menu.timetable);
     // The pages of this test stand in for the built ones; the views of a role

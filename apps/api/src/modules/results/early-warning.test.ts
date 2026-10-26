@@ -696,13 +696,7 @@ describe('the early-warning list (08, Early-warning list)', () => {
     // The owner is a Teacher of the branch from 1 September.
     await as(owner, branch, [{ role: 'teacher', branchId: branch }], async () => undefined);
     const read = (day: string) =>
-      as(
-        owner,
-        branch,
-        [],
-        async ({ get }) => listOf(await get(PATH)),
-        at(day),
-      );
+      as(owner, branch, [], async ({ get }) => listOf(await get(PATH)), at(day));
 
     // 24 November: Sevara's run of three; Ruzimat 93 against the stored current work of 100.
     const nov24 = await read('2026-11-24');

@@ -195,9 +195,9 @@ describe('the menu a role sees', () => {
     }
     // Task 9.4a: the Vice Principal for Spiritual and Moral Education reads the early-warning list
     // for attendance.
-    expect(visibleMenu('spiritual_vice_principal', EVERYTHING, PERMISSIONS).includes('results')).toBe(
-      MENU.spiritual_vice_principal.includes('results'),
-    );
+    expect(
+      visibleMenu('spiritual_vice_principal', EVERYTHING, PERMISSIONS).includes('results'),
+    ).toBe(MENU.spiritual_vice_principal.includes('results'));
     expect(visibleMenu('teacher', EVERYTHING, PERMISSIONS)).toContain('results');
   });
 });
