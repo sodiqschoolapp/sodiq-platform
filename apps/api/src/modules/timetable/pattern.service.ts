@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
+  conflictsSummarySchema,
   gridSchema,
   subjectColourSchema,
+  type ConflictsSummary,
   type ErrorCode,
   type DraftReadiness,
   type GridAnswer,
@@ -45,6 +47,7 @@ import { deferPatternClashes, readBlocks, readLocks, writeBlock } from './patter
 import { readPins } from './pins-check.js';
 import { blockedRefusal, resultAnswerOf } from './rule-answers.js';
 import { leftBlocksOf, Timetable, type VersionRow } from './timetable.service.js';
+import { versionOnDate } from './version-on-date.js';
 
 const DEADLOCK = '40P01';
 
@@ -173,6 +176,65 @@ export class TimetablePattern {
       const results = checkTimetable(checkedPlacements(pattern.model, blocks), pattern.model.facts);
       const blocked = results.filter((one) => one.severity === 'blocked').length;
       return { ready: blocked === 0, blocked, warnings: results.length - blocked };
+    });
+  }
+
+  /**
+   * The conflicts of the branch's timetables for the Academic Vice Principal's home (task 9.4b,
+   * plan decision 6 with review correction 2; `08`, Home pages by role, "timetable conflicts"):
+   * each draft, and the published version in force today, with the counts of its conflict panel,
+   * the same `checkTimetable` over the same pattern as the grid and the readiness read
+   * (`CLAUDE.md`, One rule engine). A published timetable holds no blocked rule; its warnings are
+   * counted.
+   */
+  conflictsSummary(access: Access): Promise<ConflictsSummary> {
+    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const today = await this.timetable.todayIn(transaction, branchId);
+      const counts = async (version: VersionRow) => {
+        const { pattern, blocks } = await this.stateOf(transaction, version, access.accountId);
+        const results = checkTimetable(
+          checkedPlacements(pattern.model, blocks),
+          pattern.model.facts,
+        );
+        const blocked = results.filter((one) => one.severity === 'blocked').length;
+        return {
+          id: version.id,
+          number: version.number,
+          startsOn: version.starts_on,
+          blocked,
+          warnings: results.length - blocked,
+        };
+      };
+      const drafts = await transaction
+        .selectFrom('timetable_versions')
+        .select('id')
+        .where('branch_id', '=', branchId)
+        .where('status', '=', 'draft')
+        .orderBy('starts_on')
+        .orderBy('number')
+        .execute();
+      const draftCounts = [];
+      for (const one of drafts) {
+        const version = await this.timetable.versionRow(transaction, one.id);
+        draftCounts.push({ ...(await counts(version)), outOfDate: version.out_of_date });
+      }
+      const year = await transaction
+        .selectFrom('academic_years')
+        .select('id')
+        .where('branch_id', '=', branchId)
+        .where('start_date', '<=', today)
+        .where('end_date', '>=', today)
+        .executeTakeFirst();
+      const inForce =
+        year === undefined ? null : await versionOnDate(transaction, branchId, year.id, today);
+      return conflictsSummarySchema.parse({
+        drafts: draftCounts,
+        published:
+          inForce === null
+            ? null
+            : await counts(await this.timetable.versionRow(transaction, inForce.id)),
+      });
     });
   }
 

@@ -782,6 +782,29 @@ export const PERMISSIONS = freezeTable({
     head_teacher: ['view'],
     teacher: ['view', 'edit'],
   }),
+  /**
+   * The attendance of classes today on the home pages (task 9.4b, plan decision 1, Look first):
+   * `08`, Home pages by role: the Tutor's "Own class: ... who is absent now, attendance percent
+   * for the day and week"; the Head Tutor's and the Spiritual Vice Principal's "Attendance of all
+   * classes today, classes below a set percent"; the Super Admin, who can do everything (`02`).
+   * The Tutor reads own classes (class-scoped); the route answers the names of "absent now" only
+   * for own classes and the Super Admin (review correction 3). A new area for a new route.
+   */
+  attendance_today: rows({
+    super_admin: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+  }),
+  /**
+   * The branch summary of the Principal's and the Super Admin's home (task 9.4b, plan decision
+   * 1, Look first): `08`, Home pages by role, "Branch summary: students, staff, attendance today,
+   * results by grade". Counts and means only, no names. A new area for a new route.
+   */
+  branch_summary: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

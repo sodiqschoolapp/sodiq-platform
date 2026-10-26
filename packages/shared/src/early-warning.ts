@@ -30,10 +30,25 @@ export type EarlyWarningReasonKind = (typeof EARLY_WARNING_REASONS)[number];
 /** The note of a handled entry; the bound of `early_warning_handled_note_check` (0137). */
 export const EARLY_WARNING_NOTE_MAX_LENGTH = 500;
 
-export const earlyWarningQuerySchema = z.object({
-  /** Left out: the quarter containing today, else the last started quarter (plan decision 10). */
-  quarterId: z.uuid().optional(),
-});
+export const earlyWarningQuerySchema = z
+  .object({
+    /** Left out: the quarter containing today, else the last started quarter (plan decision 10). */
+    quarterId: z.uuid().optional(),
+    /**
+     * Task 9.4b, plan decision 2: the entries of the journals the reader teaches only (the home
+     * page's "early-warning list for own journals"); it narrows, never widens.
+     */
+    for: z.literal('own_journals').optional(),
+    /**
+     * Task 9.4b: the entries of the students of one own class of the reader as Tutor (the Tutor's
+     * home, "early-warning list for the class"); another class is refused.
+     */
+    classId: z.uuid().optional(),
+  })
+  .refine((query) => query.for === undefined || query.classId === undefined, {
+    message: 'for and classId are not given together',
+    path: ['classId'],
+  });
 
 export type EarlyWarningQuery = z.infer<typeof earlyWarningQuerySchema>;
 

@@ -607,6 +607,11 @@ class Scope {
     this.classOf = new Map(rows.map((row) => [row.student_id, lower(row.class_id)]));
   }
 
+  /** Whether the student is of the class on the reference date (task 9.4b, the Tutor's class card). */
+  inClass(studentId: string, classId: string): boolean {
+    return this.classOf.get(studentId) === lower(classId);
+  }
+
   private tutorOf(studentId: string): boolean {
     const classId = this.classOf.get(studentId);
     return (
@@ -615,7 +620,7 @@ class Scope {
     );
   }
 
-  private async ownsJournal(journal: JournalRow): Promise<boolean> {
+  async ownsJournal(journal: JournalRow): Promise<boolean> {
     if (permittingOf(this.context, ['teacher']).length === 0) return false;
     if (this.staffId === undefined) {
       this.staffId = await ownStaffOf(this.context.transaction, this.context.access.accountId);
@@ -695,6 +700,21 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
     closed: one.closed,
   });
   const referenceDate = referenceDateOf(quarter, context.today);
+  // Task 9.4b: a class card reads one own class of the reader as Tutor; another branch's or an
+  // unknown class is 404, a class not the reader's own 403, before anything is judged.
+  if (query.classId !== undefined) {
+    const classId = lower(query.classId);
+    const found = await context.transaction
+      .selectFrom('classes')
+      .select('id')
+      .where('id', '=', classId)
+      .where('branch_id', '=', context.branchId)
+      .executeTakeFirst();
+    if (found === undefined) throw notFound();
+    if (!permittingOf(context, ['tutor']).some((one) => one.classIds.includes(classId))) {
+      throw new ApiException('permission_denied', 403);
+    }
+  }
   const judged = await judgeQuarter(context, quarter, null);
   const handled = await handledOf(context.transaction, quarter.id, null);
   const scope = new Scope(context, referenceDate);
@@ -708,6 +728,9 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
   }[] = [];
   for (const one of judged.values()) {
     if (one.reasons.length === 0) continue;
+    // Task 9.4b: the narrowing of the home pages, inside the reader's scope only.
+    if (query.classId !== undefined && !scope.inClass(one.studentId, query.classId)) continue;
+    if (query.for === 'own_journals' && !(await scope.ownsJournal(one.journal))) continue;
     const read = await scope.readOf(one.studentId, one.journal);
     if (read === 'none') continue;
     const reasons = one.reasons

@@ -494,6 +494,8 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/results/rating/export': { branch: 'request', roles: RATING_READERS },
   // Task 9.4a, decision 1: the list; marking handled for the Tutor, the Teacher and the Super Admin.
   'GET /api/results/early-warning': { branch: 'request', roles: EARLY_WARNING_READERS },
+  // Task 9.4b, decision 1: the branch summary of the Principal's and the Super Admin's home.
+  'GET /api/results/branch-summary': { branch: 'request', roles: ['super_admin', 'principal'] },
   'POST /api/results/early-warning/handled': {
     branch: 'request',
     roles: ['super_admin', 'tutor', 'teacher'],
@@ -925,7 +927,24 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: JOURNAL_WRITERS,
   },
   'GET /api/journal/reminders': { branch: 'request', roles: VIEW_READERS },
+  // Task 9.4b, decision 1: the attendance of classes on the home pages.
+  'GET /api/journal/attendance-today': {
+    branch: 'request',
+    roles: ['super_admin', 'spiritual_vice_principal', 'head_tutor', 'tutor'],
+  },
   'GET /api/journal/discipline': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+      'head_tutor',
+    ],
+  },
+  // Task 9.4b: lessons today and their status, the scope of the counts per teacher.
+  'GET /api/journal/lessons-today': {
     branch: 'request',
     roles: [
       'super_admin',
@@ -1268,6 +1287,11 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
   'GET /api/timetable/absences/:id/lessons': {
+    branch: 'request',
+    roles: ['super_admin', 'principal', 'academic_vice_principal'],
+  },
+  // Task 9.4b: the conflict counts on the Academic Vice Principal's home, `timetable` `view`.
+  'GET /api/timetable/conflicts-summary': {
     branch: 'request',
     roles: ['super_admin', 'principal', 'academic_vice_principal'],
   },
