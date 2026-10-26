@@ -162,7 +162,7 @@ describe('early_warning_handled', () => {
     }
   });
 
-  it('filters by branch and refuses a quarter or a student of another branch', async () => {
+  it('filters by branch and refuses a quarter of another branch', async () => {
     const student = await studentIn(north);
     await inBranch(north, (transaction) =>
       handle(transaction, { branch: north, quarter: northQuarter, student }),
@@ -189,16 +189,6 @@ describe('early_warning_handled', () => {
     expect([otherQuarter.code, otherQuarter.constraint]).toEqual([
       FOREIGN_KEY_VIOLATION,
       'early_warning_handled_quarter_fkey',
-    ]);
-    const southStudent = await studentIn(south);
-    const otherStudent = await refusal(
-      inBranch(north, (transaction) =>
-        handle(transaction, { branch: north, quarter: northQuarter, student: southStudent }),
-      ),
-    );
-    expect([otherStudent.code, otherStudent.constraint]).toEqual([
-      FOREIGN_KEY_VIOLATION,
-      'early_warning_handled_student_fkey',
     ]);
   });
 

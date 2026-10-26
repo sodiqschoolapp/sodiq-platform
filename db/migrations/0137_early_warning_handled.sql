@@ -13,7 +13,9 @@ create table early_warning_handled (
   id uuid primary key default uuidv7(),
   branch_id uuid not null references branches (id),
   quarter_id uuid not null,
-  student_id uuid not null,
+  -- The student's own key only: a move to another branch keeps the row in the branch of its
+  -- quarter, as `quarter_result_decisions` (0132); the route checks the student's branch.
+  student_id uuid not null references students (id),
   -- Subjects are school-wide (0020).
   subject_id uuid not null references subjects (id),
   reason text not null constraint early_warning_handled_reason_check check (
@@ -33,9 +35,7 @@ create table early_warning_handled (
   -- Bookkeeping only; no rule reads it.
   created_at timestamptz not null default now(),
   constraint early_warning_handled_quarter_fkey foreign key (quarter_id, branch_id)
-    references quarters (id, branch_id),
-  constraint early_warning_handled_student_fkey foreign key (student_id, branch_id)
-    references students (id, branch_id)
+    references quarters (id, branch_id)
 );
 
 create index early_warning_handled_quarter_idx

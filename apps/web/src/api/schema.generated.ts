@@ -181404,7 +181404,7 @@ export interface operations {
                                 };
                                 attendance: number | null;
                                 absenceRun: number;
-                                gradedWorks: number;
+                                gradedWorks: number | null;
                             };
                             reasons: {
                                 /** @enum {string} */
