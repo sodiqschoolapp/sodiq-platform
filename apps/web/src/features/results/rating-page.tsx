@@ -100,9 +100,12 @@ export function RatingPage(): React.JSX.Element {
   const quarters = data?.quarters ?? [];
   const quarter =
     quarters.find((one) => one.id === search.quarter) ?? quarters[quarters.length - 1];
-  const journals = data?.journals ?? [];
+  // `05`, Reports: "Language is a filter in ... rating": it narrows the pickers too (plan decision 8).
+  const inLanguage = (language: InstructionLanguage) =>
+    search.language === undefined || language === search.language;
+  const journals = (data?.journals ?? []).filter((one) => inLanguage(one.language));
   const journal = journals.find((one) => one.id === search.journal) ?? journals[0];
-  const classes = data?.classes ?? [];
+  const classes = (data?.classes ?? []).filter((one) => inLanguage(one.language));
   const classChosen = classes.find((one) => one.id === search.class) ?? classes[0];
   const filters = {
     ...(search.grade === undefined ? {} : { grade: search.grade }),
@@ -340,7 +343,12 @@ export function RatingPage(): React.JSX.Element {
     content = <ErrorState error={choices.error} onRetry={() => void choices.refetch()} />;
   } else if (data === undefined) {
     content = <LoadingOutline />;
-  } else if (kind === undefined || quarter === undefined) {
+  } else if (
+    kind === undefined ||
+    quarter === undefined ||
+    (kind === 'subject' && journal === undefined) ||
+    (kind === 'class' && classChosen === undefined)
+  ) {
     content = (
       <EmptyState title={t('results.ratingList.title')} text={t('results.ratingList.nothing')} />
     );
@@ -486,27 +494,27 @@ export function RatingPage(): React.JSX.Element {
                     }}
                   />
                 </div>
-                <div className="w-40">
-                  <SelectField
-                    label={t('results.ratingList.language')}
-                    value={search.language ?? ''}
-                    options={[
-                      { value: '', label: t('results.ratingList.allLanguages') },
-                      { value: 'uz', label: t('results.ratingList.languages.uz') },
-                      { value: 'ru', label: t('results.ratingList.languages.ru') },
-                    ]}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      go(
-                        value === 'uz' || value === 'ru'
-                          ? { ...keep, language: value }
-                          : without('language'),
-                      );
-                    }}
-                  />
-                </div>
               </>
             )}
+            <div className="w-40">
+              <SelectField
+                label={t('results.ratingList.language')}
+                value={search.language ?? ''}
+                options={[
+                  { value: '', label: t('results.ratingList.allLanguages') },
+                  { value: 'uz', label: t('results.ratingList.languages.uz') },
+                  { value: 'ru', label: t('results.ratingList.languages.ru') },
+                ]}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  go(
+                    value === 'uz' || value === 'ru'
+                      ? { ...keep, language: value }
+                      : without('language'),
+                  );
+                }}
+              />
+            </div>
           </div>
         )}
         {content}

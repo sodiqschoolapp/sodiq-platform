@@ -109,6 +109,9 @@ interface QuarterState {
 
 /** The outcomes of a quarter by subject and student, as the readers of results take them. */
 interface Outcomes {
+  /** By journal and student: the outcome as that journal reads it. */
+  readonly byJournal: ReadonlyMap<string, ReadonlyMap<string, StudentQuarterOutcome>>;
+  /** By subject and student: the outcome of the journal of the last membership. */
   readonly bySubject: ReadonlyMap<string, ReadonlyMap<string, StudentQuarterOutcome>>;
   /** A record listed under a journal with an unfinished reopening was read live. */
   readonly readLive: boolean;
@@ -350,21 +353,35 @@ async function outcomesOf(
             : {},
         );
   let readLive = false;
+  const byJournal = new Map<string, Map<string, StudentQuarterOutcome>>();
   const bySubject = new Map<string, Map<string, StudentQuarterOutcome>>();
   for (const one of journals.values()) {
     const subjectId = one.journal.subjectId;
+    const inJournal = new Map<string, StudentQuarterOutcome>();
+    byJournal.set(one.journal.id, inJournal);
     const own = bySubject.get(subjectId) ?? new Map<string, StudentQuarterOutcome>();
     bySubject.set(subjectId, own);
     for (const [studentId, member] of one.members) {
-      if (own.has(studentId)) continue;
       const found = stored.get(`${subjectId}|${studentId}`);
       if (found?.reopened === true) readLive = true;
       const outcome =
         found?.record === undefined ? member.outcome : storedQuarterOutcome(found.record);
-      if (outcome !== null) own.set(studentId, outcome);
+      if (outcome === null) continue;
+      inJournal.set(studentId, outcome);
+      // Across subjects the outcome of the journal of the student's last membership in the
+      // quarter, as the student's Results tab reads it: journals of one subject may differ in
+      // their rating exam switch (spec review of the code, should-fix 2).
+      const spans = member.found?.spans ?? [];
+      const last = spans.reduce<(typeof spans)[number] | undefined>(
+        (latest, span) => (latest === undefined || span.until > latest.until ? span : latest),
+        undefined,
+      );
+      if (last === undefined || last.journalId === one.journal.id || !own.has(studentId)) {
+        own.set(studentId, outcome);
+      }
     }
   }
-  return { bySubject, readLive };
+  return { byJournal, bySubject, readLive };
 }
 
 /** The members of a class, or of a group in its subject, on a day, each once. */
@@ -653,7 +670,7 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
   if (switchesIn(journal, quarter.id)?.attendanceOnly !== false) throw notFound();
   const state = await quarterStateOf(context, quarter);
   const outcomes = await outcomesOf(context, quarter, state, [journal.subjectId]);
-  const own = outcomes.bySubject.get(journal.subjectId) ?? new Map<string, StudentQuarterOutcome>();
+  const own = outcomes.byJournal.get(journal.id) ?? new Map<string, StudentQuarterOutcome>();
   const members = (await membersOn(transaction, journal, referenceDate)).filter(
     (studentId) => own.get(studentId)?.atLeaving == null,
   );

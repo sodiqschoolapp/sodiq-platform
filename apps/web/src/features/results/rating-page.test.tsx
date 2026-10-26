@@ -232,6 +232,29 @@ describe('the rating page', () => {
     ).toContain('7|ru');
   });
 
+  // 05, Reports: "Language is a filter in ... rating": it narrows the pickers too (decision 8).
+  it('narrows the classes to pick by the language', async () => {
+    const calls = open(
+      [{ role: 'academic_vice_principal', branchId: NORTH.id }],
+      CHOICES,
+      'en',
+      '/results/rating?kind=class&language=ru',
+    );
+    const picker = await screen.findByLabelText(en.results.ratingList.class);
+    await waitFor(() => {
+      expect([...picker.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+        '7 Cambridge',
+      ]);
+    });
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === 'GET /api/results/rating/class')
+          .map((call) => new URLSearchParams(call.query).get('classId')),
+      ).toEqual([OTHER.id]);
+    });
+  });
+
   it('offers a Teacher only the lists the server gives, with no choice of list', async () => {
     open([{ role: 'teacher', branchId: NORTH.id }], {
       ...CHOICES,

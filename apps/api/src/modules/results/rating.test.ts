@@ -260,7 +260,8 @@ describe('the rating (08, Rating)', () => {
    * - Gulnora: exempt all October ("Exempt");
    * - Laylo: in the other class until the 18th, present there on the 12th with 10 of 10, then
    *   in the first class from the 19th, present (edge/calculation, week 6);
-   * - Malika: left the school with the last day 20 October (a result at leaving).
+   * - Malika: leaves the school with the last day 29 October, so she is a member on the 27th
+   *   with a result at leaving (left out: edge/calculation, "A student left the school").
    */
   async function scene(accounts?: { readonly teacher?: string; readonly spare?: string }) {
     const s = await publishedScene(t, load, {
@@ -286,13 +287,13 @@ describe('the rating (08, Rating)', () => {
     ]);
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
     const malika = await kit.student(s.branch, { startsOn: '2026-09-01', grade: 7 });
-    const leavingId = await kit.leaving(t.database.migrator, s.branch, malika, '2026-10-21');
+    const leavingId = await kit.leaving(t.database.migrator, s.branch, malika, '2026-10-30');
     await kit.member({
       branch: s.branch,
       classId: s.classId,
       studentId: malika,
       from: '2026-09-01',
-      until: '2026-10-21',
+      until: '2026-10-30',
       endedBy: 'leaving',
       leavingId,
     });
@@ -364,6 +365,8 @@ describe('the rating (08, Rating)', () => {
         const row = (first: string) => list.rows.find((one) => one.student.firstName === first);
         expect(row('Farrux')?.flags).toEqual(['attendance_only']);
         expect(row('Laylo')?.value).toBe(1000);
+        // Read from the new journal alone she would rest on attendance only.
+        expect(row('Laylo')?.flags).toEqual([]);
         // 20 · 100 and 40 · 90 over 60: 93.33, one decimal 93.3; 80 gives 86.67, 86.7.
         expect([row('Aziz')?.value, row('Bobur')?.value, row('Dilnoza')?.value]).toEqual([
           933, 933, 867,
@@ -432,7 +435,14 @@ describe('the rating (08, Rating)', () => {
     expect(ids(open)).toContain(sardor);
     expect(ids(open)).toContain(c.students.laylo);
     expect(ids(await read(c.otherJournal, MOMENT))).not.toContain(sardor);
+    // The quarter closed: still its last day, read from the records in force (none stored here).
+    await closeQuarter(t.database, {
+      branchId: c.s.branch,
+      quarterId: c.q1,
+      accountId: await load.classes.account(),
+    });
     const after = await read(c.journal, AFTER);
+    expect(after.provisional).toBe(false);
     expect(ids(after)).not.toContain(sardor);
     expect(ids(after)).toContain(c.students.laylo);
     const otherAfter = await read(c.otherJournal, AFTER);
@@ -476,6 +486,88 @@ describe('the rating (08, Rating)', () => {
         // Ma'naviyat soati), and a student who left is left out.
         expect(list.rows.some((row) => row.student.id === c.students.malika)).toBe(false);
         expect(list.provisional).toBe(true);
+      },
+    );
+  });
+
+  // edge/calculation, "One student has 9 subjects, another 11": "the plain mean of the graded
+  // subjects that have a number, with the count of subjects shown"; 07, Effect on totals, Rating:
+  // "the student is marked as having fewer subjects"; edge/calculation, "A student moved to a
+  // class that does not study the subject": a number until the close decides (decision 5).
+  it('combines the subjects at the API: two subjects in the mean, "fewer subjects" beside a figure, and a "left the subject" number counted', async () => {
+    const c = await scene();
+    const second = c.s.secondSubject;
+    if (second === null) throw new Error('A second subject.');
+    // The second subject of the other class is graded, 20 · 40 · 40, as maths.
+    await t.database.migrator
+      .updateTable('subjects')
+      .set({ journal_type: 'graded' })
+      .where('id', '=', second)
+      .execute();
+    const weights = { attendance: 20, classwork: 40, homework: 40 };
+    await t.database.migrator
+      .insertInto('subject_daily_weights')
+      .values({ branch_id: c.s.branch, subject_id: second, ...weights })
+      .execute();
+    await t.database.migrator
+      .insertInto('subject_quarter_weights')
+      .values({ branch_id: c.s.branch, subject_id: second, quarter_id: c.q1, ...weights })
+      .execute();
+    const [secondLesson] = (
+      await t.database.migrator
+        .selectFrom('lessons')
+        .select(['id', sql<string>`lesson_date::text`.as('date')])
+        .where('class_id', '=', c.s.otherClass)
+        .where('subject_id', '=', second)
+        .where('lesson_date', '=', '2026-10-12')
+        .execute()
+    ).map((one) => ({ id: one.id, date: one.date }));
+    const [b12] = await lessonsOf(c.s.otherClass);
+    if (secondLesson === undefined || b12 === undefined)
+      throw new Error('The lessons of the 12th.');
+    // Laylo, late in the second subject on the 12th (50), then moved to the first class, which does
+    // not study it: "left the subject", a number until the close decides.
+    await saveOn(c.s.branch, secondLesson.date, [
+      { lessonId: secondLesson.id, studentId: c.students.laylo, value: 2 },
+    ]);
+    // Nilufar of the other class: maths present, 5 of 10; nothing in the second subject.
+    const nilufar = await student(c.s.branch, { first: 'Nilufar', last: 'Nazarova' }, [
+      { classId: c.s.otherClass, from: '2026-09-01' },
+    ]);
+    const work = (
+      await t.database.migrator
+        .selectFrom('journal_works')
+        .select('id')
+        .where('lesson_id', '=', b12.id)
+        .executeTakeFirstOrThrow()
+    ).id;
+    await saveOn(c.s.branch, b12.date, [
+      { lessonId: b12.id, studentId: nilufar, value: 1 },
+      { lessonId: b12.id, studentId: nilufar, workId: work, value: 5 },
+    ]);
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'principal', branchId: c.s.branch }],
+      async ({ get }) => {
+        const first = ratingClassListSchema.parse(
+          (await get(`/api/results/rating/class?quarterId=${c.q1}&classId=${c.s.classId}`)).body,
+        );
+        // (100 + 50) ÷ 2 = 75: both subjects, the one she left included.
+        expect(
+          first.rows
+            .filter((row) => row.student.id === c.students.laylo)
+            .map((row) => [row.value, row.subjects, row.fewerSubjects]),
+        ).toEqual([[750, 2, false]]);
+        const other = ratingClassListSchema.parse(
+          (await get(`/api/results/rating/class?quarterId=${c.q1}&classId=${c.s.otherClass}`)).body,
+        );
+        // 20 · 100 and 40 · 50 over 60: 66.67 in maths; "No result" in the second subject.
+        expect(
+          other.rows
+            .filter((row) => row.student.id === nilufar)
+            .map((row) => [row.place, row.value, row.subjects, row.fewerSubjects]),
+        ).toEqual([[1, 667, 1, true]]);
       },
     );
   });
@@ -613,6 +705,30 @@ describe('the rating (08, Rating)', () => {
       (await as(reader, c.s.branch, [], async ({ get }) => subjectOf(await get(path)), AFTER))
         .quarter.notOfficial,
     ).toBe(true);
+    // The file says it too, above its stamp.
+    await t.database.migrator
+      .updateTable('accounts')
+      .set({ language: 'en' })
+      .where('id', '=', reader.account.id)
+      .execute();
+    await as(
+      reader,
+      c.s.branch,
+      [],
+      async ({ post }) => {
+        const response = await post('/api/results/rating/export', {
+          kind: 'subject',
+          quarterId: c.q1,
+          journalId: c.journal,
+        });
+        expect(response.status).toBe(200);
+        const lines = await linesOf(response.body as Buffer);
+        expect(lines[1]).toEqual(['Not official']);
+        // The journal is still reopened: read live, so provisional with the moment.
+        expect(lines[2]).toEqual(['Provisional · 02.11.2026 12:00']);
+      },
+      AFTER,
+    );
   });
 
   it('opens each list only to its readers, decided in the route, and refuses the roles outside the area', async () => {
@@ -643,6 +759,14 @@ describe('the rating (08, Rating)', () => {
           .executeTakeFirstOrThrow()
       ).id;
     const splitJournal = await groupJournal(split);
+    // Aziz in the split for the subject: the group path of the members on the reference date.
+    await new MembersKit(t.database.migrator, await load.classes.account()).groupMember({
+      branch: c.s.branch,
+      groupId: split,
+      subjectId: c.s.subject,
+      studentId: c.students.aziz,
+      from: '2026-09-01',
+    });
     const mixedJournal = await groupJournal(mixed);
     const tutor = await account();
     await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
@@ -792,6 +916,17 @@ describe('the rating (08, Rating)', () => {
       expect(choices.classesList).toBe(false);
       expect(choices.quarters.map((one) => one.number)).toEqual([1]);
     });
+    await as(
+      await account(),
+      branch,
+      [{ role: 'principal', branchId: branch }],
+      async ({ get }) => {
+        const list = ratingSubjectListSchema.parse((await get(subject(splitJournal))).body);
+        expect(list.rows.map((row) => [row.student.id, row.place, row.value])).toEqual([
+          [c.students.aziz, 1, 933],
+        ]);
+      },
+    );
     // The export follows the same scope (permission review, should-fix 3).
     await as(tutor, branch, [], async ({ post }) => {
       expect(
@@ -1020,6 +1155,12 @@ describe('the rating (08, Rating)', () => {
       final: null,
     });
 
+    // Roles outside the area: refused by the guard, nothing logged.
+    for (const role of ['spiritual_vice_principal', 'nurse'] as const) {
+      await as(await account(), c.s.branch, [{ role, branchId: c.s.branch }], async ({ post }) => {
+        expect((await post('/api/results/rating/export', body)).status, role).toBe(403);
+      });
+    }
     // The Teacher of no journal of the class: refused, nothing logged.
     await as(spare, c.s.branch, [{ role: 'teacher', branchId: c.s.branch }], async ({ post }) => {
       expect((await post('/api/results/rating/export', body)).status).toBe(403);
