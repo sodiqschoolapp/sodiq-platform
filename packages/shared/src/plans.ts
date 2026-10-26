@@ -826,6 +826,13 @@ export const planMergeSchema = z.strictObject({
   quarterId: z.uuid(),
   position: z.int().min(1),
   lessonId: z.uuid(),
+  /**
+   * The row's item as it was read, `null` for an empty row (`edge/lesson-plans`: "A save made on an
+   * older state of the same field is refused and both values are shown").
+   */
+  base: z
+    .strictObject({ topic: z.string(), objectives: z.string(), links: z.array(z.string()) })
+    .nullable(),
 });
 
 export type PlanMerge = z.infer<typeof planMergeSchema>;

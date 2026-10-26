@@ -865,6 +865,8 @@ export const ERROR_CODES = [
   'student_merge_absence_reasons',
   /** The plan is of the branch but outside what the role may read of it, or the reader may not write it: only the owner edits (edge/lesson-plans, "Who may read a plan?"; task 7.1a). */
   'plan_scope',
+  /** The row chosen for a merge changed since it was read: it was emptied, or its item was edited (task 9.2d, code review must-fix 2). */
+  'plan_merge_stale',
   /** The item is 'not covered' in a journal of the plan: only the approver drops it, with a reason (09: "never dropped silently"; task 9.2d). */
   'plan_not_covered_drop',
   /** No carry: the quarter is the last of the year, or the next quarter is closed (edge/lesson-plans: "In quarter 4 only merge or drop exist"; task 9.2d). */

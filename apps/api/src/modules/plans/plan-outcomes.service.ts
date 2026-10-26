@@ -79,6 +79,13 @@ export class PlanOutcomesService {
       const actor = actorOf(access, scene, requestId);
       let pass: GatePass;
       let details: Record<string, JsonValue>;
+      // The stale check of the row's item (code review, must-fix 2).
+      if (targetId === undefined && input.base !== null) {
+        throw new ApiException('plan_merge_stale', 409);
+      }
+      if (targetId !== undefined && input.base === null) {
+        throw new ApiException('plan_row_taken', 409);
+      }
       if (targetId === undefined) {
         // An empty row takes the item.
         pass = await this.plans.gate(transaction, scene, planId, [
@@ -145,6 +152,16 @@ export class PlanOutcomesService {
         if (at.kind === 'place') targets.push(pastTarget(journalId));
         pass = await this.plans.gate(transaction, scene, planId, targets);
         const target = await this.plans.lockItem(transaction, targetId);
+        const base = input.base;
+        if (
+          base === null ||
+          base.topic !== target.topic ||
+          base.objectives !== target.objectives ||
+          base.links.length !== target.links.length ||
+          base.links.some((link, index) => link !== target.links[index])
+        ) {
+          throw new ApiException('plan_merge_stale', 409);
+        }
         const source = await this.plans.lockItem(transaction, itemId);
         const lists = await worksOf(transaction, [targetId, itemId]);
         const targetWorks = lists.get(targetId) ?? { classworks: [], homeworks: [] };
@@ -307,6 +324,14 @@ export class PlanOutcomesService {
         journalId,
         input.quarterId,
       );
+      // The item of the path against the branch first (code review, should-fix 4).
+      const known = await transaction
+        .selectFrom('lesson_plan_items')
+        .select('id')
+        .where('id', '=', itemId)
+        .where('branch_id', '=', branchId)
+        .executeTakeFirst();
+      if (known === undefined) throw notFound();
       const { reach, ownerAccountId } = await dropReachOf(
         transaction,
         access.accountId,
@@ -385,8 +410,19 @@ export class PlanOutcomesService {
         }
         shifts.set(id, position + 1);
       }
+      // Every row the place touches: its own and those of the items it moves (code review, should-fix 2).
+      const touched = [...shifts.values()].flatMap((position) => {
+        const moved = rows[position - 1];
+        return [
+          moved === undefined ? { lessonId: null, date: null, started: false } : gateRowOf(moved),
+        ];
+      });
       const pass = await this.plans.gate(transaction, scene, planId, [
-        { journalId, rows: [gateRowOf(row)], op: shifts.size > 0 ? 'move' : 'create' },
+        {
+          journalId,
+          rows: [gateRowOf(row), ...touched],
+          op: shifts.size > 0 ? 'move' : 'create',
+        },
       ]);
       await movePlaces(transaction, planId, journalId, shifts);
       await transaction

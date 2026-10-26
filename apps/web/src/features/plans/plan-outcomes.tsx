@@ -254,12 +254,20 @@ function RowDialog({
         quarterId: plan.quarterId,
         position: row?.number ?? 1,
         lessonId: row?.lessonId ?? typed.lessonId,
+        base:
+          row?.item == null
+            ? null
+            : { topic: row.item.topic, objectives: row.item.objectives, links: row.item.links },
       };
     },
     save: async (body) => {
       await (kind === 'merge'
         ? mergeNotCovered(plan.journalId, item.id, body)
-        : placeCarried(plan.journalId, item.id, body));
+        : placeCarried(plan.journalId, item.id, {
+            quarterId: body.quarterId,
+            position: body.position,
+            lessonId: body.lessonId,
+          }));
       done.current = true;
       await invalidatePlans(queryClient);
     },

@@ -558,6 +558,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   plan_carry_refused:
     'The item cannot be carried: last quarter of the year, or the next quarter is closed.',
   plan_not_covered_drop: 'A not-covered item is dropped only by the approver.',
+  plan_merge_stale: 'The row chosen for the merge changed since it was read.',
   plan_scope: 'This plan is outside what the role may read or write.',
   plan_row_taken: 'The row already holds an item.',
   plan_row_unknown: 'The quarter has no row with that number.',

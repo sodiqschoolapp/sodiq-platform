@@ -16,7 +16,10 @@
 -- (`edge/lesson-plans`: "History and requests refer to dates").
 
 -- ---------------------------------------------------------------------------
--- The outcomes: one per item and journal, never changed.
+-- The outcomes: one each time an item is not covered in a journal, never changed. An item
+-- merged into an empty row keeps its place; when a later change pushes it past the last row
+-- again it is not covered again and takes a new outcome (code review, must-fix 1). The routes
+-- and the close decide "still not covered" under the plan's lock, so one event takes one.
 
 create table lesson_plan_outcomes (
   id uuid primary key default uuidv7(),
@@ -62,7 +65,6 @@ create table lesson_plan_outcomes (
     (kind = 'carried') = (carried_item_id is not null)
   ),
   constraint lesson_plan_outcomes_automatic_check check (not automatic or kind = 'carried'),
-  constraint lesson_plan_outcomes_key unique (branch_id, journal_id, quarter_id, item_id),
   constraint lesson_plan_outcomes_id_branch_key unique (id, branch_id)
 );
 

@@ -576,6 +576,7 @@ describe('the outcomes of items not covered', () => {
         quarterId: Q1,
         position: 3,
         lessonId: LESSONS[2],
+        base: null,
       });
     });
   });

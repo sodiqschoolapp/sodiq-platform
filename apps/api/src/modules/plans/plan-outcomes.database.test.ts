@@ -2,12 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
-import { closeQuarter } from '../../testing/closing-kit.js';
+import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const CHECK_VIOLATION = '23514';
-const UNIQUE_VIOLATION = '23505';
 const INSUFFICIENT_PRIVILEGE = '42501';
 
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -168,12 +167,10 @@ describe('the outcomes of not-covered items in the database', () => {
     expect(written.decided_at).toEqual(new Date(NOW));
   });
 
-  it('keeps one outcome per item and journal, never changed or deleted', async () => {
+  it('keeps every outcome, never changed or deleted', async () => {
     const x = await scene();
     const item = await x.item(x.q1);
     const written = await outcome(x, { item_id: item });
-    const twice = await refusal(outcome(x, { item_id: item, reason: 'Again' }));
-    expect([twice.code, twice.constraint]).toEqual([UNIQUE_VIOLATION, 'lesson_plan_outcomes_key']);
     for (const work of [
       inBranch((transaction) =>
         transaction
@@ -255,9 +252,11 @@ describe('the outcomes of not-covered items in the database', () => {
     );
     await closeQuarter(database, { branchId: x.branch, quarterId: x.q1, accountId: account });
     const other = await x.item(x.q1, 'Ratios');
+    const secondCopy = await x.item(x.q2, 'Second copy');
     for (const change of [
       { item_id: other },
       { item_id: other, kind: 'merged', reason: '', target_date: '2026-09-14' },
+      { item_id: other, kind: 'carried', reason: '', carried_item_id: secondCopy },
     ]) {
       const refused = await refusal(outcome(x, change));
       expect([refused.code, refused.constraint]).toEqual([CHECK_VIOLATION, 'quarters_closed']);
@@ -269,6 +268,42 @@ describe('the outcomes of not-covered items in the database', () => {
       ),
     );
     expect([taken.code, taken.constraint]).toEqual([CHECK_VIOLATION, 'quarters_closed']);
+    const added = await refusal(
+      inBranch((transaction) =>
+        transaction
+          .insertInto('lesson_plan_tray')
+          .values({ ...tray, item_id: secondCopy })
+          .execute(),
+      ),
+    );
+    expect([added.code, added.constraint]).toEqual([CHECK_VIOLATION, 'quarters_closed']);
+    const moved = await refusal(
+      inBranch((transaction) =>
+        transaction
+          .updateTable('lesson_plan_tray')
+          .set({ item_id: secondCopy })
+          .where('item_id', '=', copy)
+          .execute(),
+      ),
+    );
+    expect([moved.code, moved.constraint]).toEqual([CHECK_VIOLATION, 'quarters_closed']);
+  });
+
+  it('takes an outcome in a journal reopened after the close (0135)', async () => {
+    const x = await scene();
+    const item = await x.item(x.q1);
+    await closeQuarter(database, { branchId: x.branch, quarterId: x.q1, accountId: account });
+    expect((await refusal(outcome(x, { item_id: item }))).constraint).toBe('quarters_closed');
+    await reopenQuarter(database, {
+      branchId: x.branch,
+      quarterId: x.q1,
+      journalId: x.journal,
+      accountId: account,
+      at: NOW,
+      days: 3,
+    });
+    const written = await outcome(x, { item_id: item });
+    expect(written.id).toBeTruthy();
   });
 
   it('keeps a tray row to its journal, quarter and a copy of a plan of that quarter', async () => {

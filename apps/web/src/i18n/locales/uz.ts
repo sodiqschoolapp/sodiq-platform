@@ -863,6 +863,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu chorakdan koʻchirib boʻlmaydi: u yilning oxirgisi yoki keyingi chorak yopilgan. Bandni darsga birlashtiring yoki oʻchirishni soʻrang.',
     plan_not_covered_drop:
       'Bu band «oʻtilmagan» roʻyxatida, uni bu yerda oʻchirib boʻlmaydi. Birlashtiring, koʻchiring yoki tasdiqlovchidan oʻchirishni soʻrang.',
+    plan_merge_stale:
+      'Siz tanlayotganingizda bu dars oʻzgardi: uning bandi tahrirlandi yoki olib tashlandi. Rejani qayta koʻring va yana birlashtiring.',
     plan_scope: 'Bu reja sizga ochiq emas. Sinf rejasini faqat uning oʻqituvchisi yozadi.',
     plan_row_taken: 'Bu qatorda allaqachon yozuv bor. Oʻzgartirish uchun qatorni qayta oching.',
     plan_row_unknown: 'Chorakda bu qator uchun endi dars yoʻq. Rejani qayta oching.',

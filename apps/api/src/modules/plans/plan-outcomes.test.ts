@@ -103,7 +103,7 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
       .send(body);
 
   /** A graded scene: the owner, a spare teacher, the Head Teacher of the subject; windows open. */
-  async function scene(input: { shared?: boolean; windows?: boolean } = {}) {
+  async function scene(input: { shared?: boolean; windows?: boolean; head?: boolean } = {}) {
     const owner = await account();
     const spare = await account();
     const head = await account();
@@ -120,12 +120,14 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
         validFrom: VALID_FROM,
       });
     }
-    await t.kit.giveRole(head.account.id, {
-      role: 'head_teacher',
-      branchId: s.branch,
-      subjectIds: [s.subject],
-      validFrom: VALID_FROM,
-    });
+    // One Head Teacher of a subject in a branch: a test that needs another leaves it out.
+    if (input.head !== false)
+      await t.kit.giveRole(head.account.id, {
+        role: 'head_teacher',
+        branchId: s.branch,
+        subjectIds: [s.subject],
+        validFrom: VALID_FROM,
+      });
     const journalOf = async (classId: string) =>
       (
         await t.database.migrator
@@ -238,7 +240,11 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
 
   /** Eight items in quarter 2 and the Monday 16 November cancelled: "Topic 8" is not covered. */
   async function notCoveredScene(
-    input: { shared?: boolean; works?: Record<number, { classworks?: string[] }> } = {},
+    input: {
+      shared?: boolean;
+      head?: boolean;
+      works?: Record<number, { classworks?: string[] }>;
+    } = {},
   ) {
     const x = await scene(input);
     const items = await fill(x, x.q2, [1, 2, 3, 4, 5, 6, 7, 8], x.journal, input.works ?? {});
@@ -253,12 +259,19 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
   const path = (x: Scene, itemId: string, what: 'merge' | 'carry' | 'drop', journal = x.journal) =>
     `/api/plans/journals/${journal}/not-covered/${itemId}/${what}`;
 
+  /** The row's item as the screen read it: the merge's stale check. */
+  const baseOf = (row: Plan['rows'][number]) =>
+    row.item === null
+      ? null
+      : { topic: row.item.topic, objectives: row.item.objectives, links: row.item.links };
+
   const merge = (x: Scene, itemId: string, row: Plan['rows'][number], cookie = x.owner.cookie) =>
     at(START, () =>
       post(path(x, itemId, 'merge'), x.s.branch, cookie, {
         quarterId: x.q2,
         position: row.number,
         lessonId: row.lessonId,
+        base: baseOf(row),
       }),
     );
 
@@ -356,7 +369,19 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
             }),
         );
       });
-      refused(await merge(x, last.id, row), 409, 'plan_merge_too_long');
+      const longRow = (await planOf(x, x.q2)).rows[0];
+      if (longRow === undefined) throw new Error('Row 1.');
+      refused(await merge(x, last.id, longRow), 409, 'plan_merge_too_long');
+      // Works past 10 of a kind (decision of the build: plan_works_full, as a save answers it).
+      const busy = await notCoveredScene({
+        works: {
+          1: { classworks: Array.from({ length: 10 }, (_, index) => `Work ${String(index + 1)}`) },
+          8: { classworks: ['Quiz'] },
+        },
+      });
+      const busyRow = (await planOf(busy.x, busy.x.q2)).rows[0];
+      if (busyRow === undefined) throw new Error('Row 1.');
+      refused(await merge(busy.x, busy.last.id, busyRow), 409, 'plan_works_full');
       // Topic 2 stands at row 2: it is not "not covered".
       refused(await merge(x, items[1]?.id ?? '', row), 409, 'plan_item_covered');
       expect(await outcomeRows(x.journal)).toEqual([]);
@@ -373,6 +398,7 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
             quarterId: x.q2,
             position: row.number,
             lessonId: row.lessonId,
+            base: baseOf(row),
           }),
           409,
           'plan_window_closed',
@@ -595,6 +621,118 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
     });
   });
 
+  it('answers plan_item_covered for an item that came back to a row (a cancel taken back)', async () => {
+    const { x, last } = await notCoveredScene();
+    await restore(x, '2026-11-16');
+    expect((await planOf(x, x.q2)).notCovered).toEqual([]);
+    refused(await carry(x, last.id), 409, 'plan_item_covered');
+    expect(await outcomeRows(x.journal)).toEqual([]);
+  });
+
+  it('gives an item merged into an empty row a new outcome when a later cancel pushes it out again', async () => {
+    const { x, items, last } = await notCoveredScene();
+    const seventh = items[6];
+    if (seventh === undefined) throw new Error('Topic 7.');
+    ok(
+      await at(START, () =>
+        post(`/api/plans/items/${seventh.id}/clear`, x.s.branch, x.owner.cookie, {}),
+      ),
+      204,
+    );
+    const before = await planOf(x, x.q2);
+    const lastRow = before.rows.at(-1);
+    if (lastRow === undefined || lastRow.item !== null) throw new Error('The last row empty.');
+    ok(await merge(x, last.id, lastRow));
+    // The last Monday cancelled: the merged item stands past the last row again.
+    await cancel(x, '2026-12-28');
+    expect((await planOf(x, x.q2)).notCovered.map((one) => one.id)).toEqual([last.id]);
+    ok(await carry(x, last.id));
+    expect((await outcomeRows(x.journal)).map((one) => one.kind)).toEqual(['merged', 'carried']);
+  });
+
+  it('refuses a merge on an older state of the row: an item edited or put there meanwhile', async () => {
+    const { x, items, last } = await notCoveredScene();
+    const plan = await planOf(x, x.q2);
+    const row = plan.rows[1];
+    const second = items[1];
+    if (row === undefined || second === undefined) throw new Error('Row 2.');
+    refused(
+      await at(START, () =>
+        post(path(x, last.id, 'merge'), x.s.branch, x.owner.cookie, {
+          quarterId: x.q2,
+          position: row.number,
+          lessonId: row.lessonId,
+          base: null,
+        }),
+      ),
+      409,
+      'plan_row_taken',
+    );
+    refused(
+      await at(START, () =>
+        post(path(x, last.id, 'merge'), x.s.branch, x.owner.cookie, {
+          quarterId: x.q2,
+          position: row.number,
+          lessonId: row.lessonId,
+          base: { topic: 'Topic 2 as it was', objectives: '', links: [] },
+        }),
+      ),
+      409,
+      'plan_merge_stale',
+    );
+    expect(await outcomeRows(x.journal)).toEqual([]);
+  });
+
+  it('marks a held row "edited after the lesson" and opens the column of an added work, through an approved extension', async () => {
+    const { x, last } = await notCoveredScene({ works: { 8: { classworks: ['Quiz'] } } });
+    // The window of quarter 2 ends on 20 November; on Thursday the 26th the 9th and the 23rd are held.
+    await t.database.migrator
+      .updateTable('lesson_plan_windows')
+      .set({
+        end_date: '2026-11-20',
+        ends_at: new Date('2026-11-20T23:59:59.999+05:00'),
+      })
+      .where('quarter_id', '=', x.q2)
+      .execute();
+    const THURSDAY = '2026-11-26T12:00:00+05:00';
+    const vice = await account();
+    await t.kit.giveRole(vice.account.id, {
+      role: 'academic_vice_principal',
+      branchId: x.s.branch,
+      validFrom: VALID_FROM,
+    });
+    const plan = await planOf(x, x.q2, x.journal, x.owner.cookie, THURSDAY);
+    const row = plan.rows[1];
+    if (row === undefined || !row.started || plan.ownerStaffId === null)
+      throw new Error('A held row 2.');
+    await at(THURSDAY, async () => {
+      ok(
+        await post(`/api/plans/windows/${x.q2}/extensions`, x.s.branch, vice.cookie, {
+          staffId: plan.ownerStaffId,
+          endDate: '2026-12-10',
+        }),
+      );
+      ok(
+        await post(path(x, last.id, 'merge'), x.s.branch, x.owner.cookie, {
+          quarterId: x.q2,
+          position: row.number,
+          lessonId: row.lessonId,
+          base: baseOf(row),
+        }),
+      );
+    });
+    const after = await planOf(x, x.q2, x.journal, x.owner.cookie, THURSDAY);
+    expect(after.rows[1]?.item?.editedAfterLesson).toBe(true);
+    const quiz = after.rows[1]?.item?.classworks.find((one) => one.title === 'Quiz');
+    expect(quiz).toBeDefined();
+    const openings = await t.database.migrator
+      .selectFrom('lesson_plan_work_openings')
+      .select('plan_work_id')
+      .where('plan_work_id', '=', quiz?.id ?? '')
+      .execute();
+    expect(openings).toHaveLength(1);
+  });
+
   it('leaves no gap: the next not-covered item moves up and takes a row that comes back', async () => {
     const x = await scene();
     await fill(x, x.q2, [1, 2, 3, 4, 5, 6, 7, 8]);
@@ -636,6 +774,7 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
           quarterId: x.q2,
           position: row.number,
           lessonId: row.lessonId,
+          base: baseOf(row),
         }),
       ),
       409,
@@ -665,6 +804,18 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
     expect((await planOf(x, x.q2)).rows[7]?.item?.id).toBe(last.id);
     expect((await planOf(x, x.q3, x.other)).carriedIn.map((one) => one.topic)).toEqual(['Topic 8']);
     expect((await planOf(x, x.q3)).carriedIn).toEqual([]);
+    // Correction 1, second half: with its outcome there, the class that covers it may leave it out.
+    const ownAfter = await planOf(x, x.q2);
+    const queueAfter = ownAfter.rows.map((one) => one.item?.id ?? null);
+    ok(
+      await at(START, () =>
+        request(t.kit.server)
+          .put(`/api/plans/journals/${x.journal}/queue`)
+          .set('Cookie', x.owner.cookie)
+          .set(BRANCH_HEADER, x.s.branch)
+          .send({ quarterId: x.q2, base: queueAfter, order: queueAfter.slice(0, -1) }),
+      ),
+    );
   });
 
   it('takes the tray with a class separated from its shared plan of the next quarter', async () => {
@@ -768,47 +919,135 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
     expect(q3).toContain('Topic 8');
   });
 
-  it("answers 404 for another branch's or an unknown journal, item and lesson, changing nothing", async () => {
+  /** Every row the outcome routes write in the branches given, and the audit log's ids. */
+  const rowsOf = async (branches: readonly string[]) => {
+    const found: Record<string, unknown[]> = {};
+    for (const table of [
+      'lesson_plans',
+      'lesson_plan_journals',
+      'lesson_plan_items',
+      'lesson_plan_places',
+      'lesson_plan_works',
+      'lesson_plan_files',
+      'lesson_plan_outcomes',
+      'lesson_plan_tray',
+      'lesson_plan_follow_marks',
+      'lesson_plan_work_openings',
+    ] as const) {
+      found[table] = (
+        await t.database.migrator
+          .selectFrom(table)
+          .selectAll()
+          .where('branch_id', 'in', [...branches])
+          .execute()
+      )
+        .map((row) => JSON.stringify(row))
+        .sort();
+    }
+    found.audit = (
+      await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('branch_id', 'in', [...branches])
+        .execute()
+    )
+      .map((row) => row.id)
+      .sort();
+    return found;
+  };
+
+  it("answers 404 for another branch's or an unknown journal, quarter, item and lesson of every route, changing nothing in either branch", async () => {
     const { x, last } = await notCoveredScene();
     const y = await notCoveredScene();
     const plan = await planOf(x, x.q2);
     const row = plan.rows[1];
-    if (row === undefined) throw new Error('Row 2.');
-    const outcomes = async () =>
-      (
-        await t.database.migrator
-          .selectFrom('lesson_plan_outcomes')
-          .select('id')
-          .where('branch_id', 'in', [x.s.branch, y.x.s.branch])
-          .execute()
-      ).length;
-    const before = [await outcomes(), await t.auditCount()];
+    const yRow = (await planOf(y.x, y.x.q2)).rows[1];
+    if (row === undefined || yRow === undefined) throw new Error('Row 2.');
+    const branch = x.s.branch;
+    const own = x.owner.cookie;
+    const head = x.head.cookie;
+    const place = (journal: string, item: string, body: object) =>
+      post(`/api/plans/journals/${journal}/carried/${item}/place`, branch, own, body);
+    const placeBody = { quarterId: x.q3, position: 1, lessonId: row.lessonId };
+    const mergeBody = {
+      quarterId: x.q2,
+      position: row.number,
+      lessonId: row.lessonId,
+      base: baseOf(row),
+    };
+    const before = await rowsOf([branch, y.x.s.branch]);
     await at(START, async () => {
       for (const sent of [
+        // carry: the journal, the item and the quarter
+        () => post(path(x, last.id, 'carry', y.x.journal), branch, own, { quarterId: x.q2 }),
+        () => post(path(x, last.id, 'carry', UNKNOWN), branch, own, { quarterId: x.q2 }),
+        () => post(path(x, y.last.id, 'carry'), branch, own, { quarterId: x.q2 }),
+        () => post(path(x, UNKNOWN, 'carry'), branch, own, { quarterId: x.q2 }),
+        () => post(path(x, last.id, 'carry'), branch, own, { quarterId: y.x.q2 }),
+        () => post(path(x, last.id, 'carry'), branch, own, { quarterId: UNKNOWN }),
+        // merge: the journal, the item, the lesson and the quarter
+        () => post(path(x, last.id, 'merge', y.x.journal), branch, own, mergeBody),
+        () => post(path(x, last.id, 'merge', UNKNOWN), branch, own, mergeBody),
+        () => post(path(x, y.last.id, 'merge'), branch, own, mergeBody),
+        () => post(path(x, UNKNOWN, 'merge'), branch, own, mergeBody),
+        () => post(path(x, last.id, 'merge'), branch, own, { ...mergeBody, lessonId: UNKNOWN }),
         () =>
-          post(path(x, last.id, 'carry', y.x.journal), x.s.branch, x.owner.cookie, {
-            quarterId: x.q2,
-          }),
+          post(path(x, last.id, 'merge'), branch, own, { ...mergeBody, lessonId: yRow.lessonId }),
+        () => post(path(x, last.id, 'merge'), branch, own, { ...mergeBody, quarterId: y.x.q2 }),
+        () => post(path(x, last.id, 'merge'), branch, own, { ...mergeBody, quarterId: UNKNOWN }),
+        // drop: the journal, the item and the quarter
         () =>
-          post(path(x, last.id, 'carry', UNKNOWN), x.s.branch, x.owner.cookie, { quarterId: x.q2 }),
-        () => post(path(x, y.last.id, 'carry'), x.s.branch, x.owner.cookie, { quarterId: x.q2 }),
-        () => post(path(x, UNKNOWN, 'carry'), x.s.branch, x.owner.cookie, { quarterId: x.q2 }),
-        () =>
-          post(path(x, last.id, 'merge'), x.s.branch, x.owner.cookie, {
-            quarterId: x.q2,
-            position: row.number,
-            lessonId: UNKNOWN,
-          }),
-        () =>
-          post(path(x, y.last.id, 'drop'), x.s.branch, x.head.cookie, {
+          post(path(x, last.id, 'drop', y.x.journal), branch, head, {
             quarterId: x.q2,
             reason: 'Gone',
           }),
         () =>
+          post(path(x, last.id, 'drop', UNKNOWN), branch, head, {
+            quarterId: x.q2,
+            reason: 'Gone',
+          }),
+        () => post(path(x, y.last.id, 'drop'), branch, head, { quarterId: x.q2, reason: 'Gone' }),
+        () => post(path(x, UNKNOWN, 'drop'), branch, head, { quarterId: x.q2, reason: 'Gone' }),
+        () => post(path(x, last.id, 'drop'), branch, head, { quarterId: y.x.q2, reason: 'Gone' }),
+        () => post(path(x, last.id, 'drop'), branch, head, { quarterId: UNKNOWN, reason: 'Gone' }),
+        // place: the journal, the item, the lesson and the quarter
+        () => place(y.x.journal, UNKNOWN, placeBody),
+        () => place(UNKNOWN, UNKNOWN, placeBody),
+        () => place(x.journal, y.last.id, placeBody),
+        () => place(x.journal, UNKNOWN, placeBody),
+        () => place(x.journal, UNKNOWN, { ...placeBody, lessonId: yRow.lessonId }),
+        () => place(x.journal, UNKNOWN, { ...placeBody, quarterId: y.x.q3 }),
+        () => place(x.journal, UNKNOWN, { ...placeBody, quarterId: UNKNOWN }),
+      ]) {
+        refused(await sent(), 404, 'not_found');
+      }
+    });
+    expect(await rowsOf([branch, y.x.s.branch])).toEqual(before);
+  });
+
+  it('refuses a reader who does not own the plan the merge, the carry and the place (plan_scope), changing nothing', async () => {
+    const { x, last } = await notCoveredScene();
+    ok(await carry(x, last.id));
+    const next = await planOf(x, x.q3);
+    const tray = next.carriedIn[0];
+    const row = next.rows[0];
+    if (tray === undefined || row === undefined) throw new Error('A tray item and a row.');
+    const before = await rowsOf([x.s.branch]);
+    await at(START, async () => {
+      for (const sent of [
+        () =>
+          post(path(x, tray.id, 'merge'), x.s.branch, x.spare.cookie, {
+            quarterId: x.q3,
+            position: 1,
+            lessonId: row.lessonId,
+            base: baseOf(row),
+          }),
+        () => post(path(x, tray.id, 'carry'), x.s.branch, x.spare.cookie, { quarterId: x.q3 }),
+        () =>
           post(
-            `/api/plans/journals/${x.journal}/carried/${UNKNOWN}/place`,
+            `/api/plans/journals/${x.journal}/carried/${tray.id}/place`,
             x.s.branch,
-            x.owner.cookie,
+            x.spare.cookie,
             {
               quarterId: x.q3,
               position: 1,
@@ -816,9 +1055,60 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
             },
           ),
       ]) {
-        refused(await sent(), 404, 'not_found');
+        refused(await sent(), 403, 'plan_scope');
       }
     });
-    expect([await outcomes(), await t.auditCount()]).toEqual(before);
+    expect(await rowsOf([x.s.branch])).toEqual(before);
+  });
+
+  it('refuses the place after the window with no approved period, the tray unchanged', async () => {
+    const { x, last } = await notCoveredScene();
+    ok(await carry(x, last.id));
+    const AFTER_Q3 = '2027-03-25T10:00:00+05:00';
+    const next = await planOf(x, x.q3, x.journal, x.owner.cookie, AFTER_Q3);
+    const tray = next.carriedIn[0];
+    const row = next.rows[0];
+    if (tray === undefined || row === undefined) throw new Error('A tray item and a row.');
+    const before = await rowsOf([x.s.branch]);
+    refused(
+      await at(AFTER_Q3, () =>
+        post(
+          `/api/plans/journals/${x.journal}/carried/${tray.id}/place`,
+          x.s.branch,
+          x.owner.cookie,
+          {
+            quarterId: x.q3,
+            position: 1,
+            lessonId: row.lessonId,
+          },
+        ),
+      ),
+      409,
+      'plan_window_closed',
+    );
+    expect(await rowsOf([x.s.branch])).toEqual(before);
+  });
+
+  it('refuses the drop to the owner who is also a Head Teacher of the subject (own_request), and lets the Academic Vice Principal drop', async () => {
+    const { x, last } = await notCoveredScene({ head: false });
+    await t.kit.giveRole(x.owner.account.id, {
+      role: 'head_teacher',
+      branchId: x.s.branch,
+      subjectIds: [x.s.subject],
+      validFrom: VALID_FROM,
+    });
+    const before = await rowsOf([x.s.branch]);
+    refused(await drop(x, last.id, x.owner.cookie), 403, 'own_request');
+    expect(await rowsOf([x.s.branch])).toEqual(before);
+    expect((await planOf(x, x.q2)).canDrop).toBe(false);
+    const vice = await account();
+    await t.kit.giveRole(vice.account.id, {
+      role: 'academic_vice_principal',
+      branchId: x.s.branch,
+      validFrom: VALID_FROM,
+    });
+    expect((await planOf(x, x.q2, x.journal, vice.cookie)).canDrop).toBe(true);
+    const dropped = planSchema.parse(ok(await drop(x, last.id, vice.cookie)).body);
+    expect(dropped.outcomes.map((one) => one.kind)).toEqual(['dropped']);
   });
 });

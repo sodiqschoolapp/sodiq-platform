@@ -6492,7 +6492,10 @@ try {
         .execute();
     }
   }
-  seeded.outcomesTeacher = { login: outcomesTeacher.login, password: outcomesTeacher.firstPassword };
+  seeded.outcomesTeacher = {
+    login: outcomesTeacher.login,
+    password: outcomesTeacher.firstPassword,
+  };
 
   // Task 7.3: the same branch for master plans, its window open, with a Head
   // Teacher of "Planning M". The browser test has the Head Teacher write a

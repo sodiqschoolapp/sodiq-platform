@@ -843,6 +843,8 @@ export const en = {
       'Items cannot be carried from this quarter: it is the last of the year or the next quarter is closed. Merge the item into a lesson or ask for it to be dropped.',
     plan_not_covered_drop:
       'This item is in a not-covered list, so it cannot be removed here. Merge it, carry it, or ask the approver to drop it.',
+    plan_merge_stale:
+      'This lesson changed while you were choosing: its item was edited or removed. Look at the plan again and merge once more.',
     plan_scope:
       'This plan is not yours to read or change. Only the teacher of the class writes its plan.',
     plan_row_taken: 'This row already holds an item. Open the row again to edit it.',
