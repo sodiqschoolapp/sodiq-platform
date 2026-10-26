@@ -11,6 +11,7 @@ import {
   CONTRACT_NUMBER_MAX_LENGTH,
   PREVIOUS_SCHOOL_MAX_LENGTH,
   studentNameKey,
+  studentUidKey,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -44,10 +45,11 @@ interface StudentInput {
 }
 
 // The rules of student records that the database itself keeps (db/migrations/
-// 0032), also when the application has a fault: a UID of seven digits that is
-// never used twice across the school, whatever the holder's status, also once
-// corrected away (edge/developer-rules, Identifiers; 04, UID sets; decision 7
-// of pull request #67); JSHSHIR, the document number and the contract number
+// 0032), also when the application has a fault: a UID of 1 to 20 characters
+// without spaces, never used twice across the school, compared ignoring case,
+// whatever the holder's status, also once corrected away (edge/developer-
+// rules, Identifiers; 04, UID sets; decision 7 of pull request #67; 0138,
+// task 9.4c); JSHSHIR, the document number and the contract number
 // unique across the school (edge/students-classes-groups; answer 22); the
 // checks of what is typed; the branch filter; status rows that never overlap
 // and only shrink; the student account switched off until Release 2; the
@@ -238,7 +240,7 @@ describe('student records in the database', () => {
             .where('id', '=', id)
             .execute(),
         ),
-      ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'students_uid_idx' });
+      ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'students_uid_key_idx' });
       expect(other).not.toBe(id);
     });
 
@@ -288,12 +290,163 @@ describe('student records in the database', () => {
       ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
     });
 
-    it('wants seven digits', async () => {
-      for (const uid of ['260700', '26070011', 'SI26070', '']) {
-        await expect(createStudent({ branch: north, uid }), uid).rejects.toMatchObject({
-          code: CHECK_VIOLATION,
-        });
+    // Task 9.4c (0138): "digits, letters or both, up to 20 characters ...
+    // compared without spaces and ignoring upper and lower case".
+    it('takes 1 to 20 characters of any kind, and refuses an empty one, 21, a space or an invisible character', async () => {
+      for (const uid of ['SI2607001', 'A15', '7', 'ЎТ001', 'SI-26/07', 'Z'.repeat(20)]) {
+        await createStudent({ branch: north, uid });
       }
+      for (const uid of [
+        '',
+        'Y'.repeat(21),
+        'SI 2607002',
+        'SI\t2607003',
+        'SI\u00852607004',
+        'SI\u200b2607005',
+        'SI\ufeff2607006',
+      ]) {
+        await expect(
+          createStudent({ branch: north, uid }),
+          JSON.stringify(uid),
+        ).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'students_uid_check',
+        });
+        // The reservation alone is checked too.
+        await expect(
+          inBranch(north, async (transaction) => {
+            const id = await createStudent({ branch: north, uid: `R${String(count + 100)}` });
+            await transaction
+              .insertInto('student_uids')
+              .values({ uid, student_id: id, branch_id: north, held_from: MOMENT })
+              .execute();
+          }),
+          JSON.stringify(uid),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_uids_uid_check' });
+      }
+    });
+
+    it('refuses a UID in another case: a student and a reservation of another', async () => {
+      await createStudent({ branch: north, uid: 'SI2607101' });
+      // The order of the create: the student first, refused by its own key.
+      await expect(createStudent({ branch: south, uid: 'si2607101' })).rejects.toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'students_uid_key_idx',
+      });
+      // A reservation alone, of another student: refused by the reservations' key.
+      const other = await createStudent({ branch: north, uid: 'SI2607102' });
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .insertInto('student_uids')
+            .values({ uid: 'Si2607101', student_id: other, branch_id: north, held_from: MOMENT })
+            .execute(),
+        ),
+      ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'student_uids_uid_key_idx' });
+    });
+
+    it('refuses a UID corrected away, in another case, for good', async () => {
+      const id = await createStudent({ branch: north, uid: 'SI2607110' });
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .insertInto('student_uids')
+          .values({ uid: 'SI2607111', student_id: id, branch_id: north, held_from: MOMENT })
+          .execute();
+        await transaction
+          .updateTable('students')
+          .set({ uid: 'SI2607111' })
+          .where('id', '=', id)
+          .execute();
+      });
+      await expect(
+        inBranch(south, async (transaction) => {
+          const other = await createStudent({ branch: south, uid: 'SI2607112' });
+          await transaction
+            .insertInto('student_uids')
+            .values({ uid: 'si2607110', student_id: other, branch_id: south, held_from: MOMENT })
+            .execute();
+        }),
+      ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'student_uids_uid_key_idx' });
+    });
+
+    it('lets the current UID change only its case against its reservation, at the commit (decision 3)', async () => {
+      const id = await createStudent({ branch: north, uid: 'si2607120' });
+      await inBranch(north, (transaction) =>
+        transaction
+          .updateTable('students')
+          .set({ uid: 'SI2607120' })
+          .where('id', '=', id)
+          .execute(),
+      );
+      const row = await database.migrator
+        .selectFrom('students')
+        .select(['uid', 'uid_key'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({ uid: 'SI2607120', uid_key: 'SI2607120' });
+      // Another UID without a reservation is still refused at the commit.
+      await expect(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('students')
+            .set({ uid: 'SI2607121' })
+            .where('id', '=', id)
+            .execute(),
+        ),
+      ).rejects.toMatchObject({
+        code: FOREIGN_KEY_VIOLATION,
+        constraint: 'students_uid_held_fkey',
+      });
+    });
+
+    it('folds the case of every alphabet, as the shared key does', async () => {
+      const found = await sql<{ key: string }>`
+        select student_uid_key(uid) as key
+        from unnest(array['si2607001', 'ўт001', 'oʻ15', 'straße']) as typed (uid)
+      `.execute(database.migrator);
+      expect(found.rows.map((one) => one.key)).toEqual(
+        ['si2607001', 'ўт001', 'oʻ15', 'straße'].map((uid) => studentUidKey(uid)),
+      );
+    });
+
+    it('refuses the same UID in two spellings saved at the same moment: the second waits', async () => {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const first = inBranch(north, async (transaction) => {
+        await writeStudent(transaction, { branch: north, uid: 'SI2607130' });
+        ready();
+        await released;
+      });
+      await isReady;
+      const second = createStudent({ branch: south, uid: 'si2607130' }).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      await expect
+        .poll(
+          async () =>
+            (
+              await sql<{ waiting: number }>`
+                select count(distinct l.pid)::int as waiting
+                from pg_locks l join pg_stat_activity a on a.pid = l.pid
+                where a.datname = current_database() and not l.granted
+              `.execute(database.migrator)
+            ).rows[0]?.waiting ?? 0,
+          { timeout: 20_000, interval: 50 },
+        )
+        .toBe(1);
+      release();
+      await first;
+      expect(await second).toMatchObject({
+        code: UNIQUE_VIOLATION,
+        constraint: 'students_uid_key_idx',
+      });
     });
   });
 

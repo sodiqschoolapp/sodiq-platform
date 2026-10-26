@@ -4,6 +4,7 @@ import {
   scholarshipCoverageSchema,
   scholarshipTypeSchema,
   schoolDateSchema,
+  studentUidKey,
   type AuditAction,
   type SchoolDate,
   type JournalEntriesChoice,
@@ -50,7 +51,7 @@ import {
   type Side,
   type Stretch,
 } from './student-merges.js';
-import { Students } from './students.service.js';
+import { Students, uidKeyOf } from './students.service.js';
 
 /** Plain data for an audit entry or an archive: dates as text, no class instances. */
 const asJson = (value: unknown): JsonValue => JSON.parse(JSON.stringify(value)) as JsonValue;
@@ -331,7 +332,7 @@ export class StudentMerges {
     const other = await transaction
       .selectFrom('student_uids')
       .select('student_id')
-      .where('uid', '=', uid)
+      .where('uid_key', '=', uidKeyOf(uid))
       .where('student_id', 'is not', null)
       .executeTakeFirst();
     if (other?.student_id === undefined || other.student_id === null) {
@@ -418,7 +419,8 @@ export class StudentMerges {
           current,
           ...own
             .map((one) => one.id)
-            .filter((one) => one !== current)
+            // By key: a UID corrected in case only is listed once (task 9.4c).
+            .filter((one) => studentUidKey(one) !== studentUidKey(current))
             .sort(),
         ],
       };

@@ -64,12 +64,7 @@ test('a new student: the full class marked, the parent found by a pasted phone o
   await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
   // H26: Save at once, whether or not the lookup has answered yet.
   await form.getByRole('button', { name: en.form.save, exact: true }).click();
-  const question = page.getByRole('alertdialog', { name: texts.setTitle });
   const saved = page.getByRole('complementary', { name: 'Javohir Qodirov' });
-  await expect(question.or(saved)).toBeVisible();
-  if (await question.isVisible()) {
-    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
-  }
   await expect(saved).toBeVisible();
   await expect(page.getByText(en.errors.relative_phone_exists)).toHaveCount(0);
   await saved.getByText(texts.tabs.relatives, { exact: true }).click();

@@ -83,7 +83,6 @@ describe('the personal data report', () => {
     count += 1;
     const response = await t.postStudent(branch, {
       uid: String(2607700 + count),
-      confirmUidSet: true,
       firstName: 'Gulnoza',
       lastName: `Ismoilova${'a'.repeat(count % 7)}`,
       paternalName: 'Anvarovna',

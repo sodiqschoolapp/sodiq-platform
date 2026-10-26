@@ -960,5 +960,65 @@ describe('student merges in the database', () => {
         }),
       ).toEqual([]);
     });
+
+    it('finds a merged UID of letters asked in another case and with spaces (task 9.4c)', async () => {
+      const kept = await members.student(north);
+      const merged = await members.student(south);
+      await everywhere(async (transaction) => {
+        // The merged record's UID corrected to letters, as the correction writes it.
+        await transaction
+          .insertInto('student_uids')
+          .values({
+            uid: 'Mg2607001',
+            student_id: merged,
+            branch_id: south,
+            held_from: new Date(NOW),
+          })
+          .execute();
+        await transaction
+          .updateTable('students')
+          .set({ uid: 'Mg2607001' })
+          .where('id', '=', merged)
+          .execute();
+      });
+      // The checks of the merge row take a UID of letters (0138 replaced the seven digits).
+      await everywhere(async (transaction) => {
+        await mergeRow(transaction, kept, merged);
+        await removeMerged(transaction, kept, merged);
+      });
+      const stored = await database.migrator
+        .selectFrom('student_merges')
+        .select(['merged_uid', 'merged_uids'])
+        .where('merged_id', '=', merged)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ merged_uid: 'Mg2607001', merged_uids: ['Mg2607001'] });
+      const found = await inBranches([north], async (transaction) => {
+        const rows = await sql<{ student_id: string | null }>`
+          select student_id from student_merged_uid_holder('MG2607001', ${north}::uuid)
+        `.execute(transaction);
+        return rows.rows;
+      });
+      expect(found).toEqual([{ student_id: kept }]);
+    });
+
+    it('checks both UIDs of a merge row by the rule of every UID (task 9.4c)', async () => {
+      const found = await sql<{ name: string; definition: string }>`
+        select conname as name, pg_get_constraintdef(oid) as definition
+        from pg_constraint
+        where conrelid = 'student_merges'::regclass
+          and conname in ('student_merges_kept_uid_check', 'student_merges_merged_uid_check')
+        order by conname
+      `.execute(database.migrator);
+      expect(found.rows).toEqual([
+        {
+          name: 'student_merges_kept_uid_check',
+          definition: 'CHECK (student_uid_valid(kept_uid))',
+        },
+        {
+          name: 'student_merges_merged_uid_check',
+          definition: 'CHECK (student_uid_valid(merged_uid))',
+        },
+      ]);
+    });
   });
 });

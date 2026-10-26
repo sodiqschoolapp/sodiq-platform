@@ -42,7 +42,6 @@ describe('the student export, the consent list and the "No class" counter', () =
     count += 1;
     return {
       uid: String(2607500 + count),
-      confirmUidSet: false,
       firstName: 'Oʻtkir',
       lastName: `Rasulov${'a'.repeat(count % 9)}`,
       paternalName: 'Anvarovich',

@@ -55,7 +55,6 @@ describe('class transfers', () => {
     count += 1;
     const response = await post('/api/people/students', {
       uid: String(2607500 + count),
-      confirmUidSet: true,
       firstName: 'Dilnoza',
       lastName: `Karimova${'d'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

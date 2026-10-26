@@ -69,7 +69,6 @@ describe('the mark "same person" read from the phones', () => {
     count += 1;
     return {
       uid: String(2611000 + count),
-      confirmUidSet: true,
       firstName: 'Madina',
       lastName: `Yusupova${'a'.repeat(count % 7)}`,
       paternalName: '',

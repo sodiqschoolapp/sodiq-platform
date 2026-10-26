@@ -364,6 +364,38 @@ describe('Ctrl+K over students and staff', () => {
       expect(await studentIds(ownUid.slice(2))).not.toContain(own);
     });
 
+    it('finds a UID of letters in any case and with spaces, whole or from 3 characters (task 9.4c)', async () => {
+      /** A student of the branch whose UID is given letters, as a correction writes it. */
+      const lettered = async (uid: string) => {
+        const id = await student(t.north, { last: 'Yoqubova', first: 'Shoira' });
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await transaction
+            .insertInto('student_uids')
+            .values({
+              uid,
+              student_id: id,
+              branch_id: t.north,
+              held_from: new Date('2026-10-10T09:00:00+05:00'),
+            })
+            .execute();
+          await transaction.updateTable('students').set({ uid }).where('id', '=', id).execute();
+        });
+        return id;
+      };
+      const si = await lettered('SI2607001');
+      const short = await lettered('A1');
+      const cyrillic = await lettered('ЎТ001');
+      for (const q of ['SI2607001', 'si2607001', 'si 2607 001', 'si26', 'si 26', 'SI2']) {
+        expect(await studentIds(q), q).toContain(si);
+      }
+      // A short UID is found when typed whole; 2 characters are no start.
+      expect(await studentIds('a1')).toContain(short);
+      expect(await studentIds('si')).not.toContain(si);
+      expect(await studentIds('ўт0')).toContain(cyrillic);
+      // Not a part from the middle.
+      expect(await studentIds('2607001')).not.toContain(si);
+    });
+
     it('orders by the stored fold of the name, then the id', async () => {
       const found = await students('Qodirova');
       expect(found.items.map((item) => item.firstName)).toEqual([

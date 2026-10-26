@@ -112,11 +112,34 @@ export type ScholarshipCoverage = z.infer<typeof scholarshipCoverageSchema>;
 /** Grades 1 to 11 (answer 17). */
 export const studentGradeSchema = z.int().min(1).max(11);
 
-/** Seven digits (`04`, UID sets; the "SI" of the main file is not typed or stored). */
+/** `04`, UID sets, Release 1: "up to 20 characters" (task 9.4c). */
+export const STUDENT_UID_MAX_LENGTH = 20;
+
+/**
+ * What is left out of a UID: every space, and every invisible control or
+ * format character, read as a space (task 9.4c, decision 4). A superset of
+ * what `student_uid_valid` (db/migrations/0138) refuses, so the schema is
+ * never wider than the database's check.
+ */
+const UID_LEFT_OUT = /[\s\p{Cc}\p{Cf}]/gu;
+
+const withoutSpaces = (uid: string): string => uid.replace(UID_LEFT_OUT, '');
+
+/**
+ * A student's UID (`04`, UID sets, Release 1; docs/spec-changes.md, 26
+ * October 2026): "typed by hand, in any form: digits, letters or both, up to
+ * 20 characters". Stored without spaces, the case as typed (decision 4).
+ */
 export const studentUidSchema = z
   .string()
-  .trim()
-  .regex(/^[0-9]{7}$/);
+  .transform(withoutSpaces)
+  .pipe(z.string().min(1).max(STUDENT_UID_MAX_LENGTH));
+
+/**
+ * The form a UID is compared by: "compared without spaces and ignoring upper
+ * and lower case" (`04`). The fold of `student_uid_key` (db/migrations/0138).
+ */
+export const studentUidKey = (uid: string): string => withoutSpaces(uid).toUpperCase();
 
 export { spellingKey, storedStudentName };
 
@@ -139,68 +162,20 @@ export function studentNameKey(lastName: string, firstName: string): string {
 }
 
 /**
- * `04`, UID sets: the set of each grade in 2026–2027. "A set belongs to the
- * students who are in a grade together and moves up with them ... a new set
- * is opened for the new grade 1".
+ * The academic year a new student starts in (decision 5 of task 2.4a as
+ * changed by correction 2 of #67): the year of the branch that holds the start
+ * date, or the first that begins after it. `undefined` when the branch has
+ * none, and the create is refused `no_academic_year` (task 9.4c, decision 2).
  */
-export const UID_SETS_2026: Readonly<Record<number, string>> = {
-  1: '2601',
-  2: '2602',
-  3: '2603',
-  4: '2604',
-  5: '2605',
-  6: '2606',
-  7: '2607',
-  8: '2507',
-  9: '2407',
-  10: '2307',
-  11: '2308',
-};
-
-/**
- * The set of a grade in the academic year that begins in `yearStart` (decision
- * 5): the table of 2026–2027 moved up one grade per year; a grade 1 of a later
- * year has the new set `<YY>01`. `null` when no set is known (a year before
- * 2026 whose grade was past 11 in 2026–2027).
- */
-export function uidSetOf(grade: number, yearStart: number): string | null {
-  const shift = yearStart - 2026;
-  const gradeIn2026 = grade - shift;
-  if (gradeIn2026 >= 1) {
-    return UID_SETS_2026[gradeIn2026] ?? null;
-  }
-  // A grade 1 of the year that began in yearStart - (grade - 1).
-  const firstYear = yearStart - (grade - 1);
-  return `${String(firstYear % 100).padStart(2, '0')}01`;
-}
-
-/**
- * The academic year whose UID sets a new student or a corrected UID is checked
- * against (decision 5 of task 2.4a as changed by correction 2 of #67): the
- * year of the branch that holds the start date, or the first that begins
- * after it. `undefined` when the branch has none. One rule for the check of
- * the API and the set named in its warning (task 2.7b-1, decision 7).
- */
-export function uidYearOf<Year extends { readonly startDate: string; readonly endDate: string }>(
-  startsOn: string,
-  years: readonly Year[],
-): Year | undefined {
+export function studentYearOf<
+  Year extends { readonly startDate: string; readonly endDate: string },
+>(startsOn: string, years: readonly Year[]): Year | undefined {
   return years
     .filter((year) => year.endDate >= startsOn)
     .reduce<Year | undefined>(
       (first, year) => (first === undefined || year.startDate < first.startDate ? year : first),
       undefined,
     );
-}
-
-/** The set of a grade in an academic year, by the year's start date. */
-export const uidSetFor = (grade: number, year: { readonly startDate: string }): string | null =>
-  uidSetOf(grade, Number(year.startDate.slice(0, 4)));
-
-/** Whether a UID is outside the set of the grade: the warning to confirm (`04`, Release 1). */
-export function uidOutsideSet(uid: string, grade: number, yearStart: number): boolean {
-  const set = uidSetOf(grade, yearStart);
-  return set !== null && !uid.startsWith(set);
 }
 
 const optionalText = (max: number) =>
@@ -314,13 +289,12 @@ export const studentRecordSchema = z
 
 export type StudentRecord = z.infer<typeof studentRecordSchema>;
 
-/** The create: the record, the start date, the UID and the confirmation of a UID outside the grade's set. */
+/** The create: the record, the start date and the UID. */
 export const studentCreateSchema = z
   .strictObject({
     ...studentFields,
     startsOn: schoolDateSchema,
     uid: studentUidSchema,
-    confirmUidSet: z.boolean(),
     /** At least one relative, exactly one main contact (`04`, Close relatives; task 2.5a). */
     relatives: studentRelativesInputSchema,
     /**
@@ -341,7 +315,6 @@ export type StudentCreate = z.infer<typeof studentCreateSchema>;
 export const studentUidCorrectionSchema = z.strictObject({
   uid: studentUidSchema,
   reason: z.string().trim().min(1).max(UID_REASON_MAX_LENGTH),
-  confirmUidSet: z.boolean(),
 });
 
 export type StudentUidCorrection = z.infer<typeof studentUidCorrectionSchema>;

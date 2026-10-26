@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   limited,
+  studentUidKey,
   type StudentSearch as StudentSearchAnswer,
   type StudentStatus,
 } from '@sodiq/shared';
@@ -20,8 +21,18 @@ import {
 } from './search-match.js';
 import { statusOfStudentOn, Students } from './students.service.js';
 
-/** A UID is found from its first 3 digits (decision 11): typed from its start. */
-const UID_PREFIX = /^[0-9]{3,7}$/;
+/** A UID is found from its first 3 characters (decision 11): typed from its start. */
+const UID_PREFIX_MIN = 3;
+
+/**
+ * Whether the typed text finds a UID (task 9.4c, decision 5): compared by key,
+ * without spaces and ignoring case, the whole UID, or its start from 3
+ * characters.
+ */
+function uidMatches(typed: string, uid: string): boolean {
+  const key = studentUidKey(uid);
+  return typed === key || (typed.length >= UID_PREFIX_MIN && key.startsWith(typed));
+}
 
 /**
  * Ctrl+K over students (task 3.2d, pull request #94). The students of the
@@ -31,7 +42,7 @@ const UID_PREFIX = /^[0-9]{3,7}$/;
  * `studentPlaces`, so a Tutor finds the students of own classes in force or
  * planned, a Teacher the students taught (task 3.6a, L48) and every other
  * reader the branch. Found by every typed word in the
- * folded name or paternal name, or by the UID from 3 digits (also a UID
+ * folded name or paternal name, or by the UID from 3 characters (also a UID
  * of a record merged into it, task 3.3d); the Super Admin
  * and the Academic Vice Principal also by the document number, the JSHSHIR
  * and the student's own phone (decision 2, Look first). Every status is
@@ -51,6 +62,7 @@ export class StudentSearch {
       throw new Error('A search route works for the branch of the request.');
     }
     const identity = identitySearcherOf(access) !== undefined;
+    const typedUid = studentUidKey(typed);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await this.students.todayIn(transaction, branchId);
       const rows = await transaction
@@ -100,8 +112,8 @@ export class StudentSearch {
         .filter(
           (row) =>
             namesMatch(typed, [row.last_name, row.first_name, row.paternal_name]) ||
-            (UID_PREFIX.test(typed) &&
-              [row.uid, ...(merged.get(row.id) ?? [])].some((uid) => uid.startsWith(typed))) ||
+            (typedUid !== '' &&
+              [row.uid, ...(merged.get(row.id) ?? [])].some((uid) => uidMatches(typedUid, uid))) ||
             // Nobody else's query is ever compared with these fields (decision 2).
             (identity &&
               (documentMatches(typed, row.document_number) ||

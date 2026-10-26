@@ -422,16 +422,22 @@ export function MergeForm({
     },
   });
   const uid = form.bind('uid');
-  const typed = () => uid.value.trim();
+  // The UID as the server compares it: spaces left out (task 9.4c).
+  const checked = studentUidSchema.safeParse(uid.value);
+  const typed = () => (checked.success ? checked.data : '');
   const title = t('people.students.merge.action');
-  const ready = studentUidSchema.safeParse(uid.value).success;
+  const ready = checked.success;
   return (
     <section className="grid gap-3">
       {dialog}
       <h3 className={SECTION_TITLE}>{title}</h3>
       <RecordForm form={form} label={title} onCancel={onCancel}>
         <div className="grid gap-2">
-          <Field label={t('people.students.merge.uid')} inputMode="numeric" {...uid} />
+          <Field
+            label={t('people.students.merge.uid')}
+            note={t('people.students.uidFormat')}
+            {...uid}
+          />
           <span>
             <Button
               type="button"

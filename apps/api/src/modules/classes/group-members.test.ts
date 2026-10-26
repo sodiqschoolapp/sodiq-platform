@@ -66,7 +66,6 @@ describe('group membership', () => {
     count += 1;
     return {
       uid: String(2607500 + count),
-      confirmUidSet: true,
       firstName: 'Dilnoza',
       lastName: `Karimova${'b'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

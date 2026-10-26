@@ -59,7 +59,6 @@ describe('one stay in a class and a group', () => {
     count += 1;
     const response = await post('/api/people/students', {
       uid: String(2607700 + count),
-      confirmUidSet: true,
       firstName: 'Malika',
       lastName: `Karimova${'k'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

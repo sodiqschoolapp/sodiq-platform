@@ -319,8 +319,6 @@ export const ERROR_CODES = [
   'second_step_off',
   /** The staff record has no account yet, so there is nothing to lock or reset (task 2.3c-1). */
   'account_missing',
-  /** The first four digits of the UID are not the set of the student's grade; the save may be repeated with the confirmation (`04`, UID sets, Release 1; task 2.4a, decision 5). */
-  'uid_set_mismatch',
   /** A UID, JSHSHIR, document number or contract number is already given to another student, in any branch, inactive and graduated ones too (edge/students-classes-groups; task 2.4a). `details` names the field, and the holder when the reader may open it. */
   'student_value_taken',
   /** The start date is in no academic year of the branch and no year begins after it (task 2.4a, decision 5). */
@@ -1247,11 +1245,6 @@ export const errorDetailSchema = z.object({
    * `recordId` is its id.
    */
   staffName: z.string().optional(),
-  /**
-   * The value the rule expected, when the reader is told it: the UID set of
-   * the grade on a `uid_set_mismatch` (task 2.7b-1, decision 7).
-   */
-  expected: z.string().optional(),
   /** The first day a row would lose on a `student_merge_overlap` (task 3.3d, decision 4). */
   day: z
     .string()

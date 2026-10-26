@@ -45,7 +45,6 @@ describe('leaving, return and delete of a student', () => {
     count += 1;
     return {
       uid: String(2607200 + count),
-      confirmUidSet: true,
       firstName: 'Shahzoda',
       lastName: `Murodova${'a'.repeat(count % 7)}`,
       paternalName: null,
@@ -987,6 +986,23 @@ describe('leaving, return and delete of a student', () => {
       expect(detailOf?.recordId).toBeUndefined();
     });
 
+    it('keeps a deleted UID for good in any spelling (task 9.4c)', async () => {
+      const student = await create({ uid: `TW${String(7000000 + count)}` });
+      expect((await remove(student)).status).toBe(204);
+      const typed = ` ${student.uid.toLowerCase().slice(0, 4)} ${student.uid.slice(4)}`;
+      const again = await t.postStudent(t.south, body({ uid: typed }));
+      refusedWith(again, 409, 'student_value_taken');
+      expect(apiErrorSchema.parse(again.body).error.details?.[0]).toMatchObject({
+        path: 'uid',
+        code: 'held_elsewhere',
+      });
+      const here = await t.postStudent(t.north, body({ uid: typed }));
+      expect(apiErrorSchema.parse(here.body).error.details?.[0]).toMatchObject({
+        path: 'uid',
+        code: 'uid_released',
+      });
+    });
+
     it('refuses a student with a scholarship, a leaving or a second contract', async () => {
       const scholar = await create({
         scholarship: { type: 'gift', coverage: 'full', amount: null },
@@ -1308,7 +1324,6 @@ describe('leaving, return and delete of a student', () => {
             t.put(`/api/people/students/${two.id}/uid`, t.north, {
               uid: '2607899',
               reason: 'Typo.',
-              confirmUidSet: true,
             }),
         ),
         404,

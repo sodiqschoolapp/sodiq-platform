@@ -43,7 +43,6 @@ describe('class membership', () => {
     count += 1;
     return {
       uid: String(2607300 + count),
-      confirmUidSet: true,
       firstName: 'Shahlo',
       lastName: `Yusupova${'a'.repeat(count % 7)}`,
       paternalName: null,
@@ -1042,7 +1041,7 @@ describe('class membership', () => {
       const response = await t.put(`/api/people/students/${one.id}`, t.north, {
         ...Object.fromEntries(
           Object.entries(body()).filter(
-            ([key]) => !['uid', 'confirmUidSet', 'startsOn', 'relatives', 'classId'].includes(key),
+            ([key]) => !['uid', 'startsOn', 'relatives', 'classId'].includes(key),
           ),
         ),
         firstName: one.firstName,

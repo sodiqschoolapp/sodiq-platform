@@ -65,7 +65,6 @@ describe('close relatives', () => {
     count += 1;
     return {
       uid: String(2607000 + count),
-      confirmUidSet: true,
       firstName: 'Kamola',
       lastName: `Ergasheva${'a'.repeat(count % 7)}`,
       paternalName: '',
@@ -965,7 +964,6 @@ describe('close relatives', () => {
         ...body([]),
         uid: undefined,
         startsOn: undefined,
-        confirmUidSet: undefined,
         relatives: undefined,
         firstName: 'Kamila',
         lastName: full.lastName,

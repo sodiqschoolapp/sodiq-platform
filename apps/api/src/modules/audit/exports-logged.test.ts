@@ -231,7 +231,6 @@ describe('every export is logged', () => {
           created(
             await t.postStudent(t.north, {
               uid: '2607901',
-              confirmUidSet: true,
               firstName: 'Shoira',
               lastName: 'Komilova',
               paternalName: null,
@@ -264,7 +263,6 @@ describe('every export is logged', () => {
       created(
         await t.postStudent(t.north, {
           uid,
-          confirmUidSet: true,
           firstName: 'Nodira',
           lastName: 'Tursunova',
           paternalName: null,

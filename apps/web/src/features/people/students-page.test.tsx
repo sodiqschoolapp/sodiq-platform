@@ -608,7 +608,11 @@ describe('the profile of a student', () => {
 });
 
 describe('adding a student', () => {
-  async function fillAndSave(classId?: string, phones: { relative?: string; own?: string } = {}) {
+  async function fillAndSave(
+    classId?: string,
+    phones: { relative?: string; own?: string } = {},
+    typedUid = '2606001',
+  ) {
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
     const form = within(
@@ -617,7 +621,7 @@ describe('adding a student', () => {
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
-    type(en.people.students.uid, '2606001');
+    type(en.people.students.uid, typedUid);
     type(en.people.students.lastName, 'Rahimov');
     type(en.people.students.firstName, "O'tkir");
     type(en.people.students.sex, 'male');
@@ -640,32 +644,38 @@ describe('adding a student', () => {
     return form;
   }
 
-  // Finding 25 of the hand test of 13 October 2026 (task 2.7b-1, decision 7).
-  it('names the set of the grade in the UID warning when the server names it', async () => {
-    openList('academic_vice_principal', {
+  // Task 9.4c: a UID in any form, asked nothing about the grade's set.
+  it('sends a UID of letters as typed without its spaces, and asks nothing about a set', async () => {
+    const calls = openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
       'POST /api/people/students': () =>
-        Response.json(
-          {
-            error: {
-              code: 'uid_set_mismatch',
-              message: 'x',
-              requestId: 'r',
-              details: [{ path: 'uid', code: 'uid_set', message: 'x', expected: '2607' }],
-            },
-          },
-          { status: 409 },
-        ),
+        json(detailOf({ ...OTKIR, id: uid(9), uid: 'si2607001' }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () =>
+        json(detailOf({ ...OTKIR, id: uid(9), uid: 'si2607001' })),
     });
     renderApp(PATH);
-    await fillAndSave();
+    const form = await fillAndSave(undefined, {}, ' si 2607 001');
+    expect(within(form).getByText(en.people.students.uidFormat)).toBeDefined();
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === 'POST /api/people/students')).toHaveLength(1);
+    });
+    const sent = calls.find((call) => call.route === 'POST /api/people/students')?.body;
+    expect(sent).toMatchObject({ uid: 'si2607001' });
+    expect(sent).not.toHaveProperty('confirmUidSet');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
 
-    const dialog = await screen.findByRole('alertdialog', { name: en.people.students.setTitle });
-    expect(
-      within(dialog).getByText(
-        en.people.students.setTextNamed.replace('{{grade}}', '7').replace('{{set}}', '2607'),
-      ),
-    ).toBeDefined();
+  it('refuses an empty UID and one longer than 20 characters on the field', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(undefined, {}, 'A'.repeat(21));
+    const field = within(form).getByLabelText(en.people.students.uid);
+    await waitFor(() => {
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    });
+    expect(calls.some((call) => call.route === 'POST /api/people/students')).toBe(false);
   });
 
   // Task 3.5b, H25 of issue #105: a number pasted after the prefilled "+998 ".
@@ -1056,18 +1066,13 @@ describe('adding a student', () => {
     });
   });
 
-  it('warns about a student of the same name elsewhere, then about the UID set, and saves when told to', async () => {
+  it('warns about a student of the same name elsewhere, and saves when told to', async () => {
     let posts = 0;
     const calls = openList('academic_vice_principal', {
       'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: true }),
-      'POST /api/people/students': (body) => {
+      'POST /api/people/students': () => {
         posts += 1;
-        return (body as { confirmUidSet: boolean }).confirmUidSet
-          ? json(detailOf({ ...OTKIR, id: uid(9), uid: '2606001' }), 201)
-          : Response.json(
-              { error: { code: 'uid_set_mismatch', message: 'x', requestId: 'r' } },
-              { status: 409 },
-            );
+        return json(detailOf({ ...OTKIR, id: uid(9), uid: '2606001' }), 201);
       },
     });
     renderApp(PATH);
@@ -1077,21 +1082,12 @@ describe('adding a student', () => {
     expect(within(first).getByText(en.people.students.duplicateElsewhere)).toBeDefined();
     expect(posts).toBe(0);
     fireEvent.click(within(first).getByRole('button', { name: en.people.students.saveAnyway }));
-
-    const second = await screen.findByRole('alertdialog', {
-      name: en.people.students.setTitle,
-    });
-    // No set named by the server: the text without it (task 2.7b-1).
-    expect(within(second).getByText(en.people.students.setText)).toBeDefined();
-    fireEvent.click(within(second).getByRole('button', { name: en.people.students.saveAnyway }));
     await waitFor(() => {
-      expect(posts).toBe(2);
+      expect(posts).toBe(1);
     });
+    // No second question: the UID set warning is gone (task 9.4c).
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     const sent = calls.filter((call) => call.route === 'POST /api/people/students');
-    expect(sent.map((call) => (call.body as { confirmUidSet: boolean }).confirmUidSet)).toEqual([
-      false,
-      true,
-    ]);
     expect(sent[0]?.body).toMatchObject({
       uid: '2606001',
       firstName: 'Oʻtkir',
@@ -1100,6 +1096,7 @@ describe('adding a student', () => {
       scholarship: { type: 'none', coverage: null, amount: null },
       contract: { number: 'SQ-2026/099', signedOn: '2026-08-20' },
     });
+    expect(sent[0]?.body).not.toHaveProperty('confirmUidSet');
   });
 
   // Task 3.2c, decision 3: the create with a class whose group subject has
@@ -2197,7 +2194,6 @@ describe('the Status section', () => {
     expect(calls.find((call) => call.route.endsWith('/uid'))?.body).toEqual({
       uid: '2606077',
       reason: 'Typed wrong',
-      confirmUidSet: false,
     });
     const term = await within(panel).findByText(en.people.students.uid, { selector: 'dt' });
     await waitFor(() => {
@@ -2217,13 +2213,14 @@ describe('the Status section', () => {
     );
   });
 
-  it("asks before a UID of another grade's set, and keeps the correction open with what was typed when the person declines", async () => {
-    const calls = openOne('academic_vice_principal', OTKIR, detailOf(OTKIR, { canEdit: true }), {
-      [`PUT /api/people/students/${OTKIR.id}/uid`]: () =>
-        Response.json(
-          { error: { code: 'uid_set_mismatch', message: 'x', requestId: 'r' } },
-          { status: 409 },
-        ),
+  it('corrects a UID to letters at once, without its spaces and with no question about a set (task 9.4c)', async () => {
+    let detail = detailOf(OTKIR, { canEdit: true });
+    const calls = openOne('academic_vice_principal', OTKIR, detail, {
+      [`GET /api/people/students/${OTKIR.id}`]: () => json(detail),
+      [`PUT /api/people/students/${OTKIR.id}/uid`]: (body) => {
+        detail = { ...detail, uid: (body as { uid: string }).uid, version: detail.version + 1 };
+        return json(detail);
+      },
     });
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
@@ -2234,24 +2231,17 @@ describe('the Status section', () => {
       en.people.students.uidTitle,
     );
     fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
-      target: { value: '2509077' },
+      target: { value: 'SI 2509077' },
     });
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Typed wrong' },
     });
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
-    const dialog = await screen.findByRole('alertdialog', { name: en.people.students.setTitle });
-    expect(within(dialog).getByText('2509077')).toBeDefined();
-    fireEvent.click(within(dialog).getByRole('button', { name: en.confirm.cancel }));
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).toBeNull();
-    });
-    expect(form.isConnected).toBe(true);
-    expect(within(form).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
-      '2509077',
-    );
-    expect(calls.filter((call) => call.route.endsWith('/uid'))).toHaveLength(1);
-    expect(panelActions(panel)).toBeNull();
+    await savedInPanel(panel);
+    expect(calls.filter((call) => call.route.endsWith('/uid')).map((call) => call.body)).toEqual([
+      { uid: 'SI2509077', reason: 'Typed wrong' },
+    ]);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
   // Issue #39, hand test of 13 October 2026, findings 26 and 29 (task 2.7b-2).

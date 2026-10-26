@@ -52,7 +52,6 @@ describe('the class of a return and of a graduate restore', () => {
     count += 1;
     return {
       uid: String(2608300 + count),
-      confirmUidSet: true,
       firstName: 'Dilnoza',
       lastName: `Karimova${'d'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,
