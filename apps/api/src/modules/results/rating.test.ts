@@ -234,7 +234,7 @@ describe('the rating (08, Rating)', () => {
       await t.app.get(Audit).record(transaction, {
         branchId: scene.branch,
         actorId: writer,
-        action: 'quarter.result_decided',
+        action: 'results.decision_set',
       });
       await transaction
         .insertInto('quarter_result_decisions')

@@ -99,6 +99,14 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     to: '/journal',
     icon: MENU_ICONS.journal,
   },
+  // The rating (task 9.3a): the area `rating`; the closing checklist is linked from the page.
+  results: {
+    titleKey: 'menu.results',
+    shortKey: 'menu.short.results',
+    to: '/results/rating',
+    icon: MENU_ICONS.results,
+    areas: ['rating'],
+  },
   // The lesson plans (task 7.1a): the area `plans` of the same name decides who sees it.
   plans: {
     titleKey: 'menu.plans',
