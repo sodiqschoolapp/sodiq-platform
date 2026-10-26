@@ -292,7 +292,7 @@ const CALCULATION: readonly Row[] = [
   {
     case: "The early-warning list compares a mid-quarter figure without the exam against last quarter's final with the exam.",
     rule: 'e6baf0416ba3e304',
-    tests: [],
+    tests: [['early-warning.test.ts', 'currentWorkFigure: attendance, classwork, homework, no exam (edge/calculation)']],
     tasks: ['9.4a'],
   },
   {

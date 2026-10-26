@@ -25,6 +25,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 5: task 9.3a, the rating (`ratingPlaces`, `oneDecimal`, `subjectsFigure`, `classFigure`); no
   // existing formula changes.
   '8644c9d7282f0d84025109034a123f151de3595435dbf2c2b9e284efbe394edf',
+  // 6: task 9.4a, the early-warning list (`currentWorkFigure`, `ownGradedWorks`,
+  // `currentAbsenceRun`, `earlyWarningReasons`); no existing formula changes.
+  '079763a8afc3703b84e6dd5997bd6d95e1f0a5f15adc9bbe9e6f336d48d5167b',
 ];
 
 const directory = new URL('./', import.meta.url);

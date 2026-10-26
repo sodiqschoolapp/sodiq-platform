@@ -361,6 +361,21 @@ export interface Divisions {
   position: number;
 }
 
+export interface EarlyWarningHandled {
+  assignment_id: string;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  figure: number;
+  handled_at: Timestamp;
+  handled_by: string;
+  id: Generated<string>;
+  note: Generated<string>;
+  quarter_id: string;
+  reason: string;
+  student_id: string;
+  subject_id: string;
+}
+
 export interface ExamInvigilators {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -2135,6 +2150,7 @@ export interface DB {
   day_templates: DayTemplates;
   departments: Departments;
   divisions: Divisions;
+  early_warning_handled: EarlyWarningHandled;
   exam_invigilators: ExamInvigilators;
   exam_rating_journals: ExamRatingJournals;
   exam_room_classes: ExamRoomClasses;
