@@ -163,6 +163,8 @@ describe('the merge of two student records', () => {
         .execute(),
       t.database.migrator.selectFrom('student_uids').selectAll().orderBy('uid').execute(),
       t.database.migrator.selectFrom('relatives').selectAll().orderBy('id').execute(),
+      // Task 9.4a: the early-warning entries marked handled a merge carries.
+      t.database.migrator.selectFrom('early_warning_handled').selectAll().orderBy('id').execute(),
       // Task 6.3: the reasons of absence a merge carries (permission review, must-fix 1).
       t.database.migrator.selectFrom('student_absence_reasons').selectAll().orderBy('id').execute(),
       // Task 8.5: the exemptions and what names the student beside them (review finding 5).
@@ -574,6 +576,44 @@ describe('the merge of two student records', () => {
         .where('id', '=', id)
         .executeTakeFirstOrThrow();
       expect(row).toEqual({ student_id: first.id, decision: 'keep', version: 1 });
+    });
+
+    it('carries an early-warning entry marked handled to the kept record (task 9.4a)', async () => {
+      const { east, eastYear, classId } = await eastWith('East handled carry');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', eastYear)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      const by = await classes.account();
+      const row = await t.database.migrator
+        .insertInto('early_warning_handled')
+        .values({
+          branch_id: east,
+          quarter_id: quarter.id,
+          student_id: twice.id,
+          subject_id: subject,
+          reason: 'low_attendance',
+          figure: 60,
+          note: 'Spoke to the parents.',
+          handled_by: by,
+          assignment_id: '019a0000-0000-7000-8000-0000000000b2',
+          handled_at: new Date('2026-10-20T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      merged(await merge(first.id, twice.uid, east));
+      expect(
+        await t.database.migrator
+          .selectFrom('early_warning_handled')
+          .select(['student_id', 'figure', 'note'])
+          .where('id', '=', row.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ student_id: first.id, figure: 60, note: 'Spoke to the parents.' });
     });
 
     it('refuses a decision of both records on one subject and quarter (student_merge_decision_overlap), and changes nothing', async () => {

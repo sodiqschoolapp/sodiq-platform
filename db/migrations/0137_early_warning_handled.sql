@@ -46,7 +46,15 @@ create policy branch_filter on early_warning_handled for all to sodiq_app
   using (branch_id = any ((select app_branch_ids())::uuid[]))
   with check (branch_id = any ((select app_branch_ids())::uuid[]));
 
+-- The merge of two student records (task 3.3d) carries the rows to the kept record as it carries
+-- the journal's rows (0128): a change of `student_id` alone, from the merged record to the kept
+-- one of a merge of this transaction. Every other update is refused: the rows are append-only.
+create trigger early_warning_handled_merge_carry
+  before update on early_warning_handled
+  for each row execute function journal_merge_carry();
+
 grant select on early_warning_handled to sodiq_app;
+grant update (student_id) on early_warning_handled to sodiq_app;
 grant insert (
   id, branch_id, quarter_id, student_id, subject_id, reason, figure, note, handled_by,
   assignment_id, handled_at

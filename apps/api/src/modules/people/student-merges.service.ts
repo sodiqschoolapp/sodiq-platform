@@ -1503,6 +1503,12 @@ export class StudentMerges {
       .where('student_id', '=', input.mergedId)
       .returning('id')
       .execute();
+    // Task 9.4a: the early-warning entries marked handled (0137), carried as the journal's rows.
+    await transaction
+      .updateTable('early_warning_handled')
+      .set({ student_id: input.keptId })
+      .where('student_id', '=', input.mergedId)
+      .execute();
     // Task 9.2a: the decisions on flagged results (0132), carried as the journal's rows; a
     // decision of both records on one quarter and subject refuses the merge.
     try {
