@@ -853,6 +853,18 @@ export const uz: Texts<'one' | 'other'> = {
       'Oʻquvchi bu sanada filialning hech bir sinfida boʻlmagan. Sanani tekshiring.',
     student_merge_absence_reasons:
       'Ikkala yozuvda ham bir xil sana uchun dars qoldirish sababi bor. Ikki sababdan birini tozalang, soʻng qayta birlashtiring.',
+    plan_item_covered:
+      'Bu band endi «oʻtilmagan» roʻyxatida emas: u darsga qoʻyilgan yoki unga qaror berilgan. Rejani yangilang.',
+    plan_merge_too_long:
+      'Birlashtirilganda mavzu, maqsadlar yoki havolalar juda uzun boʻladi. Avval darsni qisqartiring, keyin birlashtiring.',
+    plan_merge_shared:
+      'Bu umumiy rejaning boshqa sinfida bu band darsda turibdi. Uni boʻsh qatorga qoʻying, koʻchiring yoki oʻchirishni soʻrang.',
+    plan_carry_refused:
+      'Bu chorakdan koʻchirib boʻlmaydi: u yilning oxirgisi yoki keyingi chorak yopilgan. Bandni darsga birlashtiring yoki oʻchirishni soʻrang.',
+    plan_not_covered_drop:
+      'Bu band «oʻtilmagan» roʻyxatida, uni bu yerda oʻchirib boʻlmaydi. Birlashtiring, koʻchiring yoki tasdiqlovchidan oʻchirishni soʻrang.',
+    plan_merge_stale:
+      'Siz tanlayotganingizda bu dars oʻzgardi: uning bandi tahrirlandi yoki olib tashlandi. Rejani qayta koʻring va yana birlashtiring.',
     plan_scope: 'Bu reja sizga ochiq emas. Sinf rejasini faqat uning oʻqituvchisi yozadi.',
     plan_row_taken: 'Bu qatorda allaqachon yozuv bor. Oʻzgartirish uchun qatorni qayta oching.',
     plan_row_unknown: 'Chorakda bu qator uchun endi dars yoʻq. Rejani qayta oching.',
@@ -3570,6 +3582,10 @@ export const uz: Texts<'one' | 'other'> = {
         request_finish: 'Rejani tahrirlash muddatidan oldin tugatildi',
         periods_ended: 'Chorak rejalarini tahrirlash muddatlari tugatildi',
         requests_voided: 'Yopilgan chorakning kutayotgan reja soʻrovlari bekor qilindi',
+        not_covered_merged: 'Oʻtilmagan reja bandi darsga birlashtirildi',
+        not_covered_carried: 'Oʻtilmagan reja bandi keyingi chorakka koʻchirildi',
+        not_covered_dropped: 'Oʻtilmagan reja bandi oʻchirildi',
+        carried_placed: 'Koʻchirilgan reja bandi darsga qoʻyildi',
         request_void: 'Yangi oʻqituvchi tufayli oʻzgartirish soʻrovlari bekor qilindi',
         queue_edit: 'Reja qatorlari tartibi oʻzgartirildi',
         shared: 'Sinf yoki guruh umumiy rejaga qoʻshildi',
@@ -5425,6 +5441,32 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    outcomes: {
+      carriedIn: 'Oʻtgan chorakdan koʻchirilgan',
+      title: 'Oʻtilmagan bandlar boʻyicha qarorlar',
+      merge: 'Darsga birlashtirish',
+      mergeTitle: '«{{topic}}» bandini darsga birlashtirish',
+      place: 'Darsga qoʻyish',
+      placeTitle: '«{{topic}}» bandini darsga qoʻyish',
+      carry: 'Keyingi chorakka koʻchirish',
+      carryTitle: '«{{topic}}» keyingi chorakka koʻchirilsinmi?',
+      carryText: 'Band darsga qoʻyilguncha keyingi chorak rejasida kutadi.',
+      drop: 'Oʻchirish',
+      dropTitle: '«{{topic}}» bandini oʻchirish',
+      reason: 'Sabab',
+      reasonNeeded: 'Band nega oʻchirilayotganini yozing.',
+      row: 'Dars',
+      rowEmpty: '{{number}}-dars, {{date}} (boʻsh)',
+      rowWith: '{{number}}-dars, {{date}}: {{topic}}',
+      chooseRow: 'Darsni tanlang.',
+      kind: {
+        merged: '{{date}} darsiga birlashtirildi',
+        carried: 'keyingi chorakka koʻchirildi',
+        carriedAutomatic: 'yopishda keyingi chorakka koʻchirildi',
+        dropped: 'oʻchirildi: {{reason}}',
+      },
+    },
     reports: {
       title: 'Rejalar hisobotlari',
       noTeacher: 'Oʻqituvchisiz',
@@ -6712,6 +6754,7 @@ export const uz: Texts<'one' | 'other'> = {
         plan_incomplete: 'Dars rejasi toʻliq emas',
         no_result: 'Natijasi yoʻq oʻquvchilar',
         part_without_data: 'Vazni bor, maʼlumoti yoʻq qism',
+        plan_not_covered: 'Rejaning oʻtilmagan bandlari, koʻchirib boʻlmaydi',
         check_difference: 'Tungi tekshiruv farq topdi',
         no_teacher: 'Oʻqituvchi yoʻq',
       },

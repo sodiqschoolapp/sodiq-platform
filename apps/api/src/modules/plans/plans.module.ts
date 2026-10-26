@@ -19,6 +19,8 @@ import { PlanFollow } from './plan-follow.js';
 import { PlanMasterTakes } from './plan-master-takes.service.js';
 import { PlanMastersController } from './plan-masters.controller.js';
 import { PlanMastersService } from './plan-masters.service.js';
+import { PlanOutcomesController } from './plan-outcomes.controller.js';
+import { PlanOutcomesService } from './plan-outcomes.service.js';
 import { PlanRequestsController } from './plan-requests.controller.js';
 import { PlanRequestsService } from './plan-requests.service.js';
 import { PlanSharing } from './plan-sharing.service.js';
@@ -40,6 +42,8 @@ import { PlansService } from './plans.service.js';
     PlanWindowsController,
     PlanRequestsController,
     PlanMastersController,
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    PlanOutcomesController,
     PlansController,
     // Task 8.8: the lesson card of the journal and its marks.
     LessonCardController,
@@ -63,6 +67,8 @@ import { PlansService } from './plans.service.js';
     PlanMinimumsService,
     PlanReportsService,
     PlanExports,
+    // Task 9.2d: the outcomes of not-covered items and the tray.
+    PlanOutcomesService,
     {
       provide: PDF_RENDERER,
       useFactory: (config: AppConfig) => new ChromiumPdfRenderer(config),

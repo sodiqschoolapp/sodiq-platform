@@ -180,3 +180,53 @@ test('the Head Teacher writes a master, and the teacher copies it into the plan'
   ).toBeVisible();
   await other.close();
 });
+
+// docs/spec/edge-cases/lesson-plans.md, "Items are still 'not covered' at the end of the quarter":
+// "Carried items wait in a 'carried in' tray on the next quarter's plan" (task 9.2d). The "Plan
+// outcomes browser test branch" holds 7 Harvard with one lesson of Planning N in each of quarters
+// 1 and 2; "Map scales" stands past the one row of quarter 1. All names are invented.
+test('the teacher carries a not-covered item to the next quarter and places it at a lesson', async ({
+  page,
+}) => {
+  const account = accountOf('outcomesTeacher');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/plans');
+  await page
+    .locator('tbody tr')
+    .filter({ hasText: '7 Harvard' })
+    .getByRole('button')
+    .first()
+    .click();
+  await expect(heading(page, '7 Harvard · Planning N')).toBeVisible();
+  const notCovered = page.getByRole('region', { name: en.plans.plan.notCovered, exact: true });
+  await expect(notCovered).toContainText('Map scales');
+  await notCovered.getByRole('button', { name: en.plans.outcomes.carry }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: en.plans.outcomes.carry })
+    .click();
+  await expect(notCovered).toBeHidden();
+  const outcomes = page.getByRole('region', { name: en.plans.outcomes.title });
+  await expect(outcomes).toContainText('Map scales');
+  await expect(outcomes).toContainText(en.plans.outcomes.kind.carried);
+
+  // Quarter 2: the tray, then the item at its one lesson.
+  await page
+    .getByRole('radiogroup', { name: en.plans.plan.quarter })
+    .getByText('Quarter 2', { exact: true })
+    .click();
+  const tray = page.getByRole('region', { name: en.plans.outcomes.carriedIn });
+  await expect(tray).toContainText('Map scales');
+  await tray.getByRole('button', { name: en.plans.outcomes.place }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: en.plans.outcomes.place }).click();
+  await expect(tray).toBeHidden();
+  await expect(page.locator('tbody tr').first()).toContainText('Map scales');
+  await page.reload();
+  await expect(page.locator('tbody tr').first()).toContainText('Map scales');
+});

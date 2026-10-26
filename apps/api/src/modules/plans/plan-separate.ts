@@ -3,6 +3,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { removePlanWorks } from '../journal/plan-work-remove.js';
 import type { JournalRow } from '../journal/journal-grid.query.js';
 import { followSeparation } from '../journal/works-takeover.js';
+import { separateTray } from './plan-outcomes.js';
 
 /**
  * The writes of shared plans that both a route and the follow make (task
@@ -243,6 +244,8 @@ export async function separateJournal(
       .execute();
   }
   await followSeparation(transaction, actorId, journalId, made);
+  // Task 9.2d: the journal's "carried in" tray goes with it (plan review, must-fix 1).
+  await separateTray(transaction, branchId, planId, created.id, journalId);
   return { planId: created.id, items: places.length };
 }
 

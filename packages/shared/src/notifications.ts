@@ -536,6 +536,7 @@ export const NOTIFICATION_KINDS = {
             'plan_incomplete',
             'no_result',
             'part_without_data',
+            'plan_not_covered',
           ]),
           unit: z.string().min(1).max(120),
           subject: z.strictObject({

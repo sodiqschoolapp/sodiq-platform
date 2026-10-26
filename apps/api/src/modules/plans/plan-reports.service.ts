@@ -27,6 +27,7 @@ import { lessonsCounted } from '../journal/lesson-counted.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { clockOf, quarterOfToday, referenceDateOf, type PlanQuarter } from './plan-read.js';
+import { trayCounts } from './plan-outcomes.js';
 import { PlansService } from './plans.service.js';
 
 /**
@@ -350,6 +351,14 @@ export class PlanReportsService {
             )
             .where('lesson_plan_items.cleared_at', 'is', null)
             .execute();
+    // Task 9.2d: the "carried in" tray counts as not covered of this quarter (decision 10).
+    const tray = (
+      await trayCounts(
+        transaction,
+        base.journals.map((journal) => journal.id),
+        quarter.id,
+      )
+    ).counts;
     const inQuarter = (date: string) => quarter.startDate <= date && date <= quarter.endDate;
     const plans = [];
     // The planned works and those "not held" at each held lesson, for whom it counts.
@@ -374,9 +383,9 @@ export class PlanReportsService {
       const delivered = held.filter(
         (lesson) => withTopic(lesson.id) && !all.notDelivered.has(lesson.id),
       ).length;
-      const notCovered = places.filter(
-        (place) => place.journal_id === journal.id && place.position > rows.length,
-      ).length;
+      const notCovered =
+        places.filter((place) => place.journal_id === journal.id && place.position > rows.length)
+          .length + (tray.get(journal.id) ?? 0);
       plans.push({
         journalId: journal.id,
         unit: unitOf(journal),

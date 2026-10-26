@@ -1,4 +1,4 @@
-import type { Plan, PlanRow } from '@sodiq/shared';
+import type { PlanRow } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -7,7 +7,6 @@ import { ListPage } from '@/components/list/list-page';
 import type { Column, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
 import { useMayView, useView } from '@/features/access/use-view';
 import { TimetableFileButtons } from '@/features/timetable/timetable-file-buttons';
@@ -16,6 +15,7 @@ import { schoolDateText } from '@/lib/dates';
 import { PlanRowPanel } from './plan-row-panel';
 import { ExtendWindow, RequestsSection, WindowLine } from './plan-requests';
 import { MasterMark } from './plan-master-updated';
+import { NotCoveredSections } from './plan-outcomes';
 import { SharedWith, SharingActions } from './plan-sharing';
 import { exportPlan, planQuery } from './plans-api';
 import type { PlanSearch } from './plans-search';
@@ -234,39 +234,9 @@ export function PlanPage(): React.JSX.Element {
           <SharedWith plan={data} />
           <MasterMark plan={data} />
           <RequestsSection plan={data} />
-          {data.notCovered.length > 0 && <NotCovered plan={data} />}
+          <NotCoveredSections plan={data} />
         </div>
       )}
     </>
-  );
-}
-
-/**
- * The items past the last row, attached to no lesson (task 7.1b; `09`:
- * "Items that no longer fit in the quarter go to a 'not covered' list at the
- * end of the plan"; "'Not covered' items are never dropped silently").
- */
-function NotCovered({ plan }: { plan: Plan }) {
-  const { t, i18n } = useTranslation();
-  return (
-    <section className={`${PANEL} grid gap-2 p-4`} aria-labelledby="plan-not-covered">
-      <h2 id="plan-not-covered" className={SECTION_TITLE}>
-        {t('plans.plan.notCovered')}
-      </h2>
-      <ul className="grid gap-1">
-        {plan.notCovered.map((item) => (
-          <li key={item.id}>
-            {item.topic}
-            {item.notDeliveredFrom !== null && (
-              <span className="ml-2 text-xs text-muted-foreground">
-                {t('plans.marks.copyOf', {
-                  date: schoolDateText(item.notDeliveredFrom, i18n.language, false),
-                })}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

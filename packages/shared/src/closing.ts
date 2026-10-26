@@ -198,6 +198,16 @@ export const closingItemSchema = z.discriminatedUnion('kind', [
     notCovered: z.int().min(0),
     belowMinimum: z.boolean(),
   }),
+  /**
+   * Task 9.2d (`edge/lesson-plans`: "In quarter 4 only merge or drop exist"; build plan 9.2d:
+   * "in quarter 4 refuses to close while one is left"): items not covered with no outcome where
+   * no carry is possible: the last quarter of the year, or a next quarter already closed.
+   */
+  z.object({
+    kind: z.literal('plan_not_covered'),
+    ...itemBase,
+    notCovered: z.int().min(1),
+  }),
   z.object({
     kind: z.literal('no_result'),
     ...itemBase,
@@ -229,6 +239,7 @@ export const CLOSING_BLOCKING: readonly ClosingItemKind[] = [
   'edit_period',
   'plan_periods',
   'check_difference',
+  'plan_not_covered',
 ];
 
 /**
@@ -290,6 +301,8 @@ export const closingClosedSchema = z.object({
   stored: z.int().min(0),
   /** The waiting plan requests made void. */
   voided: z.int().min(0),
+  /** Task 9.2d: the not-covered items carried into the next quarter's tray by the close. */
+  carried: z.int().min(0),
 });
 
 export type ClosingClosed = z.infer<typeof closingClosedSchema>;

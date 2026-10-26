@@ -152,6 +152,8 @@ export class PlanExports {
           asOf: moment.toISOString(),
           rows: read.plan.rows.length,
           notCovered: read.plan.notCovered.length,
+          carriedIn: read.plan.carriedIn.length,
+          outcomes: read.plan.outcomes.length,
         },
         requestId,
       }),
@@ -240,7 +242,7 @@ export function planSheet(
   const c = texts.columns;
   const titles = (works: readonly { title: string }[]) =>
     works.map((work) => work.title).join('; ');
-  const materials = (item: Plan['notCovered'][number]) =>
+  const materials = (item: Pick<Plan['notCovered'][number], 'links' | 'files'>) =>
     [...item.links, ...item.files.map((file) => file.name)].join('; ');
   const rows: Cell[][] = plan.rows.map((row) => {
     const item = row.item;
@@ -280,6 +282,30 @@ export function planSheet(
         ? ''
         : fillText(texts.marks.copyOf, { date: dateText(item.notDeliveredFrom) }),
     ]);
+  }
+  // Task 9.2d: the "carried in" tray, then the outcomes of the quarter's not-covered items.
+  for (const item of plan.carriedIn) {
+    rows.push([
+      texts.carriedIn,
+      null,
+      item.topic,
+      titles(item.classworks),
+      titles(item.homeworks),
+      item.objectives,
+      materials(item),
+      '',
+    ]);
+  }
+  for (const outcome of plan.outcomes) {
+    const mark =
+      outcome.kind === 'merged'
+        ? fillText(texts.outcomes.merged, { date: dateText(outcome.targetDate ?? '') })
+        : outcome.kind === 'dropped'
+          ? fillText(texts.outcomes.dropped, { reason: outcome.reason })
+          : outcome.automatic
+            ? texts.outcomes.carriedAutomatic
+            : texts.outcomes.carried;
+    rows.push([texts.notCovered, null, outcome.topic, '', '', '', '', mark]);
   }
   return {
     name: texts.plan,

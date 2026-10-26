@@ -1066,6 +1066,23 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/plans/files/:fileId': { branch: 'request', roles: PLAN_READERS },
   // Task 7.2: the queue edit (the owner, plan-requests.test.ts), the window and the requests.
   'PUT /api/plans/journals/:journalId/queue': { branch: 'request', roles: PLAN_WRITERS },
+  // Task 9.2d: the outcomes of not-covered items (the drop is the approver's) and the tray.
+  'POST /api/plans/journals/:journalId/not-covered/:itemId/merge': {
+    branch: 'request',
+    roles: PLAN_WRITERS,
+  },
+  'POST /api/plans/journals/:journalId/not-covered/:itemId/carry': {
+    branch: 'request',
+    roles: PLAN_WRITERS,
+  },
+  'POST /api/plans/journals/:journalId/not-covered/:itemId/drop': {
+    branch: 'request',
+    roles: PLAN_REQUEST_DECIDERS,
+  },
+  'POST /api/plans/journals/:journalId/carried/:itemId/place': {
+    branch: 'request',
+    roles: PLAN_WRITERS,
+  },
   'GET /api/plans/windows': { branch: 'request', roles: PLAN_READERS },
   'PUT /api/plans/windows/:quarterId': { branch: 'request', roles: PLAN_WINDOW_WRITERS },
   'POST /api/plans/windows/:quarterId/extensions': {

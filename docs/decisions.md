@@ -297,6 +297,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 25 October 2026: outcomes of "not covered" items and the carry at closing (task 9.2d)
+
+Plan approved on pull request #233 with corrections 1 to 4 (the queue edit and "Clear" refused for an item not covered in any journal of the plan; a journal that ended before the quarter's last day neither carried nor blocking; `decided_by` always set; a plan holding a carried-in item cannot join); decisions 1 to 14 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a spec contradiction). `07` lists items "not covered" as a warning; `edge/lesson-plans` says "In quarter 4 only merge or drop exist": quarters 1 to 3 keep the warning, the last quarter (and a re-close whose next quarter is closed) blocks on `plan_not_covered`. Proposed `/spec-change` for `07`, Closing a quarter: "Lesson plans incomplete, or items 'not covered' (quarters 1 to 3: carried at closing) \| Warning" and "Items 'not covered' in quarter 4 \| Blocks closing" | Decision 1, confirmed by the plan review |
+| **Look first** (a spec reading). A merge joins the item into the item of a row (topic "; ", objectives, links, works) or fills an empty row; it is a plan write through the gate | Decision 2 |
+| **Look first** (a spec reading). Only the approver of the owner's requests drops (`plan_requests` `edit` and the reach `decide`), with a reason, never in their own plan, with no window | Decision 3 |
+| **Look first** (an existing behaviour narrowed). The queue edit and "Clear" refuse an item not covered in any journal of the plan (`plan_not_covered_drop`) | Decision 4, correction 1 |
+| **Look first** (an existing behaviour narrowed). A plan holding a carried-in item is not empty, so it cannot join a shared plan until the tray is empty | Correction 4 |
+| Outcomes and the tray are kept by journal and quarter; the merge keeps the row's date; append-only | Decisions 5 and 6 |
+| **Look first** (a confirmed decision changed in the build). An outcome is one per event, not one per item for good: an item merged into an empty row keeps its place, and when a later change pushes it past the last row again it is not covered again and takes a new outcome; the unique key of 0136 is left out, "still not covered" is decided under the plan's lock | Decision 7 as written let the close meet a second outcome of such an item and answer 500 (code review, must-fix 1) |
+| In a shared plan a merge into a row holding an item is refused (`plan_merge_shared`) while the item is covered in another class; the tray is per journal; a tray item is "not covered" of its quarter | Decisions 8 to 10 |
+| "Quarter 4" is the last quarter of the year; a carry into a closed quarter is refused | Decision 11 |
+| The close carries before its closing row, holding the next quarter and the journals of both quarters' plans first, as the closer with `automatic`; no notice | Decision 12, must-fix 5 |
+| The copy takes the content and `copied_from`, no master link and no history | Decision 13 |
+| The plan export lists the tray and the outcomes | Decision 14 |
+| **Build decision.** The merge sends the row's item as it was read (`base`: topic, objectives, links, or `null` for an empty row): 409 `plan_merge_stale` when it changed, `plan_row_taken` when an empty row was filled; past the limits 409 `plan_merge_too_long` (topic, objectives, links) or `plan_works_full` (works past 10, as a save answers it) | `edge/lesson-plans`: "A save made on an older state of the same field is refused" (code review, must-fix 2); the plan named `version`, which items do not have |
+| **Build decision.** A carry writes into the next quarter's plan of the journal whoever owns it then (a new teacher from that quarter): the tray is the journal's, and placing it is that plan owner's write | `edge`: "Carried items wait in a 'carried in' tray on the next quarter's plan" (permission review, should-fix 1) |
+| **Build decision.** The drop's audit entry names `access.assignmentId`, the first assignment that permits the route, as every route: each permitting assignment of a drop is an approver's | Permission review should-fix 2, not taken: the route allows no part to one role only |
+| **Build decision.** An item that stands at a row, or already has its outcome in that journal, answers 409 `plan_item_covered`; an item of no plan of the journal 404 | The item is readable; only its state changed |
+| **Build decision.** The approver's reach is the free function `dropReachOf` (`plan-outcomes.ts`) over the same `postHolders` and `decisionReach` as `PlanRequestsService.reachOf`, which stays private | `PlansService` answers `canDrop` and may not depend on the requests service |
+| **Build decision.** Placing a carried-in item at a row moves the items from that row one step up to the first empty row; a held row that holds an item is refused `plan_row_taken` | `edge`: "The shift stops at the first empty row"; lessons already held keep their items |
+
 ## 25 October 2026: reopening and the nightly check (task 9.2c)
 
 Plan approved on pull request #231 with corrections 1 to 3 (the closed part of an exemption as `edge/exemptions` writes it; the closed-year correction on 9.5a; `results_recalculation` for the apply only); decisions 1 to 22 confirmed there, decision 4 changed. Flagged on issue #42.

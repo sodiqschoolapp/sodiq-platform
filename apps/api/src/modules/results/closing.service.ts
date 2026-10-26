@@ -57,6 +57,7 @@ import { lessonsCounted } from '../journal/lesson-counted.js';
 import { lessonStatuses } from '../journal/lesson-status.query.js';
 import { ratingDateOf } from '../journal/rating.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { carryClosedFrom, carryUnresolved, journalsRunningOn } from '../plans/plan-outcomes.js';
 import { clockOf } from '../plans/plan-read.js';
 import { PlanReportsService } from '../plans/plan-reports.service.js';
 import { periodOpen } from '../plans/plan-window.js';
@@ -121,6 +122,7 @@ const REMINDED = new Set<ClosingItem['kind']>([
   'plan_incomplete',
   'no_result',
   'part_without_data',
+  'plan_not_covered',
 ]);
 
 interface Scene {
@@ -720,6 +722,14 @@ export class ClosingService {
         ? []
         : changesAgainst(await recordsBefore(transaction, quarter.id, reopening), records, 'all');
 
+    // Task 9.2d: "Items unresolved at closing are carried automatically", before the close row.
+    const carried = await this.carry(
+      transaction,
+      access,
+      scene,
+      await journalRows(transaction, branchId, { yearId: quarter.academicYearId }),
+      requestId,
+    );
     const closing = await transaction
       .insertInto('quarter_closings')
       .values({
@@ -804,6 +814,7 @@ export class ClosingService {
         stored: records.length,
         atLeaving: records.filter((one) => one.kind === 'at_leaving').length,
         voided: waiting.length,
+        carried: carried.length,
         // Task 9.2c: the reopening it ends and the results that changed (ids only).
         reopeningId: reopening?.id ?? null,
         changes: changes.map(changeIds),
@@ -819,6 +830,7 @@ export class ClosingService {
       version: closing.version,
       stored: records.length,
       voided: waiting.length,
+      carried: carried.length,
     };
   }
 
@@ -1027,6 +1039,8 @@ export class ClosingService {
       records,
       { journalId: journal.id },
     );
+    // Task 9.2d: the journal's unresolved items are carried, as at the branch close.
+    const carried = await this.carry(transaction, access, scene, [journal], requestId);
     const branchClose = await closingOf(transaction, quarter.id);
     const closing = await transaction
       .insertInto('quarter_closings')
@@ -1066,6 +1080,7 @@ export class ClosingService {
           journalId: item.journal?.id ?? null,
         })),
         stored: records.length,
+        carried: carried.length,
         changes: changes.map(changeIds),
       },
       requestId,
@@ -1076,7 +1091,44 @@ export class ClosingService {
       version: closing.version,
       stored: records.length,
       voided: 0,
+      carried: carried.length,
     };
+  }
+
+  /**
+   * Task 9.2d: the close's carry of the items still not covered (`carryUnresolved`), with one audit
+   * entry listing them (ids only), by the closer.
+   */
+  private async carry(
+    transaction: Transaction,
+    access: Access,
+    scene: Scene,
+    journals: readonly JournalRowOf[],
+    requestId: string,
+  ): Promise<{ journalId: string; itemId: string; copyId: string }[]> {
+    const carried = await carryUnresolved(
+      transaction,
+      this.audit,
+      {
+        branchId: scene.branchId,
+        accountId: access.accountId,
+        assignmentId: access.assignmentId,
+        requestId,
+      },
+      { quarter: scene.quarter, journals, timeZone: scene.timeZone, now: scene.now },
+    );
+    if (carried.length > 0) {
+      await this.audit.record(transaction, {
+        branchId: scene.branchId,
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'plan.not_covered_carried',
+        record: { type: 'quarter', id: scene.quarter.id },
+        newValue: { automatic: true, items: carried },
+        requestId,
+      });
+    }
+    return carried;
   }
 
   /** "Lock now and close ... is logged and tells the teachers" (9.2b, decision 3). */
@@ -2217,6 +2269,22 @@ export class ClosingService {
         belowMinimum: plan.belowMinimum !== null,
       });
     }
+    // Task 9.2d (`edge/lesson-plans`: "In quarter 4 only merge or drop exist"; decisions 1 and
+    // 11): where no carry is possible, an item not covered with no outcome blocks the close; a
+    // journal that no longer runs on the quarter's last day is closed with it (correction 2).
+    if (await carryClosedFrom(transaction, quarter.id)) {
+      const running = await journalsRunningOn(
+        transaction,
+        progress.plans.map((plan) => plan.journalId),
+        quarter.endDate,
+      );
+      for (const plan of progress.plans) {
+        if (plan.notCovered === 0 || !running.has(plan.journalId)) continue;
+        push('plan_not_covered', plan.journalId, ownerOf(plan.journalId), {
+          notCovered: plan.notCovered,
+        });
+      }
+    }
 
     // From 5.7a-3c: "no teacher" (days under a vacancy without an acting teacher).
     for (const found of await journalsWithoutTeacher(
@@ -2418,6 +2486,8 @@ function countOf(item: ClosingItem): number {
       return Math.max(1, item.lessons.length);
     case 'plan_incomplete':
       return Math.max(1, item.empty + item.notCovered);
+    case 'plan_not_covered':
+      return item.notCovered;
     case 'part_without_data':
       return item.parts.length;
     default:

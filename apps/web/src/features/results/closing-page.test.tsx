@@ -140,6 +140,31 @@ describe('the closing checklist', () => {
     expect(screen.getByText('Blocking: 1 · warnings: 1')).not.toBeNull();
   });
 
+  // Task 9.2d: "In quarter 4 only merge or drop exist": the items left block the close.
+  it('lists the plan items not covered that nothing can carry as blocking', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({
+          ...CHECKLIST,
+          items: [{ kind: 'plan_not_covered', teacher: TEACHER, journal: JOURNAL, notCovered: 2 }],
+        }),
+    });
+    renderApp('/results/closing');
+    await waitFor(() => {
+      expect(rowsOf().map((row) => row.slice(0, 6))).toEqual([
+        [
+          en.results.closing.kinds.plan_not_covered,
+          en.results.closing.blocking,
+          'Karimova Aziza',
+          '7 Oxford',
+          'Mathematics',
+          '2',
+        ],
+      ]);
+    });
+  });
+
   it('decides one result with the decisions the server allows, and a whole journal naming the refused', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': sessionAs('academic_vice_principal'),

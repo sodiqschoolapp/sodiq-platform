@@ -551,6 +551,14 @@ const MESSAGE: Record<ErrorCode, string> = {
   absence_scope: "The class is outside the Tutor's own classes.",
   absence_not_member: 'The student was in no class of the branch on that date.',
   student_merge_absence_reasons: 'Both records have a reason of absence for the same date.',
+  plan_item_covered: "The item is no longer 'not covered' in this journal.",
+  plan_merge_too_long:
+    'The merged item would pass a limit of the topic, the objectives or the links.',
+  plan_merge_shared: 'The item is covered in another journal of the shared plan.',
+  plan_carry_refused:
+    'The item cannot be carried: last quarter of the year, or the next quarter is closed.',
+  plan_not_covered_drop: 'A not-covered item is dropped only by the approver.',
+  plan_merge_stale: 'The row chosen for the merge changed since it was read.',
   plan_scope: 'This plan is outside what the role may read or write.',
   plan_row_taken: 'The row already holds an item.',
   plan_row_unknown: 'The quarter has no row with that number.',
