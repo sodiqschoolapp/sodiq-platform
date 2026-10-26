@@ -1,20 +1,29 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Fraction } from './fraction.js';
-import type { StudentQuarterOutcome } from './outcome.js';
+import type { ResultFlag, StudentQuarterOutcome } from './outcome.js';
 import { classFigure, oneDecimal, ratingPlaces, subjectsFigure } from './rating.js';
 
-const labels = {
+interface Labels {
+  readonly basedOn: { readonly expected: number; readonly held: number };
+  readonly from: string | null;
+  readonly leftSubjectOn: string | null;
+  readonly atLeaving: string | null;
+  readonly flags: readonly ResultFlag[];
+  readonly staleDecision: boolean;
+}
+
+const labels: Labels = {
   basedOn: { expected: 10, held: 10 },
   from: null,
   leftSubjectOn: null,
   atLeaving: null,
   flags: [],
   staleDecision: false,
-} as const;
+};
 
 /** A number outcome of the exact value given (the rest of the result does not matter here). */
-function numberOf(value: Fraction, extra: Partial<typeof labels> = {}): StudentQuarterOutcome {
+function numberOf(value: Fraction, extra: Partial<Labels> = {}): StudentQuarterOutcome {
   return {
     ...labels,
     ...extra,
@@ -169,6 +178,8 @@ describe('subjectsFigure', () => {
   it('counts an undecided flagged number and a "left the subject" number', () => {
     const flagged: StudentQuarterOutcome = {
       ...numberOf(Fraction.whole(40n), { flags: ['few_lessons'] }),
+      kind: 'number',
+      decision: null,
       undecided: true,
     } as StudentQuarterOutcome;
     const left = numberOf(Fraction.whole(80n), {
