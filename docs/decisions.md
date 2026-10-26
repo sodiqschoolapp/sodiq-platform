@@ -297,6 +297,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 26 October 2026: the rating (task 9.3a)
+
+Plan approved on pull request #234 with corrections 1 to 4 (the subject and class figures are functions of `packages/calc`; the Tutor's one-subject list covers the groups whose every class is an own class; the closed quarter read through one helper with the student's Results tab, `storedRecordsOf`; `oneDecimal` multiplies by the fraction 10/1); decisions 1 to 13 confirmed there, decision 4 changed by correction 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a new permission area for new routes). `rating` (`view`, `export`) for the Super Admin, the Principal, the Academic Vice Principal, the Head Tutor, the Tutor, the Senior Head Teacher, the Head Teacher and the Teacher; the route decides the lists: management (the first three) every list, the Head Teacher and Senior Head Teacher own subjects, the Teacher own journals on the reference date, the Tutor own classes, the Head Tutor every class across subjects | `08`, Rating, "Who sees it"; `02`, Teacher: "Rating"; the Vice Principal for Spiritual and Moral Education is given attendance only (decision 1) |
+| **Look first** (a calculation reading). The all-subject figure is the mean of the exact quarter results; a class's figure the mean of its students' exact figures, each once (`subjectsFigure`, `classFigure`) | `edge/calculation`: "Ranking uses the exact value"; the published-value rule is the year's alone (decision 2) |
+| **Look first** (a calculation reading). "Fewer subjects" when a graded subject of the student in the quarter has no number, never by comparison with other students | `07`, Effect on totals, Rating (decision 3) |
+| **Look first** (a spec row narrowed). The Tutor ranks in one subject the class journals of own classes and the group journals whose every class is an own class; a group mixing another class is refused; the Head Tutor has the class list only | `08`: "Tutor of the class"; a mixed group's list would be partial (decision 4, correction 2) |
+| **Look first** (a calculation reading). An undecided flagged result (few lessons, attendance only, left the subject) is a number until the close decides it: ranked, with its flag; a "left the subject" number counts in the across-subjects mean | `edge/00-definitions`, Result states; the provisional mark covers a later change (decision 5) |
+| **Look first** (a pinned list widened). `rating` joins `CLASS_SCOPED_AREAS` (`class-scope.ts`) and its pinning test, so the guard reads a Tutor's own classes for the rating's routes | A new area with class scope; the list says a task that adds class scope adds the area |
+| **Look first** (the calculation module's version raised). `CALC_VERSION` 5 for the rating functions; no existing formula changes | `version.ts`: every change of the module's source raises it |
+| Students without a number listed under the ranked ones with their state and no place; a student with a result at leaving left out | `07`: "a student with 'Exempt' is not ranked"; `edge/calculation`, "A student left the school" (decision 6) |
+| No grade column; one decimal | `08`, `edge/calculation` (decision 7) |
+| The branch filter is the request's branch; one classes list with an optional grade; language filters the classes list | `.claude/rules/api.md`; `05`, Reports (decision 8) |
+| Quarter ratings only, the choices with an optional `yearId` | `08` lists no year rating (decision 9) |
+| A start quarter closed "not official" is rated from its stored figures and marked | From 9.2b (decision 10) |
+| The Teacher's scope is the owner on the reference date, an acting teacher included; the Senior Head Teacher in every branch | `edge/00-definitions`; 5.7a-3c (decision 11) |
+| The lists read on each request, no prepared totals | `08`, Analytics is 9.3b (decision 12) |
+| "Own position" left out | Release 2 (decision 13) |
+| **Build decision.** Five routes: `GET /api/results/rating/choices`, `/subject`, `/class`, `/classes` and `POST /api/results/rating/export`, one per list for one answer shape each; a refusal order of 404 for an unknown or another branch's quarter, journal or class, then the scope (403 `permission_denied`), then 404 for an attendance-only journal | `.claude/rules/api.md`: the scope refusal before a refusal that tells something of the record |
+| **Build decision.** The export's audit entry `rating.export` is written in the transaction of its read; the file carries the list's own rows only | `CLAUDE.md`, Exports follow the role |
+| **Build decision.** The menu item "Results" opens `/results/rating` and shows for a reader of `rating` or `quarter_closing` (`MENU_AREAS.results`); the rating page links to the closing checklist for its readers. The Vice Principal for Spiritual and Moral Education no longer has the item, which had no page | `visibleMenu`: an item with areas shows only to their readers |
+| **Build decision.** The texts of the page are under `results.ratingList`: `results.rating` already holds the rating exam's texts | One meaning per key |
+
 ## 25 October 2026: outcomes of "not covered" items and the carry at closing (task 9.2d)
 
 Plan approved on pull request #233 with corrections 1 to 4 (the queue edit and "Clear" refused for an item not covered in any journal of the plan; a journal that ended before the quarter's last day neither carried nor blocking; `decided_by` always set; a plan holding a carried-in item cannot join); decisions 1 to 14 confirmed there. Flagged on issue #42.

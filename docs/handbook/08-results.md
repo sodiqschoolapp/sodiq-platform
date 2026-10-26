@@ -1,6 +1,6 @@
 # Results
 
-This page holds the parts that tasks 9.1 to 9.2b added. Reopening a quarter, the nightly check, ratings, the results table and subject mastery are not built yet (tasks 9.2c to 9.4).
+This page holds the parts that tasks 9.1 to 9.3a added. The results table, subject mastery and the other reports (task 9.3b) and the early-warning list (task 9.4a) are not built yet.
 
 ## A student's results and attendance
 
@@ -169,3 +169,43 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - The Academic Vice Principal is reminded each morning of a quarter whose last day has passed and that is not closed.
 - Teachers are reminded three days before their lesson plan window ends and on its last day when the plan is incomplete; the Academic Vice Principal daily when no window is open 14 days before a quarter; a teacher of a prepared edit request on days 1, 3 and 7, then weekly; a teacher of a lesson that locks within 48 hours with data missing, once.
 - The kept data of a lesson deleted for good is removed 30 days after the delete, and a summary stays in the audit log.
+
+## The rating
+
+<!-- Sources: spec 08 (Rating), spec 07 (Effect on totals, Rating), spec 05 (Reports: language), edge/calculation (Which value gives the grade?, Two students both show 84, One student has 9 subjects, another 11, A student left the school, A student moved from one group to another in week 6, Ma'naviyat soati), edge/journal (A results table is exported in week 6), edge/00-definitions (Reference date, Result states); task 9.3a, pull request #234 -->
+
+**What it is.** Results → **Rating** (**Reyting**) ranks the students of a quarter three ways: the students of a class or group in one subject, by their quarter result; the students of a class across all subjects, by the mean of their quarter results; and the classes of a grade or of the branch, by the mean result of their students. Every figure is the journal's own.
+
+**Who can use it.**
+
+| Role | In a subject | Of a class | Of classes |
+| --- | --- | --- | --- |
+| Super Admin, Principal, Academic Vice Principal | Every class and group | Every class | Yes |
+| Head Teacher, Senior Head Teacher | Own subjects | No | No |
+| Teacher | Own journals | No | No |
+| Tutor | Own classes, and groups made only of own classes | Own classes | No |
+| Head Tutor | No | Every class | No |
+
+**How it works.**
+
+1. Open Results → Rating. Choose the list, the year and the quarter.
+2. In a subject: choose the subject and the class or group. Of a class: choose the class. Of classes: choose a grade and a language, or all.
+3. **Excel** downloads the list as shown, stamped "Provisional" with the date and time, or "Final" with the closing date and version.
+
+**Rules.**
+
+- Places follow the exact result. Students share a place only when their results are exactly equal, and the next place is skipped (1, 1, 3). Figures show one decimal.
+- Only a number is ranked. A student with "Exempt", "Not assessed" or "No result" is listed below, with no place.
+- A result still flagged for the closing checklist (few lessons, attendance alone, left the subject) is ranked with its flag until the Academic Vice Principal decides it.
+- Of a class: the mean covers the subjects with a number; the number of subjects is shown, and "fewer subjects" when a subject of the student has none. Attendance-only subjects never count.
+- Of classes: each class's figure is the mean of its students' figures across subjects.
+- The students counted are those in the class or group on the last day of the quarter, or today while it is open. A student who moved keeps the whole result and counts in the new class only. A student who left the school is not in the rating.
+- While the quarter is open, or a journal of it is reopened, the rating says "Provisional". A closed quarter is read from its kept results. A start quarter closed "not official" says so.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| Two students both show 84.0 but one is exactly 84.04 | That one comes first; they do not share a place. |
+| A Tutor opens a group that mixes two classes | The rating of that group is refused; a group made only of the Tutor's own class is open. |
+| The subject is attendance only in the quarter | It has no rating. |

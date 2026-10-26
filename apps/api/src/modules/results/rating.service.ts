@@ -641,12 +641,14 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
   const [journal] = await journalRows(transaction, context.branchId, {
     journalId: query.journalId,
   });
-  if (journal === undefined || journal.academicYearId !== quarter.academicYearId) throw notFound();
+  if (journal === undefined) throw notFound();
   const referenceDate = referenceDateOf(quarter, context.today);
-  // The scope first: a refusal after it tells nothing of a journal the reader may not read.
+  // The scope first: a refusal after it (another year, attendance only) tells nothing of a
+  // journal the reader may not read (permission review, must-fix 1).
   if (!(await mayRankJournal(context, journal, referenceDate))) {
     throw new ApiException('permission_denied', 403);
   }
+  if (journal.academicYearId !== quarter.academicYearId) throw notFound();
   // `edge/calculation`, Ma'naviyat soati: an attendance-only subject has no rating.
   if (switchesIn(journal, quarter.id)?.attendanceOnly !== false) throw notFound();
   const state = await quarterStateOf(context, quarter);
@@ -697,16 +699,23 @@ function figuresOf(
   return figures;
 }
 
+/**
+ * The class of the branch (404 when unknown or of another branch), its scope (403), then a class
+ * of another year or archived (404): the scope first, so a refusal tells nothing of a class the
+ * reader may not read (permission review, must-fix 1 and should-fix 4; archived as the choices).
+ */
 async function classRowOf(context: Context, classId: string, yearId: string): Promise<RatingClass> {
   const row = await context.transaction
     .selectFrom('classes')
-    .select(['id', 'grade', 'name', 'language', 'academic_year_id'])
+    .select(['id', 'grade', 'name', 'language', 'academic_year_id', 'archived_at'])
     .where('id', '=', classId)
     .where('branch_id', '=', context.branchId)
     .executeTakeFirst();
+  if (row === undefined) throw notFound();
+  if (!mayRankClass(context, row.id)) throw new ApiException('permission_denied', 403);
   if (
-    row === undefined ||
     row.academic_year_id !== yearId ||
+    row.archived_at !== null ||
     (row.language !== 'uz' && row.language !== 'ru')
   ) {
     throw notFound();
@@ -724,7 +733,6 @@ async function classIn(context: Context, query: RatingClassQuery): Promise<Ratin
   const { transaction } = context;
   const quarter = await quarterOf(context, query.quarterId);
   const shown = await classRowOf(context, query.classId, quarter.academicYearId);
-  if (!mayRankClass(context, shown.id)) throw new ApiException('permission_denied', 403);
   const referenceDate = referenceDateOf(quarter, context.today);
   const state = await quarterStateOf(context, quarter);
   const outcomes = await outcomesOf(context, quarter, state, null);

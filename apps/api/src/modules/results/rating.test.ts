@@ -620,6 +620,7 @@ describe('the rating (08, Rating)', () => {
     const spare = await account();
     const c = await scene({ teacher: owner.account.id, spare: spare.account.id });
     const elsewhere = await load.classes.subject({ grades: [7] });
+    const another = await load.classes.subject({ grades: [7] });
     // A split of the first class for the subject, and a group across both classes.
     const split = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [c.s.classId]);
     const mixed = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [
@@ -708,6 +709,18 @@ describe('the rating (08, Rating)', () => {
           [classes]: 403,
         },
       },
+      // .claude/rules/api.md (task 8.8): a second role that reads another subject widens nothing
+      // of the first (permission review, should-fix 2).
+      {
+        name: 'Teacher who owns the journal, also Head Teacher of another subject',
+        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [another] }],
+        browser: owner,
+        paths: {
+          [subject(c.journal)]: 200,
+          [subject(c.otherJournal)]: 403,
+          [subject(mixedJournal)]: 403,
+        },
+      },
       {
         name: 'Teacher of no journal of the class',
         held: [{ role: 'teacher', branchId: branch }],
@@ -779,6 +792,30 @@ describe('the rating (08, Rating)', () => {
       expect(choices.classesList).toBe(false);
       expect(choices.quarters.map((one) => one.number)).toEqual([1]);
     });
+    // The export follows the same scope (permission review, should-fix 3).
+    await as(tutor, branch, [], async ({ post }) => {
+      expect(
+        (
+          await post('/api/results/rating/export', {
+            kind: 'class',
+            quarterId: c.q1,
+            classId: c.s.classId,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await post('/api/results/rating/export', {
+            kind: 'class',
+            quarterId: c.q1,
+            classId: c.s.otherClass,
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (await post('/api/results/rating/export', { kind: 'classes', quarterId: c.q1 })).status,
+      ).toBe(403);
+    });
     await as(tutor, branch, [], async ({ get }) => {
       const choices = ratingChoicesSchema.parse((await get('/api/results/rating/choices')).body);
       expect(choices.journals.map((one) => one.id).sort()).toEqual(
@@ -824,6 +861,100 @@ describe('the rating (08, Rating)', () => {
         },
       );
     });
+  });
+
+  // .claude/rules/api.md (task 7.1c): a route checks that the reader may read the record named
+  // before any refusal that tells something of it, its year included (permission review, must-fix 1).
+  it('refuses a reader outside the scope before telling that a journal or class is of another year', async () => {
+    const c = await scene();
+    const nextYear = await load.classes.year(c.s.branch, 'planned', '2027-09-01', '2028-05-31');
+    const later = await load.classes.schoolClass(c.s.branch, nextYear, { grade: 7 });
+    const laterJournal = (
+      await t.database.migrator
+        .insertInto('journals')
+        .values({
+          branch_id: c.s.branch,
+          academic_year_id: nextYear,
+          class_id: later,
+          group_id: null,
+          subject_id: c.s.subject,
+          runs: '{}',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    const archived = await load.classes.schoolClass(c.s.branch, c.s.year, { grade: 7 });
+    await t.database.migrator
+      .updateTable('classes')
+      .set({ archived_at: new Date('2026-10-20T09:00:00+05:00') })
+      .where('id', '=', archived)
+      .execute();
+    const tutor = await account();
+    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+    const paths = [
+      `/api/results/rating/subject?quarterId=${c.q1}&journalId=${laterJournal}`,
+      `/api/results/rating/class?quarterId=${c.q1}&classId=${later}`,
+      `/api/results/rating/class?quarterId=${c.q1}&classId=${archived}`,
+    ];
+    await as(tutor, c.s.branch, [], async ({ get }) => {
+      for (const path of paths) {
+        const response = await get(path);
+        expect(response.status, path).toBe(403);
+        expect(codeOf(response), path).toBe('permission_denied');
+      }
+    });
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'principal', branchId: c.s.branch }],
+      async ({ get }) => {
+        for (const path of paths) expect((await get(path)).status, path).toBe(404);
+      },
+    );
+  });
+
+  // .claude/rules/api.md: an id in the body of another branch or unknown is 404, with the audit
+  // log of both branches unchanged (permission review, must-fix 2).
+  it('answers 404 to an export naming a quarter, journal or class unknown or of another branch, and logs nothing', async () => {
+    const c = await scene();
+    const other = await scene();
+    const entries = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('audit_log')
+          .select((eb) => eb.fn.countAll<string>().as('count'))
+          .where('action', '=', 'rating.export')
+          .where('branch_id', 'in', [c.s.branch, other.s.branch])
+          .executeTakeFirstOrThrow()
+      ).count;
+    const before = await entries();
+    // The kit holds the three Super Admins its other tests may give; a Principal reads every list.
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'principal', branchId: c.s.branch }],
+      async ({ post }) => {
+        for (const body of [
+          { kind: 'subject', quarterId: UNKNOWN, journalId: c.journal },
+          { kind: 'subject', quarterId: other.q1, journalId: c.journal },
+          { kind: 'subject', quarterId: c.q1, journalId: UNKNOWN },
+          { kind: 'subject', quarterId: c.q1, journalId: other.journal },
+          { kind: 'class', quarterId: UNKNOWN, classId: c.s.classId },
+          { kind: 'class', quarterId: other.q1, classId: c.s.classId },
+          { kind: 'class', quarterId: c.q1, classId: UNKNOWN },
+          { kind: 'class', quarterId: c.q1, classId: other.s.classId },
+          { kind: 'classes', quarterId: UNKNOWN },
+          { kind: 'classes', quarterId: other.q1 },
+        ]) {
+          expect(
+            (await post('/api/results/rating/export', body)).status,
+            JSON.stringify(body),
+          ).toBe(404);
+        }
+      },
+    );
+    expect(await entries()).toBe(before);
   });
 
   // edge/journal, "A results table is exported in week 6": "Every export and print states
