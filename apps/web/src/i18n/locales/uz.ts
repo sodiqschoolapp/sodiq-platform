@@ -3087,7 +3087,7 @@ export const uz: Texts<'one' | 'other'> = {
       unlocks_one: '{{count}} ta ochish soʻrovi',
       unlocks_other: '{{count}} ta ochish soʻrovi',
     },
-    journals: { title: 'Mening jurnallarim', none: 'Shu hafta darslar yoʻq.' },
+    journals: { title: 'Mening jurnallarim', none: 'Shu hafta jurnallar yoʻq.' },
     tutorClass: {
       classTitle: '{{name}} sinfi',
       absentNow: 'Hozir yoʻq',

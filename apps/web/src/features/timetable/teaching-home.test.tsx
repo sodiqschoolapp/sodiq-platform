@@ -347,7 +347,7 @@ describe('the teaching home page', () => {
         }),
     });
     renderApp('/');
-    expect(await screen.findByRole('heading', { name: en.home.emptyTitle })).toBeDefined();
+    expect(await screen.findByText(en.home.vice.nothingWaiting)).toBeDefined();
     expect(calls.some((call) => call.route === 'GET /api/timetable/home')).toBe(false);
   });
 

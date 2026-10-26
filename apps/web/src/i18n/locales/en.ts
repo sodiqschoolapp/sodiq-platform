@@ -3044,7 +3044,7 @@ export const en = {
       unlocks_one: '{{count}} unlock request',
       unlocks_other: '{{count}} unlock requests',
     },
-    journals: { title: 'My journals', none: 'No lessons this week.' },
+    journals: { title: 'My journals', none: 'No journal this week.' },
     tutorClass: {
       classTitle: 'Class {{name}}',
       absentNow: 'Absent now',

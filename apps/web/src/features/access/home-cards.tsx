@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import {
   Table,
   TableBody,
@@ -237,7 +237,7 @@ export function TutorClassCard({
         </div>
       </dl>
       <div className="grid gap-1" data-absent-now="">
-        <h3 className="font-semibold">{t('home.tutorClass.absentNow')}</h3>
+        <h4 className={SUBSECTION_TITLE}>{t('home.tutorClass.absentNow')}</h4>
         {absent.length === 0 ? (
           <p className="text-muted-foreground">{t('home.tutorClass.nobodyAbsent')}</p>
         ) : (
@@ -251,7 +251,7 @@ export function TutorClassCard({
         )}
       </div>
       <div className="grid gap-1" data-class-today="">
-        <h3 className="font-semibold">{t('home.tutorClass.timetable')}</h3>
+        <h4 className={SUBSECTION_TITLE}>{t('home.tutorClass.timetable')}</h4>
         {waiting(view) ??
           (lessons.length === 0 ? (
             <p className="text-muted-foreground">{t('home.lessons.noToday')}</p>
