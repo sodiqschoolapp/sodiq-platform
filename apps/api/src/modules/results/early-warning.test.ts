@@ -1094,4 +1094,96 @@ describe('the early-warning list (08, Early-warning list)', () => {
       },
     );
   });
+
+  // Task 9.4b, plan decision 2 and the `classId` of the review of the plan: the narrowing of the
+  // home pages, never wider than the reader's scope.
+  it('narrows to own journals for the home page, whatever other role reads more', async () => {
+    const owner = await account();
+    const spare = await account();
+    const c = await scene({ teacher: owner.account.id, spare: spare.account.id });
+    const { anvar, laylo } = c.students;
+    const subjectHead = {
+      role: 'head_teacher' as const,
+      branchId: c.s.branch,
+      subjectIds: [c.s.subject],
+    };
+    // The owner of the journal, also Head Teacher of the subject: own journal's entries.
+    await as(
+      owner,
+      c.s.branch,
+      [{ role: 'teacher', branchId: c.s.branch }, subjectHead],
+      async ({ get }) => {
+        const list = listOf(await get(`${PATH}?for=own_journals`));
+        expect(list.entries.map((entry) => entry.student.id).sort()).toEqual([anvar, laylo].sort());
+      },
+    );
+    // A Teacher of no journal of the class who is Academic Vice Principal reads the branch's
+    // entries on the list, and none of them as own journals (a subject has one Head Teacher).
+    await as(
+      spare,
+      c.s.branch,
+      [
+        { role: 'teacher', branchId: c.s.branch },
+        { role: 'academic_vice_principal', branchId: c.s.branch },
+      ],
+      async ({ get }) => {
+        expect(
+          listOf(await get(PATH))
+            .entries.map((entry) => entry.student.id)
+            .sort(),
+        ).toEqual([anvar, laylo].sort());
+        expect(listOf(await get(`${PATH}?for=own_journals`)).entries).toEqual([]);
+      },
+    );
+    // A reader with no Teacher role owns no journal: an empty list, not a refusal.
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'head_tutor', branchId: c.s.branch }],
+      async ({ get }) => {
+        expect(listOf(await get(`${PATH}?for=own_journals`)).entries).toEqual([]);
+      },
+    );
+  });
+
+  it("cuts the list to one own class of a Tutor, refuses another class, and answers 404 for another branch's", async () => {
+    const c = await scene();
+    const { anvar, laylo } = c.students;
+    const tutor = await account();
+    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+    // A Tutor of the other class who is also Head Teacher of the subject.
+    const otherTutor = await account();
+    await load.classes.person(c.s.branch, ['uz'], { accountId: otherTutor.account.id });
+    await load.tutorOf(c.s.branch, c.s.otherClass, otherTutor.account.id);
+    const elsewhere = await publishedScene(t, load, { graded: true });
+    await as(tutor, c.s.branch, [], async ({ get }) => {
+      const list = listOf(await get(`${PATH}?classId=${c.s.classId}`));
+      expect(list.entries.map((entry) => entry.student.id).sort()).toEqual([anvar, laylo].sort());
+    });
+    await as(
+      otherTutor,
+      c.s.branch,
+      [{ role: 'head_teacher', branchId: c.s.branch, subjectIds: [c.s.subject] }],
+      async ({ get }) => {
+        // The whole list reads the subject's entries as Head Teacher.
+        expect(
+          listOf(await get(PATH))
+            .entries.map((entry) => entry.student.id)
+            .sort(),
+        ).toEqual([anvar, laylo].sort());
+        // The own class card: Laylo left it on the 18th, nobody of it is listed.
+        expect(listOf(await get(`${PATH}?classId=${c.s.otherClass}`)).entries).toEqual([]);
+        const refused = await get(`${PATH}?classId=${c.s.classId}`);
+        expect(refused.status).toBe(403);
+        expect(codeOf(refused)).toBe('permission_denied');
+        for (const classId of [elsewhere.classId, UNKNOWN]) {
+          const missing = await get(`${PATH}?classId=${classId}`);
+          expect(missing.status).toBe(404);
+        }
+        const both = await get(`${PATH}?classId=${c.s.otherClass}&for=own_journals`);
+        expect(both.status).toBe(400);
+      },
+    );
+  });
 });
