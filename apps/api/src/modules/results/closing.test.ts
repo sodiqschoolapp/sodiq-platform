@@ -4501,6 +4501,88 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       ]);
     });
 
+    it('counts an unplaced tray item as not covered of its quarter and carries it again at its close', async () => {
+      const b = await base();
+      const q2 = await quarterOf(b.s.year, 2);
+      const q3 = await quarterOf(b.s.year, 3);
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+      const item = await pastItem(b.s.branch, b.s.subject, b.journal, b.q1, rows, 'Fractions');
+      await closeBase(b);
+      const [tray] = await trayOf(b.journal, q2);
+      expect(tray?.item_id).toBe(item);
+      const AFTER_Q2 = '2026-12-29T18:00:00+05:00';
+      const answer = await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = await decideAll(calls, b.s.branch, q2);
+          // The tray is not covered of quarter 2 (decision 10): the checklist counts it.
+          expect(itemsOf(list, 'plan_incomplete', b.journal).map((one) => one.notCovered)).toEqual([
+            1,
+          ]);
+          const done = await calls.post(
+            b.s.branch,
+            closePath(q2),
+            { warnings: warningsOf(list), lockNow: true, startQuarter: null },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          return closingClosedSchema.parse(done.body);
+        },
+        AFTER_Q2,
+      );
+      expect(answer.carried).toBe(1);
+      expect((await trayOf(b.journal, q2)).length).toBe(0);
+      expect((await trayOf(b.journal, q3)).map((one) => [one.topic, one.automatic])).toEqual([
+        ['Fractions', true],
+      ]);
+    });
+
+    it('blocks the re-close of a reopened journal while an item is left whose next quarter is closed', async () => {
+      const b = await closed();
+      const closer = await account();
+      await closeQuarter(t.database, {
+        branchId: b.s.branch,
+        quarterId: await quarterOf(b.s.year, 2),
+        accountId: closer.account.id,
+      });
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const done = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/reopen`,
+            { journalId: b.journal, reason: 'A plan item was left behind', days: 3 },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+        },
+        '2026-11-02T09:00:00+05:00',
+      );
+      const rows = await rowCount(b.s, b.s.classId, QUARTERS[0][0], QUARTERS[0][1]);
+      await pastItem(b.s.branch, b.s.subject, b.journal, b.q1, rows, 'Decimals');
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const list = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+          const panel = list.reopenedJournals[0];
+          expect(
+            (panel?.items ?? [])
+              .filter((one) => one.kind === 'plan_not_covered')
+              .map((one) => one.journal?.id),
+          ).toEqual([b.journal]);
+          expect(panel?.closable).toBe(false);
+          const done = await calls.post(
+            b.s.branch,
+            `/api/results/closing/${b.q1}/journals/${b.journal}/close`,
+            { warnings: warningsOf({ ...list, items: panel?.items ?? [] }), lockNow: false },
+            randomUUID(),
+          );
+          expect([done.status, codeOf(done)]).toEqual([409, 'closing_blocked']);
+        },
+        '2026-11-03T10:00:00+05:00',
+      );
+    });
+
     // Plan review, must-fix 5: the close and a carry meet on the quarter and the journals.
     describe('closing against a carry', () => {
       const blockedBy = async (pid: number) => {
@@ -4670,7 +4752,14 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       const item = await pastItem(b.s.branch, b.s.subject, b.journal, q4, rows, 'Percentages');
       // Correction 2: a journal whose runs ended inside the quarter does not block.
       const ended = await endedJournal(b, '2027-04-15');
-      await pastItem(b.s.branch, ended.subject, ended.journal, q4, 0, 'Proportions');
+      const endedItem = await pastItem(
+        b.s.branch,
+        ended.subject,
+        ended.journal,
+        q4,
+        0,
+        'Proportions',
+      );
       const AFTER_Q4 = '2027-06-01T12:00:00+05:00';
       await vice(
         b.s.branch,
@@ -4704,6 +4793,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         },
         AFTER_Q4,
       );
+      // Correction 2: the ended journal's item is neither carried nor dropped; it stays not covered.
+      const kept = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+        .select(['lesson_plan_items.cleared_at'])
+        .where('lesson_plan_places.item_id', '=', endedItem)
+        .where('lesson_plan_places.journal_id', '=', ended.journal)
+        .execute();
+      expect(kept).toEqual([{ cleared_at: null }]);
+      const endedOutcomes = await t.database.migrator
+        .selectFrom('lesson_plan_outcomes')
+        .select('id')
+        .where('item_id', '=', endedItem)
+        .execute();
+      expect(endedOutcomes).toEqual([]);
     });
   });
 });
