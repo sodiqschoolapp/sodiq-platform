@@ -43,6 +43,15 @@ export {
   type RecordKind,
   type StoredValue,
 } from './record.js';
+export {
+  classFigure,
+  oneDecimal,
+  ratingPlaces,
+  subjectsFigure,
+  type RatingEntry,
+  type RatingPlace,
+  type SubjectsFigure,
+} from './rating.js';
 export { CALC_VERSION } from './version.js';
 export { shownPercent, workPercent } from './work.js';
 export { yearResult, type QuarterOutcome, type YearResult } from './year.js';
