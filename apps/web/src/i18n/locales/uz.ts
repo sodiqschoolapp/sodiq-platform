@@ -3491,6 +3491,9 @@ export const uz: Texts<'one' | 'other'> = {
       plan_report: {
         export: 'Dars rejalari hisoboti eksport qilindi',
       },
+      rating: {
+        export: 'Reyting eksport qilindi',
+      },
       timetable_view: {
         export: 'Dars jadvali chop etildi yoki yuklab olindi',
       },
@@ -6590,6 +6593,45 @@ export const uz: Texts<'one' | 'other'> = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    ratingList: {
+      title: 'Reyting',
+      kind: 'Roʻyxat',
+      kinds: {
+        subject: 'Fan boʻyicha',
+        class: 'Sinf',
+        classes: 'Sinflar',
+      },
+      year: 'Oʻquv yili',
+      quarter: 'Chorak',
+      quarterNumber: '{{number}}-chorak',
+      journal: 'Fan va sinf yoki guruh',
+      class: 'Sinf',
+      grade: 'Sinflar parallel',
+      allGrades: 'Barcha sinflar',
+      language: 'Til',
+      allLanguages: 'Barcha tillar',
+      languages: { uz: 'Oʻzbek', ru: 'Rus' },
+      place: 'Oʻrin',
+      student: 'Oʻquvchi',
+      figure: 'Natija',
+      note: 'Izoh',
+      subjects: 'Fanlar',
+      students: 'Oʻquvchilar',
+      fewerSubjects_one: '{{count}}, fanlar kamroq',
+      fewerSubjects_other: '{{count}}, fanlar kamroq',
+      states: { exempt: 'Ozod', not_assessed: 'Baholanmagan', no_result: 'Natija yoʻq' },
+      flags: {
+        few_lessons: 'Darslar kam, yopishda hal qilinadi',
+        attendance_only: 'Faqat davomat, yopishda hal qilinadi',
+        left_subject: '{{date}} fandan chiqqan',
+      },
+      provisional: 'Dastlabki: chorak ochiq',
+      notOfficial: 'Rasmiy emas',
+      excel: 'Excel',
+      closingLink: 'Chorakni yopish',
+      empty: 'Bu roʻyxatda reyting uchun oʻquvchi yoʻq.',
+      nothing: 'Hali reyting yoʻq: avval boshlangan chorak va baholanadigan jurnal kerak.',
+    },
     reopening: {
       action: 'Qayta ochish',
       title: 'Chorakni qayta ochish',

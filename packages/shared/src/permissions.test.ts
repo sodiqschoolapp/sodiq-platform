@@ -560,6 +560,24 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the rating to the eight staff roles of `08`, view and export (task 9.3a, decision 1)', () => {
+    const staff = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'head_tutor',
+      'tutor',
+      'senior_head_teacher',
+      'head_teacher',
+      'teacher',
+    ];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.rating[role], role).toEqual(
+        staff.includes(role) ? ['view', 'export'] : [],
+      );
+    }
+  });
+
   it('gives the apply of a recalculation to the Super Admin alone (task 9.2c, decision 10)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.results_recalculation[role], role).toEqual(
@@ -617,6 +635,7 @@ describe('a frozen permission table', () => {
       'plans',
       'quarter_closing',
       'quarters',
+      'rating',
       'relatives',
       'results_recalculation',
       'rooms',

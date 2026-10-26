@@ -3449,6 +3449,9 @@ export const en = {
       plan_report: {
         export: 'Lesson plan report exported',
       },
+      rating: {
+        export: 'Rating exported',
+      },
       timetable_view: {
         export: 'Timetable printed or exported',
       },
@@ -6531,6 +6534,45 @@ export const en = {
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
+    ratingList: {
+      title: 'Rating',
+      kind: 'List',
+      kinds: {
+        subject: 'In a subject',
+        class: 'Of a class',
+        classes: 'Of classes',
+      },
+      year: 'Year',
+      quarter: 'Quarter',
+      quarterNumber: 'Quarter {{number}}',
+      journal: 'Subject and class or group',
+      class: 'Class',
+      grade: 'Grade',
+      allGrades: 'All grades',
+      language: 'Language',
+      allLanguages: 'All languages',
+      languages: { uz: 'Uzbek', ru: 'Russian' },
+      place: 'Place',
+      student: 'Student',
+      figure: 'Result',
+      note: 'Note',
+      subjects: 'Subjects',
+      students: 'Students',
+      fewerSubjects_one: '{{count}}, fewer subjects',
+      fewerSubjects_other: '{{count}}, fewer subjects',
+      states: { exempt: 'Exempt', not_assessed: 'Not assessed', no_result: 'No result' },
+      flags: {
+        few_lessons: 'Few lessons, to be decided',
+        attendance_only: 'Attendance only, to be decided',
+        left_subject: 'Left the subject on {{date}}',
+      },
+      provisional: 'Provisional: the quarter is open',
+      notOfficial: 'Not official',
+      excel: 'Excel',
+      closingLink: 'Closing a quarter',
+      empty: 'No students to rank in this list.',
+      nothing: 'No list to rank yet: a started quarter and a graded journal come first.',
+    },
     reopening: {
       action: 'Reopen',
       title: 'Reopen the quarter',

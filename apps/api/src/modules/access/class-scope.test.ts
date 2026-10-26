@@ -83,6 +83,7 @@ describe('class scope', () => {
       'student_history',
       'journal',
       'absence_reasons',
+      'rating',
     ]);
   });
 

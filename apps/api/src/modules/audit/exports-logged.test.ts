@@ -343,6 +343,11 @@ describe('every export is logged', () => {
     'POST /api/plans/journals/:journalId/export': { action: 'plan.export' },
   };
 
+  /** Task 9.3a: a rating list in Excel, one entry; the lists themselves are tested in `rating.test.ts`. */
+  const RATING_FILES: Record<string, { action: string }> = {
+    'POST /api/results/rating/export': { action: 'rating.export' },
+  };
+
   /**
    * Task 8.9 (pull request #227): a journal's file, and the branch export: the request, its
    * list and its download. Each writes its entries (`journal.export`,
@@ -430,6 +435,7 @@ describe('every export is logged', () => {
         ...Object.keys(VERSION_FILES),
         ...Object.keys(PLAN_FILES),
         ...Object.keys(JOURNAL_FILES),
+        ...Object.keys(RATING_FILES),
       ].sort(),
     );
   });

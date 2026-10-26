@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { freezeTable, type PermissionRows, type PermissionTable } from './permissions.js';
-import { HOME_KIND, MENU, MENU_ITEMS, MENU_MAX_ITEMS, visibleMenu, type MenuItem } from './menu.js';
+import {
+  freezeTable,
+  permits,
+  PERMISSIONS,
+  type PermissionRows,
+  type PermissionTable,
+} from './permissions.js';
+import {
+  HOME_KIND,
+  MENU,
+  MENU_AREAS,
+  MENU_ITEMS,
+  MENU_MAX_ITEMS,
+  visibleMenu,
+  type MenuItem,
+} from './menu.js';
 import { ROLES, type Role } from './roles.js';
 
 /**
@@ -164,5 +178,23 @@ describe('the menu a role sees', () => {
     expect(visibleMenu('teacher', EVERYTHING, table)).toContain('timetable');
     expect(visibleMenu('principal', EVERYTHING, table)).toContain('timetable');
     expect(visibleMenu('tutor', EVERYTHING, table)).not.toContain('timetable');
+  });
+
+  // Task 9.3a: "Results" opens for a reader of the rating or of the closing checklist; the
+  // Vice Principal for Spiritual and Moral Education views neither and does not see it.
+  it('shows Results to the readers of the rating or the closing checklist', () => {
+    expect(MENU_AREAS.results).toEqual(['rating', 'quarter_closing']);
+    for (const role of ROLES) {
+      const reads =
+        permits(PERMISSIONS, role, 'rating', 'view') ||
+        permits(PERMISSIONS, role, 'quarter_closing', 'view');
+      expect(visibleMenu(role, EVERYTHING, PERMISSIONS).includes('results'), role).toBe(
+        reads && MENU[role].includes('results'),
+      );
+    }
+    expect(visibleMenu('spiritual_vice_principal', EVERYTHING, PERMISSIONS)).not.toContain(
+      'results',
+    );
+    expect(visibleMenu('teacher', EVERYTHING, PERMISSIONS)).toContain('results');
   });
 });

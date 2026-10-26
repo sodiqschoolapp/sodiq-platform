@@ -40,6 +40,9 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
   'journal',
   // Task 6.3, decision 8: the reasons of absence of the students of own classes.
   'absence_reasons',
+  // Task 9.3a, decision 4 with review correction 2: the ratings of own classes and of the
+  // groups whose every class is an own class.
+  'rating',
 ];
 
 /**

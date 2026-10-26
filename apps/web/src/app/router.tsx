@@ -81,6 +81,7 @@ import { UnlockRequestsPage, unlockRequestsSearch } from '@/features/journal/unl
 import { DisciplinePage, disciplineSearch } from '@/features/journal/discipline-page';
 import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
 import { ClosingPage, closingSearch } from '@/features/results/closing-page';
+import { RatingPage, ratingSearch } from '@/features/results/rating-page';
 import { BranchExportsPage, branchExportsSearch } from '@/features/journal/branch-exports-page';
 import { SupportPage, supportSearch } from '@/features/journal/support-page';
 import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
@@ -427,6 +428,14 @@ const closingRoute = createRoute({
   component: guarded('quarter_closing', ClosingPage),
 });
 
+/** The rating (task 9.3a). */
+const ratingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/rating',
+  validateSearch: ratingSearch,
+  component: guarded('rating', RatingPage),
+});
+
 const orphansRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/journal/orphans',
@@ -724,6 +733,7 @@ const routeTree = rootRoute.addChildren([
     studentAbsencesRoute,
     unlockRequestsRoute,
     disciplineRoute,
+    ratingRoute,
     orphansRoute,
     closingRoute,
     branchExportsRoute,

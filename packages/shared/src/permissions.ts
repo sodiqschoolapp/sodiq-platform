@@ -742,6 +742,25 @@ export const PERMISSIONS = freezeTable({
   results_recalculation: rows({
     super_admin: ['edit'],
   }),
+  /**
+   * The rating (task 9.3a, plan decision 1, Look first): `08`, Rating, "Who sees it": "Teacher
+   * of the subject, Head Teacher, Tutor of the class, management"; "Tutor, Head Tutor,
+   * management"; "Management"; `02`, Teacher: "Rating". Management is the Super Admin, the
+   * Principal and the Academic Vice Principal; the Vice Principal for Spiritual and Moral
+   * Education is given attendance only (`02`). `export`: the Excel file of a list, with the
+   * role's own rows. The route decides which lists: own subjects, own journals, own classes. A
+   * new area for new routes; no role is widened.
+   */
+  rating: rows({
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    head_tutor: ['view', 'export'],
+    tutor: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    teacher: ['view', 'export'],
+  }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],
     principal: ['view'],

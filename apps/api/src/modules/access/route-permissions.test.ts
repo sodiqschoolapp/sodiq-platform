@@ -176,6 +176,18 @@ const PLAN_REPORT_READERS: readonly Role[] = [
   'head_teacher',
 ];
 
+/** Task 9.3a, decision 1: who reads and exports the rating (which lists, in the route). */
+const RATING_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'head_tutor',
+  'tutor',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+];
+
 /** Task 7.3, decision 2: who keeps master plans (the keeper of the subject in the route). */
 const PLAN_MASTER_KEEPERS: readonly Role[] = [
   'super_admin',
@@ -461,6 +473,12 @@ const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin'],
   },
+  // Task 9.3a: the rating lists and their export.
+  'GET /api/results/rating/choices': { branch: 'request', roles: RATING_READERS },
+  'GET /api/results/rating/subject': { branch: 'request', roles: RATING_READERS },
+  'GET /api/results/rating/class': { branch: 'request', roles: RATING_READERS },
+  'GET /api/results/rating/classes': { branch: 'request', roles: RATING_READERS },
+  'POST /api/results/rating/export': { branch: 'request', roles: RATING_READERS },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students/:id/leaving/cancel': { branch: 'request', roles: STUDENT_EDITORS },

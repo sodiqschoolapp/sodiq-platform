@@ -1,4 +1,12 @@
-import { HOME_KIND, MENU, ROLES, type Role } from '@sodiq/shared';
+import {
+  HOME_KIND,
+  MENU,
+  MENU_ITEMS,
+  PERMISSIONS,
+  ROLES,
+  visibleMenu,
+  type Role,
+} from '@sodiq/shared';
 import { MutationObserver } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -111,7 +119,16 @@ describe('the menu and the home page of each role', () => {
     // opens the timetable views (task 5.9a, decision 2): the area `timetable`
     // (task 3.4a, decision 4) is the Super Admin's, the Principal's and the
     // Academic Vice Principal's.
-    expect(links.map((link) => link.textContent)).toEqual(MENU[role].map((item) => en.menu[item]));
+    // Task 9.3a: "Results" opens for a reader of the rating or the closing checklist only, so the
+    // Vice Principal for Spiritual and Moral Education, who views neither, does not see it.
+    expect(links.map((link) => link.textContent)).toEqual(
+      visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS).map((item) => en.menu[item]),
+    );
+    expect(visibleMenu(role, new Set(MENU_ITEMS), PERMISSIONS)).toEqual(
+      role === 'spiritual_vice_principal'
+        ? MENU[role].filter((item) => item !== 'results')
+        : MENU[role],
+    );
     const timetable = links.find((link) => link.textContent === en.menu.timetable);
     // The pages of this test stand in for the built ones; the views of a role
     // with no draft are its own address.

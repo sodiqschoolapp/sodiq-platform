@@ -2276,6 +2276,37 @@ export {
   type StudentResultTabs,
 } from './results.js';
 export {
+  RATING_KINDS,
+  RATING_STATES,
+  ratingChoicesQuerySchema,
+  ratingChoicesSchema,
+  ratingClassesListSchema,
+  ratingClassesQuerySchema,
+  ratingClassListSchema,
+  ratingClassQuerySchema,
+  ratingExportSchema,
+  ratingSubjectListSchema,
+  ratingSubjectQuerySchema,
+  type RatingChoices,
+  type RatingChoicesQuery,
+  type RatingClass,
+  type RatingClassesList,
+  type RatingClassesQuery,
+  type RatingClassList,
+  type RatingClassQuery,
+  type RatingExport,
+  type RatingJournal,
+  type RatingKind,
+  type RatingState,
+  type RatingSubjectList,
+  type RatingSubjectQuery,
+} from './rating.js';
+export {
+  RATING_EXPORT_ASCII_NAME,
+  RATING_EXPORT_TEXTS,
+  type RatingExportTexts,
+} from './rating-exports.js';
+export {
   CLOSING_BLOCKING,
   CLOSING_DECISIONS,
   CLOSING_LOCK_NOW,
