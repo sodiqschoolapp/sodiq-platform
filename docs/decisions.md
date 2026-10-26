@@ -24,6 +24,47 @@ Decided once, valid for every task. A session reads this section at its start (`
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
+## Decided ahead for Phase 10 (owner, 26 October 2026)
+
+The owner's answers to the decided-ahead questions for Phase 10, given in chat on 26 October 2026 after confirming every decision on issue #42. `next-task` reads this section for tasks 10.1 to 10.4 and 9.4c; these are answers, not open questions.
+
+**The pilot.** It starts at school on the morning of **Wednesday 28 October 2026**, with several groups. Production must be ready on Tuesday 27 October, so 10.4 is built first, then 9.4c, then 10.1 to 10.3 while the pilot runs (`docs/build-plan.md`, Phase 10). The paper journal runs alongside; every Friday the Academic Vice Principal compares ten students' figures in the platform with the paper ones, and a difference is a bug report.
+
+**The live system**
+
+1. The test environment keeps its automatic deploy after every merge to `main`. Production is deployed only by a job the owner starts by hand, after 18:00 or at the weekend, Tashkent time.
+2. From the pilot, three more things stop a task: a migration that changes or removes existing rows, any change to `packages/calc`, any change to permissions (`CLAUDE.md`, Stop and wait for the owner).
+3. No Claude session connects to the production database or reads production logs or data. Production is reached only through the deploy job.
+
+**10.1 Speed tests**
+
+4. The data-size test runs in CI and on the test environment. The 1,000-person load test runs against a production-sized setup with invented data, never against the live system with real data.
+5. The board's drag check (0.41 s at full size, target 0.2 s) is fixed. The publish check (1.2 s, target 1 s) is accepted and the gap recorded in `docs/progress.md`.
+6. A report over 2 seconds at full size is fixed with queries and indexes in 10.1; prepared totals (9.3b) only if that is not enough.
+7. Supported browsers: the current and the previous version of Chrome, Edge, Firefox and Safari.
+
+**10.2 Backups and monitoring**
+
+8. Phone alerts to Telegram: not now; later.
+9. The owner's daily report of anything unusual (owner, 15 October 2026): not now; later.
+10. The sign-in-and-save check every 5 minutes runs in a hidden "Monitoring" branch with one class, one test teacher and invented students, left out of every school report; the Super Admin sees it in the branch switcher as "Monitoring".
+11. Neon on the **Launch** plan: 7 days of restore is enough for now; the owner upgrades to Scale when restore to any minute over 30 days is needed. The daily export to R2 stays as the second copy.
+12. The owner runs the restore test every month by the written steps of 10.2.
+
+**10.3 Security**
+
+13. No paid outside security test before the pilot; the automated review, the route-by-role tests and the owner's signed checklist. Reconsidered before Release 2.
+
+**10.4 Production**
+
+14. The address is `app.sodiqschool.uz`; the test environment stays at `app-test.sodiqschool.uz`.
+15. Two servers of 2 GB on Render in Frankfurt, run as Docker with Chromium, so Print and PDF work in production; the jobs worker beside them.
+16. No email for now: password resets are made by an administrator, and the email reset keeps writing to the log only.
+17. The owner creates the first Super Admins (at most 3) on the server with `pnpm auth:first-account`. No real name enters the repository, a pull request or a chat.
+18. The pilot: several groups at school from Wednesday 28 October 2026 (above).
+19. Production deploys only after 18:00 or at the weekend, Tashkent time.
+20. The test environment stays after go-live; every change is tried there first.
+
 ## 26 October 2026: the review routine is told it may merge
 
 Decided by the owner on 26 October 2026. The review routine's sessions run in auto mode, whose permission check judges each command on its own, beside the allow list of `.claude/settings.json`. On #234 and #236 it refused the merge of `review-pr` step 10 twice, the second time as "Merge Without Review", although the command was written as the allow list requires and the same call had merged #227 to #233; the owner merged both by hand. The routine's prompt now opens with the owner's standing permission to merge a `task/` pull request at `[review] ready to merge` with green checks, at the sha the review named (`docs/cloud-loop.md`, section 4). Nothing else changes: the reviewer still merges only `task/` pull requests, and every other merge stays with the owner. If a merge is still refused, step 10's fallback stands: one `@abbosc` comment, the label `needs-owner`, and the owner merges by hand.

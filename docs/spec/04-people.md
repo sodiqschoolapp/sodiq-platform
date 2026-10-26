@@ -9,7 +9,7 @@ Every student and staff member has one profile that keeps its full history. Reco
 
 | Block | Fields |
 | --- | --- |
-| System | UID from the school's unified UID system: seven digits, for example 2607001 (the main file writes it as SI2607001). The first four digits are the set of the student's grade; the last three are a number inside the set. See UID sets below. In Release 1 it is typed by hand when the student is created; the system checks that it is filled, has seven digits and is not already used. From Release 2 the system takes the next free number of the grade's set. Shown on the profile and in every list. |
+| System | UID: the student's number in the school's unified UID system (for example 2607001; the main file writes it as SI2607001). See UID sets below. In Release 1 it is typed by hand when the student is created, in any form; the system checks only that it is filled and not already used. From Release 2 the system takes the next free number of the grade's set. Shown on the profile and in every list. |
 | Personal | Photo, name, surname, paternal name, sex, date of birth, passport or ID with JSHSHIR or birth certificate number, phone, email, address (optional), region, previous school, diagnostic test score. |
 | Close relatives (at least one, required) | Full name, relationship (father, mother, grandfather, grandmother, uncle, aunt, brother, sister, guardian, other), main phone, workplace, email. A relative is a separate record that can be linked to several students; see Close relatives below. |
 | Contract | Contract number and contract date, both required. |
@@ -43,10 +43,10 @@ The school has one UID system for all branches ("Yagona UID tizimi"). Each grade
 | 10 | 2307XXX |
 | 11 | 2308XXX |
 
-- A new student receives a UID from the set of the grade they join.
+- From Release 2, a new student receives a UID from the set of the grade they join.
 - A UID stays with the student for good. It does not change when the student moves up a grade, changes class or branch, or leaves and returns, and it is never given to another student.
-- A set belongs to the students who are in a grade together and moves up with them: the set 2607 will serve grade 8 in 2027–2028, and a new set is opened for the new grade 1 (my reading of the table; to confirm).
-- **Release 1.** The UID is typed by hand. The system refuses an empty UID, one that is not seven digits, and one that is already used. If its first four digits are not the set of the student's grade, it warns and lets the person confirm, because a student who repeated a grade keeps a UID from another set.
+- A set belongs to the students who are in a grade together and moves up with them: the set 2607 will serve grade 8 in 2027–2028, and a new set is opened for the new grade 1 (a reading of the table, decided with Release 2).
+- **Release 1.** The UID is typed by hand, in any form: digits, letters or both, up to 20 characters. The system refuses an empty UID and one already used by any student, compared without spaces and ignoring upper and lower case. It does not check the grade's set.
 - **Release 2.** The Super Admin keeps the table of sets for each academic year. When a student is created, the system offers the lowest free number in the set of the student's grade and reserves it in the same step as the save. At year rollover the sets move up with their grades and a set for the new grade 1 is proposed for confirmation. When a set is full, the system says so and the UID is typed by hand.
 
 ## Close relatives

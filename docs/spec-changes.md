@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 26 October 2026: a student's UID is typed in any form in Release 1 (question 12 decided)
+
+- What changed:
+  1. **Release 1.** A student's UID is typed by hand in any form: digits, letters or both, up to 20 characters. The system refuses an empty UID and one already used by any student of any branch (inactive, graduated and corrected-away UIDs included), compared without spaces and ignoring upper and lower case. It no longer requires seven digits and no longer warns when the first four digits are not the set of the student's grade.
+  2. **Unchanged.** A UID is never given to another student and never changes when a student is promoted, transferred or returns; a mistyped one is corrected by the Academic Vice Principal with a reason. Release 2 still takes the UID from the grade's set; how sets move up with their grades is decided with Release 2.
+  3. **Question 12** is decided; no question is open.
+- Why: the owner, 26 October 2026: "we should be able to enter any UID for any student in the beginning, no strict rules"; confirmed in chat that UIDs stay unique, and that up to 20 characters, compared ignoring spaces and upper or lower case, is the limit.
+- Code: task 9.4c of `docs/build-plan.md` (added with this change). The built code that changes: `studentUidSchema`, `uidOutsideSet`, `uidSetFor` and `UID_SETS_2026` in `packages/shared/src/students.ts` and its tests; the set check (`checkSet`, `confirmUidSet`) in `apps/api/src/modules/people/students.service.ts`; the checks `students_uid_check` and `student_uids_uid_check` and the unique indexes of `db/migrations/0032_students.sql` (a new migration replaces them; 0032 is not edited); the UID field, the set warning and their texts in three languages in `apps/web/src/features/people/` (`student-form.tsx`, `student-panel.tsx`, `student-merge.tsx`, `students-page.tsx`); the tests that send `confirmUidSet` or expect the seven-digit refusal.
+- Files: `docs/spec/04-people.md` (Student record: System; UID sets), `docs/spec/edge-cases/students-classes-groups.md` (the row "Release 1: UIDs are typed by hand"), `docs/spec/16-open-questions.md` (question 12), `docs/spec/00-index.md` (the line of `16-open-questions.md`).
+
 ## 15 October 2026: the owner's answers on issue #42: who sees what, people and dates, the year result, no extra lessons, Tutor lessons
 
 - What changed:

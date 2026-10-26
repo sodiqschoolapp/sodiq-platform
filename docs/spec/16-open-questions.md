@@ -3,7 +3,7 @@
 > Part of the Sodiq School platform spec, baseline of 3 October 2026 (document revision 88).
 > Index and reading order: `docs/spec/00-index.md`. Where an edge-case file is more specific than a module file, the edge-case file applies.
 
-Open: question 12. It has a proposed answer written into the spec until it is decided. The decided ones are kept as a record.
+No question is open. The decided ones are kept as a record.
 
 | No. | Question | Answer | Status |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Open: question 12. It has a proposed answer written into the spec until it is de
 | 9 | Can a student be transferred on any date? | Any date. | Decided |
 | 10 | What are the stipend rules? | The Super Admin sets the rule each year; the system only prepares the list. | Decided |
 | 11 | What can the Head Tutor do? Can a Tutor record the reason for an absence? | The Head Tutor views all classes, their tutors and attendance. Since 7 October 2026 also the school timetable and the timetable of every class, the student list of the branch and a student's profile (Overview, Attendance, Timetable and Relatives), view only (roles table). Since 15 October 2026 the Head Tutor reads every field group of every student of the branch, the financial group included, and exports the student list. A Tutor records reasons. | Decided |
-| 12 | Are the ID formats right: seven-digit UIDs from the unified UID system for students, SI-001 for staff? | Decided for students: seven digits, the set of the grade plus a number (2607001), typed by hand in Release 1 and taken from the grade's set by the system in Release 2. To confirm: whether the letters "SI" in the main file are part of the UID, and that a set moves up with its grade each year. Decided for staff on 12 October 2026: S-YYNNNN, the last two digits of the year of first hire plus a four-digit number in order within that year (S-260001), given by the system when the record is first saved, kept for good, never reused and the same in every branch. | Open |
+| 12 | Are the ID formats right: seven-digit UIDs from the unified UID system for students, SI-001 for staff? | Decided for students on 26 October 2026: in Release 1 the UID is typed by hand in any form (digits, letters or both, up to 20 characters), filled and unique; in Release 2 it is taken from the grade's set by the system, and how sets move up with their grades is decided with Release 2. Decided for staff on 12 October 2026: S-YYNNNN, the last two digits of the year of first hire plus a four-digit number in order within that year (S-260001), given by the system when the record is first saved, kept for good, never reused and the same in every branch. | Decided |
 | 13 | Do students and parents need to sign in from the first release? | No. Release 2. | Decided |
 | 14 | What should be moved from myss.uz? | Nothing now. Import is done later, on request. | Decided |
 | 15 | Which SMS provider does the school use? Is a Telegram bot wanted? | To be given by the school before Release 2. | Decided |

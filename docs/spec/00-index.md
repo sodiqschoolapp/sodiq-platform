@@ -29,7 +29,7 @@ This folder is the product spec for the Sodiq School platform. It is the single 
 | `13-technology.md` | Stack, structure, security, hosting, running cost |
 | `14-quality-plan.md` | Tests and checks required for timetable, journal and the whole system |
 | `15-conflicts-resolved.md` | Where the source documents disagreed and what was decided (record) |
-| `16-open-questions.md` | Question log. Only question 12 (student UID details) is open |
+| `16-open-questions.md` | Question log. No question is open |
 | `17-sources.md` | Source documents |
 
 ## Edge-case files
