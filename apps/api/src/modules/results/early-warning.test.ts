@@ -1003,4 +1003,95 @@ describe('the early-warning list (08, Early-warning list)', () => {
       },
     );
   });
+
+  // 08, Transfers ("A transferred student is judged on their own results, which follow them"),
+  // the From 8.6 line of 9.4a and decision 14 (code review round 1, finding 1). Nodira is in the
+  // other class until the 19th: absent on the 12th and the 19th, three works of 1 of 10 on the
+  // 12th. From the 20th she is in the first class: present on the 26th, two works of 10 of 10.
+  // The branch's run threshold is 2, so the old journal's run alone would raise a reason. Yulduz
+  // leaves the school on the 20th, absent on the 12th and the 19th with five works of 1 of 10: a
+  // result at leaving, so she is not listed.
+  it('judges a transferred student across both journals at the journal of the last membership, and lists nobody with a result at leaving', async () => {
+    const s = await publishedScene(t, load, { graded: true });
+    const [l12, l19, l26] = await lessonsOf(s.classId, '2026-10-01', '2026-10-31');
+    const [b12, b19] = await lessonsOf(s.otherClass, '2026-10-01', '2026-10-31');
+    if (
+      l12 === undefined ||
+      l19 === undefined ||
+      l26 === undefined ||
+      b12 === undefined ||
+      b19 === undefined
+    ) {
+      throw new Error('The lessons of the two classes.');
+    }
+    await t.database.migrator
+      .updateTable('branch_settings')
+      .set({ absences_in_row: 2 })
+      .where('branch_id', '=', s.branch)
+      .execute();
+    const nodira = await student(s.branch, { first: 'Nodira', last: 'Qodirova' }, [
+      { classId: s.otherClass, from: '2026-09-01', ownUntil: '2026-10-20' },
+      { classId: s.classId, from: '2026-10-20' },
+    ]);
+    const yulduz = await student(s.branch, { first: 'Yulduz', last: 'Sobirova' }, []);
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const leavingId = await members.leaving(t.database.migrator, s.branch, yulduz, '2026-10-20');
+    await members.member({
+      branch: s.branch,
+      classId: s.classId,
+      studentId: yulduz,
+      from: '2026-09-01',
+      until: '2026-10-20',
+      endedBy: 'leaving',
+      leavingId,
+    });
+    const oldWorks = await classworksOn(s.branch, b12.id, 3);
+    const newWorks = await classworksOn(s.branch, l26.id, 2);
+    const leftWorks = await classworksOn(s.branch, l12.id, 5);
+    await saveOn(s.branch, b12.date, [
+      { lessonId: b12.id, studentId: nodira, value: 0 },
+      ...oldWorks.map((workId) => ({ lessonId: b12.id, studentId: nodira, workId, value: 1 })),
+    ]);
+    await saveOn(s.branch, b19.date, [{ lessonId: b19.id, studentId: nodira, value: 0 }]);
+    await saveOn(s.branch, l12.date, [
+      { lessonId: l12.id, studentId: yulduz, value: 0 },
+      ...leftWorks.map((workId) => ({ lessonId: l12.id, studentId: yulduz, workId, value: 1 })),
+    ]);
+    await saveOn(s.branch, l19.date, [{ lessonId: l19.id, studentId: yulduz, value: 0 }]);
+    await saveOn(s.branch, l26.date, [
+      { lessonId: l26.id, studentId: nodira, value: 1 },
+      ...newWorks.map((workId) => ({ lessonId: l26.id, studentId: nodira, workId, value: 10 })),
+    ]);
+    const journal = await journalOf(s.classId, s.subject);
+    await as(
+      await account(),
+      s.branch,
+      [{ role: 'principal', branchId: s.branch }],
+      async ({ get }) => {
+        const list = listOf(await get(PATH));
+        expect(list.thresholds.absencesInRow).toBe(2);
+        const entry = entryOf(list, nodira);
+        // Listed: the three works of the old journal and the two of the new make the five.
+        expect(entry?.figures.gradedWorks).toBe(5);
+        // At the journal of the last membership.
+        expect(entry?.journal.id).toBe(journal);
+        // The run is of that journal (the present lesson of the 26th): the old journal's run of
+        // two raises nothing.
+        expect(entry?.figures.absenceRun).toBe(0);
+        expect(reasonsOf(list, nodira).map(([kind]) => kind)).not.toContain('absences_in_row');
+        // The lessons of both journals: attendance 1 of 3 lessons, 33.33; classwork 23 of 50,
+        // 46; 20 · 33.33 and 40 · 46 over 60: 41.78, shown 42. The old journal alone gives 0 and
+        // 7, the new one alone 100 and 100.
+        expect(entry?.figures.attendance).toBe(33);
+        expect(entry?.figures.currentWork.now).toBe(42);
+        expect(entry?.figures.result).toBe(42);
+        expect(reasonsOf(list, nodira)).toEqual([
+          ['low_result', 42],
+          ['low_attendance', 33],
+        ]);
+        // A result at leaving: not listed.
+        expect(entryOf(list, yulduz)).toBeUndefined();
+      },
+    );
+  });
 });
