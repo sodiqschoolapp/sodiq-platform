@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 27 October 2026: task 10.4 Production and the go-live checklist
+
+- Production is ready to be brought up by the owner: `Dockerfile` (API and worker with Chromium, so Print and PDF work), `render.production.yaml` (`sodiq-api` 2 × Standard, `sodiq-worker`, Frankfurt, `app.sodiqschool.uz`), `.github/workflows/deploy-production.yml` (started by hand on `main`: the job `image` builds the image and makes a PDF in it; the job `deploy` waits for the owner's approval, refuses outside the release window and for a commit that did not pass `checks`, `e2e` and `deploy-test`, then migrates, deploys and smoke-tests). New deploy commands `window`, `release-check`, `pdf-check` (`apps/api/src/deploy/`).
+- `docs/deploy.md`, Production: the one-time setup in order (Neon, Sentry, R2, Render, DNS, GitHub environment, the image check, the first deploy, the first Super Admin) and how a release runs and is taken back.
+- `docs/go-live/checklist.md` (go-live), `pilot.md` (pilot from 28 October: groups, order of data entry, the Friday comparison of ten students), `release-checklist.md` (the Academic Vice Principal's team on the test environment).
+- Not proved in the session: the Docker build itself (no Docker daemon in the cloud VM). The PDF check made a real PDF with the session's Chromium; the image is proved by the owner's run with "Only build the image" before the first deploy.
+- Left out: monitoring, the daily export and the restore drill (10.2); speed tests (10.1); email (answer 16); the solver on Render (5.10, 5.11: no automatic generation in the pilot).
+
+The next sessions must know:
+
+- Production is reached only through Deploy production, which the owner starts; no session connects to its database or reads its data or logs.
+- A change of `Dockerfile`, `render.production.yaml` or `deploy-production.yml` is checked by `docker-image.test.ts`, `render-blueprint.test.ts` and `deploy-workflow.test.ts`; a new runtime file the API reads outside `dist` (like the letterhead logo) must be copied into the image.
+- From the pilot, a migration that changes existing rows, any change to `packages/calc` and any change to permissions stop a task (`CLAUDE.md`).
+
 ## 27 October 2026: task 10.3b Permission and security review: records of another branch by id
 
 - `ROUTE_IDS` (`apps/api/src/testing/route-id-list.ts`, one file per module in `route-ids/`) names for each of the 789 ids of the 372 routes that take one (path, query or body, read from the OpenAPI document by `inputIdsOf`, uuid fields included) its record, its kind (`branch`, `school`, `own`, `none`) and the tests that send another branch's id and an unknown one; `route-ids.test.ts` holds it complete. New 404 tests in `other-branch-ids.test.ts` of setup, people and classes and `exemptions-other-branch-ids.test.ts`; many existing ones widened (both ids, every table the route writes, used request keys); kit `id-refusal-kit.ts`.

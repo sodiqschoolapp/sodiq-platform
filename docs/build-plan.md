@@ -1271,7 +1271,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - Build: for every route that lets in a Tutor, a Teacher, a Head Teacher or a Senior Head Teacher, the limit of each and the test that proves the refusal (`ROUTE_SCOPE`, `route-scopes.test.ts`), and the narrower rules of whole-branch roles; the missing tests and fixes; the security headers of every answer; the written permission and security checklist (`docs/security/permission-checklist.md`), its tables generated from the code and compared by a test.
   - Done when: every route with a scoped role names its limit and a test, and the checklist is written.
 
-- [ ] **10.4 Production and the go-live checklist**
+- [x] **10.4 Production and the go-live checklist**; production deployed and checklists approved: pending, owner
   - Read: `13`, `edge/academic-year`, `14` (Whole system).
   - Build: the production environment; the first Super Admin; the written go-live and pilot checklists (which data to enter first, which grade pilots, how results are compared).
   - Done when: production is deployed and the checklists are approved by the owner.
