@@ -9,10 +9,10 @@ import {
   studentRestoreSchema,
   studentReturnSchema,
   studentUidCorrectionSchema,
-  uidOutsideSet,
-  uidSetFor,
-  uidSetOf,
-  uidYearOf,
+  studentUidKey,
+  studentUidSchema,
+  studentYearOf,
+  STUDENT_UID_MAX_LENGTH,
 } from './students.js';
 import { errorCodeSchema } from './errors.js';
 
@@ -92,30 +92,33 @@ describe('student names', () => {
   });
 });
 
-describe('UID sets (04, UID sets; decision 5)', () => {
-  it('has the table of 2026–2027', () => {
-    expect([1, 7, 8, 9, 10, 11].map((grade) => uidSetOf(grade, 2026))).toEqual([
-      '2601',
-      '2607',
-      '2507',
-      '2407',
-      '2307',
-      '2308',
-    ]);
+describe('a UID typed in any form (04, UID sets, Release 1; task 9.4c)', () => {
+  it('takes digits, letters or both, up to 20 characters, as typed', () => {
+    for (const uid of ['SI2607001', 'A15', '2607001', 'si2607001', 'ЎТ001', 'SI-26/07', '7']) {
+      expect(studentUidSchema.parse(uid)).toBe(uid);
+    }
+    expect(studentUidSchema.parse('A'.repeat(STUDENT_UID_MAX_LENGTH))).toHaveLength(20);
   });
 
-  it('moves the sets up with their grades and opens a new set for grade 1', () => {
-    expect(uidSetOf(8, 2027)).toBe('2607');
-    expect(uidSetOf(1, 2027)).toBe('2701');
-    expect(uidSetOf(2, 2028)).toBe('2701');
-    expect(uidSetOf(6, 2025)).toBe('2607');
-    expect(uidSetOf(11, 2025)).toBeNull();
+  it('removes spaces and invisible characters before it counts (decision 4)', () => {
+    expect(studentUidSchema.parse(' si 2607 001 ')).toBe('si2607001');
+    // A no-break space, a next-line control, a zero-width space and a byte-order
+    // mark: none is left for the database's check to refuse (decision 4).
+    expect(studentUidSchema.parse('A\u00a01\u00855\u200b\ufeff')).toBe('A15');
+    expect(studentUidSchema.parse(`${'A'.repeat(20)}  `)).toHaveLength(20);
   });
 
-  it('warns on a UID outside the set of the grade', () => {
-    expect(uidOutsideSet('2607001', 7, 2026)).toBe(false);
-    expect(uidOutsideSet('2606001', 7, 2026)).toBe(true);
-    expect(uidOutsideSet('2308001', 11, 2025)).toBe(false);
+  it('refuses an empty UID and one longer than 20 characters', () => {
+    for (const uid of ['', '   ', '\u200b', 'A'.repeat(21), `${'A'.repeat(20)} B`]) {
+      expect(studentUidSchema.safeParse(uid).success, JSON.stringify(uid)).toBe(false);
+    }
+  });
+
+  it('compares without spaces and ignoring upper and lower case', () => {
+    expect(studentUidKey('si 2607001')).toBe(studentUidKey('SI2607001'));
+    expect(studentUidKey('ўт001')).toBe('ЎТ001');
+    expect(studentUidKey('A\u200b15')).toBe('A15');
+    expect(studentUidKey('A15')).not.toBe(studentUidKey('A16'));
   });
 });
 
@@ -134,28 +137,32 @@ describe('the student record', () => {
     );
   });
 
-  it('takes a UID of seven digits on the create, and the set confirmation', () => {
+  it('takes a UID in any form on the create, and no set confirmation (task 9.4c)', () => {
+    for (const uid of ['2607001', 'SI2607001', 'A15']) {
+      expect(
+        studentCreateSchema.safeParse({ ...record, startsOn: '2026-09-02', uid, relatives })
+          .success,
+        uid,
+      ).toBe(true);
+    }
+    for (const uid of ['', 'A'.repeat(21)]) {
+      expect(
+        studentCreateSchema.safeParse({ ...record, startsOn: '2026-09-02', uid, relatives })
+          .success,
+        uid,
+      ).toBe(false);
+    }
+    // The set warning is gone (docs/spec-changes.md, 26 October 2026): the
+    // strict schema refuses its confirmation.
     expect(
       studentCreateSchema.safeParse({
         ...record,
         startsOn: '2026-09-02',
         uid: '2607001',
-        confirmUidSet: false,
+        confirmUidSet: true,
         relatives,
       }).success,
-    ).toBe(true);
-    for (const uid of ['', '260700', '26070011', 'SI26070', '26O7001']) {
-      expect(
-        studentCreateSchema.safeParse({
-          ...record,
-          startsOn: '2026-09-02',
-          uid,
-          confirmUidSet: false,
-          relatives,
-        }).success,
-        uid,
-      ).toBe(false);
-    }
+    ).toBe(false);
   });
 
   it('wants a document type and its number together, upper-cased without spaces', () => {
@@ -198,35 +205,34 @@ describe('the student record', () => {
     expect(studentRecordSchema.safeParse({ ...record, diagnosticScore: 0 }).success).toBe(true);
   });
 
-  it('wants a reason for a UID correction', () => {
+  it('wants a reason for a UID correction, and takes a UID in any form', () => {
+    expect(studentUidCorrectionSchema.safeParse({ uid: '2607002', reason: '  ' }).success).toBe(
+      false,
+    );
+    expect(studentUidCorrectionSchema.parse({ uid: 'si 26', reason: 'Typo.' }).uid).toBe('si26');
     expect(
-      studentUidCorrectionSchema.safeParse({ uid: '2607002', reason: '  ', confirmUidSet: false })
+      studentUidCorrectionSchema.safeParse({ uid: 'A15', reason: 'Typo.', confirmUidSet: false })
         .success,
     ).toBe(false);
   });
 });
 
-describe('uidYearOf and uidSetFor (task 2.7b-1, decision 7)', () => {
+describe('studentYearOf (task 2.7b-1, decision 7; task 9.4c, decision 2)', () => {
   const years = [
     { startDate: '2027-09-01', endDate: '2028-05-31' },
     { startDate: '2026-09-01', endDate: '2027-05-31' },
   ];
 
   it('takes the year that holds the start date', () => {
-    expect(uidYearOf('2026-10-13', years)?.startDate).toBe('2026-09-01');
+    expect(studentYearOf('2026-10-13', years)?.startDate).toBe('2026-09-01');
   });
 
   it('takes the first year after a date between years', () => {
-    expect(uidYearOf('2027-07-01', years)?.startDate).toBe('2027-09-01');
+    expect(studentYearOf('2027-07-01', years)?.startDate).toBe('2027-09-01');
   });
 
   it('finds none after the last year', () => {
-    expect(uidYearOf('2028-07-01', years)).toBeUndefined();
-  });
-
-  it('names the set of the grade in that year', () => {
-    expect(uidSetFor(5, { startDate: '2026-09-01' })).toBe('2605');
-    expect(uidSetFor(6, { startDate: '2027-09-01' })).toBe('2605');
+    expect(studentYearOf('2028-07-01', years)).toBeUndefined();
   });
 });
 

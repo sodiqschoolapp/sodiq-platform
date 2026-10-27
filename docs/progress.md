@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 October 2026: task 9.4c A UID typed in any form
+
+- Migration 0138: `student_uid_valid` (1 to 20 characters, no space or invisible character) replaces the seven-digit checks of `students`, `student_uids` and `student_merges`; generated `uid_key` (`student_uid_key`, upper case with `pg_unicode_fast`) on `students` and `student_uids`, unique (`students_uid_key_idx`, `student_uids_uid_key_idx`); `students_uid_held_fkey` over `uid_key`; `student_merged_uid_holder` by key.
+- `studentUidSchema` removes spaces and invisible characters and keeps the case; `studentUidKey`; the grade's sets, `uidOutsideSet`, `confirmUidSet` and `uid_set_mismatch` are gone. The create, the correction (a case-only change allowed), the merge search and Ctrl+K compare by key.
+- Web: no set warning; the UID fields take letters with the note `people.students.uidFormat`; `errors.student_merge_not_found` says "check it". Browser test `people.spec.ts` saves "SI9999001" and is refused "si 9999001".
+- Left out: nothing of the Build line.
+
+The next sessions must know:
+
+- A typed UID is compared in SQL by `uid_key = student_uid_key(<typed>)` (`uidKeyOf` of `students.service.ts`), never by `uid =`; in code by `studentUidKey`.
+
 ## 26 October 2026: task 9.4b Home pages
 
 - `packages/calc` (version 7): `dailyAttendance` (cells marked present or late over marked cells of non-exempt students, unmarked counted apart), `attendanceBelow` and `absentNow`. No migration.

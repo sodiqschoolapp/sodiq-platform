@@ -960,5 +960,98 @@ describe('student merges in the database', () => {
         }),
       ).toEqual([]);
     });
+
+    it('finds a merged UID of letters asked in another case, for its own branch only (task 9.4c)', async () => {
+      const kept = await members.student(north);
+      const merged = await members.student(south);
+      await everywhere(async (transaction) => {
+        // The merged record's UID corrected to letters, as the correction writes it.
+        await transaction
+          .insertInto('student_uids')
+          .values({
+            uid: 'Mg2607001',
+            student_id: merged,
+            branch_id: south,
+            held_from: new Date(NOW),
+          })
+          .execute();
+        await transaction
+          .updateTable('students')
+          .set({ uid: 'Mg2607001' })
+          .where('id', '=', merged)
+          .execute();
+      });
+      // The checks of the merge row take a UID of letters (0138 replaced the seven digits).
+      await everywhere(async (transaction) => {
+        await mergeRow(transaction, kept, merged);
+        await removeMerged(transaction, kept, merged);
+      });
+      const stored = await database.migrator
+        .selectFrom('student_merges')
+        .select(['merged_uid', 'merged_uids'])
+        .where('merged_id', '=', merged)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ merged_uid: 'Mg2607001', merged_uids: ['Mg2607001'] });
+      const found = await inBranches([north], async (transaction) => {
+        const rows = await sql<{ student_id: string | null }>`
+          select student_id from student_merged_uid_holder('MG2607001', ${north}::uuid)
+        `.execute(transaction);
+        return rows.rows;
+      });
+      expect(found).toEqual([{ student_id: kept }]);
+      // Asked for the merged record's branch: the kept record is of another.
+      const elsewhere = await inBranches([south], async (transaction) => {
+        const rows = await sql<{ student_id: string | null }>`
+          select student_id from student_merged_uid_holder('mg2607001', ${south}::uuid)
+        `.execute(transaction);
+        return rows.rows;
+      });
+      expect(elsewhere).toEqual([{ student_id: null }]);
+    });
+
+    it('refuses a merge row whose UID breaks the rule of every UID (task 9.4c)', async () => {
+      const kept = await members.student(north);
+      const merged = await members.student(south);
+      // The insert guard compares both UIDs with the records' own, which the
+      // checks of the records already hold to the rule; it is switched off in
+      // a transaction rolled back, so the merge row's own checks are reached.
+      const insert = (keptUid: string, mergedUid: string) =>
+        database.migrator.transaction().execute(async (transaction) => {
+          await sql`alter table student_merges disable trigger student_merges_insert_guard`.execute(
+            transaction,
+          );
+          await transaction
+            .insertInto('student_merges')
+            .values({
+              branch_id: north,
+              kept_id: kept,
+              merged_id: merged,
+              merged_branch_id: south,
+              kept_uid: keptUid,
+              merged_uid: mergedUid,
+              merged_uids: [mergedUid],
+              merged_record: '{}',
+              left_rows: '{}',
+              reason: 'Created twice by mistake',
+              merged_by: account,
+              merged_at: new Date(NOW),
+            })
+            .execute();
+          throw new Error('rolled back');
+        });
+      for (const [keptUid, mergedUid, constraint] of [
+        ['A'.repeat(21), 'Mg1', 'student_merges_kept_uid_check'],
+        ['Kp 1', 'Mg1', 'student_merges_kept_uid_check'],
+        ['Kp1', 'B'.repeat(21), 'student_merges_merged_uid_check'],
+        ['Kp1', 'Mg 1', 'student_merges_merged_uid_check'],
+      ] as const) {
+        await expect(insert(keptUid, mergedUid), `${keptUid} ${mergedUid}`).rejects.toMatchObject({
+          code: '23514',
+          constraint,
+        });
+      }
+      // Letters and 20 characters pass the checks; the guard's rollback ends the write.
+      await expect(insert('Kp1', 'M'.repeat(20))).rejects.toThrow('rolled back');
+    });
   });
 });

@@ -418,7 +418,6 @@ export function StudentForm({
         uid: typed.uid,
         startsOn: typed.startsOn,
         classId: orNull(typed.classId),
-        confirmUidSet: false,
         relatives: [relative],
       };
     },
@@ -535,7 +534,11 @@ export function StudentForm({
     <>
       <RecordForm form={form} failureText={classFullText} label={label} onCancel={onCancel}>
         {creating && (
-          <Field label={t('people.students.uid')} inputMode="numeric" {...bind('uid')} />
+          <Field
+            label={t('people.students.uid')}
+            note={t('people.students.uidFormat')}
+            {...bind('uid')}
+          />
         )}
         <Field label={t('people.students.lastName')} autoComplete="off" {...bind('lastName')} />
         <Field label={t('people.students.firstName')} autoComplete="off" {...bind('firstName')} />

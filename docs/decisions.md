@@ -342,6 +342,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 26 October 2026: a UID typed in any form (task 9.4c)
+
+Plan approved on pull request #240 with corrections 1 and 2; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed because the requirement changed). The tests of the grade's sets and `uidOutsideSet` (`packages/shared/src/students.test.ts`), the seven-digit refusals (`students.test.ts`, `students.database.test.ts`, `student-merges.test.ts` of shared), the `uid_set_mismatch` tests (API and web) are rewritten for the new rule; `students.database.test.ts` expects `students_uid_key_idx` where it expected `students_uid_idx`; `uid_set_mismatch` leaves the error codes | `docs/spec-changes.md`, 26 October 2026; review correction 1 |
+| **Look first** (constraints replaced). 0138 replaces `students_uid_check`, `student_uids_uid_check` (0032), `student_merges_kept_uid_check`, `student_merges_merged_uid_check` (0054) by `student_uid_valid` (1 to 20 characters, no space, control or common invisible character) and `students_uid_idx` by unique keys `students_uid_key_idx` and `student_uids_uid_key_idx` over `student_uid_key` (upper case, `pg_unicode_fast`) | `04`, UID sets, Release 1; `edge/developer-rules`, Identifiers (decision 1) |
+| The create keeps `no_academic_year`; the correction no longer reads the year | Decision 2 |
+| A correction of the case only is a correction: the current UID takes the spelling typed, the reservation keeps the first one, `students_uid_held_fkey` compares `uid_key`; the merge lists such a UID once | Decision 3 |
+| Stored without spaces and invisible control or format characters (`\p{Cc}`, `\p{Cf}`), the case as typed; every visible character taken | Decision 4 |
+| Ctrl+K finds a UID by key, whole or from its first 3 characters | Decision 5 (3.2d decision 11 kept) |
+| The students list's own search is unchanged | Decision 6 |
+| **Build decision.** The three UID fields carry the note "Letters, digits or both, up to 20 characters"; an empty or too long UID gets the forms' own texts ("Fill in this field", "At most 20 characters") rather than a text of its own | Plan "a field error `uidFormat`", changed at build: the general texts already say it in three languages |
+
 ## 26 October 2026: the home pages (task 9.4b)
 
 Plan approved on pull request #236 with corrections 1 to 4; decisions 1 to 12 confirmed there. Flagged on issue #42.

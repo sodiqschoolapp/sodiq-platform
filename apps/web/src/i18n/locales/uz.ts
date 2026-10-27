@@ -248,8 +248,6 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu hisobda tiklanadigan ikkinchi bosqich yoʻq. Xodim kira olmasa, faqat parolni tiklang.',
     student_value_taken:
       'Bu qiymat allaqachon boshqa oʻquvchiga berilgan. Belgilangan maydonni tuzating.',
-    uid_set_mismatch:
-      'Bu UID oʻquvchi sinfining toʻplamiga kirmaydi. Tekshiring yoki oʻquvchi boshqa sinf UIDsini saqlasa, tasdiqlang.',
     no_academic_year:
       'Boshlanish sanasi filialning hech bir oʻquv yiliga kirmaydi. Yilni yaratishni super administratordan soʻrang yoki sanani oʻzgartiring.',
     account_missing:
@@ -445,7 +443,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu oʻquvchining ketishi yoki bitirishi shu sanadan keyin rejalashtirilgan. Avval uni oʻquvchi oʻqiyotgan filial oʻzgartiradi yoki bekor qiladi.',
     student_merge_same: 'Bu UID shu oʻquvchining oʻziniki. Boshqa yozuvning UID raqamini kiriting.',
     student_merge_not_found:
-      'Bu UID hech bir oʻquvchida yoʻq: raqamni tekshiring. Yozuv allaqachon birlashtirilgan boʻlishi mumkin.',
+      'Bu UID hech bir oʻquvchida yoʻq: uni tekshiring. Yozuv allaqachon birlashtirilgan boʻlishi mumkin.',
     student_merge_overlap:
       'Ikki yozuv bir xil kunlarni birlashtirib boʻlmaydigan tarzda egallagan. Avval yozuvlarni tuzating (ketish yoki sana), soʻng birlashtiring.',
     student_merge_release_open:
@@ -2267,13 +2265,9 @@ export const uz: Texts<'one' | 'other'> = {
       duplicateElsewhere:
         'Boshqa filialda shu ism va tugʻilgan sanali oʻquvchi bor. Faqat boshqa bola boʻlsa saqlang; oʻquvchini koʻchirish uchun oʻsha filialga murojaat qiling.',
       saveAnyway: 'Baribir saqlash',
-      setTitle: 'UID boshqa sinf toʻplamidan',
-      setText:
-        'Uning dastlabki toʻrt raqami bu sinf toʻplamiga mos emas. Faqat oʻquvchi boshqa sinf UIDsini saqlasa, masalan sinfni takrorlaganda, saqlang.',
-      // The set of the grade named (task 2.7b-1, finding 25).
-      setTextNamed:
-        '{{grade}}-sinf UIDlari {{set}} bilan boshlanadi. Faqat oʻquvchi boshqa sinf UIDsini saqlasa, masalan sinfni takrorlaganda, saqlang.',
       recordTitle: 'Yozuv',
+      // Task 9.4c: a UID is typed in any form.
+      uidFormat: 'Harflar, raqamlar yoki ikkalasi, 20 belgigacha.',
       uidTitle: 'UIDni tuzatish',
       uidLabel: '{{name}} UIDsi',
       reason: 'Sabab',

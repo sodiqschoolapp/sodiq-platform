@@ -67,7 +67,6 @@ describe('a membership that puts a student into two lessons of one block', () =>
     count += 1;
     return {
       uid: String(2612500 + count),
-      confirmUidSet: true,
       firstName: 'Nodira',
       lastName: `Saidova${'c'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

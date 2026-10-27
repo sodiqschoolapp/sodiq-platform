@@ -23,7 +23,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
-import { uidSetText } from './uid-set';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field } from '@/components/field';
@@ -300,8 +299,8 @@ export function StudentsPage() {
 
   /**
    * The duplicate warning before a new student is saved (edge: "A matching
-   * name and date of birth ... gives a warning that must be confirmed"), and
-   * the UID set warning the server answers (`04`, UID sets, Release 1).
+   * name and date of birth ... gives a warning that must be confirmed"). The
+   * UID set warning is gone (task 9.4c).
    */
   const create = useMutation({
     mutationFn: async (record: StudentCreate) => {
@@ -332,31 +331,9 @@ export function StudentsPage() {
           throw new SaveCancelled();
         }
       }
-      const send = (confirmUidSet: boolean) =>
-        answerOf(
-          api.POST('/api/people/students', {
-            params: { header: branchHeader() },
-            body: { ...record, confirmUidSet },
-          }),
-        );
-      try {
-        return await send(false);
-      } catch (error) {
-        if (!(error instanceof ApiFailure) || error.code !== 'uid_set_mismatch') {
-          throw error;
-        }
-        const go = await confirm({
-          title: t('people.students.setTitle'),
-          text: uidSetText(t, error, record.grade),
-          names: [record.uid],
-          action: t('people.students.saveAnyway'),
-          destructive: false,
-        });
-        if (!go) {
-          throw new SaveCancelled();
-        }
-        return send(true);
-      }
+      return answerOf(
+        api.POST('/api/people/students', { params: { header: branchHeader() }, body: record }),
+      );
     },
     // The list holds the new student before the panel shows it.
     onSuccess: () => invalidateRelatives(queryClient),

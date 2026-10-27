@@ -53,7 +53,6 @@ describe('the merge of two student records', () => {
     count += 1;
     return {
       uid: String(2609500 + count),
-      confirmUidSet: true,
       firstName: 'Nodira',
       lastName: `Saidova${'s'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,
@@ -1734,7 +1733,6 @@ describe('the merge of two student records', () => {
       const corrected = await t.put(`/api/people/students/${third.id}/uid`, t.north, {
         uid: other.uid,
         reason: 'Typed wrongly at enrolment.',
-        confirmUidSet: true,
       });
       refusedWith(corrected, 409, 'student_value_taken');
       expect((corrected.body as { error: { details: unknown[] } }).error.details[0]).toMatchObject({
@@ -1752,6 +1750,62 @@ describe('the merge of two student records', () => {
         .details[0];
       expect(detail).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
       expect(detail?.recordId).toBeUndefined();
+    });
+
+    it('finds the other record by its UID in any spelling and merges letter UIDs (task 9.4c)', async () => {
+      const kept = await pupil({ fields: { uid: `KP${String(7100000 + count)}` } });
+      const other = await pupil({ fields: { uid: `si${String(7200000 + count)}` } });
+      // A correction of the case only (decision 3): the reservation keeps "si…".
+      const upper = other.uid.toUpperCase();
+      const corrected = await t.put(`/api/people/students/${other.id}/uid`, t.north, {
+        uid: upper,
+        reason: 'Typed in small letters.',
+      });
+      expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+      const typed = ` ${other.uid.slice(0, 2)} ${other.uid.slice(2)}`;
+      const seen = await previewOf(kept.id, encodeURIComponent(typed));
+      merged(
+        await post(kept.id, {
+          uid: typed,
+          reason: 'Created twice by mistake',
+          digest: seen.digest,
+        }),
+      );
+      // The merged UID is listed once, in its current spelling.
+      const stored = await t.database.migrator
+        .selectFrom('student_merges')
+        .select(['kept_uid', 'merged_uid', 'merged_uids'])
+        .where('kept_id', '=', kept.id)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ kept_uid: kept.uid, merged_uid: upper, merged_uids: [upper] });
+      expect((await fresh(kept.id)).mergedUids).toEqual([upper]);
+      // A UID merged away leads to the kept record in any spelling.
+      const classId = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const created = await t.post('/api/people/students', t.north, {
+        ...body(classId, '2026-09-02'),
+        uid: other.uid,
+      });
+      refusedWith(created, 409, 'student_value_taken');
+      expect((created.body as { error: { details: unknown[] } }).error.details[0]).toMatchObject({
+        path: 'uid',
+        code: 'uid_merged',
+        recordId: kept.id,
+      });
+      // From another branch, in another case: "a student of another branch".
+      const southClass = await classes.schoolClass(t.south, southYear, { grade: 7 });
+      const elsewhere = await t.post('/api/people/students', t.south, {
+        ...body(southClass, '2026-09-02'),
+        uid: ` ${upper.toLowerCase()}`,
+      });
+      refusedWith(elsewhere, 409, 'student_value_taken');
+      const detail = (elsewhere.body as { error: { details: Record<string, unknown>[] } }).error
+        .details[0];
+      expect(detail).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
+      expect(detail?.recordId).toBeUndefined();
+      const found = await t.get(`/api/search/students?q=${other.uid.toLowerCase()}`, t.north);
+      expect((found.body as { items: { id: string }[] }).items.map((one) => one.id)).toEqual([
+        kept.id,
+      ]);
     });
 
     it('lists the merged record’s values on the kept record’s personal data report', async () => {

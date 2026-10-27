@@ -263,11 +263,12 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   await expect(panel.getByRole('alert')).toHaveCount(0);
 });
 
-// Task 2.4a: an Academic Vice Principal adds a student with a UID outside the
-// set of the grade and confirms it (04, UID sets, Release 1), finds the
-// student by a Cyrillic spelling of the name (answer 18), opens the profile
-// with its two tabs, and is refused a second student with the same UID, the
-// holder named (edge/students-classes-groups). The readers of each group and
+// Task 2.4a: an Academic Vice Principal adds a student with a UID of letters
+// and digits, asked nothing about the grade's set (04, UID sets, Release 1;
+// task 9.4c), finds the student by a Cyrillic spelling of the name (answer
+// 18), opens the profile with its two tabs, and is refused a second student
+// with the same UID typed in small letters and with a space, the holder named
+// (edge/students-classes-groups). The readers of each group and
 // the refusals of other branches are proved by the API and page tests. With
 // SCREENSHOTS=1 the list, the profile and the refusal are saved for the report
 // under docs/screens/2.4a/. All names are invented.
@@ -309,11 +310,11 @@ test('an Academic Vice Principal adds a student and is refused a second with the
   const texts = en.people.students;
   // Today in Tashkent: inside the seeded year, which began 100 days ago.
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(Date.now());
-  async function add(lastName: string, contract: string) {
+  async function add(lastName: string, contract: string, uid: string) {
     // While the list is empty its empty state offers the same button.
     await page.getByRole('button', { name: texts.add, exact: true }).first().click();
     const form = page.getByRole('form', { name: texts.newTitle });
-    await form.getByLabel(texts.uid, { exact: true }).fill('9999001');
+    await form.getByLabel(texts.uid, { exact: true }).fill(uid);
     await form.getByLabel(texts.lastName, { exact: true }).fill(lastName);
     await form.getByLabel(texts.firstName, { exact: true }).fill("O'tkir");
     await form.getByLabel(texts.sex, { exact: true }).selectOption('male');
@@ -331,17 +332,14 @@ test('an Academic Vice Principal adds a student and is refused a second with the
       .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
-    const question = page.getByRole('alertdialog', { name: texts.setTitle });
-    await expect(question).toBeVisible();
-    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
     return form;
   }
 
-  await add('Rahimov', 'E2E-STUDENT-1');
+  await add('Rahimov', 'E2E-STUDENT-1', 'SI9999001');
   await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
   await page.getByRole('searchbox', { name: en.list.search }).fill('Ўткир');
   await expect(page.locator('tbody tr')).toHaveCount(1);
-  await expect(page.locator('tbody tr').first()).toContainText('9999001');
+  await expect(page.locator('tbody tr').first()).toContainText('SI9999001');
   await studentScreenshot(page, 'list');
 
   await page.getByRole('button', { name: 'Rahimov Oʻtkir', exact: true }).click();
@@ -352,9 +350,9 @@ test('an Academic Vice Principal adds a student and is refused a second with the
   await studentScreenshot(page, 'profile');
   await panel.getByRole('button', { name: en.list.closePanel }).click();
 
-  const form = await add('Qodirov', 'E2E-STUDENT-2');
+  const form = await add('Qodirov', 'E2E-STUDENT-2', 'si 9999001');
   await expect(
-    form.getByText(texts.takenHere.replace('{{student}}', 'Rahimov Oʻtkir (9999001)')),
+    form.getByText(texts.takenHere.replace('{{student}}', 'Rahimov Oʻtkir (SI9999001)')),
   ).toBeVisible();
   await form.getByLabel(texts.uid, { exact: true }).scrollIntoViewIfNeeded();
   await studentScreenshot(page, 'uid-taken');
@@ -426,9 +424,6 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
       .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
-    const question = page.getByRole('alertdialog', { name: texts.setTitle });
-    await expect(question).toBeVisible();
-    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
     await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
   }
 
@@ -596,9 +591,6 @@ test('an Academic Vice Principal exports students with their documents, adds a p
       .fill('Dilfuza Rahimova');
     await form.getByLabel(en.people.relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
-    const question = page.getByRole('alertdialog', { name: texts.setTitle });
-    await expect(question).toBeVisible();
-    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
     await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
   }
   await add('9997001', 'Ergasheva', 'E2E-EXPORT-1', null, daysAgo(40));
@@ -716,9 +708,6 @@ test('an Academic Vice Principal links one relative to students of two branches'
     }
     await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
     await form.getByRole('button', { name: en.form.save, exact: true }).click();
-    const question = page.getByRole('alertdialog', { name: texts.setTitle });
-    await expect(question).toBeVisible();
-    await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
     await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
   }
 
@@ -802,9 +791,6 @@ test('the number of a relative of another branch gets a new owner, and that bran
     .check();
   await form.getByLabel(relatives.relationship, { exact: true }).selectOption('mother');
   await form.getByRole('button', { name: en.form.save, exact: true }).click();
-  const question = page.getByRole('alertdialog', { name: texts.setTitle });
-  await expect(question).toBeVisible();
-  await question.getByRole('button', { name: texts.saveAnyway, exact: true }).click();
   await expect(page.getByRole('form', { name: texts.newTitle })).toHaveCount(0);
 
   // The other branch's Academic Vice Principal.

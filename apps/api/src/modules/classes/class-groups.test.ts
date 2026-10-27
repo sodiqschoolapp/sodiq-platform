@@ -54,7 +54,6 @@ describe('groups on every class membership path', () => {
     count += 1;
     return {
       uid: String(2607800 + count),
-      confirmUidSet: true,
       firstName: 'Shahnoza',
       lastName: `Yusupova${'c'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

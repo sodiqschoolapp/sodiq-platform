@@ -107,7 +107,6 @@ describe('transfers and leaving inside the journal', () => {
     count += 1;
     const response = await t.post('/api/people/students', branch, {
       uid: String(2608600 + count),
-      confirmUidSet: true,
       firstName: 'Malika',
       lastName: `Tursunova${'t'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

@@ -123,7 +123,6 @@ describe('student photos', () => {
     count += 1;
     const response = await t.postStudent(branch, {
       uid: String(2607800 + count),
-      confirmUidSet: false,
       firstName: 'Zarina',
       lastName: `Qosimova${'a'.repeat(count % 9)}`,
       paternalName: '',

@@ -197,7 +197,6 @@ const MESSAGE: Record<ErrorCode, string> = {
   account_not_locked: 'The account is not locked.',
   second_step_off: 'The account has no second step to reset.',
   account_missing: 'The staff record has no account yet.',
-  uid_set_mismatch: "The UID is not in the set of the student's grade; confirm to save it.",
   student_value_taken: 'A value of the student is given to another student.',
   student_needs_relative: 'The student needs at least one relative.',
   relative_phone_taken: 'The phone belongs to another relative.',

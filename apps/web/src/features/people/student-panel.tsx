@@ -19,12 +19,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
-import { uidSetText } from './uid-set';
-import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
-import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useLeave } from '@/components/unsent/unsent-changes';
@@ -112,7 +109,6 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const readsExemptions = useMayView('exemptions');
   const resultTabs = useQuery(studentResultTabsQuery(branchId, id));
   const queryClient = useQueryClient();
-  const confirm = useConfirm();
   const leave = useLeave();
   const panel = usePanelEditing();
   const navigate = useNavigate();
@@ -166,33 +162,8 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
     onError: rereadOnTaken,
   });
   const correct = useMutation({
-    mutationFn: async (input: StudentUidCorrection) => {
-      try {
-        return await answerOf(
-          api.PUT('/api/people/students/{id}/uid', { params: where(), body: input }),
-        );
-      } catch (error) {
-        if (!(error instanceof ApiFailure) || error.code !== 'uid_set_mismatch') {
-          throw error;
-        }
-        const go = await confirm({
-          title: t('people.students.setTitle'),
-          text: uidSetText(t, error, student?.grade ?? 1),
-          names: [input.uid],
-          action: t('people.students.saveAnyway'),
-          destructive: false,
-        });
-        if (!go) {
-          throw new SaveCancelled();
-        }
-        return answerOf(
-          api.PUT('/api/people/students/{id}/uid', {
-            params: where(),
-            body: { ...input, confirmUidSet: true },
-          }),
-        );
-      }
-    },
+    mutationFn: (input: StudentUidCorrection) =>
+      answerOf(api.PUT('/api/people/students/{id}/uid', { params: where(), body: input })),
     onSuccess: refresh,
     onError: rereadOnTaken,
   });
@@ -1024,7 +995,7 @@ function UidCorrection({
   const form = useRecordForm<UidField, StudentUidCorrection>({
     schema: UID_SCHEMA,
     initial: { uid: student.uid, reason: '' },
-    read: (typed) => ({ uid: typed.uid, reason: typed.reason, confirmUidSet: false }),
+    read: (typed) => ({ uid: typed.uid, reason: typed.reason }),
     // Keyed by the student alone: its own save keeps "Saved." and empties the
     // reason for the next correction (finding 18).
     followInitial: true,
@@ -1042,7 +1013,7 @@ function UidCorrection({
       >
         <Field
           label={t('people.students.uid')}
-          inputMode="numeric"
+          note={t('people.students.uidFormat')}
           {...uid}
           error={uid.error ?? (taken === null ? undefined : t(...takenText(taken, holderText)))}
         />

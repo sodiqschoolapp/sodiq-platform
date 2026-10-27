@@ -54,7 +54,6 @@ describe('group transfers and the History tab', () => {
     count += 1;
     const response = await post('/api/people/students', {
       uid: String(2607300 + count),
-      confirmUidSet: true,
       firstName: 'Nodira',
       lastName: `Saidova${'e'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

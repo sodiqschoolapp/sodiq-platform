@@ -1859,6 +1859,7 @@ export interface Students {
   sex: string;
   starts_on: string;
   uid: string;
+  uid_key: Generated<string>;
 }
 
 export interface StudentStatuses {
@@ -1879,6 +1880,7 @@ export interface StudentUids {
   released_at: Timestamp | null;
   student_id: string | null;
   uid: string;
+  uid_key: Generated<string>;
 }
 
 export interface SubjectDailyWeights {

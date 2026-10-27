@@ -166,7 +166,6 @@ describe('the audit log page', () => {
     count += 1;
     return {
       uid: String(2607600 + count),
-      confirmUidSet: true,
       firstName: 'Madina',
       lastName: `Qodirova${'a'.repeat(count % 7)}`,
       paternalName: null,

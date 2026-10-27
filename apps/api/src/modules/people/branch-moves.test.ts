@@ -60,7 +60,6 @@ describe('the move of a student to another branch', () => {
     count += 1;
     return {
       uid: String(2609100 + count),
-      confirmUidSet: true,
       firstName: 'Shahnoza',
       lastName: `Yusupova${'s'.repeat(count % 9)}${String.fromCharCode(97 + (count % 26))}`,
       paternalName: null,

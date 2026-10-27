@@ -83,7 +83,6 @@ describe('phone owners, merges and the notice to the other branch', () => {
     count += 1;
     return {
       uid: String(2609000 + count),
-      confirmUidSet: true,
       firstName: 'Kamola',
       lastName: `Ergasheva${'a'.repeat(count % 7)}`,
       paternalName: '',

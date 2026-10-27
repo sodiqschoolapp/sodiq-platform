@@ -238,8 +238,6 @@ export const en = {
       'This account has no second step to reset. Reset only the password if the person cannot sign in.',
     student_value_taken:
       'This value is already given to another student. Correct the marked field.',
-    uid_set_mismatch:
-      "This UID is not in the set of the student's grade. Check it, or confirm it if the student keeps a UID from another grade.",
     no_academic_year:
       'The start date is in no academic year of this branch. Ask the Super Admin to create the year, or change the date.',
     account_missing: 'This person has no account yet. Ask the Super Admin to create it.',
@@ -436,7 +434,7 @@ export const en = {
       'A leaving or graduation of this student is scheduled after that date. The branch the student studies in changes or cancels it first.',
     student_merge_same: 'That UID is this student’s own. Type the UID of the other record.',
     student_merge_not_found:
-      'No student holds that UID: check the number. The record may have been merged already.',
+      'No student holds that UID: check it. The record may have been merged already.',
     student_merge_overlap:
       'The two records hold the same days in a way a merge cannot join. Correct the records first (a leaving or a date), then merge.',
     student_merge_release_open:
@@ -2232,13 +2230,9 @@ export const en = {
       duplicateElsewhere:
         'A student with this name and date of birth is in another branch. Save only if this is another child; to move a student, ask that branch.',
       saveAnyway: 'Save anyway',
-      setTitle: 'The UID is from another grade',
-      setText:
-        'Its first four digits are not the set of this grade. Save it only if the student keeps a UID from another grade, for example after repeating one.',
-      // The set of the grade named (task 2.7b-1, finding 25).
-      setTextNamed:
-        'Grade {{grade}} UIDs start with {{set}}. Save it only if the student keeps a UID from another grade, for example after repeating one.',
       recordTitle: 'Record',
+      // Task 9.4c: a UID is typed in any form.
+      uidFormat: 'Letters, digits or both, up to 20 characters.',
       uidTitle: 'Correct the UID',
       uidLabel: 'UID of {{name}}',
       reason: 'Reason',

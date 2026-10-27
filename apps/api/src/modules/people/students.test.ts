@@ -39,7 +39,6 @@ describe('student records', () => {
     count += 1;
     return {
       uid: String(2607000 + count),
-      confirmUidSet: false,
       firstName: 'Oʻtkir',
       lastName: `Saidov${'a'.repeat(count % 7)}`,
       paternalName: 'Anvarovich',
@@ -224,6 +223,7 @@ describe('student records', () => {
           branch_id: t.north,
           held_from: MOMENT,
           released_at: null,
+          uid_key: input.uid,
         },
       ]);
       const account = await t.database.migrator
@@ -275,60 +275,124 @@ describe('student records', () => {
     });
   });
 
-  describe('the UID set (04, UID sets; decision 5 as changed by correction 2)', () => {
-    it('refuses a UID outside the set of the grade until it is confirmed', async () => {
+  describe('a UID typed in any form (04, UID sets, Release 1; task 9.4c)', () => {
+    /** A UID with letters of its own: "SI" and a number no other test uses. */
+    const letters = () => `SI${String(5600000 + count)}`;
+
+    it('saves "SI2607001"-like and "A15" UIDs as typed', async () => {
+      const uid = letters();
+      const student = await create({ uid });
+      expect(student.uid).toBe(uid);
+      expect((await create({ uid: 'A15' })).uid).toBe('A15');
+      const stored = await t.database.migrator
+        .selectFrom('student_uids')
+        .select('uid')
+        .where('student_id', '=', student.id)
+        .execute();
+      expect(stored).toEqual([{ uid }]);
+    });
+
+    it('saves a UID without its spaces and invisible characters, never a 500 (decision 4)', async () => {
+      const uid = letters();
+      const typed = ` ${uid.slice(0, 2)}\u00a0${uid.slice(2, 4)}\u0085${uid.slice(4)}\ufeff `;
+      expect((await create({ uid: typed })).uid).toBe(uid);
+    });
+
+    it('refuses an empty UID and one longer than 20 characters', async () => {
       const before = await snapshot();
-      const input = body({ uid: '2606901', grade: 7 });
-      const refused = await t.postStudent(t.north, input);
-      refusedWith(refused, 409, 'uid_set_mismatch');
-      // The warning names the set of the grade (finding 25; task 2.7b-1, decision 7).
-      expect(detailsOf(refused)).toEqual([
-        { path: 'uid', code: 'uid_set', message: expect.any(String) as string, expected: '2607' },
+      for (const uid of ['', '  ', 'A'.repeat(21)]) {
+        refusedWith(await t.postStudent(t.north, body({ uid })), 400, 'validation_failed');
+      }
+      expect(await snapshot()).toEqual(before);
+      expect((await create({ uid: `B${String(count)}`.padEnd(20, 'Z') })).uid).toHaveLength(20);
+    });
+
+    it('refuses "si 2607001" while "SI2607001" is held here, naming the holder', async () => {
+      const uid = letters();
+      const holder = await create({ uid });
+      const before = await snapshot();
+      const typed = `${uid.slice(0, 2).toLowerCase()} ${uid.slice(2)}`;
+      const response = await t.postStudent(t.north, body({ uid: typed }));
+      refusedWith(response, 409, 'student_value_taken');
+      expect(detailsOf(response)).toEqual([
+        expect.objectContaining({ path: 'uid', code: 'already_exists', recordId: holder.id }),
       ]);
       expect(await snapshot()).toEqual(before);
-      const response = await t.postStudent(t.north, {
-        ...input,
-        confirmUidSet: true,
-      });
-      expect(response.status).toBe(201);
     });
 
-    it('takes the set of a planned year, and of the year after a start date in the summer', async () => {
-      // 2027–2028: the set 2607 is grade 8, and grade 1 opens 2701.
-      await create({ uid: '2607901', grade: 8, startsOn: '2027-09-02' });
-      await create({ uid: '2701901', grade: 1, startsOn: '2027-07-01' });
+    it('refuses it in another case when another branch holds it, naming nobody', async () => {
+      const held = body({ uid: letters() });
+      expect((await t.postStudent(t.south, held)).status).toBe(201);
+      const before = await snapshot();
+      const response = await t.postStudent(t.north, body({ uid: String(held.uid).toLowerCase() }));
+      refusedWith(response, 409, 'student_value_taken');
+      expect(detailsOf(response)).toEqual([
+        { path: 'uid', code: 'held_elsewhere', message: 'A student of another branch holds it.' },
+      ]);
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('refuses it in another case when an archived student holds it', async () => {
+      const uid = letters();
+      const holder = await create({ uid });
+      // The student left (the leaving route, task 2.4b-1).
+      const left = await t.post(`/api/people/students/${holder.id}/leaving`, t.north, {
+        lastDay: '2026-10-05',
+        reason: 'The family moved to another city.',
+        version: holder.version,
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      expect((await detail(holder.id)).status).toBe('inactive');
+      const response = await t.postStudent(t.north, body({ uid: uid.toLowerCase() }));
+      refusedWith(response, 409, 'student_value_taken');
+      expect(detailsOf(response)[0]).toMatchObject({
+        path: 'uid',
+        code: 'already_exists',
+        recordId: holder.id,
+      });
+    });
+
+    it('refuses it in another case when it was corrected away', async () => {
+      const uid = letters();
+      const holder = await create({ uid });
+      const corrected = await t.put(`/api/people/students/${holder.id}/uid`, t.north, {
+        uid: letters(),
+        reason: 'Typed wrongly at enrolment.',
+      });
+      expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+      const response = await t.postStudent(t.south, body({ uid: ` ${uid.toLowerCase()}` }));
+      refusedWith(response, 409, 'student_value_taken');
+      expect(detailsOf(response)[0]).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
+    });
+
+    it('saves a UID outside the set of the grade at once: no route warns of a set', async () => {
+      // Grade 7 of 2026–2027 was the set 2607; the warning is gone
+      // (docs/spec-changes.md, 26 October 2026).
+      const student = await create({ uid: '2606901', grade: 7 });
+      expect(student.uid).toBe('2606901');
+      const corrected = await t.put(`/api/people/students/${student.id}/uid`, t.north, {
+        uid: '2308901',
+        reason: 'Typed wrongly at enrolment.',
+      });
+      expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+      // Its confirmation is no longer a field: the strict schema refuses it.
       refusedWith(
-        await t.postStudent(t.north, body({ uid: '2607902', grade: 7, startsOn: '2027-07-01' })),
-        409,
-        'uid_set_mismatch',
+        await t.postStudent(t.north, { ...body(), confirmUidSet: true }),
+        400,
+        'validation_failed',
+      );
+      refusedWith(
+        await t.put(`/api/people/students/${student.id}/uid`, t.north, {
+          uid: '2308902',
+          reason: 'Typo.',
+          confirmUidSet: false,
+        }),
+        400,
+        'validation_failed',
       );
     });
 
-    it('names no set and refuses nothing for a grade that has no set in its year', async () => {
-      // 2025–2026: the grade 11 of that year had left before the sets of
-      // 2026–2027, so `uidSetOf` knows none (decision 5 of task 2.4a).
-      // A year is written with its four quarters, undated (db/migrations/0016).
-      await t.database.migrator.transaction().execute(async (transaction) => {
-        const year = await transaction
-          .insertInto('academic_years')
-          .values({ branch_id: t.south, start_date: '2025-09-01', end_date: '2026-05-31' })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        for (const number of [1, 2, 3, 4]) {
-          await transaction
-            .insertInto('quarters')
-            .values({ branch_id: t.south, academic_year_id: year.id, number })
-            .execute();
-        }
-      });
-      const response = await t.postStudent(
-        t.south,
-        body({ uid: '9911901', grade: 11, startsOn: '2026-01-12' }),
-      );
-      expect(response.status, JSON.stringify(response.body)).toBe(201);
-    });
-
-    it('refuses a start date in no year of the branch and before none', async () => {
+    it('refuses a start date in no year of the branch and before none (decision 2)', async () => {
       refusedWith(
         await t.postStudent(t.south, body({ startsOn: '2027-07-01' })),
         409,
@@ -472,11 +536,12 @@ describe('student records', () => {
     ] as const)(
       'answers 409 to the save that waited for another with the same %s',
       async (path, other) => {
-        const input = body();
+        // Task 9.4c: the two saves of one UID spell it differently.
+        const input = body(path === 'uid' ? { uid: `SI${String(5700000 + count)}` } : {});
         const branch = other === 'south' ? t.south : t.north;
         const held = await holdOpen(branch, (transaction) =>
           writeStudent(transaction, branch, {
-            uid: path === 'uid' ? String(input.uid) : String(2600000 + count + 500),
+            uid: path === 'uid' ? String(input.uid).toLowerCase() : String(2600000 + count + 500),
             ...(path === 'jshshir' ? { jshshir: String(input.jshshir) } : {}),
             ...(path === 'contract.number'
               ? { contract: (input.contract as { number: string }).number }
@@ -495,8 +560,9 @@ describe('student records', () => {
 
     it('answers 409 to a create that waited for a UID correction to the same UID', async () => {
       const other = studentDetailSchema.parse((await t.postStudent(t.south, body())).body);
-      const input = body();
-      const uid = String(input.uid);
+      // Task 9.4c: the correction and the create spell the UID differently.
+      const input = body({ uid: `SI${String(5800000 + count)}` });
+      const uid = String(input.uid).toLowerCase();
       // What the correction does, in its order: the current UID, then its reservation.
       const held = await holdOpen(t.south, async (transaction) => {
         await transaction.updateTable('students').set({ uid }).where('id', '=', other.id).execute();
@@ -516,15 +582,15 @@ describe('student records', () => {
 
     it('answers 409 to a UID correction that waited for a create of the same UID', async () => {
       const student = await create();
-      const uid = String(2607000 + count + 700);
+      // Task 9.4c: the create and the correction spell the UID differently.
+      const uid = `si${String(5900000 + count)}`;
       const held = await holdOpen(t.south, (transaction) =>
         writeStudent(transaction, t.south, { uid }),
       );
       const correction = t
         .put(`/api/people/students/${student.id}/uid`, t.north, {
-          uid,
+          uid: uid.toUpperCase(),
           reason: 'Typed wrongly at enrolment.',
-          confirmUidSet: false,
         })
         .then((response) => response);
       await expect.poll(waitingForALock, { timeout: 20_000, interval: 50 }).toBe(1);
@@ -971,7 +1037,7 @@ describe('student records', () => {
           await t.put(
             `/api/people/students/${student.id}/uid`,
             t.north,
-            { uid: '2607990', reason: 'Typo.', confirmUidSet: false },
+            { uid: '2607990', reason: 'Typo.' },
             cookie,
           ),
           403,
@@ -995,7 +1061,6 @@ describe('student records', () => {
           await t.put(`/api/people/students/${id}/uid`, t.north, {
             uid: '2607991',
             reason: 'Typo.',
-            confirmUidSet: false,
           }),
           404,
           'not_found',
@@ -1092,7 +1157,7 @@ describe('student records', () => {
       const response = await t.put(
         `/api/people/students/${student.id}/uid`,
         t.north,
-        { uid, reason: 'Typed wrongly at enrolment.', confirmUidSet: false },
+        { uid, reason: 'Typed wrongly at enrolment.' },
         t.vicePrincipal,
       );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -1110,28 +1175,21 @@ describe('student records', () => {
       const back = await t.put(`/api/people/students/${student.id}/uid`, t.north, {
         uid: student.uid,
         reason: 'The first one was right.',
-        confirmUidSet: false,
       });
       expect(back.status, JSON.stringify(back.body)).toBe(200);
       expect(studentDetailSchema.parse(back.body).uid).toBe(student.uid);
     });
 
-    it('wants a reason, checks the set and refuses a UID held here or elsewhere', async () => {
+    it('wants a reason and refuses a UID held here or elsewhere, in any spelling', async () => {
       const student = await create();
       const holder = await create();
       const elsewhere = body();
       expect((await t.postStudent(t.south, elsewhere)).status).toBe(201);
       const before = await snapshot();
-      const correct = (uid: string, reason = 'Typo.', confirmUidSet = false) =>
-        t.put(`/api/people/students/${student.id}/uid`, t.north, { uid, reason, confirmUidSet });
+      const correct = (uid: string, reason = 'Typo.') =>
+        t.put(`/api/people/students/${student.id}/uid`, t.north, { uid, reason });
       refusedWith(await correct('2607993', ''), 400, 'validation_failed');
-      const outside = await correct('2606993');
-      refusedWith(outside, 409, 'uid_set_mismatch');
-      expect(detailsOf(outside)[0]).toMatchObject({
-        path: 'uid',
-        code: 'uid_set',
-        expected: '2607',
-      });
+      refusedWith(await correct('A'.repeat(21)), 400, 'validation_failed');
       const here = await correct(holder.uid);
       refusedWith(here, 409, 'student_value_taken');
       expect(detailsOf(here)[0]).toMatchObject({ path: 'uid', recordId: holder.id });
@@ -1139,7 +1197,40 @@ describe('student records', () => {
       refusedWith(there, 409, 'student_value_taken');
       expect(detailsOf(there)[0]).toMatchObject({ path: 'uid', code: 'held_elsewhere' });
       expect(await snapshot()).toEqual(before);
-      expect((await correct('2606994', 'Repeated grade 6.', true)).status).toBe(200);
+      expect((await correct('2606994', 'Repeated grade 6.')).status).toBe(200);
+    });
+
+    it('corrects the case of a UID, keeps the first spelling reserved and logs both (decision 3)', async () => {
+      const uid = `si${String(6000000 + count)}`;
+      const student = await create({ uid });
+      const correct = (typed: string) =>
+        t.put(`/api/people/students/${student.id}/uid`, t.north, {
+          uid: typed,
+          reason: 'Typed in small letters.',
+        });
+      // The same spelling once spaces are removed: nothing changes.
+      const same = await correct(`${uid.slice(0, 2)} ${uid.slice(2)}`);
+      expect(same.status, JSON.stringify(same.body)).toBe(200);
+      expect(await t.entries('student.uid_corrected', student.id)).toEqual([]);
+      const response = await correct(uid.toUpperCase());
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(studentDetailSchema.parse(response.body).uid).toBe(uid.toUpperCase());
+      const [entry] = await t.entries('student.uid_corrected', student.id);
+      expect(entry).toMatchObject({
+        old_value: { uid },
+        new_value: { uid: uid.toUpperCase() },
+        reason: 'Typed in small letters.',
+      });
+      const reserved = await t.database.migrator
+        .selectFrom('student_uids')
+        .select('uid')
+        .where('student_id', '=', student.id)
+        .execute();
+      expect(reserved).toEqual([{ uid }]);
+      // Still the student's in every spelling.
+      const taken = await t.postStudent(t.north, body({ uid: `Si${uid.slice(2)}` }));
+      refusedWith(taken, 409, 'student_value_taken');
+      expect(detailsOf(taken)[0]).toMatchObject({ path: 'uid', recordId: student.id });
     });
   });
 });

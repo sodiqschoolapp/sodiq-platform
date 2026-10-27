@@ -3,9 +3,7 @@ import {
   PERMISSIONS,
   schoolDateOf,
   studentNameKey,
-  uidOutsideSet,
-  uidSetFor,
-  uidYearOf,
+  studentYearOf,
   type DocumentType,
   type ErrorDetail,
   type Region,
@@ -82,14 +80,23 @@ import {
 const UNIQUE_VIOLATION = '23505';
 
 /**
+ * The key a typed UID is compared by in the database: `student_uid_key`
+ * (db/migrations/0138), without spaces and ignoring case (task 9.4c).
+ */
+export const uidKeyOf = (uid: string) => sql<string>`student_uid_key(${uid})`;
+
+/**
  * The unique indexes across the school (db/migrations/0032; decision 17 of
  * pull request #67) and the field each refuses. A UID once held is in
- * `student_uids` for good (decision 7), so its key refuses a UID too.
+ * `student_uids` for good (decision 7), so its key refuses a UID too; a UID
+ * is compared by its key, without spaces and ignoring case (0138, task 9.4c).
  */
 const TAKEN_FIELDS: Readonly<
   Record<string, 'uid' | 'jshshir' | 'documentNumber' | 'contract.number'>
 > = {
-  students_uid_idx: 'uid',
+  students_uid_key_idx: 'uid',
+  student_uids_uid_key_idx: 'uid',
+  student_uids_student_uid_key_key: 'uid',
   student_uids_pkey: 'uid',
   students_jshshir_idx: 'jshshir',
   students_document_idx: 'documentNumber',
@@ -526,14 +533,7 @@ export class Students {
                 if (placement === undefined) {
                   throw notFound();
                 }
-                await this.checkSet(
-                  transaction,
-                  branchId,
-                  input.uid,
-                  input.grade,
-                  input.startsOn,
-                  input,
-                );
+                await this.checkYear(transaction, branchId, input.startsOn);
                 const moment = await transactionMoment(transaction);
                 const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
                 const id = found.rows[0]?.id;
@@ -598,7 +598,7 @@ export class Students {
                   action: 'student.create',
                   record: { type: 'student', id },
                   // Each relative and link has an entry of its own.
-                  newValue: { ...input, confirmUidSet: undefined, relatives: undefined },
+                  newValue: { ...input, relatives: undefined },
                   requestId,
                 });
                 if (placement !== null) {
@@ -779,7 +779,10 @@ export class Students {
    * The correction of a mistyped UID with a reason (edge: "A mistyped UID can
    * be corrected by the Academic Vice Principal with a reason; the old value
    * stays in history"). The old UID stays reserved to the student in
-   * `student_uids` (decision 7); a UID the student held before is taken back.
+   * `student_uids` (decision 7); a UID the student held before is taken back,
+   * compared by key, in the spelling now typed: a change of case only is a
+   * correction too (task 9.4c, decision 3), and the reservation keeps the
+   * spelling it was first held in.
    */
   correctUid(
     access: Access,
@@ -791,13 +794,13 @@ export class Students {
     return this.refusingTaken(access, () =>
       this.transactions.run(access.branchIds, async (transaction) => {
         const row = await this.lockStudent(transaction, id);
+        // Exact: "si2607001" corrected to "SI2607001" is a correction.
         if (row.uid === input.uid) {
           return this.readDetail(transaction, access, id);
         }
-        await this.checkSet(transaction, branchId, input.uid, row.grade, row.starts_on, input);
         // The current UID first, then its reservation: the order of the create,
         // so that a correction and a create of one UID meet first on
-        // `students_uid_idx` and the second waits and is refused, never a
+        // `students_uid_key_idx` and the second waits and is refused, never a
         // deadlock (spec review of the build). The key of the current UID to
         // its reservation is checked at the commit.
         await this.inserting({ uid: input.uid }, () =>
@@ -810,7 +813,7 @@ export class Students {
         const held = await transaction
           .selectFrom('student_uids')
           .select('uid')
-          .where('uid', '=', input.uid)
+          .where('uid_key', '=', uidKeyOf(input.uid))
           .where('student_id', '=', id)
           .executeTakeFirst();
         if (held === undefined) {
@@ -866,38 +869,23 @@ export class Students {
   // ---------------------------------------------------------------------------
 
   /**
-   * The UID set warning (`04`, UID sets, Release 1; decision 5 as changed by
-   * correction 2 of #67): the set of the grade in the academic year of the
-   * branch that holds the start date, or the first that begins after it.
+   * The academic year a new student starts in (decision 5 of #67 as changed
+   * by correction 2): the year of the branch that holds the start date, or the
+   * first that begins after it; none is refused `no_academic_year` (task 9.4c,
+   * decision 2: the grade's set is no longer checked, the year still is).
    */
-  private async checkSet(
+  private async checkYear(
     transaction: Transaction,
     branchId: string,
-    uid: string,
-    grade: number,
     startsOn: SchoolDate,
-    input: { confirmUidSet: boolean },
   ): Promise<void> {
     const years = await transaction
       .selectFrom('academic_years')
       .select(['start_date as startDate', 'end_date as endDate'])
       .where('branch_id', '=', branchId)
       .execute();
-    const year = uidYearOf(startsOn, years);
-    if (year === undefined) {
+    if (studentYearOf(startsOn, years) === undefined) {
       throw refused('no_academic_year');
-    }
-    if (!input.confirmUidSet && uidOutsideSet(uid, grade, Number(year.startDate.slice(0, 4)))) {
-      // The warning names the set of the grade (finding 25; task 2.7b-1,
-      // decision 7); a UID is outside a set only when the grade has one.
-      throw new ApiException('uid_set_mismatch', 409, undefined, [
-        {
-          path: 'uid',
-          code: 'uid_set',
-          message: 'The UID is outside the set of the grade.',
-          expected: uidSetFor(grade, year) ?? undefined,
-        },
-      ]);
     }
   }
 
@@ -1011,7 +999,7 @@ export class Students {
           await transaction
             .selectFrom('student_uids')
             .select('student_id')
-            .where('uid', '=', value)
+            .where('uid_key', '=', uidKeyOf(value))
             .executeTakeFirst()
         )?.student_id;
       case 'jshshir':
