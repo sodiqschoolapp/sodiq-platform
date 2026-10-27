@@ -339,6 +339,32 @@ interface GridProps {
   readonly comments?: CommentsInput | undefined;
   /** Full screen: the grid fills the height its parent gives it (a column of flex). */
   readonly fill?: boolean;
+  /** The columns the person hid with the column chooser (owner, 27 October 2026). */
+  readonly hidden?: readonly string[];
+}
+
+/** The columns a person may hide in the journal: the UID and the figures (owner, 27 October 2026). */
+export const HIDEABLE_COLUMNS = [
+  'uid',
+  'attendance',
+  'classwork',
+  'homework',
+  'ratingExam',
+  'result',
+  'grade',
+] as const;
+export type HideableColumn = (typeof HIDEABLE_COLUMNS)[number];
+
+/** The hideable columns this grid draws, in their order: the choices of the column chooser. */
+export function hideableColumnsOf(grid: Grid, month: string | null): HideableColumn[] {
+  const shown: HideableColumn[] = ['uid'];
+  if (grid.shape === 'lessons') return shown;
+  shown.push('attendance');
+  if (grid.journal.attendanceOnly || grid.shape === 'attendance') return shown;
+  shown.push('classwork', 'homework');
+  if (grid.journal.ratingExam && month === null) shown.push('ratingExam');
+  shown.push('result', 'grade');
+  return shown;
 }
 
 /**
@@ -347,6 +373,8 @@ interface GridProps {
  */
 const dialogKey = (params: SuppressKeyboardEventParams<GridRow>): boolean =>
   !params.editing && (params.event.code === 'KeyC' || params.event.code === 'KeyE');
+
+const NONE_HIDDEN: readonly string[] = [];
 
 /** The corner marker of a cell with a comment (task 8.2). */
 const COMMENTED =
@@ -370,6 +398,7 @@ export function JournalGridView({
   rating,
   comments,
   fill = false,
+  hidden = NONE_HIDDEN,
 }: GridProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -1112,9 +1141,13 @@ export function JournalGridView({
       };
     }
 
+    // The columns the person hid stay out (owner, 27 October 2026).
+    const kept = (column: ColDef<GridRow>): boolean =>
+      column.colId === undefined || !hidden.includes(column.colId);
+    const shownFigures = figures.filter(kept);
     return [
-      { groupId: 'students', headerName: '', children: students },
-      ...(figures.length === 0
+      { groupId: 'students', headerName: '', children: students.filter(kept) },
+      ...(shownFigures.length === 0
         ? []
         : [
             {
@@ -1123,13 +1156,14 @@ export function JournalGridView({
                 month === null
                   ? t('journal.grid.quarterFigures', { number: grid.quarter.number })
                   : t('journal.grid.monthFigures'),
-              children: figures,
+              children: shownFigures,
             },
           ]),
       ...lessonGroups,
     ];
   }, [
     grid,
+    hidden,
     t,
     language,
     figuresOf,

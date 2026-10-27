@@ -1,5 +1,5 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
@@ -563,6 +563,43 @@ describe('a journal', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
     });
+  });
+
+  it('hides the columns the person unticks and keeps them hidden on the next visit (owner, 27 October 2026)', async () => {
+    const header = (colId: string) => document.querySelector(`.ag-header-cell[col-id="${colId}"]`);
+    try {
+      open(GRID);
+      await waitFor(() => {
+        expect(header('grade')).not.toBeNull();
+      });
+      expect(header('uid')).not.toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+      const grade = await screen.findByRole('menuitemcheckbox', {
+        name: en.journal.page.columnNames.grade,
+      });
+      expect(grade.getAttribute('aria-checked')).toBe('true');
+      fireEvent.click(grade);
+      fireEvent.click(
+        screen.getByRole('menuitemcheckbox', { name: en.journal.page.columnNames.uid }),
+      );
+      await waitFor(() => {
+        expect(header('grade')).toBeNull();
+      });
+      expect(header('uid')).toBeNull();
+      expect(header('result')).not.toBeNull();
+      expect(window.localStorage.getItem('sodiq.list.journal.hidden')).toBe('["grade","uid"]');
+
+      // Another visit reads the choice back.
+      cleanup();
+      open(GRID);
+      await waitFor(() => {
+        expect(header('result')).not.toBeNull();
+      });
+      expect(header('grade')).toBeNull();
+      expect(header('uid')).toBeNull();
+    } finally {
+      window.localStorage.removeItem('sodiq.list.journal.hidden');
+    }
   });
 
   it('shows the outline while the journal loads', async () => {
