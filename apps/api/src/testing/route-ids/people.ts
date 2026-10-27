@@ -10,6 +10,12 @@ const VACANCY_EXPORT = `${EX} > answers 404 for a vacancy of another branch, an 
 const SA = 'src/modules/people/staff-accounts.test.ts';
 const ACCOUNT = `${SA} > answers 404 for a record of another branch and an unknown one`;
 const ROLE_END = `${SA} > refuses an end from a past date, an ended role and a role of another account`;
+// Task 10.3b, build: a role is reached through the person of the path, checked against the
+// branch first; the Super Admin manages every role of a person linked to the branch, those of
+// the person's further branches included (staff-accounts.test.ts, "gives a role in a further
+// branch of the person"). A role of another person, or an unknown one, is 404.
+const ROLE_OF_PERSON =
+  '.claude/rules/api.md, task 1.3: the role of the person of the path, who is checked against the branch; any branch of that person, for the Super Admin (task 2.3a)';
 const OWN = `${SA} > answers 404 for a record of another branch, an unknown id and a vacancy`;
 const AA = 'src/modules/people/account-access.test.ts';
 const ACCESS = `${AA} > answers 404 for another branch’s record, an unknown id and a vacancy`;
@@ -158,11 +164,11 @@ export const PEOPLE_IDS: RouteIds = {
   ],
   'POST /api/people/staff/:id/roles/:assignmentId/end': [
     staffPath([ACCOUNT]),
-    branch('path:assignmentId', 'assignment', PATH, [ACCOUNT, ROLE_END]),
+    branch('path:assignmentId', 'assignment', ROLE_OF_PERSON, [ACCOUNT, ROLE_END]),
   ],
   'POST /api/people/staff/:id/roles/:assignmentId/subjects': [
     staffPath([APPOINTMENT]),
-    branch('path:assignmentId', 'assignment', PATH, [APPOINTMENT]),
+    branch('path:assignmentId', 'assignment', ROLE_OF_PERSON, [APPOINTMENT]),
     subject('body:subjectIds', [APPOINTMENT]),
   ],
   'GET /api/people/staff/:id/account/access': [staffPath([ACCESS])],

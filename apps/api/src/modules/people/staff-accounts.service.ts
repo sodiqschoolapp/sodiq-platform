@@ -73,6 +73,27 @@ const refused = (code: ErrorCode): ApiException => new ApiException(code, 409);
  * of a role in another branch of the person passes the row filter (finding 3
  * of the plan review). Lock order: the Super Admin count, then the record.
  */
+/**
+ * An unknown subject of the body is not found (.claude/rules/api.md, task 1.5; task 10.3b),
+ * checked first in the transaction, before any lock or other refusal; an archived one stays
+ * `subject_unknown`.
+ */
+async function refuseUnknownSubjects(
+  transaction: Transaction,
+  given: readonly string[],
+): Promise<void> {
+  const subjectIds = [...new Set(given.map((one) => one.toLowerCase()))];
+  if (subjectIds.length === 0) return;
+  const known = await transaction
+    .selectFrom('subjects')
+    .select('id')
+    .where('id', 'in', subjectIds)
+    .execute();
+  if (known.length !== subjectIds.length) {
+    throw notFound();
+  }
+}
+
 @Injectable()
 export class StaffAccounts {
   constructor(
@@ -313,6 +334,9 @@ export class StaffAccounts {
       this.transactions.run(
         await readingBranches(this.transactions, access),
         async (transaction) => {
+          // The 404s before any lock or write (`.claude/rules/api.md`; task 10.3b).
+          await findPerson(transaction, id, branchId, false);
+          await refuseUnknownSubjects(transaction, give.subjectIds ?? []);
           await lockSuperAdmins(transaction);
           const person = await findPerson(transaction, id, branchId, true);
           if (person.accountId === null) {
@@ -351,19 +375,6 @@ export class StaffAccounts {
     /** The moment it begins when the caller knows it (a change of subjects); from the date otherwise. */
     startsAt?: Date,
   ): Promise<string> {
-    // An unknown subject of the body is not found (.claude/rules/api.md, task 1.5;
-    // task 10.3b); an archived one stays `subject_unknown`.
-    const subjectIds = [...new Set((give.subjectIds ?? []).map((one) => one.toLowerCase()))];
-    if (subjectIds.length > 0) {
-      const known = await transaction
-        .selectFrom('subjects')
-        .select('id')
-        .where('id', 'in', subjectIds)
-        .execute();
-      if (known.length !== subjectIds.length) {
-        throw notFound();
-      }
-    }
     await this.refuseLeft(transaction, person.id);
     if (SCHOOL_WIDE_ROLES.includes(give.role) !== (give.branchId === null)) {
       throw new ApiException('validation_failed', 400, undefined, [
@@ -486,6 +497,9 @@ export class StaffAccounts {
       this.transactions.run(
         await readingBranches(this.transactions, access),
         async (transaction) => {
+          // The 404s before any lock or write (`.claude/rules/api.md`; task 10.3b).
+          await findPerson(transaction, id, branchId, false);
+          await refuseUnknownSubjects(transaction, change.subjectIds);
           await lockSuperAdmins(transaction);
           const person = await findPerson(transaction, id, branchId, true);
           if (person.accountId === null) {
@@ -621,6 +635,8 @@ export class StaffAccounts {
       this.transactions.run(
         await readingBranches(this.transactions, access),
         async (transaction) => {
+          // The 404s before any lock or write (`.claude/rules/api.md`; task 10.3b).
+          await findPerson(transaction, id, branchId, false);
           await lockSuperAdmins(transaction);
           const person = await findPerson(transaction, id, branchId, true);
           if (person.accountId === null) {

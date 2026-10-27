@@ -9,6 +9,7 @@ import { sql, type Transaction as KyselyTransaction } from 'kysely';
 import type { DB } from '../../database/types.generated.js';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ClassesKit } from '../../testing/classes-kit.js';
 import {
   dayTemplatesKit,
   START,
@@ -342,6 +343,9 @@ describe('Head Teacher appointments', () => {
       const made = await withAccount();
       const art = await subject('Art');
       const archived = await insertSubject(t.database.migrator, 'Drawing', new Date(START));
+      const bare = await new ClassesKit(t.database.migrator).person(t.north, ['uz'], {
+        noAccount: true,
+      });
       const before = await snapshot();
 
       refusedWith(
@@ -380,6 +384,28 @@ describe('Head Teacher appointments', () => {
           code,
         );
       }
+      // The unknown subject before the refusal of a record with no account and of the date
+      // (task 10.3b, permission review).
+      refusedWith(
+        await give(bare.staffId, {
+          role: 'head_teacher',
+          branchId: t.north,
+          from: TODAY,
+          subjectIds: [UNKNOWN],
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await give(made.id, {
+          role: 'head_teacher',
+          branchId: t.north,
+          from: '2026-10-09',
+          subjectIds: [UNKNOWN],
+        }),
+        404,
+        'not_found',
+      );
       expect(await snapshot()).toEqual(before);
     });
 
@@ -593,11 +619,14 @@ describe('Head Teacher appointments', () => {
         404,
         'not_found',
       );
-      refusedWith(
-        await change(made.id, made.assignmentId, { subjectIds: [UNKNOWN], from: TOMORROW }),
-        404,
-        'not_found',
-      );
+      for (const from of [TOMORROW, '2026-10-09']) {
+        // Also before a refusal of the date (permission review).
+        refusedWith(
+          await change(made.id, made.assignmentId, { subjectIds: [UNKNOWN], from }),
+          404,
+          'not_found',
+        );
+      }
       expect(await snapshot()).toEqual(before);
     });
 

@@ -103,6 +103,8 @@ describe('people routes with an id of another branch', () => {
 
   describe('GET /api/people/students/:id/history', () => {
     it('answers 404 to the History of a student of another branch or an unknown one', async () => {
+      const own = await student(t.north, [relative('Zuhra Olimova', true)]);
+      expect((await t.get(`/api/people/students/${own.id}/history`, t.north)).status).toBe(200);
       for (const id of [southStudent.id, UNKNOWN_ID]) {
         expectNotFound(await t.get(`/api/people/students/${id}/history`, t.north));
       }
@@ -111,20 +113,41 @@ describe('people routes with an id of another branch', () => {
 
   describe('POST /api/people/students/:id/relatives/:relativeId/unlink', () => {
     it('answers 404 to a new main contact of another branch only or an unknown one, changing nothing', async () => {
-      const northStudent = await student(t.north, [
-        relative('Malohat Rashidova', true),
-        relative('Botir Rashidov', false),
-      ]);
-      const main = (await relativesOf(t.north, northStudent.id)).find((one) => one.mainContact);
-      const southRelative = (await relativesOf(t.south, southStudent.id))[0]?.relativeId ?? '';
-      expect(southRelative).not.toBe('');
+      /** A student of the North with a main contact and a second relative, and their ids. */
+      const withTwo = async () => {
+        const made = await student(t.north, [
+          relative('Malohat Rashidova', true),
+          relative('Botir Rashidov', false),
+        ]);
+        const links = await relativesOf(t.north, made.id);
+        const main = links.find((one) => one.mainContact)?.relativeId;
+        const second = links.find((one) => !one.mainContact)?.relativeId;
+        if (main === undefined || second === undefined) {
+          throw new Error('The student has a main contact and a second relative.');
+        }
+        return { id: made.id, main, second };
+      };
+      // The own request passes on a student of the same shape, so the 404 below comes from
+      // the id under test.
+      const own = await withTwo();
+      const passed = await t.post(
+        `/api/people/students/${own.id}/relatives/${own.main}/unlink`,
+        t.north,
+        { newMainContactId: own.second },
+      );
+      expect(passed.status, JSON.stringify(passed.body)).toBe(200);
+      const northStudent = await withTwo();
+      const southRelative = (await relativesOf(t.south, southStudent.id))[0]?.relativeId;
+      if (southRelative === undefined) {
+        throw new Error('The South student has a relative.');
+      }
       await expectRefusedById({
         database: t.database.migrator,
         tables: ['student_relatives', 'relatives', 'relative_accounts', 'students'],
         ids: [southRelative, UNKNOWN_ID],
         send: (id) =>
           t.post(
-            `/api/people/students/${northStudent.id}/relatives/${main?.relativeId ?? ''}/unlink`,
+            `/api/people/students/${northStudent.id}/relatives/${northStudent.main}/unlink`,
             t.north,
             { newMainContactId: id },
           ),

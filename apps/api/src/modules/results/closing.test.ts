@@ -25,7 +25,7 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
-import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
+import { MembersKit, moveStudentBranch, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, QUARTERS, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { binary } from '../../testing/xlsx-kit.js';
@@ -1325,6 +1325,66 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       .where('student_id', '=', b.bek)
       .execute();
     expect(stored).toEqual([]);
+  });
+
+  // Task 10.3b, permission review: a student who moved to another branch during the quarter keeps
+  // the class rows of this branch up to the move (0053, decision 16), is listed under the journal
+  // and decided here; a student never a member of the branch is not found.
+  it('decides a student moved to another branch during the quarter, one by one and for the whole journal, and answers 404 for one never a member of the branch', async () => {
+    const b = await base();
+    const other = await base();
+    const moved = async (first: string) => {
+      const id = await student(b.s.branch, { first, last: 'Ismoilov' }, [
+        { classId: b.s.classId, from: '2026-09-01', ownUntil: '2026-10-22' },
+      ]);
+      // Present twice with no number: undecided (attendance only), as Bek.
+      await saveOn(b.s.branch, b.lessons.l12.date, [
+        { lessonId: b.lessons.l12.id, studentId: id, value: 1 },
+      ]);
+      await saveOn(b.s.branch, b.lessons.l19.date, [
+        { lessonId: b.lessons.l19.id, studentId: id, value: 1 },
+      ]);
+      await moveStudentBranch(
+        t.database.migrator,
+        id,
+        b.s.branch,
+        other.s.branch,
+        '2026-10-22T10:00:00+05:00',
+      );
+      return id;
+    };
+    const one = await moved('Jamshid');
+    const two = await moved('Nodir');
+    await vice(b.s.branch, async ({ put, post }) => {
+      const decided = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: one,
+        decision: 'not_assessed',
+        version: null,
+      });
+      expect(decided.status, JSON.stringify(decided.body)).toBe(200);
+      const whole = await post(
+        b.s.branch,
+        `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
+        { decision: 'not_assessed', students: [two] },
+      );
+      expect(whole.status, JSON.stringify(whole.body)).toBe(200);
+      expect((whole.body as { decided: string[] }).decided).toEqual([two]);
+      // Another branch's student who was never a member of this branch: 404 on both.
+      const single = await put(b.s.branch, `/api/results/closing/${b.q1}/decisions`, {
+        subjectId: b.s.subject,
+        studentId: other.bek,
+        decision: 'not_assessed',
+        version: null,
+      });
+      expect([single.status, codeOf(single)]).toEqual([404, 'not_found']);
+      const many = await post(
+        b.s.branch,
+        `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
+        { decision: 'not_assessed', students: [b.bek, other.bek] },
+      );
+      expect([many.status, codeOf(many)]).toEqual([404, 'not_found']);
+    });
   });
 
   it("answers 404 for another branch's or an unknown quarter, journal, subject and student, changing no row", async () => {
@@ -3568,6 +3628,62 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
       expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
       expect(await rowsOfTables(t.database.migrator, CLOSING_TABLES)).toEqual(tablesBefore);
+    });
+
+    // Task 10.3b, permission review: a student who moved to another branch after the quarter keeps
+    // the class rows and the stored result of this branch, and the apply still takes them.
+    it('applies the recalculation of a student moved to another branch since the quarter', async () => {
+      const b = await closed();
+      const other = await base();
+      const aziz = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .where('student_id', '=', b.aziz)
+        .executeTakeFirstOrThrow();
+      const shown = (aziz.record as { outcome: { result: { shown: string } } }).outcome.result
+        .shown;
+      // A stored outcome off by one, written past the trigger as the apply test writes it.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('quarter_final_results')
+          .set({
+            record: sql`jsonb_set(record, '{outcome,result,shown}', to_jsonb(${String(Number(shown) - 1)}::text))`,
+          })
+          .where('id', '=', aziz.id)
+          .execute();
+        await sql`alter table quarter_final_results enable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+      });
+      await moveStudentBranch(
+        t.database.migrator,
+        b.aziz,
+        b.s.branch,
+        other.s.branch,
+        '2026-11-01T10:00:00+05:00',
+      );
+      await as(
+        await sharedAdmin(0),
+        [],
+        async ({ post }) => {
+          const done = await post(
+            b.s.branch,
+            `${recalculationPath(b.q1)}/apply`,
+            {
+              reason: 'A rounding bug of an earlier release',
+              students: [{ subjectId: b.s.subject, studentId: b.aziz }],
+            },
+            randomUUID(),
+          );
+          expect(done.status, JSON.stringify(done.body)).toBe(200);
+          expect(done.body).toEqual({ version: 2, stored: 1 });
+        },
+        REOPEN,
+      );
     });
 
     // edge/calculation, "A bug is found after results were closed and exported" (decision 10).

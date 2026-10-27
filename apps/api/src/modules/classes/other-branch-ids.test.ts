@@ -8,12 +8,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
-import {
-  expectNotFound,
-  expectRefusedById,
-  rowsOfTables,
-  UNKNOWN_ID,
-} from '../../testing/id-refusal-kit.js';
+import { expectNotFound, expectRefusedById, UNKNOWN_ID } from '../../testing/id-refusal-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 
 // All names are invented. `.claude/rules/api.md`, tasks 1.3 and 1.5: an id of
@@ -39,6 +34,10 @@ describe('class and group routes with an id of another branch', () => {
   let northMember: string;
   let southMember: string;
   let southPupil: StudentDetail;
+  /** A class and Tutor row, and a planned group row, of the North for the own requests that pass. */
+  let spareClass: string;
+  let spareRow: string;
+  let spareMember: string;
   let count = 0;
 
   /** The tables a Tutor change writes, its follow and its notices included (task 3.6c-2, 5.5c-3b). */
@@ -96,7 +95,10 @@ describe('class and group routes with an id of another branch', () => {
       from: '2026-10-12',
     });
     expect(response.status, JSON.stringify(response.body)).toBe(201);
-    return groupMembersSchema.parse(response.body).members[0]?.id ?? '';
+    const id = groupMembersSchema.parse(response.body).members[0]?.id ?? '';
+    // A real row, so that a path never holds an empty id.
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    return id;
   }
 
   beforeAll(async () => {
@@ -119,10 +121,17 @@ describe('class and group routes with an id of another branch', () => {
     });
     const northPupil = await pupil(t.north, northClass);
     southPupil = await pupil(t.south, southClass);
+    // Made before the groups, so that a placement puts them in one.
+    const sparePupil = await pupil(t.north, northClass);
     northGroup = await classes.group(t.north, year, maths, [northClass]);
     southGroup = await classes.group(t.south, southYear, maths, [southClass]);
     northMember = await placeInGroup(t.north, northGroup, northPupil.id);
     southMember = await placeInGroup(t.south, southGroup, southPupil.id);
+    spareClass = await classes.schoolClass(t.north, year, { grade: 8 });
+    spareRow = await classes.tutorRow(t.north, spareClass, northAssignment, {
+      from: new Date('2026-09-01T00:00:00+05:00'),
+    });
+    spareMember = await placeInGroup(t.north, northGroup, sparePupil.id);
     // A student of the South class left unplaced for the board and the run.
     await pupil(t.south, southClass);
   });
@@ -167,6 +176,8 @@ describe('class and group routes with an id of another branch', () => {
       t.post(`/api/classes/${classId}/tutors/${tutorId}/end`, t.north, { from: '2026-10-11' });
 
     it('answers 404 to the end of a Tutor for another branch’s or an unknown class, changing nothing', async () => {
+      // The own request passes: the 404 below comes from the id under test.
+      expect((await end(spareClass, spareRow)).status).toBe(200);
       await expectRefusedById({
         database: t.database.migrator,
         tables: TUTOR_TABLES,
@@ -187,6 +198,7 @@ describe('class and group routes with an id of another branch', () => {
 
   describe('GET /api/groups/:id/members', () => {
     it('answers 404 to the Students tab of another branch’s or an unknown group', async () => {
+      expect((await t.get(`/api/groups/${northGroup}/members`, t.north)).status).toBe(200);
       for (const id of [southGroup, UNKNOWN_ID]) {
         expectNotFound(await t.get(`/api/groups/${id}/members`, t.north));
       }
@@ -195,6 +207,11 @@ describe('class and group routes with an id of another branch', () => {
 
   describe('POST /api/groups/:id/members/:memberId/withdraw and reviewed', () => {
     it('answers 404 to withdraw for another branch’s or an unknown group, changing nothing', async () => {
+      const own = await t.post(
+        `/api/groups/${northGroup}/members/${spareMember}/withdraw`,
+        t.north,
+      );
+      expect(own.status, JSON.stringify(own.body)).toBe(200);
       await expectRefusedById({
         database: t.database.migrator,
         tables: MEMBER_TABLES,
@@ -213,6 +230,11 @@ describe('class and group routes with an id of another branch', () => {
     });
 
     it('answers 404 to reviewed for another branch’s or an unknown group, changing nothing', async () => {
+      const own = await t.post(
+        `/api/groups/${northGroup}/members/${northMember}/reviewed`,
+        t.north,
+      );
+      expect(own.status, JSON.stringify(own.body)).toBe(200);
       await expectRefusedById({
         database: t.database.migrator,
         tables: MEMBER_TABLES,
@@ -271,21 +293,47 @@ describe('class and group routes with an id of another branch', () => {
             from: '2026-10-12',
           }),
       });
-      const before = await rowsOfTables(t.database.migrator, MEMBER_TABLES);
+      /** The group rows of the South, which a run in the North must leave as they are. */
+      const southRows = () =>
+        t.database.migrator
+          .selectFrom('group_memberships')
+          .selectAll()
+          .where('branch_id', '=', t.south)
+          .orderBy('id')
+          .execute();
+      const before = await southRows();
       const response = await t.post('/api/groups/placement/automatic', t.north, {
         subjectId: maths,
         grades: [7],
         from: '2026-10-12',
       });
       expect(response.status, JSON.stringify(response.body)).toBe(201);
-      expect(automaticPlacementResultSchema.parse(response.body).placed).toEqual([]);
-      expect(await rowsOfTables(t.database.migrator, MEMBER_TABLES)).toEqual(before);
-      expect(southPupil.id).not.toBe('');
+      // Only students of the North into the group of the North (the one withdrawn by the
+      // test of withdraw, when it ran first); no student or group of the South.
+      const placed = automaticPlacementResultSchema.parse(response.body).placed;
+      const southern = await t.database.migrator
+        .selectFrom('students')
+        .select('id')
+        .where('branch_id', '=', t.south)
+        .execute();
+      for (const one of placed) {
+        expect(one.groupId).toBe(northGroup);
+        expect(southern.map((row) => row.id)).not.toContain(one.studentId);
+      }
+      expect(await southRows()).toEqual(before);
     });
   });
 
   describe('POST /api/groups/export', () => {
     it('answers 404 for another branch’s or an unknown group, logging nothing', async () => {
+      const own = await t.post('/api/groups/export', t.north, {
+        ids: [northGroup],
+        columns: ['name'],
+        selection: 'ticked',
+        search: '',
+        filters: {},
+      });
+      expect(own.status).toBe(200);
       await expectRefusedById({
         database: t.database.migrator,
         tables: [],
