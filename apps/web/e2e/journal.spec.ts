@@ -80,6 +80,12 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await page.keyboard.press('Enter');
   await expect(cell).toContainText('15');
   await expect(cell).toContainText('75%');
+  // Enter saved the number and moved down to the next student in the same column (owner,
+  // 27 October 2026).
+  const focused = page.locator('.ag-cell-focus');
+  await expect(focused).toHaveAttribute('col-id', column ?? '');
+  const below = await focused.locator('xpath=ancestor::*[@row-id][1]').getAttribute('row-id');
+  expect(below).not.toBe(oktamov);
   // The lesson has no plan item ("No plan"): a classwork is added by hand.
   const before = await page.getByRole('button', { name: /^Work: / }).count();
   // The button under the A of the same lesson; the pinned columns may cover its place on screen,

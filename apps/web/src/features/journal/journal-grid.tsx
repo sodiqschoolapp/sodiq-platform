@@ -1287,6 +1287,9 @@ export function JournalGridView({
         groupHeaderHeight={GROUP_HEADER_HEIGHT}
         singleClickEdit={false}
         stopEditingWhenCellsLoseFocus
+        // Enter after a typed number saves it and moves down to the next student, as a digit
+        // does in an A cell (owner, 27 October 2026; `07`, Keyboard).
+        enterNavigatesVerticallyAfterEdit
         modules={[AllCommunityModule]}
         theme={THEME}
         rowData={rows}
