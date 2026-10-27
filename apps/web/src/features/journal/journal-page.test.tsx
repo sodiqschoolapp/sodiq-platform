@@ -602,6 +602,37 @@ describe('a journal', () => {
     }
   });
 
+  it('brings the grid into view once when the journal opens (owner, 27 October 2026)', async () => {
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    try {
+      open(GRID);
+      await waitFor(() => {
+        expect(document.querySelector('[data-journal-grid]')).not.toBeNull();
+      });
+      await waitFor(() => {
+        expect(scrolled.some((one) => one.querySelector('[data-journal-grid]') !== null)).toBe(
+          true,
+        );
+      });
+      const panelScrolls = () =>
+        scrolled.filter((one) => one.querySelector('[data-journal-grid]') !== null).length;
+      expect(panelScrolls()).toBe(1);
+      // Full screen and back is the same journal: the page is not moved again.
+      fireEvent.click(screen.getByRole('button', { name: en.journal.page.fullScreen }));
+      fireEvent.click(await screen.findByRole('button', { name: en.journal.page.exitFullScreen }));
+      expect(panelScrolls()).toBe(1);
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
   it('shows the outline while the journal loads', async () => {
     open('pending');
     await screen.findByRole('heading', { name: en.journal.sheet });

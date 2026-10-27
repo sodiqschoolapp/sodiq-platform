@@ -11,7 +11,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field, SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
@@ -246,6 +246,19 @@ function JournalLoaded({
   const folded =
     filter === 'members' ? [] : data.students.filter((one) => one.folded && passes(one));
   const lessonMode = search.mode === 'lesson' || narrow;
+  // Opening a journal brings its grid into view, below the selectors and the panels (owner,
+  // 27 October 2026); once per journal, so a change of month or filter does not move the page.
+  const gridPanel = useRef<HTMLDivElement>(null);
+  const scrolledTo = useRef<string | null>(null);
+  const hasGrid = !lessonMode && data.lessons.length > 0;
+  useEffect(() => {
+    if (!hasGrid || scrolledTo.current === data.journal.id) return;
+    scrolledTo.current = data.journal.id;
+    const panel = gridPanel.current;
+    if (panel !== null && typeof panel.scrollIntoView === 'function') {
+      panel.scrollIntoView({ block: 'start' });
+    }
+  }, [hasGrid, data.journal.id]);
   const scrollDate = search.date ?? data.today;
   const nearest = lessonNearest(data.lessons, scrollDate);
 
@@ -504,7 +517,12 @@ function JournalLoaded({
           />
         ) : (
           <div
-            className={full ? 'fixed inset-0 z-40 flex flex-col gap-3 bg-background p-4' : PANEL}
+            ref={gridPanel}
+            className={
+              full
+                ? 'fixed inset-0 z-40 flex flex-col gap-3 bg-background p-4'
+                : `${PANEL} scroll-mt-4`
+            }
             data-journal-full-screen={full ? 'true' : undefined}
           >
             {full && (
