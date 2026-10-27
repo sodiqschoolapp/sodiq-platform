@@ -1,5 +1,6 @@
 import { ACTIONS, ROLES, type PermissionTable } from '@sodiq/shared';
 import type { ExpectedAccess } from './route-harness.js';
+import type { IdKind, RouteIds } from './route-id-check.js';
 import type { RouteScopes } from './route-scope-check.js';
 
 /** The markers between which `docs/security/permission-checklist.md` is written from the code. */
@@ -12,6 +13,7 @@ export interface ChecklistSources {
   stepRoutes: Readonly<Record<string, readonly string[]>>;
   access: Readonly<Record<string, ExpectedAccess>>;
   scopes: RouteScopes;
+  ids: RouteIds;
 }
 
 function cell(text: string): string {
@@ -104,6 +106,28 @@ function limitsOf(sources: ChecklistSources): string[] {
   return lines;
 }
 
+function idsOf(sources: ChecklistSources): string[] {
+  const lines = ['## Records of another branch by id', ''];
+  lines.push(
+    "For every id a route takes, in its path, its query or its body, the record it names and the tests that send another branch's id and an unknown one and see 404, with the rows of both branches and the audit log unchanged, or for a query filter none of the other branch's matching rows answered (`ROUTE_IDS`, `apps/api/src/testing/route-id-list.ts`; held complete by `route-ids.test.ts`, which reads the ids from the OpenAPI document). `school`: a record of the whole school; `own`: a record of the signed-in account, refused for another account; `none`: no record. A route with a request key also names the tests that repeat a used key with another branch's id.",
+    '',
+    '| Route | Id | Record | Kind | Proved by |',
+    '| --- | --- | --- | --- | --- |',
+  );
+  for (const [route, idLines] of Object.entries(sources.ids).sort()) {
+    for (const line of idLines) {
+      const tests = [...line.refusedIn, ...(line.repeatIn ?? []).map((test) => `repeat: ${test}`)]
+        .map((test) => `\`${cell(test)}\``)
+        .join('<br>');
+      lines.push(
+        `| \`${route}\` | \`${cell(line.id)}\` | ${cell(line.record)} | ${line.kind} | ${tests === '' ? cell(line.rule) : tests} |`,
+      );
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
 function countsOf(sources: ChecklistSources): string[] {
   const routes = Object.values(sources.access);
   const withRole = routes.filter((listed) => typeof listed !== 'string').length;
@@ -113,9 +137,16 @@ function countsOf(sources: ChecklistSources): string[] {
     `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.`,
     `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in').length)}. With a permission of the table: ${String(withRole)}.`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
+    `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,
     `- Areas of the permission table: ${String(Object.keys(sources.table).length)}.`,
     '',
   ];
+}
+
+function idCount(ids: RouteIds, kind?: IdKind): number {
+  return Object.values(ids)
+    .flat()
+    .filter((line) => kind === undefined || line.kind === kind).length;
 }
 
 /** The part of the checklist that is read from the code, between the two markers. */
@@ -126,6 +157,7 @@ export function renderGenerated(sources: ChecklistSources): string {
     ...countsOf(sources),
     ...routesWithoutRole(sources),
     ...limitsOf(sources),
+    ...idsOf(sources),
     ...tableOf(sources.table),
     GENERATED_END,
   ].join('\n');

@@ -10,6 +10,7 @@ import {
   withGenerated,
 } from '../../testing/permission-checklist.js';
 import { PUBLIC_ROUTES, ROUTE_ACCESS, STEP_ROUTES } from '../../testing/route-access-list.js';
+import { ROUTE_IDS } from '../../testing/route-id-list.js';
 import { ROUTE_SCOPE } from '../../testing/route-scope-list.js';
 
 const CHECKLIST = path.join(repositoryRoot, 'docs/security/permission-checklist.md');
@@ -28,6 +29,7 @@ describe('the permission checklist', () => {
     stepRoutes: STEP_ROUTES,
     access: ROUTE_ACCESS,
     scopes: ROUTE_SCOPE,
+    ids: ROUTE_IDS,
   });
 
   it('shows the permission table and the route lists as the code has them', () => {
@@ -40,11 +42,11 @@ describe('the permission checklist', () => {
     expect(document).toBe(updated);
   });
 
-  it('names every area of the table and every route with a limit', () => {
+  it('names every area of the table, every route with a limit and every route with an id', () => {
     for (const area of Object.keys(PERMISSIONS)) {
       expect(generated).toContain(`### \`${area}\``);
     }
-    for (const route of Object.keys(ROUTE_SCOPE)) {
+    for (const route of [...Object.keys(ROUTE_SCOPE), ...Object.keys(ROUTE_IDS)]) {
       expect(generated).toContain(`| \`${route}\` |`);
     }
   });
