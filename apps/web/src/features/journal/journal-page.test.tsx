@@ -76,6 +76,7 @@ const student = (
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [cell(1, [{ score: 12, percent: 40 }], 60), cell(2, [], null), cell(1)],
@@ -631,6 +632,73 @@ describe('a journal', () => {
     } finally {
       Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     }
+  });
+
+  it('shows each student’s photo, larger when pressed, and the initials without one (owner, 28 October 2026)', async () => {
+    const PIXEL = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==',
+      ),
+      (char) => char.charCodeAt(0),
+    );
+    const [first, second] = GRID.students;
+    if (first === undefined || second === undefined) throw new Error('two students');
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({ language: 'en', assignments: [{ role: 'principal', branchId: NORTH.id }] }),
+        ),
+      [GRID_ROUTE]: () =>
+        json({
+          ...GRID,
+          students: GRID.students.map((one) =>
+            one.id === first.id ? { ...one, photoId: uid(950) } : one,
+          ),
+        }),
+      'GET /api/journal/journals': () => json(LIST),
+      [`GET /api/people/students/${first.id}/photo`]: () =>
+        new Response(new Blob([PIXEL], { type: 'image/png' }), {
+          status: 200,
+          headers: { 'Content-Type': 'image/png' },
+        }),
+    });
+    renderApp(`/journal/${JOURNAL}`, 'en');
+    const photoOf = (id: string) =>
+      document.querySelector(`[row-id="${id}"] [col-id="photo"] [data-student-photo]`);
+    await waitFor(() => {
+      expect(photoOf(first.id)?.querySelector('img')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    // No photo: the initials, nothing to open, and no call for it.
+    expect(photoOf(second.id)?.querySelector('img')).toBeNull();
+    expect(photoOf(second.id)?.textContent).toBe(
+      `${second.firstName.slice(0, 1)}${second.lastName.slice(0, 1)}`.toUpperCase(),
+    );
+    expect(calls.filter((call) => call.route.endsWith('/photo')).map((call) => call.route)).toEqual(
+      [`GET /api/people/students/${first.id}/photo`],
+    );
+    // Pressed: the same photo, larger, in a dialog named by the student.
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: en.journal.grid.photoOpen.replace('{{name}}', `${first.lastName} ${first.firstName}`),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: `${first.lastName} ${first.firstName}`,
+    });
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-student-photo-large]')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    // Shown by default, and in the column chooser like the other columns.
+    fireEvent.click(screen.getByRole('button', { name: en.journal.entry.close }));
+    fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+    const photoChoice = await screen.findByRole('menuitemcheckbox', {
+      name: en.journal.page.columnNames.photo,
+    });
+    expect(photoChoice.getAttribute('aria-checked')).toBe('true');
   });
 
   it('shows the outline while the journal loads', async () => {

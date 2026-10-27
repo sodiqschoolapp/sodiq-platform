@@ -6305,6 +6305,7 @@ export const en = {
       fullScreen: 'Full screen',
       exitFullScreen: 'Exit full screen',
       columnNames: {
+        photo: 'Photo',
         uid: 'UID',
         attendance: 'Attendance',
         classwork: 'Classwork average',
@@ -6351,6 +6352,8 @@ export const en = {
       groupAverage: 'Group average',
       number: 'No.',
       student: 'Student',
+      photo: 'Photo',
+      photoOpen: 'Open the photo of {{name}}',
       uid: 'UID',
       attendanceAverage: 'Att.',
       classworkAverage: 'CW avg',

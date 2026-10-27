@@ -457,6 +457,8 @@ export interface GridStudentRow {
   readonly lastName: string;
   readonly paternalName: string | null;
   readonly uid: string;
+  /** The current photo; `null` for none, and for a former member of another branch. */
+  readonly photoId: string | null;
 }
 
 export async function studentsOf(
@@ -466,7 +468,7 @@ export async function studentsOf(
   if (ids.length === 0) return [];
   const rows = await transaction
     .selectFrom('students')
-    .select(['id', 'first_name', 'last_name', 'paternal_name', 'uid'])
+    .select(['id', 'first_name', 'last_name', 'paternal_name', 'uid', 'photo_id'])
     .where('id', 'in', [...ids])
     .execute();
   return rows.map((row) => ({
@@ -475,6 +477,7 @@ export async function studentsOf(
     lastName: row.last_name,
     paternalName: row.paternal_name,
     uid: row.uid,
+    photoId: row.photo_id,
   }));
 }
 
@@ -661,5 +664,7 @@ export async function formerMemberNames(
       lastName: row.last_name,
       paternalName: row.paternal_name,
       uid: row.uid,
+      // Names and UID only (the student belongs to another branch now).
+      photoId: null,
     }));
 }

@@ -160628,6 +160628,8 @@ export interface operations {
                             lastName: string;
                             paternalName: string | null;
                             uid: string;
+                            /** Format: uuid */
+                            photoId: string | null;
                             folded: boolean;
                             exemptions: {
                                 /** @enum {string} */

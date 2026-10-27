@@ -35,6 +35,7 @@ import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
 import { LessonCardDialog } from './lesson-card';
+import { StudentPhotoCell } from './student-photo';
 import { workKey, type WorksEntry } from './works-entry';
 
 /** Task 8.8: the characters of a topic the header shows; the tooltip holds it whole. */
@@ -354,6 +355,7 @@ interface GridProps {
 
 /** The columns a person may hide in the journal: the UID and the figures (owner, 27 October 2026). */
 export const HIDEABLE_COLUMNS = [
+  'photo',
   'uid',
   'attendance',
   'classwork',
@@ -366,7 +368,7 @@ export type HideableColumn = (typeof HIDEABLE_COLUMNS)[number];
 
 /** The hideable columns this grid draws, in their order: the choices of the column chooser. */
 export function hideableColumnsOf(grid: Grid, month: string | null): HideableColumn[] {
-  const shown: HideableColumn[] = ['uid'];
+  const shown: HideableColumn[] = ['photo', 'uid'];
   if (grid.shape === 'lessons') return shown;
   shown.push('attendance');
   if (grid.journal.attendanceOnly || grid.shape === 'attendance') return shown;
@@ -520,6 +522,17 @@ export function JournalGridView({
         width: 44,
         valueGetter: (params) =>
           params.data?.kind === 'student' ? params.data.student.number : null,
+      },
+      // The owner, 28 October 2026: the students' photos, shown unless the reader hides them.
+      {
+        colId: 'photo',
+        headerName: t('journal.grid.photo'),
+        pinned: 'left',
+        width: 56,
+        cellRenderer: (params: ICellRendererParams<GridRow>) =>
+          params.data?.kind === 'student' ? (
+            <StudentPhotoCell student={params.data.student} />
+          ) : null,
       },
       {
         colId: 'name',

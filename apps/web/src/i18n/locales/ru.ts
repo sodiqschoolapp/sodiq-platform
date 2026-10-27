@@ -6666,6 +6666,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       fullScreen: 'Во весь экран',
       exitFullScreen: 'Выйти из полноэкранного режима',
       columnNames: {
+        photo: 'Фото',
         uid: 'UID',
         attendance: 'Посещаемость',
         classwork: 'Среднее за классную работу',
@@ -6714,6 +6715,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       groupAverage: 'Среднее по группе',
       number: '№',
       student: 'Ученик',
+      photo: 'Фото',
+      photoOpen: 'Открыть фото: {{name}}',
       uid: 'UID',
       attendanceAverage: 'Пос.',
       classworkAverage: 'КР ср.',

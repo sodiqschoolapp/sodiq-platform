@@ -53,6 +53,7 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [

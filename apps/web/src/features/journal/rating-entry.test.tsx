@@ -63,6 +63,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [

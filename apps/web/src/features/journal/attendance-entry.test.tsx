@@ -45,6 +45,7 @@ const student = (n: number, lastName: string, rest: Partial<JournalStudent> = {}
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [cell(null), cell(0)],
