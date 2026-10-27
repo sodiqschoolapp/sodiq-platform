@@ -39,8 +39,15 @@ env:
   DATABASE_MIGRATION_URL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
   SECOND_STEP_KEY: c29kaXEtbG9jYWwtc2Vjb25kLXN0ZXAta2V5LTAwMDE=
   TURBO_TELEMETRY_DISABLED: 1
-  # PostgreSQL 18's own client tools, for the dump and the load.
-  PG18: docker run --rm --network host -v ${{ github.workspace }}:/work -w /work postgres:18
+  # PostgreSQL 18's own client tools, for the dump and the load. Neon's
+  # address asks psql to verify the server's certificate; the image has no
+  # store of root certificates, so it reads the runner's.
+  PG18: >-
+    docker run --rm --network host
+    -v ${{ github.workspace }}:/work -w /work
+    -v /etc/ssl/certs:/etc/ssl/certs:ro
+    -e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
+    postgres:18
 
 jobs:
   demo:

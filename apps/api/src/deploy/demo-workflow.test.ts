@@ -63,4 +63,10 @@ describe('the demo data workflow', () => {
     expect(clear).not.toMatch(/drop (extension|owned|database|role)/i);
     expect(workflow).toContain('--exclude-extension=btree_gist');
   });
+
+  it('gives the PostgreSQL tools the root certificates, as Neon verifies its server', () => {
+    // The first run failed with "root certificate file /root/.postgresql/root.crt does not exist".
+    expect(workflow).toContain('-v /etc/ssl/certs:/etc/ssl/certs:ro');
+    expect(workflow).toContain('-e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt');
+  });
 });
