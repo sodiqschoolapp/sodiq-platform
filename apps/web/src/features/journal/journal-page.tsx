@@ -26,12 +26,7 @@ import { monthsText, schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
-import {
-  FullscreenExitIcon,
-  FullscreenIcon,
-  UndoIcon,
-  ViewColumnIcon,
-} from '@/components/icons';
+import { FullscreenExitIcon, FullscreenIcon, UndoIcon, ViewColumnIcon } from '@/components/icons';
 import { readHiddenColumns, storeHiddenColumns } from '@/components/list/list-state';
 import {
   DropdownMenu,
