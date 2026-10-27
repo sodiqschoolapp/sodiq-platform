@@ -71,6 +71,8 @@ pnpm api:client       regenerate the web API client from OpenAPI
 pnpm security:checklist  write the generated tables of docs/security/permission-checklist.md again
 pnpm auth:first-account -- --first-name <name> --last-name <name>
                       create the first Super Admin, once (prints login and first password)
+DEMO_PASSWORD=<password> pnpm demo:seed
+                      fill the local sodiq_dev with the demo school (docs/deploy.md, Demo data)
 ```
 
 ## How to work on a task
