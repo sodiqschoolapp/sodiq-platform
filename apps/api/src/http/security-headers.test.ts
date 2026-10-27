@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -38,6 +38,8 @@ describe('the security headers', () => {
   beforeAll(async () => {
     directory = await mkdtemp(path.join(tmpdir(), 'sodiq-security-headers-'));
     await writeFile(path.join(directory, 'index.html'), INDEX);
+    await mkdir(path.join(directory, 'assets'));
+    await writeFile(path.join(directory, 'assets', 'index-a1b2c3d4.js'), 'console.log(1);');
     app = await createTestApp({ config: { webFiles: directory } });
     server = app.getHttpServer() as Server;
   });
@@ -81,10 +83,35 @@ describe('the security headers', () => {
     }
   });
 
+  it('are on a built file of the web app', async () => {
+    const response = await request(server).get('/assets/index-a1b2c3d4.js');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expectFixedHeaders(response.headers);
+  });
+
   it('leave out Strict-Transport-Security without the load balancer, so http://localhost works', async () => {
     const response = await request(server).get('/api/health');
 
     expect(response.headers['strict-transport-security']).toBeUndefined();
+  });
+
+  // Written out, so that a wider policy fails here and is decided, not slipped in.
+  it('is the policy of the plan, directive by directive', () => {
+    expect(CONTENT_SECURITY_POLICY.split('; ')).toEqual([
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.sentry.io",
+      "frame-src 'self' blob:",
+      "object-src 'self' blob:",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ]);
   });
 
   it('let no other site show a page in a frame, and run scripts of the own origin only', () => {

@@ -72,7 +72,7 @@ describe('the check of the limits', () => {
     expect(scopeProblems(access, scopes, read)).toEqual([]);
   });
 
-  it('names a role left out, a test that does not exist, a file that does not name the route and a stray line', () => {
+  it('names a role left out, a test that does not exist, a file that does not name the route, a line for a refused role, a branch line with tests and a stray line', () => {
     const scopes: RouteScopes = {
       'GET /api/sample/journals/:id/cells': [
         {
@@ -87,7 +87,15 @@ describe('the check of the limits', () => {
         },
         { roles: ['principal'], scope: 'subjects', rule: 'none', refusedIn: [] },
       ],
-      'GET /api/sample/branch': [{ roles: ['tutor'], scope: 'class', rule: '', refusedIn: [] }],
+      'GET /api/sample/branch': [
+        { roles: ['tutor'], scope: 'class', rule: '', refusedIn: [] },
+        {
+          roles: ['teacher'],
+          scope: 'branch',
+          rule: 'x',
+          refusedIn: ['src/sample/cells.test.ts > the cells'],
+        },
+      ],
       'GET /api/sample/own': [{ roles: ['tutor'], scope: 'branch', rule: 'x', refusedIn: [] }],
       'GET /api/sample/removed': [],
     };
@@ -95,12 +103,14 @@ describe('the check of the limits', () => {
     expect(scopeProblems(access, scopes, read)).toEqual([
       'GET /api/sample/journals/:id/cells: 0 scope lines for head_teacher, it needs exactly one',
       'GET /api/sample/journals/:id/cells: principal is a whole-branch role; its limit is "narrower"',
+      'GET /api/sample/branch: a line for teacher, whom the route refuses',
       'GET /api/sample/journals/:id/cells: src/sample/cells.test.ts has no test "is refused to nobody"',
       'GET /api/sample/journals/:id/cells: src/sample/other.test.ts never names sample, journals, cells of the route',
       'GET /api/sample/journals/:id/cells: src/sample/gone.test.ts does not exist',
       'GET /api/sample/journals/:id/cells: no test proves the subjects limit of principal',
       'GET /api/sample/branch: a class line without the rule it rests on',
       'GET /api/sample/branch: no test proves the class limit of tutor',
+      'GET /api/sample/branch: a branch line names tests, but there is nothing to refuse',
       'GET /api/sample/own: in the scope list, but the route is any_signed_in',
       'GET /api/sample/removed: in the scope list, but no such route is listed',
     ]);

@@ -45,6 +45,14 @@ export const NARROWER_SCOPES: RouteScopes = {
   ],
   'GET /api/people/students/:id': [
     {
+      roles: ['head_teacher', 'senior_head_teacher'],
+      scope: 'narrower',
+      rule: 'edge/people: Basic for all staff of the branch; the diagnostic score for the Head Teachers; Contact, Identity and Financial not theirs',
+      refusedIn: [
+        `${STUDENTS} > answers Basic and the diagnostic score to a Head Teacher and a Senior Head Teacher`,
+      ],
+    },
+    {
       roles: ['principal'],
       scope: 'narrower',
       rule: 'edge/people, Personal data: Identity "the Principal sees them hidden, with a logged show"',
