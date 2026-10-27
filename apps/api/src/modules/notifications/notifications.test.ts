@@ -9,6 +9,7 @@ import { JobRunner } from '../../jobs/job-runner.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { expectRefusedById, UNKNOWN_ID } from '../../testing/id-refusal-kit.js';
 import { storedJobs } from '../../testing/sample-job.js';
 import {
   cookieOf,
@@ -391,6 +392,8 @@ describe('notifications', () => {
       const mine = await kit.fullSession('Malika', 'Qodirova');
       const other = await kit.fullSession('Nodir', 'Qodirov');
       const [theirs] = await send([other.account.id]);
+      // A missing id would be refused by the path, never by the account (task 10.3b).
+      expect(theirs).toMatch(/^[0-9a-f-]{36}$/);
 
       const response = await kit.post(`/api/notifications/${theirs ?? ''}/read`, mine.cookie);
 
@@ -399,6 +402,14 @@ describe('notifications', () => {
       expect((await rowsOf(other.account.id))[0]?.read_at).toBeNull();
       const missing = await kit.post(`/api/notifications/${randomUUID()}/read`, mine.cookie);
       expect(missing.status).toBe(404);
+      // Task 10.3b: every notification of both accounts and the audit log as they were.
+      await send([mine.account.id]);
+      await expectRefusedById({
+        database: database.migrator,
+        tables: ['notifications'],
+        ids: [theirs ?? '', UNKNOWN_ID],
+        send: (id) => kit.post(`/api/notifications/${id}/read`, mine.cookie),
+      });
     });
 
     it('all at once for the own account and none of another, told once without ids', async () => {

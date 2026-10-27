@@ -55,6 +55,8 @@ describe('classwork and homework', () => {
     post: (path: string, body?: object) => Promise<Response>;
     put: (path: string, body: object) => Promise<Response>;
     del: (path: string) => Promise<Response>;
+    /** A post with the request key given (task 10.3b: a repeat of a used key). */
+    keyed: (path: string, body: object, key: string) => Promise<Response>;
   }
 
   const given = new Set<string>();
@@ -94,6 +96,7 @@ describe('classwork and homework', () => {
           at('post', path).set(REQUEST_KEY_HEADER, randomUUID()).send(body),
         put: (path, body) => at('put', path).send(body),
         del: (path) => at('delete', path),
+        keyed: (path, body, key) => at('post', path).set(REQUEST_KEY_HEADER, key).send(body),
       });
     } finally {
       t.clock.set(START);
@@ -283,6 +286,18 @@ describe('classwork and homework', () => {
           .executeTakeFirstOrThrow()
       ).count,
     );
+
+  /** Task 10.3b: every audit entry but those of the roles a test gives. */
+  const entriesBesidesRoles = async () =>
+    (
+      await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '<>', 'assignment.given')
+        .execute()
+    )
+      .map((row) => row.id)
+      .sort();
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
@@ -1012,9 +1027,28 @@ describe('classwork and homework', () => {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
-      const auditBefore = await journalEntries();
-      const before = [await rowsOf(s.branch), await rowsOf(elsewhere.branch)];
       const column = planned(item.classworks[0] ?? '', s.first);
+      // Task 10.3b: a save of numbers whose key is repeated below with the ids of another branch.
+      const key = randomUUID();
+      let saved: object = {};
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const total = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+          column,
+          total: 5,
+          version: null,
+        });
+        expect(total.status, JSON.stringify(total.body)).toBe(200);
+        const work = workSavedSchema.parse(total.body).id;
+        saved = {
+          saves: [{ studentId: s.ahmedov, column: { workId: work }, score: 1, version: null }],
+        };
+        const first = await calls.keyed(`/api/journal/lessons/${s.first}/scores`, saved, key);
+        expect(first.status, JSON.stringify(first.body)).toBe(200);
+      });
+      const auditBefore = await journalEntries();
+      // Every entry but the roles the test gives below.
+      const logged = await entriesBesidesRoles();
+      const before = [await rowsOf(s.branch), await rowsOf(elsewhere.branch)];
       const bodies: [string, string, object][] = [
         ['put', 'works/total', { column, total: 5, version: null }],
         ['put', 'works/not-held', { column, notHeld: true, version: null }],
@@ -1092,12 +1126,38 @@ describe('classwork and homework', () => {
         expect(
           (await calls.del(`/api/journal/lessons/${s.second}/works/${randomUUID()}`)).status,
         ).toBe(404);
-        const stranger = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
-          saves: [{ studentId: elsewhere.ahmedov, column, score: 1, version: null }],
-        });
-        expect(stranger.status).toBe(404);
+        for (const studentId of [elsewhere.ahmedov, randomUUID()]) {
+          const stranger = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [{ studentId, column, score: 1, version: null }],
+          });
+          expect(stranger.status).toBe(404);
+        }
+        // Task 10.3b: the used key repeated with each id of another branch or unknown: 404,
+        // never the stored answer.
+        for (const lesson of [elsewhere.first, randomUUID()]) {
+          expect(
+            (await calls.keyed(`/api/journal/lessons/${lesson}/scores`, saved, key)).status,
+          ).toBe(404);
+        }
+        for (const studentId of [elsewhere.ahmedov, randomUUID()]) {
+          const again = await calls.keyed(
+            `/api/journal/lessons/${s.first}/scores`,
+            { saves: [{ studentId, column, score: 1, version: null }] },
+            key,
+          );
+          expect(again.status).toBe(404);
+        }
+        for (const other of columns) {
+          const again = await calls.keyed(
+            `/api/journal/lessons/${s.first}/scores`,
+            { saves: [{ studentId: s.ahmedov, column: other, score: 1, version: null }] },
+            key,
+          );
+          expect(again.status, JSON.stringify(other)).toBe(404);
+        }
       });
       expect(await journalEntries()).toBe(auditBefore);
+      expect(await entriesBesidesRoles()).toEqual(logged);
       expect([await rowsOf(s.branch), await rowsOf(elsewhere.branch)]).toEqual(before);
     });
 

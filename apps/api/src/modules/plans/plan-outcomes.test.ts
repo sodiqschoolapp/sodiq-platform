@@ -1025,6 +1025,54 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
     expect(await rowsOf([branch, y.x.s.branch])).toEqual(before);
   });
 
+  // Task 10.3b: the place of an item that is in the tray, so that each id is what is refused.
+  it("answers 404 for another branch's or an unknown journal, item, quarter and lesson of the place of a carried item, changing nothing in either branch", async () => {
+    const { x, last } = await notCoveredScene();
+    const y = await notCoveredScene();
+    ok(await carry(x, last.id));
+    ok(await carry(y.x, y.last.id));
+    const next = await planOf(x, x.q3);
+    const theirs = await planOf(y.x, y.x.q3);
+    const tray = next.carriedIn[0];
+    const row = next.rows[0];
+    const theirTray = theirs.carriedIn[0];
+    const theirRow = theirs.rows[0];
+    if (
+      tray === undefined ||
+      row === undefined ||
+      theirTray === undefined ||
+      theirRow === undefined
+    ) {
+      throw new Error('A tray item and a row in each branch.');
+    }
+    const body = { quarterId: x.q3, position: 1, lessonId: row.lessonId };
+    const place = (journal: string, item: string, sent: object) =>
+      post(
+        `/api/plans/journals/${journal}/carried/${item}/place`,
+        x.s.branch,
+        x.owner.cookie,
+        sent,
+      );
+    const before = await rowsOf([x.s.branch, y.x.s.branch]);
+    await at(START, async () => {
+      for (const sent of [
+        () => place(y.x.journal, tray.id, body),
+        () => place(UNKNOWN, tray.id, body),
+        () => place(x.journal, theirTray.id, body),
+        () => place(x.journal, UNKNOWN, body),
+        () => place(x.journal, tray.id, { ...body, quarterId: y.x.q3 }),
+        () => place(x.journal, tray.id, { ...body, quarterId: UNKNOWN }),
+        () => place(x.journal, tray.id, { ...body, lessonId: theirRow.lessonId }),
+        () => place(x.journal, tray.id, { ...body, lessonId: UNKNOWN }),
+      ]) {
+        refused(await sent(), 404, 'not_found');
+      }
+    });
+    expect(await rowsOf([x.s.branch, y.x.s.branch])).toEqual(before);
+    // The same body with the own ids is placed.
+    ok(await at(START, () => place(x.journal, tray.id, body)));
+  });
+
   it('refuses a reader who does not own the plan the merge, the carry and the place (plan_scope), changing nothing', async () => {
     const { x, last } = await notCoveredScene();
     ok(await carry(x, last.id));

@@ -1081,6 +1081,8 @@ describe('quarter and year dates after lessons exist', () => {
       expect(one.substitution_lessons?.length).toBeGreaterThan(0);
     }
     const dates = withQuarters({ 2: [NOV16, '2026-12-28'] });
+    // Task 10.3b: the audit log too.
+    const audit = await t.auditCount();
 
     const choices: object[] = [
       // Task 5.7b-3: a stored substitution of the other branch.
@@ -1124,6 +1126,7 @@ describe('quarter and year dates after lessons exist', () => {
     refusedWith(await saveQuarters(north, dates, { groupBlocks: [] }), 400, 'validation_failed');
     expect(await storedRowsOf(north.branch)).toEqual(rows[0]);
     expect(await storedRowsOf(south.branch)).toEqual(rows[1]);
+    expect(await t.auditCount()).toBe(audit);
   });
 
   it('refuses the Principal, a Teacher, a Head Teacher assigned in the branch and the Senior Head Teacher on the save and the preview, with nothing written', async () => {

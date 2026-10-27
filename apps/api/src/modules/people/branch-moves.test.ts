@@ -1015,15 +1015,25 @@ describe('the move of a student to another branch', () => {
       expect(await lines(t.admin)).toEqual(seen);
     });
 
-    it("answers 404 for the sending branch's class and group, unknown ids and a release not to the branch, with nothing written in either branch", async () => {
+    it("answers 404 for the sending branch's class and group, unknown ids, an unknown subject and a release not to the branch, with nothing written in either branch", async () => {
       const english = await classes.subject({ grades: [7, 8] });
       const oxford = await classes.schoolClass(t.north, northYear, { grade: 7 });
       const northGroup = await classes.group(t.north, northYear, english, [oxford]);
       const { student } = await pupil(t.north, oxford);
       const moveId = accepted(await release(student.id)).branchMove?.id ?? '';
       const yale = await southClass();
+      const yaleGroup = await classes.group(t.south, southYear, english, [yale]);
       const before = await rowsOf();
       refusedWith(await accept(moveId, { classId: oxford }), 404, 'not_found');
+      // An unknown subject beside a group of the branch (task 10.3b).
+      refusedWith(
+        await accept(moveId, {
+          classId: yale,
+          groups: [{ subjectId: UNKNOWN, groupId: yaleGroup }],
+        }),
+        404,
+        'not_found',
+      );
       refusedWith(await accept(moveId, { classId: UNKNOWN }), 404, 'not_found');
       refusedWith(
         await accept(moveId, {

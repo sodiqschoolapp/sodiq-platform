@@ -9,6 +9,7 @@ import { sql, type Transaction as KyselyTransaction } from 'kysely';
 import type { DB } from '../../database/types.generated.js';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ClassesKit } from '../../testing/classes-kit.js';
 import {
   dayTemplatesKit,
   START,
@@ -342,6 +343,9 @@ describe('Head Teacher appointments', () => {
       const made = await withAccount();
       const art = await subject('Art');
       const archived = await insertSubject(t.database.migrator, 'Drawing', new Date(START));
+      const bare = await new ClassesKit(t.database.migrator).person(t.north, ['uz'], {
+        noAccount: true,
+      });
       const before = await snapshot();
 
       refusedWith(
@@ -364,7 +368,11 @@ describe('Head Teacher appointments', () => {
         400,
         'validation_failed',
       );
-      for (const one of [archived, UNKNOWN]) {
+      // An archived subject is subject_unknown; an unknown id is not found (task 10.3b).
+      for (const [one, status, code] of [
+        [archived, 409, 'subject_unknown'],
+        [UNKNOWN, 404, 'not_found'],
+      ] as const) {
         refusedWith(
           await give(made.id, {
             role: 'head_teacher',
@@ -372,10 +380,32 @@ describe('Head Teacher appointments', () => {
             from: TODAY,
             subjectIds: [one],
           }),
-          409,
-          'subject_unknown',
+          status,
+          code,
         );
       }
+      // The unknown subject before the refusal of a record with no account and of the date
+      // (task 10.3b, permission review).
+      refusedWith(
+        await give(bare.staffId, {
+          role: 'head_teacher',
+          branchId: t.north,
+          from: TODAY,
+          subjectIds: [UNKNOWN],
+        }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await give(made.id, {
+          role: 'head_teacher',
+          branchId: t.north,
+          from: '2026-10-09',
+          subjectIds: [UNKNOWN],
+        }),
+        404,
+        'not_found',
+      );
       expect(await snapshot()).toEqual(before);
     });
 
@@ -552,7 +582,7 @@ describe('Head Teacher appointments', () => {
       );
     });
 
-    it('answers 404 for an appointment of another person, an unknown one and a record of another branch', async () => {
+    it('answers 404 for an appointment of another person or branch, an unknown one, a record of another branch and an unknown subject', async () => {
       const anatomy = await subject('Anatomy');
       const made = await appoint([anatomy]);
       const other = await appoint([await subject('Genetics')]);
@@ -582,6 +612,21 @@ describe('Head Teacher appointments', () => {
         404,
         'not_found',
       );
+      // An appointment of another branch under a record of the branch, and an unknown subject
+      // (task 10.3b).
+      refusedWith(
+        await change(made.id, southern.assignmentId, { subjectIds: [anatomy], from: TOMORROW }),
+        404,
+        'not_found',
+      );
+      for (const from of [TOMORROW, '2026-10-09']) {
+        // Also before a refusal of the date (permission review).
+        refusedWith(
+          await change(made.id, made.assignmentId, { subjectIds: [UNKNOWN], from }),
+          404,
+          'not_found',
+        );
+      }
       expect(await snapshot()).toEqual(before);
     });
 

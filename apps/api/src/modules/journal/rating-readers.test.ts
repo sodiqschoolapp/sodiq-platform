@@ -439,6 +439,8 @@ describe('the readers of the rating exam and comments', () => {
             quarterId: other.quarter,
           },
           { target: 'rating', studentId: s.nurova, journalId: s.journal, quarterId: randomUUID() },
+          // Task 10.3b: a quarter of another branch beside the own journal.
+          { target: 'rating', studentId: s.nurova, journalId: s.journal, quarterId: other.quarter },
         ]) {
           expect(codeOf(await calls.get(commentHistory(s, query))), JSON.stringify(query)).toBe(
             'not_found',

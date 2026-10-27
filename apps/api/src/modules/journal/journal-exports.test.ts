@@ -14,6 +14,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { rowsOfTables } from '../../testing/id-refusal-kit.js';
 import { closeJournalAgain, closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -737,8 +738,27 @@ describe('journal exports', () => {
           .orderBy('id')
           .execute();
       const before = await entries();
+      // Task 10.3b: the whole audit log and the export rows too.
+      const unchanged = () => rowsOfTables(t.database.migrator, ['journal_exports', 'audit_log']);
+      const rows = await unchanged();
       refusedFile(
         await exportOf(principal, x.s.branch, randomUUID(), { format: 'xlsx', quarterId: x.q1 }),
+        404,
+        'not_found',
+      );
+      refusedFile(
+        await exportOf(principal, x.s.branch, elsewhere.journal, {
+          format: 'xlsx',
+          quarterId: x.q1,
+        }),
+        404,
+        'not_found',
+      );
+      refusedFile(
+        await exportOf(principal, x.s.branch, x.journal, {
+          format: 'pdf',
+          quarterId: randomUUID(),
+        }),
         404,
         'not_found',
       );
@@ -751,6 +771,7 @@ describe('journal exports', () => {
         'not_found',
       );
       expect(await entries()).toEqual(before);
+      expect(await unchanged()).toEqual(rows);
       t.clock.set(START);
     });
   });
@@ -789,6 +810,12 @@ describe('journal exports', () => {
       expect(
         codeOf(await askBranch(vice, x.s.branch, { ...body, quarterId: elsewhereQuarter.id }, key)),
       ).toBe('not_found');
+      // Task 10.3b: the same ids with a new key.
+      for (const quarterId of [elsewhereQuarter.id, randomUUID()]) {
+        expect(
+          codeOf(await askBranch(vice, x.s.branch, { ...body, quarterId }, randomUUID())),
+        ).toBe('not_found');
+      }
       await at(teacher, MOMENT);
       expect(codeOf(await askBranch(teacher, x.s.branch, body, key))).toBe('journal_export_scope');
       // One export in every branch, and one request entry: the repeats wrote nothing anywhere.

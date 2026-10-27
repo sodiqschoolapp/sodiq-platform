@@ -1858,6 +1858,58 @@ describe('plans in the journal', () => {
       expect(await rowsOf(s.branch)).toEqual(before);
     });
 
+    // Task 10.3b: a teacher filter names a person; another branch's plans are never answered.
+    it('answers none of another branch’s plans to a teacher filter of another branch or an unknown one, in every report and the file', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const other = await scene();
+      const theirTeacher = other.teacher.staffId;
+      const vice = await account();
+      // The filter matches the other branch's plans there.
+      await as(vice, other.branch, viceIn(other), async (calls) => {
+        const theirs = planCompletenessSchema.parse(
+          ok(
+            await calls.get(
+              `/api/plans/reports/completeness?quarterId=${other.q1}&teacherId=${theirTeacher}`,
+            ),
+          ),
+        );
+        expect(theirs.plans.map((one) => one.journalId)).toContain(other.journal);
+      });
+      await as(vice, s.branch, viceIn(s), async (calls) => {
+        for (const teacherId of [theirTeacher, randomUUID()]) {
+          const query = `quarterId=${s.q1}&teacherId=${teacherId}`;
+          const completeness = planCompletenessSchema.parse(
+            ok(await calls.get(`/api/plans/reports/completeness?${query}`)),
+          );
+          const progress = planProgressSchema.parse(
+            ok(await calls.get(`/api/plans/reports/progress?${query}`)),
+          );
+          const requests = planRequestsReportSchema.parse(
+            ok(await calls.get(`/api/plans/reports/requests?${query}`)),
+          );
+          expect(completeness.plans).toEqual([]);
+          expect(progress.plans).toEqual([]);
+          expect(requests.teachers).toEqual([]);
+          for (const answer of [completeness, progress, requests]) {
+            expect(JSON.stringify(answer)).not.toContain(other.journal);
+            expect(JSON.stringify(answer)).not.toContain(theirTeacher);
+          }
+          for (const report of ['completeness', 'progress', 'requests']) {
+            const file = await exportOf(vice.cookie, s.branch, {
+              report,
+              quarterId: s.q1,
+              teacherId,
+            });
+            expect(file.status, report).toBe(200);
+            const text = JSON.stringify((await linesOf(file.body as Buffer)).lines);
+            expect(text).not.toContain(other.journal);
+            expect(text).not.toContain(theirTeacher);
+          }
+        }
+      });
+    });
+
     it('answers 404 for the plan file of another branch’s journal or quarter and unknown ids, and refuses a Head Teacher of another subject', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });

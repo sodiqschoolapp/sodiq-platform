@@ -1671,6 +1671,14 @@ describe('the substitution from an absence or a vacancy', () => {
           'not_found',
         );
       }
+      // Task 10.3b: the teacher of the body too.
+      for (const teacherId of [elsewhere.otherTeacher.staffId, UNKNOWN]) {
+        refusedWith(
+          await vacancySubstitute(s.branch, vacancy, { ...body, teacherId }, t.admin, key),
+          404,
+          'not_found',
+        );
+      }
       refusedWith(
         await vacancySubstitute(s.branch, vacancy, body, browser.cookie, key),
         403,

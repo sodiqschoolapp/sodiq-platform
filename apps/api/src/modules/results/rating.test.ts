@@ -978,6 +978,8 @@ describe('the rating (08, Rating)', () => {
         `/api/results/rating/class?quarterId=${other.q1}&classId=${c.s.classId}`,
         `/api/results/rating/classes?quarterId=${other.q1}`,
         `/api/results/rating/choices?yearId=${other.s.year}`,
+        `/api/results/rating/classes?quarterId=${UNKNOWN}`,
+        `/api/results/rating/choices?yearId=${UNKNOWN}`,
       ]) {
         const response = await get(path);
         expect(response.status, path).toBe(404);

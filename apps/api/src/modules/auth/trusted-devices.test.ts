@@ -13,6 +13,7 @@ import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { expectRefusedById, UNKNOWN_ID } from '../../testing/id-refusal-kit.js';
 import {
   base32Decode,
   cookieOf,
@@ -751,6 +752,8 @@ describe('a trusted device', () => {
       const ownerCookie = await trust(owner.login);
       const strangerCookie = await trust(stranger.login);
       const [device] = await devicesOf(ownerCookie);
+      // A missing id would be refused by the path, never by the account (task 10.3b).
+      expect(device?.id).toMatch(/^[0-9a-f-]{36}$/);
 
       const response = await remove(device?.id ?? '', strangerCookie);
 
@@ -759,6 +762,15 @@ describe('a trusted device', () => {
       expect((await kit.probe(ownerCookie)).status).toBe(200);
       expect(await auditOf('auth.trusted_device_removed', owner.id)).toEqual([]);
       expect(await auditOf('auth.trusted_device_removed', stranger.id)).toEqual([]);
+      // Task 10.3b: an unknown id too, with the sessions of both accounts and
+      // both logs as they were.
+      await expectRefusedById({
+        database: database.migrator,
+        tables: ['sessions', 'audit_log_school'],
+        ids: [device?.id ?? '', UNKNOWN_ID],
+        send: (id) => remove(id, strangerCookie),
+      });
+      expect((await kit.probe(ownerCookie)).status).toBe(200);
     });
 
     it('but not a session that is not trusted, which is answered alike and stays signed in', async () => {

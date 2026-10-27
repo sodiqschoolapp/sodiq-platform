@@ -988,6 +988,63 @@ describe('master plans', () => {
         ).body,
       );
       expect(listed.masters.map((one) => one.id)).not.toContain(theirs.id);
+      // Task 10.3b: the subject filter (a subject is the same in every branch) answers none of
+      // branch y's masters, and an unknown subject none either.
+      for (const subjectId of [y.s.subject, randomUUID()]) {
+        const filtered = planMastersSchema.parse(
+          ok(
+            await at(NOV02, async () =>
+              send(
+                'get',
+                `/api/plans/masters?yearId=${x.s.year}&subjectId=${subjectId}`,
+                x.s.branch,
+                x.head.cookie,
+              ),
+            ),
+          ).body,
+        );
+        expect(filtered.masters.map((one) => one.id)).not.toContain(theirs.id);
+      }
+      // Task 10.3b: a quarter of another branch, or unknown, beside the own journal.
+      for (const quarterId of [y.q2, randomUUID()]) {
+        expect(
+          (
+            await at(NOV02, async () =>
+              send(
+                'get',
+                `/api/plans/masters?journalId=${x.journal}&quarterId=${quarterId}`,
+                x.s.branch,
+                x.owner.cookie,
+              ),
+            )
+          ).status,
+        ).toBe(404);
+      }
+      // Task 10.3b: a master of another branch, or unknown, in the path of an item's routes,
+      // with an item of that master.
+      for (const masterId of [theirs.id, randomUUID()]) {
+        const itemId = masterItem(theirs, 1).id;
+        for (const call of [
+          () =>
+            send(
+              'put',
+              `/api/plans/masters/${masterId}/items/${itemId}`,
+              x.s.branch,
+              x.head.cookie,
+              { revision: theirs.revision, values: values('Changed') },
+            ),
+          () =>
+            send(
+              'post',
+              `/api/plans/masters/${masterId}/items/${itemId}/remove`,
+              x.s.branch,
+              x.head.cookie,
+              { revision: theirs.revision },
+            ),
+        ]) {
+          expect((await at(NOV02, call)).status).toBe(404);
+        }
+      }
       expect(await rowsOf(x.s.branch)).toEqual(beforeX);
       expect(await rowsOf(y.s.branch)).toEqual(beforeY);
     });

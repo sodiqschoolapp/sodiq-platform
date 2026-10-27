@@ -381,6 +381,19 @@ export class Staff {
    */
   check(access: Access, input: StaffCheck): Promise<StaffCheckResult> {
     return this.transactions.run(access.branchIds, async (transaction) => {
+      // The record being edited is one linked to the branch of the request, or
+      // not found (.claude/rules/api.md, task 1.5; task 10.3b).
+      if (input.staffRecordId !== null) {
+        const linked = await transaction
+          .selectFrom('staff_branches')
+          .select('staff_id')
+          .where('staff_id', '=', input.staffRecordId)
+          .where('branch_id', '=', branchOf(access))
+          .executeTakeFirst();
+        if (linked === undefined) {
+          throw notFound();
+        }
+      }
       const matches = (filter: 'name' | 'phone') => {
         let query = transaction
           .selectFrom('staff')

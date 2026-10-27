@@ -427,14 +427,17 @@ describe('the plan window and edit requests', () => {
       }
       expect(await rowsOf(x.s.branch)).toEqual(opened);
       expect(await rowsOf(y.s.branch)).toEqual(before[1]);
-      // Permission review, should-fix 6: the windows of another branch's year.
-      expect(
-        (
-          await at(OCT27, async () =>
-            send('get', `/api/plans/windows?yearId=${y.s.year}`, x.s.branch, x.vice.cookie),
-          )
-        ).status,
-      ).toBe(404);
+      // Permission review, should-fix 6: the windows of another branch's year (and, task
+      // 10.3b, an unknown one).
+      for (const yearId of [y.s.year, randomUUID()]) {
+        expect(
+          (
+            await at(OCT27, async () =>
+              send('get', `/api/plans/windows?yearId=${yearId}`, x.s.branch, x.vice.cookie),
+            )
+          ).status,
+        ).toBe(404);
+      }
     });
   });
 
@@ -2322,6 +2325,95 @@ describe('the plan window and edit requests', () => {
         .where('id', '=', id)
         .execute();
     };
+
+    // Task 10.3b: every body id of the request routes a prepared request reaches.
+    it("answers 404 for another branch's or an unknown year, quarter, lesson, event or subject of the request routes, writing nothing", async () => {
+      const { x, id, eventId } = await preparedScene();
+      const y = await preparedScene();
+      const theirs = (await planOf(y.x, THURSDAY)).rows[0]?.lessonId ?? '';
+      const ownLesson = (await planOf(x, THURSDAY)).rows.find((row) => !row.started)?.lessonId;
+      expect(ownLesson).toBeDefined();
+      const before = [await rowsOf(x.s.branch), await rowsOf(y.x.s.branch)];
+      const approve = { decision: 'approve', days: 1 } as const;
+      await at(THURSDAY, async () => {
+        for (const yearId of [y.x.s.year, randomUUID()]) {
+          const listed = await send(
+            'get',
+            `/api/plans/requests?view=deciding&yearId=${yearId}`,
+            x.s.branch,
+            x.head.cookie,
+          );
+          expect(listed.status).toBe(404);
+        }
+        for (const quarterId of [y.x.q2, randomUUID()]) {
+          for (const sent of [
+            () => ask(x, { kind: 'text', quarterId, lessonIds: [ownLesson], reason: 'Typo' }),
+            () => ask(x, { kind: 'replan', quarterId, fromLessonId: ownLesson, reason: 'Typo' }),
+            () =>
+              send('put', `/api/plans/journals/${x.journal}/queue`, x.s.branch, x.owner.cookie, {
+                quarterId,
+                base: [],
+                order: [],
+              }),
+            () =>
+              send(
+                'post',
+                `/api/plans/journals/${x.journal}/requests/prepared`,
+                x.s.branch,
+                x.owner.cookie,
+                { quarterId },
+              ),
+            () =>
+              send(
+                'post',
+                `/api/plans/journals/${x.journal}/requests/prepared/decide`,
+                x.s.branch,
+                x.head.cookie,
+                { quarterId, decision: approve },
+              ),
+          ]) {
+            expect(codeOf(await sent())).toBe('not_found');
+          }
+        }
+        for (const lessonId of [theirs, randomUUID()]) {
+          for (const decision of [
+            { ...approve, untick: [{ lessonId, reason: 'No' }] },
+            { ...approve, later: { fromLessonId: lessonId, reason: 'No' } },
+          ]) {
+            const prepared = await send(
+              'post',
+              `/api/plans/journals/${x.journal}/requests/prepared/decide`,
+              x.s.branch,
+              x.head.cookie,
+              { quarterId: x.q2, decision },
+            );
+            expect(codeOf(prepared)).toBe('not_found');
+            expect(codeOf(await decide(x, id, decision))).toBe('not_found');
+          }
+        }
+        for (const event of [y.eventId, randomUUID()]) {
+          const decided = await send(
+            'post',
+            '/api/plans/requests/decide-event',
+            x.s.branch,
+            x.head.cookie,
+            { eventId: event, days: 1 },
+          );
+          expect(codeOf(decided)).toBe('not_found');
+        }
+        // A subject is the same in every branch: an unknown one beside the own event.
+        const subject = await send(
+          'post',
+          '/api/plans/requests/decide-event',
+          x.s.branch,
+          x.head.cookie,
+          { eventId, subjectId: randomUUID(), days: 1 },
+        );
+        expect(codeOf(subject)).toBe('not_found');
+      });
+      expect(await rowsOf(x.s.branch)).toEqual(before[0]);
+      expect(await rowsOf(y.x.s.branch)).toEqual(before[1]);
+    });
 
     it('an approval held first: a decision by event waits on the journal and approves nothing', async () => {
       const { x, id, eventId } = await preparedScene();

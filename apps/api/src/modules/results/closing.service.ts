@@ -171,6 +171,30 @@ const changeIds = (change: RawChange) => ({
 const notOpen = (): ApiException => new ApiException('closing_not_open', 409);
 const notFlagged = (): ApiException => new ApiException('closing_not_flagged', 409);
 
+/**
+ * 404 unless every student named has a class or group row of the branch (task 10.3b): a
+ * student who moved to another branch during the quarter keeps the rows of this branch up
+ * to the move (0053, decision 16) and is still listed and decided here; one who was never a
+ * member of the branch, or unknown, is not found. The rows are read with an explicit branch,
+ * not through the row filter, which holds every branch for the Super Admin.
+ */
+async function refuseNonMembers(
+  transaction: Transaction,
+  branchId: string,
+  studentIds: readonly string[],
+): Promise<void> {
+  const ids = [...new Set(studentIds.map((id) => id.toLowerCase()))];
+  if (ids.length === 0) return;
+  const members = await sql<{ student_id: string }>`
+    select m.student_id from class_memberships m
+    where m.student_id = any(${ids}::uuid[]) and m.branch_id = ${branchId}::uuid
+    union
+    select g.student_id from group_memberships g
+    where g.student_id = any(${ids}::uuid[]) and g.branch_id = ${branchId}::uuid
+  `.execute(transaction);
+  if (members.rows.length !== ids.length) throw notFound();
+}
+
 @Injectable()
 export class ClosingService {
   constructor(
@@ -342,19 +366,15 @@ export class ClosingService {
       const scene = await this.sceneOf(transaction, branchId, quarterId);
       const subjectId = input.subjectId.toLowerCase();
       const studentId = input.studentId.toLowerCase();
-      // The reading first (review correction 3): the student and the subject of the branch.
-      const student = await transaction
-        .selectFrom('students')
-        .select('id')
-        .where('id', '=', studentId)
-        .where('branch_id', '=', branchId)
-        .executeTakeFirst();
+      // The reading first (review correction 3): the student a member in the branch (a
+      // student moved out in the quarter included, task 10.3b) and the subject.
+      await refuseNonMembers(transaction, branchId, [studentId]);
       const subject = await transaction
         .selectFrom('subjects')
         .select('id')
         .where('id', '=', subjectId)
         .executeTakeFirst();
-      if (student === undefined || subject === undefined) throw notFound();
+      if (subject === undefined) throw notFound();
       if (scene.today < scene.opensOn) throw notOpen();
       const reopened = await this.refuseClosed(transaction, scene);
       const flagged = await this.flaggedOf(transaction, scene, subjectId);
@@ -405,6 +425,9 @@ export class ClosingService {
       if (journal === undefined || journal.academicYearId !== scene.quarter.academicYearId) {
         throw notFound();
       }
+      // Every student of the body of the branch, or 404 before any other refusal
+      // (.claude/rules/api.md, task 1.5; task 10.3b).
+      await refuseNonMembers(transaction, branchId, input.students);
       if (scene.today < scene.opensOn) throw notOpen();
       const reopened = await this.refuseClosed(transaction, scene);
       // Task 9.2c: in a closed quarter, a reopened journal only.
@@ -1230,6 +1253,10 @@ export class ClosingService {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const scene = await this.sceneOf(transaction, branchId, quarterId);
+      // Every student and subject of the body known to the branch, or 404 before any other
+      // refusal, the lock and before a used key answers (.claude/rules/api.md, tasks 1.5 and
+      // 5.5a-1; task 10.3b).
+      await this.refuseUnknownRows(transaction, branchId, input.students);
       await transaction
         .selectFrom('quarters')
         .select('id')
@@ -1800,6 +1827,31 @@ export class ClosingService {
       quarters: dated.filter((one) => one.academicYearId === yearId),
       quarter: quarter ?? null,
     };
+  }
+
+  /** 404 unless every student of the rows was a member in the branch and every subject is known. */
+  private async refuseUnknownRows(
+    transaction: Transaction,
+    branchId: string,
+    rows: readonly { subjectId: string; studentId: string }[],
+  ): Promise<void> {
+    await refuseNonMembers(
+      transaction,
+      branchId,
+      rows.map((row) => row.studentId),
+    );
+    const subjectIds = [...new Set(rows.map((row) => row.subjectId.toLowerCase()))];
+    const subjects =
+      subjectIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', 'in', subjectIds)
+            .execute();
+    if (subjects.length !== subjectIds.length) {
+      throw notFound();
+    }
   }
 
   /** The quarter of a write: 404 for another branch's or an unknown one, 409 while undated. */

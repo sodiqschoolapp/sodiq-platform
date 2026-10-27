@@ -807,6 +807,24 @@ describe('the journal grid', () => {
       expect((await get(s.scene.branch, `/api/journal/journals?yearId=${UNKNOWN}`)).status).toBe(
         404,
       );
+      // Task 10.3b: a quarter and a year of another branch.
+      const awayQuarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', away.scene.year)
+        .where('number', '=', 1)
+        .executeTakeFirstOrThrow();
+      expect(
+        (
+          await get(
+            s.scene.branch,
+            `/api/journal/journals/${s.journal}?quarterId=${awayQuarter.id}`,
+          )
+        ).status,
+      ).toBe(404);
+      expect(
+        (await get(s.scene.branch, `/api/journal/journals?yearId=${away.scene.year}`)).status,
+      ).toBe(404);
     });
   });
 
