@@ -2765,8 +2765,12 @@ describe('exams in the timetable', () => {
         ...examOf(scene, { date: LATER_MONDAY, classIds: [scene.otherClass], confirm: true }),
         ratingExam: true,
       });
-      const exam = saved(await create(s.branch, rated(s)));
+      // Task 10.3b: keys used on a valid create and change, repeated below with each id.
+      const createKey = randomUUID();
+      const exam = saved(await create(s.branch, rated(s), t.admin, createKey));
       const theirs = saved(await create(o.branch, rated(o)));
+      const changeKey = randomUUID();
+      saved(await change(s.branch, exam.exam.id, rated(s), t.admin, changeKey), 200);
       expect(
         await t.database.migrator
           .selectFrom('exam_rating_journals')
@@ -2832,6 +2836,13 @@ describe('exams in the timetable', () => {
       for (const body of [...bodies(foreign), ...bodies(unknown)]) {
         refusedWith(await create(s.branch, body), 404, 'not_found');
         refusedWith(await change(s.branch, exam.exam.id, body), 404, 'not_found');
+        // The used keys, never the stored answer (.claude/rules/api.md, task 5.5a-1).
+        refusedWith(await create(s.branch, body, t.admin, createKey), 404, 'not_found');
+        refusedWith(
+          await change(s.branch, exam.exam.id, body, t.admin, changeKey),
+          404,
+          'not_found',
+        );
       }
       // A lesson kept cancelled, on a change and a cancel: another branch's, an
       // unknown one, and one of the branch the exam does not give back.
@@ -2855,13 +2866,49 @@ describe('exams in the timetable', () => {
       for (const id of [theirs.exam.id, UNKNOWN]) {
         refusedWith(await change(s.branch, id, base), 404, 'not_found');
         refusedWith(await cancel(s.branch, id), 404, 'not_found');
+        refusedWith(await change(s.branch, id, base, t.admin, changeKey), 404, 'not_found');
       }
       refusedWith(
         await cancel(s.branch, exam.exam.id, { keepCancelled: [theirLesson], keepReason: 'Kept' }),
         404,
         'not_found',
       );
+      for (const lesson of [theirLesson, UNKNOWN]) {
+        refusedWith(
+          await change(
+            s.branch,
+            exam.exam.id,
+            { ...rated(s), keepCancelled: [lesson], keepReason: 'Kept' },
+            t.admin,
+            changeKey,
+          ),
+          404,
+          'not_found',
+        );
+      }
       expect(await everything()).toEqual(before);
+      // Task 10.3b: a used key of a cancel, repeated with another branch's
+      // and an unknown exam and lesson kept cancelled, never the stored answer.
+      const cancelKey = randomUUID();
+      saved(await cancel(s.branch, exam.exam.id, {}, t.admin, cancelKey), 200);
+      const cancelled = await everything();
+      for (const id of [theirs.exam.id, UNKNOWN]) {
+        refusedWith(await cancel(s.branch, id, {}, t.admin, cancelKey), 404, 'not_found');
+      }
+      for (const lesson of [theirLesson, UNKNOWN]) {
+        refusedWith(
+          await cancel(
+            s.branch,
+            exam.exam.id,
+            { keepCancelled: [lesson], keepReason: 'Kept' },
+            t.admin,
+            cancelKey,
+          ),
+          404,
+          'not_found',
+        );
+      }
+      expect(await everything()).toEqual(cancelled);
     });
   });
 

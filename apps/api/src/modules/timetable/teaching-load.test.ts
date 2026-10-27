@@ -672,6 +672,13 @@ describe('draft versions and the teaching load', () => {
             get(
               `/api/timetable/versions/${id}/load/teachers?classId=${other.classId}&subjectId=${subject}`,
             ),
+          // Task 10.3b: the version of the path of a row edit and a row delete.
+          () =>
+            patch(`/api/timetable/versions/${id}/load/${row.id}`, {
+              ...rowBody({ teacherId: own.teacher }),
+              lessonsPerWeek: 4,
+            }),
+          () => remove(`/api/timetable/versions/${id}/load/${row.id}`),
         );
       }
       for (const id of [southRow, UNKNOWN]) {

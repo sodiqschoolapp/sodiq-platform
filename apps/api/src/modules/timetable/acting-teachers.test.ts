@@ -342,7 +342,15 @@ describe('acting teachers', () => {
       const theirs = await scene();
       const key = randomUUID();
       expect((await name(s, { until: FILL }, t.vicePrincipal, key)).status).toBe(201);
-      for (const extra of [{ journalId: theirs.journal }, { personId: UNKNOWN }]) {
+      // Task 10.3b: every id of the body, another branch's and an unknown one.
+      for (const extra of [
+        { journalId: theirs.journal },
+        { journalId: UNKNOWN },
+        { vacancyId: theirs.vacancy },
+        { vacancyId: UNKNOWN },
+        { personId: theirs.person },
+        { personId: UNKNOWN },
+      ]) {
         refusedWith(await name(s, extra, t.vicePrincipal, key), 404, 'not_found');
       }
       const teacher = await teacherIn(s.branch);
@@ -352,6 +360,9 @@ describe('acting teachers', () => {
       expect((await end(s, period.id, FILL, endKey)).status).toBe(200);
       refusedWith(await end(theirs, period.id, FILL, endKey), 404, 'not_found');
       refusedWith(await end(s, UNKNOWN, FILL, endKey), 404, 'not_found');
+      // Task 10.3b: another branch's period sent to the branch of the used key.
+      const theirsPeriod = await named(theirs, { from: FILL });
+      refusedWith(await end(s, theirsPeriod.id, FILL, endKey), 404, 'not_found');
       refusedWith(await end(s, period.id, FILL, endKey, teacher), 403, 'permission_denied');
       refusedWith(await end(s, period.id, FILL, endKey, t.admin), 409, 'request_key_reused');
     });

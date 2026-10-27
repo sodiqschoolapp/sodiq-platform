@@ -1093,6 +1093,22 @@ describe('vacancy fill', () => {
       const key = randomUUID();
       const body = { ...bodyOf(s, OCTOBER_19), ...keysOf(check) };
       expect((await fillOf(s.branch, body, key)).status).toBe(201);
+      const lessonIn = async (branch: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('lessons')
+            .select('id')
+            .where('branch_id', '=', branch)
+            .executeTakeFirstOrThrow()
+        ).id;
+      const blockIn = async (branch: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('pattern_blocks')
+            .select('id')
+            .where('branch_id', '=', branch)
+            .executeTakeFirstOrThrow()
+        ).id;
       // Permission review of the code, should-fix 1: every id of the body.
       const repeats = [
         { vacancyId: theirs.vacancy },
@@ -1102,6 +1118,40 @@ describe('vacancy fill', () => {
         { rows: [{ classId: theirs.classA, subjectId: s.subject }] },
         { rows: [{ groupId: UNKNOWN, subjectId: s.subject }] },
         { dayDecisions: [{ key: UNKNOWN, choice: 'drop' }] },
+        // Task 10.3b: each id of the body, another branch's and an unknown one.
+        { rows: [{ classId: UNKNOWN, subjectId: s.subject }] },
+        {
+          rows: [
+            {
+              groupId: await load.classes.group(theirs.branch, theirs.year, theirs.subject, [
+                theirs.classA,
+              ]),
+              subjectId: s.subject,
+            },
+          ],
+        },
+        { rows: [{ classId: s.classA, subjectId: UNKNOWN }] },
+        { dayDecisions: [{ key: await lessonIn(theirs.branch), choice: 'drop' }] },
+        {
+          dayDecisions: [
+            {
+              key: await lessonIn(s.branch),
+              blockId: await blockIn(theirs.branch),
+              blockDate: OCTOBER_19,
+              choice: 'keep',
+            },
+          ],
+        },
+        {
+          dayDecisions: [
+            {
+              key: await lessonIn(s.branch),
+              blockId: UNKNOWN,
+              blockDate: OCTOBER_19,
+              choice: 'keep',
+            },
+          ],
+        },
       ];
       for (const one of repeats) {
         refusedWith(await fillOf(s.branch, { ...body, ...one }, key), 404, 'not_found');
