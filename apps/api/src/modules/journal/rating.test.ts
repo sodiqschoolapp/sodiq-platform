@@ -727,7 +727,7 @@ describe('the rating exam and comments', () => {
       expect(await ratingEntries()).toBe(audits);
     });
 
-    it('answers 404 for another branch\x27s journal, an unknown quarter and an unknown student', async () => {
+    it('answers 404 for another branch’s journal, an unknown quarter and an unknown student', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const other = await scene();
@@ -1139,7 +1139,7 @@ describe('the rating exam and comments', () => {
       );
     });
 
-    it('answers 404 for another branch\x27s lesson, an unknown work and an unknown student, and writes nothing', async () => {
+    it('answers 404 for another branch’s lesson, an unknown work and an unknown student, and writes nothing', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const other = await scene();
@@ -1149,6 +1149,23 @@ describe('the rating exam and comments', () => {
         .selectAll()
         .orderBy('id')
         .execute();
+      // Task 10.3b: a work of each branch, for the ids of a comment on a number.
+      const workOf = async (branch: string, lessonId: string) =>
+        (
+          await t.database.migrator
+            .insertInto('journal_works')
+            .values({
+              branch_id: branch,
+              lesson_id: lessonId,
+              source_lesson_id: lessonId,
+              position: 1,
+              kind: 'classwork',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const work = await workOf(s.branch, lesson);
+      const otherWork = await workOf(other.branch, other.lessons[0] ?? '');
       const audits = await t.auditCount();
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         ok(await present(calls, lesson, s.ahmedov));
@@ -1168,6 +1185,21 @@ describe('the rating exam and comments', () => {
           { target: 'work', lessonId: lesson, workId: randomUUID(), studentId: s.ahmedov },
           { target: 'rating', journalId: other.journal, quarterId: other.q1, studentId: s.ahmedov },
           { target: 'rating', journalId: s.journal, quarterId: randomUUID(), studentId: s.ahmedov },
+          // Task 10.3b: every id of every target, another branch's and an unknown one.
+          { target: 'mark', lessonId: other.lessons[0] ?? '', studentId: s.ahmedov },
+          { target: 'mark', lessonId: randomUUID(), studentId: s.ahmedov },
+          { target: 'mark', lessonId: lesson, studentId: other.ahmedov },
+          { target: 'mark', lessonId: lesson, studentId: randomUUID() },
+          { target: 'work', lessonId: other.lessons[0] ?? '', workId: work, studentId: s.ahmedov },
+          { target: 'work', lessonId: randomUUID(), workId: work, studentId: s.ahmedov },
+          { target: 'work', lessonId: lesson, workId: otherWork, studentId: s.ahmedov },
+          { target: 'work', lessonId: lesson, workId: work, studentId: other.ahmedov },
+          { target: 'work', lessonId: lesson, workId: work, studentId: randomUUID() },
+          { target: 'rating', journalId: other.journal, quarterId: s.q1, studentId: s.ahmedov },
+          { target: 'rating', journalId: randomUUID(), quarterId: s.q1, studentId: s.ahmedov },
+          { target: 'rating', journalId: s.journal, quarterId: other.q1, studentId: s.ahmedov },
+          { target: 'rating', journalId: s.journal, quarterId: s.q1, studentId: other.ahmedov },
+          { target: 'rating', journalId: s.journal, quarterId: s.q1, studentId: randomUUID() },
         ]) {
           expect(codeOf(await send(on))).toBe('not_found');
         }

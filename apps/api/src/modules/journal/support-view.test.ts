@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Transaction } from '../../database/transactions.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { expectNotFound } from '../../testing/id-refusal-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
@@ -773,7 +774,7 @@ describe('the support view', () => {
       expect(ofKind(other, 'refusal')).toEqual([]);
     });
 
-    it('lists a total and "not held" of the date\'s works, and refuses another branch\'s journal, a student with no membership and a date outside the year', async () => {
+    it('lists a total and "not held" of the date’s works, and refuses another branch’s journal, a student with no membership and a date outside the year', async () => {
       const owner = await account();
       const vice = await account();
       const s = await scene(owner.account.id);
@@ -833,6 +834,17 @@ describe('the support view', () => {
       expect(
         await refused(`studentId=${s.ahmedov}&journalId=${randomUUID()}&date=2026-10-26`),
       ).toBe('not_found');
+      // Task 10.3b: each of those ids is answered 404 in the one error shape.
+      for (const query of [
+        `studentId=${s.ahmedov}&journalId=${elsewhere.journal}`,
+        `studentId=${s.ahmedov}&journalId=${randomUUID()}`,
+        `studentId=${elsewhere.ahmedov}&journalId=${s.journal}`,
+        `studentId=${randomUUID()}&journalId=${s.journal}`,
+      ]) {
+        expectNotFound(
+          await t.get(`/api/journal/support?${query}&date=2026-10-26`, s.branch, vice.cookie),
+        );
+      }
       // A student of the branch who is not a member of this journal (the other class).
       const outsider = await student(s.branch, s.otherClass, 'Karimov');
       expect(await refused(`studentId=${outsider}&journalId=${s.journal}&date=2026-10-26`)).toBe(

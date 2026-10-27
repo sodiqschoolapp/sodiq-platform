@@ -1298,6 +1298,8 @@ describe('lesson plans and their items', () => {
     await handWorkOf(other.scene.branch, other.scene.classId);
     const before = [await planRowsOf(s.scene.branch), await planRowsOf(other.scene.branch)];
     const audit = await planEntries();
+    // Task 10.3b: the whole audit log too (a file opened is logged).
+    const logged = await t.auditCount();
     await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
       for (const journal of [other.journal, UNKNOWN]) {
         expect(codeOf(await api.get(`/api/plans/journals/${journal}`))).toBe('not_found');
@@ -1353,6 +1355,7 @@ describe('lesson plans and their items', () => {
       before,
     );
     expect(await planEntries()).toBe(audit);
+    expect(await t.auditCount()).toBe(logged);
   });
 
   it('lets a publish move the lessons of a plan with items: the items follow the new dates', async () => {

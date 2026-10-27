@@ -884,6 +884,8 @@ describe('the edit period through the routes', () => {
       const rows = () =>
         Promise.all([
           t.database.migrator.selectFrom('journal_unlocks').selectAll().orderBy('id').execute(),
+          // Task 10.3b: a request and a decision tell people.
+          t.database.migrator.selectFrom('notifications').selectAll().orderBy('id').execute(),
           t.database.migrator
             .selectFrom('lessons')
             .selectAll()

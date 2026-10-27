@@ -20,6 +20,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import { rowsOfTables } from '../../testing/id-refusal-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import {
   hoursOf,
@@ -42,6 +43,16 @@ const Q2_MONDAYS = [
 ];
 
 /** Thursday 26 November 2026, noon in Tashkent: the Mondays 9, 16 and 23 November are held. */
+/** Task 10.3b: the plan tables the kit's `rowsOf` leaves out, and the audit log, in every branch. */
+const PLAN_TABLES = [
+  'lesson_plans',
+  'lesson_plan_journals',
+  'lesson_plan_places',
+  'lesson_plan_tray',
+  'journal_works',
+  'audit_log',
+] as const;
+
 const THURSDAY = '2026-11-26T12:00:00+05:00';
 
 const ok = (response: Response, status = 200) => {
@@ -1011,7 +1022,12 @@ describe('plan items follow the timetable', () => {
       const x = await scene();
       const y = await scene();
       const foreign = await lessonOn(y.s, '2026-11-09');
-      const rowsOf = async () => [await t.rowsOf(x.s.branch), await t.rowsOf(y.s.branch)];
+      // Task 10.3b: the plan tables beside the kit's, and the audit log.
+      const rowsOf = async () => [
+        await t.rowsOf(x.s.branch),
+        await t.rowsOf(y.s.branch),
+        await rowsOfTables(t.database.migrator, PLAN_TABLES),
+      ];
       const before = await rowsOf();
       for (const lessonId of [foreign.id, randomUUID()]) {
         const created = await request(t.kit.server)
@@ -1998,6 +2014,8 @@ describe('plan items follow the timetable', () => {
           .execute();
       const before = await rows();
       const entries = await planEntries();
+      // Task 10.3b: the plan tables the kit's rows leave out, and the whole audit log.
+      const planRows = await rowsOfTables(t.database.migrator, PLAN_TABLES);
       const unknown = randomUUID();
       const send = (x: Shared, journal: string, action: string, body: object) =>
         post(`/api/plans/journals/${journal}/${action}`, x.s.branch, x.owner.cookie, body);
@@ -2030,6 +2048,7 @@ describe('plan items follow the timetable', () => {
       }
       expect(await rows()).toEqual(before);
       expect(await planEntries()).toEqual(entries);
+      expect(await rowsOfTables(t.database.migrator, PLAN_TABLES)).toEqual(planRows);
       // The same requests with valid ids write: the fixtures can fail.
       ok(await send(a, a.journal, 'share', { quarterId: a.q2, journalId: a.other }));
       ok(await send(b, b.journal, 'separate', { quarterId: b.q2 }));

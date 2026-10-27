@@ -119,8 +119,11 @@ export async function lockStudents(
 }
 
 /**
- * A choice names a lesson by id in the body: one the branch does not hold, or an unknown one, is
- * 404 before any lock or write (permission review 9; `.claude/rules/api.md`: one 404 per body id).
+ * A choice names a lesson and a student by id in the body: a lesson the branch does not hold, a
+ * student never a member of a class or a group of the branch, or an unknown one, is 404 before any
+ * lock or write (permission review 9; `.claude/rules/api.md`: one 404 per body id). The student
+ * is looked up by the memberships of the branch, as a choice is only needed where the student was
+ * a member: one who has left the branch since still has them (task 10.3b).
  */
 export async function refuseForeignChoices(
   transaction: Transaction,
@@ -134,6 +137,13 @@ export async function refuseForeignChoices(
     .where('id', 'in', ids)
     .execute();
   if (found.length !== ids.length) throw notFound();
+  const students = [...new Set(choices.map((one) => one.studentId.toLowerCase()))];
+  const members = await sql<{ student_id: string }>`
+    select m.student_id from class_memberships m where m.student_id = any(${students}::uuid[])
+    union
+    select g.student_id from group_memberships g where g.student_id = any(${students}::uuid[])
+  `.execute(transaction);
+  if (members.rows.length !== students.length) throw notFound();
 }
 
 /**
