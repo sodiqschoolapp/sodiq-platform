@@ -6132,6 +6132,9 @@ export const uz: Texts<'one' | 'other'> = {
     },
     locks: {
       title: 'Tahrirlash muddati',
+      moreLocked_one: 'Yana {{count}} ta yopiq darsni koʻrsatish',
+      moreLocked_other: 'Yana {{count}} ta yopiq darsni koʻrsatish',
+      fewerLocked: 'Boshqa yopiq darslarni yashirish',
       lesson: '{{date}} darsi',
       rating: 'Reyting imtihoni',
       locked: 'Yopilgan: tahrirlash muddati {{at}} da tugagan.',

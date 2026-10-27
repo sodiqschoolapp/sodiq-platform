@@ -6428,6 +6428,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     locks: {
       title: 'Срок редактирования',
+      moreLocked_one: 'Показать ещё {{count}} закрытый урок',
+      moreLocked_few: 'Показать ещё {{count}} закрытых урока',
+      moreLocked_many: 'Показать ещё {{count}} закрытых уроков',
+      moreLocked_other: 'Показать ещё {{count}} закрытого урока',
+      fewerLocked: 'Скрыть остальные закрытые уроки',
       lesson: 'Урок {{date}}',
       rating: 'Рейтинговый экзамен',
       locked: 'Закрыто: срок редактирования истёк {{at}}.',

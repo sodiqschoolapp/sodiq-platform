@@ -36,6 +36,14 @@ import { workKey, type WorksEntry } from './works-entry';
 /** Task 8.8: the characters of a topic the header shows; the tooltip holds it whole. */
 const TOPIC_SHOWN = 28;
 
+/** Up to this many rows the grid grows with its rows; a longer list scrolls inside the grid. */
+const ROWS_FIT_PAGE = 30;
+
+const ROW_HEIGHT = 36;
+
+/** The row of lesson titles: one line of text. */
+const GROUP_HEADER_HEIGHT = 40;
+
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
  * Community with the student columns and the figures pinned on the left, one
@@ -87,7 +95,9 @@ const THEME = themeQuartz.withParams({
   accentColor: 'var(--ring)',
   fontFamily: 'inherit',
   fontSize: 14,
-  rowHeight: 36,
+  rowHeight: ROW_HEIGHT,
+  // Tighter cells, so the fixed columns leave room for more lessons.
+  cellHorizontalPaddingScale: 0.6,
   headerHeight: 40,
   wrapperBorderRadius: 0,
 });
@@ -368,7 +378,7 @@ export function JournalGridView({
         colId: 'number',
         headerName: t('journal.grid.number'),
         pinned: 'left',
-        width: 52,
+        width: 44,
         valueGetter: (params) =>
           params.data?.kind === 'student' ? params.data.student.number : null,
       },
@@ -376,7 +386,7 @@ export function JournalGridView({
         colId: 'name',
         headerName: t('journal.grid.student'),
         pinned: 'left',
-        width: 220,
+        width: 200,
         valueGetter: (params) => {
           const row = params.data;
           if (row?.kind === 'student') return `${row.student.lastName} ${row.student.firstName}`;
@@ -435,7 +445,7 @@ export function JournalGridView({
         colId: 'uid',
         headerName: t('journal.grid.uid'),
         pinned: 'left',
-        width: 100,
+        width: 92,
         valueGetter: (params) => (params.data?.kind === 'student' ? params.data.student.uid : null),
       },
     ];
@@ -449,7 +459,7 @@ export function JournalGridView({
       colId,
       headerName: header,
       pinned: 'left',
-      width: 84,
+      width: 68,
       type: 'numericColumn',
       valueGetter: (params) => {
         const row = params.data;
@@ -567,7 +577,7 @@ export function JournalGridView({
                 ? t('journal.grid.monthResultPlain')
                 : t('journal.grid.result'),
           pinned: 'left',
-          width: month !== null && grid.journal.ratingExam ? 150 : 110,
+          width: month !== null && grid.journal.ratingExam ? 150 : 92,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
             if (row?.kind === 'bottom') return row.bottom.result;
@@ -624,7 +634,7 @@ export function JournalGridView({
           colId: 'grade',
           headerName: t('journal.grid.grade'),
           pinned: 'left',
-          width: 72,
+          width: 60,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
             if (row?.kind !== 'student') return null;
@@ -854,7 +864,8 @@ export function JournalGridView({
                   },
                 }),
           },
-          width: 112,
+          // Room for a plan title such as "Exercises in class" (the full title is the tooltip).
+          width: 140,
           suppressKeyboardEvent: dialogKey,
           editable: (params) =>
             params.data?.kind === 'student' &&
@@ -973,19 +984,21 @@ export function JournalGridView({
         lesson.status === null ? '' : ` · ${t(`journal.lessonStatus.${lesson.status}`)}`;
       // Task 8.8 (`09`, In the journal): "the lesson number and the topic, shortened to fit".
       const number =
-        lesson.number === null
-          ? ''
-          : `${t('journal.grid.lessonNumber', { number: lesson.number })} · `;
+        lesson.number === null ? '' : t('journal.grid.lessonNumber', { number: lesson.number });
       const topic =
         lesson.topic === null || lesson.topic === ''
           ? ''
-          : `${lesson.topic.length > TOPIC_SHOWN ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…` : lesson.topic} · `;
+          : lesson.topic.length > TOPIC_SHOWN
+            ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…`
+            : lesson.topic;
+      // 07, Layout: "Row 1: date, weekday, slot" first, so a narrow lesson never cuts the date.
+      const heading = [`${date}${slot}`, number, topic].filter((part) => part !== '').join(' · ');
       const notDelivered = lesson.notDelivered ? ` · ${t('journal.grid.notDeliveredShort')}` : '';
       return {
         groupId: lesson.id,
         headerName:
           reason === null
-            ? `${number}${topic}${date}${slot}${noPlan}${notDelivered}${status}`
+            ? `${heading}${noPlan}${notDelivered}${status}`
             : `${date}${slot} · ${reason}`,
         headerTooltip: reason ?? (lesson.topic === null ? undefined : lesson.topic),
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
@@ -1115,18 +1128,32 @@ export function JournalGridView({
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
     [bottom],
   );
+  // Room for the "all present" button under the A of a lesson the reader enters.
+  const headerHeight =
+    (grid.lessons.some((lesson) => lesson.canEnter) && entering) || works !== undefined || graded
+      ? 64
+      : 40;
+  // A class fits the page: the grid is exactly as tall as its two header rows, its rows, the
+  // bottom row and the horizontal scrollbar, with no empty band and no second scrollbar. (AG
+  // Grid's own autoHeight hides half of the last row behind the scrollbar.) A long list keeps
+  // scrolling inside the grid.
+  const fittedHeight =
+    rows.length <= ROWS_FIT_PAGE
+      ? GROUP_HEADER_HEIGHT +
+        headerHeight +
+        (rows.length + pinnedBottomRowData.length) * ROW_HEIGHT +
+        20
+      : null;
 
   return (
-    <div className="h-[70vh] min-h-96" data-journal-grid="true">
+    <div
+      className={fittedHeight === null ? 'h-[70vh] min-h-96' : undefined}
+      style={fittedHeight === null ? undefined : { height: fittedHeight }}
+      data-journal-grid="true"
+    >
       <AgGridReact<GridRow>
-        // Room for the "all present" button under the A of a lesson the reader enters.
-        headerHeight={
-          (grid.lessons.some((lesson) => lesson.canEnter) && entering) ||
-          works !== undefined ||
-          graded
-            ? 64
-            : 40
-        }
+        headerHeight={headerHeight}
+        groupHeaderHeight={GROUP_HEADER_HEIGHT}
         singleClickEdit={false}
         stopEditingWhenCellsLoseFocus
         modules={[AllCommunityModule]}
@@ -1177,7 +1204,16 @@ export function JournalGridView({
           api.current = event.api;
         }}
         onFirstDataRendered={(event) => {
-          if (scrollTo !== null) event.api.ensureColumnVisible(`${scrollTo}:a`, 'start');
+          // The lesson of the date at the right edge, whole, with the lessons before it in view on
+          // its left: its last column (AVG, else its last work, else A) is brought to the end.
+          if (scrollTo === null) return;
+          const lesson = grid.lessons.find((one) => one.id === scrollTo);
+          const last = [
+            `${scrollTo}:avg`,
+            ...[...(lesson?.works ?? [])].reverse().map((work) => `${scrollTo}:${workKey(work)}`),
+            `${scrollTo}:a`,
+          ].find((colId) => event.api.getColumn(colId) !== null);
+          if (last !== undefined) event.api.ensureColumnVisible(last, 'end');
         }}
       />
       {cardOpen !== null &&
