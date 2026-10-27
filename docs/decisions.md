@@ -355,7 +355,10 @@ Plan approved on pull request #242 with corrections 1 and 2; decisions confirmed
 | Records of the signed-in account take an `own` line, tested with another account's id and an unknown one | Decision 5 and correction 2 |
 | The 404 tests are sent as the Super Admin where the route lets the Super Admin in | Decision 8 |
 | `none` lines (14): the pins confirmed with the rules (a snapshot compared, 409 `pins_changed`, task 5.3b-2 review S2), the works of a plan item save (a work removed meanwhile, `edge/lesson-plans`), a relative found by a phone (linked in any branch by design, `edge/close-relatives`), the path `date` of journal routes | Build: none of them looks a record up as the branch's |
-| An exemption choice's student is the branch's when a member of a class or group of the branch, also one who has left since | Build: a choice is only needed where the student was a member |
+| An exemption choice's student is the branch's when a member of a class or group of the branch, also one who has left since (memberships read with the branch named) | Build: a choice is only needed where the student was a member |
+| A student of a quarter's closing (a decision, a journal's decisions, the recalculation apply) is the branch's when a member of a class or group of the branch, so a student moved to another branch during the quarter is still decided and applied | Code review: `students.branch_id` refused them, and the closing lists them from the journal's rows |
+| A role in `/roles/:assignmentId/end` and `/subjects` is reached through the person of the path, who is checked against the branch first; the Super Admin manages every role of that person, those of the person's further branches included; a role of another person or an unknown one is 404 | Permission review proposed limiting the role to the request's branch; not done: the Super Admin already gives a role in a further branch from the record (task 2.3a, `staff-accounts.test.ts`), and the person is the shared record |
+| The exemption previews keep taking `choices` (the screen sends the body of the change) and check their ids (404), not refuse the field | Code review cited `.claude/rules/api.md`, 5.6b-3; the field is checked, so its ids cannot pass unseen |
 
 ## 27 October 2026: the permission and security review, first part (task 10.3a)
 
