@@ -63,7 +63,7 @@ function escapeRegExp(text: string): string {
 }
 
 /** Whether the file holds an `it`, `test` or `describe` (also `.each`, `.skip`-free) with exactly this title. */
-function hasTitle(source: string, title: string): boolean {
+export function hasTitle(source: string, title: string): boolean {
   const quoted = escapeRegExp(title);
   const call = String.raw`\b(?:it|test|describe)(?:\.each\([\s\S]*?\))?\(\s*`;
   return ['\x27', '"', '`'].some((quote) =>
@@ -167,7 +167,7 @@ export function scopeProblems(
   return problems;
 }
 
-function readTestFile(file: string): string | undefined {
+export function readTestFile(file: string): string | undefined {
   if (!file.endsWith('.test.ts') || file.includes('..')) {
     return undefined;
   }
