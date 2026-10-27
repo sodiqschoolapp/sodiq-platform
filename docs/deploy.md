@@ -1,6 +1,6 @@
 # The test environment and the deploy
 
-How a merge to `main` reaches the test environment at `https://app-test.sodiqschool.uz`, what the owner sets up once, and what to do when something fails. Built in task 0.10; the spec is `docs/spec/13-technology.md` (Hosting and data, Running cost) and the decisions are in `docs/decisions.md`, 9 October 2026. Production comes with task 10.4 and follows the same steps with its own names.
+How a merge to `main` reaches the test environment at `https://app-test.sodiqschool.uz`, what the owner sets up once, and what to do when something fails. Built in task 0.10; the spec is `docs/spec/13-technology.md` (Hosting and data, Running cost) and the decisions are in `docs/decisions.md`, 9 October 2026. Production (task 10.4) follows the same steps with its own names, is deployed by hand and runs as Docker: section "Production" below.
 
 Nothing in this guide asks for a secret in chat or writes one into the repository. A secret is typed where it is used: the provider's dashboard, GitHub's environment, or `psql` on the laptop.
 
@@ -123,6 +123,61 @@ At resend.com create the account in the **EU** region. No domain, no key yet: th
    It prints the login and the first password once (valid 7 days, changed at the first sign-in). Sign in at `https://app-test.sodiqschool.uz`. The command refuses while a Super Admin exists.
 3. Invented data for the test environment (`13`: "a copy of real structure with invented data") is not part of this task; the owner names the task that seeds it.
 
+## Production (task 10.4)
+
+Production runs at `https://app.sodiqschool.uz` (owner's answers 14 to 20, `docs/decisions.md`, Decided ahead for Phase 10). It differs from the test environment in four ways:
+
+- **It is deployed only by hand.** The workflow **Deploy production** (`.github/workflows/deploy-production.yml`) is started by the owner from the Actions tab, on `main`, and waits for the owner's approval (environment `production`). Nothing deploys it on a merge.
+- **Only inside the release window**: Saturday and Sunday all day, and every day from 18:00 to 06:00 the next morning, Tashkent time. A weekday is closed from 06:00 to 17:59; the workflow refuses then (`apps/api/src/deploy/release-window.ts`). **On a working Saturday** (one that runs a weekday's timetable, `03` Academic calendar) deploy after 18:00 only: the workflow does not read the calendar.
+- **Only a commit that was tried on the test environment**: the commit must have passed `checks`, `e2e` and `deploy-test` in its `CI` run on `main` (`release-check.ts`). The run always deploys the head of `main`: wait until the `deploy-test` of that head is green before starting it.
+- **It runs as Docker** (`Dockerfile`, `render.production.yaml`): two API servers of 1 CPU and 2 GB and a worker of the same size, with Chromium inside the image, so Print and PDF work. The test environment stays on Render's Node runtime without Chromium; its PDFs answer "not available".
+
+No Claude session connects to the production database or reads its data or its logs on Render (answer 3). The workflow's own log prints migration file names, service ids, deploy states and check names, never a row.
+
+### How a production release runs
+
+1. The change is merged and the test environment has it (`deploy-test` green). The Academic Vice Principal's team walks `docs/go-live/release-checklist.md` on the test environment.
+2. After 18:00 (or at the weekend), Actions, **Deploy production**, Run workflow, branch `main`. The job `image` builds the image on GitHub's runner, makes a PDF with Uzbek Latin and Cyrillic in it and checks that the API and the worker load.
+3. The job `deploy` waits for your approval (Review deployments, Approve). Then: the window, the release check, `pnpm db:migrate` against the production database, the deploy of `sodiq-api` and `sodiq-worker` at that commit, and the smoke test against `https://app.sodiqschool.uz`.
+4. The two rules of a release above (a migration works with the running version; a failed deploy is fixed forward) hold for production too.
+
+To prove the image without deploying (for example during the day before the first deploy): Run workflow with **Only build the image** ticked. It needs no approval and deploys nothing.
+
+**Taking a release back** is allowed at any hour: Render's dashboard, the service, Deploys, the previous deploy, Rollback, for `sodiq-api` and `sodiq-worker`. Or the deploy command of "Taking a release back" above with the production service ids and the production API key, then the smoke test with `https://app.sodiqschool.uz`.
+
+**When the run fails**, the failed step says what happened, as for the test environment: **Inside the release window** (wait for 18:00); **The commit passed CI and the test deploy** (the message names the job that did not pass); the migrations, the deploy and the smoke test as in "When the run fails" above, with the secrets of the environment `production`. A fault of the running API or worker is in Sentry, project `sodiq-production`.
+
+### One-time setup of production, in this order
+
+Do one step at a time and check it before the next. Every value in angle brackets is yours; none goes into a file of the repository, a pull request or a chat. The names are those of the test environment without `test`.
+
+1. **Neon.** Create a project `sodiq-production`, region **Frankfurt** (eu-central-1), PostgreSQL **18**, on the **Launch** plan (answer 11: 7 days of restore; Scale when 30 days are needed). Scale to zero may stay on: the API keeps the compute awake. Then the steps of section 1 above, 2 to 5, with this project: `db/setup/server.sql` creates `sodiq_migrator` and `sodiq_app` with **new** passwords (never those of the test database), and the two addresses use the production host. Keep both passwords in the password manager.
+2. **Sentry.** In the same organisation, the projects `sodiq-production` (Node.js) and `sodiq-production-web` (Browser), each with its DSN. Data scrubbing on.
+3. **Cloudflare R2.** The bucket `sodiq-files`, location hint Western Europe (EU jurisdiction if offered). An API token with **Object Read & Write** limited to that bucket; note its access key id and secret once (shown once) for step 4.
+4. **Render.** Dashboard, Blueprints, **New Blueprint Instance**, the repository, branch `main`, **Blueprint path `render.production.yaml`**. Render shows `sodiq-api` (2 instances, Standard) and `sodiq-worker` (Standard) and asks for:
+   - `DATABASE_URL`: the application address of step 1, the **same** on both;
+   - `SECOND_STEP_KEY`: a **new** `openssl rand -base64 32`, the **same** on both, kept in the password manager with the database passwords (without it no stored second step can be read again);
+   - `SENTRY_DSN`: the DSN of `sodiq-production`, on both; `VITE_SENTRY_DSN` (API only): the DSN of `sodiq-production-web`;
+   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (`sodiq-files`): on the API.
+
+   Apply. The first start fails, as it did for the test environment (no tables yet); the **build** must succeed. Then on the Blueprint's page turn **Auto-Sync off**, and note the two service ids (`srv-…`). Use the API key of the test environment or create one for production (Account Settings, API Keys).
+5. **DNS.** Render shows the record for `app.sodiqschool.uz`: at the registrar (Eskiz) add **one** CNAME `app` pointing at `sodiq-api`'s `onrender.com` host. Nothing else in the zone changes.
+6. **GitHub.** Repository Settings, Environments, **New environment** `production`:
+   - **Required reviewers**: the owner (`abbosc`); **Deployment branches**: `main` only;
+   - Secret `DATABASE_MIGRATION_URL`: the migrations address of step 1;
+   - Secret `RENDER_API_KEY`: the key of step 4;
+   - Variables `RENDER_API_SERVICE_ID`, `RENDER_WORKER_SERVICE_ID` (the `srv-…` ids of step 4) and `PRODUCTION_URL` = `https://app.sodiqschool.uz`.
+7. **Prove the image**: Actions, Deploy production, Run workflow with "Only build the image" ticked. Green before the first deploy.
+8. **The first deploy**, after 18:00 or at the weekend: Run workflow (not ticked), approve. The migrations create every table on the empty database, then the services start and the smoke test passes. `https://app.sodiqschool.uz` shows the sign-in page.
+9. **The first Super Admin** (answer 17; at most 3 Super Admins, `MAX_SUPER_ADMINS`): Render, `sodiq-api`, **Shell**:
+   ```bash
+   node apps/api/dist/modules/auth/cli.js first-account --first-name <name> --last-name <name>
+   ```
+   the program that `pnpm auth:first-account` runs (the image carries no pnpm). It prints the login and the first password once; sign in, change the password and set up the second step. The command refuses while a Super Admin exists; a second or third one is given the role in the app.
+10. Go on with `docs/go-live/checklist.md`.
+
+Email stays off in production (answer 16): a password reset by email is written to the log only, and an administrator resets passwords in the app.
+
 ## Rare cases
 
 - **The API or the worker does not start and the log says `SECOND_STEP_KEY does not decrypt the oldest stored secret`.** Either the key on Render is not the one the secrets were encrypted with (restore it from the password manager), or the oldest row itself is damaged. In the second case only, from Neon's SQL editor as the project's own role: find it with `select account_id, created_at from account_second_steps order by created_at, account_id limit 1;` and remove that one row with `delete from account_second_steps where account_id = '<id>';`. That person sets the second step up again at the next sign-in. Nothing else is touched.
@@ -133,7 +188,6 @@ At resend.com create the account in the **EU** region. No domain, no key yet: th
 
 ## What this task left for later
 
-- Production, its Neon project, its environment with the owner's approval, the go-live checklist: 10.4.
 - Grafana Cloud, UptimeRobot, alerts to Telegram, the sign-in-and-save check, the daily export to R2, the restore drill, request logging: 10.2.
 - Sentry source maps of the web app (minified stack traces until then): 10.2. The API's stack traces already name TypeScript lines (`--enable-source-maps`; the `.map` files stay on the server).
 - The mail service and `RESEND_API_KEY`: 2.3. The R2 token: the first task that stores a file.

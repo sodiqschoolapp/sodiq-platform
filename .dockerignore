@@ -1,0 +1,17 @@
+# The production image (Dockerfile, task 10.4) is built from the repository
+# as committed: no local secrets, no build output of a laptop.
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+**/dist-worker
+**/dist-e2e
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+.git
+.claude
+apps/solver/build
+apps/solver/.gradle

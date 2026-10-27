@@ -1,0 +1,77 @@
+# Production on Render (task 10.4; docs/deploy.md, Production). The owner
+# creates it once from this file as its own Blueprint instance (Dashboard,
+# Blueprints, New Blueprint Instance, Blueprint path `render.production.yaml`)
+# and enters the values marked `sync: false` when asked; they are never written
+# here. Its own file, so that a sync of the test Blueprint (render.yaml) can
+# never change production (decision 2 of pull request #244).
+#
+# Owner's answers 14, 15 and 19 (docs/decisions.md, Decided ahead for Phase
+# 10): `app.sodiqschool.uz`, two servers of 2 GB in Frankfurt run as Docker
+# with Chromium (Dockerfile), the jobs worker beside them. Deploys are started
+# only by .github/workflows/deploy-production.yml, which the owner runs by hand
+# after 18:00 or at the weekend, Tashkent time (autoDeployTrigger: off).
+services:
+  - type: web
+    name: sodiq-api
+    runtime: docker
+    region: frankfurt
+    plan: standard
+    numInstances: 2
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 30
+    domains:
+      - app.sodiqschool.uz
+    envVars:
+      - key: TRUST_PROXY
+        value: '1'
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      # Read by the web app's build inside the image (a build argument).
+      - key: VITE_SENTRY_ENVIRONMENT
+        value: production
+      - key: WEB_ORIGIN
+        value: https://app.sodiqschool.uz
+      # Entered in the dashboard at creation, the same values as the worker's.
+      - key: DATABASE_URL
+        sync: false
+      - key: SECOND_STEP_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: VITE_SENTRY_DSN
+        sync: false
+      # The R2 bucket `sodiq-files`, with a token limited to it.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+
+  - type: worker
+    name: sodiq-worker
+    runtime: docker
+    region: frankfurt
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node apps/api/dist/worker.js
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      # The worker writes the mails (to the log only, answer 16), with the links' address.
+      - key: WEB_ORIGIN
+        value: https://app.sodiqschool.uz
+      - key: DATABASE_URL
+        sync: false
+      - key: SECOND_STEP_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

@@ -5,7 +5,8 @@
 #
 # Deploys are started by the deploy job of .github/workflows/ci.yml after the
 # migrations, never by a push (autoDeployTrigger: off). docs/deploy.md
-# describes the whole setup and what to do when a deploy fails.
+# describes the whole setup and what to do when a deploy fails. Production has
+# its own Blueprint, render.production.yaml (task 10.4).
 #
 # pnpm: Render's build machine has a read-only global npm folder, so the
 # pinned version cannot be installed with `npm install -g` (EROFS). Every

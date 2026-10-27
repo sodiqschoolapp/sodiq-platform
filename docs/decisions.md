@@ -342,6 +342,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 27 October 2026: production and the go-live checklist (task 10.4)
+
+Plan approved on pull request #244 with corrections 1 to 5; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a spec contradiction). Neon on the Launch plan, 7 days of restore, where `13` says Scale with 30 days. Proposed `/spec-change` for `13`, Hosting and data, Backups: "Backups: continuous, with restore to any point of the last 7 days (Neon Launch plan) until the owner moves to the Scale plan for 30 days, a daily full export kept in a second location (Cloudflare R2), and a restore test every month."; Running cost, the Neon row: "Launch plan, 0.5 to 2 CU, always on", its price read again | Owner's answer 11 (26 October 2026) is later than `13` and applies |
+| **Look first** (a spec contradiction). The pilot runs with several groups, where `14` and `edge/academic-year` say one grade; the rest is kept (whole-branch timetable, paper journal official, one full quarter of two or three journals compared before a written decision to switch). Proposed `/spec-change`: `14`, Pilot: "Before the full switch, run the new system with the groups the school chooses alongside the present way of working, and compare results every week."; `edge/academic-year`, pilot row: "The pilot groups' teachers also teach other groups." and "... only the pilot groups use journals." | Owner's answer 18 |
+| **Look first.** The release window of production: Saturday and Sunday all day and every day from 18:00 to 06:00 the next morning, Tashkent time; a weekday is closed from 06:00 to 17:59; no override. On a working Saturday the owner deploys after 18:00 (written in `docs/deploy.md` and `docs/go-live/release-checklist.md`; the workflow reads no calendar). A rollback in Render's dashboard is allowed at any time | Answer 19 and `13` ("outside lesson hours"); plan review correction 3 |
+| **Look first.** Production has its own Blueprint, `render.production.yaml`, created as its own Blueprint instance with Auto-Sync off | A sync of the test Blueprint can never change production; the two differ in runtime (answers 1, 15, 20) |
+| GitHub environment `production`: the owner as required reviewer, `main` only; the workflow `deploy-production.yml` is started by hand only and carries `contents: read` and `actions: read` | Answers 1 and 3; plan review correction 2 |
+| The image is proved by the job `image` of `deploy-production.yml` (build, a PDF with Uzbek Latin and Cyrillic, both entry points load), runnable alone with `check_only`; `ci.yml` is not changed | Only the deploy job under `.github/` was approved in advance |
+| Only a commit of `main` whose `checks`, `e2e` and `deploy-test` succeeded in its `CI` run goes to production (`release-check.ts`) | Answer 20: every change is tried on the test environment first |
+| The first Super Admin by `node apps/api/dist/modules/auth/cli.js first-account` in the Render Shell, the program `pnpm auth:first-account` runs; the image carries no pnpm | Answer 17; no build tool in the live image |
+| The test environment stays on Render's Node runtime without Chromium (PDFs there answer `pdf_unavailable`) | Answer 1; moving it changes its size and cost |
+| The image: `node:24.22.1-bookworm-slim` pinned by digest; the production dependencies of `@sodiq/api...` installed at the repository's paths (no `pnpm deploy`); Chromium's headless shell by the API's `playwright-core`, installed as root into `/ms-playwright`; the service runs as the user `node` | Plan review findings 4 and 9 |
+| Email stays the log mailer in production; names `sodiq-api`, `sodiq-worker`, Neon `sodiq-production`, Sentry `sodiq-production` and `sodiq-production-web`, R2 `sodiq-files` | Answer 16; the test names without `test` |
+
 ## 27 October 2026: records of another branch by id (task 10.3b)
 
 Plan approved on pull request #242 with corrections 1 and 2; decisions confirmed there. Flagged on issue #42.
