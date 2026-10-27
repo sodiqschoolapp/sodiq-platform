@@ -29,6 +29,7 @@ import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, QUARTERS, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { binary } from '../../testing/xlsx-kit.js';
+import { rowsOfTables } from '../../testing/id-refusal-kit.js';
 import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
 import { DailyWork } from './daily/daily.service.js';
@@ -69,6 +70,35 @@ const studentIdsOf = (items: readonly { students: readonly unknown[] }[]): strin
       ),
     )
     .sort();
+
+/**
+ * Every table a closing route writes, also through shared functions (the close, its locks and
+ * plan outcomes, a reopening, a recalculation, a reminder), and the request keys: what a
+ * refused request must leave as it was, in every branch (.claude/rules/api.md, task 1.5;
+ * task 10.3b). `rowsOfTables` adds nothing; `audit_log` is added where it is compared.
+ */
+const CLOSING_TABLES = [
+  'quarter_result_decisions',
+  'quarter_closings',
+  'quarter_closing_journals',
+  'quarter_final_results',
+  'quarter_reopenings',
+  'result_checks',
+  'result_check_differences',
+  'quarters',
+  'journals',
+  'journal_unlocks',
+  'lessons',
+  'lesson_plan_requests',
+  'lesson_plan_windows',
+  'lesson_plan_window_extensions',
+  'lesson_plan_tray',
+  'lesson_plan_outcomes',
+  'lesson_plan_items',
+  'notifications',
+  'request_keys',
+  'audit_log',
+];
 
 // All names are invented. Task 9.2a: the closing checklist (docs/spec/07-journal.md, Closing a
 // quarter and Exemptions, Effect on totals; docs/spec/edge-cases/journal.md, Closing and
@@ -1314,6 +1344,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       north: await t.rowsOf(b.s.branch),
       south: await t.rowsOf(other.s.branch),
     };
+    const tablesBefore = await rowsOfTables(t.database.migrator, CLOSING_TABLES);
     const decisionsBefore = await t.database.migrator
       .selectFrom('quarter_result_decisions')
       .selectAll()
@@ -1363,23 +1394,16 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         });
         expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
       }
-      // Another branch's and an unknown student in a whole journal's list: named, never
-      // written (the body ids of .claude/rules/api.md).
-      const whole = await post(
-        b.s.branch,
-        `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
-        { decision: 'keep', students: [other.bek, UNKNOWN] },
-      );
-      expect(whole.status, JSON.stringify(whole.body)).toBe(200);
-      expect(whole.body).toEqual({
-        decided: [],
-        refused: [
-          ...[other.bek, UNKNOWN]
-            .sort()
-            .map((studentId) => ({ studentId, code: 'closing_not_flagged' })),
-          { studentId: b.bek, code: 'closing_list_changed' },
-        ],
-      });
+      // Another branch's and an unknown student in a whole journal's list, beside an own
+      // one: 404, never written (the body ids of .claude/rules/api.md; task 10.3b).
+      for (const studentId of [other.bek, UNKNOWN]) {
+        const whole = await post(
+          b.s.branch,
+          `/api/results/closing/${b.q1}/journals/${b.journal}/decisions`,
+          { decision: 'keep', students: [b.bek, studentId] },
+        );
+        expect([whole.status, codeOf(whole)]).toEqual([404, 'not_found']);
+      }
     });
     expect(await t.auditCount()).toBe(auditBefore);
     expect([await notificationsOf(b.s.branch), await notificationsOf(other.s.branch)]).toEqual(
@@ -1390,6 +1414,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     ).toEqual(decisionsBefore);
     expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
     expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+    expect(await rowsOfTables(t.database.migrator, CLOSING_TABLES)).toEqual(tablesBefore);
   });
 
   it('refuses every write before the checklist opens, and a clear with nothing stored', async () => {
@@ -2085,6 +2110,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       validFrom: new Date('2026-09-01T00:00:00+05:00'),
     });
     const rowsBefore = { north: await t.rowsOf(s.branch), south: await t.rowsOf(other.branch) };
+    const tablesBefore = await rowsOfTables(t.database.migrator, CLOSING_TABLES);
     const auditBefore = await t.auditCount();
     const key = randomUUID();
     let warnings: { kind: string; journalId: string | null }[] = [];
@@ -2123,6 +2149,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     expect(await t.auditCount()).toBe(auditBefore);
     expect(await t.rowsOf(s.branch)).toEqual(rowsBefore.north);
     expect(await t.rowsOf(other.branch)).toEqual(rowsBefore.south);
+    expect(await rowsOfTables(t.database.migrator, CLOSING_TABLES)).toEqual(tablesBefore);
     const rowsBeforeRoles = await t.rowsOf(s.branch);
     const auditBeforeRoles = await t.auditCount();
     for (const role of ['principal', 'teacher', 'head_teacher'] as const) {
@@ -2170,6 +2197,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             s.branch,
             closePath(id),
             { warnings, lockNow: false, startQuarter: null },
+            key,
+          );
+          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+        }
+        // The key repeated with a warning naming another branch's or an unknown journal:
+        // 404, never the stored answer (task 10.3b).
+        for (const journalId of [foreignJournal, UNKNOWN]) {
+          const refused = await post(
+            s.branch,
+            closePath(q1),
+            {
+              warnings: [...warnings, { kind: 'no_teacher', journalId }],
+              lockNow: false,
+              startQuarter: null,
+            },
             key,
           );
           expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
@@ -3127,6 +3169,17 @@ describe('the closing checklist (07, Closing a quarter)', () => {
               calls.post(b.s.branch, journalClosePath(quarter, journalId), closeBody, key),
             { other: other.q1, quarter: b.q1, journal: b.journal, otherJournal: other.journal },
           );
+          // The key repeated with a warning naming another branch's or an unknown journal:
+          // 404, never the stored answer (task 10.3b).
+          for (const journalId of [other.journal, UNKNOWN]) {
+            const answer = await calls.post(
+              b.s.branch,
+              journalClosePath(b.q1, b.journal),
+              naming(journalId),
+              key,
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
           const final = checklistOf(await calls.get(b.s.branch, path(b.q1)));
           expect(final.reopenedJournals).toEqual([]);
           expect(final.reopenings.map((one) => one.closedAgainVersion)).toEqual([2]);
@@ -3392,6 +3445,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         });
       }
       const before = await stateOf();
+      const tablesBefore = await rowsOfTables(t.database.migrator, CLOSING_TABLES);
       const rowsBefore = {
         north: await t.rowsOf(b.s.branch),
         south: await t.rowsOf(other.s.branch),
@@ -3460,19 +3514,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       );
       const after = await stateOf();
       expect(after).toEqual(before);
+      expect(await rowsOfTables(t.database.migrator, CLOSING_TABLES)).toEqual(tablesBefore);
       expect(await t.auditCount()).toBe(auditBefore);
       expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
       expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
     });
 
     // The Super Admin's "apply" holds the branch of the request only; its ids are still checked.
-    it("answers 404 to the Super Admin's apply for another branch's and an unknown quarter, changing no row", async () => {
+    it("answers 404 to the Super Admin's apply for another branch's and an unknown quarter, student and subject, changing no row", async () => {
       const b = await closed();
       const other = await closed();
       const rowsBefore = {
         north: await t.rowsOf(b.s.branch),
         south: await t.rowsOf(other.s.branch),
       };
+      const tablesBefore = await rowsOfTables(t.database.migrator, CLOSING_TABLES);
       const auditBefore = await t.auditCount();
       const apply = {
         reason: 'A rounding bug of an earlier release',
@@ -3491,12 +3547,27 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             );
             expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
           }
+          // A student of another branch or unknown, an unknown subject (task 10.3b).
+          for (const row of [
+            { subjectId: b.s.subject, studentId: other.aziz },
+            { subjectId: b.s.subject, studentId: UNKNOWN },
+            { subjectId: UNKNOWN, studentId: b.aziz },
+          ]) {
+            const answer = await post(
+              b.s.branch,
+              `${recalculationPath(b.q1)}/apply`,
+              { ...apply, students: [row] },
+              randomUUID(),
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
         },
         REOPEN,
       );
       expect(await t.auditCount()).toBe(auditBefore);
       expect(await t.rowsOf(b.s.branch)).toEqual(rowsBefore.north);
       expect(await t.rowsOf(other.s.branch)).toEqual(rowsBefore.south);
+      expect(await rowsOfTables(t.database.migrator, CLOSING_TABLES)).toEqual(tablesBefore);
     });
 
     // edge/calculation, "A bug is found after results were closed and exported" (decision 10).
@@ -3613,6 +3684,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
             (quarter) => post(b.s.branch, `${recalculationPath(quarter)}/apply`, apply, applyKey),
             { other: other.q1, quarter: b.q1 },
           );
+          // The key repeated with a student of another branch or unknown, or an unknown
+          // subject: 404, never the stored answer (task 10.3b).
+          for (const row of [
+            { subjectId: b.s.subject, studentId: other.aziz },
+            { subjectId: b.s.subject, studentId: UNKNOWN },
+            { subjectId: UNKNOWN, studentId: b.aziz },
+          ]) {
+            const answer = await post(
+              b.s.branch,
+              `${recalculationPath(b.q1)}/apply`,
+              { ...apply, students: [row] },
+              applyKey,
+            );
+            expect([answer.status, codeOf(answer)]).toEqual([404, 'not_found']);
+          }
           const again = await get(b.s.branch, recalculationPath(b.q1));
           expect((again.body as { rows: unknown[] }).rows).toEqual([]);
           const nothing = await post(

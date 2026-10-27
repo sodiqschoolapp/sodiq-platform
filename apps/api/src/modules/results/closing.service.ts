@@ -405,6 +405,16 @@ export class ClosingService {
       if (journal === undefined || journal.academicYearId !== scene.quarter.academicYearId) {
         throw notFound();
       }
+      // Every student of the body of the branch, or 404 before any other refusal
+      // (.claude/rules/api.md, task 1.5; task 10.3b).
+      const sentIds = [...new Set(input.students.map((id) => id.toLowerCase()))];
+      const ofBranch = await transaction
+        .selectFrom('students')
+        .select('id')
+        .where('id', 'in', sentIds)
+        .where('branch_id', '=', branchId)
+        .execute();
+      if (ofBranch.length !== sentIds.length) throw notFound();
       if (scene.today < scene.opensOn) throw notOpen();
       const reopened = await this.refuseClosed(transaction, scene);
       // Task 9.2c: in a closed quarter, a reopened journal only.
@@ -1236,6 +1246,10 @@ export class ClosingService {
         .where('id', '=', scene.quarter.id)
         .forUpdate()
         .execute();
+      // Every student and subject of the body known to the branch, or 404 before any other
+      // refusal and before a used key answers (.claude/rules/api.md, tasks 1.5 and 5.5a-1;
+      // task 10.3b).
+      await this.refuseUnknownRows(transaction, branchId, input.students);
       const sent = input.students
         .map((row) => `${row.subjectId.toLowerCase()}|${row.studentId.toLowerCase()}`)
         .sort();
@@ -1800,6 +1814,36 @@ export class ClosingService {
       quarters: dated.filter((one) => one.academicYearId === yearId),
       quarter: quarter ?? null,
     };
+  }
+
+  /** 404 unless every student of the rows is of the branch and every subject is known. */
+  private async refuseUnknownRows(
+    transaction: Transaction,
+    branchId: string,
+    rows: readonly { subjectId: string; studentId: string }[],
+  ): Promise<void> {
+    const studentIds = [...new Set(rows.map((row) => row.studentId.toLowerCase()))];
+    const subjectIds = [...new Set(rows.map((row) => row.subjectId.toLowerCase()))];
+    const students =
+      studentIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('students')
+            .select('id')
+            .where('id', 'in', studentIds)
+            .where('branch_id', '=', branchId)
+            .execute();
+    const subjects =
+      subjectIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('subjects')
+            .select('id')
+            .where('id', 'in', subjectIds)
+            .execute();
+    if (students.length !== studentIds.length || subjects.length !== subjectIds.length) {
+      throw notFound();
+    }
   }
 
   /** The quarter of a write: 404 for another branch's or an unknown one, 409 while undated. */

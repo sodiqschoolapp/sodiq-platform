@@ -12,7 +12,10 @@ import { hasTitle, readTestFile, staticSegments } from './route-scope-check.js';
  *   when named, send an unknown id;
  * - `own`: a record of the signed-in account (a notification, a session, a
  *   trusted device); another account's id and an unknown one are answered 404;
- * - `none`: no record (the rule says why).
+ * - `none`: no record looked up as the branch's: a field that names no record,
+ *   a snapshot compared with stored ids and never looked up, or a record the
+ *   route may take from any branch by design (a relative found by a phone,
+ *   which is unique in the school). The rule says which and why.
  */
 export type IdKind = 'branch' | 'school' | 'own' | 'none';
 

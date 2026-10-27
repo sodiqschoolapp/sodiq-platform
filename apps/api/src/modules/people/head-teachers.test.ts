@@ -364,7 +364,11 @@ describe('Head Teacher appointments', () => {
         400,
         'validation_failed',
       );
-      for (const one of [archived, UNKNOWN]) {
+      // An archived subject is subject_unknown; an unknown id is not found (task 10.3b).
+      for (const [one, status, code] of [
+        [archived, 409, 'subject_unknown'],
+        [UNKNOWN, 404, 'not_found'],
+      ] as const) {
         refusedWith(
           await give(made.id, {
             role: 'head_teacher',
@@ -372,8 +376,8 @@ describe('Head Teacher appointments', () => {
             from: TODAY,
             subjectIds: [one],
           }),
-          409,
-          'subject_unknown',
+          status,
+          code,
         );
       }
       expect(await snapshot()).toEqual(before);
@@ -552,7 +556,7 @@ describe('Head Teacher appointments', () => {
       );
     });
 
-    it('answers 404 for an appointment of another person, an unknown one and a record of another branch', async () => {
+    it('answers 404 for an appointment of another person or branch, an unknown one, a record of another branch and an unknown subject', async () => {
       const anatomy = await subject('Anatomy');
       const made = await appoint([anatomy]);
       const other = await appoint([await subject('Genetics')]);
@@ -579,6 +583,18 @@ describe('Head Teacher appointments', () => {
       );
       refusedWith(
         await change(UNKNOWN, made.assignmentId, { subjectIds: [anatomy], from: TOMORROW }),
+        404,
+        'not_found',
+      );
+      // An appointment of another branch under a record of the branch, and an unknown subject
+      // (task 10.3b).
+      refusedWith(
+        await change(made.id, southern.assignmentId, { subjectIds: [anatomy], from: TOMORROW }),
+        404,
+        'not_found',
+      );
+      refusedWith(
+        await change(made.id, made.assignmentId, { subjectIds: [UNKNOWN], from: TOMORROW }),
         404,
         'not_found',
       );

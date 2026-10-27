@@ -399,6 +399,16 @@ export class BranchMoves {
             if (known.length !== new Set(chosenIds.map((id) => id.toLowerCase())).size) {
               throw notFound();
             }
+            // A subject is one record of the school: an unknown one is not found (task 10.3b).
+            const subjectIds = [...new Set(input.groups.map((one) => one.subjectId.toLowerCase()))];
+            const subjects = await transaction
+              .selectFrom('subjects')
+              .select('id')
+              .where('id', 'in', subjectIds)
+              .execute();
+            if (subjects.length !== subjectIds.length) {
+              throw notFound();
+            }
           }
           const sending = await this.transactions.joinSendingBranch(transaction, moveId, branchId);
           if (sending === undefined) {
