@@ -358,6 +358,32 @@ describe('exemptions: ids of another branch', () => {
     }
   });
 
+  // Permission review of 10.3b: the choices are checked before the batch is found empty.
+  it('answers 404 for a choice of another branch on /api/exemptions/batches/:batchId/end of a batch with every exemption voided', async () => {
+    const voided = await created(
+      s.branch,
+      body({ studentIds: [s.boboyev], startDate: '2026-11-30', endDate: '2026-12-02' }),
+    );
+    const gone = await post(s.branch, `/api/exemptions/${voided.id}/void`, {
+      version: 1,
+      reason: 'Entered for the wrong student',
+    });
+    expect(gone.status, JSON.stringify(gone.body)).toBe(200);
+    const path = `/api/exemptions/batches/${voided.batchId}/end`;
+    // With the own ids, the empty batch is what is refused.
+    const empty = await post(s.branch, path, batchEnd(choice(s.ahmedov, s.lesson)));
+    expect(empty.status, JSON.stringify(empty.body)).toBe(409);
+    expect((empty.body as { error: { code: string } }).error.code).toBe('exemption_batch_empty');
+    await refused(
+      (id) => post(s.branch, path, batchEnd(choice(id, s.lesson))),
+      [e.ahmedov, UNKNOWN_ID],
+    );
+    await refused(
+      (id) => post(s.branch, path, batchEnd(choice(s.ahmedov, id))),
+      [e.lesson, UNKNOWN_ID],
+    );
+  });
+
   it('answers 404 for an exemption of another branch on every change of /api/exemptions/:id', async () => {
     await refused((id) => t.patch(`/api/exemptions/${id}`, s.branch, edit()));
     await refused((id) => post(s.branch, `/api/exemptions/${id}/edit/preview`, edit()));

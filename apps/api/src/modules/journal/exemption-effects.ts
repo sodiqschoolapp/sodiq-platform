@@ -123,10 +123,12 @@ export async function lockStudents(
  * student never a member of a class or a group of the branch, or an unknown one, is 404 before any
  * lock or write (permission review 9; `.claude/rules/api.md`: one 404 per body id). The student
  * is looked up by the memberships of the branch, as a choice is only needed where the student was
- * a member: one who has left the branch since still has them (task 10.3b).
+ * a member: one who has left the branch since still has them (task 10.3b). Both are read for
+ * the branch of the request by name, not only through the row filter.
  */
 export async function refuseForeignChoices(
   transaction: Transaction,
+  branchId: string,
   choices: readonly ExemptionChoice[],
 ): Promise<void> {
   const ids = [...new Set(choices.map((one) => one.lessonId.toLowerCase()))];
@@ -135,13 +137,16 @@ export async function refuseForeignChoices(
     .selectFrom('lessons')
     .select('id')
     .where('id', 'in', ids)
+    .where('branch_id', '=', branchId)
     .execute();
   if (found.length !== ids.length) throw notFound();
   const students = [...new Set(choices.map((one) => one.studentId.toLowerCase()))];
   const members = await sql<{ student_id: string }>`
-    select m.student_id from class_memberships m where m.student_id = any(${students}::uuid[])
+    select m.student_id from class_memberships m
+    where m.branch_id = ${branchId}::uuid and m.student_id = any(${students}::uuid[])
     union
-    select g.student_id from group_memberships g where g.student_id = any(${students}::uuid[])
+    select g.student_id from group_memberships g
+    where g.branch_id = ${branchId}::uuid and g.student_id = any(${students}::uuid[])
   `.execute(transaction);
   if (members.rows.length !== students.length) throw notFound();
 }

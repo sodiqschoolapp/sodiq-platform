@@ -505,7 +505,7 @@ export class Exemptions {
   async preview(access: Access, input: ExemptionCreate): Promise<ExemptionPreview> {
     return this.previewOf(access, async (transaction) => {
       // The choices are not used by a preview, but their ids are still the branch's (task 10.3b).
-      await refuseForeignChoices(transaction, input.choices);
+      await refuseForeignChoices(transaction, branchOf(access), input.choices);
       return this.createRun(transaction, access, { ...input, choices: [] }, undefined, true);
     });
   }
@@ -522,7 +522,7 @@ export class Exemptions {
         this.transactions.run(access.branchIds, async (transaction) => {
           // The ids before the key: a repeat with another branch's student is 404 (api rules).
           await this.refuseForeign(transaction, input.studentIds, input.subjectIds);
-          await refuseForeignChoices(transaction, input.choices);
+          await refuseForeignChoices(transaction, branchOf(access), input.choices);
           const once = await this.requestKeys.runOnce(
             transaction,
             {
@@ -624,7 +624,8 @@ export class Exemptions {
   ): Promise<{ batchId: string; ids: string[] }> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
-    await refuseForeignChoices(transaction, input.choices);
+    // The choices are checked by both callers before this: `create` before the request key,
+    // `preview` before it drops them.
     await this.refuseForeign(transaction, input.studentIds, input.subjectIds);
     const year = await this.yearOf(transaction, branchId, input.startDate);
     const endDate = input.kind === 'full' ? year.end : (input.endDate ?? input.startDate);
@@ -887,7 +888,7 @@ export class Exemptions {
   editPreview(access: Access, id: string, input: ExemptionEdit): Promise<ExemptionPreview> {
     return this.previewOf(access, async (transaction) => {
       // The choices are not used by a preview, but their ids are still the branch's (task 10.3b).
-      await refuseForeignChoices(transaction, input.choices);
+      await refuseForeignChoices(transaction, branchOf(access), input.choices);
       return this.editRun(transaction, access, id, { ...input, choices: [] }, undefined, true);
     });
   }
@@ -921,7 +922,7 @@ export class Exemptions {
   ): Promise<void> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
-    await refuseForeignChoices(transaction, input.choices);
+    await refuseForeignChoices(transaction, branchOf(access), input.choices);
     const exists = await transaction
       .selectFrom('exemptions')
       .select(['student_id'])
@@ -1033,7 +1034,7 @@ export class Exemptions {
   endPreview(access: Access, id: string, input: ExemptionEnd): Promise<ExemptionPreview> {
     return this.previewOf(access, async (transaction) => {
       // The choices are not used by a preview, but their ids are still the branch's (task 10.3b).
-      await refuseForeignChoices(transaction, input.choices);
+      await refuseForeignChoices(transaction, branchOf(access), input.choices);
       const settled = await this.endRun(
         transaction,
         access,
@@ -1089,7 +1090,7 @@ export class Exemptions {
   ): Promise<ExemptionPreview> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
-    await refuseForeignChoices(transaction, choices);
+    await refuseForeignChoices(transaction, branchOf(access), choices);
     const heads = await transaction
       .selectFrom('exemptions')
       .select([
@@ -1498,7 +1499,7 @@ export class Exemptions {
     const branchId = branchOf(access);
     return this.previewOf(access, async (transaction) => {
       // The choices are not used by a preview, but their ids are still the branch's (task 10.3b).
-      await refuseForeignChoices(transaction, input.choices);
+      await refuseForeignChoices(transaction, branchOf(access), input.choices);
       const ids = await this.liveOfBatch(transaction, branchId, batchId);
       throw new PreviewDone(
         await this.endRun(transaction, access, ids, input.endDate, [], undefined, true, null),
@@ -1516,6 +1517,8 @@ export class Exemptions {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
+          // The ids of the choices before any refusal of the batch (permission review of 10.3b).
+          await refuseForeignChoices(transaction, branchId, input.choices);
           const ids = await this.liveOfBatch(transaction, branchId, batchId);
           await this.endRun(
             transaction,
@@ -1772,7 +1775,7 @@ export class Exemptions {
   ): Promise<ExemptionPreview> {
     const branchId = branchOf(access);
     await withActor(transaction, access.accountId);
-    await refuseForeignChoices(transaction, choices);
+    await refuseForeignChoices(transaction, branchOf(access), choices);
     const head = await transaction
       .selectFrom('exemption_move_offers')
       .select('student_id')
