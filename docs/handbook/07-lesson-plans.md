@@ -1,6 +1,17 @@
 # Lesson plans
 
-Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 8.8 and 9.2d added.
+Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 8.8, 9.2d and 10.3a added.
+
+## Who sees an extension of the window
+
+<!-- Sources: 09 ("The Academic Vice Principal can extend the window for one teacher, for example after illness or for a new teacher"); task 10.3a, pull request #241 -->
+
+**What it is.** When the Academic Vice Principal extends the plan window for one teacher, the window page lists that extension with the teacher and the new end date.
+
+**Rules.**
+
+- The Super Admin, the Principal and the Academic Vice Principal see every extension of the branch.
+- A teacher sees an extension only if it is their own. A Head Teacher or a Senior Head Teacher sees only their own extension too: the reason for an extension can be personal, such as an illness.
 
 ## A work added after the lesson
 
