@@ -32,7 +32,8 @@ export interface IdLine {
   /**
    * Where the id is: `path:<param>`, `query:<field>` or `body:<field path>`,
    * an array as `[]` and a variant of a union as `<field=value>`, as
-   * `inputIdsOf` writes it (`body:rooms[].roomId`, `body<kind=class>.classId`).
+   * `inputIdsOf` writes it (`body:rooms[].roomId`, `body:target<kind=class>.classId`;
+   * a variant of the whole body has no colon: `body<kind=class>.classId`).
    */
   id: string;
   /** The record it names (`room`, `lesson`, `journal`). */
@@ -217,6 +218,42 @@ export function inputIdsOf(document: OpenAPIObject): Record<string, InputIds> {
     }
   }
   return routes;
+}
+
+/** Every route of the document, by its name in `ROUTE_ACCESS` (`GET /api/x/:id`). */
+export function documentedRoutes(document: OpenAPIObject): string[] {
+  const names: string[] = [];
+  for (const [pathName, item] of Object.entries(document.paths)) {
+    for (const method of METHODS) {
+      if (item[method] !== undefined) {
+        names.push(`${method.toUpperCase()} ${pathName.replace(/\{(\w+)\}/g, ':$1')}`);
+      }
+    }
+  }
+  return names;
+}
+
+/**
+ * The routes on one side only: listed (`ROUTE_ACCESS`, `PUBLIC_ROUTES`,
+ * `STEP_ROUTES`) but not in the OpenAPI document, so their ids are never read,
+ * or in the document but not listed, so the two names differ.
+ */
+export function documentProblems(
+  documented: readonly string[],
+  listed: readonly string[],
+): string[] {
+  const inDocument = new Set(documented);
+  const inList = new Set(listed);
+  return [
+    ...[...inList]
+      .filter((route) => !inDocument.has(route))
+      .map(
+        (route) => `${route}: listed, but not in the OpenAPI document, so its ids are never read`,
+      ),
+    ...[...inDocument]
+      .filter((route) => !inList.has(route))
+      .map((route) => `${route}: in the OpenAPI document, but not listed`),
+  ];
 }
 
 function testProblems(

@@ -752,6 +752,8 @@ describe('a trusted device', () => {
       const ownerCookie = await trust(owner.login);
       const strangerCookie = await trust(stranger.login);
       const [device] = await devicesOf(ownerCookie);
+      // A missing id would be refused by the path, never by the account (task 10.3b).
+      expect(device?.id).toMatch(/^[0-9a-f-]{36}$/);
 
       const response = await remove(device?.id ?? '', strangerCookie);
 

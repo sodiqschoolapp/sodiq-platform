@@ -3,7 +3,10 @@ import type { OpenAPIObject } from '@nestjs/swagger';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildOpenApiDocument } from '../../openapi/build-document.js';
 import { createTestApp } from '../../testing/create-test-app.js';
+import { PUBLIC_ROUTES, ROUTE_ACCESS, STEP_ROUTES } from '../../testing/route-access-list.js';
 import {
+  documentedRoutes,
+  documentProblems,
   idProblems,
   inputIdsOf,
   type InputIds,
@@ -29,10 +32,13 @@ function moduleOf(route: string): string {
 describe('the ids of the routes', () => {
   let app: INestApplication;
   let inputs: Record<string, InputIds>;
+  let documented: string[];
 
   beforeAll(async () => {
     app = await createTestApp();
-    inputs = inputIdsOf(buildOpenApiDocument(app));
+    const document = buildOpenApiDocument(app);
+    inputs = inputIdsOf(document);
+    documented = documentedRoutes(document);
   });
 
   afterAll(async () => {
@@ -59,6 +65,16 @@ describe('the ids of the routes', () => {
   it.each(modules)('of %s are listed, each with its tests', (name) => {
     const problems = idProblems(inputs, ROUTE_IDS).filter((problem) => moduleOf(problem) === name);
     expect(problems).toEqual([]);
+  });
+
+  it('are read from a document that describes every listed route, and no other', () => {
+    const listed = [
+      ...Object.keys(ROUTE_ACCESS),
+      ...Object.keys(PUBLIC_ROUTES),
+      ...Object.keys(STEP_ROUTES),
+    ];
+
+    expect(documentProblems(documented, listed)).toEqual([]);
   });
 
   it('are listed for no module but those', () => {
@@ -284,6 +300,58 @@ describe('the check of the ids', () => {
       'GET /api/sample/day query:classId: src/sample/quiet.test.ts never expects a 404',
       'GET /api/sample/day query:classId: src/sample/lessons.test.ts never names day of the route',
       'GET /api/sample/day query:classId: repeat tests named, but the route takes no request key',
+    ]);
+  });
+
+  it('names a query id and a field of a variant left out, a branch line and an own line without a test', () => {
+    const lines: RouteIds = {
+      'POST /api/sample/lessons/:id/move': [
+        ...(complete['POST /api/sample/lessons/:id/move'] ?? []).filter(
+          (line) => line.id !== 'body:target<kind=teacher>.staffId',
+        ),
+      ],
+      'GET /api/sample/day': [],
+    };
+    const own: RouteIds = {
+      ...complete,
+      'GET /api/sample/day': [
+        { id: 'query:classId', record: 'notification', kind: 'own', rule: 'x', refusedIn: [] },
+      ],
+    };
+    const untested: RouteIds = {
+      ...complete,
+      'GET /api/sample/day': [
+        { id: 'query:classId', record: 'class', kind: 'branch', rule: 'x', refusedIn: [] },
+      ],
+    };
+
+    expect(idProblems(inputIdsOf(document), lines, read)).toEqual([
+      'POST /api/sample/lessons/:id/move: 0 lines for body:target<kind=teacher>.staffId, it needs exactly one',
+      'GET /api/sample/day: 0 lines for query:classId, it needs exactly one',
+    ]);
+    expect(idProblems(inputIdsOf(document), own, read)).toEqual([
+      "GET /api/sample/day query:classId: no test sends another account's id and an unknown one",
+    ]);
+    expect(idProblems(inputIdsOf(document), untested, read)).toEqual([
+      "GET /api/sample/day query:classId: no test sends another branch's id and an unknown one",
+    ]);
+  });
+
+  it('names a route only in the document and a route only in the lists', () => {
+    expect(documentedRoutes(document)).toEqual([
+      'POST /api/sample/lessons/:id/move',
+      'GET /api/sample/day',
+      'GET /api/sample/health',
+    ]);
+    expect(
+      documentProblems(documentedRoutes(document), [
+        'POST /api/sample/lessons/:id/move',
+        'GET /api/sample/day',
+        'GET /api/sample/gone/:id',
+      ]),
+    ).toEqual([
+      'GET /api/sample/gone/:id: listed, but not in the OpenAPI document, so its ids are never read',
+      'GET /api/sample/health: in the OpenAPI document, but not listed',
     ]);
   });
 });

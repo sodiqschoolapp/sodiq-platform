@@ -392,6 +392,8 @@ describe('notifications', () => {
       const mine = await kit.fullSession('Malika', 'Qodirova');
       const other = await kit.fullSession('Nodir', 'Qodirov');
       const [theirs] = await send([other.account.id]);
+      // A missing id would be refused by the path, never by the account (task 10.3b).
+      expect(theirs).toMatch(/^[0-9a-f-]{36}$/);
 
       const response = await kit.post(`/api/notifications/${theirs ?? ''}/read`, mine.cookie);
 
