@@ -149,10 +149,15 @@ const cellOf = (id: string, colId: string) =>
     return found as HTMLElement;
   });
 
+/** Opens the locked lessons the panel folds (owner, 27 October 2026). */
+const showLocked = (panel: HTMLElement) => {
+  fireEvent.click(within(panel).getByRole('button', { name: /^Show \d+ locked lessons?$/ }));
+};
+
 // docs/spec/07-journal.md, Editing rules and locks; docs/spec/edge-cases/journal.md, Locks,
 // unlocks and corrections (task 8.4).
 describe('the edit period on the journal page', () => {
-  it('lists the three newest plain locked lessons, the urgent ones, and folds the rest behind one button', async () => {
+  it('lists the urgent locked lessons and folds every plain one behind one button, newest first', async () => {
     // Seven plain locked lessons (1 to 7 October) and one locked incomplete (8 October).
     const plain = [1, 2, 3, 4, 5, 6, 7].map((day) =>
       lesson(uid(200 + day), `2026-10-0${String(day)}`, false, LOCKED),
@@ -168,21 +173,37 @@ describe('the edit period on the journal page', () => {
       [...panel.querySelectorAll('[data-lock-row]')].map((row) =>
         row.getAttribute('data-lock-row'),
       );
-    // The incomplete lesson first, then the newest plain ones: 19, 7 and 6 October.
-    expect(listed()).toEqual([uid(208), OLD, uid(207), uid(206)]);
+    // Only the incomplete lesson is in view; the eight plain ones wait behind the button.
+    expect(listed()).toEqual([uid(208)]);
     const more = within(panel).getByRole('button', {
-      name: en.journal.locks.moreLocked_other.replace('{{count}}', '5'),
+      name: en.journal.locks.showLocked_other.replace('{{count}}', '8'),
     });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(more);
+    // Opened: the incomplete lesson, then the plain ones newest first (19, 7, 6 ... 1 October).
     await waitFor(() => {
-      expect(listed()).toHaveLength(9);
+      expect(listed()).toEqual([
+        uid(208),
+        OLD,
+        uid(207),
+        uid(206),
+        uid(205),
+        uid(204),
+        uid(203),
+        uid(202),
+        uid(201),
+      ]);
     });
-    within(panel).getByRole('button', { name: en.journal.locks.fewerLocked });
+    fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.hideLocked }));
+    await waitFor(() => {
+      expect(listed()).toEqual([uid(208)]);
+    });
   });
 
   it('keeps a locked lesson read-only and sends an unlock request with its reason', async () => {
     const calls = open(gridOf(LOCKED), 'teacher');
     const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    showLocked(panel);
     const target = await cellOf(uid(101), `${OLD}:a`);
     fireEvent.click(target);
     fireEvent.keyDown(target, { key: '1' });
@@ -206,6 +227,7 @@ describe('the edit period on the journal page', () => {
   it('keeps a reason typed while the dialog is closed, and checks it with the shared schema (code review 1, finding 3)', async () => {
     const calls = open(gridOf(LOCKED), 'teacher');
     const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    showLocked(panel);
     fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.request }));
     let dialog = await screen.findByRole('form', { name: /^Request unlock:/ });
     fireEvent.change(within(dialog).getByRole('textbox', { name: en.journal.locks.reason }), {
@@ -232,6 +254,7 @@ describe('the edit period on the journal page', () => {
       'academic_vice_principal',
     );
     const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    showLocked(panel);
     fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.correct }));
     const dialog = await screen.findByRole('form', { name: /^Correct:/ });
     fireEvent.change(
