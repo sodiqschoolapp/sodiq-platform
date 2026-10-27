@@ -68,7 +68,7 @@ export async function checkRelease(options: ReleaseCheckOptions): Promise<number
   if (missing.length > 0) {
     throw new ReleaseCheckError(
       `${commit} did not pass ${missing.join(', ')} in ${CI_WORKFLOW} run ${String(ci.id)}: ` +
-        'deploy a commit of main whose test deploy finished (docs/deploy.md, Production).',
+        'wait until the test deploy of the head of main is green (docs/deploy.md, Production).',
     );
   }
   return ci.id;

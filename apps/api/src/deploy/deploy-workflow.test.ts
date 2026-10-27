@@ -53,6 +53,8 @@ describe('the production deploy workflow', () => {
 
     expect(image).toContain('docker build');
     expect(image).toContain('cli.js pdf-check');
+    expect(image).toContain('test -f apps/web/dist/index.html');
+    expect(image).toContain('node "apps/api/dist/$entry.js"');
     expect(image).not.toContain('environment:');
     expect(image).not.toContain('secrets.');
     expect(deploy).toContain('needs: [image]');

@@ -26,6 +26,7 @@ Approved by the owner on: ____________________ (pending)
 - [ ] **Print and PDF**: a Print and a PDF of a page with Uzbek Latin (oʻ, gʻ) and Cyrillic text come out readable.
 - [ ] **A photo** stored and shown (the R2 bucket `sodiq-files` answers).
 - [ ] **A live notice** reaches a second signed-in browser.
+- [ ] **No permanent developer account** in the live system (`docs/security/permission-checklist.md`): the Super Admins are people of the school; anybody else, a developer included, gets an ordinary account with a role, audited, ended when the work is done.
 - [ ] **The feedback button** sends a report.
 - [ ] **Email is off** (answer 16): the administrators know that they reset a password from the account in the app; the link "Forgot your password?" writes to the log only.
 - [ ] **Sentry** `sodiq-production` receives nothing unexpected in the first hour.

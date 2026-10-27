@@ -36,6 +36,8 @@ jobs:
         run: docker build --tag sodiq-production .
       - name: Make a PDF with the image's Chromium
         run: docker run --rm sodiq-production node apps/api/dist/deploy/cli.js pdf-check
+      - name: The web app and the letterhead logo are in the image
+        run: docker run --rm sodiq-production sh -c 'test -f apps/web/dist/index.html && test -f apps/web/public/brand/sodiq-logo-horizontal-on-dark.svg'
       - name: The API and the worker load and ask only for their secrets
         # Without a database address and a key both refuse to start with the
         # configuration's message; a missing file or module would say otherwise.
@@ -44,7 +46,7 @@ jobs:
             out=$(docker run --rm sodiq-production node "apps/api/dist/$entry.js" 2>&1 || true)
             echo "$out" | tail -n 5
             if ! echo "$out" | grep -q 'The configuration is not valid: DATABASE_URL must be set' \
-              || echo "$out" | grep -Eq 'Cannot find|ERR_MODULE_NOT_FOUND|WEB_FILES must'; then
+              || echo "$out" | grep -Eq 'Cannot find|ERR_MODULE_NOT_FOUND'; then
               echo "::error::$entry.js did not stop at the configuration as expected."
               exit 1
             fi

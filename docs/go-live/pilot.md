@@ -29,7 +29,7 @@ In this order, each step checked before the next (`edge/academic-year`, the setu
 3. Slot types, the default day template, the calendar.
 4. Subjects and their weights for the quarters the timetable touches.
 5. Staff with subjects, grades and availability; accounts with their roles (Teachers, Tutors, Head Teachers, the Academic Vice Principal of the branch).
-6. Classes with their Tutors; the students of the pilot groups and their classes; groups.
+6. Classes with their Tutors, the students of every class of the branch, and groups (the setup order of `edge/academic-year`; the whole branch is entered, only the pilot groups keep journals).
 7. The teaching load of the whole branch.
 8. The timetable built on the board, checked, and published from the go-live date.
 9. The plan window opened (before the go-live date), so teachers can write their plans.
