@@ -47,6 +47,14 @@ import { holdQuarter } from './plans.service.js';
 /** The roles that open and extend a window (`02`): the route checks them from every assignment. */
 const WINDOW_ROLES = ['academic_vice_principal', 'super_admin'] as const;
 
+/**
+ * The readers who see every teacher's extension of a window (task 10.3a). An
+ * extension names a teacher and may follow an illness (`09`: "after illness
+ * or for a new teacher"); a Teacher, a Head Teacher or a Senior Head Teacher
+ * sees only an extension of their own.
+ */
+const EXTENSION_READERS = new Set(['super_admin', 'principal', 'academic_vice_principal']);
+
 interface QuarterRow extends PlanQuarter {
   readonly yearId: string;
   readonly yearClosed: boolean;
@@ -97,6 +105,14 @@ export class PlanWindowsService {
           (assignment.branchId === null || assignment.branchId === branchId),
       );
       if (yearId === null) return planWindowsSchema.parse({ yearId, canEdit, quarters: [] });
+      const readsEvery = access.permitting.some((one) => EXTENSION_READERS.has(one.role));
+      const own = readsEvery
+        ? undefined
+        : await transaction
+            .selectFrom('staff')
+            .select('id')
+            .where('account_id', '=', access.accountId)
+            .executeTakeFirst();
       const quarters = await datedQuarters(transaction, yearId);
       const answer: PlanWindows['quarters'] = [];
       for (const quarter of quarters) {
@@ -111,7 +127,9 @@ export class PlanWindowsService {
             .orderBy('id')
             .execute();
           const latest = new Map<string, string>();
-          for (const one of extensions) latest.set(one.staff_id, one.end_date);
+          for (const one of extensions) {
+            if (readsEvery || one.staff_id === own?.id) latest.set(one.staff_id, one.end_date);
+          }
           const names = await staffNames(transaction, [...latest.keys()]);
           shown = {
             startDate: window.startDate,
