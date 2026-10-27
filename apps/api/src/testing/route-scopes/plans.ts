@@ -127,7 +127,7 @@ export const PLANS_SCOPES: RouteScopes = {
     line(
       ['senior_head_teacher', 'head_teacher', 'teacher'],
       'own_record',
-      'edge/lesson-plans: "There is one window per quarter and branch"; 09: the extension "for one teacher, for example after illness" is shown to that teacher only (task 10.3a)',
+      'edge/lesson-plans: "There is one window per quarter and branch"; 09: the Academic Vice Principal "can extend the window for one teacher, for example after illness"; decided in task 10.3a (pull request #241): an extension is shown to that teacher and the whole-branch readers only',
       [
         'src/modules/plans/scope-refusals.test.ts > shows an extension of the window to its teacher and the whole-branch readers only',
       ],

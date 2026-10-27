@@ -668,5 +668,30 @@ describe('the limits inside the plan routes (task 10.3a)', () => {
     expect(await extensionsOf(x.spare)).toEqual([]);
     expect(await extensionsOf(x.head)).toEqual([]);
     expect(await extensionsOf(x.senior)).toEqual([]);
+
+    // The whole-branch readers by role in this branch: a Principal and a Super Admin see it.
+    const principal = await account();
+    await t.kit.giveRole(principal.account.id, {
+      role: 'principal',
+      branchId: x.s.branch,
+      validFrom: VALID_FROM,
+    });
+    const admin = await account();
+    await t.kit.giveRole(admin.account.id, { role: 'super_admin', validFrom: VALID_FROM });
+    expect(await extensionsOf(principal)).toEqual(extended);
+    expect(await extensionsOf(admin)).toEqual(extended);
+    // A Teacher here who is Principal and Academic Vice Principal of another branch reads as a
+    // Teacher here: the roles that permit the request decide, not every role of the person.
+    const elsewhere = x.s.branch === t.north ? t.south : t.north;
+    const mixed = await account();
+    await t.kit.giveRole(mixed.account.id, {
+      role: 'teacher',
+      branchId: x.s.branch,
+      validFrom: VALID_FROM,
+    });
+    for (const role of ['principal', 'academic_vice_principal'] as const) {
+      await t.kit.giveRole(mixed.account.id, { role, branchId: elsewhere, validFrom: VALID_FROM });
+    }
+    expect(await extensionsOf(mixed)).toEqual([]);
   });
 });

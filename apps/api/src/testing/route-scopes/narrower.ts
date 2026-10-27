@@ -124,6 +124,14 @@ export const NARROWER_SCOPES: RouteScopes = {
         `${STUDENT_EXPORTS} > leaves the relatives out of the Principal’s file and names them`,
       ],
     },
+    {
+      roles: ['head_teacher', 'senior_head_teacher'],
+      scope: 'narrower',
+      rule: '02, Head Teacher: "Full student list across classes and groups; exports it with the Basic fields"',
+      refusedIn: [
+        `${STUDENT_EXPORTS} > writes Basic columns only for the Head Teachers, without the score, whole branch`,
+      ],
+    },
   ],
   'POST /api/people/staff/export': [
     {
