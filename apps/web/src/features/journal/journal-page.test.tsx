@@ -545,6 +545,26 @@ describe('a journal', () => {
     await screen.findByText(en.journal.page.noLessons);
   });
 
+  it('opens the grid over the whole window and closes it with Esc or its button (owner, 27 October 2026)', async () => {
+    open(GRID);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.page.fullScreen }));
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-journal-full-screen] [data-journal-grid]'),
+      ).not.toBeNull();
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+    });
+    expect(document.querySelector('[data-journal-grid]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.journal.page.fullScreen }));
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.page.exitFullScreen }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+    });
+  });
+
   it('shows the outline while the journal loads', async () => {
     open('pending');
     await screen.findByRole('heading', { name: en.journal.sheet });

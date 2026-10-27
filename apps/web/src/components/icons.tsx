@@ -25,6 +25,8 @@ import EditSvg from '@material-symbols/svg-500/rounded/edit-fill.svg?react';
 import DownloadSvg from '@material-symbols/svg-500/rounded/download-fill.svg?react';
 // "expand_more" of the design system: the package names the same drawing keyboard_arrow_down.
 import ExpandMoreSvg from '@material-symbols/svg-500/rounded/keyboard_arrow_down-fill.svg?react';
+import FullscreenSvg from '@material-symbols/svg-500/rounded/fullscreen-fill.svg?react';
+import FullscreenExitSvg from '@material-symbols/svg-500/rounded/fullscreen_exit-fill.svg?react';
 import FeedbackSvg from '@material-symbols/svg-500/rounded/feedback-fill.svg?react';
 import InfoSvg from '@material-symbols/svg-500/rounded/info-fill.svg?react';
 import LanguageSvg from '@material-symbols/svg-500/rounded/language-fill.svg?react';
@@ -92,6 +94,8 @@ export const DownloadIcon = icon(DownloadSvg);
 export const EditIcon = icon(EditSvg);
 export const ExpandMoreIcon = icon(ExpandMoreSvg);
 export const FeedbackIcon = icon(FeedbackSvg);
+export const FullscreenIcon = icon(FullscreenSvg);
+export const FullscreenExitIcon = icon(FullscreenExitSvg);
 export const InfoIcon = icon(InfoSvg);
 export const LanguageIcon = icon(LanguageSvg);
 export const LockIcon = icon(LockSvg);

@@ -17,6 +17,7 @@ import {
   type CellKeyDownEvent,
   type ICellRendererParams,
   type SuppressKeyboardEventParams,
+  type IHeaderGroupParams,
   type IHeaderParams,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
@@ -42,7 +43,10 @@ const ROWS_FIT_PAGE = 30;
 const ROW_HEIGHT = 36;
 
 /** The row of lesson titles: one line of text. */
-const GROUP_HEADER_HEIGHT = 40;
+const GROUP_HEADER_HEIGHT = 44;
+
+/** `03.09` of `2026-09-03`: the day a homework was given, short enough for a column. */
+const shortDate = (date: string): string => `${date.slice(8, 10)}.${date.slice(5, 7)}`;
 
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
@@ -185,39 +189,102 @@ function TwoLineHeader(
     action?: HeaderAction;
     copy?: HeaderAction;
     more?: HeaderAction;
+    /** The menu on the second line: a work's title takes the whole first. */
+    menuBelow?: boolean;
   },
 ) {
-  const buttons = [props.action, props.copy, props.more].filter(
-    (one): one is HeaderAction => one !== undefined,
-  );
+  // Every column the same two lines (`07`, Layout, rows 2 and 3): the label with the column's
+  // menu on the first, "Soni" and the total or the entry buttons of A on the second.
+  const below = [props.action, props.copy].filter((one): one is HeaderAction => one !== undefined);
   return (
-    <div className="grid leading-tight" aria-label={props.label}>
-      <span className="font-semibold">{props.displayName}</span>
-      {props.second !== undefined && (
-        <span className="text-xs text-muted-foreground">{props.second}</span>
-      )}
-      {buttons.length > 0 && (
-        <span className="flex">
-          {buttons.map((button) => (
-            <Button
-              key={button.label}
-              variant="ghost"
-              size="icon-sm"
-              aria-label={button.label}
-              title={button.label}
-              disabled={button.disabled}
-              onClick={button.run}
-            >
-              {button.icon === 'more' ? (
-                <MoreHorizIcon className="size-4" aria-hidden="true" />
-              ) : button.icon === 'copy' ? (
-                <ContentCopyIcon className="size-4" aria-hidden="true" />
-              ) : (
-                <CheckCircleIcon className="size-4" aria-hidden="true" />
-              )}
-            </Button>
+    <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" aria-label={props.label}>
+      <span className="flex min-h-6 min-w-0 items-center gap-0.5">
+        <span className="truncate leading-tight font-semibold">{props.displayName}</span>
+        {props.more !== undefined && props.menuBelow !== true && (
+          <HeaderButton button={props.more} />
+        )}
+      </span>
+      {(props.second !== undefined || below.length > 0 || props.menuBelow === true) && (
+        <span className="flex min-h-6 min-w-0 items-center gap-0.5">
+          {below.map((button) => (
+            <HeaderButton key={button.label} button={button} />
           ))}
+          {props.second !== undefined && (
+            <span className="truncate text-xs leading-tight text-muted-foreground">
+              {props.second}
+            </span>
+          )}
+          {props.more !== undefined && props.menuBelow === true && (
+            <span className="ml-auto">
+              <HeaderButton button={props.more} />
+            </span>
+          )}
         </span>
+      )}
+    </div>
+  );
+}
+
+/** A small square button of a header: the menu of a column, "all present", "copy attendance". */
+function HeaderButton({ button }: { button: HeaderAction }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="size-6 shrink-0 max-sm:size-6"
+      aria-label={button.label}
+      title={button.label}
+      disabled={button.disabled}
+      onClick={button.run}
+    >
+      {button.icon === 'more' ? (
+        <MoreHorizIcon className="size-4" aria-hidden="true" />
+      ) : button.icon === 'copy' ? (
+        <ContentCopyIcon className="size-4" aria-hidden="true" />
+      ) : (
+        <CheckCircleIcon className="size-4" aria-hidden="true" />
+      )}
+    </Button>
+  );
+}
+
+/** The status of a held lesson as a small tinted label (`07`, Lesson status). */
+const STATUS_TINT: Record<string, string> = {
+  not_started: 'text-muted-foreground',
+  in_progress: 'bg-warning-bg text-warning',
+  complete: 'bg-success-bg text-success',
+  locked_incomplete: 'bg-destructive-bg text-destructive',
+};
+
+/**
+ * The header of a lesson (`07`, Layout, row 1): date, weekday and slot with the status on the
+ * first line; the lesson number and topic (or the reason of a cancelled lesson) on the second.
+ */
+function LessonHeader(
+  props: IHeaderGroupParams & {
+    first: string;
+    second: string;
+    status: { key: string; text: string } | null;
+    tooltip?: string;
+  },
+) {
+  return (
+    <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" title={props.tooltip}>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate leading-tight font-semibold">{props.first}</span>
+        {props.status !== null && (
+          <span
+            className={cn(
+              'shrink-0 rounded-sm px-1.5 text-xs leading-5 font-semibold',
+              STATUS_TINT[props.status.key],
+            )}
+          >
+            {props.status.text}
+          </span>
+        )}
+      </span>
+      {props.second !== '' && (
+        <span className="truncate text-xs leading-tight text-muted-foreground">{props.second}</span>
       )}
     </div>
   );
@@ -270,6 +337,8 @@ interface GridProps {
   readonly rating?: RatingInput | undefined;
   /** Comments (task 8.2): a marker on a cell with one, and the dialog at `KeyC`. */
   readonly comments?: CommentsInput | undefined;
+  /** Full screen: the grid fills the height its parent gives it (a column of flex). */
+  readonly fill?: boolean;
 }
 
 /**
@@ -300,6 +369,7 @@ export function JournalGridView({
   onRefusedNumber,
   rating,
   comments,
+  fill = false,
 }: GridProps): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -727,7 +797,8 @@ export function JournalGridView({
                 }
               : {}),
           },
-          width: lesson.canEnter ? 64 : 52,
+          // Room for A with its menu, and under it "all present" (and "copy") or the lock.
+          width: entering && lesson.canEnter && lesson.copyFrom !== null ? 80 : 64,
           cellClass: (params) =>
             cn(
               cancelled ||
@@ -837,20 +908,41 @@ export function JournalGridView({
         // The plan's title (09: "The titles come from the plan"); a work added by hand is numbered.
         const title = work.title ?? `${short} · ${t('journal.works.unplanned')}`;
         const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
+        const source =
+          work.kind === 'homework' &&
+          work.sourceLessonId !== null &&
+          work.sourceLessonId !== lesson.id
+            ? grid.lessons.find((one) => one.id === work.sourceLessonId)
+            : undefined;
+        const given = source?.date ?? null;
         // Task 8.7 (From 8.6): an optional cell of a locked lesson open now takes its number.
         const openCell = (cell: JournalStudent['cells'][number] | undefined) =>
           works !== undefined && work.total !== null && cell?.open === true;
         children.push({
           colId: `${lesson.id}:${workKey(work)}`,
           headerName: title,
-          headerTooltip:
-            work.carriedFrom === null ? title : `${title} · ${t('journal.works.carried')}`,
+          headerTooltip: [
+            title,
+            work.carriedFrom === null ? null : t('journal.works.carried'),
+            given === null
+              ? null
+              : t('journal.grid.givenOn', { date: schoolDateText(given, language, false) }),
+          ]
+            .filter((part) => part !== null)
+            .join(' · '),
           headerComponentParams: {
-            second:
+            second: [
               work.total === null
                 ? t('journal.grid.soni')
                 : `${t('journal.grid.soni')} ${work.total}`,
+              // A homework checked here was given at an earlier lesson (`07`, Homework column):
+              // its day, so the column is not read as the homework of this lesson.
+              given === null ? null : t('journal.grid.givenFrom', { date: shortDate(given) }),
+            ]
+              .filter((part) => part !== null)
+              .join(' · '),
             label: work.notHeld ? `${title}, ${t('journal.grid.notHeld')}` : title,
+            menuBelow: true,
             ...(works === undefined
               ? {}
               : {
@@ -864,8 +956,8 @@ export function JournalGridView({
                   },
                 }),
           },
-          // Room for a plan title such as "Exercises in class" (the full title is the tooltip).
-          width: 140,
+          // Room for a plan title such as "Homework exercises" (the full title is the tooltip).
+          width: 156,
           suppressKeyboardEvent: dialogKey,
           editable: (params) =>
             params.data?.kind === 'student' &&
@@ -977,11 +1069,12 @@ export function JournalGridView({
         });
       }
       // "No plan" on a held lesson with no plan item (edge/journal).
-      const noPlan =
-        graded && lesson.held && !lesson.planItem ? ` · ${t('journal.works.noPlan')}` : '';
+      const noPlan = graded && lesson.held && !lesson.planItem ? t('journal.works.noPlan') : '';
       // Task 8.7 (`07`, Lesson status: "in the journal header"), in words.
       const status =
-        lesson.status === null ? '' : ` · ${t(`journal.lessonStatus.${lesson.status}`)}`;
+        lesson.status === null
+          ? null
+          : { key: lesson.status, text: t(`journal.lessonStatus.${lesson.status}`) };
       // Task 8.8 (`09`, In the journal): "the lesson number and the topic, shortened to fit".
       const number =
         lesson.number === null ? '' : t('journal.grid.lessonNumber', { number: lesson.number });
@@ -991,16 +1084,22 @@ export function JournalGridView({
           : lesson.topic.length > TOPIC_SHOWN
             ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…`
             : lesson.topic;
-      // 07, Layout: "Row 1: date, weekday, slot" first, so a narrow lesson never cuts the date.
-      const heading = [`${date}${slot}`, number, topic].filter((part) => part !== '').join(' · ');
-      const notDelivered = lesson.notDelivered ? ` · ${t('journal.grid.notDeliveredShort')}` : '';
+      const notDelivered = lesson.notDelivered ? t('journal.grid.notDeliveredShort') : '';
+      // 07, Layout: "Row 1: date, weekday, slot" on the first line with the status; the number
+      // and topic, or the reason of a cancelled lesson, on the second.
+      const first = `${date}${slot}`;
+      const second =
+        reason ?? [number, topic, noPlan, notDelivered].filter((part) => part !== '').join(' · ');
       return {
         groupId: lesson.id,
-        headerName:
-          reason === null
-            ? `${heading}${noPlan}${notDelivered}${status}`
-            : `${date}${slot} · ${reason}`,
-        headerTooltip: reason ?? (lesson.topic === null ? undefined : lesson.topic),
+        headerName: [first, status?.text ?? '', second].filter((part) => part !== '').join(' · '),
+        headerGroupComponent: LessonHeader,
+        headerGroupComponentParams: {
+          first,
+          second,
+          status,
+          tooltip: [first, reason ?? lesson.topic].filter((part) => part !== null).join(' · '),
+        },
         headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
         children: children.map((child) => ({
           ...child,
@@ -1128,11 +1227,8 @@ export function JournalGridView({
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
     [bottom],
   );
-  // Room for the "all present" button under the A of a lesson the reader enters.
-  const headerHeight =
-    (grid.lessons.some((lesson) => lesson.canEnter) && entering) || works !== undefined || graded
-      ? 64
-      : 40;
+  // Two lines in every column header: the label with its menu, then "Soni" or the buttons of A.
+  const headerHeight = 56;
   // A class fits the page: the grid is exactly as tall as its two header rows, its rows, the
   // bottom row and the horizontal scrollbar, with no empty band and no second scrollbar. (AG
   // Grid's own autoHeight hides half of the last row behind the scrollbar.) A long list keeps
@@ -1147,8 +1243,9 @@ export function JournalGridView({
 
   return (
     <div
-      className={fittedHeight === null ? 'h-[70vh] min-h-96' : undefined}
-      style={fittedHeight === null ? undefined : { height: fittedHeight }}
+      // Full screen: the grid takes the height left in the window; scrolling is the grid's own.
+      className={fill ? 'min-h-0 flex-1' : fittedHeight === null ? 'h-[70vh] min-h-96' : undefined}
+      style={fill || fittedHeight === null ? undefined : { height: fittedHeight }}
       data-journal-grid="true"
     >
       <AgGridReact<GridRow>
