@@ -1390,3 +1390,18 @@ export const STEP_ROUTES: Record<string, string[]> = {
   'POST /api/auth/second-step/set-up': ['second_step_set_up'],
   'POST /api/auth/second-step/confirm': ['second_step_set_up'],
 };
+
+/**
+ * docs/spec/02-roles-and-access.md, "Accounts and sign-in: build order": a short
+ * list of routes works without sign-in; each is declared public in code, and a
+ * test holds the exact list. This is the list, each route with its reason. A
+ * new public route is a decision for the owner and fails here until it is added.
+ */
+export const PUBLIC_ROUTES: Record<string, string> = {
+  'GET /api/health': 'Uptime monitoring and the deploy smoke test call it without a session.',
+  'POST /api/auth/password-reset':
+    'The person who forgot the password cannot sign in; "later password reset by email" is in the short list (task 2.3c-2, decision 1 of #66).',
+  'POST /api/auth/password-reset/confirm':
+    'The new password is chosen with the link of the mail, without a session (task 2.3c-2, decision 1 of #66).',
+  'POST /api/auth/sign-in': 'Sign-in cannot require a session.',
+};
