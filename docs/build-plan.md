@@ -1271,7 +1271,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c, 10.3, 10.1 and 10
   - Build: for every route that lets in a Tutor, a Teacher, a Head Teacher or a Senior Head Teacher, the limit of each and the test that proves the refusal (`ROUTE_SCOPE`, `route-scopes.test.ts`), and the narrower rules of whole-branch roles; the missing tests and fixes; the security headers of every answer; the written permission and security checklist (`docs/security/permission-checklist.md`), its tables generated from the code and compared by a test.
   - Done when: every route with a scoped role names its limit and a test, and the checklist is written.
 
-- [ ] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1)
+- [x] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1); checklist signed: pending, issue #42
   - Read: `02` (Rules), `.claude/rules/api.md` (the 404 rules of tasks 1.3, 1.5, 2.5b-1), `edge/people-roles-accounts`.
   - Build: `ROUTE_IDS`, for every route with an id of a branch record in its path or body, the named route tests that send another branch's id and an unknown one and expect 404 with the rows of both branches and the audit log unchanged, with a meta-test like `route-scopes.test.ts`; the missing tests and fixes; its section of `docs/security/permission-checklist.md`. Not split again: what it cannot hold goes to a From line.
   - Done when: every route with an id names its 404 tests, and the checklist is complete for the owner to sign. The box is ticked with "checklist signed: pending, issue #42" (pull request #241, decision 4).

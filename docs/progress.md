@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 27 October 2026: task 10.3b Permission and security review: records of another branch by id
+
+- `ROUTE_IDS` (`apps/api/src/testing/route-id-list.ts`, one file per module in `route-ids/`) names for each of the 789 ids of the 372 routes that take one (path, query or body, read from the OpenAPI document by `inputIdsOf`, uuid fields included) its record, its kind (`branch`, `school`, `own`, `none`) and the tests that send another branch's id and an unknown one; `route-ids.test.ts` holds it complete. New 404 tests in `other-branch-ids.test.ts` of setup, people and classes and `exemptions-other-branch-ids.test.ts`; many existing ones widened (both ids, every table the route writes, used request keys); kit `id-refusal-kit.ts`.
+- Fixed to answer 404: closing decisions (`students`) and recalculation apply (students and subjects, before the key), the staff check (`staffRecordId` of another branch), an unknown subject of a role or a branch-move group, exemption choices (the student never checked; five previews dropped the choices unchecked; the create's key repeat).
+- `docs/security/permission-checklist.md`: the rule, its accepted risk and the generated table "Records of another branch by id"; complete for the owner to sign (10.4).
+- Left out: nothing of the Build line.
+
+The next sessions must know:
+
+- A new route with an id, or a new id field of an input, needs a line in `apps/api/src/testing/route-ids/<module>.ts` with its 404 tests (and its repeat test for a request key); `route-ids.test.ts` fails otherwise. Then `pnpm security:checklist`.
+- Subjects, branches, divisions and departments are `school` records (`SCHOOL_RECORDS`); a `school` line may name a test of an unknown id.
+
 ## 27 October 2026: task 10.3a Permission and security review: limits inside the routes, headers, checklist
 
 - `ROUTE_SCOPE` and `route-scopes.test.ts`: every route that lets in a scoped role (130) names each role's limit and the tests that prove the refusal; 40 routes carry `narrower` lines of roles held to less inside the route (145 routes in the list). New refusal tests in `scope-refusals.test.ts` and `narrower-refusals.test.ts` of journal, plans, people, results, timetable and access. `ROUTE_ACCESS`, `STEP_ROUTES` and `PUBLIC_ROUTES` moved to `apps/api/src/testing/route-access-list.ts`.

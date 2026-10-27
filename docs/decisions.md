@@ -342,6 +342,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 27 October 2026: records of another branch by id (task 10.3b)
+
+Plan approved on pull request #242 with corrections 1 and 2; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed because the requirement is now applied). Tests that expected another branch's or an unknown id to be accepted or refused otherwise now expect 404: `closing.test.ts` (a decision for another branch's or an unknown student answered 200 with it under `refused`), `head-teachers.test.ts` (an unknown subject of an appointment was 409 `subject_unknown`; an archived one still is) | `.claude/rules/api.md`, task 1.5: one 404 per body id |
+| Ids of the query are listed too; a filter of another branch answers none of its rows (404, or the route's existing empty answer with matching rows in the other branch) | Decision 1; `CLAUDE.md`: "A query never returns another branch's rows" |
+| Ids are found from the OpenAPI document: every path parameter, and every query and body field that is a uuid or named like an id; a field in a variant is named with it (`body<kind=class>.classId`) | Decisions 2 and 9 |
+| A shared record (staff, relative) is the branch's when linked to it; school-wide records (`SCHOOL_RECORDS`: branch, division, department, and subject, added at build: `subjects` has no branch column) take a `school` line, which may name a test of an unknown id | Decisions 3 and 4; docs/decisions.md, answers for tasks 2.1 to 2.6, answer 3 |
+| Records of the signed-in account take an `own` line, tested with another account's id and an unknown one | Decision 5 and correction 2 |
+| The 404 tests are sent as the Super Admin where the route lets the Super Admin in | Decision 8 |
+| `none` lines (14): the pins confirmed with the rules (a snapshot compared, 409 `pins_changed`, task 5.3b-2 review S2), the works of a plan item save (a work removed meanwhile, `edge/lesson-plans`), a relative found by a phone (linked in any branch by design, `edge/close-relatives`), the path `date` of journal routes | Build: none of them looks a record up as the branch's |
+| An exemption choice's student is the branch's when a member of a class or group of the branch, also one who has left since | Build: a choice is only needed where the student was a member |
+
 ## 27 October 2026: the permission and security review, first part (task 10.3a)
 
 Plan approved on pull request #241 with corrections 1 to 5; decisions confirmed there. Flagged on issue #42.
