@@ -22,6 +22,8 @@ import {
 } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
+import type { Server } from 'node:http';
+import type { Database } from '../database/database.js';
 import type { DayTemplatesKit } from './day-templates-kit.js';
 import { LoadKit } from './load-kit.js';
 import { groupMemberValues, MembersKit, memberValues } from './members-kit.js';
@@ -685,8 +687,17 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
   return { branches, students: studentCount, teachers: teacherCount, sharedTeachers };
 }
 
+/**
+ * What placing, checking and publishing a draft need of a kit: the server and
+ * the migrator. A `DayTemplatesKit` is one; the demo seed (`demo/`) brings its own.
+ */
+export interface RunKit {
+  readonly kit: { readonly server: Server };
+  readonly database: { readonly migrator: Database };
+}
+
 /** The API as a branch's Academic Vice Principal. */
-export function asVice(t: DayTemplatesKit, branch: BranchOfRun) {
+export function asVice(t: RunKit, branch: BranchOfRun) {
   const server = t.kit.server;
   const withBranch = (call: request.Test) =>
     call.set('Cookie', branch.cookie).set(BRANCH_HEADER, branch.id);
@@ -706,7 +717,7 @@ const ok = (response: Response, status: number, what: string): Response => {
 };
 
 /** The board of a version, as the grid route answers it. */
-export async function gridOf(t: DayTemplatesKit, branch: BranchOfRun): Promise<GridAnswer> {
+export async function gridOf(t: RunKit, branch: BranchOfRun): Promise<GridAnswer> {
   const response = await asVice(t, branch).get(`/api/timetable/versions/${branch.version}/grid`);
   return ok(response, 200, 'grid').body as GridAnswer;
 }
@@ -733,7 +744,7 @@ export interface Placed {
  * to it are kept. Written with Kysely as `writeBlock` writes a block: seed
  * data, no audit entry (decision 5).
  */
-export async function placeDraft(t: DayTemplatesKit, branch: BranchOfRun): Promise<Placed> {
+export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed> {
   const started = performance.now();
   const grid = await gridOf(t, branch);
   const model = patternModel(grid.facts);
@@ -1025,7 +1036,7 @@ export async function placeDraft(t: DayTemplatesKit, branch: BranchOfRun): Promi
 }
 
 /** Steps 1 and 5 of the builder confirmed, as the person does before the publish. */
-export async function confirmSteps(t: DayTemplatesKit, branch: BranchOfRun): Promise<unknown> {
+export async function confirmSteps(t: RunKit, branch: BranchOfRun): Promise<unknown> {
   const vice = asVice(t, branch);
   ok(
     await vice.post(`/api/timetable/versions/${branch.version}/templates/confirm`),

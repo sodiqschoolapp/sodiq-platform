@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 27 October 2026: demo data for the test environment (asked for by the owner, not a build-plan task)
+
+- The owner asked for "full mock data" on the test environment, to try every feature live. `apps/api/src/testing/demo/` builds an invented school through the real application (the routes, with the clock set to each moment a person would act): setup, staff with accounts for the nine givable roles, students with parents, classes with Tutors, groups and halves, the load, a timetable placed by the seed placer of the real-size run and published, the plans of the first quarter, and every school day's attendance and numbers up to yesterday, with a forgotten day, an unlock request, an exemption and the reasons of absence. `docs/deploy.md`, Demo data, lists what it holds.
+- The workflow **Demo data on the test environment** (`.github/workflows/demo-data.yml`, by hand on `main`, `REPLACE` typed) builds it in its own PostgreSQL, then replaces the whole test database with the dump (`db/demo/clear-for-restore.sql`, then one transaction) while the test services are suspended. The owner chose the replacement on 27 October: the same seed over the network to Neon makes about 960,000 queries, 3 to 5 hours from a GitHub runner. `demo-workflow.test.ts` keeps the run to the test environment, main and the typed confirmation.
+- `real-size.ts`: `asVice`, `gridOf`, `placeDraft` and `confirmSteps` take a `RunKit` (the server and the migrator), so the demo uses them without a test database.
+- Proved in the session: the seed on a local database (about 6 minutes), the dump loaded over another database that held older rows, and the API on the result (a demo account signs in). Not proved: a run against Neon and Render (the session has no access to them); the owner's first run is that proof.
+
+The next sessions must know:
+
+- The demo's structure (groups, load rows, availability, pattern blocks) is written by the migrator as the real-size run writes it; people, accounts, plans and journal entries go through the routes and are audited.
+- A new migration needs nothing here: the demo is built on the commit's own schema. A route whose body changes may break the seed: run `DEMO_PASSWORD=demo-password-2026 pnpm demo:seed` on a fresh `sodiq_dev` after such a change.
+
 ## 27 October 2026: task 10.4 Production and the go-live checklist
 
 - Production is ready to be brought up by the owner: `Dockerfile` (API and worker with Chromium, so Print and PDF work), `render.production.yaml` (`sodiq-api` 2 × Standard, `sodiq-worker`, Frankfurt, `app.sodiqschool.uz`), `.github/workflows/deploy-production.yml` (started by hand on `main`: the job `image` builds the image and makes a PDF in it; the job `deploy` waits for the owner's approval, refuses outside the release window and for a commit that did not pass `checks`, `e2e` and `deploy-test`, then migrates, deploys and smoke-tests). New deploy commands `window`, `release-check`, `pdf-check` (`apps/api/src/deploy/`).

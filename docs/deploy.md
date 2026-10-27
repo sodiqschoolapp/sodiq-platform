@@ -121,7 +121,34 @@ At resend.com create the account in the **EU** region. No domain, no key yet: th
    node apps/api/dist/modules/auth/cli.js first-account --first-name <name> --last-name <name>
    ```
    It prints the login and the first password once (valid 7 days, changed at the first sign-in). Sign in at `https://app-test.sodiqschool.uz`. The command refuses while a Super Admin exists.
-3. Invented data for the test environment (`13`: "a copy of real structure with invented data") is not part of this task; the owner names the task that seeds it.
+3. Invented data for the test environment (`13`: "a copy of real structure with invented data"): section "Demo data" below.
+
+## Demo data
+
+Asked for by the owner on 27 October 2026: the test environment filled with an invented school, so that every feature can be tried live. The workflow **Demo data on the test environment** (`.github/workflows/demo-data.yml`) builds it and **replaces the whole test database** with it (the owner's choice: a seed written over the network to Neon would take hours). Whatever the test environment held before is gone, its accounts included. Production is never touched: the workflow knows only the environment `test`.
+
+**What the demo holds.**
+
+- Two branches: Demo Yunusobod (classes 5 Oxford, 5 Cambridge, 7 Oxford, 7 Princeton, 9 Yale) and Demo Chilonzor (6 Oxford, 6 Cambridge), with buildings, rooms, labs and halls.
+- 126 students with a parent each; 32 teachers with accounts; per branch a Principal and an Academic Vice Principal; in Demo Yunusobod also a Vice Principal for Spiritual and Moral Education, a Head Tutor and a Head Teacher (English, Russian); a Senior Head Teacher (Mathematics, Physics, Informatics) for the school. Each class has a Tutor.
+- The year 2 September 2026 to 25 May 2027 in four quarters, Teachers' Day (1 October) off, seven lessons a day from 08:30.
+- 14 subjects with their weights. English in groups across two classes, physical education and technology in halves; one Mathematics teacher works in both branches, with 30 minutes' travel.
+- Each branch's timetable placed by the rule engine and published from 2 September.
+- Every lesson of the first quarter has a plan item: a topic, a classwork, most a homework.
+- Every school day up to yesterday has its attendance and numbers, typed by the lesson's teacher after school that day. Absences come in whole days, some students are late, one student in twenty struggles (the early-warning list has someone to show), and the Tutors record most reasons of absence.
+- On purpose: one teacher forgot the last school day (the reminders and lesson statuses show it); one lesson ten school days back has its numbers missing and an unlock request waiting for the Academic Vice Principal; one student of 5 Oxford is excused from physical education from 12 to 23 October; the plan window of the second quarter is open.
+- Today's lessons are left empty: take the attendance yourself.
+
+**How to run it.**
+
+1. Wait until the `deploy-test` of the head of `main` is green: the run refuses a test database on other migrations.
+2. Actions, **Demo data on the test environment**, **Run workflow** on `main`. Type a password for the demo accounts (10 characters or more; it is masked in the log and written nowhere) and `REPLACE`.
+3. The run builds the school in a database of its own (about 10 minutes), dumps it, suspends the test API and worker on Render, clears the test database (`db/demo/clear-for-restore.sql`), loads the dump in one transaction, resumes the services and runs the smoke test.
+4. The run's **Summary** lists every demo account: role, branch, name and login. All sign in with the password you typed. The Super Admin and the two Academic Vice Principals set up the second step (an authenticator app) at their first sign-in.
+
+On a laptop, `DEMO_PASSWORD=<password> pnpm demo:seed` fills the local `sodiq_dev` the same way. It refuses a database that holds the demo already, and one that is not on this machine.
+
+**When the run fails.** Before the step "Suspend the test API and worker", nothing on the test environment has changed: read the failed step and start again. A failure in "Replace the test database with the demo" can leave the test database empty: start the workflow again, or in the Neon console restore the project `sodiq-test` to a moment before the run. The services are resumed in either case.
 
 ## Production (task 10.4)
 

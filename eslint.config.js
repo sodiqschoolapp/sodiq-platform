@@ -182,6 +182,7 @@ export default defineConfig(
     '**/dist-worker/**',
     // The API and the seed command of the browser tests (apps/api, e2e:build).
     '**/dist-e2e/**',
+    '**/dist-demo/**',
     '**/.turbo/**',
     '**/playwright-report/**',
     '**/test-results/**',
