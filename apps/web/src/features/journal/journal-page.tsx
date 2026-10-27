@@ -26,7 +26,19 @@ import { monthsText, schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
-import { FullscreenExitIcon, FullscreenIcon, UndoIcon } from '@/components/icons';
+import {
+  FullscreenExitIcon,
+  FullscreenIcon,
+  UndoIcon,
+  ViewColumnIcon,
+} from '@/components/icons';
+import { readHiddenColumns, storeHiddenColumns } from '@/components/list/list-state';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
@@ -40,7 +52,7 @@ import {
   type Correcting,
 } from './edit-period';
 import { exportJournal, journalGridQuery } from './journal-api';
-import { GRADE_TINT, JournalGridView } from './journal-grid';
+import { GRADE_TINT, JournalGridView, hideableColumnsOf } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
 
@@ -165,6 +177,8 @@ function JournalLoaded({
   // The grid over the whole window (asked for by the owner, 27 October 2026).
   const [full, setFull] = useState(false);
   useFullScreen(full, setFull);
+  // The columns the person hid, kept in the browser like a list's (owner, 27 October 2026).
+  const [hiddenColumns, setHiddenColumns] = useState(() => readHiddenColumns(JOURNAL_COLUMNS));
   // Task 8.9 (decision 1): the reader exports what the grid shows; a lesson reader does not.
   const mayExport = useMayView('journal', 'export');
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
@@ -250,6 +264,31 @@ function JournalLoaded({
       <UndoIcon aria-hidden="true" />
       {t('journal.saving.undo')}
     </Button>
+  );
+  const columnsButton: ReactNode = (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="secondary" />}>
+        <ViewColumnIcon aria-hidden="true" />
+        {t('list.columns')}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        {hideableColumnsOf(data, month).map((column) => (
+          <DropdownMenuCheckboxItem
+            key={column}
+            checked={!hiddenColumns.includes(column)}
+            onCheckedChange={(shown) => {
+              const next = shown
+                ? hiddenColumns.filter((key) => key !== column)
+                : [...hiddenColumns, column];
+              setHiddenColumns(next);
+              storeHiddenColumns(JOURNAL_COLUMNS, next);
+            }}
+          >
+            {t(`journal.page.columnNames.${column}`)}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
   // What a save tells the person stays in view in full screen too.
   const alerts = (
@@ -436,6 +475,7 @@ function JournalLoaded({
                 {t('journal.page.fullScreen')}
               </Button>
             )}
+            {!lessonMode && data.lessons.length > 0 && columnsButton}
             {undoButton}
             <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
               {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
@@ -477,6 +517,7 @@ function JournalLoaded({
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="min-w-0 flex-1 truncate text-lg font-semibold">{header}</p>
                   {undoButton}
+                  {columnsButton}
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -492,6 +533,7 @@ function JournalLoaded({
             )}
             <JournalGridView
               fill={full}
+              hidden={hiddenColumns}
               grid={data}
               month={month}
               members={members}
@@ -520,6 +562,9 @@ function JournalLoaded({
     </>
   );
 }
+
+/** Names the journal's hidden columns in the browser's storage (`sodiq.list.journal.hidden`). */
+const JOURNAL_COLUMNS = 'journal';
 
 /**
  * Full screen for the journal grid: the page draws it over the whole window, and the browser
