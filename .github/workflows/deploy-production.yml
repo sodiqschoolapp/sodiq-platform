@@ -1,0 +1,102 @@
+name: Deploy production
+
+# Task 10.4 (docs/deploy.md, Production). Started by the owner by hand, on main
+# only, from the Actions tab: owner's answers 1, 3 and 19 (docs/decisions.md,
+# Decided ahead for Phase 10). Nothing else starts it: no push, no schedule.
+# The job `image` proves the Docker image of production (answer 15: Print and
+# PDF work); with `check_only` the run ends there and may run at any time.
+# The job `deploy` waits for the owner's approval (the environment
+# `production`), refuses outside the release window and for a commit that did
+# not pass CI and the test deploy, then migrates, deploys and smoke-tests.
+# Its log prints file names, service ids, states and check names only, never
+# a row of production (answer 3: sessions can read workflow logs).
+on:
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: Only build the image and make a PDF in it; deploy nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  image:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the image
+        run: docker build --tag sodiq-production .
+      - name: Make a PDF with the image's Chromium
+        run: docker run --rm sodiq-production node apps/api/dist/deploy/cli.js pdf-check
+      - name: The API and the worker load and ask only for their secrets
+        # Without a database address and a key both refuse to start with the
+        # configuration's message; a missing file or module would say otherwise.
+        run: |
+          for entry in main worker; do
+            out=$(docker run --rm sodiq-production node "apps/api/dist/$entry.js" 2>&1 || true)
+            echo "$out" | tail -n 5
+            if ! echo "$out" | grep -q 'The configuration is not valid: DATABASE_URL must be set' \
+              || echo "$out" | grep -Eq 'Cannot find|ERR_MODULE_NOT_FOUND|WEB_FILES must'; then
+              echo "::error::$entry.js did not stop at the configuration as expected."
+              exit 1
+            fi
+          done
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && !inputs.check_only
+    needs: [image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      # The migration address of production comes from the environment's
+      # secret; the local values are emptied so nothing can reach for them.
+      DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+      DATABASE_URL: ''
+      SECOND_STEP_KEY: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the deploy commands
+        # The checkout holds no dist; the window and the release check run it.
+        run: pnpm turbo run build --filter=@sodiq/api
+      - name: Inside the release window
+        run: node apps/api/dist/deploy/cli.js window
+      - name: The commit passed CI and the test deploy
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.sha }}
+        run: node apps/api/dist/deploy/cli.js release-check "$COMMIT"
+      - name: Apply the migrations to the production database
+        # Neon's direct address: the runner holds a session lock.
+        run: pnpm db:migrate
+      - name: Deploy the API and the worker at this commit
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          COMMIT: ${{ github.sha }}
+          API_SERVICE: ${{ vars.RENDER_API_SERVICE_ID }}
+          WORKER_SERVICE: ${{ vars.RENDER_WORKER_SERVICE_ID }}
+        run: node apps/api/dist/deploy/cli.js deploy --commit "$COMMIT" "$API_SERVICE" "$WORKER_SERVICE"
+      - name: Smoke test
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: node apps/api/dist/deploy/cli.js smoke "$PRODUCTION_URL"

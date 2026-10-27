@@ -54,3 +54,80 @@ describe('the Render Blueprint', () => {
     expect(blueprint).toContain('HOST');
   });
 });
+
+// Task 10.4: production has its own Blueprint (decision 2 of pull request
+// #244), on Docker with two 2 GB servers in Frankfurt (owner's answer 15) at
+// app.sodiqschool.uz (answer 14), deployed only by the owner's workflow.
+const production = readFileSync(path.join(root, 'render.production.yaml'), 'utf8');
+
+/** The lines of one service of a Blueprint, from its `- type:` to the next. */
+function serviceOf(text: string, name: string): string {
+  const services = text.split(/\n(?= {2}- type: )/);
+  const found = services.find((service) => service.includes(`\n    name: ${name}\n`));
+  if (found === undefined) {
+    throw new Error(`no service ${name}`);
+  }
+  return found;
+}
+
+describe('the production Blueprint', () => {
+  const api = serviceOf(production, 'sodiq-api');
+  const worker = serviceOf(production, 'sodiq-worker');
+
+  it('holds no value of a secret: each is entered in the dashboard, on every service', () => {
+    const secrets: [string, string[]][] = [
+      ['DATABASE_URL', [api, worker]],
+      ['SECOND_STEP_KEY', [api, worker]],
+      ['SENTRY_DSN', [api, worker]],
+      ['VITE_SENTRY_DSN', [api]],
+      ['R2_ACCOUNT_ID', [api]],
+      ['R2_ACCESS_KEY_ID', [api]],
+      ['R2_SECRET_ACCESS_KEY', [api]],
+      ['R2_BUCKET', [api]],
+    ];
+    for (const [secret, services] of secrets) {
+      for (const service of services) {
+        expect(service, secret).toContain(`- key: ${secret}\n        sync: false\n`);
+      }
+    }
+    expect(production.match(/- key: /g)?.length).toBe(
+      production.match(/- key: [A-Z0-9_]+\n\s+(sync: false|value: .+)\n/g)?.length,
+    );
+    expect(production).not.toMatch(/postgres:\/\//);
+    expect(production).not.toMatch(/https:\/\/[0-9a-f]+@/);
+  });
+
+  it('runs two API servers and the worker of 2 GB in Frankfurt, from the Dockerfile', () => {
+    for (const service of [api, worker]) {
+      expect(service).toContain('\n    runtime: docker\n');
+      expect(service).toContain('\n    region: frankfurt\n');
+      expect(service).toContain('\n    plan: standard\n');
+      expect(service).toContain('\n    dockerfilePath: ./Dockerfile\n');
+      expect(service).toContain('\n    autoDeployTrigger: off\n');
+      expect(service).toContain('\n    maxShutdownDelaySeconds: 30\n');
+      expect(service).not.toContain('buildCommand');
+    }
+    expect(api.startsWith('  - type: web\n')).toBe(true);
+    expect(api).toContain('\n    numInstances: 2\n');
+    expect(api).toContain('\n    healthCheckPath: /api/health\n');
+    expect(worker.startsWith('  - type: worker\n')).toBe(true);
+    expect(worker).toContain('\n    dockerCommand: node apps/api/dist/worker.js\n');
+  });
+
+  it('names the production address and environment, never the test ones', () => {
+    expect(api).toContain('\n    domains:\n      - app.sodiqschool.uz\n');
+    for (const service of [api, worker]) {
+      expect(service).toContain('- key: SENTRY_ENVIRONMENT\n        value: production\n');
+      expect(service).toContain('- key: WEB_ORIGIN\n        value: https://app.sodiqschool.uz\n');
+    }
+    expect(api).toContain('- key: VITE_SENTRY_ENVIRONMENT\n        value: production\n');
+    expect(api).toContain("- key: TRUST_PROXY\n        value: '1'\n");
+    expect(production).not.toContain('app-test');
+    expect(production).not.toMatch(/value: test\b/);
+    expect(production).not.toContain('PHOTOS_IN_MEMORY');
+    expect(production).not.toContain('MAIL_OUTBOX_DIR');
+    // The test Blueprint never reaches production.
+    expect(blueprint).not.toContain('app.sodiqschool.uz');
+    expect(blueprint).not.toMatch(/name: sodiq-(api|worker)\n/);
+  });
+});
