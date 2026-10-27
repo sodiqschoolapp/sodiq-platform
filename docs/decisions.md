@@ -342,6 +342,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 27 October 2026: the permission and security review, first part (task 10.3a)
+
+Plan approved on pull request #241 with corrections 1 to 5; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a task split). 10.3 is split into 10.3a (limits inside the routes, headers, checklist) and 10.3b (records of another branch by id: the 404 tests of every route with an id, listed like `ROUTE_SCOPE`) | Decision 1: 294 routes take a path id; a second full pass of the routes |
+| **Look first** (an accepted risk, a spec change proposed). Unknown browsers keep one count of failed sign-ins per login; the per-address count is proposed as a `/spec-change` of `edge/people-roles-accounts`, not built | Decision 2: the spec says "not per network address"; the per-address design had open holes |
+| **Look first.** 10.3 is ticked with the owner's signature pending; "the 10.3 checklist is signed" is a go-live item of 10.4 | Decision 4: the signature blocks only production |
+| **Look first** (what a role sees, narrowed). `GET /api/plans/windows` shows a window's extensions to the Super Admin, the Principal and the Academic Vice Principal, and to a Teacher, Head Teacher or Senior Head Teacher only their own extension | Found by the review: every reader of plans saw every teacher's extension with the name; `09` names illness as a reason. The spec is silent on who sees it |
+| **Look first** (a decided answer changed). The mail log writes the subject only, never the address or the text; with no mail service the reset link reaches nobody, and resets are made by an administrator | `CLAUDE.md`: no personal data in logs; the link is a key to the account. Phase 10 answer 16 said "keeps writing to the log only" |
+| A sign-in to a locked account with the right password stays undelayed and audited | Decision 3 |
+| Own security-header middleware before the web files; HSTS only behind the load balancer; `connect-src` allows `https://*.sentry.io`, where the web app already reports errors | Decision 5; the plan's `connect-src 'self'` would have blocked the web app's existing error reports |
+| `ROUTE_SCOPE` (`apps/api/src/testing/route-scope-list.ts`) names for every route that lets in a Tutor, a Teacher, a Head Teacher or a Senior Head Teacher the limit of each and its refusal tests, and `narrower` lines for whole-branch roles held to less; `route-scopes.test.ts` holds it complete | Decisions 5 to 7 |
+| The checklist's tables are written by `pnpm security:checklist` (a Vitest run in mode `checklist`) and compared on every run | Plan review correction 1 |
+
 ## 26 October 2026: a UID typed in any form (task 9.4c)
 
 Plan approved on pull request #240 with corrections 1 and 2; decisions confirmed there. Flagged on issue #42.

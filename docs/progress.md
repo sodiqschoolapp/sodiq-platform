@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 27 October 2026: task 10.3a Permission and security review: limits inside the routes, headers, checklist
+
+- `ROUTE_SCOPE` and `route-scopes.test.ts`: every route that lets in a scoped role (130) names each role's limit and the tests that prove the refusal; 40 routes carry `narrower` lines of roles held to less inside the route (145 routes in the list). New refusal tests in `scope-refusals.test.ts` and `narrower-refusals.test.ts` of journal, plans, people, results, timetable and access. `ROUTE_ACCESS`, `STEP_ROUTES` and `PUBLIC_ROUTES` moved to `apps/api/src/testing/route-access-list.ts`.
+- Security headers on every answer (`apps/api/src/http/security-headers.ts`). The mail log writes the subject only. `GET /api/plans/windows` shows an extension to its teacher and the whole-branch readers only.
+- `docs/security/permission-checklist.md` for the owner to sign: rules with where they are enforced and proved, accepted risks, hand checks, and tables written by `pnpm security:checklist`.
+- Left out: the 404 tests of records of another branch by id (10.3b); the hand check of the headers in the four browsers and the providers' encryption at rest (10.4, From line); Sentry's address of another region in `connect-src` (10.2, From line).
+
+The next sessions must know:
+
+- A new route with a Tutor, Teacher, Head Teacher or Senior Head Teacher among its roles needs a line in `apps/api/src/testing/route-scopes/<module>.ts` with its refusal test; `route-scopes.test.ts` fails otherwise. Then run `pnpm security:checklist`: `permission-checklist.test.ts` fails while the checklist's tables differ from the code.
+- A new script or style source of the web app (a CDN, a monitoring service) goes into `CONTENT_SECURITY_POLICY` with its test; the browser tests run on Vite's server and never see the policy.
+
 ## 26 October 2026: task 9.4c A UID typed in any form
 
 - Migration 0138: `student_uid_valid` (1 to 20 characters, no space or invisible character) replaces the seven-digit checks of `students`, `student_uids` and `student_merges`; generated `uid_key` (`student_uid_key`, upper case with `pg_unicode_fast`) on `students` and `student_uids`, unique (`students_uid_key_idx`, `student_uids_uid_key_idx`); `students_uid_held_fkey` over `uid_key`; `student_merged_uid_holder` by key.

@@ -31,12 +31,12 @@ export interface MailLog {
 /**
  * The owner's answer 16 ("Decided ahead for tasks 2.1 to 2.6"): "until
  * go-live (task 10.4) emails are written to the log only, never sent". The
- * mail goes to the API log under the logger `Mail`, never to the error
+ * log under the logger `Mail` names the subject only: the address and the
+ * text, which holds a reset link, are personal data and a key to the account
+ * (`CLAUDE.md`: no personal data in logs; task 10.3a). Never to the error
  * reports. With `outboxDir` (the browser tests only, refused on a server by
  * the configuration) each mail is also one JSON file there, so a browser test
- * can follow its link. Until go-live the data on every server is invented;
- * this class must be replaced before any real staff email is loaded
- * (correction 3 of the review of #66).
+ * can follow its link.
  */
 export class LogMailer implements Mailer {
   constructor(
@@ -45,7 +45,7 @@ export class LogMailer implements Mailer {
   ) {}
 
   async send(mail: Mail): Promise<void> {
-    this.log.log(`To: ${mail.to}\nSubject: ${mail.subject}\n\n${mail.text}`);
+    this.log.log(`Not sent, no mail service: ${mail.subject}`);
     if (this.outboxDir !== undefined) {
       await mkdir(this.outboxDir, { recursive: true });
       // A test finds its mail by the address and takes the newest file.

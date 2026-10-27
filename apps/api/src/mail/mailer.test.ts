@@ -21,14 +21,14 @@ describe('the mail service', () => {
     }
   });
 
-  it('writes a mail to the log, and nowhere else without an outbox', async () => {
+  // Task 10.3a: the address and the link are personal data and a key to the account.
+  it('writes the subject of a mail to the log, never its address or its link', async () => {
     const lines: string[] = [];
     await new LogMailer(undefined, { log: (line) => lines.push(line) }).send(MAIL);
 
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain(`To: ${MAIL.to}`);
-    expect(lines[0]).toContain(`Subject: ${MAIL.subject}`);
-    expect(lines[0]).toContain(MAIL.text);
+    expect(lines).toEqual([`Not sent, no mail service: ${MAIL.subject}`]);
+    expect(lines[0]).not.toContain(MAIL.to);
+    expect(lines[0]).not.toContain('token=');
   });
 
   it('also writes each mail as one file into the outbox of the browser tests', async () => {
