@@ -8,15 +8,21 @@ import { hasTitle, readTestFile, staticSegments } from './route-scope-check.js';
  *   relative) read through its links to the branch of the request. Another
  *   branch's id and an unknown one are answered 404, with the rows of both
  *   branches and the audit log unchanged (`.claude/rules/api.md`, tasks 1.3 and 1.5);
- * - `school`: a record of the whole school, one of `SCHOOL_RECORDS`;
+ * - `school`: a record of the whole school, one of `SCHOOL_RECORDS`; its tests,
+ *   when named, send an unknown id;
  * - `own`: a record of the signed-in account (a notification, a session, a
  *   trusted device); another account's id and an unknown one are answered 404;
  * - `none`: no record (the rule says why).
  */
 export type IdKind = 'branch' | 'school' | 'own' | 'none';
 
-/** The records the spec makes school-wide (`03`, divisions and departments; the branches themselves). */
-export const SCHOOL_RECORDS: readonly string[] = ['branch', 'division', 'department'];
+/**
+ * The records the spec makes school-wide: the branches themselves, the
+ * divisions and departments (`03`), and the subjects, one list for the whole
+ * school (`docs/decisions.md`, answers for tasks 2.1 to 2.6, answer 3; `subjects`
+ * has no branch column).
+ */
+export const SCHOOL_RECORDS: readonly string[] = ['branch', 'division', 'department', 'subject'];
 
 /** One id of a route. */
 export interface IdLine {
@@ -36,7 +42,7 @@ export interface IdLine {
    * an unknown one and see 404 with the rows unchanged, or for a query filter
    * none of the other branch's matching rows answered:
    * `<file under apps/api> > <title of the it, test or describe>`.
-   * Empty for `school` and `none`.
+   * For `school`, the tests of an unknown id, when there are any; empty for `none`.
    */
   refusedIn: readonly string[];
   /**
@@ -286,9 +292,16 @@ export function idProblems(
       if (line.kind === 'school' && !SCHOOL_RECORDS.includes(line.record)) {
         problems.push(`${route} ${what}: ${line.record} is not a record of the whole school`);
       }
-      if (line.kind === 'school' || line.kind === 'none') {
+      if (line.kind === 'none') {
         if (line.refusedIn.length > 0 || (line.repeatIn ?? []).length > 0) {
-          problems.push(`${route} ${what}: a ${line.kind} line names tests`);
+          problems.push(`${route} ${what}: a none line names tests`);
+        }
+        continue;
+      }
+      if (line.kind === 'school') {
+        problems.push(...testProblems(route, what, line.refusedIn, readSource));
+        if ((line.repeatIn ?? []).length > 0) {
+          problems.push(`${route} ${what}: a school line names repeat tests`);
         }
         continue;
       }

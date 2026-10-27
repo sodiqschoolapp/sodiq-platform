@@ -15,6 +15,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { rowsOfTables } from '../../testing/id-refusal-kit.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { CONSTRAINT_REFUSALS, refusingConstraints } from './setup-refusals.js';
@@ -22,6 +23,9 @@ import { lockFollowingRows } from './academic-year-dates.js';
 
 const START = '2026-10-10T09:00:00+05:00';
 const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
+
+/** The tables an edit or a start of a year writes, and the log (task 10.3b). */
+const YEAR_TABLES = ['academic_years', 'quarters', 'audit_log'];
 
 type Dates = [string | null, string | null];
 
@@ -391,6 +395,8 @@ describe('academic years', () => {
 
     it('of another branch, or an unknown year, are not found, and nothing changes', async () => {
       const id = await createYear(south, '2030-09-02', '2031-05-25');
+      // Task 10.3b: every row of the tables an edit writes, in both branches, and the log.
+      const rows = await rowsOfTables(database.migrator, YEAR_TABLES);
 
       for (const target of [id, UNKNOWN]) {
         const response = await put(`/api/setup/academic-years/${target}`, north, {
@@ -401,6 +407,7 @@ describe('academic years', () => {
       }
       expect(await yearRow(id)).toMatchObject({ start_date: '2030-09-02', status: 'planned' });
       expect(await entries('academic_year.edit', id)).toHaveLength(0);
+      expect(await rowsOfTables(database.migrator, YEAR_TABLES)).toEqual(rows);
     });
   });
 
@@ -463,6 +470,8 @@ describe('academic years', () => {
     // The permission review: every route that takes an id answers 404 for another branch's.
     it('of another branch, or an unknown year, is not found, and nothing changes', async () => {
       const id = await createYear(south, '2044-09-02', '2045-05-25');
+      // Task 10.3b: every row of the tables a start writes, in both branches, and the log.
+      const rows = await rowsOfTables(database.migrator, YEAR_TABLES);
 
       for (const target of [id, UNKNOWN]) {
         const response = await post(`/api/setup/academic-years/${target}/start`, north);
@@ -470,6 +479,7 @@ describe('academic years', () => {
       }
       expect(await yearRow(id)).toMatchObject({ status: 'planned' });
       expect(await entries('academic_year.start', id)).toHaveLength(0);
+      expect(await rowsOfTables(database.migrator, YEAR_TABLES)).toEqual(rows);
     });
 
     it('is refused for a closed year', async () => {

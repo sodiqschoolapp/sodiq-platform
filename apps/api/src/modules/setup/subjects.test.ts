@@ -818,11 +818,20 @@ describe('subjects', () => {
       expect(errorCode(closed)).toBe('subject_department_archived');
     });
 
+    // Task 10.3b: every route that names a subject in its path. A subject is
+    // a record of the whole school (`03`, answer 3): no other branch has one.
     it('of an unknown subject is not found; nothing is written', async () => {
+      const subject = await create();
       const before = await rows();
       const audit = await auditCount();
       expect((await t.post(`/api/setup/subjects/${UNKNOWN}/archive`, t.north)).status).toBe(404);
       expect((await t.post(`/api/setup/subjects/${UNKNOWN}/restore`, t.north)).status).toBe(404);
+      expect((await put(`/api/setup/subjects/${UNKNOWN}`, t.north, editBody(subject))).status).toBe(
+        404,
+      );
+      expect(
+        (await put(`/api/setup/subjects/${UNKNOWN}/daily-weights`, t.north, DAILY)).status,
+      ).toBe(404);
       expect(await rows()).toEqual(before);
       expect(await auditCount()).toBe(audit);
     });

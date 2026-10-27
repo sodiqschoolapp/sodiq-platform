@@ -9,6 +9,7 @@ import { JobRunner } from '../../jobs/job-runner.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { expectRefusedById, UNKNOWN_ID } from '../../testing/id-refusal-kit.js';
 import { storedJobs } from '../../testing/sample-job.js';
 import {
   cookieOf,
@@ -399,6 +400,14 @@ describe('notifications', () => {
       expect((await rowsOf(other.account.id))[0]?.read_at).toBeNull();
       const missing = await kit.post(`/api/notifications/${randomUUID()}/read`, mine.cookie);
       expect(missing.status).toBe(404);
+      // Task 10.3b: every notification of both accounts and the audit log as they were.
+      await send([mine.account.id]);
+      await expectRefusedById({
+        database: database.migrator,
+        tables: ['notifications'],
+        ids: [theirs ?? '', UNKNOWN_ID],
+        send: (id) => kit.post(`/api/notifications/${id}/read`, mine.cookie),
+      });
     });
 
     it('all at once for the own account and none of another, told once without ids', async () => {

@@ -13,6 +13,7 @@ import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { expectRefusedById, UNKNOWN_ID } from '../../testing/id-refusal-kit.js';
 import {
   base32Decode,
   cookieOf,
@@ -759,6 +760,15 @@ describe('a trusted device', () => {
       expect((await kit.probe(ownerCookie)).status).toBe(200);
       expect(await auditOf('auth.trusted_device_removed', owner.id)).toEqual([]);
       expect(await auditOf('auth.trusted_device_removed', stranger.id)).toEqual([]);
+      // Task 10.3b: an unknown id too, with the sessions of both accounts and
+      // both logs as they were.
+      await expectRefusedById({
+        database: database.migrator,
+        tables: ['sessions', 'audit_log_school'],
+        ids: [device?.id ?? '', UNKNOWN_ID],
+        send: (id) => remove(id, strangerCookie),
+      });
+      expect((await kit.probe(ownerCookie)).status).toBe(200);
     });
 
     it('but not a session that is not trusted, which is answered alike and stays signed in', async () => {
