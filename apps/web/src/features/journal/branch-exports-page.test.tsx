@@ -144,7 +144,6 @@ const SUPPORT: JournalSupport = {
     lastName: 'Zokirov',
     paternalName: null,
     uid: '2600001',
-    photoId: null,
     folded: false,
   },
   journal: {
