@@ -129,4 +129,25 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
     .getByRole('radio', { name: en.journal.page.lessonMode, exact: true })
     .check({ force: true });
   await expect(page.locator('[data-lesson-mode] [data-student]')).toHaveCount(3);
+
+  // Opening a journal from the list brings its grid into view, also a second time, when its
+  // data is already in the cache and the page draws before the router's own scroll to the
+  // top (owner, 27 October 2026).
+  const gridInView = async () => {
+    await expect(page.locator('[data-journal-grid]')).toBeVisible();
+    await expect.poll(() => page.evaluate<number>('window.scrollY')).toBeGreaterThan(0);
+    // The box is measured from the top of the window: the grid starts inside it.
+    const box = await page.locator('[data-journal-grid]').boundingBox();
+    expect(box?.y ?? Infinity).toBeLessThan(page.viewportSize()?.height ?? 720);
+  };
+  const openFromList = async () => {
+    await expect(heading(page, en.journal.page.title)).toBeVisible();
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.locator('main tbody tr').first().getByRole('button').first().click();
+    await gridInView();
+  };
+  await page.getByRole('link', { name: en.journal.page.title, exact: true }).click();
+  await openFromList();
+  await page.goBack();
+  await openFromList();
 });

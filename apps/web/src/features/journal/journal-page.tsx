@@ -9,7 +9,7 @@ import {
   type JournalStudent,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useRouterState, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -251,14 +251,17 @@ function JournalLoaded({
   const gridPanel = useRef<HTMLDivElement>(null);
   const scrolledTo = useRef<string | null>(null);
   const hasGrid = !lessonMode && data.lessons.length > 0;
+  // The router puts the window back at the top when a navigation ends (status "idle"): with the
+  // journal already in the cache the page draws before that, and a scroll then would be undone.
+  const routing = useRouterState({ select: (state) => state.status });
   useEffect(() => {
-    if (!hasGrid || scrolledTo.current === data.journal.id) return;
+    if (!hasGrid || routing !== 'idle' || scrolledTo.current === data.journal.id) return;
     scrolledTo.current = data.journal.id;
     const panel = gridPanel.current;
     if (panel !== null && typeof panel.scrollIntoView === 'function') {
       panel.scrollIntoView({ block: 'start' });
     }
-  }, [hasGrid, data.journal.id]);
+  }, [hasGrid, routing, data.journal.id]);
   const scrollDate = search.date ?? data.today;
   const nearest = lessonNearest(data.lessons, scrollDate);
 
