@@ -6,7 +6,7 @@ import {
   type RatingExam,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -63,12 +63,17 @@ export const ratingEntryOf = (exam: RatingExam, studentId: string) =>
 /** The text of an entry in a cell or a line: the score, or the words. */
 export function useEntryText(): (entry: RatingEntryValue | null) => string {
   const { t } = useTranslation();
-  return (entry) =>
-    entry === null
-      ? '—'
-      : entry.kind === 'score'
-        ? String(entry.score)
-        : t(`journal.rating.kinds.${entry.kind}`);
+  // The same function while the language stays: the grid's columns are built from it, and a
+  // new one on every render redrew the whole grid and dropped what a cell was being typed.
+  return useCallback(
+    (entry: RatingEntryValue | null) =>
+      entry === null
+        ? '—'
+        : entry.kind === 'score'
+          ? String(entry.score)
+          : t(`journal.rating.kinds.${entry.kind}`),
+    [t],
+  );
 }
 
 export function useRatingEntry(

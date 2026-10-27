@@ -150,4 +150,24 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await openFromList();
   await page.goBack();
   await openFromList();
+
+  // Fast entry (owner, 28 October 2026): numbers typed with Enter in one burst land in the
+  // students' rows in turn, each saved, with no "changed by someone else" question. Before,
+  // the redraw after the first save stopped the next edit: a number was lost or went into the
+  // first row again. The classwork's total is 20 since above.
+  const rowOf = async (name: string) =>
+    (await page.locator('.ag-row').filter({ hasText: name }).first().getAttribute('row-id')) ?? '';
+  const ids = [
+    await rowOf('Abdullayeva Lola'),
+    await rowOf('Zokirova Nodira'),
+    await rowOf('Oʻktamov Bekzod'),
+  ];
+  const workCell = (id: string) =>
+    page.locator(`[row-id="${id}"] [col-id="${column ?? ''}"]`).last();
+  await workCell(ids[0] ?? '').click();
+  await page.keyboard.type('7\n9\n8\n');
+  await expect(workCell(ids[0] ?? '')).toContainText('35%');
+  await expect(workCell(ids[1] ?? '')).toContainText('45%');
+  await expect(workCell(ids[2] ?? '')).toContainText('40%');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
