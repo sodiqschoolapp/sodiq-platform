@@ -14,6 +14,7 @@ import { jsonOnlyMiddleware } from './http/json-only.js';
 import { noStoreMiddleware } from './http/no-store.js';
 import { requestIdMiddleware } from './http/request-id.js';
 import { sameSiteMiddleware } from './http/same-site.js';
+import { securityHeadersMiddleware } from './http/security-headers.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
 import { webFilesMiddleware } from './http/web-files.js';
 
@@ -33,6 +34,8 @@ export function configureApp(app: NestExpressApplication): void {
   // Behind Render's load balancer (task 0.10) Express reads the first hop's
   // forwarded headers too; our own reading of the origin is `ownOriginOf`.
   app.set('trust proxy', config.trustProxy ? 1 : false);
+  // First of all, so that the web app's files carry them too (task 10.3a).
+  app.use(securityHeadersMiddleware(config.trustProxy));
   // On a server the web app's files are served first, outside the API prefix,
   // with their own caching headers; nothing below sees those requests. A
   // relative directory counts from the repository root, whatever the working
