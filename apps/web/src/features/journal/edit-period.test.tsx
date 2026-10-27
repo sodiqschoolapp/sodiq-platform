@@ -152,6 +152,34 @@ const cellOf = (id: string, colId: string) =>
 // docs/spec/07-journal.md, Editing rules and locks; docs/spec/edge-cases/journal.md, Locks,
 // unlocks and corrections (task 8.4).
 describe('the edit period on the journal page', () => {
+  it('lists the three newest plain locked lessons, the urgent ones, and folds the rest behind one button', async () => {
+    // Seven plain locked lessons (1 to 7 October) and one locked incomplete (8 October).
+    const plain = [1, 2, 3, 4, 5, 6, 7].map((day) =>
+      lesson(uid(200 + day), `2026-10-0${String(day)}`, false, LOCKED),
+    );
+    const incomplete = {
+      ...lesson(uid(208), '2026-10-08', false, LOCKED),
+      status: 'locked_incomplete' as const,
+    };
+    const base = gridOf(LOCKED);
+    open({ ...base, lessons: [...plain, incomplete, ...base.lessons] }, 'teacher');
+    const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    const listed = () =>
+      [...panel.querySelectorAll('[data-lock-row]')].map((row) =>
+        row.getAttribute('data-lock-row'),
+      );
+    // The incomplete lesson first, then the newest plain ones: 19, 7 and 6 October.
+    expect(listed()).toEqual([uid(208), OLD, uid(207), uid(206)]);
+    const more = within(panel).getByRole('button', {
+      name: en.journal.locks.moreLocked_other.replace('{{count}}', '5'),
+    });
+    fireEvent.click(more);
+    await waitFor(() => {
+      expect(listed()).toHaveLength(9);
+    });
+    within(panel).getByRole('button', { name: en.journal.locks.fewerLocked });
+  });
+
   it('keeps a locked lesson read-only and sends an unlock request with its reason', async () => {
     const calls = open(gridOf(LOCKED), 'teacher');
     const panel = await screen.findByRole('region', { name: en.journal.locks.title });

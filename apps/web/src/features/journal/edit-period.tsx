@@ -305,7 +305,12 @@ interface LockRow {
   readonly lock: EditLock;
   readonly request: (reason: string) => Promise<unknown>;
   readonly lessonId: string | null;
+  /** Needs the reader now: a request waiting, an unlock running, a lesson locked incomplete, the rating. */
+  readonly urgent: boolean;
 }
+
+/** Up to this many plain locked rows are listed; more are folded behind one button. */
+const PLAIN_ROWS_SHOWN = 3;
 
 /** The words of a lock for the reader: locked since, unlocked until, or the waiting request. */
 export function LockState({ lock }: { lock: EditLock }) {
@@ -353,6 +358,7 @@ export function EditPeriodPanel({
   const language = i18n.language;
   const [asking, setAsking] = useState<LockRow | null>(null);
   const [correctingOf, setCorrectingOf] = useState<LockRow | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const drafts = useDrafts();
   const withdraw = useMutation({
     mutationFn: (request: { id: string; version: number }) =>
@@ -373,6 +379,10 @@ export function EditPeriodPanel({
         lock: lesson.lock,
         request: (reason: string) => requestLessonUnlock(lesson.id, reason),
         lessonId: lesson.id,
+        urgent:
+          lesson.lock.request !== null ||
+          lesson.lock.window === 'unlocked' ||
+          lesson.status === 'locked_incomplete',
       })),
     ...(grid.rating !== null && shown(grid.rating.lock)
       ? [
@@ -383,10 +393,17 @@ export function EditPeriodPanel({
             request: (reason: string) =>
               requestRatingUnlock(grid.journal.id, grid.quarter.id, reason),
             lessonId: null,
+            urgent: true,
           },
         ]
       : []),
   ];
+  // A long quarter locks dozens of lessons: the ones that need the reader stay in view, the
+  // newest plain ones follow, and the rest wait behind one button so the grid is not pushed down.
+  const urgent = rows.filter((row) => row.urgent);
+  const plain = rows.filter((row) => !row.urgent).reverse();
+  const folded = plain.length > PLAIN_ROWS_SHOWN && !showAll ? plain.slice(PLAIN_ROWS_SHOWN) : [];
+  const listed = [...urgent, ...plain.slice(0, plain.length - folded.length)];
   if (rows.length === 0 && correcting === null) return null;
   const correctedLabel =
     correcting === null
@@ -416,7 +433,7 @@ export function EditPeriodPanel({
         </p>
       )}
       <ul className="grid gap-2 text-sm">
-        {rows.map((row) => (
+        {listed.map((row) => (
           <li key={row.key} className="flex flex-wrap items-center gap-3" data-lock-row={row.key}>
             <span className="font-semibold">{row.label}</span>
             <LockState lock={row.lock} />
@@ -455,6 +472,21 @@ export function EditPeriodPanel({
           </li>
         ))}
       </ul>
+      {plain.length > PLAIN_ROWS_SHOWN && (
+        <div>
+          <Button
+            variant="ghost"
+            aria-expanded={showAll}
+            onClick={() => {
+              setShowAll((open) => !open);
+            }}
+          >
+            {showAll
+              ? t('journal.locks.fewerLocked')
+              : t('journal.locks.moreLocked', { count: folded.length })}
+          </Button>
+        </div>
+      )}
       <FailureAlert error={withdraw.error} />
       {asking !== null && (
         <ReasonDialog

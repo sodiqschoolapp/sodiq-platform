@@ -6075,6 +6075,9 @@ export const en = {
     },
     locks: {
       title: 'Edit period',
+      moreLocked_one: 'Show {{count}} more locked lesson',
+      moreLocked_other: 'Show {{count}} more locked lessons',
+      fewerLocked: 'Hide the other locked lessons',
       lesson: 'Lesson of {{date}}',
       rating: 'Rating exam',
       locked: 'Locked: the edit period ended {{at}}.',

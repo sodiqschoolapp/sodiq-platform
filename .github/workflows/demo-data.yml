@@ -120,7 +120,21 @@ jobs:
         # btree_gist stays out: the test database has it, and only its
         # creator may drop it.
         run: |
-          $PG18 pg_dump --format=plain --no-owner --exclude-extension=btree_gist --file=/work/demo.sql "$TARGET"
+          $PG18 pg_dump --format=plain --no-owner --exclude-extension=btree_gist --file=/work/dump.sql "$TARGET"
+          # Progress lines for the load, which otherwise prints nothing for many
+          # minutes: one every 500 objects of the schema, and one before each
+          # table's data. Only outside the data of a COPY, so no row changes.
+          total=$(grep -c '^-- Name: ' dump.sql)
+          # RAISE INFO, not \echo: pg_dump 18 guards the file with \restrict, which
+          # refuses backslash commands until its end, and sets client_min_messages
+          # to warning, which hides a notice (INFO is always sent).
+          awk -v total="$total" '
+            function say(text) { print "DO $$ BEGIN RAISE INFO \x27" text "\x27; END $$;" }
+            copy { print; if ($0 == "\\.") copy = 0; next }
+            /^-- Name: / { n++; if (n % 500 == 0) say("schema: " n " of " total " objects") }
+            /^COPY .* FROM stdin;$/ { say("data: " $2); print; copy = 1; next }
+            { print }
+          ' dump.sql > demo.sql
           ls -l demo.sql
       - name: Suspend the test API and worker
         id: suspend
@@ -140,7 +154,7 @@ jobs:
           TARGET: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           $PG18 psql -X -q -v ON_ERROR_STOP=1 -f db/demo/clear-for-restore.sql "$TARGET"
-          $PG18 psql -X -q --single-transaction -v ON_ERROR_STOP=1 -f demo.sql "$TARGET" > /dev/null
+          $PG18 psql -X -q --single-transaction -v ON_ERROR_STOP=1 -f demo.sql "$TARGET"
           $PG18 psql -X -At -c "select name from branches order by name" "$TARGET"
       - name: Resume the test API and worker
         if: always() && steps.suspend.outcome != 'skipped'
