@@ -342,6 +342,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 28 October 2026: prepared report totals (task 9.3b-1)
+
+Plan approved on pull request #258 with corrections 1 to 4; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 9.3b split into 9.3b-1 (prepared totals and the move of the slow reads) and 9.3b-2 (the reports of `08` with filters and exports), which changes the permission table: stop-list item 5, so its plan waits for the owner | The new reports need new areas; the prepared totals change no permission and the Speed run waited on them |
+| **Look first** (jobs in the same transaction, read). The change writes a row of `report_changes` by trigger in its own transaction; the worker prepares every minute from those rows and the clock, never per save | No change can be lost; a pg-boss job per cell save would put a queue row on the hot path (`12`: 0.3 s) |
+| Tables, not materialized views; every new table has the branch filter; no `security definer` function | The row filter decision |
+| A unit is behind when a change row of it was not visible in the snapshot taken first in its preparation, when `next_change_at` has passed, or when the fingerprint of the school-wide inputs differs | Review findings 1, 2 and corrections 2 and 3: a sequence number misses changes committed late; school-wide tables have no branch for a change row |
+| The prepared value is the reader's own result, kept as JSON by a codec that writes fractions and whole numbers as decimal texts read straight into `BigInt` (in place of the numeric columns of the plan) | The same readers give the same figures; correction 4 |
+| No new daily kind: the date that moves (the early-warning list's "four weeks ago", the reference date) is the next midnight of the branch in `next_change_at` while the quarter runs (in place of decision 11 of the review) | One mechanism for every moment; `scheduled_runs_kind_check` unchanged |
+| "Updated at" is the oldest preparation used; while updating, the figures are calculated from source, so the page shows "updating" and a Refresh button, never a timer | `.claude/rules/web.md`: no call on a timer |
+| Prepared rows are not audited | They are derived; the changes that cause them are audited |
+| The plan reports stay worked out on read (changed at build; a From line on 9.3b-2) | 10.1 did not find them slow; they need a unit of their own |
+
 ## 28 October 2026: backups, restore drill and alerts (task 10.2a)
 
 Plan approved on pull request #256 with corrections 1 to 6; decisions confirmed there. Flagged on issue #42.

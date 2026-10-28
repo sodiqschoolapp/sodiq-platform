@@ -2,6 +2,22 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 28 October 2026: task 9.3b-1 Prepared totals
+
+- 9.3b split (decision 1, Look first): this part prepares the report totals and moves the reads 10.1 found slow onto them; the new reports of `08` are 9.3b-2, which changes the permission table and waits for the owner.
+- **Change rows** (0140): statement-level triggers on every branch table the preparation reads write `report_changes` (journal and quarter where the row names them, else the whole branch) in the change's transaction. School-wide inputs (subjects, staff and the rest of `SCHOOL_INPUTS`) are fingerprinted instead.
+- **Preparation**: the job `results.prepare_totals` (every minute, worker) prepares per branch the units behind (`outcomes` and `figures` per quarter and subject, `statuses` per quarter and journal) with the same readers as before (`apps/api/src/modules/results/prepared/`). A unit is behind when a change row was not visible in its preparation's snapshot, when `next_change_at` (the next lesson start, the next midnight while the quarter runs) has passed, or when the school-wide inputs differ.
+- **Reads**: the rating lists, the early-warning list, the branch summary, attendance today, the lessons of today and the counts per teacher read the fresh units and calculate the behind ones from source; each answer has `prepared: { updatedAt, updating }`, shown by `PreparedStamp` with a Refresh button (no timer).
+- Small speed run: the moved reads 55 to 330 ms; the first preparation of a small branch (228 units) 23 s; cell saves unchanged (46 to 78 ms).
+
+Left out: the reports of `08`, their exports and permission areas, and the plan reports on prepared totals (9.3b-2); the triple and full speed runs (by hand on `main`).
+
+The next sessions must know:
+
+- A reader that the preparation calls (`unitValue` in `units.ts`) and that starts reading a new table fails the inputs check of the speed run: watch the table in a migration (`report_watch` kinds of 0140: lesson, journal, plan, rating entry, branch) or add a school-wide one to `SCHOOL_INPUTS`.
+- A figure that changes with the clock is never stored: store its facts and moments and decide on read (`statusOfFacts`), or give the unit a `next_change_at`.
+- After a branch-wide change (a weight, a membership, an exemption) every unit of the branch is behind until the next run: the reads are as slow as before for a minute or two and say "updating".
+
 ## 28 October 2026: task 10.2a Backups, restore drill and alerts
 
 - 10.2 split (decision 1, Look first): this part is the backups and the alerts; the hidden Monitoring branch and the sign-in-and-save check are 10.2b.
