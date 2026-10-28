@@ -13,6 +13,7 @@ import {
   type WorkSaved,
 } from '@sodiq/shared';
 import {
+  candidateChecker,
   checkCandidates,
   checkTimetable,
   checkedPlacements,
@@ -42,6 +43,7 @@ import {
   gridOf,
   machineOf,
   median,
+  movableBlock,
   moveCheck,
   once,
   placeDraft,
@@ -98,10 +100,13 @@ const TARGET = { page: 1000, journal: 1000, save: 300, move: 200, report: 2000, 
 /**
  * The first read of every page of the left menu (`MENU_ITEMS`) and of every
  * home page (`HOME_KIND`), as the role that opens it: what the page asks the
- * server before it can draw (plan, "Open any page"). A test holds it complete
- * against the menu. The home of the roles of a later release has no read.
+ * server before it can draw (plan, "Open any page"), and the pages under a
+ * menu item the plan names (`setup/rooms`: the item, then the page). A test
+ * holds it complete against the menu. The home of the roles of a later
+ * release has no read.
  */
-type PageKey = (typeof MENU_ITEMS)[number] | `home:${(typeof HOME_KINDS)[number]}`;
+type MenuItem = (typeof MENU_ITEMS)[number];
+type PageKey = MenuItem | `home:${(typeof HOME_KINDS)[number]}` | `${MenuItem}/${string}`;
 
 interface Ids {
   readonly quarter: string;
@@ -151,6 +156,9 @@ const PAGE_READS: Record<
     reads: () => ['/api/results/branch-summary'],
   },
   setup: { role: 'academic_vice_principal', reads: () => ['/api/setup/checklist'] },
+  'setup/rooms': { role: 'academic_vice_principal', reads: () => ['/api/setup/rooms'] },
+  'setup/subjects': { role: 'academic_vice_principal', reads: () => ['/api/setup/subjects'] },
+  'setup/settings': { role: 'academic_vice_principal', reads: () => ['/api/setup/settings'] },
   people: {
     role: 'academic_vice_principal',
     reads: () => ['/api/people/students', '/api/people/staff'],
@@ -196,7 +204,12 @@ describe('the page reads of the speed run', () => {
       ...MENU_ITEMS.filter((item) => item !== 'home'),
       ...HOME_KINDS.filter((kind) => kind !== 'later_release').map((kind) => `home:${kind}`),
     ];
-    expect(Object.keys(PAGE_READS).sort()).toEqual(pages.sort());
+    const keys = Object.keys(PAGE_READS);
+    expect(keys.filter((key) => !key.includes('/')).sort()).toEqual(pages.sort());
+    // A page under an item is under one of the menu.
+    for (const key of keys.filter((one) => one.includes('/'))) {
+      expect(MENU_ITEMS, key).toContain(key.slice(0, key.indexOf('/')));
+    }
   });
 });
 
@@ -209,6 +222,8 @@ interface Person {
   /** A Teacher's staff record and a lesson of theirs begun this morning. */
   readonly staffId?: string;
   readonly lessonToday?: string;
+  /** The journal of that lesson. */
+  readonly journalToday?: string;
 }
 
 const as = (person: Person) => {
@@ -303,6 +318,28 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           // The narrowed check equals the full one at every slot of one block (plan, Fixes).
           expect(sameAsFull(board.last), `${branch.name}: narrowed and full check`).toBe(true);
           const vice = asVice(t, branch);
+          // A saved move on the board and back, through the route (5.12c; plan, "Check a move").
+          const target = movableBlock(board.last);
+          expect(target, `${branch.name}: a block with a free slot to move to`).not.toBeNull();
+          if (target !== null) {
+            const moves: number[] = [];
+            for (const to of [target.to, target.from]) {
+              const moved = await once(() =>
+                vice.post(
+                  `/api/timetable/versions/${branch.version}/pattern/${target.blockId}/move`,
+                  to,
+                ),
+              );
+              expect(moved.last.status, JSON.stringify(moved.last.body)).toBe(200);
+              moves.push(...moved.runs);
+            }
+            timings.push({
+              what: `${branch.name}: a saved move (route, write)`,
+              target: 'under 1 s',
+              runs: moves,
+            });
+            if (TRIPLE) expect(Math.max(...moves), 'a saved move').toBeLessThan(TARGET.page);
+          }
           const check = await timed(size.repeats, async () => {
             const response = await vice.get(
               `/api/timetable/versions/${branch.version}/publish-check?startsOn=${RUN_START}`,
@@ -339,6 +376,16 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           .execute();
         const people = new Map<string, Person[]>();
         for (const branch of school.branches) people.set(branch.id, await peopleOf(t, branch));
+        // A few temporary exemptions per class before the year is filled, so the
+        // readers' exemption paths are measured (the plan's data generator).
+        let exemptions = 0;
+        for (const branch of school.branches) {
+          const vice = (people.get(branch.id) ?? []).find(
+            (one) => one.role === 'academic_vice_principal',
+          );
+          if (vice !== undefined) exemptions += await exemptionsOf(t, branch, vice);
+        }
+        notes.push(`${String(exemptions)} temporary exemptions, two in each class.`);
         // The whole year at triple size; quarter 4 only in the small run, so a
         // pull request's run stays short (the filler's rate still shows).
         const filled = await fillJournals(
@@ -525,6 +572,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               actions: actionsOf(one.role, {
                 ...ids,
                 lessonToday: one.lessonToday ?? '',
+                journalToday: one.journalToday ?? '',
                 teacherStaffId: one.staffId ?? ids.teacherStaffId,
               }),
             });
@@ -580,6 +628,7 @@ async function idsOf(t: DayTemplatesKit, branch: BranchOfRun, teacher: Person | 
     name: student.last_name,
     teacherStaffId: teacher?.staffId ?? branch.teachers[0] ?? '',
     lessonToday: teacher?.lessonToday ?? '',
+    journalToday: teacher?.journalToday ?? '',
   };
 }
 
@@ -664,7 +713,22 @@ async function peopleOf(t: DayTemplatesKit, branch: BranchOfRun): Promise<Person
   const wanted = LARGE ? 20 : 3;
   for (const [staffId, lessonId] of [...teachers].slice(0, wanted)) {
     const { person } = await add('teacher', { staffId });
-    people[people.indexOf(person)] = { ...person, staffId, lessonToday: lessonId };
+    const journal = await migrator
+      .selectFrom('lessons')
+      .innerJoin('journals', (join) =>
+        join
+          .onRef('journals.class_id', '=', 'lessons.class_id')
+          .onRef('journals.subject_id', '=', 'lessons.subject_id'),
+      )
+      .select('journals.id')
+      .where('lessons.id', '=', lessonId)
+      .executeTakeFirst();
+    people[people.indexOf(person)] = {
+      ...person,
+      staffId,
+      lessonToday: lessonId,
+      ...(journal === undefined ? {} : { journalToday: journal.id }),
+    };
   }
   const tutorStaff = branch.teachers.find((id) => !teachers.has(id) && !linked.has(id));
   const tutor = await add('tutor', tutorStaff === undefined ? {} : { staffId: tutorStaff });
@@ -720,7 +784,8 @@ async function doublePairs(t: DayTemplatesKit): Promise<number> {
 /**
  * The narrowed `checkCandidates` against the full check filtered to the
  * candidate, at every lesson slot of the week of one block (plan, Fixes: the
- * speed run asserts both equal).
+ * speed run asserts both equal), and the board's `candidateChecker` built once
+ * for the drag.
  */
 function sameAsFull(grid: GridAnswer): boolean {
   const model = patternModel(grid.facts);
@@ -728,6 +793,7 @@ function sameAsFull(grid: GridAnswer): boolean {
   const block = blocks.find((one) => one.lessons.length === 1) ?? blocks[0];
   if (block === undefined) return true;
   const placements = checkedPlacements(model, blocks);
+  const board = candidateChecker(placements, model.facts);
   const rows = block.lessons.map((one) => model.rowOf(one.loadRowId));
   for (let weekday = 1; weekday <= 7; weekday += 1) {
     for (const slot of model.dayOfRows(rows, weekday)?.slots ?? []) {
@@ -747,6 +813,7 @@ function sameAsFull(grid: GridAnswer): boolean {
       ).filter((result) => result.lessonIds.some((id) => ids.has(id)));
       const narrowed = checkCandidates(placements, model.facts, candidates);
       if (JSON.stringify(full) !== JSON.stringify(narrowed)) return false;
+      if (JSON.stringify(full) !== JSON.stringify(board(candidates))) return false;
     }
   }
   return true;
@@ -767,6 +834,14 @@ function actionsOf(role: Role, ids: Awaited<ReturnType<typeof idsOf>>): LoadActi
     return [
       get('home (teacher)', '/api/timetable/home'),
       get('the journals list', '/api/journal/journals'),
+      ...(ids.journalToday === ''
+        ? []
+        : [
+            get(
+              'open a journal for a quarter',
+              `/api/journal/journals/${ids.journalToday}?quarterId=${ids.quarter}`,
+            ),
+          ]),
       ...(ids.lessonToday === ''
         ? []
         : [
@@ -884,4 +959,40 @@ function report(input: {
     `The whole run took ${input.total.toFixed(0)} s.`,
     '',
   ].join('\n');
+}
+
+/**
+ * Two temporary exemptions in each class, written through the route as the
+ * Academic Vice Principal before the journals are filled: a school week of
+ * quarter 3 for one student and the week of the measuring day for another.
+ */
+async function exemptionsOf(t: DayTemplatesKit, branch: BranchOfRun, vice: Person) {
+  let made = 0;
+  for (const one of branch.classes) {
+    const students = await t.database.migrator
+      .selectFrom('class_memberships')
+      .select('student_id')
+      .where('class_id', '=', one.id)
+      .orderBy('student_id')
+      .limit(2)
+      .execute();
+    for (const [index, student] of students.entries()) {
+      const [startDate, endDate] =
+        index === 0 ? ['2027-02-01', '2027-02-05'] : ['2027-05-17', '2027-05-21'];
+      const response = await as(vice).post('/api/exemptions', {
+        studentIds: [student.student_id],
+        kind: 'temporary',
+        subjectIds: null,
+        startDate,
+        endDate,
+        slots: null,
+        category: 'illness',
+        detail: 'Speed run',
+        choices: [],
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      made += 1;
+    }
+  }
+  return made;
 }

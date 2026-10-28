@@ -439,13 +439,18 @@ function lastJournalId(spans: readonly { journalId: string; until: string }[]): 
   return last?.journalId ?? null;
 }
 
-/** The starts of the lessons named, to order the lessons of one journal and date the run. */
-async function startsOf(transaction: Transaction, lessonIds: readonly string[]) {
+/**
+ * The starts of the lessons named, to order the lessons of one journal and
+ * date the run. Each lesson once and all in one array parameter: the lessons
+ * of every student of the branch's journals outgrow the 65,535 parameters of
+ * a statement on a year of lessons (task 10.1, the speed run at full size).
+ */
+export async function startsOf(transaction: Transaction, lessonIds: readonly string[]) {
   if (lessonIds.length === 0) return new Map<string, Date>();
   const rows = await transaction
     .selectFrom('lessons')
     .select(['id', 'starts_at'])
-    .where('id', 'in', [...lessonIds])
+    .where(sql<boolean>`id = any(${[...new Set(lessonIds)]}::uuid[])`)
     .execute();
   return new Map(rows.map((row) => [row.id, row.starts_at]));
 }
