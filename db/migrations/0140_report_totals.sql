@@ -349,8 +349,9 @@ begin
 end;
 $$;
 
--- One trigger per event of each input table. The list is held complete by
--- `report-inputs.database.test.ts`: every branch table the preparation reads is on it.
+-- One trigger per event of each input table. The list is held complete by the inputs check of
+-- the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`): every branch table the
+-- preparation reads is on it.
 create function report_watch(target regclass, kind text) returns void
 language plpgsql
 set search_path = pg_catalog, public

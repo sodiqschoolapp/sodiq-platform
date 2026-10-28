@@ -7,6 +7,7 @@ import { defineJob } from '../../../jobs/job-definition.js';
 import type { BranchMoment } from '../branch-moment.js';
 import {
   behindUnits,
+  isFresh,
   preparedKeys,
   pruneChanges,
   schoolInputsOf,
@@ -64,15 +65,17 @@ export class PreparedTotals {
       }
       return { seen, todo: [...todo.values()] };
     });
+    let prepared = 0;
     for (const unit of listing.todo) {
-      await this.transactions.run([branchId], (transaction) =>
+      const done = await this.transactions.run([branchId], (transaction) =>
         prepareUnit(transaction, branchId, timeZone, unit),
       );
+      if (done) prepared += 1;
     }
     await this.transactions.run([branchId], (transaction) =>
       pruneChanges(transaction, branchId, listing.seen),
     );
-    return listing.todo.length;
+    return prepared;
   }
 }
 
@@ -85,16 +88,30 @@ async function momentOf(
   return { transaction, branchId, timeZone, now, today: schoolDateOf(now, timeZone) };
 }
 
-/** One unit, in its own transaction: the snapshot first (review correction 2), then the reads. */
+/**
+ * One unit, in its own transaction. Two runs of the job may overlap (a run at full size outlasts
+ * the minute): the unit's lock makes the second wait, and it prepares only if the unit is still
+ * behind once the first has committed, so a preparation never replaces one that saw more
+ * (code review, must-fix 1). The snapshot is taken after the lock and before any read (review
+ * correction 2); `afterSnapshot` lets a test commit a change between the two.
+ */
 export async function prepareUnit(
   transaction: BranchMoment['transaction'],
   branchId: string,
   timeZone: string,
   unit: UnitKey,
-): Promise<void> {
+  options: { readonly afterSnapshot?: () => Promise<void> } = {},
+): Promise<boolean> {
+  await sql`
+    select pg_advisory_xact_lock(hashtextextended(${`report:${branchId}:${unitKeyOf(unit)}`}, 0))
+  `.execute(transaction);
   const seen = await snapshotOf(transaction);
+  await options.afterSnapshot?.();
   const inputs = await schoolInputsOf(transaction);
   const moment = await momentOf(transaction, branchId, timeZone);
+  if (await isFresh(transaction, { branchId, unit, now: moment.now, schoolInputs: inputs })) {
+    return false;
+  }
   const quarter = (await startedQuarters(moment)).find((one) => one.id === unit.quarterId);
   if (quarter === undefined) {
     // Undated or not begun any more: the unit is no longer prepared.
@@ -110,7 +127,7 @@ export async function prepareUnit(
           and journal_id = ${unit.unitId}
       `.execute(transaction);
     }
-    return;
+    return true;
   }
   const value = await unitValue(moment, quarter, unit);
   await writeUnit(transaction, {
@@ -124,4 +141,5 @@ export async function prepareUnit(
     value: value.value,
     ...(value.lessons === undefined ? {} : { lessons: value.lessons }),
   });
+  return true;
 }

@@ -457,6 +457,11 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               person('academic_vice_principal'),
               '/api/results/early-warning',
             ],
+            [
+              'the early-warning list of own journals',
+              person('teacher'),
+              '/api/results/early-warning?for=own_journals',
+            ],
             ['the branch summary', person('principal'), '/api/results/branch-summary'],
             ['attendance today', person('head_tutor'), '/api/journal/attendance-today'],
             [
@@ -509,6 +514,29 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             );
           }
           expect(await prepareBranch(t, branch.id), `${branch.name}: nothing behind`).toBe(0);
+          // Plan decision 5, the named risk: right after a branch-wide change (a weight) every
+          // unit is behind, and the reads are worked out from source until the next run.
+          await t.database.migrator
+            .updateTable('subject_quarter_weights')
+            .set((eb) => ({ attendance: eb.ref('attendance') }))
+            .where('branch_id', '=', branch.id)
+            .execute();
+          for (const [what, who, path] of prepared.slice(0, 3)) {
+            const behind = await once(() => as(who).get(path));
+            const stamp = (behind.last.body as { prepared: PreparedStamp }).prepared;
+            expect(stamp.updating, `${what}: right after a weight change`).toBe(true);
+            timings.push({
+              what: `${branch.name}: ${what} right after a weight change (every unit behind)`,
+              target: 'reported',
+              runs: behind.runs,
+            });
+          }
+          const again = await once(() => prepareBranch(t, branch.id));
+          timings.push({
+            what: `${branch.name}: prepare again after a weight change (${String(again.last)} units)`,
+            target: 'reported',
+            runs: again.runs,
+          });
 
           // Open any page: under 1 s (the reads of a page together, as the browser sends them).
           for (const [page, { role, reads }] of Object.entries(PAGE_READS)) {

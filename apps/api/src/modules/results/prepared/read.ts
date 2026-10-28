@@ -1,4 +1,5 @@
 import type { Fraction, StudentQuarterOutcome } from '@sodiq/calc';
+import { sql } from 'kysely';
 import type { PreparedStamp } from '@sodiq/shared';
 import {
   lessonStatusFacts,
@@ -167,9 +168,17 @@ export async function preparedLessonStatuses(
   const behind = ids.filter((id) => !fresh.has(id));
   if (behind.length > 0) {
     const read = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
-    // A lesson of no journal is never prepared: read from source, and not counted as behind.
+    // A lesson of no journal, or dated in no quarter, is never prepared: read from source, and not
+    // counted as behind, or the stamp would never clear (code review, should-fix 3).
+    const quarters = (
+      await sql<{ start: string; end: string }>`
+        select start_date::text as start, end_date::text as end from quarters
+        where branch_id = ${moment.branchId} and start_date is not null
+      `.execute(moment.transaction)
+    ).rows;
+    const dated = (date: string) => quarters.some((one) => one.start <= date && date <= one.end);
     for (const [id, one] of read) {
-      if (one.row.journalId !== null) freshness.missed();
+      if (one.row.journalId !== null && dated(one.row.date)) freshness.missed();
       found.set(id, statusOfFacts(one, moment.now));
     }
   }

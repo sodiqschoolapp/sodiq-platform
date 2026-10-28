@@ -17,7 +17,7 @@ export type UnitKind = (typeof UNIT_KINDS)[number];
  * The school-wide tables the preparation reads (no branch column, so no change row: plan
  * decision 2 cannot reach them). Each is fingerprinted by the place and the writing transaction
  * of every row, so an insert, an update and a delete each change the fingerprint. Held complete
- * by `report-inputs.database.test.ts`.
+ * by the inputs check of the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`).
  */
 export const SCHOOL_INPUTS = [
   'absences',
@@ -142,6 +142,26 @@ export interface UnitKey {
   readonly unitId: string;
 }
 
+/** Whether one unit has a fresh preparation now. */
+export async function isFresh(
+  transaction: Transaction,
+  input: {
+    readonly branchId: string;
+    readonly unit: UnitKey;
+    readonly now: Date;
+    readonly schoolInputs: string;
+  },
+): Promise<boolean> {
+  const found = await sql<{ fresh: boolean }>`
+    select true as fresh
+    from report_prepared p
+    where p.branch_id = ${input.branchId} and p.kind = ${input.unit.kind}
+      and p.quarter_id = ${input.unit.quarterId} and p.unit_id = ${input.unit.unitId}
+      and ${freshCondition(input.now, input.schoolInputs)}
+  `.execute(transaction);
+  return found.rows.length > 0;
+}
+
 /** The prepared units of the branch that are behind (the job prepares them again). */
 export async function behindUnits(
   transaction: Transaction,
@@ -226,6 +246,15 @@ export async function writeUnit(
         and journal_id = ${unit.unitId}
     `.execute(transaction);
     const rows = [...(input.lessons ?? new Map<string, unknown>())];
+    // A lesson that now falls in this unit (a quarter's dates changed, a lesson moved across a
+    // quarter's end) leaves the unit it was in: its key is the lesson (code review, must-fix 2).
+    if (rows.length > 0) {
+      await sql`
+        delete from report_prepared_lessons
+        where branch_id = ${input.branchId}
+          and lesson_id = any (${rows.map(([id]) => id)}::uuid[])
+      `.execute(transaction);
+    }
     for (let start = 0; start < rows.length; start += 500) {
       const chunk = rows.slice(start, start + 500);
       await sql`
