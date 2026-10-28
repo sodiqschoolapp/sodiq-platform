@@ -1,7 +1,8 @@
-import { sql } from 'kysely';
+import { sql, type Transaction as KyselyTransaction } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../config/config.js';
 import type { Database } from '../database/database.js';
+import type { DB } from '../database/types.generated.js';
 import { Transactions } from '../database/transactions.js';
 import { ActingKit } from '../testing/acting-kit.js';
 import { CellsKit } from '../testing/cells-kit.js';
@@ -27,9 +28,7 @@ const recording: Fetch = (_url, init) => {
 async function asOf<T>(
   migrator: Database,
   moment: string,
-  work: (
-    transaction: Parameters<Parameters<Database['transaction']>[0]['execute']>[0],
-  ) => Promise<T>,
+  work: (transaction: KyselyTransaction<DB>) => Promise<T>,
 ): Promise<T> {
   return migrator.transaction().execute(async (transaction) => {
     await sql`select set_config('app.now', ${new Date(moment).toISOString()}, true)`.execute(
