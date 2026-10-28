@@ -11,6 +11,7 @@ import {
   type QuarterRow,
 } from '../early-warning.service.js';
 import { outcomesOf, quarterStateOf, type Outcomes } from '../rating.service.js';
+import { attendanceOfJournal } from './attendance.js';
 import type { UnitKey } from './prepared.query.js';
 
 /**
@@ -25,6 +26,8 @@ import type { UnitKey } from './prepared.query.js';
  *   (`workFiguresOf`).
  * - `statuses` (a quarter and a journal): the status facts of each lesson of the journal in the
  *   quarter (`lessonStatusFacts`), never the status (finding 1).
+ * - `attendance` (a quarter and a journal; task 9.3b-2): the counts of the attendance cells of each
+ *   held lesson of the journal by class (`attendanceOfJournal`).
  */
 
 export interface FiguresValue {
@@ -209,6 +212,14 @@ export async function unitValue(
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
     }
+    case 'attendance': {
+      return {
+        journalIds: [unit.unitId],
+        value: await attendanceOfJournal(moment, quarter, unit.unitId),
+        // A lesson becomes held at its start; nothing else moves with the clock.
+        nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
+      };
+    }
   }
 }
 
@@ -228,6 +239,7 @@ export async function unitsOf(moment: BranchMoment): Promise<UnitKey[]> {
     }
     for (const journal of journals) {
       units.push({ kind: 'statuses', quarterId: quarter.id, unitId: journal.id });
+      units.push({ kind: 'attendance', quarterId: quarter.id, unitId: journal.id });
     }
   }
   return units;

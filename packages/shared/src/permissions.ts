@@ -697,15 +697,17 @@ export const PERMISSIONS = freezeTable({
    * journal discipline report"; `02`: the Principal views the analytics, the
    * Senior Head Teacher does what a Head Teacher does; `edge/journal`: "The
    * Head Tutor sees the Tutors' journal discipline, read only". The route
-   * decides the scope: the branch, own subjects, the Tutor subjects.
+   * decides the scope: the branch, own subjects, the Tutor subjects. `export` (task 9.3b-2,
+   * decision 1, approved by the owner on pull request #260): 8.7 decision 6, the report "gets its
+   * export", for the six readers.
    */
   journal_discipline: rows({
-    super_admin: ['view'],
-    principal: ['view'],
-    academic_vice_principal: ['view'],
-    senior_head_teacher: ['view'],
-    head_teacher: ['view'],
-    head_tutor: ['view'],
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    head_tutor: ['view', 'export'],
   }),
   /**
    * Orphan lessons (task 8.7, decision 1, Look first): `edge/journal`, "A
@@ -804,6 +806,47 @@ export const PERMISSIONS = freezeTable({
   branch_summary: rows({
     super_admin: ['view'],
     principal: ['view'],
+  }),
+  /**
+   * The attendance report of `08`, Analytics (task 9.3b-2, decision 1, Look first, approved by
+   * the owner on pull request #260): `02`, the Academic Vice Principal "Analytics", the Principal
+   * "analytics", the Spiritual Vice Principal "attendance analytics", the Head Tutor "attendance by
+   * class and by tutor", the Tutor "attendance per lesson and daily attendance in percent" (own
+   * classes, class-scoped). `export` follows `view`. A new area for new routes.
+   */
+  attendance_report: rows({
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    spiritual_vice_principal: ['view', 'export'],
+    head_tutor: ['view', 'export'],
+    tutor: ['view', 'export'],
+  }),
+  /**
+   * The results table and subject mastery of `08`, Analytics (task 9.3b-2, decision 1, Look
+   * first, approved by the owner): management; the Head Teachers for own subjects; `08`, Rating,
+   * the class across subjects for the "Tutor, Head Tutor, management". The route decides the
+   * scope: own-subject columns for the Head Teachers, own classes for the Tutor (class-scoped),
+   * and subject mastery is refused to the Head Tutor (9.3a decision 4). A new area for new routes.
+   */
+  results_reports: rows({
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
+    senior_head_teacher: ['view', 'export'],
+    head_teacher: ['view', 'export'],
+    head_tutor: ['view', 'export'],
+    tutor: ['view', 'export'],
+  }),
+  /**
+   * The timetable load report (task 9.3b-2, decision 1, Look first, approved by the owner): `06`,
+   * Views and outputs, "Load report"; `08`, Analytics, "Timetable load"; management of the
+   * branch. A new area for a new route.
+   */
+  timetable_load: rows({
+    super_admin: ['view', 'export'],
+    principal: ['view', 'export'],
+    academic_vice_principal: ['view', 'export'],
   }),
   relatives: rows({
     super_admin: ['view', 'create', 'edit'],

@@ -182,13 +182,20 @@ describe('the menu a role sees', () => {
 
   // Task 9.3a: "Results" opens for a reader of the rating or of the closing checklist; the
   // Vice Principal for Spiritual and Moral Education views neither and does not see it.
-  it('shows Results to the readers of the rating, the closing checklist or the early-warning list', () => {
-    expect(MENU_AREAS.results).toEqual(['rating', 'quarter_closing', 'early_warning']);
+  // Task 9.3b-2: the reports of `08`, Analytics, are pages of Results too.
+  it('shows Results to the readers of the rating, the closing checklist, the early-warning list or a report', () => {
+    const areas = [
+      'rating',
+      'quarter_closing',
+      'early_warning',
+      'attendance_report',
+      'results_reports',
+      'timetable_load',
+      'journal_discipline',
+    ];
+    expect(MENU_AREAS.results).toEqual(areas);
     for (const role of ROLES) {
-      const reads =
-        permits(PERMISSIONS, role, 'rating', 'view') ||
-        permits(PERMISSIONS, role, 'quarter_closing', 'view') ||
-        permits(PERMISSIONS, role, 'early_warning', 'view');
+      const reads = areas.some((area) => permits(PERMISSIONS, role, area, 'view'));
       expect(visibleMenu(role, EVERYTHING, PERMISSIONS).includes('results'), role).toBe(
         reads && MENU[role].includes('results'),
       );
