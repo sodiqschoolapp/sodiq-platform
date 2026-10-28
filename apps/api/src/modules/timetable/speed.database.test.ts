@@ -441,6 +441,11 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           // is calculated from source and says "updating"; the preparation reads only watched
           // inputs; once prepared, each report gives the same figures, "updated at" and not
           // updating; and a second preparation finds nothing behind.
+          // Task 9.3b-2: the reports of `08` over the journal read the prepared units too.
+          const reportChoices = (
+            await as(person('academic_vice_principal')).get('/api/results/reports/choices')
+          ).body as { subjects: { id: string }[] };
+          const masteredSubject = reportChoices.subjects[0]?.id ?? '';
           const prepared: [string, Person, string][] = [
             [
               'the rating of the classes',
@@ -473,6 +478,21 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               'the counts per teacher of quarter 4',
               person('academic_vice_principal'),
               `/api/journal/discipline?from=${ids.quarterStart}&to=${ids.date}`,
+            ],
+            [
+              'the attendance report of quarter 4',
+              person('academic_vice_principal'),
+              `/api/results/reports/attendance?from=${ids.quarterStart}&to=${ids.date}`,
+            ],
+            [
+              'the results table of a class',
+              person('academic_vice_principal'),
+              `/api/results/reports/results-table?quarterId=${ids.quarter}&classId=${ids.classId}`,
+            ],
+            [
+              'subject mastery',
+              person('academic_vice_principal'),
+              `/api/results/reports/subject-mastery?quarterId=${ids.quarter}&subjectId=${masteredSubject}`,
             ],
           ];
           const fromSource = new Map<string, unknown>();
@@ -537,6 +557,17 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             target: 'reported',
             runs: again.runs,
           });
+
+          // Task 9.3b-2, decisions 9 and 10: the reports worked out on read, timed against `08`'s 2 s.
+          const vice = as(person('academic_vice_principal'));
+          await measure(`${branch.name}: the timetable load report of a week`, TARGET.report, () =>
+            vice.get(`/api/timetable/reports/load?week=${ids.date}`),
+          );
+          for (const report of ['completeness', 'progress', 'requests']) {
+            await measure(`${branch.name}: the plan report ${report}`, TARGET.report, () =>
+              vice.get(`/api/plans/reports/${report}?quarterId=${ids.quarter}`),
+            );
+          }
 
           // Open any page: under 1 s (the reads of a page together, as the browser sends them).
           for (const [page, { role, reads }] of Object.entries(PAGE_READS)) {

@@ -82,8 +82,17 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
 export const MENU_AREAS: Readonly<Partial<Record<MenuItem, readonly string[]>>> = Object.freeze({
   timetable: ['timetable', 'timetable_views'],
   // Task 9.3a: "Results" leads to the rating and the closing checklist; 9.4a adds the
-  // early-warning list.
-  results: ['rating', 'quarter_closing', 'early_warning'],
+  // early-warning list; 9.3b-2 the reports of `08`, Analytics (the menu holds at most ten
+  // items, so the reports are pages of Results, not an item of their own).
+  results: [
+    'rating',
+    'quarter_closing',
+    'early_warning',
+    'attendance_report',
+    'results_reports',
+    'timetable_load',
+    'journal_discipline',
+  ],
 });
 
 /**

@@ -45,6 +45,7 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
+import { isSchoolDay } from '@sodiq/timetable-rules';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -59,6 +60,7 @@ import { ratingDateOf } from '../journal/rating.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { carryClosedFrom, carryUnresolved, journalsRunningOn } from '../plans/plan-outcomes.js';
 import { clockOf } from '../plans/plan-read.js';
+import { calendarOf } from '../plans/plan-request-read.js';
 import { PlanReportsService } from '../plans/plan-reports.service.js';
 import { periodOpen } from '../plans/plan-window.js';
 import {
@@ -239,6 +241,7 @@ export class ClosingService {
         reopenedJournals: [],
         check: null,
         canApply,
+        schoolDays: null,
       };
       if (chosen.quarter === null) {
         return closingChecklistSchema.parse({
@@ -259,6 +262,7 @@ export class ClosingService {
         quarter: chosen.quarter,
         opensOn: addDays(chosen.quarter.endDate, -CLOSING_OPENS_DAYS_BEFORE),
       };
+      const schoolDays = await schoolDaysOf(transaction, branchId, chosen.quarter, today);
       const stored = await reopeningsOf(transaction, chosen.quarter.id);
       const reopenings = await this.reopeningsShown(transaction, scene, stored);
       const check = await this.checkOf(transaction, scene);
@@ -308,6 +312,7 @@ export class ClosingService {
           canEdit,
           ...none,
           closing,
+          schoolDays,
           reopenings,
           closedJournals,
           reopenedJournals,
@@ -350,6 +355,7 @@ export class ClosingService {
         reopenedJournals: [],
         check,
         canApply,
+        schoolDays,
       });
     });
   }
@@ -2616,4 +2622,26 @@ async function refusingDecisionWrites<T>(work: () => Promise<T>): Promise<T> {
     }
     throw error;
   }
+}
+
+/**
+ * The school days of a quarter and those passed by `today` (task 9.3b-2; From 9.4b, decision 7:
+ * "quarter progress"): each date of the quarter that `isSchoolDay` takes on the branch calendar
+ * (decision 13), counted up to and including today.
+ */
+async function schoolDaysOf(
+  transaction: Transaction,
+  branchId: string,
+  quarter: { readonly startDate: string; readonly endDate: string },
+  today: string,
+): Promise<{ passed: number; total: number }> {
+  const settings = await calendarOf(transaction, branchId);
+  let passed = 0;
+  let total = 0;
+  for (let date = quarter.startDate; date <= quarter.endDate; date = addDays(date, 1)) {
+    if (!isSchoolDay(date, settings)) continue;
+    total += 1;
+    if (date <= today) passed += 1;
+  }
+  return { passed, total };
 }

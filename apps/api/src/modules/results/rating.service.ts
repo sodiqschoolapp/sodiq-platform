@@ -86,15 +86,15 @@ import { storedRecordsOf } from './stored-records.js';
  * its read.
  */
 
-const SUBJECT_ROLES = ['head_teacher', 'senior_head_teacher'] as const;
+export const SUBJECT_ROLES = ['head_teacher', 'senior_head_teacher'] as const;
 
 const lower = (id: string) => id.toLowerCase();
 
-interface QuarterRow extends QuarterRef {
+export interface QuarterRow extends QuarterRef {
   readonly yearStatus: string;
 }
 
-interface Context extends BranchMoment {
+export interface Context extends BranchMoment {
   readonly access: Access;
 }
 
@@ -114,7 +114,7 @@ export interface Outcomes {
   readonly readLive: boolean;
 }
 
-interface StudentName {
+export interface StudentName {
   readonly id: string;
   readonly firstName: string;
   readonly lastName: string;
@@ -122,7 +122,7 @@ interface StudentName {
 }
 
 /** The reference date of a quarter (`edge/00-definitions`). */
-const referenceDateOf = (quarter: QuarterRef, today: string): string =>
+export const referenceDateOf = (quarter: QuarterRef, today: string): string =>
   today > quarter.endDate ? quarter.endDate : today < quarter.startDate ? quarter.startDate : today;
 
 const tenths = (value: Fraction | null): number | null =>
@@ -131,7 +131,7 @@ const tenths = (value: Fraction | null): number | null =>
 const stateOf = (outcome: StudentQuarterOutcome | undefined): RatingState =>
   outcome === undefined ? 'no_result' : outcome.kind;
 
-const byName = (a: StudentName, b: StudentName): number =>
+export const byName = (a: StudentName, b: StudentName): number =>
   a.lastName.localeCompare(b.lastName, 'ru') ||
   a.firstName.localeCompare(b.firstName, 'ru') ||
   (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -240,17 +240,18 @@ export class RatingService {
   }
 }
 
-const permitting = (context: Context, roles: readonly string[]) =>
+export const permitting = (context: Context, roles: readonly string[]) =>
   context.access.permitting.filter((assignment) => roles.includes(assignment.role));
 
-const isManagement = (context: Context): boolean => permitting(context, WHOLE_ROLES).length > 0;
+export const isManagement = (context: Context): boolean =>
+  permitting(context, WHOLE_ROLES).length > 0;
 
 /** The Tutor's own classes, in small letters (rows in force at the request). */
-const tutorClasses = (context: Context): Set<string> =>
+export const tutorClasses = (context: Context): Set<string> =>
   new Set(permitting(context, ['tutor']).flatMap((assignment) => assignment.classIds));
 
 /** Whether the reader may rank the journal in one subject on the reference date. */
-async function mayRankJournal(
+export async function mayRankJournal(
   context: Context,
   journal: JournalRow,
   referenceDate: string,
@@ -285,7 +286,7 @@ const mayRankClass = (context: Context, classId: string): boolean =>
   tutorClasses(context).has(lower(classId));
 
 /** A started quarter of the branch with its dates; 404 when unknown or of another branch. */
-async function quarterOf(context: Context, quarterId: string): Promise<QuarterRow> {
+export async function quarterOf(context: Context, quarterId: string): Promise<QuarterRow> {
   const row = await context.transaction
     .selectFrom('quarters')
     .innerJoin('academic_years', 'academic_years.id', 'quarters.academic_year_id')
@@ -385,7 +386,7 @@ export async function outcomesOf(
 }
 
 /** The members of a class, or of a group in its subject, on a day, each once. */
-async function membersOn(
+export async function membersOn(
   transaction: Transaction,
   unit: {
     readonly classId: string | null;
@@ -418,7 +419,7 @@ async function membersOn(
   return rows.map((row) => row.student_id).sort();
 }
 
-async function namesOf(
+export async function namesOf(
   transaction: Transaction,
   ids: readonly string[],
 ): Promise<Map<string, StudentName>> {
@@ -492,7 +493,7 @@ function journalShown(journal: JournalRow, language: InstructionLanguage) {
 }
 
 /** The classes of the year in the branch, not archived. */
-async function classesOfYear(context: Context, yearId: string): Promise<RatingClass[]> {
+export async function classesOfYear(context: Context, yearId: string): Promise<RatingClass[]> {
   const rows = await context.transaction
     .selectFrom('classes')
     .select(['id', 'grade', 'name', 'language'])
@@ -516,7 +517,7 @@ async function classesOfYear(context: Context, yearId: string): Promise<RatingCl
   );
 }
 
-const listStateOf = (
+export const listStateOf = (
   quarter: QuarterRow,
   state: QuarterState,
   readLive: boolean,

@@ -485,6 +485,14 @@ export function QuarterProgressCard(): React.JSX.Element {
                 to: schoolDateText(quarter.endDate, language, false),
               })}
             </p>
+            {data.schoolDays !== null && (
+              <p className="tabular-nums" data-school-days="">
+                {t('home.vice.schoolDays', {
+                  count: data.schoolDays.passed,
+                  total: data.schoolDays.total,
+                })}
+              </p>
+            )}
             <p className="tabular-nums">
               {data.state === 'closed'
                 ? t('home.vice.quarterClosed')

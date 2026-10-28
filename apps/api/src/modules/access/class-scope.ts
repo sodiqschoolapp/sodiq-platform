@@ -47,6 +47,12 @@ export const CLASS_SCOPED_AREAS: readonly string[] = [
   'early_warning',
   // Task 9.4b: the attendance today of own classes on the Tutor's home.
   'attendance_today',
+  // Task 9.3b-2, decision 1 (approved by the owner on pull request #260): the attendance report
+  // of own classes, own students only in a group that mixes classes.
+  'attendance_report',
+  // Task 9.3b-2, decision 1: the results table of own classes, and subject mastery of own
+  // class journals and of the groups whose every class is an own class (as `rating`).
+  'results_reports',
 ];
 
 /**

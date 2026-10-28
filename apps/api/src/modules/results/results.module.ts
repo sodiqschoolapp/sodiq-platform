@@ -22,6 +22,8 @@ import { BranchSummaryService } from './branch-summary.service.js';
 import { EarlyWarningService } from './early-warning.service.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
+import { ResultsReportsController } from './reports.controller.js';
+import { ResultsReportsService } from './reports.service.js';
 import { StudentResultsController } from './student-results.controller.js';
 import { PreparedTotals, prepareTotalsJob } from './prepared/prepare.job.js';
 import { StudentResultsService } from './student-results.service.js';
@@ -39,6 +41,8 @@ import { StudentResultsService } from './student-results.service.js';
     EarlyWarningController,
     // Task 9.4b: the branch summary of the home page.
     BranchSummaryController,
+    // Task 9.3b-2: the reports of `08`.
+    ResultsReportsController,
   ],
   providers: [
     StudentResultsService,
@@ -49,6 +53,7 @@ import { StudentResultsService } from './student-results.service.js';
     BranchSummaryService,
     // Task 9.3b-1: the prepared report totals.
     PreparedTotals,
+    ResultsReportsService,
   ],
 })
 export class ResultsModule implements OnModuleInit {

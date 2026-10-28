@@ -1,15 +1,26 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  DISCIPLINE_COLUMNS,
   DISCIPLINE_DAYS_MAX,
+  disciplineItemsSchema,
   disciplineSchema,
+  fillText,
+  isLanguage,
+  REPORT_EXPORT_ASCII_NAMES,
+  REPORT_EXPORT_TEXTS,
   lessonsTodaySchema,
   orphanAssignmentSchema,
   orphanLessonsSchema,
   remindersSchema,
   schoolDateOf,
   type Discipline,
+  type DisciplineColumn,
+  type DisciplineExport,
+  type DisciplineItem,
+  type DisciplineItems,
+  type DisciplineItemsQuery,
   type DisciplineQuery,
-  type DisciplineRow,
+  type Language,
   type LessonsToday,
   type OrphanAssign,
   type OrphanAssignment,
@@ -21,6 +32,9 @@ import { addDays } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { writeWorkbook, XlsxFile, type Sheet } from '../../http/xlsx.js';
+import { momentText } from '../timetable/views-export.service.js';
+import { dateText } from '../timetable/views-file.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
@@ -145,6 +159,97 @@ async function subjectScopeOf(
     for (const one of tutors) scope.add(one.id);
   }
   return scope;
+}
+
+/** What the counts per teacher, their items and their file are read from. */
+interface DisciplineFacts {
+  readonly from: string;
+  readonly to: string;
+  readonly now: Date;
+  readonly timeZone: string;
+  readonly freshness: Freshness;
+  readonly departments: readonly { id: string; names: { uz: string; ru: string; en: string } }[];
+  /** Every started lesson of the range in scope, held or not. */
+  readonly rows: readonly CandidateRow[];
+  readonly statuses: ReadonlyMap<string, LessonStatusRow>;
+  readonly journals: ReadonlyMap<string, JournalRow>;
+  /** The held lessons counted for a teacher, with their status at the request's moment. */
+  readonly lessons: readonly CountedStatus[];
+  readonly late: readonly { lessonId: string; staffId: string; lines: number }[];
+  readonly examLate: readonly {
+    journalId: string;
+    examDate: string;
+    staffId: string;
+    lines: number;
+  }[];
+  readonly examJournals: ReadonlyMap<string, JournalRow>;
+  readonly names: ReadonlyMap<string, string>;
+}
+
+interface CountedStatus {
+  readonly row: CandidateRow;
+  readonly staffId: string;
+  readonly status: LessonStatusRow;
+  readonly answer: NonNullable<LessonStatusRow['answer']>;
+}
+
+/** How much of a column one held lesson holds (the late entries are counted from their lines). */
+function lessonCount(one: CountedStatus, column: DisciplineColumn): number {
+  switch (column) {
+    case 'held':
+      return 1;
+    case 'notStarted':
+      return one.answer.status === 'not_started' ? 1 : 0;
+    case 'inProgress':
+      return one.answer.status === 'in_progress' ? 1 : 0;
+    case 'complete':
+      return one.answer.status === 'complete' ? 1 : 0;
+    case 'lockedIncomplete':
+      return one.answer.status === 'locked_incomplete' ? 1 : 0;
+    case 'noAttendance':
+      return one.answer.unmarked > 0 ? 1 : 0;
+    case 'noTopic':
+      return one.status.noTopic ? 1 : 0;
+    case 'worksMissing':
+      return one.answer.worksMissing;
+    case 'unplanned':
+      return one.status.unplanned;
+    case 'lateEntries':
+      return 0;
+  }
+}
+
+/** The counts per teacher from the facts (decision 14). */
+function countsOf(facts: DisciplineFacts): Discipline {
+  const byTeacher = new Map<string, Record<DisciplineColumn, number>>();
+  const count = (staffId: string) => {
+    const found =
+      byTeacher.get(staffId) ??
+      (Object.fromEntries(DISCIPLINE_COLUMNS.map((column) => [column, 0])) as Record<
+        DisciplineColumn,
+        number
+      >);
+    byTeacher.set(staffId, found);
+    return found;
+  };
+  for (const one of facts.lessons) {
+    const into = count(one.staffId);
+    for (const column of DISCIPLINE_COLUMNS) into[column] += lessonCount(one, column);
+  }
+  for (const one of [...facts.late, ...facts.examLate]) count(one.staffId).lateEntries += one.lines;
+  return disciplineSchema.parse({
+    from: facts.from,
+    to: facts.to,
+    departments: facts.departments,
+    prepared: facts.freshness.stamp,
+    teachers: [...byTeacher]
+      .map(([id, counts]) => ({ teacher: { id, name: facts.names.get(id) ?? '' }, ...counts }))
+      .sort(
+        (a, b) =>
+          a.teacher.name.localeCompare(b.teacher.name, 'en') ||
+          a.teacher.id.localeCompare(b.teacher.id),
+      ),
+  });
 }
 
 @Injectable()
@@ -433,153 +538,312 @@ export class LessonStatusService {
    * department's subjects.
    */
   discipline(access: Access, query: DisciplineQuery): Promise<Discipline> {
-    const branchId = branchOf(access);
+    return this.transactions.run(access.branchIds, async (transaction) =>
+      countsOf(await this.disciplineFacts(transaction, access, query)),
+    );
+  }
+
+  /**
+   * The items behind one count of one teacher (task 9.3b-2, review finding 7): the lessons of a
+   * lesson column, the lessons with their number of works for the work columns, the lessons and
+   * the rating exams with their number of history lines for the late entries. The items of a
+   * column add up to its count; same scope and range as the counts.
+   */
+  disciplineItems(access: Access, query: DisciplineItemsQuery): Promise<DisciplineItems> {
     return this.transactions.run(access.branchIds, async (transaction) => {
-      const { now, timeZone } = await clockOf(transaction, branchId);
-      // Any academic year, a closed one too (spec review should-fix 1).
-      const year = await openYearOn(transaction, branchId, query.from, true);
-      if (
-        addDays(query.from, DISCIPLINE_DAYS_MAX - 1) < query.to ||
-        year === null ||
-        query.to > year.endDate
-      ) {
-        throw new ApiException('discipline_range', 409);
-      }
-      const scope = await subjectScopeOf(transaction, access);
-      const subjects = await transaction
-        .selectFrom('subjects')
-        .innerJoin('departments', 'departments.id', 'subjects.department_id')
-        .select([
-          'subjects.id',
-          'subjects.department_id',
-          'departments.name_uz',
-          'departments.name_ru',
-          'departments.name_en',
-          'departments.position',
-          'departments.archived_at',
-        ])
-        .execute();
-      const readable = subjects.filter((one) => scope === null || scope.has(one.id));
-      if (
-        query.departmentId !== undefined &&
-        !readable.some((one) => one.department_id === query.departmentId?.toLowerCase())
-      ) {
-        throw notFound();
-      }
-      const chosen = readable
-        .filter(
-          (one) =>
-            query.departmentId === undefined ||
-            one.department_id === query.departmentId.toLowerCase(),
-        )
-        .map((one) => one.id);
-      const rows: CandidateRow[] =
-        chosen.length === 0
-          ? []
-          : await startedLessons(transaction, branchId, query.from, query.to, now, timeZone)
-              .where('lessons.subject_id', 'in', chosen)
-              .execute();
-      const freshness = new Freshness();
-      const { statuses, counted } = await this.statusesOf(
+      const facts = await this.disciplineFacts(transaction, access, query);
+      const teacherId = query.teacherId.toLowerCase();
+      const counts = countsOf(facts).teachers.find((one) => one.teacher.id === teacherId);
+      if (counts === undefined) throw notFound();
+      const describe = await this.describer(
         transaction,
-        branchId,
-        rows,
-        now,
-        freshness,
+        facts.rows,
+        facts.statuses,
+        facts.journals,
       );
-      const empty = (): Omit<DisciplineRow, 'teacher'> => ({
-        held: 0,
-        notStarted: 0,
-        inProgress: 0,
-        complete: 0,
-        lockedIncomplete: 0,
-        noAttendance: 0,
-        noTopic: 0,
-        worksMissing: 0,
-        unplanned: 0,
-        lateEntries: 0,
-      });
-      const byTeacher = new Map<string, Omit<DisciplineRow, 'teacher'>>();
-      const count = (staffId: string) => {
-        const found = byTeacher.get(staffId) ?? empty();
-        byTeacher.set(staffId, found);
-        return found;
+      const items: unknown[] = [];
+      const lessonItem = (row: CandidateRow, kind: string, count: number) => {
+        const shown = describe(row);
+        return {
+          kind,
+          lessonId: shown.id,
+          journalId: shown.journalId,
+          date: shown.date,
+          start: shown.start,
+          unit: shown.unit,
+          subject: shown.subject,
+          count,
+        };
       };
-      for (const row of rows) {
-        const staffId = counted.get(row.id) ?? null;
-        const status = statuses.get(row.id);
-        if (staffId === null || status?.answer === null || status === undefined) continue;
-        const answer = status.answer;
-        const into = count(staffId) as Record<keyof Omit<DisciplineRow, 'teacher'>, number>;
-        into.held += 1;
-        if (answer.status === 'not_started') into.notStarted += 1;
-        if (answer.status === 'in_progress') into.inProgress += 1;
-        if (answer.status === 'complete') into.complete += 1;
-        if (answer.status === 'locked_incomplete') into.lockedIncomplete += 1;
-        if (answer.unmarked > 0) into.noAttendance += 1;
-        if (status.noTopic) into.noTopic += 1;
-        into.worksMissing += answer.worksMissing;
-        into.unplanned += status.unplanned;
+      for (const one of facts.lessons) {
+        if (one.staffId !== teacherId) continue;
+        const count = lessonCount(one, query.column);
+        if (count > 0) {
+          const kind =
+            query.column === 'worksMissing' || query.column === 'unplanned'
+              ? 'works'
+              : query.column === 'lateEntries'
+                ? 'entries'
+                : 'lesson';
+          items.push(lessonItem(one.row, kind, count));
+        }
       }
-      // "Entries made after the edit period" (From 8.4): the history lines written under the
-      // person's own unlock, never a correction, an optional cell or an orphan assignment.
-      const lessonIds = rows.map((row) => row.id);
-      const late =
-        lessonIds.length === 0
-          ? []
-          : (
-              await sql<{ staff_id: string; lines: string }>`
-                select u.staff_id, count(*)::text as lines
-                from (
-                  select unlock_id from journal_cell_history
-                  where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                    and unlock_id is not null
-                  union all
-                  select unlock_id from journal_work_history
-                  where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                    and unlock_id is not null
-                  union all
-                  select unlock_id from journal_comment_history
-                  where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                    and unlock_id is not null
-                ) h
-                join journal_unlocks u on u.id = h.unlock_id
-                group by u.staff_id
-              `.execute(transaction)
-            ).rows;
-      for (const one of late) {
-        (count(one.staff_id) as { lateEntries: number }).lateEntries += Number(one.lines);
+      if (query.column === 'lateEntries') {
+        for (const one of facts.late) {
+          if (one.staffId !== teacherId) continue;
+          const row = facts.rows.find((candidate) => candidate.id === one.lessonId);
+          if (row !== undefined) items.push(lessonItem(row, 'entries', one.lines));
+        }
+        for (const one of facts.examLate) {
+          if (one.staffId !== teacherId) continue;
+          const journal = facts.examJournals.get(one.journalId);
+          if (journal === undefined) continue;
+          items.push({
+            kind: 'exam_entries',
+            lessonId: null,
+            journalId: journal.id,
+            date: one.examDate,
+            start: null,
+            unit: unitOf(journal),
+            subject: subjectOf(journal),
+            count: one.lines,
+          });
+        }
       }
-      const names = await staffNames(transaction, [...byTeacher.keys()]);
-      const departments = [
-        ...new Map(
-          readable
-            .filter((one) => one.archived_at === null)
-            .map((one) => [
-              one.department_id,
-              {
-                position: one.position,
-                name: { uz: one.name_uz, ru: one.name_ru, en: one.name_en },
-              },
-            ]),
+      const name = (await staffNames(transaction, [teacherId])).get(teacherId) ?? '';
+      return disciplineItemsSchema.parse({
+        teacher: { id: teacherId, name },
+        column: query.column,
+        items: (items as DisciplineItem[]).sort(
+          (a, b) =>
+            a.date.localeCompare(b.date) ||
+            (a.start ?? -1) - (b.start ?? -1) ||
+            (a.lessonId ?? a.journalId ?? '').localeCompare(b.lessonId ?? b.journalId ?? ''),
         ),
-      ]
-        .sort((a, b) => a[1].position - b[1].position)
-        .map(([id, one]) => ({ id, names: one.name }));
-      return disciplineSchema.parse({
-        from: query.from,
-        to: query.to,
-        departments,
-        prepared: freshness.stamp,
-        teachers: [...byTeacher]
-          .map(([id, counts]) => ({ teacher: { id, name: names.get(id) ?? '' }, ...counts }))
-          .sort(
-            (a, b) =>
-              a.teacher.name.localeCompare(b.teacher.name, 'en') ||
-              a.teacher.id.localeCompare(b.teacher.id),
-          ),
       });
     });
+  }
+
+  /**
+   * The counts per teacher as Excel (task 9.3b-2; 8.7 decision 6: the report "gets its export"),
+   * stamped with its range and the moment, with one audit entry in the transaction of its read.
+   */
+  async disciplineExport(
+    access: Access,
+    input: DisciplineExport,
+    requestId: string,
+  ): Promise<XlsxFile> {
+    const read = await this.transactions.run(access.branchIds, async (transaction) => {
+      const facts = await this.disciplineFacts(transaction, access, input);
+      const counts = countsOf(facts);
+      await this.audit.record(transaction, {
+        branchId: branchOf(access),
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        action: 'discipline_report.export',
+        details: { ...input, asOf: facts.now.toISOString(), rows: counts.teachers.length },
+        requestId,
+      });
+      const account = await transaction
+        .selectFrom('accounts')
+        .select('language')
+        .where('id', '=', access.accountId)
+        .executeTakeFirstOrThrow();
+      const language: Language = isLanguage(account.language) ? account.language : 'uz';
+      return { counts, language, moment: momentText(facts.now, facts.timeZone) };
+    });
+    const texts = REPORT_EXPORT_TEXTS[read.language];
+    const c = texts.columns;
+    const columns = DISCIPLINE_COLUMNS.map((column) => c[column]);
+    const sheet: Sheet = {
+      name: texts.sheets.discipline,
+      preamble: [
+        fillText(texts.range, {
+          from: dateText(read.counts.from),
+          to: dateText(read.counts.to),
+        }),
+        fillText(texts.exportedAt, { moment: read.moment }),
+      ],
+      headings: [c.teacher, ...columns],
+      rows: read.counts.teachers.map((row) => [
+        row.teacher.name,
+        ...DISCIPLINE_COLUMNS.map((column) => row[column]),
+      ]),
+    };
+    return new XlsxFile(
+      `${texts.fileNames.discipline}.xlsx`,
+      `${REPORT_EXPORT_ASCII_NAMES.discipline}.xlsx`,
+      sheet.headings.map((_, index) => `column${String(index + 1)}`),
+      await writeWorkbook(sheet),
+    );
+  }
+
+  /** What the counts, their items and their file are read from (decisions 6 and 14). */
+  private async disciplineFacts(
+    transaction: Transaction,
+    access: Access,
+    query: { readonly from: string; readonly to: string; readonly departmentId?: string },
+  ): Promise<DisciplineFacts> {
+    const branchId = branchOf(access);
+    const { now, timeZone } = await clockOf(transaction, branchId);
+    // Any academic year, a closed one too (spec review should-fix 1).
+    const year = await openYearOn(transaction, branchId, query.from, true);
+    if (
+      addDays(query.from, DISCIPLINE_DAYS_MAX - 1) < query.to ||
+      year === null ||
+      query.to > year.endDate
+    ) {
+      throw new ApiException('discipline_range', 409);
+    }
+    const scope = await subjectScopeOf(transaction, access);
+    const subjects = await transaction
+      .selectFrom('subjects')
+      .innerJoin('departments', 'departments.id', 'subjects.department_id')
+      .select([
+        'subjects.id',
+        'subjects.department_id',
+        'departments.name_uz',
+        'departments.name_ru',
+        'departments.name_en',
+        'departments.position',
+        'departments.archived_at',
+      ])
+      .execute();
+    const readable = subjects.filter((one) => scope === null || scope.has(one.id));
+    if (
+      query.departmentId !== undefined &&
+      !readable.some((one) => one.department_id === query.departmentId?.toLowerCase())
+    ) {
+      throw notFound();
+    }
+    const chosen = readable
+      .filter(
+        (one) =>
+          query.departmentId === undefined ||
+          one.department_id === query.departmentId.toLowerCase(),
+      )
+      .map((one) => one.id);
+    const rows: CandidateRow[] =
+      chosen.length === 0
+        ? []
+        : await startedLessons(transaction, branchId, query.from, query.to, now, timeZone)
+            .where('lessons.subject_id', 'in', chosen)
+            .execute();
+    const freshness = new Freshness();
+    const { statuses, counted, journals } = await this.statusesOf(
+      transaction,
+      branchId,
+      rows,
+      now,
+      freshness,
+    );
+    const lessons = rows.flatMap((row) => {
+      const staffId = counted.get(row.id) ?? null;
+      const status = statuses.get(row.id);
+      return staffId === null || status === undefined || status.answer === null
+        ? []
+        : [{ row, staffId, status, answer: status.answer }];
+    });
+    // "Entries made after the edit period" (From 8.4): the history lines written under the
+    // person's own unlock, never a correction, an optional cell or an orphan assignment.
+    const lessonIds = rows.map((row) => row.id);
+    const late =
+      lessonIds.length === 0
+        ? []
+        : (
+            await sql<{ lesson_id: string; staff_id: string; lines: string }>`
+              select h.lesson_id, u.staff_id, count(*)::text as lines
+              from (
+                select lesson_id, unlock_id from journal_cell_history
+                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
+                  and unlock_id is not null
+                union all
+                select lesson_id, unlock_id from journal_work_history
+                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
+                  and unlock_id is not null
+                union all
+                select lesson_id, unlock_id from journal_comment_history
+                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
+                  and unlock_id is not null
+              ) h
+              join journal_unlocks u on u.id = h.unlock_id
+              group by h.lesson_id, u.staff_id
+            `.execute(transaction)
+          ).rows;
+    // Task 9.3b-2, decision 11: a rating exam's entries after the edit period, when the exam's
+    // date is in the range (left to this report by 8.7, build decision); an exam is no lesson.
+    const examLate =
+      chosen.length === 0
+        ? []
+        : (
+            await sql<{ journal_id: string; exam_date: string; staff_id: string; lines: string }>`
+              select h.journal_id, e.exam_date::text as exam_date, u.staff_id,
+                count(*)::text as lines
+              from journal_rating_history h
+              join journal_rating_exams e on e.id = h.rating_exam_id
+              join journals j on j.id = h.journal_id
+              join journal_unlocks u on u.id = h.unlock_id
+              where h.branch_id = ${branchId}::uuid and h.changed_how = 'late_entry'
+                and h.unlock_id is not null
+                and e.exam_date between ${query.from}::date and ${query.to}::date
+                and j.subject_id = any(${chosen}::uuid[])
+              group by h.journal_id, e.exam_date, u.staff_id
+            `.execute(transaction)
+          ).rows;
+    const examJournals = new Map(
+      (
+        await journalRows(transaction, branchId, {
+          journalIds: [...new Set(examLate.map((one) => one.journal_id))],
+        })
+      ).map((one) => [one.id, one]),
+    );
+    const departments = [
+      ...new Map(
+        readable
+          .filter((one) => one.archived_at === null)
+          .map((one) => [
+            one.department_id,
+            {
+              position: one.position,
+              name: { uz: one.name_uz, ru: one.name_ru, en: one.name_en },
+            },
+          ]),
+      ),
+    ]
+      .sort((a, b) => a[1].position - b[1].position)
+      .map(([id, one]) => ({ id, names: one.name }));
+    const teacherIds = [
+      ...new Set([
+        ...lessons.map((one) => one.staffId),
+        ...late.map((one) => one.staff_id),
+        ...examLate.map((one) => one.staff_id),
+      ]),
+    ];
+    return {
+      from: query.from,
+      to: query.to,
+      now,
+      timeZone,
+      freshness,
+      departments,
+      rows,
+      statuses,
+      journals,
+      lessons,
+      late: late.map((one) => ({
+        lessonId: one.lesson_id,
+        staffId: one.staff_id,
+        lines: Number(one.lines),
+      })),
+      examLate: examLate.map((one) => ({
+        journalId: one.journal_id,
+        examDate: one.exam_date,
+        staffId: one.staff_id,
+        lines: Number(one.lines),
+      })),
+      examJournals,
+      names: await staffNames(transaction, teacherIds),
+    };
   }
 
   /**

@@ -26,6 +26,7 @@ import { useMayView, useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { formatMoment } from '@/lib/dates';
 import { earlyWarningQuery, invalidateEarlyWarning, markHandled } from './early-warning-api';
+import { useMayReport } from './reports-page';
 
 export interface EarlyWarningSearch extends ListSearch {
   quarter?: string;
@@ -74,6 +75,7 @@ export function EarlyWarningPage(): React.JSX.Element {
   const search: EarlyWarningSearch = useSearch({ from: '/app/results/early-warning' });
   const { branchId } = useView();
   const mayRate = useMayView('rating');
+  const mayReport = useMayReport();
   const list = useQuery(earlyWarningQuery(branchId, search.quarter));
   const data = list.data;
 
@@ -230,10 +232,19 @@ export function EarlyWarningPage(): React.JSX.Element {
         title={t('results.earlyWarning.title')}
         breadcrumbs={[{ label: t('home.title'), to: '/' }]}
         actions={
-          mayRate ? (
-            <Link to="/results/rating" className="text-link self-center text-sm">
-              {t('results.ratingList.title')}
-            </Link>
+          mayRate || mayReport ? (
+            <>
+              {mayRate && (
+                <Link to="/results/rating" className="text-link self-center text-sm">
+                  {t('results.ratingList.title')}
+                </Link>
+              )}
+              {mayReport && (
+                <Link to="/results/reports" className="text-link self-center text-sm">
+                  {t('results.reports.link')}
+                </Link>
+              )}
+            </>
           ) : undefined
         }
       />

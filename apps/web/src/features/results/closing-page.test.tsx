@@ -65,6 +65,7 @@ const CHECKLIST: ClosingChecklist = {
   check: null,
   canApply: false,
   canEdit: true,
+  schoolDays: { passed: 40, total: 45 },
   blocking: 1,
   warnings: 1,
   items: [

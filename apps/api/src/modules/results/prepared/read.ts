@@ -18,6 +18,7 @@ import {
 import type { QuarterRef } from '../grade-changes.js';
 import { outcomesOf, type Outcomes, type QuarterState } from '../rating.service.js';
 import { freshLessons, freshUnits, schoolInputsOf, type FreshUnit } from './prepared.query.js';
+import { attendanceOfJournal, type AttendanceLesson } from './attendance.js';
 import { journalsOfYear, type FiguresValue } from './units.js';
 
 /**
@@ -183,4 +184,37 @@ export async function preparedLessonStatuses(
     }
   }
   return found;
+}
+
+/**
+ * The attendance of the journals named in a quarter (task 9.3b-2), from the prepared units and,
+ * for the units found behind, from source by the same reader (`attendanceOfJournal`).
+ */
+export async function preparedAttendance(
+  moment: BranchMoment,
+  quarter: QuarterRow,
+  journalIds: readonly string[],
+  freshness: Freshness,
+): Promise<AttendanceLesson[]> {
+  if (journalIds.length === 0) return [];
+  const ids = [...new Set(journalIds.map((id) => id.toLowerCase()))].sort();
+  const fresh = await freshUnits(moment.transaction, {
+    branchId: moment.branchId,
+    kind: 'attendance',
+    quarterId: quarter.id,
+    unitIds: ids,
+    now: moment.now,
+    schoolInputs: await freshness.schoolInputs(moment),
+  });
+  const lessons: AttendanceLesson[] = [];
+  for (const one of fresh.values()) {
+    freshness.used(one.preparedAt);
+    lessons.push(...(one.value as AttendanceLesson[]));
+  }
+  const behind = ids.filter((id) => !fresh.has(id));
+  if (behind.length > 0) freshness.missed();
+  for (const journalId of behind) {
+    lessons.push(...(await attendanceOfJournal(moment, quarter, journalId)));
+  }
+  return lessons;
 }

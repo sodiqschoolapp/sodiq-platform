@@ -2788,6 +2788,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/timetable/reports/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LoadReportController_load"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/timetable/reports/load/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LoadReportController_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/plans/reports/completeness": {
         parameters: {
             query?: never;
@@ -6100,6 +6132,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/journal/discipline/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LessonStatusController_disciplineItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/journal/discipline/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LessonStatusController_disciplineExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/journal/orphans": {
         parameters: {
             query?: never;
@@ -6574,6 +6638,102 @@ export interface paths {
         get: operations["BranchSummaryController_read"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsReportsController_attendance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/attendance/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsReportsController_attendanceExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsReportsController_choices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/results-table": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsReportsController_table"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/subject-mastery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsReportsController_mastery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsReportsController_export"];
         delete?: never;
         options?: never;
         head?: never;
@@ -77564,6 +77724,685 @@ export interface operations {
                             today: boolean;
                         }[];
                     };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    LoadReportController_load: {
+        parameters: {
+            query: {
+                week: string;
+                departmentId?: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        week: string;
+                        departments: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                        }[];
+                        teachers: {
+                            teacher: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            vacancy: boolean;
+                            lessons: number;
+                            planned: number;
+                            elsewhere: number;
+                            contract: number | null;
+                            total: number;
+                            /** @enum {string|null} */
+                            againstContract: "under" | "equal" | "over" | null;
+                            invigilations: number;
+                        }[];
+                        classes: {
+                            unit: {
+                                /** @enum {string} */
+                                kind: "class" | "group";
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            subject: {
+                                /** Format: uuid */
+                                id: string;
+                                names: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            };
+                            lessons: number;
+                            load: number;
+                        }[];
+                        rooms: {
+                            room: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                            lessons: number;
+                            periods: number;
+                            percent: number | null;
+                        }[];
+                        freePeriods: {
+                            class: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                grade: number;
+                            };
+                            weekday: number;
+                            start: number;
+                            end: number;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    LoadReportController_export: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    week: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             403: {
@@ -170237,6 +171076,659 @@ export interface operations {
             };
         };
     };
+    LessonStatusController_disciplineItems: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                departmentId?: string;
+                teacherId: string;
+                column: "held" | "notStarted" | "inProgress" | "complete" | "lockedIncomplete" | "noAttendance" | "noTopic" | "worksMissing" | "unplanned" | "lateEntries";
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        teacher: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                        /** @enum {string} */
+                        column: "held" | "notStarted" | "inProgress" | "complete" | "lockedIncomplete" | "noAttendance" | "noTopic" | "worksMissing" | "unplanned" | "lateEntries";
+                        items: {
+                            /** @enum {string} */
+                            kind: "lesson" | "works" | "entries" | "exam_entries";
+                            /** Format: uuid */
+                            lessonId: string | null;
+                            /** Format: uuid */
+                            journalId: string | null;
+                            /** Format: date */
+                            date: string;
+                            start: number | null;
+                            unit: {
+                                /** @enum {string} */
+                                kind: "class" | "group";
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            } | null;
+                            subject: {
+                                /** Format: uuid */
+                                id: string;
+                                names: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
+                            };
+                            count: number;
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    LessonStatusController_disciplineExport: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    from: string;
+                    /** Format: date */
+                    to: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     LessonStatusController_orphans: {
         parameters: {
             query?: never;
@@ -176493,6 +177985,10 @@ export interface operations {
                         } | null;
                         canApply: boolean;
                         canEdit: boolean;
+                        schoolDays: {
+                            passed: number;
+                            total: number;
+                        } | null;
                         blocking: number;
                         warnings: number;
                         items: ({
@@ -182737,6 +184233,2158 @@ export interface operations {
                             updating: boolean;
                         };
                     };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_attendance: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                grade?: number;
+                classId?: string;
+                subjectId?: string;
+                teacherId?: string;
+                start?: number;
+                groupBy?: "class" | "tutor";
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        from: string;
+                        /** Format: date */
+                        to: string;
+                        /** @enum {string} */
+                        groupBy: "class" | "tutor";
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
+                        total: {
+                            counts: {
+                                present: number;
+                                late: number;
+                                absent: number;
+                                skipped: number;
+                                unmarked: number;
+                                exempt: number;
+                                expected: number;
+                                percents: {
+                                    present: number | null;
+                                    late: number | null;
+                                    absent: number | null;
+                                    skipped: number | null;
+                                    unmarked: number | null;
+                                    exempt: number | null;
+                                };
+                            };
+                            daily: {
+                                attended: number;
+                                marked: number;
+                                unmarked: number;
+                                exempt: number;
+                                percent: number | null;
+                            };
+                        };
+                        rows: {
+                            key: {
+                                /** @enum {string} */
+                                kind: "class";
+                                class: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    grade: number;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                kind: "tutor";
+                                tutor: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                } | null;
+                            };
+                            counts: {
+                                present: number;
+                                late: number;
+                                absent: number;
+                                skipped: number;
+                                unmarked: number;
+                                exempt: number;
+                                expected: number;
+                                percents: {
+                                    present: number | null;
+                                    late: number | null;
+                                    absent: number | null;
+                                    skipped: number | null;
+                                    unmarked: number | null;
+                                    exempt: number | null;
+                                };
+                            };
+                            daily: {
+                                attended: number;
+                                marked: number;
+                                unmarked: number;
+                                exempt: number;
+                                percent: number | null;
+                            };
+                        }[];
+                        days: {
+                            /** Format: date */
+                            date: string;
+                            daily: {
+                                attended: number;
+                                marked: number;
+                                unmarked: number;
+                                exempt: number;
+                                percent: number | null;
+                            };
+                        }[];
+                        choices: {
+                            grades: number[];
+                            classes: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                grade: number;
+                            }[];
+                            subjects: {
+                                /** Format: uuid */
+                                id: string;
+                                names: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
+                            teachers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            starts: number[];
+                        };
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_attendanceExport: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    from: string;
+                    /** Format: date */
+                    to: string;
+                    grade?: number;
+                    /** Format: uuid */
+                    classId?: string;
+                    /** Format: uuid */
+                    subjectId?: string;
+                    /** Format: uuid */
+                    teacherId?: string;
+                    start?: number;
+                    /**
+                     * @default class
+                     * @enum {string}
+                     */
+                    groupBy?: "class" | "tutor";
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_choices: {
+        parameters: {
+            query?: {
+                yearId?: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        year: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "planned" | "current" | "closed";
+                        } | null;
+                        years: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            /** @enum {string} */
+                            status: "planned" | "current" | "closed";
+                        }[];
+                        quarters: {
+                            /** Format: uuid */
+                            id: string;
+                            number: number;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            closed: boolean;
+                            notOfficial: boolean;
+                        }[];
+                        classes: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            grade: number;
+                            /** @enum {string} */
+                            language: "uz" | "ru";
+                        }[];
+                        subjects: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_table: {
+        parameters: {
+            query: {
+                quarterId: string;
+                classId: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quarter: {
+                            /** Format: uuid */
+                            id: string;
+                            number: number;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            closed: boolean;
+                            notOfficial: boolean;
+                        };
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
+                        provisional: boolean;
+                        final: {
+                            /** Format: date-time */
+                            closedAt: string;
+                            version: number;
+                        } | null;
+                        class: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                            grade: number;
+                        };
+                        subjects: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** @enum {string} */
+                            colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
+                        }[];
+                        rows: {
+                            student: {
+                                /** Format: uuid */
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                paternalName: string | null;
+                            };
+                            results: {
+                                /** Format: uuid */
+                                subjectId: string;
+                                /** @enum {string} */
+                                state: "number" | "exempt" | "not_assessed" | "no_result";
+                                value: number | null;
+                                grade: number | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_mastery: {
+        parameters: {
+            query: {
+                quarterId: string;
+                subjectId: string;
+                grade?: number;
+                classId?: string;
+                teacherId?: string;
+            };
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        quarter: {
+                            /** Format: uuid */
+                            id: string;
+                            number: number;
+                            /** Format: date */
+                            startDate: string;
+                            /** Format: date */
+                            endDate: string;
+                            closed: boolean;
+                            notOfficial: boolean;
+                        };
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
+                        provisional: boolean;
+                        final: {
+                            /** Format: date-time */
+                            closedAt: string;
+                            version: number;
+                        } | null;
+                        subject: {
+                            /** Format: uuid */
+                            id: string;
+                            names: {
+                                uz: string;
+                                ru: string;
+                                en: string;
+                            };
+                            /** @enum {string} */
+                            colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
+                        };
+                        bands: {
+                            grade: number;
+                            from: number;
+                            to: number;
+                            students: number;
+                            percent: number | null;
+                        }[];
+                        counted: number;
+                        exempt: number;
+                        notAssessed: number;
+                        noResult: number;
+                        choices: {
+                            grades: number[];
+                            classes: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                grade: number;
+                            }[];
+                            teachers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
+                            journals: {
+                                /** Format: uuid */
+                                id: string;
+                                unit: {
+                                    /** @enum {string} */
+                                    kind: "class" | "group";
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            /** @enum {string} */
+                            code: "validation_failed" | "malformed_request" | "not_found" | "payload_too_large" | "unsupported_media_type" | "not_signed_in" | "sign_in_failed" | "too_many_attempts" | "password_expired" | "account_locked" | "password_change_required" | "current_password_wrong" | "password_unchanged" | "second_step_required" | "second_step_set_up_required" | "second_step_code_wrong" | "second_step_already_on" | "second_step_not_on" | "second_step_cannot_turn_off" | "permission_denied" | "own_request" | "cross_site_request" | "request_key_reused" | "already_exists" | "archive_refused" | "floor_archived" | "archived_record" | "built_in" | "dates_overlap" | "outside_year" | "quarters_out_of_order" | "year_closed" | "current_year_exists" | "earlier_year_not_closed" | "year_out_of_order" | "go_live_outside_year" | "date_not_in_future" | "grade_ranges_overlap" | "day_past_midnight" | "no_lesson_slot" | "already_ended" | "default_template_required" | "slot_type_in_use" | "template_in_use" | "slot_type_archived" | "template_uses_archived_slot_type" | "template_archived" | "calendar_date_not_in_future" | "calendar_entry_past" | "calendar_entry_archived" | "calendar_outside_year" | "calendar_overlap" | "follows_weekday_required" | "follows_weekday_not_working" | "calendar_restore_started" | "calendar_restore_overlap" | "calendar_restore_outside_year" | "calendar_restore_follows_weekday" | "calendar_restore_template_archived" | "calendar_archive_started" | "year_leaves_calendar_entry" | "go_live_school_day_taken" | "calendar_blocked" | "calendar_exam_slots" | "calendar_exam_templates" | "calendar_exam_block_choice" | "calendar_group_block_choice" | "template_slot_in_use" | "quarter_past_lessons" | "quarter_leaves_exam" | "quarter_splits_move" | "quarter_rating_exams" | "quarter_rating_dates" | "quarter_leaves_lesson" | "year_leaves_exam" | "exam_year" | "exam_no_timetable" | "exam_started" | "exam_cancelled" | "exam_templates" | "exam_slots" | "exam_block_choice" | "exam_group_slots" | "exam_group_subject" | "exam_unit_year" | "exam_blocked" | "exam_warnings" | "exam_restore_blocked" | "exam_rating_subject" | "exam_rating_taken" | "exam_rating_journal" | "go_live_not_school_day" | "travel_time_same_branch" | "subject_archived" | "department_not_academic" | "department_archived" | "department_has_subjects" | "daily_weights_required" | "daily_weights_set" | "attendance_only_no_weights" | "subject_department_archived" | "subject_move_super_admin" | "weights_shape_mismatch" | "quarter_one_not_set" | "reason_required" | "staff_id_exhausted" | "staff_department_required" | "subject_outside_department" | "grade_not_in_subject" | "languages_required" | "division_archived" | "status_from_past" | "status_before_admission" | "status_unchanged" | "own_status" | "account_inactive" | "subject_has_teachers" | "department_move_loads" | "department_move_start_outside" | "staff_changed" | "subject_changed" | "department_has_staff" | "availability_overlap" | "photo_invalid" | "photo_too_large" | "photos_not_configured" | "photos_unavailable" | "reset_link_invalid" | "reset_link_expired" | "account_exists" | "own_record_exists" | "own_link_status" | "login_taken" | "no_account" | "staff_left" | "role_branch_not_person" | "role_overlap" | "too_many_super_admins" | "own_super_admin_role" | "last_super_admin" | "assignment_ended" | "role_from_past" | "head_teacher_taken" | "subject_unknown" | "role_not_appointment" | "appointment_ends_by_then" | "own_account" | "account_already_locked" | "account_not_locked" | "second_step_off" | "account_missing" | "student_value_taken" | "no_academic_year" | "student_not_active" | "leaving_before_start" | "leaving_not_planned" | "leaving_in_force" | "student_not_inactive" | "undo_not_leaving" | "return_too_early" | "return_not_planned" | "return_in_force" | "status_date_future" | "student_not_graduated" | "restore_before_graduation" | "date_in_closed_year" | "student_has_data" | "student_changed" | "cell_stale" | "app_outdated" | "lesson_not_double" | "lesson_copy_cancelled" | "cell_closed" | "lesson_cancelled_cell" | "student_merge_has_cells" | "student_needs_relative" | "relative_phone_taken" | "relative_phone_exists" | "relative_phone_changed" | "last_relative" | "main_contact_needed" | "merge_needs_super_admin" | "relative_changed" | "relative_merged" | "staff_phone_taken" | "phone_is_staff" | "class_year_closed" | "class_needs_year" | "class_changed" | "class_archived" | "room_closed" | "tutor_language" | "tutor_language_held" | "class_tutor_taken" | "tutor_not_tutor" | "tutor_outside_role" | "tutor_date_past" | "tutor_ended" | "tutor_ends_by_then" | "class_language_tutor" | "role_tutor_taken" | "role_tutor_language" | "student_has_class" | "student_not_active_on" | "class_grade_differs" | "class_full" | "membership_outside_year" | "membership_before_start" | "membership_in_force" | "membership_not_planned" | "student_needs_class" | "student_grade_class" | "class_has_members" | "class_has_lessons" | "class_grade_members" | "class_size_below_members" | "year_cut_holds" | "group_year_closed" | "group_needs_year" | "group_changed" | "group_archived" | "group_class_year" | "group_grades" | "group_subject_grade" | "group_subject_archived" | "group_language" | "group_language_needed" | "group_mixed_language" | "class_grade_groups" | "class_in_groups" | "class_language_mixes_groups" | "subject_grade_groups" | "subject_has_groups" | "group_restore_class" | "group_restore_subject" | "student_has_group" | "student_not_in_group_class" | "membership_lesson_clash" | "group_full" | "group_membership_outside_year" | "group_membership_in_force" | "group_membership_not_planned" | "group_has_members" | "group_size_below_members" | "group_class_has_members" | "group_membership_in_class" | "placement_no_seat" | "class_group_no_seat" | "class_group_missing" | "stay_continues" | "move_in_past" | "move_not_scheduled" | "move_not_undoable" | "move_scheduled" | "move_before_later" | "move_no_membership" | "move_same_target" | "class_language_differs" | "return_language_differs" | "return_outside_year" | "branch_move_same_branch" | "branch_move_open" | "branch_move_closed" | "branch_move_not_yet" | "branch_move_language_differs" | "branch_move_group" | "branch_move_outside_year" | "branch_move_year_closed" | "status_scheduled" | "before_branch_move" | "student_merge_same" | "student_merge_not_found" | "student_merge_overlap" | "student_merge_release_open" | "student_merge_move_scheduled" | "student_merge_year_closed" | "student_merge_grade" | "group_transfer_subject" | "version_not_draft" | "up_to_date_blocked" | "up_to_date_pick_missing" | "out_of_date_changed" | "timetable_year_closed" | "version_start_past" | "version_start_outside_year" | "version_copy_year" | "version_compare_year" | "preferences_changed" | "pins_changed" | "pin_taken" | "pin_over_load" | "pin_mixed_block" | "day_keep_date_passed" | "day_keep_not_short" | "day_keep_lessons" | "day_keep_over_slots" | "pattern_blocked" | "pattern_no_slot" | "pattern_mixed_partner" | "pattern_clash" | "pattern_locked" | "draft_edit_locked" | "lock_taken" | "timetable_busy" | "draft_not_ready" | "publish_blocked" | "version_not_published" | "withdraw_started" | "withdraw_blocked" | "lesson_started" | "lesson_cancelled" | "lesson_not_restorable" | "restore_blocked" | "day_change_blocked" | "room_unchanged" | "lesson_not_started" | "teacher_unchanged" | "correction_blocked" | "correction_needs_confirm" | "cancel_holds_data" | "teacher_left_branch" | "move_target_started" | "move_other_quarter" | "move_other_version" | "move_no_slot" | "move_unchanged" | "move_room_parts" | "bulk_cancel_empty" | "bulk_cancel_out_of_year" | "class_not_active" | "bulk_choice_missing" | "bulk_choice_unknown" | "bulk_scope_changed" | "bulk_data_choice_missing" | "bulk_data_choice_unknown" | "bulk_data_choice_split" | "bulk_data_choice_conflict" | "load_unit_year" | "load_unit_archived" | "load_group_subject" | "load_subject_archived" | "load_subject_grade" | "load_teacher_branch" | "load_teacher_status" | "load_teacher_subject" | "load_teacher_grade" | "load_teacher_language" | "load_room_closed" | "load_no_tutor" | "load_tutor_row_teacher" | "load_teacher_needed" | "load_room_choice" | "load_row_exists" | "load_group_no_shared_slot" | "load_split_and_whole" | "load_mixed_not_split" | "load_block_mixed" | "load_block_lessons" | "load_block_teacher" | "load_group_gaps" | "vacancy_has_load" | "vacancy_in_load" | "absence_overlap" | "absence_past" | "absence_withdrawn" | "absence_person" | "room_closure_overlap" | "room_closure_past" | "room_closure_ended" | "room_closure_withdrawn" | "room_closure_room" | "room_closure_nothing" | "room_closure_days" | "room_move_same" | "room_move_blocked" | "fill_vacancy" | "fill_person" | "fill_start" | "fill_rows" | "fill_nothing" | "fill_blocked" | "fill_rows_changed" | "fill_version_rows" | "acting_not_vacancy" | "acting_person" | "acting_profile" | "acting_language" | "acting_start_past" | "acting_overlap" | "acting_end_past" | "acting_end_later" | "acting_ended" | "acting_started" | "substitute_away" | "substitute_is_replaced" | "substitution_blocked" | "substitution_needs_confirm" | "substitution_not_in_force" | "substitution_return_blocked" | "journal_substitute_none" | "lesson_holds_data" | "lessons_hold_data" | "forced_delete_expired" | "forced_delete_restored" | "forced_delete_version" | "forced_delete_parent_changed" | "forced_delete_block_gone" | "forced_delete_restore_blocked" | "place_referenced" | "forced_delete_place_parent" | "timetable_view_scope" | "pdf_unavailable" | "journal_scope" | "journal_no_quarter" | "journal_entry_scope" | "entry_not_started" | "lesson_not_held" | "absence_scope" | "absence_not_member" | "student_merge_absence_reasons" | "plan_scope" | "plan_merge_stale" | "plan_not_covered_drop" | "plan_carry_refused" | "plan_merge_shared" | "plan_merge_too_long" | "plan_item_covered" | "plan_row_taken" | "plan_row_unknown" | "plan_row_moved" | "plan_closed" | "plan_item_stale" | "plan_row_held" | "plan_file_too_large" | "plan_files_full" | "plan_works_full" | "plan_file_type" | "plan_attendance_only" | "plan_year_closed" | "plan_window_closed" | "plan_window_not_open" | "plan_window_unpublished" | "plan_window_end_past" | "plan_window_after_quarter" | "plan_window_dates" | "plan_window_started" | "plan_window_confirm" | "plan_window_none" | "plan_extension_not_later" | "plan_extension_owner" | "plan_request_window_open" | "plan_request_held_replan" | "plan_request_lesson_unknown" | "plan_request_decided" | "plan_request_nothing" | "plan_queue_stale" | "plan_queue_items" | "plan_share_language" | "plan_share_grade" | "plan_share_kind" | "plan_share_subject" | "plan_share_same" | "plan_share_owner" | "plan_share_has_items" | "plan_not_shared" | "plan_not_empty" | "plan_copy_subject" | "plan_copy_grade" | "plan_copy_same" | "plan_copy_language" | "plan_copy_quarter" | "plan_master_stale" | "plan_master_archived" | "plan_master_scope" | "plan_master_subject" | "plan_master_items" | "plan_master_none" | "files_not_configured" | "files_unavailable" | "lesson_attendance_only" | "work_not_in_lesson" | "lesson_has_plan_item" | "journal_works_limit" | "work_holds_data" | "total_below_numbers" | "total_confirm" | "not_held_confirm" | "work_stale" | "work_holds_numbers" | "work_carried" | "no_next_lesson" | "work_total_missing" | "score_above_total" | "work_not_held" | "numbers_keep_or_clear" | "plan_work_has_data" | "no_plan_item" | "delivery_stale" | "not_delivered_copy_used" | "homework_not_in_lesson" | "homework_has_entries" | "journal_work_not_given" | "plan_minimum_stale" | "restore_works_full" | "subject_switches_from" | "subject_switch_scores" | "subject_switch_exams" | "rating_exam_off" | "rating_exam_scope" | "rating_exam_linked" | "rating_exam_no_date" | "rating_exam_not_yet" | "rating_exam_not_held" | "rating_exam_entries" | "rating_exam_reason" | "rating_exam_not_member" | "rating_exam_date_quarter" | "rating_exam_stale" | "comment_scope" | "comment_no_value" | "comment_stale" | "journal_locked" | "journal_correction_role" | "journal_not_locked" | "journal_unlock_waiting" | "journal_unlock_scope" | "journal_unlock_decided" | "journal_unlock_cancelled" | "journal_unlock_stale" | "journal_extension_future" | "journal_extension_dates" | "exemption_overlap" | "exemption_choice_missing" | "exemption_choice_unknown" | "exemption_started" | "exemption_end_before_start" | "exemption_outside_year" | "exemption_closed_year" | "exemption_voided" | "exemption_stale" | "exemption_file_too_large" | "exemption_file_type" | "exemption_offer_decided" | "exemption_batch_empty" | "student_merge_exemption_overlap" | "student_status_exemption_overlap" | "journal_entries" | "move_entries_today" | "move_has_entries" | "student_merge_journal_overlap" | "student_merge_decision_overlap" | "student_merge_result_overlap" | "student_merge_journal_cut" | "orphan_not_orphan" | "orphan_teacher_inactive" | "orphan_assignment_withdrawn" | "discipline_range" | "journal_export_scope" | "journal_month_outside" | "journal_export_running" | "journal_export_not_ready" | "journal_export_failed" | "journal_export_stale" | "journal_export_expired" | "closing_not_open" | "closing_not_flagged" | "closing_decision_not_allowed" | "closing_decision_changed" | "closing_nothing_to_clear" | "closing_list_changed" | "quarter_closed" | "early_warning_not_listed" | "closing_before_last_day" | "closing_earlier_open" | "closing_blocked" | "closing_lock_now_needed" | "closing_warnings_changed" | "closing_start_quarter_needed" | "closing_not_start_quarter" | "class_quarter_closed" | "group_quarter_closed" | "branch_move_quarter_closed" | "date_in_closed_quarter" | "plan_quarter_closed" | "exemption_closed_quarter" | "quarter_not_closed" | "quarter_reopened" | "quarter_journal_reopened" | "closing_journal_not_closed" | "closing_journal_not_reopened" | "recalculation_changed" | "recalculation_nothing" | "request_refused" | "internal_error";
+                            message: string;
+                            requestId: string;
+                            details?: {
+                                path: string;
+                                code: string;
+                                message: string;
+                                /** Format: uuid */
+                                recordId?: string;
+                                holder?: {
+                                    fullName: string;
+                                    students: number;
+                                };
+                                mergeable?: boolean;
+                                staffName?: string;
+                                day?: string;
+                                freeSeats?: number;
+                                /** Format: uuid */
+                                classId?: string;
+                                fullFrom?: string;
+                                students?: number;
+                                /** Format: uuid */
+                                subjectId?: string;
+                                load?: {
+                                    /** Format: uuid */
+                                    versionId: string;
+                                    versionNumber: number;
+                                    versionStartsOn: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    /** Format: uuid */
+                                    subjectId: string;
+                                    teacher: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string | null;
+                                        vacancy: boolean;
+                                    };
+                                };
+                                stay?: {
+                                    studentName: string | null;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    firstDay: string;
+                                    lastDay: string;
+                                    entry?: boolean;
+                                };
+                                rule?: {
+                                    weekday: number | null;
+                                    lessonIds: string[];
+                                };
+                                room?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                };
+                                quarterItem?: {
+                                    /** @enum {string} */
+                                    kind: "past_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "data_lesson";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "exam";
+                                    /** Format: date */
+                                    date: string;
+                                    title: string;
+                                    cancelled: boolean;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "split_move";
+                                    /** Format: date */
+                                    fromDate: string;
+                                    /** Format: date */
+                                    toDate: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_exams";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                    exams: {
+                                        title: string;
+                                        /** Format: date */
+                                        date: string;
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "rating_date";
+                                    /** Format: date */
+                                    date: string;
+                                    unit: {
+                                        /** @enum {string} */
+                                        kind: "class" | "group";
+                                        name: string;
+                                        grade: number | null;
+                                    };
+                                    subject: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        names: {
+                                            uz: string;
+                                            ru: string;
+                                            en: string;
+                                        };
+                                    };
+                                };
+                                storedCell?: {
+                                    value: number | null;
+                                    version: number;
+                                    /** Format: uuid */
+                                    changedBy: string;
+                                    changedByLogin?: string | null;
+                                    changedByName?: string | null;
+                                    /** Format: date-time */
+                                    changedAt: string;
+                                };
+                                storedPlanValue?: string | string[] | {
+                                    title: string;
+                                    description: string;
+                                } | (null);
+                                heldData?: {
+                                    attendance: number;
+                                    scores: number;
+                                    totals: number;
+                                    notHeld: number;
+                                };
+                                more?: number;
+                                lessonsWithoutPlan?: number;
+                                workScore?: {
+                                    score: number;
+                                    percentBefore: number | null;
+                                    percentAfter: number | null;
+                                };
+                                count?: number;
+                                storedRating?: {
+                                    entry: ({
+                                        /** @enum {string} */
+                                        kind: "score";
+                                        score: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "did_not_sit";
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "exempt";
+                                    }) | null;
+                                    version: number;
+                                };
+                                storedWork?: {
+                                    total: number | null;
+                                    notHeld: boolean;
+                                    version: number;
+                                };
+                                locksAt?: string;
+                                exemption?: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    startDate: string;
+                                    endDate: string;
+                                    version: number;
+                                };
+                                journalEntry?: {
+                                    /** @enum {string} */
+                                    kind: "cell" | "comment" | "rating";
+                                    version: number;
+                                    /** Format: date */
+                                    date: string;
+                                    /** Format: uuid */
+                                    journalId: string | null;
+                                    unitName: string;
+                                    subject: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                    mark: number | null;
+                                    score: number | null;
+                                    didNotSit: boolean;
+                                    voidable: boolean;
+                                };
+                                changed?: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Any error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    ResultsReportsController_export: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Branch-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "table";
+                    /** Format: uuid */
+                    quarterId: string;
+                    /** Format: uuid */
+                    classId: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "mastery";
+                    /** Format: uuid */
+                    quarterId: string;
+                    /** Format: uuid */
+                    subjectId: string;
+                    grade?: number;
+                    /** Format: uuid */
+                    classId?: string;
+                    /** Format: uuid */
+                    teacherId?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             403: {

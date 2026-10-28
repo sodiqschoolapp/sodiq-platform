@@ -30,6 +30,7 @@ import {
   ratingClassQuery,
   ratingSubjectQuery,
 } from './rating-api';
+import { useMayReport } from './reports-page';
 
 export interface RatingSearch extends ListSearch {
   kind?: RatingKind;
@@ -87,6 +88,7 @@ export function RatingPage(): React.JSX.Element {
   const { branchId } = useView();
   const mayClose = useMayView('quarter_closing');
   const mayWarn = useMayView('early_warning');
+  const mayReport = useMayReport();
   const choices = useQuery(ratingChoicesQuery(branchId, search.year));
   const data = choices.data;
 
@@ -385,6 +387,11 @@ export function RatingPage(): React.JSX.Element {
             {mayWarn && (
               <Link to="/results/early-warning" className="text-link self-center text-sm">
                 {t('results.earlyWarning.link')}
+              </Link>
+            )}
+            {mayReport && (
+              <Link to="/results/reports" className="text-link self-center text-sm">
+                {t('results.reports.link')}
               </Link>
             )}
             {mayClose && (

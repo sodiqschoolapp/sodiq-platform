@@ -423,4 +423,27 @@ export const TIMETABLE_IDS: RouteIds = {
   'GET /api/timetable/views/teacher': [line('query:staffId', 'staff', STAFF, [VW, VW_VACANCY])],
   'GET /api/timetable/views/room': [line('query:roomId', 'room', QUERY, [VW])],
   'POST /api/timetable/views/export': viewUnit([VW_EXPORT]),
+  // Task 9.3b-2: the timetable load report; a department is of the whole school.
+  'GET /api/timetable/reports/load': [
+    {
+      id: 'query:departmentId',
+      record: 'department',
+      kind: 'school',
+      rule: '03: departments are of the whole school; the report keeps the lessons of the branch of the request',
+      refusedIn: [
+        'src/modules/timetable/load-report.test.ts > lists the invigilations of the week apart, counting for no lesson, answers 404 for an unknown department, and exports the report once logged',
+      ],
+    },
+  ],
+  'POST /api/timetable/reports/load/export': [
+    {
+      id: 'body:departmentId',
+      record: 'department',
+      kind: 'school',
+      rule: '03: departments are of the whole school; the report keeps the lessons of the branch of the request',
+      refusedIn: [
+        'src/modules/timetable/load-report.test.ts > lists the invigilations of the week apart, counting for no lesson, answers 404 for an unknown department, and exports the report once logged',
+      ],
+    },
+  ],
 };

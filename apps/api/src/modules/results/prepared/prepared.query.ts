@@ -10,7 +10,8 @@ import { decode, encode } from './codec.js';
  * (`school_inputs`); anything else is behind, and the reader calculates it from source.
  */
 
-export const UNIT_KINDS = ['outcomes', 'figures', 'statuses'] as const;
+// Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal.
+export const UNIT_KINDS = ['outcomes', 'figures', 'statuses', 'attendance'] as const;
 export type UnitKind = (typeof UNIT_KINDS)[number];
 
 /**

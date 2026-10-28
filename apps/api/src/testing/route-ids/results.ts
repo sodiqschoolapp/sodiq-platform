@@ -20,9 +20,16 @@ const WARNING = `${E} > marks a reason handled with a note, audited, hides it, a
 const WARNING_CLASS = `${E} > cuts the list to one own class of a Tutor, refuses another class, and answers 404 for another branch's`;
 const SUMMARY = `src/modules/results/home-pages.test.ts > refuses the Academic Vice Principal and a Teacher (403), and answers 404 for another branch's or an unknown quarter`;
 
+const REP = 'src/modules/results/reports.test.ts';
+const REPORT_ATTENDANCE = `${REP} > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
+const REPORT_IDS = `${REP} > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery`;
+const REPORT_EXPORT = `${REP} > answers 404 to an export naming an id unknown or of another branch, and logs nothing`;
+
 const PATH = '.claude/rules/api.md, task 1.3';
 const BODY = '.claude/rules/api.md, task 1.5';
 const QUERY = 'CLAUDE.md, "A query never returns another branch\'s rows"';
+// Task 9.3b-2: a teacher filter names a staff member, the branch's when linked to it.
+const STAFF = `${QUERY}; a staff member is the request's branch's when linked to it (edge/people-roles-accounts)`;
 // A subject is one list for the whole school (subjects has no branch column): a
 // school record, whose tests send an unknown one where one exists.
 const SUBJECT =
@@ -130,4 +137,36 @@ export const RESULTS_IDS: RouteIds = {
     subject('body:subjectId', [WARNING]),
   ],
   'GET /api/results/branch-summary': [branch('query:quarterId', 'quarter', QUERY, [SUMMARY])],
+  // Task 9.3b-2: the reports of `08` over the journal.
+  'GET /api/results/reports/attendance': [
+    branch('query:classId', 'class', QUERY, [REPORT_ATTENDANCE]),
+    subject('query:subjectId', [REPORT_ATTENDANCE]),
+    branch('query:teacherId', 'staff', STAFF, [REPORT_ATTENDANCE]),
+  ],
+  'POST /api/results/reports/attendance/export': [
+    branch('body:classId', 'class', BODY, [REPORT_EXPORT]),
+    subject('body:subjectId', [REPORT_EXPORT]),
+    branch('body:teacherId', 'staff', STAFF, [REPORT_EXPORT]),
+  ],
+  'GET /api/results/reports/choices': [
+    branch('query:yearId', 'academic year', QUERY, [REPORT_IDS]),
+  ],
+  'GET /api/results/reports/results-table': [
+    branch('query:quarterId', 'quarter', QUERY, [REPORT_IDS]),
+    branch('query:classId', 'class', QUERY, [REPORT_IDS]),
+  ],
+  'GET /api/results/reports/subject-mastery': [
+    branch('query:quarterId', 'quarter', QUERY, [REPORT_IDS]),
+    subject('query:subjectId', [REPORT_IDS]),
+    branch('query:classId', 'class', QUERY, [REPORT_IDS]),
+    branch('query:teacherId', 'staff', STAFF, [REPORT_IDS]),
+  ],
+  'POST /api/results/reports/export': [
+    branch('body<kind=table>.quarterId', 'quarter', BODY, [REPORT_EXPORT]),
+    branch('body<kind=table>.classId', 'class', BODY, [REPORT_EXPORT]),
+    branch('body<kind=mastery>.quarterId', 'quarter', BODY, [REPORT_EXPORT]),
+    subject('body<kind=mastery>.subjectId', [REPORT_EXPORT]),
+    branch('body<kind=mastery>.classId', 'class', BODY, [REPORT_EXPORT]),
+    branch('body<kind=mastery>.teacherId', 'staff', STAFF, [REPORT_EXPORT]),
+  ],
 };

@@ -530,13 +530,14 @@ describe('a frozen permission table', () => {
   });
 
   it('gives the counts per teacher to the Head Teachers, the Head Tutor and management, and the orphan lessons to the Academic Vice Principal (task 8.7, decision 1)', () => {
+    // Task 9.3b-2, decision 1 (approved by the owner on pull request #260): the report's export.
     const discipline: Record<string, readonly string[]> = {
-      super_admin: ['view'],
-      principal: ['view'],
-      academic_vice_principal: ['view'],
-      senior_head_teacher: ['view'],
-      head_teacher: ['view'],
-      head_tutor: ['view'],
+      super_admin: ['view', 'export'],
+      principal: ['view', 'export'],
+      academic_vice_principal: ['view', 'export'],
+      senior_head_teacher: ['view', 'export'],
+      head_teacher: ['view', 'export'],
+      head_tutor: ['view', 'export'],
     };
     const orphans: Record<string, readonly string[]> = {
       super_admin: ['view', 'edit'],
@@ -546,6 +547,38 @@ describe('a frozen permission table', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.journal_discipline[role], role).toEqual(discipline[role] ?? []);
       expect(PERMISSIONS.journal_orphans[role], role).toEqual(orphans[role] ?? []);
+    }
+  });
+
+  it('gives the reports of `08` to the roles the owner approved, view and export (task 9.3b-2, decision 1)', () => {
+    const attendance = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'spiritual_vice_principal',
+      'head_tutor',
+      'tutor',
+    ];
+    const results = [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+      'head_tutor',
+      'tutor',
+    ];
+    const load = ['super_admin', 'principal', 'academic_vice_principal'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.attendance_report[role], role).toEqual(
+        attendance.includes(role) ? ['view', 'export'] : [],
+      );
+      expect(PERMISSIONS.results_reports[role], role).toEqual(
+        results.includes(role) ? ['view', 'export'] : [],
+      );
+      expect(PERMISSIONS.timetable_load[role], role).toEqual(
+        load.includes(role) ? ['view', 'export'] : [],
+      );
     }
   });
 
@@ -645,6 +678,7 @@ describe('a frozen permission table', () => {
       'academic_years',
       'account_access',
       'accounts',
+      'attendance_report',
       'attendance_today',
       'audit_log',
       'branch_moves',
@@ -678,6 +712,7 @@ describe('a frozen permission table', () => {
       'rating',
       'relatives',
       'results_recalculation',
+      'results_reports',
       'rooms',
       'settings',
       'staff',
@@ -692,6 +727,7 @@ describe('a frozen permission table', () => {
       'students',
       'subjects',
       'timetable',
+      'timetable_load',
       'timetable_views',
       'vacancies',
     ]);

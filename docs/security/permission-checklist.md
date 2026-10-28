@@ -131,11 +131,11 @@ Signed by the owner on: ____________________ (checklist signed: pending)
 
 ## The routes in numbers
 
-- Routes of the application: 468, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 443.
-- Routes with a limit inside the route: 145.
-- Routes that take an id: 372, with 789 ids (branch 707, school 66, own 2, none 14).
-- Areas of the permission table: 53.
+- Routes of the application: 478, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 453.
+- Routes with a limit inside the route: 153.
+- Routes that take an id: 382, with 813 ids (branch 723, school 74, own 2, none 14).
+- Areas of the permission table: 56.
 
 ## Routes without a role
 
@@ -220,6 +220,8 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `GET /api/journal/discipline` | head_teacher | subjects | 08, Journal discipline: own subjects for a Head Teacher (task 8.7, decision 6) | `src/modules/journal/lesson-status.test.ts > refuses a range of more than 92 days or outside one year, and an unknown department; a Head Teacher of another subject sees nobody` |
 | `GET /api/journal/discipline` | senior_head_teacher | subjects | 08, Journal discipline: own subjects for a Senior Head Teacher, in every branch (task 8.7, decision 6) | `src/modules/journal/lesson-status.test.ts > gives the Senior Head Teacher the teachers of own subjects in a branch without an appointment there, not those of another subject` |
 | `GET /api/journal/discipline` | head_tutor | narrower | 02, Head Tutor: "Views all classes, their tutors and attendance by class and by tutor": the lessons of the Tutor subjects | `src/modules/journal/lesson-status.test.ts > gives the Head Tutor the lessons of the Tutor subjects only, also of a Tutor who teaches another department` |
+| `GET /api/journal/discipline/items` | head_teacher, senior_head_teacher | subjects | 08, Journal discipline: own subjects for the Head Teachers (task 8.7, decision 6; task 9.3b-2) | `src/modules/journal/discipline-report.test.ts > answers 404 for a teacher outside the counts, unknown or of another branch, and for the teacher of another subject to a Head Teacher` |
+| `GET /api/journal/discipline/items` | head_tutor | narrower | 02, Head Tutor: the journal discipline of the Tutor subjects (task 8.7, decision 6; task 9.3b-2) | `src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department` |
 | `GET /api/journal/exemptions-today` | tutor | class | edge/exemptions, row 11; 07, Problem cases: "The student's Tutor and teachers see 'back from exemption'": own classes for a Tutor, own lessons today for everyone (task 8.5, permission review 11) | `src/modules/journal/exemptions.test.ts > shows the Tutor "exempt today" with the category and "back from exemption" the day after the end` |
 | `GET /api/journal/exemptions-today` | teacher | own_lessons | edge/exemptions, row 11; 07, Problem cases: "The student's Tutor and teachers see 'back from exemption'": own classes for a Tutor, own lessons today for everyone (task 8.5, permission review 11) | `src/modules/journal/exemptions-access.test.ts > shows 'back' for the students of the teacher's own lessons today, of their subject only` |
 | `GET /api/journal/exemptions-today` | head_teacher, senior_head_teacher | own_lessons | edge/exemptions, row 11; 07, Problem cases: "The student's Tutor and teachers see 'back from exemption'": own classes for a Tutor, own lessons today for everyone (task 8.5, permission review 11) | `src/modules/journal/scope-refusals.test.ts > shows a Head Teacher and a Senior Head Teacher of the subject none of the exemption cards of lessons they do not teach` |
@@ -334,6 +336,16 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `GET /api/results/rating/subject` | senior_head_teacher | subjects | 08, Rating; rating.service.ts readers (task 9.3a, decisions 1 and 4): Senior Head Teacher, own subjects, one subject at a time | `src/modules/results/scope-refusals.test.ts > refuses a Senior Head Teacher of another subject the subject list, and every Senior Head Teacher the class list` |
 | `GET /api/results/rating/subject` | teacher | own_lessons | 08, Rating; rating.service.ts readers (task 9.3a, decisions 1 and 4): Teacher, the owner of the journal on the reference date | `src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area` |
 | `GET /api/results/rating/subject` | head_tutor | narrower | 08, Rating: the Head Tutor ranks the students of a class across subjects, not a journal in one subject | `src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area` |
+| `GET /api/results/reports/attendance` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, the students of own classes | `src/modules/results/reports.test.ts > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch` |
+| `GET /api/results/reports/choices` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, own classes; subject mastery of own class journals and groups wholly of own classes | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/choices` | head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/choices` | senior_head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Senior Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/results-table` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, own classes; subject mastery of own class journals and groups wholly of own classes | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/results-table` | head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/results-table` | senior_head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Senior Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/subject-mastery` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, own classes; subject mastery of own class journals and groups wholly of own classes | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/subject-mastery` | head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
+| `GET /api/results/reports/subject-mastery` | senior_head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Senior Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor` |
 | `GET /api/results/students/:id` | tutor | class | 02, Tutor: "the profiles of own class"; 07: "Views journals of own class" (task 9.1, decision 4) | `src/modules/results/student-results.test.ts > answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class`<br>`src/modules/results/scope-refusals.test.ts > refuses the Tutor of another class the results, tabs, attendance and lessons of the student` |
 | `GET /api/results/students/:id` | head_teacher | subjects | 02, Scope: "For own subjects in own branch: journals" (task 9.1, decision 4) | `src/modules/results/student-results.test.ts > answers each subject only to a reader of its journal, and refuses the readers outside the record` |
 | `GET /api/results/students/:id` | senior_head_teacher | subjects | 02, Scope: "For own subjects in own branch: journals" (task 9.1, decision 4) | `src/modules/results/scope-refusals.test.ts > leaves every subject out for a Senior Head Teacher of another subject, and refuses its lessons` |
@@ -397,6 +409,8 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `POST /api/groups/transfers/:id/change` | senior_head_teacher | subjects | 02, Senior Head Teacher: everything a Head Teacher can do, for own subjects, in every branch | `src/modules/people/scope-refusals.test.ts > is refused to a Senior Head Teacher of another subject on change, cancel and undo, writing nothing` |
 | `POST /api/groups/transfers/:id/undo` | head_teacher | subjects | 02, Head Teacher: "Moves students between groups of those subjects" (task 3.3a, decision 2) | `src/modules/people/group-transfers.test.ts > lets a Head Teacher change, cancel and undo moves of own subjects only, naming the assignment` |
 | `POST /api/groups/transfers/:id/undo` | senior_head_teacher | subjects | 02, Senior Head Teacher: everything a Head Teacher can do, for own subjects, in every branch | `src/modules/people/scope-refusals.test.ts > is refused to a Senior Head Teacher of another subject on change, cancel and undo, writing nothing` |
+| `POST /api/journal/discipline/export` | head_teacher, senior_head_teacher | subjects | 08, Journal discipline: own subjects for the Head Teachers (task 8.7, decision 6; task 9.3b-2) | `src/modules/journal/discipline-report.test.ts > exports the counts per teacher as Excel with the range and the moment, one audit entry, only the reader’s teachers, and refuses a range over 92 days` |
+| `POST /api/journal/discipline/export` | head_tutor | narrower | 02, Head Tutor: the journal discipline of the Tutor subjects (task 8.7, decision 6; task 9.3b-2) | `src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department` |
 | `POST /api/journal/exports` | teacher | own_lessons | task 8.9, decision 3: the branch export is the whole-branch readers' (Super Admin, Principal, Academic Vice Principal); others export their own journals | `src/modules/journal/scope-refusals.test.ts > keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing` |
 | `POST /api/journal/exports` | tutor | class | task 8.9, decision 3: the branch export is the whole-branch readers' (Super Admin, Principal, Academic Vice Principal); others export their own journals | `src/modules/journal/scope-refusals.test.ts > keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing` |
 | `POST /api/journal/exports` | head_teacher, senior_head_teacher | subjects | task 8.9, decision 3: the branch export is the whole-branch readers' (Super Admin, Principal, Academic Vice Principal); others export their own journals | `src/modules/journal/scope-refusals.test.ts > keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing` |
@@ -495,6 +509,10 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `POST /api/results/rating/export` | senior_head_teacher | subjects | 08, Rating; rating.service.ts readers (task 9.3a, decisions 1 and 4): Senior Head Teacher, own subjects, one subject at a time | `src/modules/results/scope-refusals.test.ts > refuses an export outside the scope of the Tutor, the Teacher and both Head Teachers, logging nothing` |
 | `POST /api/results/rating/export` | teacher | own_lessons | 08, Rating; rating.service.ts readers (task 9.3a, decisions 1 and 4): Teacher, the owner of the journal on the reference date | `src/modules/results/scope-refusals.test.ts > refuses an export outside the scope of the Tutor, the Teacher and both Head Teachers, logging nothing` |
 | `POST /api/results/rating/export` | head_tutor | narrower | 08, Rating: the Head Tutor ranks the students of a class, not a journal in one subject nor the classes of the branch; an export holds only what the role may see (edge/people) | `src/modules/results/narrower-refusals.test.ts > refuses the Head Tutor the export of a subject list and of the classes list, with nothing logged` |
+| `POST /api/results/reports/attendance/export` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, the students of own classes | `src/modules/results/reports.test.ts > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing` |
+| `POST /api/results/reports/export` | tutor | class | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Tutor, own classes; subject mastery of own class journals and groups wholly of own classes | `src/modules/results/reports.test.ts > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing` |
+| `POST /api/results/reports/export` | head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing` |
+| `POST /api/results/reports/export` | senior_head_teacher | subjects | 08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1): Senior Head Teacher, own-subject columns and own subjects | `src/modules/results/reports.test.ts > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing` |
 | `POST /api/timetable/views/export` | tutor | class | 06, Views and outputs, with the 5.9a scope: the Tutor prints the school and own class | `src/modules/timetable/views-export.test.ts > lets the Tutor print the school and own class, nothing else`<br>`src/modules/timetable/views-export.test.ts > writes none for a refusal or a PDF that could not be made, and sends no file` |
 | `POST /api/timetable/views/export` | head_teacher | subjects | 06, Views and outputs: "Head Teachers and Senior Head Teachers the teachers of their subjects" (5.9a decisions 3 and 4) | `src/modules/timetable/views-export.test.ts > refuses a Head Teacher of another subject the teachers of this one`<br>`src/modules/timetable/views-export.test.ts > writes none for a refusal or a PDF that could not be made, and sends no file` |
 | `POST /api/timetable/views/export` | senior_head_teacher | subjects | 06, Views and outputs: "Head Teachers and Senior Head Teachers the teachers of their subjects" (5.9a decisions 3 and 4) | `src/modules/timetable/views-export.test.ts > lets a Senior Head Teacher print a teacher of own subject in the branch, nothing else`<br>`src/modules/timetable/scope-refusals.test.ts > refuses a Senior Head Teacher of another subject and a Teacher the file of another teacher, logging nothing` |
@@ -571,6 +589,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/journal/comments/history` | `query:journalId` | journal | branch | `src/modules/journal/rating-readers.test.ts > answers 404 for every id of the comment history that the branch does not hold, and for a work of another lesson` |
 | `GET /api/journal/comments/history` | `query:quarterId` | quarter | branch | `src/modules/journal/rating-readers.test.ts > answers 404 for every id of the comment history that the branch does not hold, and for a work of another lesson` |
 | `GET /api/journal/discipline` | `query:departmentId` | department | school | 03: departments are of the whole school; the report keeps the teachers of the branch of the request |
+| `GET /api/journal/discipline/items` | `query:departmentId` | department | school | `src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department` |
+| `GET /api/journal/discipline/items` | `query:teacherId` | staff | branch | `src/modules/journal/discipline-report.test.ts > answers 404 for a teacher outside the counts, unknown or of another branch, and for the teacher of another subject to a Head Teacher` |
 | `GET /api/journal/exports/:exportId/file` | `path:exportId` | journal export | branch | `src/modules/journal/journal-exports.test.ts > is a job from one snapshot, one queued per person, with a link that works for 24 hours and access checked again at download` |
 | `GET /api/journal/journals` | `query:yearId` | academic year | branch | `src/modules/journal/journals.test.ts > answers 404 for an unknown journal and for one of another branch` |
 | `GET /api/journal/journals/:journalId` | `query:quarterId` | quarter | branch | `src/modules/journal/journals.test.ts > answers 404 for an unknown journal and for one of another branch` |
@@ -638,6 +658,16 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/results/rating/classes` | `query:quarterId` | quarter | branch | `src/modules/results/rating.test.ts > answers 404 for a quarter, journal or class unknown or of another branch, and for an attendance-only journal` |
 | `GET /api/results/rating/subject` | `query:quarterId` | quarter | branch | `src/modules/results/rating.test.ts > answers 404 for a quarter, journal or class unknown or of another branch, and for an attendance-only journal` |
 | `GET /api/results/rating/subject` | `query:journalId` | journal | branch | `src/modules/results/rating.test.ts > answers 404 for a quarter, journal or class unknown or of another branch, and for an attendance-only journal` |
+| `GET /api/results/reports/attendance` | `query:classId` | class | branch | `src/modules/results/reports.test.ts > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch` |
+| `GET /api/results/reports/attendance` | `query:subjectId` | subject | school | `src/modules/results/reports.test.ts > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch` |
+| `GET /api/results/reports/attendance` | `query:teacherId` | staff | branch | `src/modules/results/reports.test.ts > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch` |
+| `GET /api/results/reports/choices` | `query:yearId` | academic year | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/results-table` | `query:quarterId` | quarter | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/results-table` | `query:classId` | class | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/subject-mastery` | `query:quarterId` | quarter | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/subject-mastery` | `query:subjectId` | subject | school | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/subject-mastery` | `query:classId` | class | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
+| `GET /api/results/reports/subject-mastery` | `query:teacherId` | staff | branch | `src/modules/results/reports.test.ts > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery` |
 | `GET /api/results/students/:id` | `query:yearId` | academic year | branch | `src/modules/results/student-results.test.ts > refuses the lessons of a subject the reader does not read, and answers 404 for another branch’s or an unknown id` |
 | `GET /api/results/students/:id` | `path:id` | student | branch | `src/modules/results/student-results.test.ts > refuses the lessons of a subject the reader does not read, and answers 404 for another branch’s or an unknown id` |
 | `GET /api/results/students/:id/attendance` | `query:yearId` | academic year | branch | `src/modules/results/student-results.test.ts > refuses the lessons of a subject the reader does not read, and answers 404 for another branch’s or an unknown id` |
@@ -658,6 +688,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/timetable/lessons/:id/correction-teachers` | `path:id` | lesson | branch | `src/modules/timetable/day-changes.test.ts > is refused to the Principal, and answers 404 for another branch’s or an unknown lesson, teacher and room, as the Academic Vice Principal and the Super Admin; nothing changes` |
 | `GET /api/timetable/lessons/:id/history` | `path:id` | lesson | branch | `src/modules/timetable/forced-deletes.test.ts > is refused to a Teacher and answers 404 for another branch’s and an unknown lesson` |
 | `GET /api/timetable/lessons/:id/substitutes` | `path:id` | lesson | branch | `src/modules/timetable/substitutions.test.ts > answers 404 for another branch's or an unknown lesson and teacher, as the Academic Vice Principal and the Super Admin, and changes nothing` |
+| `GET /api/timetable/reports/load` | `query:departmentId` | department | school | `src/modules/timetable/load-report.test.ts > lists the invigilations of the week apart, counting for no lesson, answers 404 for an unknown department, and exports the report once logged` |
 | `GET /api/timetable/room-closures/:id/lessons` | `path:id` | room_closure | branch | `src/modules/timetable/room-closures.test.ts > answers 404 for another branch’s closure and an unknown one, and for a room of another branch or unknown, with nothing written` |
 | `GET /api/timetable/vacancies/:id/journals/:journalId/substitutes` | `path:id` | staff | branch | `src/modules/timetable/journal-substitutions.test.ts > answers 404 for another branch's or an unknown absence, journal, teacher and vacancy, and changes nothing` |
 | `GET /api/timetable/vacancies/:id/journals/:journalId/substitutes` | `path:journalId` | journal | branch | `src/modules/timetable/journal-substitutions.test.ts > answers 404 for another branch's or an unknown absence, journal, teacher and vacancy, and changes nothing` |
@@ -783,6 +814,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/groups/transfers/:id/change` | `body:toGroupId` | group | branch | `src/modules/people/group-transfers.test.ts > answers 404 for ids of another branch on every route, the rows of both branches unchanged` |
 | `POST /api/groups/transfers/:id/change` | `body:journalEntries.seen[].id` | journal entry | branch | `src/modules/journal/journal-transfers.test.ts > on a group move and the change of a scheduled one` |
 | `POST /api/groups/transfers/:id/undo` | `path:id` | student move | branch | `src/modules/people/group-transfers.test.ts > answers 404 for a student, a group row, a group or a move it cannot see`<br>`src/modules/people/group-transfers.test.ts > answers 404 for ids of another branch on every route, the rows of both branches unchanged`<br>`src/modules/journal/journal-transfers.test.ts > on the cancel and undo of class and group moves and of a leaving, with journal rows in both branches` |
+| `POST /api/journal/discipline/export` | `body:departmentId` | department | school | `src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department` |
 | `POST /api/journal/exports` | `body:quarterId` | quarter | branch | `src/modules/journal/journal-exports.test.ts > repeats a key: the stored answer for the same account, 409 for another, 404 and 403 checked first`<br>`repeat: src/modules/journal/journal-exports.test.ts > repeats a key: the stored answer for the same account, 409 for another, 404 and 403 checked first` |
 | `POST /api/journal/journals/:journalId/export` | `path:journalId` | journal | branch | `src/modules/journal/journal-exports.test.ts > answers 404 for an unknown journal and a quarter of another branch, and writes nothing in either branch` |
 | `POST /api/journal/journals/:journalId/export` | `body:quarterId` | quarter | branch | `src/modules/journal/journal-exports.test.ts > answers 404 for an unknown journal and a quarter of another branch, and writes nothing in either branch` |
@@ -970,6 +1002,15 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/results/rating/export` | `body<kind=class>.quarterId` | quarter | branch | `src/modules/results/rating.test.ts > answers 404 to an export naming a quarter, journal or class unknown or of another branch, and logs nothing` |
 | `POST /api/results/rating/export` | `body<kind=class>.classId` | class | branch | `src/modules/results/rating.test.ts > answers 404 to an export naming a quarter, journal or class unknown or of another branch, and logs nothing` |
 | `POST /api/results/rating/export` | `body<kind=classes>.quarterId` | quarter | branch | `src/modules/results/rating.test.ts > answers 404 to an export naming a quarter, journal or class unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/attendance/export` | `body:classId` | class | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/attendance/export` | `body:subjectId` | subject | school | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/attendance/export` | `body:teacherId` | staff | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=table>.quarterId` | quarter | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=table>.classId` | class | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=mastery>.quarterId` | quarter | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=mastery>.subjectId` | subject | school | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=mastery>.classId` | class | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
+| `POST /api/results/reports/export` | `body<kind=mastery>.teacherId` | staff | branch | `src/modules/results/reports.test.ts > answers 404 to an export naming an id unknown or of another branch, and logs nothing` |
 | `POST /api/setup/academic-years/:id/quarters/preview` | `path:id` | academic year | branch | `src/modules/setup/quarter-lessons.test.ts > answers 404 for another branch's or an unknown year, or id among the choices, with both branches unchanged` |
 | `POST /api/setup/academic-years/:id/quarters/preview` | `body:days.dayDecisions[].key` | one-day change, cancelled lesson, bulk cancel or substitution | branch | `src/modules/setup/quarter-lessons.test.ts > answers 404 for another branch's or an unknown year, or id among the choices, with both branches unchanged` |
 | `POST /api/setup/academic-years/:id/quarters/preview` | `body:days.dayDecisions[].blockId` | pattern block | branch | `src/modules/setup/quarter-lessons.test.ts > answers 404 for another branch's or an unknown year, or id among the choices, with both branches unchanged` |
@@ -1150,6 +1191,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/timetable/lessons/:id/substitute` | `path:id` | lesson | branch | `src/modules/timetable/substitutions.test.ts > answers 404 for another branch's or an unknown lesson and teacher, as the Academic Vice Principal and the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/substitutions.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
 | `POST /api/timetable/lessons/:id/substitute` | `body:teacherId` | staff | branch | `src/modules/timetable/substitutions.test.ts > answers 404 for another branch's or an unknown lesson and teacher, as the Academic Vice Principal and the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/substitutions.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
 | `POST /api/timetable/lessons/:id/substitution/withdraw` | `path:id` | lesson | branch | `src/modules/timetable/substitutions.test.ts > answers 404 for another branch's or an unknown lesson and teacher, as the Academic Vice Principal and the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/substitutions.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
+| `POST /api/timetable/reports/load/export` | `body:departmentId` | department | school | `src/modules/timetable/load-report.test.ts > lists the invigilations of the week apart, counting for no lesson, answers 404 for an unknown department, and exports the report once logged` |
 | `POST /api/timetable/room-closures` | `body:roomId` | room | branch | `src/modules/timetable/room-closures.test.ts > answers 404 for another branch’s closure and an unknown one, and for a room of another branch or unknown, with nothing written` |
 | `POST /api/timetable/room-closures/:id/move` | `path:id` | room_closure | branch | `src/modules/timetable/room-closures.test.ts > answers 404 for another branch’s closure and an unknown one, and for a room of another branch or unknown, with nothing written`<br>`src/modules/timetable/room-closures.test.ts > answers 404 for a move of another branch’s closure or to another branch’s room, with lessons in both branches left as they were` |
 | `POST /api/timetable/room-closures/:id/move` | `body:roomId` | room | branch | `src/modules/timetable/room-closures.test.ts > answers 404 for another branch’s closure and an unknown one, and for a room of another branch or unknown, with nothing written`<br>`src/modules/timetable/room-closures.test.ts > answers 404 for a move of another branch’s closure or to another branch’s room, with lessons in both branches left as they were` |
@@ -1361,6 +1403,17 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | super_admin | yes | yes | yes |  |  |
 | principal | yes |  |  |  |  |
 
+### `attendance_report`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  | yes |
+| principal | yes |  |  |  | yes |
+| academic_vice_principal | yes |  |  |  | yes |
+| spiritual_vice_principal | yes |  |  |  | yes |
+| head_tutor | yes |  |  |  | yes |
+| tutor | yes |  |  |  | yes |
+
 ### `attendance_today`
 
 | Role | view | create | edit | archive | export |
@@ -1536,12 +1589,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 
 | Role | view | create | edit | archive | export |
 | --- | :-: | :-: | :-: | :-: | :-: |
-| super_admin | yes |  |  |  |  |
-| principal | yes |  |  |  |  |
-| academic_vice_principal | yes |  |  |  |  |
-| head_tutor | yes |  |  |  |  |
-| senior_head_teacher | yes |  |  |  |  |
-| head_teacher | yes |  |  |  |  |
+| super_admin | yes |  |  |  | yes |
+| principal | yes |  |  |  | yes |
+| academic_vice_principal | yes |  |  |  | yes |
+| head_tutor | yes |  |  |  | yes |
+| senior_head_teacher | yes |  |  |  | yes |
+| head_teacher | yes |  |  |  | yes |
 
 ### `journal_extensions`
 
@@ -1681,6 +1734,18 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin |  |  | yes |  |  |
 
+### `results_reports`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  | yes |
+| principal | yes |  |  |  | yes |
+| academic_vice_principal | yes |  |  |  | yes |
+| head_tutor | yes |  |  |  | yes |
+| tutor | yes |  |  |  | yes |
+| senior_head_teacher | yes |  |  |  | yes |
+| head_teacher | yes |  |  |  | yes |
+
 ### `rooms`
 
 | Role | view | create | edit | archive | export |
@@ -1805,6 +1870,14 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | super_admin | yes | yes | yes | yes | yes |
 | principal | yes |  |  |  | yes |
 | academic_vice_principal | yes | yes | yes | yes | yes |
+
+### `timetable_load`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  | yes |
+| principal | yes |  |  |  | yes |
+| academic_vice_principal | yes |  |  |  | yes |
 
 ### `timetable_views`
 

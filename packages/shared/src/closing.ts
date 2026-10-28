@@ -511,6 +511,11 @@ export const closingChecklistSchema = z.object({
   canApply: z.boolean(),
   /** The reader may decide, end the plan periods and remind. */
   canEdit: z.boolean(),
+  /**
+   * Task 9.3b-2 (From 9.4b, decision 7): the school days of the quarter (`isSchoolDay` over the
+   * branch calendar) and those passed up to today in branch time; `null` with no quarter.
+   */
+  schoolDays: z.object({ passed: z.int().min(0), total: z.int().min(0) }).nullable(),
   blocking: z.int().min(0),
   warnings: z.int().min(0),
   /** Ordered by teacher, then class or group, then subject. */

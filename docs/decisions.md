@@ -342,6 +342,30 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 28 October 2026: the reports of `08` (task 9.3b-2)
+
+Plan approved on pull request #260 with corrections 1 to 3, after the owner approved the permission table there (stop-list item 5); decisions 1 to 13 confirmed by the review, the build decisions taken in the build. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (new permission areas, export widened, a pinned list widened; approved by the owner on #260). `attendance_report`: view and export for the Super Admin, Principal, Academic Vice Principal, Spiritual Vice Principal, Head Tutor and Tutor (own classes); `results_reports`: view and export for management, both Head Teachers (own subjects), the Head Tutor and the Tutor (own classes), subject mastery refused to the Head Tutor; `timetable_load`: management; `export` added to `journal_discipline`; `attendance_report` and `results_reports` in `CLASS_SCOPED_AREAS` | Decision 1; `02`; `08`, Rating and Analytics |
+| **Look first** (a journal rule reading). Attendance: each category of the expected cells of held lessons with its percent, exempt its own count and out of the expected; the daily percent is `dailyAttendance` | Decision 2; `07`, Effect on totals; `edge/journal`, Attendance figures |
+| **Look first** (a journal rule reading). Subject mastery: the students with a number in the bands; "Exempt", "Not assessed" and "No result" beside them | Decision 3; `07`; `edge/00-definitions` |
+| Counts for the substitute in force, else the owner; a vacancy for nobody | Decision 4 (8.7 decision 13) |
+| Ranges of at most 92 days in one year; the refusal reuses `discipline_range` (its text is general) | Decision 5; build decision |
+| "Period of the day" is the lesson's start time in branch time (in place of a slot number of decision 6: no slot number is stored on a dated lesson) | Build decision, decision 6 changed |
+| The load report counts lessons per week against the load rows, the other branches (`teacher_load_elsewhere`, published versions) and `staff.weekly_lessons` | Decision 7; `06`, Weekly load |
+| Free periods are the engine's `class_free_period` over the version in force on the week's first day | Decision 8 |
+| The load report and the plan reports are worked out on read | Decisions 9 and 10 |
+| A rating exam's late entries count in "entries after the edit period" when the exam's date is in the range, for the person whose unlock took them | Decision 11 |
+| Quarter files "provisional" or "final"; range files their range and the export moment; one audit entry per file | Decision 12 |
+| School days of a quarter by `isSchoolDay`, passed up to today | Decision 13 |
+| **Build decision.** The items behind a count are lessons, each with how many of the count it holds (works, history lines), or a rating exam with its lines: the prepared status facts hold no work ids | Review finding 7 of the plan |
+| Room use is of the lesson slots of the week's day templates: on each school day, the most lesson slots the template in force of any grade holds | Code review, changes needed 2; the approved plan |
+| The total across branches (this branch's planned load and the other branches') is shown beside the contract, marked under, equal or over | `06`, Weekly load; code review, changes needed 1 |
+| **Build decision.** The reports are pages of Results (a Reports page with their links); "Results" of a role that reads neither the rating nor the early-warning list opens the Reports page | `12`: at most about ten menu items, and the Super Admin has ten |
+| **Build decision.** With a class chosen, the attendance list shows its days in place of the class line; the Tutor of a class is the one in force at each lesson's start | `08`: "Daily attendance of a class as a percent"; `tutorAt` |
+
 ## 28 October 2026: prepared report totals (task 9.3b-1)
 
 Plan approved on pull request #258 with corrections 1 to 4; decisions confirmed there. Flagged on issue #42.
