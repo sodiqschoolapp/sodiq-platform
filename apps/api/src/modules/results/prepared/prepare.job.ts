@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type BeforeApplicationShutdown } from '@nestjs/common';
 import { schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { z } from 'zod';
@@ -33,15 +33,25 @@ export const prepareTotalsJob = defineJob({
 });
 
 @Injectable()
-export class PreparedTotals {
+export class PreparedTotals implements BeforeApplicationShutdown {
+  /** Set when the process stops: a run ends after the unit it is on, so the stop never waits on it. */
+  private stopping = false;
+
   constructor(private readonly transactions: Transactions) {}
+
+  beforeApplicationShutdown(): void {
+    this.stopping = true;
+  }
 
   /** Every branch in turn. */
   async run(): Promise<void> {
     const branches = await this.transactions.run([], (transaction) =>
       transaction.selectFrom('branches').select(['id', 'time_zone']).orderBy('id').execute(),
     );
-    for (const branch of branches) await this.prepareBranch(branch.id, branch.time_zone);
+    for (const branch of branches) {
+      if (this.stopping) return;
+      await this.prepareBranch(branch.id, branch.time_zone);
+    }
   }
 
   /**
@@ -67,6 +77,8 @@ export class PreparedTotals {
     });
     let prepared = 0;
     for (const unit of listing.todo) {
+      // The rest waits for the next run; the change rows stay, so nothing is lost.
+      if (this.stopping) return prepared;
       const done = await this.transactions.run([branchId], (transaction) =>
         prepareUnit(transaction, branchId, timeZone, unit),
       );

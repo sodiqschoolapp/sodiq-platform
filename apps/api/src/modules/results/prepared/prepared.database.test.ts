@@ -25,7 +25,7 @@ import { ratingEntryAndNote } from '../../../testing/rating-kit.js';
 import { publishedScene, type PublishedScene } from '../../../testing/published-scene.js';
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
-import { prepareUnit } from './prepare.job.js';
+import { PreparedTotals, prepareUnit } from './prepare.job.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -789,6 +789,8 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       at: '2026-10-20T12:00:00+05:00',
       examDate: '2026-10-20',
     });
+    // The kit leaves its clock at the entry's moment.
+    t.clock.set(START);
     // The entry's own write: a row of the exam's journal and quarter.
     const exam = await t.database.migrator
       .selectFrom('journal_rating_exams')
@@ -864,5 +866,20 @@ describe('the prepared report totals (task 9.3b-1)', () => {
     ]) {
       expect(exercised, name).toContain(name);
     }
+  });
+
+  it('stops between units when the process stops, keeping the change rows for the next run (the worker never waits on a long run)', async () => {
+    const c = await scene();
+    const totals = new PreparedTotals(t.app.get(Transactions));
+    totals.beforeApplicationShutdown();
+    t.clock.set(MOMENT);
+    try {
+      expect(await totals.prepareBranch(c.s.branch, 'Asia/Tashkent')).toBe(0);
+    } finally {
+      t.clock.set(START);
+    }
+    expect((await rating(c)).prepared.updating).toBe(true);
+    expect((await changesOf(c.s.branch)).length).toBeGreaterThan(0);
+    expect(await prepare(c.s.branch)).toBeGreaterThan(0);
   });
 });
