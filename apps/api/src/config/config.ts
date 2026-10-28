@@ -75,9 +75,21 @@ const environmentSchema = z.object({
   // and one token that may write both. All five or none; none: nothing is
   // pushed or shipped and everything else works.
   GRAFANA_METRICS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^https?$/ }).optional()),
-  GRAFANA_METRICS_USER: z.preprocess(emptyAsUnset, z.string().regex(/^\d{1,20}$/).optional()),
+  GRAFANA_METRICS_USER: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^\d{1,20}$/)
+      .optional(),
+  ),
   GRAFANA_LOGS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^https?$/ }).optional()),
-  GRAFANA_LOGS_USER: z.preprocess(emptyAsUnset, z.string().regex(/^\d{1,20}$/).optional()),
+  GRAFANA_LOGS_USER: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^\d{1,20}$/)
+      .optional(),
+  ),
   GRAFANA_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
   // Set by Render on each instance of a service: which server a number came from.
   RENDER_INSTANCE_ID: z.preprocess(emptyAsUnset, z.string().max(100).optional()),

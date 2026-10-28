@@ -21,9 +21,7 @@ const NAME = /^[a-z][a-z0-9_]*$/;
  * line break would end the line. Our values are route patterns, ids and names of our own.
  */
 export function escapeTag(text: string): string {
-  return text
-    .replace(/[\\\p{Cc}]/gu, '_')
-    .replace(/[,= ]/g, (character) => `\\${character}`);
+  return text.replace(/[\\\p{Cc}]/gu, '_').replace(/[,= ]/g, (character) => `\\${character}`);
 }
 
 /** One line; the tags in the order of their keys, so equal points give equal lines. */
