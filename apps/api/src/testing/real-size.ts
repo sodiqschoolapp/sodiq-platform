@@ -216,7 +216,29 @@ const SUBJECTS = [
 /** Invented names only (`CLAUDE.md`, No real personal data). */
 const FIRST_NAMES = ['Aziza', 'Bekzod', 'Dildora', 'Farrux', 'Gulnoza', 'Jahongir', 'Kamola'];
 const LAST_NAMES = ['Sobirova', 'Toirov', 'Umarova', 'Valiyev', 'Xolmatova', 'Yoqubov', 'Zokirova'];
-const CLASS_NAMES = ['Oxford', 'Cambridge', 'Princeton'];
+/**
+ * One name per class of a grade, so as many as the largest grade of any size
+ * (9 in `triple`): a class name is unique in its branch, year and grade
+ * (`classes_name_key`).
+ */
+export const CLASS_NAMES = [
+  'Oxford',
+  'Cambridge',
+  'Princeton',
+  'Yale',
+  'Harvard',
+  'Stanford',
+  'Columbia',
+  'Cornell',
+  'Brown',
+];
+
+/** The name of the class at this place in its grade; more classes than names is a mistake of the size. */
+function classNameAt(index: number): string {
+  const name = CLASS_NAMES[index];
+  if (name === undefined) throw new Error(`No class name for class ${index + 1} of a grade`);
+  return name;
+}
 
 /** Mulberry32: the same invented data for the same seed. */
 function seededRandom(seed: number): () => number {
@@ -426,7 +448,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
         const room = rooms[classes.length]?.id ?? null;
         const classId = await load.classes.schoolClass(branch, year, {
           grade,
-          name: CLASS_NAMES[index] ?? 'Yale',
+          name: classNameAt(index),
           room,
           maxSize: 30,
         });
