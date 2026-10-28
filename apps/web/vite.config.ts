@@ -12,6 +12,13 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_RELEASE': JSON.stringify(process.env.RENDER_GIT_COMMIT ?? ''),
   },
+  // Task 10.1 (the owner's answer 7): the current and the previous version of
+  // Chrome, Edge, Firefox and Safari are supported. The build is written for
+  // browsers no newer than these, so every supported one, and older classroom
+  // computers back to them, runs it (`tooling/browsers.test.ts`).
+  build: {
+    target: ['chrome111', 'edge111', 'firefox114', 'safari16.4', 'ios16.4'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

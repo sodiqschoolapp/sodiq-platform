@@ -60,6 +60,10 @@ On 16 October 2026 the owner paused the handbook until the release: tasks do not
 
 Every task that adds or changes what a person can see or do updates the handbook pages of that behaviour in its own pull request (`CLAUDE.md`, Definition of done). The spec reviewer checks the pages against the diff. A behaviour without its page, or a page that says something the platform does not do, is a finding like a missing test.
 
+## Browsers
+
+The platform works in the current and the previous version of Chrome, Edge, Firefox and Safari, on a computer, a tablet or a phone (the owner, 26 October 2026). An older browser may still open it, but nobody checks that it does. Before each release the school checks a journal on its oldest classroom computer.
+
 ## Languages
 
 The handbook is written in English. The role guides and the Uzbek and Russian versions of the reference and the guides are made from it by task 9.6, before the go-live review. The role guides are for training the staff.
