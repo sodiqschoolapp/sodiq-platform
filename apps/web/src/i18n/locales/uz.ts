@@ -3573,6 +3573,18 @@ export const uz: Texts<'one' | 'other'> = {
       plan_report: {
         export: 'Dars rejalari hisoboti eksport qilindi',
       },
+      attendance_report: {
+        export: 'Davomat hisoboti eksport qilindi',
+      },
+      results_report: {
+        export: 'Natijalar hisoboti eksport qilindi',
+      },
+      discipline_report: {
+        export: 'Jurnal intizomi hisoboti eksport qilindi',
+      },
+      load_report: {
+        export: 'Dars jadvali yuklamasi hisoboti eksport qilindi',
+      },
       rating: {
         export: 'Reyting eksport qilindi',
       },

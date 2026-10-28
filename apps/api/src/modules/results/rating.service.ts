@@ -243,7 +243,8 @@ export class RatingService {
 export const permitting = (context: Context, roles: readonly string[]) =>
   context.access.permitting.filter((assignment) => roles.includes(assignment.role));
 
-export const isManagement = (context: Context): boolean => permitting(context, WHOLE_ROLES).length > 0;
+export const isManagement = (context: Context): boolean =>
+  permitting(context, WHOLE_ROLES).length > 0;
 
 /** The Tutor's own classes, in small letters (rows in force at the request). */
 export const tutorClasses = (context: Context): Set<string> =>

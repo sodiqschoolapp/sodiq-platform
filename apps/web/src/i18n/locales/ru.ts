@@ -3702,6 +3702,18 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       plan_report: {
         export: 'Отчёт по планам уроков выгружен',
       },
+      attendance_report: {
+        export: 'Отчёт о посещаемости выгружен',
+      },
+      results_report: {
+        export: 'Отчёт о результатах выгружен',
+      },
+      discipline_report: {
+        export: 'Отчёт о дисциплине журнала выгружен',
+      },
+      load_report: {
+        export: 'Отчёт о нагрузке по расписанию выгружен',
+      },
       rating: {
         export: 'Рейтинг выгружен',
       },

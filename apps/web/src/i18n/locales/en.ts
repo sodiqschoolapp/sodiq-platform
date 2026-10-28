@@ -3531,6 +3531,18 @@ export const en = {
       plan_report: {
         export: 'Lesson plan report exported',
       },
+      attendance_report: {
+        export: 'Attendance report exported',
+      },
+      results_report: {
+        export: 'Results report exported',
+      },
+      discipline_report: {
+        export: 'Journal discipline report exported',
+      },
+      load_report: {
+        export: 'Timetable load report exported',
+      },
       rating: {
         export: 'Rating exported',
       },

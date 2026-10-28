@@ -189,7 +189,11 @@ const RESULTS_REPORT_READERS: readonly Role[] = [
 ];
 
 /** Task 9.3b-2, decision 1: the timetable load report, management of the branch. */
-const LOAD_REPORT_READERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
+const LOAD_REPORT_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+];
 
 /** Task 9.4a, decision 1: the readers of the early-warning list (`08`, Who sees it). */
 const EARLY_WARNING_READERS: readonly Role[] = [
