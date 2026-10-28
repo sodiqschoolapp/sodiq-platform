@@ -346,6 +346,14 @@ describe('every export is logged', () => {
     'POST /api/results/rating/export': { action: 'rating.export' },
   };
 
+  /** Task 9.3b-2: the reports of `08` in Excel, one entry each; tested with data in `reports.test.ts`. */
+  const REPORT_FILES: Record<string, { action: string }> = {
+    'POST /api/results/reports/attendance/export': { action: 'attendance_report.export' },
+    'POST /api/results/reports/export': { action: 'results_report.export' },
+    'POST /api/journal/discipline/export': { action: 'discipline_report.export' },
+    'POST /api/timetable/reports/load/export': { action: 'load_report.export' },
+  };
+
   /**
    * Task 8.9 (pull request #227): a journal's file, and the branch export: the request, its
    * list and its download. Each writes its entries (`journal.export`,
@@ -434,6 +442,7 @@ describe('every export is logged', () => {
         ...Object.keys(PLAN_FILES),
         ...Object.keys(JOURNAL_FILES),
         ...Object.keys(RATING_FILES),
+        ...Object.keys(REPORT_FILES),
       ].sort(),
     );
   });

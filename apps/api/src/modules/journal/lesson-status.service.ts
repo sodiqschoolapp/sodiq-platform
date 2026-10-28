@@ -21,7 +21,6 @@ import {
   type DisciplineItemsQuery,
   type DisciplineQuery,
   type Language,
-  type DisciplineRow,
   type LessonsToday,
   type OrphanAssign,
   type OrphanAssignment,

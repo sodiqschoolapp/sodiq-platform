@@ -167,6 +167,30 @@ const RATING_READERS: readonly Role[] = [
   'teacher',
 ];
 
+/** Task 9.3b-2, decision 1 (approved by the owner): the attendance report, view and export. */
+const ATTENDANCE_REPORT_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+];
+
+/** Task 9.3b-2, decision 1: the results table and subject mastery, view and export. */
+const RESULTS_REPORT_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'senior_head_teacher',
+  'head_teacher',
+  'head_tutor',
+  'tutor',
+];
+
+/** Task 9.3b-2, decision 1: the timetable load report, management of the branch. */
+const LOAD_REPORT_READERS: readonly Role[] = ['super_admin', 'principal', 'academic_vice_principal'];
+
 /** Task 9.4a, decision 1: the readers of the early-warning list (`08`, Who sees it). */
 const EARLY_WARNING_READERS: readonly Role[] = [
   'super_admin',
@@ -475,6 +499,22 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/results/early-warning': { branch: 'request', roles: EARLY_WARNING_READERS },
   // Task 9.4b, decision 1: the branch summary of the Principal's and the Super Admin's home.
   'GET /api/results/branch-summary': { branch: 'request', roles: ['super_admin', 'principal'] },
+  // Task 9.3b-2: the reports of `08` over the journal and their exports.
+  'GET /api/results/reports/attendance': { branch: 'request', roles: ATTENDANCE_REPORT_READERS },
+  'POST /api/results/reports/attendance/export': {
+    branch: 'request',
+    roles: ATTENDANCE_REPORT_READERS,
+  },
+  'GET /api/results/reports/choices': { branch: 'request', roles: RESULTS_REPORT_READERS },
+  'GET /api/results/reports/results-table': { branch: 'request', roles: RESULTS_REPORT_READERS },
+  'GET /api/results/reports/subject-mastery': {
+    branch: 'request',
+    roles: RESULTS_REPORT_READERS,
+  },
+  'POST /api/results/reports/export': { branch: 'request', roles: RESULTS_REPORT_READERS },
+  // Task 9.3b-2: the timetable load report and its export.
+  'GET /api/timetable/reports/load': { branch: 'request', roles: LOAD_REPORT_READERS },
+  'POST /api/timetable/reports/load/export': { branch: 'request', roles: LOAD_REPORT_READERS },
   'POST /api/results/early-warning/handled': {
     branch: 'request',
     roles: ['super_admin', 'tutor', 'teacher'],
@@ -912,6 +952,29 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin', 'spiritual_vice_principal', 'head_tutor', 'tutor'],
   },
   'GET /api/journal/discipline': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+      'head_tutor',
+    ],
+  },
+  // Task 9.3b-2: the items behind a count, and the export (8.7 decision 6).
+  'GET /api/journal/discipline/items': {
+    branch: 'request',
+    roles: [
+      'super_admin',
+      'principal',
+      'academic_vice_principal',
+      'senior_head_teacher',
+      'head_teacher',
+      'head_tutor',
+    ],
+  },
+  'POST /api/journal/discipline/export': {
     branch: 'request',
     roles: [
       'super_admin',
