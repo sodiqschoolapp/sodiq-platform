@@ -882,4 +882,23 @@ describe('the prepared report totals (task 9.3b-1)', () => {
     expect((await changesOf(c.s.branch)).length).toBeGreaterThan(0);
     expect(await prepare(c.s.branch)).toBeGreaterThan(0);
   });
+
+  it('works within the time of one run and leaves the rest, with its change rows, to the next (the job shares the database with the requests)', async () => {
+    const c = await scene();
+    const totals = new PreparedTotals(t.app.get(Transactions));
+    t.clock.set(MOMENT);
+    try {
+      await totals.run(0);
+    } finally {
+      t.clock.set(START);
+    }
+    expect((await rating(c)).prepared.updating).toBe(true);
+    t.clock.set(MOMENT);
+    try {
+      await totals.run(10 * 60_000);
+    } finally {
+      t.clock.set(START);
+    }
+    expect((await rating(c)).prepared.updating).toBe(false);
+  });
 });

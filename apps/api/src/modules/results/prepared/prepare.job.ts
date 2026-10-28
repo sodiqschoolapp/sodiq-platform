@@ -32,10 +32,21 @@ export const prepareTotalsJob = defineJob({
   options: { retryLimit: 0, expireInSeconds: 30 * 60 },
 });
 
+/**
+ * How long one run works before it leaves the rest to the next minute: the job shares the
+ * database with the school's requests, and at the school's size a first preparation takes
+ * minutes (CI of pull request #258: the browser tests slowed while it ran unbounded). Elapsed
+ * work is measured with the process's monotonic timer, never the clock of the business rules.
+ */
+export const RUN_BUDGET_MS = 20_000;
+
 @Injectable()
 export class PreparedTotals implements BeforeApplicationShutdown {
   /** Set when the process stops: a run ends after the unit it is on, so the stop never waits on it. */
   private stopping = false;
+
+  /** The branch the next run starts with, so a run that runs out of time never starves the last ones. */
+  private next = 0;
 
   constructor(private readonly transactions: Transactions) {}
 
@@ -43,14 +54,21 @@ export class PreparedTotals implements BeforeApplicationShutdown {
     this.stopping = true;
   }
 
-  /** Every branch in turn. */
-  async run(): Promise<void> {
+  /** Every branch in turn, within the budget of one run. */
+  async run(budgetMs = RUN_BUDGET_MS): Promise<void> {
+    const deadline = performance.now() + budgetMs;
     const branches = await this.transactions.run([], (transaction) =>
       transaction.selectFrom('branches').select(['id', 'time_zone']).orderBy('id').execute(),
     );
-    for (const branch of branches) {
-      if (this.stopping) return;
-      await this.prepareBranch(branch.id, branch.time_zone);
+    for (let step = 0; step < branches.length; step += 1) {
+      const index = (this.next + step) % branches.length;
+      const branch = branches[index];
+      if (branch === undefined) continue;
+      const done = await this.prepareSome(branch.id, branch.time_zone, deadline);
+      if (!done.finished) {
+        this.next = index;
+        return;
+      }
     }
   }
 
@@ -60,6 +78,16 @@ export class PreparedTotals implements BeforeApplicationShutdown {
    * number of units prepared.
    */
   async prepareBranch(branchId: string, timeZone: string): Promise<number> {
+    return (await this.prepareSome(branchId, timeZone, Number.POSITIVE_INFINITY)).prepared;
+  }
+
+  /** As `prepareBranch`, stopping when the process stops or the run's time is up. */
+  private async prepareSome(
+    branchId: string,
+    timeZone: string,
+    deadline: number,
+  ): Promise<{ prepared: number; finished: boolean }> {
+    if (this.stopping || performance.now() > deadline) return { prepared: 0, finished: false };
     const listing = await this.transactions.run([branchId], async (transaction) => {
       // Before anything is listed: a change visible here is seen by every preparation below.
       const seen = await snapshotOf(transaction);
@@ -78,7 +106,7 @@ export class PreparedTotals implements BeforeApplicationShutdown {
     let prepared = 0;
     for (const unit of listing.todo) {
       // The rest waits for the next run; the change rows stay, so nothing is lost.
-      if (this.stopping) return prepared;
+      if (this.stopping || performance.now() > deadline) return { prepared, finished: false };
       const done = await this.transactions.run([branchId], (transaction) =>
         prepareUnit(transaction, branchId, timeZone, unit),
       );
@@ -87,7 +115,7 @@ export class PreparedTotals implements BeforeApplicationShutdown {
     await this.transactions.run([branchId], (transaction) =>
       pruneChanges(transaction, branchId, listing.seen),
     );
-    return prepared;
+    return { prepared, finished: true };
   }
 }
 
