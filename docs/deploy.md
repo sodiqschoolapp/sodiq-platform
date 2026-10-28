@@ -201,7 +201,8 @@ Do one step at a time and check it before the next. Every value in angle bracket
    node apps/api/dist/modules/auth/cli.js first-account --first-name <name> --last-name <name>
    ```
    the program that `pnpm auth:first-account` runs (the image carries no pnpm). It prints the login and the first password once; sign in, change the password and set up the second step. The command refuses while a Super Admin exists; a second or third one is given the role in the app.
-10. Go on with `docs/go-live/checklist.md`.
+10. Monitoring and the daily export: `docs/monitoring.md`, in its order.
+11. Go on with `docs/go-live/checklist.md`.
 
 Email stays off in production (answer 16): a password reset by email is written to the log only, and an administrator resets passwords in the app.
 
@@ -215,7 +216,6 @@ Email stays off in production (answer 16): a password reset by email is written 
 
 ## What this task left for later
 
-- Grafana Cloud, UptimeRobot, alerts to Telegram, the sign-in-and-save check, the daily export to R2, the restore drill, request logging: 10.2.
-- Sentry source maps of the web app (minified stack traces until then): 10.2. The API's stack traces already name TypeScript lines (`--enable-source-maps`; the `.map` files stay on the server).
+- Grafana Cloud, UptimeRobot, the alerts, request logging, the web app's source maps in Sentry and the daily export to R2: built in 10.2a, set up by the owner with `docs/monitoring.md`; restoring and the monthly drill: `docs/restore.md`. Alerts to Telegram and the sign-in-and-save check: 10.2b. The API's stack traces name TypeScript lines (`--enable-source-maps`; the `.map` files stay on the server); the web app's maps go to Sentry and are never served.
 - The mail service and `RESEND_API_KEY`: 2.3. The R2 token: the first task that stores a file.
 - The solver service on Render: 5.x.

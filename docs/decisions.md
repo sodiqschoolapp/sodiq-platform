@@ -342,6 +342,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 28 October 2026: backups, restore drill and alerts (task 10.2a)
+
+Plan approved on pull request #256 with corrections 1 to 6; decisions confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (task split). 10.2 split into 10.2a (backups, restore steps, numbers, logs, alert rules, source maps, UptimeRobot) and 10.2b (the hidden Monitoring branch and the sign-in-and-save check), with the stop-list risks of 10.2b in its From lines | The branch needs a school year built in production and its exclusion from every school-wide read; with the rest it did not fit one session |
+| **Look first** (a trigger loosened). `journal_exports_write` (0139) lets one more update through: `file_removed_at` from null to the transaction's moment, on a failed export or a ready one whose link has expired, nothing else changed | From 8.9 on 10.2: "a cleanup removes the files of expired and failed exports" |
+| **Look first** (a pinned list widened). `scheduled_runs_kind_check` gains `journal.exports_cleanup` | The same From line: the cleanup is a daily kind at 03:00, so "the daily work did not run" covers it |
+| **Look first** (new dependency). `@sentry/vite-plugin` 5.4.1 (development, web), `@sentry/bundler-plugins` held at 10.76.2 by an override; `@sentry/cli`'s install script not run (`allowBuilds`). `@sentry/cli` is under FSL-1.1-MIT (source-available, MIT after two years), for the owner's go-live review | The web app's source maps (owner, 28 October); plan review correction 6 |
+| **Look first** (spec texts to change). `/spec-change` for `13`, Monitoring row: "Sentry for errors; Grafana Cloud for speed, load, logs, alerts and the sign-in-and-save check every 5 minutes; UptimeRobot for uptime; alerts by email until the owner adds Telegram". `edge/system-behaviour`, the row "Cell saves fail in one branch at 08:05": "Alerts go by email (later also to a phone), per branch, for: …" and "The owner is on call on school days until the school names another person." `13`, Backups: "Backups: continuous, with restore to any minute of the last 7 days (Neon Launch plan; 30 days on the Scale plan when the owner upgrades), a daily full export kept in a second location (Cloudflare R2), and a restore test every month." | Answers 8 and 11 are later than the spec |
+| **Look first.** The daily export reads production as `sodiq_migrator` (owner of the tables, can also write) from a GitHub environment `backup` with no required reviewer, `main` only | A nightly job cannot wait for `production`'s approval; a read-only login needs `BYPASSRLS` (From line of 10.2b) |
+| The dump is restored every night into the job's own PostgreSQL 18 with owners, grants and row filters, every role the dump names created first (`backup-roles`), and compared table by table (`backup-compare`: a missing table, a table emptied or other migrations fail; a few rows written at 02:30 only "differ"); nothing of it is printed but sizes, names and match/differs | Plan review corrections 4 and 5; the repository is public |
+| The dump is not encrypted on our side; R2 keeps it 35 days by a lifecycle rule | R2 encrypts at rest, the bucket is private, its token reaches that bucket only |
+| Numbers in Influx line protocol and logs as Loki JSON with `fetch`, one-minute deltas read with `sum_over_time`; series names in `apps/api/src/monitoring/series.ts`; the rule file generated from `alert-rules.ts` and checked by a test (routes named in a rule must exist) | No client library; a renamed route cannot silence a rule |
+| The branch label of a request is the `X-Branch-Id` the permission guard accepted (read by an interceptor after the guards, from the route's declaration), `none` for school-wide, public and refused requests; the guard itself is unchanged | No permission change (stop-list item 5) |
+| First slot: each class's earliest lesson of the date, not cancelled, with a teacher, starting before 09:00 branch time; marked when an attendance mark was first saved before 09:00; the baseline is the pooled share of the same weekday 7, 14, 21 and 28 days back, from the database; the rule fires 09:00 to 09:30 when today has at least 5 such lessons and is under half the baseline | `edge/system-behaviour`; Grafana's free plan keeps 14 days |
+| Sentry's own "new issue" email for web and server faults: the one exception to "Grafana sends every alert" | `14`: errors raise alerts at once; Grafana's free plan cannot read Sentry |
+| The Sentry token reaches the image build as a Render Secret File mounted as a Docker build secret; every `.map` is deleted from the image | A build argument would sit in the build's history; no source map is served |
+| `render.yaml` (test) unchanged; Grafana is set on production only | The owner's line names the live system |
+
 ## 27 October 2026: production and the go-live checklist (task 10.4)
 
 Plan approved on pull request #244 with corrections 1 to 5; decisions confirmed there. Flagged on issue #42.

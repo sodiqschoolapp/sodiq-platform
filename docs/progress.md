@@ -2,6 +2,25 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 28 October 2026: task 10.2a Backups, restore drill and alerts
+
+- 10.2 split (decision 1, Look first): this part is the backups and the alerts; the hidden Monitoring branch and the sign-in-and-save check are 10.2b.
+- **The daily export**: `.github/workflows/backup.yml` (every night at 02:30 Tashkent and by hand, environment `backup`, the concurrency group of the production deploy) dumps production, creates the roles the dump names in its own PostgreSQL 18 (`backup-roles`), restores with owners, grants and row filters, compares every table (`backup-compare`), then stores `daily/<date>.dump` in R2 and marks `sodiq_backup_last_success` in Grafana (`apps/api/src/deploy/backup*.ts`). Proved in the session on a new local cluster from a dump of `sodiq_dev` (174 tables, 449 policies, grants restored); not proved against Neon and R2 (the owner's first run).
+- **Restore**: `docs/restore.md` (a side copy from Neon's history or from the R2 dump, read as `sodiq_app` with the branch filter, repaired through the app; a full restore; the monthly drill), `docs/go-live/restore-drills.md`. The R2 path (a database `sodiq_restore` owned by `sodiq_migrator`, `pg_restore --no-owner --role`) proved locally.
+- **Numbers and logs to Grafana** (`apps/api/src/monitoring/`): per-minute request counts and durations by method, route pattern, status class and branch; a heartbeat of the API and the worker; request log lines and the services' own log lines shipped to Loki; every minute the worker's `monitoring.counts` job pushes per branch the refused saves, failed exports, the newest finished nightly check and its differences, the newest daily work, the first-slot numbers with their four-week baseline, and the failed jobs per name and branch. All off without the five `GRAFANA_*` variables.
+- **Alert rules**: `apps/api/src/monitoring/alert-rules.ts`, written to `monitoring/grafana/alert-rules.yaml` by `pnpm --filter @sodiq/api monitoring:rules`; 19 rules, imported by the owner.
+- **Export files cleanup**: the daily kind `journal.exports_cleanup` (03:00) removes the files of expired and failed branch exports, sets `file_removed_at` and writes `journal.export_file_removed` (0139).
+- **Source maps**: `@sentry/vite-plugin` in the web build when the token is given (a Render Secret File in the image build); maps never served.
+- `docs/monitoring.md`: the owner's setup in order and what to do at each alert.
+
+Left out: the Monitoring branch, the check, Telegram, the owner's daily report, a read-only backup login (10.2b's From lines); the first run of the Backup workflow and the first restore drill (the owner).
+
+The next sessions must know:
+
+- A new series is added to `MEASUREMENTS` of `series.ts`; a rule reads only those (`alert-rules.test.ts`). After changing `alert-rules.ts`, build the API and run `pnpm --filter @sodiq/api monitoring:rules`, and tell the owner to import the file again.
+- A route named in a rule (the saves, publish, close, the reports) that is renamed fails `alert-rules.test.ts`: change the rule with it.
+- `PhotoStore` has `deletePrefix`; a test store implements it.
+
 ## 28 October 2026: task 10.1 Speed tests
 
 - `speed.database.test.ts` builds the invented school (`SIZES.triple`: 3 branches of three times a real branch, 240 classes, 6,000 students; doubles in the curriculum), publishes it, fills a year of journals through `Transactions.run` with every trigger on (`speed-data.ts`), adds two exemptions per class, and times every target of `12` through the routes, then 1,000 users for 10 minutes (`load-run.ts`); small on every pull request, `SPEED_SIZE=triple` in the new workflow **Speed** (by hand and Sunday 22:00), `SPEED_SIZE=full` by hand. At triple it fails on a missed target.
