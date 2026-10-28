@@ -22,7 +22,8 @@
     "e2e:server": "node dist-e2e/testing/e2e/server.js",
     "e2e:seed": "node dist-e2e/testing/e2e/seed.js",
     "demo:build": "tsc -p tsconfig.demo.json",
-    "demo:seed": "node dist-demo/testing/demo/seed.js"
+    "demo:seed": "node dist-demo/testing/demo/seed.js",
+    "monitoring:rules": "node dist/monitoring/write-alert-rules.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1141.0",

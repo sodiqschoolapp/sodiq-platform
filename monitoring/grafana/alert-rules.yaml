@@ -1,0 +1,161 @@
+# Generated from apps/api/src/monitoring/alert-rules.ts (task 10.2a); do not edit.
+# Write it again with: pnpm --filter @sodiq/api monitoring:rules
+# Imported by the owner into Grafana Cloud (docs/monitoring.md).
+# Request durations are pushed per bound in seconds: 0.1, 0.2, 0.3, 0.5, 1, 2, 5, +Inf.
+# Series: sodiq_requests_count, sodiq_requests_ms_sum, sodiq_request_duration_bucket, sodiq_process_up, sodiq_branch_refused_saves, sodiq_branch_failed_exports, sodiq_branch_check_finished, sodiq_branch_check_differences, sodiq_branch_daily_enqueued, sodiq_branch_first_slot_lessons, sodiq_branch_first_slot_marked, sodiq_branch_first_slot_baseline_lessons, sodiq_branch_first_slot_baseline_marked, sodiq_jobs_failed, sodiq_counts_pushed, sodiq_backup_last_success.
+groups:
+  - name: sodiq-production
+    interval: 1m
+    rules:
+      - alert: CellSavesFailing
+        expr: 'sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores",status="5xx"}[10m])) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Cell saves answer 500 in branch {{ $labels.branch }}.'
+          rule: 'failed cell saves'
+      - alert: CellSavesSlow
+        expr: 'histogram_quantile(0.95, sum by (le, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores"}[10m]))) > 0.3 and sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores"}[10m])) >= 20'
+        for: 10m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Cell saves take over 0.3 s (95th percentile) in branch {{ $labels.branch }} (12, Speed targets).'
+          rule: 'slow cell saves'
+      - alert: RefusedSavesJump
+        expr: 'max by (branch) (sodiq_branch_refused_saves) >= 20 and max by (branch) (sodiq_branch_refused_saves) > 3 * (max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 1d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 2d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 3d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 4d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 5d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 6d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 7d))) / 7'
+        for: 5m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Refused saves jumped in branch {{ $labels.branch }}: over 3 times the same hour of last week.'
+          rule: 'a jump in refused saves'
+      - alert: JobsFailing
+        expr: 'sum by (branch, name) (sodiq_jobs_failed) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Job {{ $labels.name }} failed in the last hour (branch {{ $labels.branch }}).'
+          rule: 'failed jobs'
+      - alert: BranchExportsFailing
+        expr: 'max by (branch) (sodiq_branch_failed_exports) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'A branch export failed in the last hour in branch {{ $labels.branch }}.'
+          rule: 'failed jobs'
+      - alert: PublishOrCloseFailed
+        expr: 'sum by (route, branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/timetable/versions/:id/publish|/api/results/closing/:quarterId/close|/api/results/closing/:quarterId/journals/:journalId/close",status="5xx"}[10m])) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'A publish or a close failed (500) in branch {{ $labels.branch }}: {{ $labels.route }}.'
+          rule: 'a failed publish or close'
+      - alert: NightlyCheckDifference
+        expr: 'max by (branch) (sodiq_branch_check_differences) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'The nightly check found differences in branch {{ $labels.branch }}.'
+          rule: 'a nightly-check difference'
+      - alert: NightlyCheckLate
+        expr: 'time() - max by (branch) (sodiq_branch_check_finished) > 93600'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'No nightly check finished in branch {{ $labels.branch }} for over 26 hours.'
+          rule: 'a check that did not run'
+      - alert: DailyWorkLate
+        expr: 'time() - max by (branch) (sodiq_branch_daily_enqueued) > 93600'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'No daily work was enqueued in branch {{ $labels.branch }} for over 26 hours: the worker or its schedule is down.'
+          rule: 'the daily work did not run'
+      - alert: BackupOld
+        expr: '(time() - max(max_over_time(sodiq_backup_last_success[48h]))) > 86400 or absent_over_time(sodiq_backup_last_success[48h])'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'The newest daily export is older than 24 hours (Actions, Backup).'
+          rule: 'a backup older than 24 hours'
+      - alert: FirstSlotFewMarks
+        expr: 'max by (branch) (sodiq_branch_first_slot_lessons) >= 5 and max by (branch) (sodiq_branch_first_slot_baseline_lessons) > 0 and (max by (branch) (sodiq_branch_first_slot_marked) / max by (branch) (sodiq_branch_first_slot_lessons)) < 0.5 * (max by (branch) (sodiq_branch_first_slot_baseline_marked) / max by (branch) (sodiq_branch_first_slot_baseline_lessons)) and on () (hour() == 4 and minute() < 30)'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Far fewer first-slot lessons have attendance by 09:00 than usual in branch {{ $labels.branch }}.'
+          rule: 'few first-slot attendance marks by 09:00'
+      - alert: ServerErrors
+        expr: 'sum by (route) (sum_over_time(sodiq_requests_count{status="5xx"}[10m])) > 0'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'The API answered 500 on {{ $labels.route }}.'
+          rule: 'errors raise alerts at once'
+      - alert: SlowJournal
+        expr: 'histogram_quantile(0.95, sum by (le, route, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"GET",route=~"/api/journal/journals/:journalId"}[10m]))) > 1 and sum by (route, branch) (sum_over_time(sodiq_requests_count{method=~"GET",route=~"/api/journal/journals/:journalId"}[10m])) >= 20'
+        for: 10m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'A quarter journal takes over 1 s in branch {{ $labels.branch }}.'
+          rule: 'slow pages: a quarter journal under 1 s'
+      - alert: SlowSearch
+        expr: 'histogram_quantile(0.95, sum by (le, route, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"GET",route=~"/api/search/students|/api/search/relatives|/api/search/staff|/api/search/classes|/api/search/groups"}[10m]))) > 0.2 and sum by (route, branch) (sum_over_time(sodiq_requests_count{method=~"GET",route=~"/api/search/students|/api/search/relatives|/api/search/staff|/api/search/classes|/api/search/groups"}[10m])) >= 20'
+        for: 10m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'Search takes over 0.2 s in branch {{ $labels.branch }}: {{ $labels.route }}.'
+          rule: 'slow pages: search under 0.2 s'
+      - alert: SlowReports
+        expr: 'histogram_quantile(0.95, sum by (le, route, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"GET",route=~"/api/results/rating/subject|/api/results/rating/class|/api/results/rating/classes|/api/results/early-warning|/api/results/branch-summary|/api/journal/attendance-today|/api/journal/lessons-today|/api/timetable/conflicts-summary"}[10m]))) > 2 and sum by (route, branch) (sum_over_time(sodiq_requests_count{method=~"GET",route=~"/api/results/rating/subject|/api/results/rating/class|/api/results/rating/classes|/api/results/early-warning|/api/results/branch-summary|/api/journal/attendance-today|/api/journal/lessons-today|/api/timetable/conflicts-summary"}[10m])) >= 20'
+        for: 10m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'A report takes over 2 s in branch {{ $labels.branch }}: {{ $labels.route }}.'
+          rule: 'slow pages: a report under 2 s'
+      - alert: SlowPages
+        expr: 'histogram_quantile(0.95, sum by (le, route, branch) (sum_over_time(sodiq_request_duration_bucket{method="GET",route!="unmatched",route!~".*(export|pdf|print|xlsx|photo|file).*",route!~"/api/journal/journals/:journalId|/api/search/students|/api/search/relatives|/api/search/staff|/api/search/classes|/api/search/groups|/api/results/rating/subject|/api/results/rating/class|/api/results/rating/classes|/api/results/early-warning|/api/results/branch-summary|/api/journal/attendance-today|/api/journal/lessons-today|/api/timetable/conflicts-summary"}[10m]))) > 1 and sum by (route, branch) (sum_over_time(sodiq_requests_count{method="GET",route!="unmatched",route!~".*(export|pdf|print|xlsx|photo|file).*",route!~"/api/journal/journals/:journalId|/api/search/students|/api/search/relatives|/api/search/staff|/api/search/classes|/api/search/groups|/api/results/rating/subject|/api/results/rating/class|/api/results/rating/classes|/api/results/early-warning|/api/results/branch-summary|/api/journal/attendance-today|/api/journal/lessons-today|/api/timetable/conflicts-summary"}[10m])) >= 20'
+        for: 10m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'A page takes over 1 s in branch {{ $labels.branch }}: {{ $labels.route }}.'
+          rule: 'slow pages: any other page under 1 s'
+      - alert: ApiSilent
+        expr: '(sum(sum_over_time(sodiq_process_up{service="api"}[10m])) or vector(0)) < 1'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'No numbers from the API for 10 minutes: the API or its push to Grafana is down.'
+          rule: 'the push down'
+      - alert: WorkerSilent
+        expr: '(sum(sum_over_time(sodiq_process_up{service="worker"}[10m])) or vector(0)) < 1'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'No numbers from the worker for 10 minutes: the worker or its push is down.'
+          rule: 'the worker down'
+      - alert: CountsSilent
+        expr: '(sum(sum_over_time(sodiq_counts_pushed[10m])) or vector(0)) < 1'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'The counts per branch stopped arriving for 10 minutes: the worker or pg-boss is down.'
+          rule: 'the counts stop arriving'
