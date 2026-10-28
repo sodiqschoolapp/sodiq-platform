@@ -121,11 +121,8 @@ export async function awayLessons(
       await transaction
         .selectFrom('lesson_absence_taught')
         .select('lesson_id')
-        .where(
-          'lesson_id',
-          'in',
-          candidates.map((one) => one.id),
-        )
+        // One array parameter, not one per lesson (65,535 parameters a statement).
+        .where(sql<boolean>`lesson_id = any(${candidates.map((one) => one.id)}::uuid[])`)
         .execute()
     ).map((row) => row.lesson_id),
   );
