@@ -738,6 +738,7 @@ export interface JournalExports {
   failed_at: Timestamp | null;
   failure: string | null;
   file_key: string | null;
+  file_removed_at: Timestamp | null;
   format: string;
   id: Generated<string>;
   journals: number | null;

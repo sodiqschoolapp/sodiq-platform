@@ -48,6 +48,10 @@ class SwitchedPhotoStore implements PhotoStore {
       : this.memory.get(key);
   }
 
+  deletePrefix(prefix: string): Promise<void> {
+    return this.memory.deletePrefix(prefix);
+  }
+
   /** Waits until a put is held. */
   held$(): Promise<void> {
     return this.held.length > 0

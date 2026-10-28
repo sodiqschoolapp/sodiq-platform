@@ -658,6 +658,51 @@ export class JournalExports {
     }
   }
 
+  /**
+   * `journal.exports_cleanup` (task 10.2a; From 8.9, decision 4): the files of the branch's
+   * exports whose link expired or that failed are removed from the store, with no transaction
+   * open (`photo-store.ts`), then the row records the moment and the audit log the removal.
+   * Everything under `exports/<id>/` goes: a failed or stale run never stored its key. Safe to
+   * repeat: a prefix with nothing left counts as removed, and a row already marked is skipped.
+   */
+  async cleanupFiles(job: { branchIds: readonly string[] }): Promise<void> {
+    const due = await this.transactions.run(job.branchIds, async (transaction) => {
+      const now = await transactionMoment(transaction);
+      return transaction
+        .selectFrom('journal_exports')
+        .select(['id', 'branch_id', 'status'])
+        .where('file_removed_at', 'is', null)
+        .where((where) =>
+          where.or([
+            where('status', '=', 'failed'),
+            where.and([where('status', '=', 'ready'), where('expires_at', '<=', now)]),
+          ]),
+        )
+        .orderBy('id')
+        .execute();
+    });
+    for (const row of due) {
+      await this.store.deletePrefix(`exports/${row.id}/`);
+      await this.transactions.run(job.branchIds, async (transaction) => {
+        const marked = await transaction
+          .updateTable('journal_exports')
+          // The trigger writes the transaction's moment.
+          .set({ file_removed_at: await transactionMoment(transaction) })
+          .where('id', '=', row.id)
+          .where('file_removed_at', 'is', null)
+          .executeTakeFirst();
+        if (marked.numUpdatedRows === 0n) return;
+        await this.audit.record(transaction, {
+          branchId: row.branch_id,
+          actorId: null,
+          action: 'journal.export_file_removed',
+          record: { type: 'journal_export', id: row.id },
+          details: { status: row.status },
+        });
+      });
+    }
+  }
+
   private async fail(transaction: Transaction, exportId: string, failure: string): Promise<void> {
     await transaction
       .updateTable('journal_exports')
