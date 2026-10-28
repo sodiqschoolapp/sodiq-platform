@@ -18,6 +18,7 @@ const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
 const COUNTS: Discipline = {
   from: '2026-10-12',
   to: '2026-10-27',
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   departments: [{ id: uid(30), names: { uz: 'STEAM', ru: 'STEAM', en: 'STEAM' } }],
   teachers: [
     {

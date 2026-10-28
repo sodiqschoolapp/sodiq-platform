@@ -2401,3 +2401,4 @@ export {
   type LessonsToday,
   type LessonsTodayQuery,
 } from './home.js';
+export { preparedStampSchema, type PreparedStamp } from './prepared.js';

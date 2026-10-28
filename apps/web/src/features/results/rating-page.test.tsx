@@ -62,6 +62,7 @@ const CHOICES: RatingChoices = {
 const SUBJECT_LIST: RatingSubjectList = {
   quarter: QUARTER,
   provisional: true,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   final: null,
   journal: JOURNAL,
   rows: [
@@ -103,6 +104,7 @@ const SUBJECT_LIST: RatingSubjectList = {
 const CLASS_LIST: RatingClassList = {
   quarter: QUARTER,
   provisional: true,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   final: null,
   class: CLASS,
   rows: [
@@ -126,6 +128,7 @@ const CLASS_LIST: RatingClassList = {
 const CLASSES_LIST: RatingClassesList = {
   quarter: { ...QUARTER, closed: true },
   provisional: false,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   final: { closedAt: '2026-10-31T13:00:00.000Z', version: 1 },
   grade: null,
   language: null,
@@ -163,6 +166,53 @@ const open = (
 };
 
 describe('the rating page', () => {
+  // Task 9.3b-1, edge/system-behaviour: "Prepared totals for reports show 'updated at'. A page
+  // that finds them behind calculates from source and shows 'updating'." No call on a timer: the
+  // person asks again with Refresh.
+  it('shows "updating" with Refresh while the totals are behind, then the time they were updated', async () => {
+    let answers = 0;
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }] })),
+      'GET /api/results/rating/choices': () => json(CHOICES),
+      'GET /api/results/rating/subject': () => {
+        answers += 1;
+        return json({
+          ...SUBJECT_LIST,
+          prepared:
+            answers === 1
+              ? { updatedAt: null, updating: true }
+              : { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
+        });
+      },
+    });
+    renderApp('/results/rating');
+    const state = async () =>
+      (await waitFor(() => {
+        const found = document.querySelector('[data-prepared-state]');
+        expect(found).not.toBeNull();
+        return found;
+      })) as HTMLElement;
+    expect((await state()).dataset.preparedState).toBe('updating');
+    expect((await state()).textContent).toBe(en.prepared.updating);
+    // The figures shown while updating are the server's, worked out from the journal.
+    await waitFor(() => {
+      expect(rowsOf()).toHaveLength(4);
+    });
+    const subjectCalls = () =>
+      calls.filter((call) => call.route === 'GET /api/results/rating/subject').length;
+    const before = subjectCalls();
+    fireEvent.click(screen.getByRole('button', { name: en.prepared.refresh }));
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-prepared-state]')?.getAttribute('data-prepared-state'),
+      ).toBe('updated');
+    });
+    expect(subjectCalls()).toBe(before + 1);
+    expect(document.querySelector('[data-prepared-state]')?.textContent).toMatch(/^Updated /);
+    expect(screen.queryByRole('button', { name: en.prepared.refresh })).toBeNull();
+  });
+
   it('shows the places, one decimal and the students without a number, marked provisional', async () => {
     open([{ role: 'academic_vice_principal', branchId: NORTH.id }]);
     await screen.findByRole('heading', { name: en.results.ratingList.title });

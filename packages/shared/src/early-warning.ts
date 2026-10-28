@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { journalSubjectSchema, journalUnitSchema } from './journal-units.js';
 
@@ -147,6 +148,8 @@ export const earlyWarningListSchema = z.object({
   /** The day "28 days ago" (branch time); `null` with no quarter. */
   daysAgoDate: schoolDateSchema.nullable(),
   entries: z.array(earlyWarningEntrySchema),
+  /** Task 9.3b-1: the prepared totals the list was read from. */
+  prepared: preparedStampSchema,
 });
 
 export type EarlyWarningList = z.infer<typeof earlyWarningListSchema>;

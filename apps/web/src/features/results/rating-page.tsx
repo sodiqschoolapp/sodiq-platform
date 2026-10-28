@@ -16,6 +16,7 @@ import { DownloadIcon } from '@/components/icons';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
@@ -406,6 +407,15 @@ export function RatingPage(): React.JSX.Element {
       />
       <div className="grid gap-4">
         {download.isError && <FailureAlert error={download.error} />}
+        {shown.data !== undefined && (
+          <PreparedStamp
+            stamp={shown.data.prepared}
+            refreshing={shown.isFetching}
+            onRefresh={() => {
+              void shown.refetch();
+            }}
+          />
+        )}
         {data !== undefined && kind !== undefined && (
           <div className="flex flex-wrap items-end gap-4">
             {kinds.length > 1 && (

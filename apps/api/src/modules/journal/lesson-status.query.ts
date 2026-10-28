@@ -67,6 +67,23 @@ interface LessonKey {
   readonly cancel_cause: string | null;
 }
 
+/**
+ * A lesson of `lessonStatusFacts`: its row without the status, and the facts
+ * the status is decided from (`null` for a lesson not held). Task 9.3b-1: the
+ * prepared totals store these, never the status, which depends on the clock
+ * of the request (the lock); `statusOfFacts` decides it on read.
+ */
+export interface LessonStatusFacts {
+  readonly row: Omit<LessonStatusRow, 'answer'>;
+  readonly facts: StatusFacts | null;
+}
+
+/** The status of a lesson from its facts at `now`. */
+export const statusOfFacts = (one: LessonStatusFacts, now: Date): LessonStatusRow => ({
+  ...one.row,
+  answer: one.facts === null ? null : lessonStatusOf(one.facts, now),
+});
+
 /** The status facts of the lessons named, of the branch named, at `now`. */
 export async function lessonStatuses(
   transaction: Transaction,
@@ -74,7 +91,22 @@ export async function lessonStatuses(
   lessonIds: readonly string[],
   now: Date,
 ): Promise<Map<string, LessonStatusRow>> {
-  const found = new Map<string, LessonStatusRow>();
+  const facts = await lessonStatusFacts(transaction, branchId, lessonIds, now);
+  return new Map([...facts].map(([id, one]) => [id, statusOfFacts(one, now)]));
+}
+
+/**
+ * The facts of the lessons named at `now`: whether each is held, and what its
+ * status is decided from. They change with the data and when a lesson of the
+ * journal starts (held, `started` of the columns), never at another moment.
+ */
+export async function lessonStatusFacts(
+  transaction: Transaction,
+  branchId: string,
+  lessonIds: readonly string[],
+  now: Date,
+): Promise<Map<string, LessonStatusFacts>> {
+  const found = new Map<string, LessonStatusFacts>();
   if (lessonIds.length === 0) return found;
   const ids = [...new Set(lessonIds.map((id) => id.toLowerCase()))];
   const lessons: LessonKey[] = await transaction
@@ -256,7 +288,7 @@ export async function lessonStatuses(
       locksAt: locks.get(lesson.id) ?? null,
     };
     if (!isHeld) {
-      found.set(lesson.id, { ...base, answer: null, waiting: new Map() });
+      found.set(lesson.id, { row: { ...base, waiting: new Map() }, facts: null });
       continue;
     }
     const out = optionalOf.get(lesson.id) ?? new Set<string>();
@@ -301,7 +333,7 @@ export async function lessonStatuses(
       const empty = present.filter((student) => !done.has(student));
       if (empty.length > 0) waiting.set(column.workId, empty);
     });
-    found.set(lesson.id, { ...base, answer: lessonStatusOf(facts, now), waiting });
+    found.set(lesson.id, { row: { ...base, waiting }, facts });
   }
   return found;
 }

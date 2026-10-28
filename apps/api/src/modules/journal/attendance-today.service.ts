@@ -20,7 +20,8 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
 import { exemptionMarksOf } from './exemption-read.js';
-import { lessonStatuses } from './lesson-status.query.js';
+import type { BranchMoment } from '../results/branch-moment.js';
+import { Freshness, preparedLessonStatuses } from '../results/prepared/read.js';
 
 /**
  * The attendance of classes for the home pages (task 9.4b; `08`, Home pages by role, Tutor and
@@ -88,6 +89,9 @@ export class AttendanceTodayService {
       const today = schoolDateOf(now, branch.time_zone);
       const date = today;
       const weekFrom = mondayOf(date);
+      // Task 9.3b-1: whether each lesson is held, from the prepared lesson facts.
+      const freshness = new Freshness();
+      const moment = { transaction, branchId, timeZone: branch.time_zone, now, today };
 
       const whole = access.permitting.some((one) => WHOLE_ROLES.includes(one.role));
       const superAdmin = access.permitting.some((one) => one.role === 'super_admin');
@@ -98,22 +102,23 @@ export class AttendanceTodayService {
       );
       let classQuery = classesOn(transaction, branchId, date);
       if (!whole) {
-        if (own.size === 0) return empty(date, weekFrom, await thresholdOf(transaction, branchId));
+        if (own.size === 0) {
+          return empty(date, weekFrom, await thresholdOf(transaction, branchId), freshness);
+        }
         classQuery = classQuery.where('classes.id', 'in', [...own]);
       }
       const classes = (await classQuery.execute()).sort(
         (a, b) => a.grade - b.grade || a.name.localeCompare(b.name, 'ru') || (a.id < b.id ? -1 : 1),
       );
       const threshold = await thresholdOf(transaction, branchId);
-      if (classes.length === 0) return empty(date, weekFrom, threshold);
+      if (classes.length === 0) return empty(date, weekFrom, threshold, freshness);
 
       const cells = await cellsOf(
-        transaction,
-        branchId,
+        moment,
         classes.map((one) => one.id),
         weekFrom,
         date,
-        now,
+        freshness,
       );
       const exempt = await exemptionMarksOf(transaction, [
         ...new Set(cells.map((one) => one.lesson_id)),
@@ -190,6 +195,7 @@ export class AttendanceTodayService {
         threshold,
         total: shown(dailyAttendance(cells.filter((row) => row.lesson_date === date).map(cellOf))),
         classes: answer,
+        prepared: freshness.stamp,
       });
     });
   }
@@ -216,9 +222,21 @@ async function thresholdOf(transaction: Transaction, branchId: string): Promise<
   return row?.attendance_percent ?? DEFAULT_ATTENDANCE_PERCENT;
 }
 
-function empty(date: string, weekFrom: string, threshold: number): AttendanceToday {
+function empty(
+  date: string,
+  weekFrom: string,
+  threshold: number,
+  freshness: Freshness,
+): AttendanceToday {
   const none = shown(dailyAttendance([]));
-  return attendanceTodaySchema.parse({ date, weekFrom, threshold, total: none, classes: [] });
+  return attendanceTodaySchema.parse({
+    date,
+    weekFrom,
+    threshold,
+    total: none,
+    classes: [],
+    prepared: freshness.stamp,
+  });
 }
 
 /**
@@ -227,13 +245,13 @@ function empty(date: string, weekFrom: string, threshold: number): AttendanceTod
  * group on its date and of one of the classes on that date, with the stored mark or none.
  */
 async function cellsOf(
-  transaction: Transaction,
-  branchId: string,
+  moment: BranchMoment,
   classIds: readonly string[],
   from: string,
   to: string,
-  now: Date,
+  freshness: Freshness,
 ): Promise<CellRow[]> {
+  const { transaction, branchId, now } = moment;
   const lessons = await transaction
     .selectFrom('lessons')
     .select('id')
@@ -243,11 +261,10 @@ async function cellsOf(
     .where('starts_at', '<=', now)
     .where('cancel_cause', 'is', null)
     .execute();
-  const statuses = await lessonStatuses(
-    transaction,
-    branchId,
+  const statuses = await preparedLessonStatuses(
+    moment,
     lessons.map((one) => one.id),
-    now,
+    freshness,
   );
   const held = lessons.map((one) => one.id).filter((id) => statuses.get(id)?.held === true);
   if (held.length === 0) return [];
@@ -328,21 +345,20 @@ async function absentNowOf(
 
 /** The branch's attendance of a day, one ratio over the cells of every class (the branch summary). */
 export async function branchAttendanceOn(
-  transaction: Transaction,
-  branchId: string,
+  moment: BranchMoment,
   date: string,
-  now: Date,
+  freshness: Freshness,
 ): Promise<AttendanceFigure> {
+  const { transaction, branchId } = moment;
   // The classes the Head Tutor's total reads too (permission review should-fix 5).
   const classes = await classesOn(transaction, branchId, date).execute();
   if (classes.length === 0) return shown(dailyAttendance([]));
   const cells = await cellsOf(
-    transaction,
-    branchId,
+    moment,
     classes.map((one) => one.id),
     date,
     date,
-    now,
+    freshness,
   );
   const exempt = await exemptionMarksOf(transaction, [
     ...new Set(cells.map((one) => one.lesson_id)),

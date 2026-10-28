@@ -14,6 +14,7 @@ import { statusOfStudentOn } from '../people/students.service.js';
 import { closingOf } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import type { QuarterRef } from './grade-changes.js';
+import { Freshness } from './prepared/read.js';
 import { gradeFiguresOf } from './rating.service.js';
 
 /**
@@ -61,24 +62,31 @@ export class BranchSummaryService {
         .where(sql<boolean>`not staff_out_for_good(staff.id, ${now})`)
         .execute();
 
+      // Task 9.3b-1: the figures from the prepared totals; the answer says how fresh they are.
+      const freshness = new Freshness();
+      const moment = { transaction, branchId, timeZone: branch.time_zone, now, today };
+      const attendanceToday = await branchAttendanceOn(moment, today, freshness);
+      const grades =
+        quarter === null
+          ? []
+          : await gradeFiguresOf(
+              transaction,
+              access,
+              { branchId, timeZone: branch.time_zone, now, today },
+              quarter,
+              freshness,
+            );
       return branchSummarySchema.parse({
         date: today,
         students: students.filter((row) => row.status === 'active').length,
         staff: staff.length,
-        attendanceToday: await branchAttendanceOn(transaction, branchId, today, now),
+        attendanceToday,
         quarter:
           quarter === null
             ? null
             : { id: quarter.id, number: quarter.number, closed: quarter.closed },
-        grades:
-          quarter === null
-            ? []
-            : await gradeFiguresOf(
-                transaction,
-                access,
-                { branchId, timeZone: branch.time_zone, now, today },
-                quarter,
-              ),
+        grades,
+        prepared: freshness.stamp,
       });
     });
   }

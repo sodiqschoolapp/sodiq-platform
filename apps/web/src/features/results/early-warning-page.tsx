@@ -19,6 +19,7 @@ import {
   type ListSearch,
 } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useMayView, useView } from '@/features/access/use-view';
@@ -236,7 +237,18 @@ export function EarlyWarningPage(): React.JSX.Element {
           ) : undefined
         }
       />
-      <div className="grid gap-4">{content}</div>
+      <div className="grid gap-4">
+        {list.data !== undefined && (
+          <PreparedStamp
+            stamp={list.data.prepared}
+            refreshing={list.isFetching}
+            onRefresh={() => {
+              void list.refetch();
+            }}
+          />
+        )}
+        {content}
+      </div>
     </>
   );
 }

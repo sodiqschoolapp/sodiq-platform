@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { journalSubjectSchema, journalUnitSchema } from './journal.js';
 import { RESULT_FLAGS } from './results.js';
@@ -149,6 +150,8 @@ const tenthsSchema = z.int().min(0).max(1000).nullable();
 /** What a list says of its quarter: provisional while open (`08`), "not official" (9.2b). */
 const ratingStateOfListSchema = z.object({
   quarter: ratingQuarterSchema,
+  /** Task 9.3b-1: the prepared totals the list was read from. */
+  prepared: preparedStampSchema,
   provisional: z.boolean(),
   /** The close in force the figures were read from; `null` while provisional. */
   final: z.object({ closedAt: z.iso.datetime(), version: z.int().min(1) }).nullable(),

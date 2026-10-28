@@ -35,6 +35,7 @@ const LIST: EarlyWarningList = {
   quarter: QUARTER,
   quarters: [QUARTER],
   thresholds: THRESHOLDS,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   daysAgoDate: '2026-09-29',
   entries: [
     {

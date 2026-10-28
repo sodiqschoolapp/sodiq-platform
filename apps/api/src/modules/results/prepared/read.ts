@@ -1,0 +1,186 @@
+import type { Fraction, StudentQuarterOutcome } from '@sodiq/calc';
+import { sql } from 'kysely';
+import type { PreparedStamp } from '@sodiq/shared';
+import {
+  lessonStatusFacts,
+  statusOfFacts,
+  type LessonStatusFacts,
+  type LessonStatusRow,
+} from '../../journal/lesson-status.query.js';
+import type { BranchMoment } from '../branch-moment.js';
+import {
+  previousQuarterOf,
+  quarterFigures,
+  workFiguresOf,
+  type JudgedFigures,
+  type QuarterRow,
+} from '../early-warning.service.js';
+import type { QuarterRef } from '../grade-changes.js';
+import { outcomesOf, type Outcomes, type QuarterState } from '../rating.service.js';
+import { freshLessons, freshUnits, schoolInputsOf, type FreshUnit } from './prepared.query.js';
+import { journalsOfYear, type FiguresValue } from './units.js';
+
+/**
+ * The readers of the prepared report totals (task 9.3b-1). Each gives what the reader of today
+ * gives, from the fresh prepared units and, for the units found behind, from source by the same
+ * code (`edge/system-behaviour`: "A page that finds them behind calculates from source and shows
+ * 'updating'"). A `Freshness` collects, for the answer, the oldest preparation used ("updated
+ * at", plan decision 6) and whether any unit was behind.
+ */
+export class Freshness {
+  private oldest: Date | null = null;
+  private behind = false;
+  private inputs: Promise<string> | undefined;
+
+  used(preparedAt: Date): void {
+    if (this.oldest === null || preparedAt < this.oldest) this.oldest = preparedAt;
+  }
+
+  missed(): void {
+    this.behind = true;
+  }
+
+  /** The school-wide inputs as this request's transaction sees them, read once. */
+  schoolInputs(moment: Pick<BranchMoment, 'transaction'>): Promise<string> {
+    this.inputs ??= schoolInputsOf(moment.transaction);
+    return this.inputs;
+  }
+
+  get stamp(): PreparedStamp {
+    return { updatedAt: this.oldest?.toISOString() ?? null, updating: this.behind };
+  }
+}
+
+/** The subjects of the year's journals: every unit of a list over all subjects. */
+async function subjectsOf(moment: BranchMoment, quarter: QuarterRef): Promise<string[]> {
+  const journals = await journalsOfYear(
+    moment.transaction,
+    moment.branchId,
+    quarter.academicYearId,
+  );
+  return [...new Set(journals.map((one) => one.subjectId))].sort();
+}
+
+/** The fresh units of the subjects named, and the subjects behind. */
+async function split(
+  moment: BranchMoment,
+  freshness: Freshness,
+  kind: 'outcomes' | 'figures',
+  quarterId: string,
+  subjectIds: readonly string[],
+): Promise<{ fresh: Map<string, FreshUnit>; behind: string[] }> {
+  const fresh = await freshUnits(moment.transaction, {
+    branchId: moment.branchId,
+    kind,
+    quarterId,
+    unitIds: subjectIds,
+    now: moment.now,
+    schoolInputs: await freshness.schoolInputs(moment),
+  });
+  for (const one of fresh.values()) freshness.used(one.preparedAt);
+  const behind = subjectIds.filter((id) => !fresh.has(id));
+  if (behind.length > 0) freshness.missed();
+  return { fresh, behind };
+}
+
+/** `outcomesOf` of the rating from the prepared units. */
+export async function preparedOutcomes(
+  moment: BranchMoment,
+  quarter: QuarterRef,
+  state: QuarterState,
+  subjectIds: readonly string[] | null,
+  freshness: Freshness,
+): Promise<Outcomes> {
+  const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
+  const { fresh, behind } = await split(moment, freshness, 'outcomes', quarter.id, subjects);
+  const parts: Outcomes[] = [...fresh.values()].map((one) => one.value as Outcomes);
+  if (behind.length > 0) parts.push(await outcomesOf(moment, quarter, state, behind));
+  const byJournal = new Map<string, ReadonlyMap<string, StudentQuarterOutcome>>();
+  const bySubject = new Map<string, ReadonlyMap<string, StudentQuarterOutcome>>();
+  let readLive = false;
+  for (const part of parts) {
+    for (const [id, one] of part.byJournal) byJournal.set(id, one);
+    for (const [id, one] of part.bySubject) bySubject.set(id, one);
+    readLive ||= part.readLive;
+  }
+  return { byJournal, bySubject, readLive };
+}
+
+/**
+ * The early-warning figures of a quarter (`quarterFigures`) and the previous quarter's figures
+ * they are compared with (`workFiguresOf` of that quarter), from the prepared units.
+ */
+export async function preparedFigures(
+  moment: BranchMoment,
+  quarter: QuarterRow,
+  subjectIds: readonly string[] | null,
+  freshness: Freshness,
+): Promise<{
+  figures: Map<string, JudgedFigures>;
+  previous: Map<string, Fraction | null>;
+}> {
+  const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
+  const own = await split(moment, freshness, 'figures', quarter.id, subjects);
+  const figures = new Map<string, JudgedFigures>();
+  for (const one of own.fresh.values()) {
+    for (const [key, value] of (one.value as FiguresValue).figures) figures.set(key, value);
+  }
+  if (own.behind.length > 0) {
+    for (const [key, value] of await quarterFigures(moment, quarter, own.behind)) {
+      figures.set(key, value);
+    }
+  }
+  const previous = new Map<string, Fraction | null>();
+  const before = figures.size === 0 ? null : await previousQuarterOf(moment, quarter);
+  if (before !== null) {
+    const earlier = await split(moment, freshness, 'figures', before.id, subjects);
+    for (const one of earlier.fresh.values()) {
+      for (const [key, value] of (one.value as FiguresValue).work) previous.set(key, value);
+    }
+    if (earlier.behind.length > 0) {
+      for (const [key, value] of await workFiguresOf(moment, before, earlier.behind)) {
+        previous.set(key, value);
+      }
+    }
+  }
+  return { figures, previous };
+}
+
+/** `lessonStatuses` from the prepared facts of each lesson, the status decided at `now`. */
+export async function preparedLessonStatuses(
+  moment: Pick<BranchMoment, 'transaction' | 'branchId' | 'now'>,
+  lessonIds: readonly string[],
+  freshness: Freshness,
+): Promise<Map<string, LessonStatusRow>> {
+  const found = new Map<string, LessonStatusRow>();
+  if (lessonIds.length === 0) return found;
+  const ids = [...new Set(lessonIds.map((id) => id.toLowerCase()))];
+  const fresh = await freshLessons(moment.transaction, {
+    branchId: moment.branchId,
+    lessonIds: ids,
+    now: moment.now,
+    schoolInputs: await freshness.schoolInputs(moment),
+  });
+  for (const [id, one] of fresh) {
+    freshness.used(one.preparedAt);
+    found.set(id, statusOfFacts(one.value as LessonStatusFacts, moment.now));
+  }
+  const behind = ids.filter((id) => !fresh.has(id));
+  if (behind.length > 0) {
+    const read = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
+    // A lesson of no journal, or dated in no quarter, is never prepared: read from source, and not
+    // counted as behind, or the stamp would never clear (code review, should-fix 3).
+    const quarters = (
+      await sql<{ start: string; end: string }>`
+        select start_date::text as start, end_date::text as end from quarters
+        where branch_id = ${moment.branchId} and start_date is not null
+      `.execute(moment.transaction)
+    ).rows;
+    const dated = (date: string) => quarters.some((one) => one.start <= date && date <= one.end);
+    for (const [id, one] of read) {
+      if (one.row.journalId !== null && dated(one.row.date)) freshness.missed();
+      found.set(id, statusOfFacts(one, moment.now));
+    }
+  }
+  return found;
+}
