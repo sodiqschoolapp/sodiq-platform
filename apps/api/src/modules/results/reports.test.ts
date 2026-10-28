@@ -1030,12 +1030,31 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
         moment,
       );
     const monday = await read('2026-10-26T12:00:00+05:00');
+    // A day off on Wednesday 28 October and a vacation from Thursday 29 to Friday 30: three
+    // school days fewer in the quarter (`isSchoolDay` of the branch calendar, decision 13).
+    for (const [name, first, last] of [
+      ['Teachers’ Day', '2026-10-28', '2026-10-28'],
+      ['Autumn vacation', '2026-10-29', '2026-10-30'],
+    ] as const) {
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: c.s.branch,
+          kind: 'day_off',
+          name,
+          first_date: first,
+          last_date: last,
+        })
+        .execute();
+    }
     const tuesday = await read('2026-10-27T12:00:00+05:00');
     const saturday = await read('2026-10-31T12:00:00+05:00');
     const sunday = await read('2026-11-01T12:00:00+05:00');
-    expect(monday?.total).toBeGreaterThan(0);
-    expect(tuesday?.total).toBe(monday?.total);
+    expect(monday?.total).toBeGreaterThan(3);
+    expect(tuesday?.total).toBe((monday?.total ?? 0) - 3);
     expect((tuesday?.passed ?? 0) - (monday?.passed ?? 0)).toBe(1);
+    // From Tuesday to Saturday no school day passes: three days off and a Saturday off.
+    expect(saturday?.passed).toBe(tuesday?.passed);
     // The quarter ends on Saturday 31 October: every school day passed, none after.
     expect(sunday?.passed).toBe(saturday?.passed);
     expect(sunday?.passed).toBe(sunday?.total);

@@ -8,6 +8,7 @@ import {
   UNKNOWN,
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { publishedScene, publishOf } from '../../testing/published-scene.js';
 import { binary } from '../../testing/xlsx-kit.js';
@@ -128,13 +129,71 @@ describe('the timetable load report (task 9.3b-2)', () => {
             [s.otherClass, s.secondSubject, 1, 1],
           ].sort((a, b) => String(a).localeCompare(String(b))),
         );
-        // Two lesson periods ran that week (08:00 and 09:50 on Monday).
-        for (const room of report.rooms) {
-          expect(room.periods).toBe(2);
-          expect(room.percent).toBe(Math.round((room.lessons * 100) / 2));
-        }
+        // Room use is of the lesson slots of the week's day templates (review correction 2): five
+      // school days of three lesson slots, though the week's lessons used only two of them.
+      expect(report.rooms.length).toBeGreaterThan(0);
+      for (const room of report.rooms) {
+        expect(room.periods).toBe(15);
+        expect(room.percent).toBe(Math.round((room.lessons * 100) / 15));
+      }
         // No class of this version has a gap in its day.
         expect(report.freePeriods).toEqual([]);
+      },
+    );
+  });
+
+  // Review correction 1 of the code: `06`, Weekly load, "The teacher's total across branches is
+  // shown ... and compared with the contract load"; `06`, Reports, "A branch's reports count only
+  // what was taught in that branch".
+  it('shows a shared teacher’s total across branches against the contract, and leaves the lessons of the other branch out', async () => {
+    const s = await publishedScene(t, load, { graded: true, secondSubject: true });
+    await t.database.migrator
+      .updateTable('staff')
+      .set({ weekly_lessons: 5 })
+      .where('id', '=', s.teacher.staffId)
+      .execute();
+    // The teacher also works in a second branch, with 4 lessons a week in its published version
+    // and a lesson there on Tuesday 13 October.
+    const other = await t.newBranch();
+    await t.database.migrator
+      .insertInto('staff_branches')
+      .values({ staff_id: s.teacher.staffId, branch_id: other, is_main: false })
+      .execute();
+    const otherYear = await load.classes.year(other);
+    const otherClass = await load.classes.schoolClass(other, otherYear, { grade: 7 });
+    const otherVersion = await load.version(other, otherYear, { startsOn: '2026-10-12' });
+    await load.row({
+      branch_id: other,
+      version_id: otherVersion,
+      class_id: otherClass,
+      subject_id: s.subject,
+      teacher_id: s.teacher.staffId,
+      lessons_per_week: 4,
+    });
+    await load.setVersion(otherVersion, 'published');
+    const cells = await CellsKit.create(t.database.migrator);
+    const elsewhereLesson = await cells.lesson(other, otherYear, otherClass, '2026-10-13');
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ teacher_id: s.teacher.staffId })
+      .where('id', '=', elsewhereLesson)
+      .execute();
+    await as(
+      s.branch,
+      [{ role: 'academic_vice_principal', branchId: s.branch }],
+      async ({ get, post }) => {
+        const report = reportOf(await get(`/api/timetable/reports/load?week=${WEEK}`));
+        // Two lessons here, two planned here, four elsewhere: six against a contract of five.
+        expect(report.teachers.find((one) => one.teacher.id === s.teacher.staffId)).toMatchObject({
+          lessons: 2,
+          planned: 2,
+          elsewhere: 4,
+          total: 6,
+          contract: 5,
+          againstContract: 'over',
+        });
+        const file = await post('/api/timetable/reports/load/export', { week: WEEK });
+        expect(file.status).toBe(200);
       },
     );
   });

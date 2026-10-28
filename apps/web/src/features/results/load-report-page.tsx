@@ -82,11 +82,30 @@ export function LoadReportPage(): React.JSX.Element {
   const shape = useMemo((): { headers: string[]; lines: Line[] | undefined } => {
     if (view === 'teachers') {
       return {
-        headers: ['teacher', 'lessons', 'planned', 'elsewhere', 'contract', 'invigilations'],
+        headers: [
+          'teacher',
+          'lessons',
+          'planned',
+          'elsewhere',
+          'total',
+          'contract',
+          'againstContract',
+          'invigilations',
+        ],
         lines: data?.teachers.map((one) => ({
           id: one.teacher.id,
           name: one.vacancy ? `${one.teacher.name} · ${k('vacancy')}` : one.teacher.name,
-          cells: [one.lessons, one.planned, one.elsewhere, one.contract, one.invigilations],
+          cells: [
+            one.lessons,
+            one.planned,
+            one.elsewhere,
+            one.total,
+            one.contract,
+            one.againstContract === null
+              ? null
+              : t(`results.reports.load.contractStates.${one.againstContract}`),
+            one.invigilations,
+          ],
         })),
       };
     }

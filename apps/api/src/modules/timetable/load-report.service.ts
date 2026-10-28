@@ -11,7 +11,13 @@ import {
   type LoadReport,
   type LoadReportQuery,
 } from '@sodiq/shared';
-import { addDays, checkedPlacements, checkTimetable, mondayOf } from '@sodiq/timetable-rules';
+import {
+  addDays,
+  checkedPlacements,
+  checkTimetable,
+  dayOn,
+  mondayOf,
+} from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { writeSheets, XlsxFile, type Cell, type Sheet } from '../../http/xlsx.js';
@@ -19,6 +25,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { staffNames } from '../journal/journal-grid.query.js';
+import { calendarOf } from '../plans/plan-request-read.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { TimetablePattern } from './pattern.service.js';
 import { Timetable } from './timetable.service.js';
@@ -39,8 +46,12 @@ import { dateText } from './views-file.js';
  *   on the week's first school day, the load rows of the other branches (`teacher_load_elsewhere`,
  *   their published versions only) and the contract (`staff.weekly_lessons`; `06`, Weekly load).
  * - Invigilations are counted apart, per teacher, and count for nothing (`edge/timetable`, Exams).
- * - Room use (build decision): the room's lessons of the week over the lesson periods the branch
- *   ran that week (each date and start with a lesson), as a percent from `packages/calc`.
+ * - The total across branches (`06`, Weekly load: "shown ... and compared with the contract
+ *   load"): this branch's planned load and the other branches', against the contract.
+ * - Room use (review correction 2 of the code): the room's lessons of the week over the lesson
+ *   slots of the week's day templates: on each school day, the most lesson slots that the template
+ *   in force of any grade of the branch holds (`dayOn`, `day_template_slots`), as a percent from
+ *   `packages/calc`.
  * - Free periods: the rule engine's `class_free_period` over the version in force (`06`, Rules;
  *   `CLAUDE.md`, one rule engine for the timetable), as the conflict panel counts it.
  *
@@ -123,7 +134,9 @@ export class LoadReports {
           c.lessons,
           c.planned,
           c.elsewhere,
+          c.total,
           c.contract,
+          c.againstContract,
           c.invigilations,
           c.vacancy,
         ],
@@ -132,7 +145,9 @@ export class LoadReports {
           row.lessons,
           row.planned,
           row.elsewhere,
+          row.total,
           row.contract,
+          row.againstContract === null ? null : texts.contract[row.againstContract],
           row.invigilations,
           row.vacancy ? c.vacancy : null,
         ]),
@@ -316,7 +331,7 @@ export class LoadReports {
     // Classes and groups against the load.
     const classRows = await transaction
       .selectFrom('classes')
-      .select(['id', 'grade', 'name'])
+      .select(['id', 'grade', 'name', 'academic_year_id'])
       .where('branch_id', '=', branchId)
       .execute();
     const classOf = new Map(
@@ -364,8 +379,12 @@ export class LoadReports {
     };
     for (const one of ownLessons) unit(one).lessons += 1;
     for (const one of ownRows) unit(one).load += one.lessons_per_week;
-    // Rooms over the lesson periods of the week.
-    const periods = new Set(lessons.map((one) => new Date(one.starts_at).toISOString())).size;
+    // Rooms over the lesson slots of the week's day templates.
+    const periods = await lessonSlotsOf(transaction, branchId, week, [
+      ...new Set(
+        classRows.filter((one) => one.academic_year_id === year?.id).map((one) => one.grade),
+      ),
+    ]);
     const roomUse = new Map<string, number>();
     for (const one of lessons) {
       if (one.room_id !== null) roomUse.set(one.room_id, (roomUse.get(one.room_id) ?? 0) + 1);
@@ -420,6 +439,11 @@ export class LoadReports {
           planned: planned.get(id) ?? 0,
           elsewhere: elsewhere.get(id) ?? 0,
           contract: staffOf.get(id)?.weekly_lessons ?? null,
+          total: (planned.get(id) ?? 0) + (elsewhere.get(id) ?? 0),
+          againstContract: againstContract(
+            (planned.get(id) ?? 0) + (elsewhere.get(id) ?? 0),
+            staffOf.get(id)?.weekly_lessons ?? null,
+          ),
           invigilations: invigilations.get(id) ?? 0,
         }))
         .sort(
@@ -464,4 +488,53 @@ export class LoadReports {
       freePeriods,
     });
   }
+}
+
+/** The total across branches against the contract; `null` with no contract recorded. */
+const againstContract = (
+  total: number,
+  contract: number | null,
+): 'under' | 'equal' | 'over' | null =>
+  contract === null ? null : total < contract ? 'under' : total > contract ? 'over' : 'equal';
+
+/**
+ * The lesson slots of a week (review correction 2): on each school day, the most lesson slots that
+ * the day template in force of any of the grades holds (`dayOn` of the branch calendar, the
+ * template's version on the date, its `lesson` slots).
+ */
+async function lessonSlotsOf(
+  transaction: Transaction,
+  branchId: string,
+  week: string,
+  grades: readonly number[],
+): Promise<number> {
+  const settings = await calendarOf(transaction, branchId);
+  const versions = (
+    await sql<{ template: string; from: string; until: string | null; lessons: number }>`
+      select v.day_template_id as template, v.valid_from::text as from,
+        v.valid_until::text as until,
+        (select count(*) from day_template_slots s join slot_types k on k.id = s.slot_type_id
+          where s.version_id = v.id and k.kind = 'lesson')::int as lessons
+      from day_template_versions v
+      where v.branch_id = ${branchId}
+    `.execute(transaction)
+  ).rows;
+  let slots = 0;
+  for (let index = 0; index < 7; index += 1) {
+    const date = addDays(week, index);
+    let most = 0;
+    for (const grade of grades) {
+      const day = dayOn(grade, date, settings);
+      if (!day.lessons) continue;
+      const version = versions.find(
+        (one) =>
+          one.template === day.dayTemplateId &&
+          one.from <= date &&
+          (one.until === null || date < one.until),
+      );
+      most = Math.max(most, version?.lessons ?? 0);
+    }
+    slots += most;
+  }
+  return slots;
 }

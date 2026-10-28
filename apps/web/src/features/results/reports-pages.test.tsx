@@ -125,6 +125,8 @@ const LOAD: LoadReport = {
       planned: 18,
       elsewhere: 2,
       contract: 20,
+      total: 20,
+      againstContract: 'equal',
       invigilations: 1,
     },
   ],
@@ -236,7 +238,18 @@ describe('the reports of 08 (task 9.3b-2)', () => {
   it('shows each list of the load report: the teachers, the rooms and the free periods', async () => {
     open(VICE, '/results/load?week=2026-10-12');
     await waitFor(() => {
-      expect(rowsOf()).toEqual([['Karimova Malika', '17', '18', '2', '20', '1']]);
+      expect(rowsOf()).toEqual([
+        [
+          'Karimova Malika',
+          '17',
+          '18',
+          '2',
+          '20',
+          '20',
+          en.results.reports.load.contractStates.equal,
+          '1',
+        ],
+      ]);
     });
     fireEvent.click(screen.getByRole('radio', { name: en.results.reports.load.rooms }));
     await waitFor(() => {

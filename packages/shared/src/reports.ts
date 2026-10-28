@@ -356,6 +356,10 @@ export const loadReportSchema = z.object({
       elsewhere: z.int().min(0),
       /** `staff.weekly_lessons`; `null` when not recorded. */
       contract: z.int().min(0).nullable(),
+      /** `06`, Weekly load: this branch's planned load and the other branches'. */
+      total: z.int().min(0),
+      /** The total against the contract; `null` with no contract recorded. */
+      againstContract: z.enum(['under', 'equal', 'over']).nullable(),
       /** Invigilations of the week, apart from lessons and counting for nothing. */
       invigilations: z.int().min(0),
     }),
@@ -369,7 +373,7 @@ export const loadReportSchema = z.object({
       load: z.int().min(0),
     }),
   ),
-  /** `06`: "room use in percent" (build decision: of the branch's lesson periods of the week). */
+  /** `06`: "room use in percent": of the lesson slots of the week's day templates. */
   rooms: z.array(
     z.object({
       room: namedSchema,

@@ -59,6 +59,8 @@ export interface ReportExportTexts {
     readonly planned: string;
     readonly elsewhere: string;
     readonly contract: string;
+    readonly total: string;
+    readonly againstContract: string;
     readonly invigilations: string;
     readonly vacancy: string;
     readonly subject: string;
@@ -74,6 +76,7 @@ export interface ReportExportTexts {
     readonly no_result: string;
   };
   readonly total: string;
+  readonly contract: { readonly under: string; readonly equal: string; readonly over: string };
   readonly fileNames: {
     readonly attendance: string;
     readonly table: string;
@@ -134,6 +137,8 @@ const en: ReportExportTexts = {
     planned: 'Planned load',
     elsewhere: 'Other branches',
     contract: 'Contract',
+    total: 'Total across branches',
+    againstContract: 'Against the contract',
     invigilations: 'Invigilations',
     vacancy: 'Vacancy',
     subject: 'Subject',
@@ -145,6 +150,7 @@ const en: ReportExportTexts = {
   },
   states: { exempt: 'Exempt', not_assessed: 'Not assessed', no_result: 'No result' },
   total: 'Total',
+  contract: { under: 'Under', equal: 'Equal', over: 'Over' },
   fileNames: {
     attendance: 'attendance',
     table: 'results-table',
@@ -205,6 +211,8 @@ const ru: ReportExportTexts = {
     planned: 'Плановая нагрузка',
     elsewhere: 'Другие филиалы',
     contract: 'По договору',
+    total: 'Всего по филиалам',
+    againstContract: 'По сравнению с договором',
     invigilations: 'Дежурства на экзаменах',
     vacancy: 'Вакансия',
     subject: 'Предмет',
@@ -216,6 +224,7 @@ const ru: ReportExportTexts = {
   },
   states: { exempt: 'Освобождён', not_assessed: 'Не аттестован', no_result: 'Нет результата' },
   total: 'Итого',
+  contract: { under: 'Меньше', equal: 'Равно', over: 'Больше' },
   fileNames: {
     attendance: 'poseshchaemost',
     table: 'tablitsa-rezultatov',
@@ -276,6 +285,8 @@ const uz: ReportExportTexts = {
     planned: 'Rejadagi yuklama',
     elsewhere: 'Boshqa filiallar',
     contract: 'Shartnoma boʻyicha',
+    total: 'Barcha filiallar boʻyicha jami',
+    againstContract: 'Shartnomaga nisbatan',
     invigilations: 'Imtihon navbatchiligi',
     vacancy: 'Vakansiya',
     subject: 'Fan',
@@ -287,6 +298,7 @@ const uz: ReportExportTexts = {
   },
   states: { exempt: 'Ozod', not_assessed: 'Baholanmagan', no_result: 'Natija yoʻq' },
   total: 'Jami',
+  contract: { under: 'Kam', equal: 'Teng', over: 'Koʻp' },
   fileNames: {
     attendance: 'davomat',
     table: 'natijalar-jadvali',
