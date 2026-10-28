@@ -872,6 +872,31 @@ function checkOtherDrafts(placements: readonly Placement[], facts: Facts, result
   }
 }
 
+/**
+ * The keys by which a rule of `checkTimetable` reads placements together
+ * (task 10.1, the owner's answer 5): the functions `teachersOf` (invigilators
+ * included) and `roomsOf` (exam rooms and shared rooms included), and the
+ * fields `classIds`, `studentIds`, `loadRowId`, `blockId` and `doublePairId`
+ * of `Placement`. Every result that names a placement comes from a group of
+ * placements that all share one of these keys with it (`checkDoubles`'s key,
+ * the pair then its row or unit, is covered by `doublePairId` alone), or from
+ * that placement and the facts. A rule that reads placements together by
+ * another key must widen this list: the property test of `check.test.ts`
+ * compares the narrowed check with the full one.
+ */
+const NEIGHBOUR_KEYS: readonly ((one: Placement) => readonly (string | null)[])[] = [
+  (one) => teachersOf(one).map((id) => `teacher|${id}`),
+  (one) => roomsOf(one).map((id) => `room|${id}`),
+  (one) => one.classIds.map((id) => `class|${id}`),
+  (one) => one.studentIds.map((id) => `student|${id}`),
+  (one) => [one.loadRowId === null ? null : `row|${one.loadRowId}`],
+  (one) => [one.blockId === null ? null : `block|${one.blockId}`],
+  (one) => [one.doublePairId === null ? null : `pair|${one.doublePairId}`],
+];
+
+const neighbourKeysOf = (one: Placement) =>
+  NEIGHBOUR_KEYS.flatMap((keys) => keys(one)).filter((key) => key !== null);
+
 /** Every blocked rule and warning of the placements, in `RULE_ORDER`. */
 export function checkTimetable(
   placements: readonly Placement[],
@@ -915,6 +940,13 @@ export function checkCandidate(
  * The results that name any of several placements placed together among the
  * others (replacing those of the same ids): a block of several lessons, or the
  * two blocks of a swap (task 5.4a, decision 5).
+ *
+ * Task 10.1 (the owner's answer 5: the drag check under 0.2 s): only the
+ * candidates and the others that share a key of `NEIGHBOUR_KEYS` with one of
+ * them are checked, in their order, so the results and their order are those
+ * of the whole timetable. One difference: a placement outside that
+ * neighbourhood whose fact is missing no longer throws in `need`; every route
+ * and the grid build complete facts.
  */
 export function checkCandidates(
   placements: readonly Placement[],
@@ -923,7 +955,9 @@ export function checkCandidates(
   options: CheckOptions = {},
 ): RuleResult[] {
   const ids = new Set(candidates.map((one) => one.id));
-  const others = placements.filter((one) => !ids.has(one.id));
+  const keys = new Set(candidates.flatMap(neighbourKeysOf));
+  const near = (one: Placement) => neighbourKeysOf(one).some((key) => keys.has(key));
+  const others = placements.filter((one) => !ids.has(one.id) && near(one));
   return checkTimetable([...others, ...candidates], facts, options).filter((result) =>
     result.lessonIds.some((id) => ids.has(id)),
   );

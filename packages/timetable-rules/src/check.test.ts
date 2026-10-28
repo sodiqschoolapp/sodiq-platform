@@ -1,6 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { checkCandidate, checkTeacherTime, checkTimetable, overlappingPairs } from './check.js';
+import {
+  checkCandidate,
+  checkCandidates,
+  checkTeacherTime,
+  checkTimetable,
+  overlappingPairs,
+} from './check.js';
 import { dayTimes, type DaySlotInput } from './day.js';
 import type {
   EngineDay,
@@ -11,6 +17,7 @@ import type {
   Placement,
 } from './placement.js';
 import { slotStatus, type RuleCode, type RuleResult } from './rules.js';
+import { arbitrarySchool, type SchoolCase } from './testing/school-arbitrary.js';
 
 // Task 5.2, pull request #109: every rule of docs/spec/06-timetable.md, Rules,
 // with a passing and a failing case. Invented names only.
@@ -1660,5 +1667,155 @@ describe('checkTeacherTime', () => {
     expect(
       checkTeacherTime([], tutorLesson({ teacherIds: ['nobody'], roomId: 'closed' }), () => 0),
     ).toEqual([]);
+  });
+});
+
+// Task 10.1 (the owner's answer 5): `checkCandidates` checks only the
+// candidates and the placements that share a key with one of them. The full
+// check filtered to the candidates is the reference.
+describe('the narrowed candidate check (task 10.1)', () => {
+  const full = (school: SchoolCase) => {
+    const ids = new Set(school.candidates.map((one) => one.id));
+    const others = school.placements.filter((one) => !ids.has(one.id));
+    return checkTimetable([...others, ...school.candidates], school.facts, school.options).filter(
+      (result) => result.lessonIds.some((id) => ids.has(id)),
+    );
+  };
+
+  // Every rule built from a group of placements, so the property can fail.
+  const GROUP_RULES: readonly RuleCode[] = [
+    'teacher_double',
+    'room_double',
+    'room_shared_full',
+    'room_shared_capacity',
+    'class_double',
+    'student_double',
+    'split_apart',
+    'double_apart',
+    'double_not_allowed',
+    'travel_time',
+    'travel_time_not_set',
+    'teacher_week_load',
+    'teacher_day_load',
+    'class_day_load',
+    'subject_twice',
+    'class_free_period',
+    'load_mismatch',
+    'other_draft',
+  ];
+
+  for (const mode of ['pattern', 'dated'] as const) {
+    it(`equals the full check filtered to the candidates, in order (${mode})`, () => {
+      const reached = new Set<RuleCode>();
+      fc.assert(
+        fc.property(arbitrarySchool(mode), (school) => {
+          const expected = full(school);
+          for (const result of expected) reached.add(result.rule);
+          expect(
+            checkCandidates(school.placements, school.facts, school.candidates, school.options),
+          ).toEqual(expected);
+        }),
+        { numRuns: 1500 },
+      );
+      const missed = GROUP_RULES.filter(
+        (rule) => !reached.has(rule) && !(mode === 'dated' && rule === 'load_mismatch'),
+      );
+      expect(missed).toEqual([]);
+    });
+  }
+});
+
+// Task 10.1: a result that names the candidate through each key, with an
+// unrelated lesson elsewhere left out of the narrowed check.
+describe('the narrowed candidate check, named cases (task 10.1)', () => {
+  const far = () =>
+    place({ classId: '9a', teacherIds: ['t3'], roomId: 'r2', day: '2', blockId: 'far' });
+  const rules = (others: Placement[], candidate: Placement, extra: Partial<Facts> = {}) =>
+    codes(checkCandidate([...others, far()], facts(extra), candidate));
+
+  it('a student of a group in two lessons at once', () => {
+    const group = place({ classId: null, groupId: '7m1', classIds: ['7a'], studentIds: ['s1'] });
+    const other = place({ classId: '7b', teacherIds: ['t2'], roomId: 'r2', studentIds: ['s1'] });
+    expect(rules([other], { ...group, teacherIds: ['t3'] })).toContain('student_double');
+  });
+
+  it('a double pair apart', () => {
+    const first = place({ doublePairId: 'pair', ...L1 });
+    const second = place({ doublePairId: 'pair', ...L3, blockId: 'other' });
+    expect(rules([second], first)).toContain('double_apart');
+  });
+
+  it('a block part in another slot', () => {
+    const half = place({ blockId: 'split', classId: null, groupId: '7m1', classIds: ['7a'] });
+    const other = place({
+      blockId: 'split',
+      classId: null,
+      groupId: '7m2',
+      classIds: ['7a'],
+      studentIds: [],
+      teacherIds: ['t2'],
+      roomId: 'r2',
+      ...L3,
+    });
+    expect(rules([other], half)).toContain('split_apart');
+  });
+
+  it('travel to a busy-elsewhere lesson', () => {
+    const away = place({ branchId: B, fixed: true, classId: '9a', roomId: 'r2', ...L2 });
+    expect(rules([away], place({ ...L1 }))).toContain('travel_time');
+  });
+
+  it('a shared room over its lessons and its capacity', () => {
+    const gym = (classId: string, id: string) =>
+      place({ id, classId, roomId: 'gym', teacherIds: [id] });
+    const one = gym('7b', 't2');
+    const two = gym('9a', 't3');
+    const result = rules([one, two], place({ roomId: 'gym' }));
+    expect(result).toContain('room_shared_full');
+    expect(result).toContain('room_shared_capacity');
+  });
+
+  it("an exam's room", () => {
+    const lessonInRoom = place({ classId: '9a', teacherIds: ['t3'], roomId: 'r2', ...L2 });
+    expect(rules([lessonInRoom], exam({ teacherIds: ['t2'] }))).toContain('room_double');
+  });
+
+  it("the teacher's week across days", () => {
+    const busy = (day: string) => place({ day, classId: '7b', roomId: 'r2' });
+    const limited = new Map(facts().teachers).set('t1', teacher('t1', { weeklyLessons: 2 }));
+    expect(rules([busy('2'), busy('3')], place({ day: '4' }), { teachers: limited })).toContain(
+      'teacher_week_load',
+    );
+  });
+
+  it("the class's day: its load, a subject twice and a free period", () => {
+    const of7a = (slot: { start: number; end: number }, teacherId: string) =>
+      place({ ...slot, teacherIds: [teacherId], roomId: `room-${teacherId}`, subjectId: 'math' });
+    const result = codes(
+      checkCandidate(
+        [of7a(L1, 't2'), of7a(L4, 't3'), far()],
+        facts({
+          classDailyLessons: () => 2,
+          rooms: new Map([
+            ...facts().rooms,
+            ['room-t1', room('room-t1')],
+            ['room-t2', room('room-t2')],
+            ['room-t3', room('room-t3')],
+          ]),
+        }),
+        of7a(L2, 't1'),
+      ),
+    );
+    expect(result).toEqual(
+      expect.arrayContaining(['class_day_load', 'subject_twice', 'class_free_period']),
+    );
+  });
+
+  it("a load row's count", () => {
+    const row = { id: 'row', lessonsPerWeek: 1, deliberatelyShort: false, doubleLessons: true };
+    const placed = place({ loadRowId: 'row', day: '3', blockId: 'other' });
+    expect(rules([placed], place({ loadRowId: 'row' }), { loadRows: [row] })).toContain(
+      'load_mismatch',
+    );
   });
 });
