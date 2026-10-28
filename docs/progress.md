@@ -13,7 +13,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Source maps**: `@sentry/vite-plugin` in the web build when the token is given (a Render Secret File in the image build); maps never served.
 - `docs/monitoring.md`: the owner's setup in order and what to do at each alert.
 
-Left out: the Monitoring branch, the check, Telegram, the owner's daily report, a read-only backup login (10.2b's From lines); the first run of the Backup workflow and the first restore drill (the owner).
+Left out: the Monitoring branch, the check, Telegram, the owner's daily report, a read-only backup login (10.2b's From lines); the first run of the Backup workflow and the first restore drill (the owner); a server rule for the 0.2 s move check (the check runs in the browser).
 
 The next sessions must know:
 
