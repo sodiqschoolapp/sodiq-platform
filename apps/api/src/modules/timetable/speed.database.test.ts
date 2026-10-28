@@ -284,13 +284,20 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         target: number,
         work: () => Promise<{ status: number; body: unknown }>,
       ) => {
-        const runs = await timed(size.repeats, async () => {
+        const checked = async () => {
           const response = await work();
           expect(response.status, `${what}: ${JSON.stringify(response.body)}`).toBeLessThan(300);
           return response;
-        });
+        };
+        // A read whose first run is already over five times its target is timed once: its
+        // repeats would hold the run for hours and tell nothing more.
+        const started = performance.now();
+        const first = await checked();
+        const once = performance.now() - started;
+        const runs =
+          once > 5 * target ? { runs: [once], last: first } : await timed(size.repeats, checked);
         timings.push({ what, target: `under ${String(target / 1000)} s`, runs: runs.runs });
-        if (TRIPLE) expect(Math.max(...runs.runs), what).toBeLessThan(target);
+        if (TRIPLE) expect.soft(Math.max(...runs.runs), what).toBeLessThan(target);
         return runs.last;
       };
 
@@ -308,14 +315,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             target: 'under 1 s',
             runs: board.runs,
           });
-          if (TRIPLE) expect(Math.max(...board.runs), 'open the board').toBeLessThan(TARGET.page);
+          if (TRIPLE)
+            expect.soft(Math.max(...board.runs), 'open the board').toBeLessThan(TARGET.page);
           const move = moveCheck(board.last, size.repeats);
           timings.push({
             what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots)`,
             target: 'under 0.2 s',
             runs: move.runs,
           });
-          if (TRIPLE) expect(Math.max(...move.runs), 'check a move').toBeLessThan(TARGET.move);
+          if (TRIPLE) expect.soft(Math.max(...move.runs), 'check a move').toBeLessThan(TARGET.move);
           // The narrowed check equals the full one at every slot of one block (plan, Fixes).
           expect(sameAsFull(board.last), `${branch.name}: narrowed and full check`).toBe(true);
           const vice = asVice(t, branch);
@@ -339,7 +347,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               target: 'under 1 s',
               runs: moves,
             });
-            if (TRIPLE) expect(Math.max(...moves), 'a saved move').toBeLessThan(TARGET.page);
+            if (TRIPLE) expect.soft(Math.max(...moves), 'a saved move').toBeLessThan(TARGET.page);
           }
           const check = await timed(size.repeats, async () => {
             const response = await vice.get(
@@ -588,9 +596,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         load = await runLoad(t.kit.server, users, LOAD);
         for (const [name, times] of Object.entries(load)) {
           expect(times.runs.length, `${name}: ran`).toBeGreaterThan(0);
-          expect(times.failures, `${name}: ${JSON.stringify(times.statuses)}`).toBe(0);
+          // At the large sizes every action is reported before the run fails.
+          (LARGE ? expect.soft : expect)(
+            times.failures,
+            `${name}: ${JSON.stringify(times.statuses)}`,
+          ).toBe(0);
           if (TRIPLE)
-            expect(percentile95(times.runs), `${name} under load`).toBeLessThan(targetOf(name));
+            expect
+              .soft(percentile95(times.runs), `${name} under load`)
+              .toBeLessThan(targetOf(name));
         }
       } catch (error) {
         await write(error instanceof Error ? error.message : String(error));
