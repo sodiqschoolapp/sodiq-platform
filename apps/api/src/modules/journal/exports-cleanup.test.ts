@@ -58,7 +58,10 @@ describe('the cleanup of branch export files', () => {
     asked: string,
     ended: string,
   ): Promise<string> {
-    const { accountId, assignmentId } = requesterOf.get(branch) ?? { accountId: '', assignmentId: '' };
+    const { accountId, assignmentId } = requesterOf.get(branch) ?? {
+      accountId: '',
+      assignmentId: '',
+    };
     t.clock.set(asked);
     const id = await transactions.run([branch], async (transaction) => {
       const row = await transaction

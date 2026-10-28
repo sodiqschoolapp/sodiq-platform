@@ -3642,7 +3642,8 @@ export const uz: Texts<'one' | 'other'> = {
         branch_export: 'Filial jurnallari eksporti soʻraldi',
         branch_export_ready: 'Filial jurnallari eksporti tayyorlandi',
         branch_export_download: 'Filial jurnallari eksporti yuklab olindi',
-        export_file_removed: 'Filialning muddati oʻtgan yoki bajarilmagan eksporti fayllari oʻchirildi',
+        export_file_removed:
+          'Filialning muddati oʻtgan yoki bajarilmagan eksporti fayllari oʻchirildi',
         support_view: 'Yordam koʻrinishi ochildi',
       },
       plan: {
