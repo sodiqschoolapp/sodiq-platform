@@ -46,6 +46,7 @@ export interface AttendanceLesson {
   readonly date: string;
   /** The start in minutes of the day, branch time: the slot's clock time (build decision). */
   readonly start: number;
+  readonly startsAt: Date;
   /** Who the lesson counts for (`lessonsCounted`); `null` for nobody (a vacancy). */
   readonly teacherId: string | null;
   readonly classes: readonly AttendanceClassCounts[];
@@ -81,8 +82,14 @@ export async function attendanceOfJournal(
   const [journal] = await journalRows(transaction, branchId, { journalId });
   if (journal === undefined) return [];
   const lessons = (
-    await sql<{ id: string; lesson_date: string; start: number; teacher_id: string | null }>`
-      select l.id, l.lesson_date::text as lesson_date, l.teacher_id,
+    await sql<{
+      id: string;
+      lesson_date: string;
+      start: number;
+      starts_at: Date;
+      teacher_id: string | null;
+    }>`
+      select l.id, l.lesson_date::text as lesson_date, l.teacher_id, l.starts_at,
         (extract(epoch from (l.starts_at at time zone ${moment.timeZone})::time) / 60)::int as start
       from lessons l
       where l.branch_id = ${branchId} and l.subject_id = ${journal.subjectId}
@@ -164,6 +171,7 @@ export async function attendanceOfJournal(
     subjectId: journal.subjectId,
     date: one.lesson_date,
     start: one.start,
+    startsAt: new Date(one.starts_at),
     teacherId: counted.get(one.id) ?? null,
     classes: [...(byLesson.get(one.id) ?? new Map<string | null, Record<Category, number>>())]
       .map(([classId, counts]) => ({ classId, ...counts }))

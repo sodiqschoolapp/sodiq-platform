@@ -400,6 +400,11 @@ export const AUDIT_ACTION_GROUPS = {
     'plan_report.export',
     // Task 9.3a: a rating list in Excel.
     'rating.export',
+    // Task 9.3b-2: the reports of `08` in Excel.
+    'attendance_report.export',
+    'results_report.export',
+    'discipline_report.export',
+    'load_report.export',
     'building.export',
     'room.export',
     'division.export',
