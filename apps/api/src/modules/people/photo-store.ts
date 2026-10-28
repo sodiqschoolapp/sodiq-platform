@@ -66,8 +66,9 @@ export class NoPhotoStore implements PhotoStore {
     return Promise.reject(new Error('No photo store is configured.'));
   }
 
+  /** No store holds no file: nothing to remove (the daily cleanup never fails for it). */
   deletePrefix(): Promise<void> {
-    return Promise.reject(new Error('No photo store is configured.'));
+    return Promise.resolve();
   }
 }
 

@@ -86,6 +86,8 @@ jobs:
             || { echo "Counting failed; its log is not printed."; exit 1; }
 
       - name: Create the roles the dump names in the proof's server
+        # `bash` (not the default): with pipefail, a failed pg_restore in the pipe fails the step.
+        shell: bash
         run: |
           docker run --rm -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             pg_restore --schema-only --file=- /backup/production.dump \

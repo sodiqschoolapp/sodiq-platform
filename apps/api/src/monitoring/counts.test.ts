@@ -149,6 +149,8 @@ describe('the counts per branch for the alerts', () => {
     const second = await classWith(north, northYear);
     const third = await classWith(north, northYear);
     const fourth = await classWith(north, northYear);
+    const fifth = await classWith(north, northYear);
+    const sixth = await classWith(north, northYear);
     const mark = (lesson: string, student: string, moment: string) =>
       cells.cell(north, { lessonId: lesson, studentId: student, mark: 1, by: account, at: moment });
 
@@ -174,6 +176,25 @@ describe('the counts per branch for the alerts', () => {
     // The second class: marked at 09:01, after the hour.
     const late = await lessonAt(north, northYear, second.classId, TODAY, '08:00', second.teacher);
     await mark(late, second.student, '2026-10-28T09:01:00+05:00');
+    // The fifth class at 09:00:00 exactly: not "by 09:00". The sixth at 08:59:59: in time.
+    const onTheHour = await lessonAt(
+      north,
+      northYear,
+      fifth.classId,
+      TODAY,
+      '08:00',
+      fifth.teacher,
+    );
+    await mark(onTheHour, fifth.student, '2026-10-28T09:00:00+05:00');
+    const justBefore = await lessonAt(
+      north,
+      northYear,
+      sixth.classId,
+      TODAY,
+      '08:00',
+      sixth.teacher,
+    );
+    await mark(justBefore, sixth.student, '2026-10-28T08:59:59+05:00');
     // The third class starts at 09:30: no first-slot lesson by 09:00.
     await lessonAt(north, northYear, third.classId, TODAY, '09:30', third.teacher);
     // The fourth class: its 08:00 lesson is cancelled, so its first lesson is the one at 08:50.
@@ -232,8 +253,8 @@ describe('the counts per branch for the alerts', () => {
     });
 
     expect((await counts(north)).firstSlot).toEqual({
-      lessons: 3,
-      marked: 1,
+      lessons: 5,
+      marked: 2,
       baselineLessons: 2,
       baselineMarked: 1,
     });

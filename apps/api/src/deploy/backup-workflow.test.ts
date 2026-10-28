@@ -86,6 +86,10 @@ describe('the Backup workflow', () => {
       '> "$RUNNER_TEMP/backup/restore.log" 2>&1',
     );
     expect(stepRun('Remove the dump from the runner')).toContain('if: always()');
+    // A pipe fails its step when its first command fails (GitHub's `bash` is `-eo pipefail`).
+    for (const name of ['Create the roles the dump names in the proof']) {
+      expect(stepRun(name)).toContain('shell: bash\n');
+    }
   });
 
   it('proves the dump with owners, grants and policies before it stores it', () => {

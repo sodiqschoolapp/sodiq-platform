@@ -30,4 +30,4 @@ overrides:
   # @sentry/vite-plugin 5.4.1 (task 10.2a, plan review correction 6) takes
   # @sentry/bundler-plugins ^10.76.0; held at 10.76.2 (8 October 2026), a version at
   # least two weeks old, until a newer one has been out that long.
-  '@sentry/bundler-plugins': 10.76.2
+  '@sentry/vite-plugin>@sentry/bundler-plugins': 10.76.2

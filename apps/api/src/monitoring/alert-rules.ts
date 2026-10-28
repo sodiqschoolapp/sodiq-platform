@@ -29,6 +29,8 @@ const SAVE_ROUTES = [
   'POST /api/journal/lessons/:lessonId/attendance',
   'POST /api/journal/lessons/:lessonId/all-present',
   'POST /api/journal/lessons/:lessonId/scores',
+  // The rating exam's entries are journal cells too (task 8.2).
+  'POST /api/journal/journals/:journalId/rating/:quarterId/entries',
 ] as const;
 const PUBLISH_CLOSE_ROUTES = [
   'POST /api/timetable/versions/:id/publish',
@@ -43,6 +45,11 @@ const SEARCH_ROUTES = [
   'GET /api/search/classes',
   'GET /api/search/groups',
 ] as const;
+/*
+ * Left out (`12`, "Check a timetable move for conflicts: under 0.2 seconds"): that check runs in
+ * the browser with the shared rule engine while dragging (task 10.1, `candidateChecker`); no route
+ * of the API answers it, so the server has nothing to time. The save of a move is a page write.
+ */
 const REPORT_ROUTES = [
   'GET /api/results/rating/subject',
   'GET /api/results/rating/class',
@@ -71,11 +78,18 @@ const p95 = (matcher: string, by: string) =>
 const slow = (matcher: string, seconds: number, by = 'route, branch') =>
   `${p95(matcher, by)} > ${String(seconds)} and ${count(matcher, by)} >= 20`;
 
-/** The mean of the same hour on each of the 7 days before. */
+/**
+ * The mean of the same hour over those of the 7 days before that have numbers: each day is
+ * labelled apart, so a day without numbers (the first week, a worker that was down) is left out
+ * of the mean instead of emptying it.
+ */
 const sameHourLastWeek = (series: string) =>
-  `(${[1, 2, 3, 4, 5, 6, 7]
-    .map((day) => `max by (branch) (avg_over_time(${series}[1h] offset ${String(day)}d))`)
-    .join(' + ')}) / 7`;
+  `avg by (branch) (${[1, 2, 3, 4, 5, 6, 7]
+    .map(
+      (day) =>
+        `label_replace(max by (branch) (avg_over_time(${series}[1h] offset ${String(day)}d)), "day", "${String(day)}", "", "")`,
+    )
+    .join(' or ')})`;
 
 /** A heartbeat that stopped: nothing for 10 minutes is 0, which fires. */
 const stopped = (series: string) => `(sum(sum_over_time(${series}[${WINDOW}])) or vector(0)) < 1`;
@@ -175,7 +189,8 @@ export const ALERT_RULES: readonly AlertRule[] = [
   {
     alert: 'FirstSlotFewMarks',
     rule: 'few first-slot attendance marks by 09:00',
-    // 04:00 to 04:30 UTC is 09:00 to 09:30 in Tashkent.
+    // 04:00 to 04:30 UTC is 09:00 to 09:30 in Tashkent: every branch is in Asia/Tashkent today
+    // (the time zone is a setting of the branch; a branch in another zone needs its own window).
     expr:
       'max by (branch) (sodiq_branch_first_slot_lessons) >= 5' +
       ' and max by (branch) (sodiq_branch_first_slot_baseline_lessons) > 0' +

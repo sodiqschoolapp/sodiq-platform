@@ -8,7 +8,7 @@ groups:
     interval: 1m
     rules:
       - alert: CellSavesFailing
-        expr: 'sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores",status="5xx"}[10m])) > 0'
+        expr: 'sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores|/api/journal/journals/:journalId/rating/:quarterId/entries",status="5xx"}[10m])) > 0'
         for: 0m
         labels:
           severity: alert
@@ -16,7 +16,7 @@ groups:
           summary: 'Cell saves answer 500 in branch {{ $labels.branch }}.'
           rule: 'failed cell saves'
       - alert: CellSavesSlow
-        expr: 'histogram_quantile(0.95, sum by (le, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores"}[10m]))) > 0.3 and sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores"}[10m])) >= 20'
+        expr: 'histogram_quantile(0.95, sum by (le, branch) (sum_over_time(sodiq_request_duration_bucket{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores|/api/journal/journals/:journalId/rating/:quarterId/entries"}[10m]))) > 0.3 and sum by (branch) (sum_over_time(sodiq_requests_count{method=~"POST",route=~"/api/journal/lessons/:lessonId/attendance|/api/journal/lessons/:lessonId/all-present|/api/journal/lessons/:lessonId/scores|/api/journal/journals/:journalId/rating/:quarterId/entries"}[10m])) >= 20'
         for: 10m
         labels:
           severity: alert
@@ -24,7 +24,7 @@ groups:
           summary: 'Cell saves take over 0.3 s (95th percentile) in branch {{ $labels.branch }} (12, Speed targets).'
           rule: 'slow cell saves'
       - alert: RefusedSavesJump
-        expr: 'max by (branch) (sodiq_branch_refused_saves) >= 20 and max by (branch) (sodiq_branch_refused_saves) > 3 * (max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 1d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 2d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 3d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 4d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 5d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 6d)) + max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 7d))) / 7'
+        expr: 'max by (branch) (sodiq_branch_refused_saves) >= 20 and max by (branch) (sodiq_branch_refused_saves) > 3 * avg by (branch) (label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 1d)), "day", "1", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 2d)), "day", "2", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 3d)), "day", "3", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 4d)), "day", "4", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 5d)), "day", "5", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 6d)), "day", "6", "", "") or label_replace(max by (branch) (avg_over_time(sodiq_branch_refused_saves[1h] offset 7d)), "day", "7", "", ""))'
         for: 5m
         labels:
           severity: alert

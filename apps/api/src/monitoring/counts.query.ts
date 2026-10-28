@@ -114,7 +114,13 @@ export async function branchCounts(
     failedExports: count(failed?.count),
     checkFinished: seconds(check?.finished_at),
     checkDifferences: count(differences?.count),
-    dailyEnqueued: seconds(daily?.newest === null ? null : new Date(String(daily?.newest))),
+    dailyEnqueued: seconds(
+      daily?.newest instanceof Date
+        ? daily.newest
+        : daily?.newest == null
+          ? null
+          : new Date(String(daily.newest)),
+    ),
     firstSlot: {
       lessons: count(ofDays(true)?.lessons),
       marked: count(ofDays(true)?.marked),

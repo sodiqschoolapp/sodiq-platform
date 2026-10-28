@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { BRANCH_HEADER } from '@sodiq/shared';
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadConfig, type AppConfig } from '../config/config.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../testing/day-templates-kit.js';
 import type { Fetch } from './grafana.js';
@@ -165,9 +165,14 @@ describe('the numbers and logs pushed to Grafana', () => {
     await t.get('/api/setup/slot-types?search=Shahnoza', t.north);
     await request(t.kit.server).get('/api/no-such-route?name=Shahnoza');
     // A line written as the error responses write theirs, through the process's logger.
+    // Its console output is silenced: a test prints nothing but its result.
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const logger = new ShippingLogger();
     logger.error('Request 0199 failed', 'Error: boom\n    at work (file.ts:1:1)', 'Errors');
     new Logger('Jobs').log('a job line');
+    out.mockRestore();
+    err.mockRestore();
     await pushes.shipLogs();
     const logged = logsSent();
     const all = logged.map((line) => line.text).join('\n');
