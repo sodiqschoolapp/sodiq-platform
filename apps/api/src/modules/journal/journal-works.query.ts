@@ -31,6 +31,7 @@ export async function storedWorks(
   lessonIds: readonly string[],
 ): Promise<StoredWork[]> {
   if (lessonIds.length === 0) return [];
+  const ids = [...new Set(lessonIds)];
   const rows = await transaction
     .selectFrom('journal_works')
     .select([
@@ -55,11 +56,11 @@ export async function storedWorks(
           )
           .as('has_numbers'),
     ])
-    .where((eb) =>
-      eb.or([
-        eb('journal_works.lesson_id', 'in', [...lessonIds]),
-        eb('journal_works.source_lesson_id', 'in', [...lessonIds]),
-      ]),
+    // One array parameter, not one per lesson: a statement holds at most
+    // 65,535 parameters, and the closing checklist names every lesson of a
+    // branch's quarter (the Speed run at three times the data, 28 October 2026).
+    .where(
+      sql<boolean>`journal_works.lesson_id = any(${ids}::uuid[]) or journal_works.source_lesson_id = any(${ids}::uuid[])`,
     )
     .orderBy('journal_works.id')
     .execute();
@@ -224,17 +225,19 @@ export async function deliveryMarksOf(
   lessonIds: readonly string[],
 ): Promise<{ notGiven: Set<string>; notDelivered: Set<string> }> {
   if (lessonIds.length === 0) return { notGiven: new Set(), notDelivered: new Set() };
+  // One array parameter, not one per lesson (65,535 parameters a statement).
+  const ids = [...new Set(lessonIds)];
   const [given, delivered] = await Promise.all([
     transaction
       .selectFrom('journal_homework_not_given')
       .select(['lesson_id', 'plan_work_id'])
-      .where('lesson_id', 'in', [...lessonIds])
+      .where(sql<boolean>`lesson_id = any(${ids}::uuid[])`)
       .where('undone_at', 'is', null)
       .execute(),
     transaction
       .selectFrom('journal_lesson_deliveries')
       .select('lesson_id')
-      .where('lesson_id', 'in', [...lessonIds])
+      .where(sql<boolean>`lesson_id = any(${ids}::uuid[])`)
       .where('not_delivered', '=', true)
       .execute(),
   ]);
