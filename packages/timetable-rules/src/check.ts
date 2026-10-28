@@ -885,17 +885,39 @@ function checkOtherDrafts(placements: readonly Placement[], facts: Facts, result
  * compares the narrowed check with the full one.
  */
 const NEIGHBOUR_KEYS: readonly ((one: Placement) => readonly (string | null)[])[] = [
-  (one) => teachersOf(one).map((id) => `teacher|${id}`),
-  (one) => roomsOf(one).map((id) => `room|${id}`),
-  (one) => one.classIds.map((id) => `class|${id}`),
-  (one) => one.studentIds.map((id) => `student|${id}`),
-  (one) => [one.loadRowId === null ? null : `row|${one.loadRowId}`],
-  (one) => [one.blockId === null ? null : `block|${one.blockId}`],
-  (one) => [one.doublePairId === null ? null : `pair|${one.doublePairId}`],
+  teachersOf,
+  roomsOf,
+  (one) => one.classIds,
+  (one) => one.studentIds,
+  (one) => [one.loadRowId],
+  (one) => [one.blockId],
+  (one) => [one.doublePairId],
 ];
 
-const neighbourKeysOf = (one: Placement) =>
-  NEIGHBOUR_KEYS.flatMap((keys) => keys(one)).filter((key) => key !== null);
+/** The keys of the candidates, one set per kind of `NEIGHBOUR_KEYS`. */
+const keySetsOf = (candidates: readonly Placement[]): Set<string>[] =>
+  NEIGHBOUR_KEYS.map((keys) => {
+    const set = new Set<string>();
+    for (const one of candidates) {
+      for (const key of keys(one)) if (key !== null) set.add(key);
+    }
+    return set;
+  });
+
+/** The candidates placed among `others` (those of the candidates' ids left out), and the results that name one. */
+function resultsOfCandidates(
+  others: readonly Placement[],
+  facts: Facts,
+  candidates: readonly Placement[],
+  options: CheckOptions,
+): RuleResult[] {
+  const ids = new Set(candidates.map((one) => one.id));
+  return checkTimetable(
+    [...others.filter((one) => !ids.has(one.id)), ...candidates],
+    facts,
+    options,
+  ).filter((result) => result.lessonIds.some((id) => ids.has(id)));
+}
 
 /** Every blocked rule and warning of the placements, in `RULE_ORDER`. */
 export function checkTimetable(
@@ -954,13 +976,54 @@ export function checkCandidates(
   candidates: readonly Placement[],
   options: CheckOptions = {},
 ): RuleResult[] {
-  const ids = new Set(candidates.map((one) => one.id));
-  const keys = new Set(candidates.flatMap(neighbourKeysOf));
-  const near = (one: Placement) => neighbourKeysOf(one).some((key) => keys.has(key));
-  const others = placements.filter((one) => !ids.has(one.id) && near(one));
-  return checkTimetable([...others, ...candidates], facts, options).filter((result) =>
-    result.lessonIds.some((id) => ids.has(id)),
-  );
+  const sets = keySetsOf(candidates);
+  const near = (one: Placement) =>
+    NEIGHBOUR_KEYS.some((keys, kind) =>
+      keys(one).some((key) => key !== null && sets[kind]?.has(key) === true),
+    );
+  return resultsOfCandidates(placements.filter(near), facts, candidates, options);
+}
+
+/** `checkCandidates` over placements indexed once (`candidateChecker`). */
+export type CandidateCheck = (candidates: readonly Placement[]) => RuleResult[];
+
+/**
+ * `checkCandidates` for many sets of candidates among the same placements:
+ * the placements indexed by every key of `NEIGHBOUR_KEYS` once, so each check
+ * reads only the neighbourhood (task 10.1: the board checks every slot of the
+ * week when a drag starts). The same results as `checkCandidates`, in the
+ * same order: the neighbours in the order of `placements`.
+ */
+export function candidateChecker(
+  placements: readonly Placement[],
+  facts: Facts,
+  options: CheckOptions = {},
+): CandidateCheck {
+  const index = NEIGHBOUR_KEYS.map((keys) => {
+    const map = new Map<string, number[]>();
+    placements.forEach((one, at) => {
+      for (const key of new Set(keys(one))) {
+        if (key === null) continue;
+        const list = map.get(key);
+        if (list === undefined) map.set(key, [at]);
+        else list.push(at);
+      }
+    });
+    return map;
+  });
+  return (candidates) => {
+    const near = new Set<number>();
+    keySetsOf(candidates).forEach((set, kind) => {
+      for (const key of set) for (const at of index[kind]?.get(key) ?? []) near.add(at);
+    });
+    const others = [...near]
+      .sort((a, b) => a - b)
+      .flatMap((at) => {
+        const one = placements[at];
+        return one === undefined ? [] : [one];
+      });
+    return resultsOfCandidates(others, facts, candidates, options);
+  };
 }
 
 /**

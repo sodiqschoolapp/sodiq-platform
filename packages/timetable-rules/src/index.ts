@@ -127,11 +127,13 @@ export {
 } from './pins.js';
 export { tutorAt, type TutorRow } from './tutors.js';
 export {
+  candidateChecker,
   checkCandidate,
   checkCandidates,
   checkTeacherTime,
   checkTimetable,
   overlappingPairs,
+  type CandidateCheck,
 } from './check.js';
 export {
   elsewherePlacement,

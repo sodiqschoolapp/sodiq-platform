@@ -9,6 +9,7 @@ import {
 } from '@sodiq/shared';
 import {
   blockPlacements,
+  candidateChecker,
   checkCandidates,
   checkedPlacements,
   newBlockOf,
@@ -1208,7 +1209,6 @@ export function moveCheck(grid: GridAnswer, repeats: number): { runs: number[]; 
   const blocks: PatternBlock[] = grid.blocks;
   const block = blocks.find((one) => one.lessons.length === 1) ?? blocks[0];
   if (block === undefined) throw new Error('No block to drag.');
-  const placements = checkedPlacements(model, blocks);
   const rows = block.lessons.map((one) => model.rowOf(one.loadRowId));
   const cells: PatternBlock[] = [];
   for (let weekday = 1; weekday <= 7; weekday += 1) {
@@ -1224,9 +1224,11 @@ export function moveCheck(grid: GridAnswer, repeats: number): { runs: number[]; 
       });
     }
   }
+  // Task 10.1: as `useSlotStatuses` does, the placements and their index once
+  // per drag (timed with it), then every slot.
   const checkAll = () => {
-    for (const cell of cells)
-      checkCandidates(placements, model.facts, patternPlacements(model, [cell]));
+    const check = candidateChecker(checkedPlacements(model, blocks), model.facts);
+    for (const cell of cells) check(patternPlacements(model, [cell]));
   };
   checkAll();
   const runs: number[] = [];

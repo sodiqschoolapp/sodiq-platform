@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  candidateChecker,
   checkCandidate,
   checkCandidates,
   checkTeacherTime,
@@ -1714,6 +1715,12 @@ describe('the narrowed candidate check (task 10.1)', () => {
           expect(
             checkCandidates(school.placements, school.facts, school.candidates, school.options),
           ).toEqual(expected);
+          // The index built once for a drag gives the same.
+          const check = candidateChecker(school.placements, school.facts, school.options);
+          expect(check(school.candidates)).toEqual(expected);
+          expect(check(school.candidates.slice(0, 1))).toEqual(
+            full({ ...school, candidates: school.candidates.slice(0, 1) }),
+          );
         }),
         { numRuns: 1500 },
       );
