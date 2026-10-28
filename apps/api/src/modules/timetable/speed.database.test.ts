@@ -583,6 +583,9 @@ async function idsOf(t: DayTemplatesKit, branch: BranchOfRun, teacher: Person | 
   };
 }
 
+/** The Super Admin of the run, signed in with the first branch's people. */
+let superAdmin: Person | undefined;
+
 /**
  * The people of a branch, signed in at the measuring day: an Academic Vice
  * Principal, a Principal, a Head Tutor, a Head Teacher of Mathematics, a Super
@@ -619,7 +622,9 @@ async function peopleOf(t: DayTemplatesKit, branch: BranchOfRun): Promise<Person
   await add('academic_vice_principal');
   await add('principal');
   await add('head_tutor');
-  await add('super_admin');
+  // One Super Admin for the school (at most 3 accounts, `TooManySuperAdminsError`), in every branch.
+  if (superAdmin === undefined) superAdmin = (await add('super_admin')).person;
+  else people.push({ ...superAdmin, branch });
   const mathematics = await migrator
     .selectFrom('subjects')
     .select('id')
