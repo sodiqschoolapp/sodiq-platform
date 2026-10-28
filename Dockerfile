@@ -22,11 +22,20 @@ FROM base AS build
 ARG VITE_SENTRY_DSN
 ARG VITE_SENTRY_ENVIRONMENT
 ARG RENDER_GIT_COMMIT
+# Task 10.2a: where the web app's source maps go (docs/monitoring.md). The token is
+# a Render Secret File mounted as a build secret below, never an argument, so it
+# is in no layer and no history of the image.
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
 COPY . .
 RUN npx -y pnpm@12.8.1 install --frozen-lockfile
 # A declared argument is in the environment of the commands below; one not
-# given stays unset (the image check builds without them).
-RUN npx -y pnpm@12.8.1 turbo run build --filter=@sodiq/api --filter=@sodiq/web
+# given stays unset (the image check builds without them). No source map is ever
+# served: those not uploaded (and deleted by the upload) are deleted here.
+RUN --mount=type=secret,id=sentry-auth-token,required=false \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry-auth-token 2>/dev/null || true)" \
+    npx -y pnpm@12.8.1 turbo run build --filter=@sodiq/api --filter=@sodiq/web \
+    && find apps/web/dist -name '*.map' -delete
 
 # The production dependencies of the API and its workspace packages only, at
 # the repository's own paths (no `pnpm deploy`, which moves the API to the

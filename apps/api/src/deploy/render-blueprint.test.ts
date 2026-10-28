@@ -84,6 +84,13 @@ describe('the production Blueprint', () => {
       ['R2_ACCESS_KEY_ID', [api]],
       ['R2_SECRET_ACCESS_KEY', [api]],
       ['R2_BUCKET', [api]],
+      // Task 10.2a: Grafana on both services, the Sentry organisation of the source maps on the API.
+      ['GRAFANA_METRICS_URL', [api, worker]],
+      ['GRAFANA_METRICS_USER', [api, worker]],
+      ['GRAFANA_LOGS_URL', [api, worker]],
+      ['GRAFANA_LOGS_USER', [api, worker]],
+      ['GRAFANA_TOKEN', [api, worker]],
+      ['SENTRY_ORG', [api]],
     ];
     for (const [secret, services] of secrets) {
       for (const service of services) {
@@ -121,6 +128,9 @@ describe('the production Blueprint', () => {
       expect(service).toContain('- key: WEB_ORIGIN\n        value: https://app.sodiqschool.uz\n');
     }
     expect(api).toContain('- key: VITE_SENTRY_ENVIRONMENT\n        value: production\n');
+    expect(api).toContain('- key: SENTRY_PROJECT\n        value: sodiq-production-web\n');
+    // The token of the source maps is a Secret File, never a variable of the Blueprint.
+    expect(production).not.toContain('key: SENTRY_AUTH_TOKEN');
     expect(api).toContain("- key: TRUST_PROXY\n        value: '1'\n");
     expect(production).not.toContain('app-test');
     expect(production).not.toMatch(/value: test\b/);

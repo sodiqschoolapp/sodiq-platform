@@ -29,11 +29,14 @@ describe('the production image', () => {
   });
 
   it('runs the pnpm of packageManager, with the lockfile frozen', () => {
-    const runs = dockerfile.match(/^RUN npx .*/gm) ?? [];
+    const runs = dockerfile.match(/^(?:RUN | {4})npx .*/gm) ?? [];
 
     expect(runs.length).toBe(3);
     for (const run of runs) {
-      expect(run.startsWith(`RUN npx -y ${rootPackage.packageManager} `), run).toBe(true);
+      expect(
+        run.trimStart().replace(/^RUN /, '').startsWith(`npx -y ${rootPackage.packageManager} `),
+        run,
+      ).toBe(true);
     }
     expect(dockerfile.match(/install --frozen-lockfile/g)).toHaveLength(2);
     expect(dockerfile).toContain('install --frozen-lockfile --prod --filter "@sodiq/api..."');
@@ -67,6 +70,27 @@ describe('the production image', () => {
     for (const argument of ['VITE_SENTRY_DSN', 'VITE_SENTRY_ENVIRONMENT', 'RENDER_GIT_COMMIT']) {
       expect(dockerfile).toContain(`ARG ${argument}\n`);
     }
+  });
+
+  it('uploads the web app’s source maps with a build secret and serves none (task 10.2a)', () => {
+    for (const argument of ['SENTRY_ORG', 'SENTRY_PROJECT']) {
+      expect(dockerfile).toContain(`ARG ${argument}\n`);
+    }
+    // The token is a build secret (a Render Secret File), never an argument or a variable of the image.
+    expect(dockerfile).not.toMatch(/^ARG SENTRY_AUTH_TOKEN/m);
+    expect(dockerfile).not.toMatch(/^ENV .*SENTRY_AUTH_TOKEN/m);
+    expect(dockerfile).toContain(
+      'RUN --mount=type=secret,id=sentry-auth-token,required=false \\\n',
+    );
+    const build = dockerfile.slice(dockerfile.indexOf('RUN --mount=type=secret'));
+    expect(build.slice(0, build.indexOf('\n\n'))).toContain(
+      "turbo run build --filter=@sodiq/api --filter=@sodiq/web \\\n    && find apps/web/dist -name '*.map' -delete",
+    );
+    const turbo = JSON.parse(read('apps/web/turbo.json')) as {
+      tasks: { build: { env: string[]; passThroughEnv: string[] } };
+    };
+    expect(turbo.tasks.build.env).toEqual(expect.arrayContaining(['SENTRY_ORG', 'SENTRY_PROJECT']));
+    expect(turbo.tasks.build.passThroughEnv).toEqual(['SENTRY_AUTH_TOKEN']);
   });
 
   it('never copies a local secret or build output into the image', () => {

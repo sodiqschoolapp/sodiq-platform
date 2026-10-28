@@ -3,7 +3,14 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "env": ["VITE_SENTRY_DSN", "VITE_SENTRY_ENVIRONMENT", "RENDER_GIT_COMMIT"]
+      "env": [
+        "VITE_SENTRY_DSN",
+        "VITE_SENTRY_ENVIRONMENT",
+        "RENDER_GIT_COMMIT",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT"
+      ],
+      "passThroughEnv": ["SENTRY_AUTH_TOKEN"]
     },
     "test": {
       "inputs": ["$TURBO_DEFAULT$", "../api/openapi.generated.json"]
