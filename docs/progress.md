@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 28 October 2026: task 10.1 Speed tests
+
+- `speed.database.test.ts` builds the invented school (`SIZES.triple`: 3 branches of three times a real branch, 240 classes, 6,000 students; doubles in the curriculum), publishes it, fills a year of journals through `Transactions.run` with every trigger on (`speed-data.ts`), adds two exemptions per class, and times every target of `12` through the routes, then 1,000 users for 10 minutes (`load-run.ts`); small on every pull request, `SPEED_SIZE=triple` in the new workflow **Speed** (by hand and Sunday 22:00), `SPEED_SIZE=full` by hand. At triple it fails on a missed target.
+- Fixed: the drag check (`candidateChecker`: the neighbours by the engine's keys, indexed once per drag; 67 to 86 ms for 34 slots at full size, was about 0.85 s); the early-warning list answered 500 on a year of lessons (over 65,535 statement parameters); the Teacher's home card judges only the reader's own journals. Browser target and release-checklist lines added.
+- Measured at the school's own size on 4 CPUs (28 October): saves 50 to 89 ms, a quarter's journal 375 ms, search, setup, people and the board within target; the publish check 2.1 to 2.6 s (accepted, answer 5); a publish 43 to 47 s (target 60 s); pair locks 794 in a publish at `max_locks_per_transaction` 64: fits.
+- **Gaps, with their plan.** (1) The reads worked out on read are 4 to 37 s (early warning, the Vice Principal's and Principal's homes, rating, branch summary, counts per teacher, attendance today): prepared totals, a From line on 9.3b; under 1,000 users they hold the server, so the Speed run stays red until then. (2) Data volume: cells and history do not reach three times the estimate (the filler writes about 2,700 cells a second with the triggers on; one classwork a lesson fits the 5 hours), and dated lessons follow the timetable (about 245,000 against 510,000); re-run with the pilot's real counts. (3) "Open any page" is the server's answer; the download and drawing on Wi-Fi and mobile data are a hand check in the release checklist until the browser tests run on the built app.
+- Left out: the run on the test environment (Neon storage and a secret: the owner); prepared totals (9.3b).
+
+The next sessions must know:
+
+- `checkCandidates` and `candidateChecker` check a candidate among the placements that share a key of `NEIGHBOUR_KEYS` with it; a new rule that reads placements together by another key widens that list, or the property test of `check.test.ts` fails.
+- A statement takes at most 65,535 parameters: a list that grows with students times lessons goes in one array parameter (`= any($1::uuid[])`).
+- The first triple run happens on `main`; read its artifact `speed-report` and fill the Speed numbers into the report of 9.3b.
+
 ## 27 October 2026: demo data for the test environment (asked for by the owner, not a build-plan task)
 
 - The owner asked for "full mock data" on the test environment, to try every feature live. `apps/api/src/testing/demo/` builds an invented school through the real application (the routes, with the clock set to each moment a person would act): setup, staff with accounts for the nine givable roles, students with parents, classes with Tutors, groups and halves, the load, a timetable placed by the seed placer of the real-size run and published, the plans of the first quarter, and every school day's attendance and numbers up to yesterday, with a forgotten day, an unlock request, an exemption and the reasons of absence. `docs/deploy.md`, Demo data, lists what it holds.
