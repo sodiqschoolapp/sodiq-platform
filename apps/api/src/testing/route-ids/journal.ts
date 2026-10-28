@@ -21,6 +21,9 @@ const ABSENCE_LIST = `${AB} > lists the days with a 0 or 3 or a reason, marks a 
 const ABSENCE_FILE = `src/modules/journal/exemption-files.test.ts > answers 404 for another branch’s student, an unknown student or date, a day with no reason or no category, and a file not there`;
 const SUPPORT = `src/modules/journal/support-view.test.ts > lists a total and "not held" of the date’s works, and refuses another branch’s journal, a student with no membership and a date outside the year`;
 const L = 'src/modules/journal/lesson-status.test.ts';
+const DISCIPLINE_ITEMS = `src/modules/journal/discipline-report.test.ts > answers 404 for a teacher outside the counts, unknown or of another branch, and for the teacher of another subject to a Head Teacher`;
+const DEPARTMENT =
+  '03: departments are of the whole school; the report keeps the teachers of the branch of the request';
 const ORPHANS = `${L} > refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was`;
 const NOT_GRADED = `${L} > "Not graded" refuses a work with no total, a locked lesson without an unlock, another teacher, and ids it does not know; a typed number and a clear end it`;
 const E = 'src/modules/journal/journal-exports.test.ts';
@@ -166,6 +169,26 @@ export const JOURNAL_IDS: RouteIds = {
       record: 'department',
       kind: 'school',
       rule: '03: departments are of the whole school; the report keeps the teachers of the branch of the request',
+      refusedIn: [],
+    },
+  ],
+  // Task 9.3b-2: the items behind a count and the file of the counts.
+  'GET /api/journal/discipline/items': [
+    {
+      id: 'query:departmentId',
+      record: 'department',
+      kind: 'school',
+      rule: DEPARTMENT,
+      refusedIn: [],
+    },
+    branch('query:teacherId', 'staff', STAFF, [DISCIPLINE_ITEMS]),
+  ],
+  'POST /api/journal/discipline/export': [
+    {
+      id: 'body:departmentId',
+      record: 'department',
+      kind: 'school',
+      rule: DEPARTMENT,
       refusedIn: [],
     },
   ],

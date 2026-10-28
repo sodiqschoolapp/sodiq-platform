@@ -461,4 +461,31 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
     },
   ],
+  // Task 9.3b-2: the items behind a count and the file of the counts, in the counts' scope.
+  'GET /api/journal/discipline/items': [
+    {
+      roles: ['head_teacher', 'senior_head_teacher'],
+      scope: 'subjects',
+      rule: '08, Journal discipline: own subjects for the Head Teachers (task 8.7, decision 6; task 9.3b-2)',
+      refusedIn: [
+        at(
+          'src/modules/journal/discipline-report.test.ts',
+          'answers 404 for a teacher outside the counts, unknown or of another branch, and for the teacher of another subject to a Head Teacher',
+        ),
+      ],
+    },
+  ],
+  'POST /api/journal/discipline/export': [
+    {
+      roles: ['head_teacher', 'senior_head_teacher'],
+      scope: 'subjects',
+      rule: '08, Journal discipline: own subjects for the Head Teachers (task 8.7, decision 6; task 9.3b-2)',
+      refusedIn: [
+        at(
+          'src/modules/journal/discipline-report.test.ts',
+          'exports the counts per teacher as Excel with the range and the moment, one audit entry, only the reader’s teachers, and refuses a range over 92 days',
+        ),
+      ],
+    },
+  ],
 };

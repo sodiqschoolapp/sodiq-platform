@@ -868,7 +868,9 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
       as(
         browser,
         c.s.branch,
-        given ? [] : ((given = true), [{ role: 'academic_vice_principal' as const, branchId: c.s.branch }]),
+        given
+          ? []
+          : ((given = true), [{ role: 'academic_vice_principal' as const, branchId: c.s.branch }]),
         async ({ get }) => {
           const response = await get(`/api/results/closing?quarterId=${c.q1}`);
           expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);

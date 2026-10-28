@@ -162,6 +162,35 @@ const headViewLines = (tutor: ScopeLine): ScopeLine[] => [
   },
 ];
 
+// The reports of `08` over the journal (task 9.3b-2, decision 1, approved by the owner): the
+// readers table of `reports.service.ts`.
+const REPORTS = 'src/modules/results/reports.test.ts';
+const REPORT_TUTOR = `${REPORTS} > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
+const REPORT_READERS = `${REPORTS} > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor`;
+const REPORT_EXPORT_SCOPE = `${REPORTS} > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing`;
+const REPORTS_RULE =
+  '08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1)';
+const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
+  {
+    roles: ['tutor'],
+    scope: 'class',
+    rule: `${REPORTS_RULE}: Tutor, own classes; subject mastery of own class journals and groups wholly of own classes`,
+    refusedIn: [tests.tutor],
+  },
+  {
+    roles: ['head_teacher'],
+    scope: 'subjects',
+    rule: `${REPORTS_RULE}: Head Teacher, own-subject columns and own subjects`,
+    refusedIn: [tests.heads],
+  },
+  {
+    roles: ['senior_head_teacher'],
+    scope: 'subjects',
+    rule: `${REPORTS_RULE}: Senior Head Teacher, own-subject columns and own subjects`,
+    refusedIn: [tests.heads],
+  },
+];
+
 export const OTHER_SCOPES: RouteScopes = {
   'GET /api/setup/current-period': [
     {
@@ -599,6 +628,37 @@ export const OTHER_SCOPES: RouteScopes = {
       refusedIn: [`${HOME} > refuses a query that names a person (spec review should-fix 4)`],
     },
   ],
+
+  // --- The reports of `08` over the journal (task 9.3b-2, decision 1) ---------------------------
+  'GET /api/results/reports/attendance': [
+    {
+      roles: ['tutor'],
+      scope: 'class',
+      rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
+      refusedIn: [REPORT_TUTOR],
+    },
+  ],
+  'POST /api/results/reports/attendance/export': [
+    {
+      roles: ['tutor'],
+      scope: 'class',
+      rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
+      refusedIn: [REPORT_EXPORT_SCOPE],
+    },
+  ],
+  'GET /api/results/reports/choices': reportLines({ tutor: REPORT_READERS, heads: REPORT_READERS }),
+  'GET /api/results/reports/results-table': reportLines({
+    tutor: REPORT_READERS,
+    heads: REPORT_READERS,
+  }),
+  'GET /api/results/reports/subject-mastery': reportLines({
+    tutor: REPORT_READERS,
+    heads: REPORT_READERS,
+  }),
+  'POST /api/results/reports/export': reportLines({
+    tutor: REPORT_EXPORT_SCOPE,
+    heads: REPORT_EXPORT_SCOPE,
+  }),
 };
 
 function groupLines(test: string): ScopeLine[] {
