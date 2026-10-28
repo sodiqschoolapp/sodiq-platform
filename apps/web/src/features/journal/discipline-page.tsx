@@ -1,15 +1,19 @@
-import type { DisciplineRow } from '@sodiq/shared';
+import type { DisciplineColumn, DisciplineRow } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FailureAlert } from '@/components/failure-alert';
 import { DateField, SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { PreparedStamp } from '@/components/prepared-stamp';
 import { useView } from '@/features/access/use-view';
+import { ExcelButton, useDownload } from '@/features/results/report-parts';
+import { exportDiscipline } from '@/features/results/reports-api';
 import { nameOf } from '@/features/setup/setup-api';
+import { DisciplineItemsDialog } from './discipline-items-dialog';
 import { disciplineQuery } from './journal-api';
 
 export type DisciplineSearch = ListSearch & { from?: string; to?: string; department?: string };
@@ -34,7 +38,7 @@ const localDate = (days: number, fromMonday = false): string => {
   return `${String(at.getFullYear())}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
 };
 
-type Count = Exclude<keyof DisciplineRow, 'teacher'>;
+type Count = DisciplineColumn;
 
 const COUNTS: readonly Count[] = [
   'held',
@@ -64,9 +68,14 @@ export function DisciplinePage(): React.JSX.Element {
   // This week by default (plan: "default this week"), Monday to today.
   const from = search.from ?? localDate(0, true);
   const to = search.to ?? localDate(0);
-  const counts = useQuery(
-    disciplineQuery(branchId, { from, to, departmentId: search.department ?? null }),
-  );
+  const range = { from, to, departmentId: search.department ?? null };
+  const counts = useQuery(disciplineQuery(branchId, range));
+  // Task 9.3b-2: the file of the counts, and the items behind one count.
+  const download = useDownload(() => exportDiscipline(range));
+  const [opened, setOpened] = useState<{
+    teacher: DisciplineRow['teacher'];
+    column: Count;
+  } | null>(null);
   const go = (next: DisciplineSearch, how: 'push' | 'replace' = 'push') => {
     void navigate({ to: '/journal/discipline', search: next, replace: how === 'replace' });
   };
@@ -88,7 +97,23 @@ export function DisciplinePage(): React.JSX.Element {
       ...COUNTS.map((key): Column<DisciplineRow> => ({
         key,
         header: t(`journal.discipline.${key}`),
-        cell: (row) => row[key],
+        cell: (row) =>
+          row[key] === 0 ? (
+            0
+          ) : (
+            <button
+              type="button"
+              className="text-link tabular-nums"
+              aria-label={t('journal.discipline.showItems', {
+                column: t(`journal.discipline.${key}`),
+              })}
+              onClick={() => {
+                setOpened({ teacher: row.teacher, column: key });
+              }}
+            >
+              {row[key]}
+            </button>
+          ),
         sortValue: (row) => row[key],
         numeric: true,
       })),
@@ -103,8 +128,26 @@ export function DisciplinePage(): React.JSX.Element {
           { label: t('home.title'), to: '/' },
           { label: t('journal.page.title'), to: '/journal' },
         ]}
+        actions={
+          <ExcelButton
+            area="journal_discipline"
+            download={download}
+            disabled={counts.data === undefined}
+          />
+        }
       />
+      {opened !== null && (
+        <DisciplineItemsDialog
+          range={range}
+          teacher={opened.teacher}
+          column={opened.column}
+          onClose={() => {
+            setOpened(null);
+          }}
+        />
+      )}
       <div className="grid gap-4">
+        {download.isError && <FailureAlert error={download.error} />}
         {counts.data !== undefined && (
           <PreparedStamp
             stamp={counts.data.prepared}

@@ -83,6 +83,14 @@ import { OrphansPage, orphansSearch } from '@/features/journal/orphans-page';
 import { ClosingPage, closingSearch } from '@/features/results/closing-page';
 import { EarlyWarningPage, earlyWarningSearch } from '@/features/results/early-warning-page';
 import { RatingPage, ratingSearch } from '@/features/results/rating-page';
+import {
+  AttendanceReportPage,
+  attendanceReportSearch,
+} from '@/features/results/attendance-report-page';
+import { LoadReportPage, loadReportSearch } from '@/features/results/load-report-page';
+import { ReportsPage, useMayReport } from '@/features/results/reports-page';
+import { ResultsTablePage, resultsTableSearch } from '@/features/results/results-table-page';
+import { SubjectMasteryPage, subjectMasterySearch } from '@/features/results/subject-mastery-page';
 import { BranchExportsPage, branchExportsSearch } from '@/features/journal/branch-exports-page';
 import { SupportPage, supportSearch } from '@/features/journal/support-page';
 import { ExemptionsPage, exemptionsSearch } from '@/features/journal/exemptions-page';
@@ -445,6 +453,43 @@ const earlyWarningRoute = createRoute({
   component: guarded('early_warning', EarlyWarningPage),
 });
 
+/** The reports of `08`, Analytics (task 9.3b-2). */
+const reportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/reports',
+  component: function Reports() {
+    return useMayReport() ? <ReportsPage /> : <NoAccessPage inLayout />;
+  },
+});
+
+const attendanceReportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/attendance',
+  validateSearch: attendanceReportSearch,
+  component: guarded('attendance_report', AttendanceReportPage),
+});
+
+const resultsTableRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/table',
+  validateSearch: resultsTableSearch,
+  component: guarded('results_reports', ResultsTablePage),
+});
+
+const subjectMasteryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/mastery',
+  validateSearch: subjectMasterySearch,
+  component: guarded('results_reports', SubjectMasteryPage),
+});
+
+const loadReportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/results/load',
+  validateSearch: loadReportSearch,
+  component: guarded('timetable_load', LoadReportPage),
+});
+
 const orphansRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/journal/orphans',
@@ -744,6 +789,11 @@ const routeTree = rootRoute.addChildren([
     disciplineRoute,
     ratingRoute,
     earlyWarningRoute,
+    reportsRoute,
+    attendanceReportRoute,
+    resultsTableRoute,
+    subjectMasteryRoute,
+    loadReportRoute,
     orphansRoute,
     closingRoute,
     branchExportsRoute,

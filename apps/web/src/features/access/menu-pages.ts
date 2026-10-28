@@ -106,7 +106,15 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     shortKey: 'menu.short.results',
     to: '/results/rating',
     icon: MENU_ICONS.results,
-    areas: ['rating', 'early_warning'],
+    // Task 9.3b-2: the reports of `08`; a role that reads none of the above opens them.
+    areas: [
+      'rating',
+      'early_warning',
+      'attendance_report',
+      'results_reports',
+      'timetable_load',
+      'journal_discipline',
+    ],
   },
   // The lesson plans (task 7.1a): the area `plans` of the same name decides who sees it.
   plans: {

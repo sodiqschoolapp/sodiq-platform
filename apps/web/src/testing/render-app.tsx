@@ -161,6 +161,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       check: null,
       canApply: false,
       canEdit: false,
+      schoolDays: null,
       blocking: 0,
       warnings: 0,
       items: [],
