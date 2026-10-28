@@ -1,5 +1,5 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
@@ -76,6 +76,7 @@ const student = (
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [cell(1, [{ score: 12, percent: 40 }], 60), cell(2, [], null), cell(1)],
@@ -543,6 +544,161 @@ describe('a journal', () => {
   it('says so when the quarter has no lessons yet', async () => {
     open({ ...GRID, lessons: [], students: [], bottom: null });
     await screen.findByText(en.journal.page.noLessons);
+  });
+
+  it('opens the grid over the whole window and closes it with Esc or its button (owner, 27 October 2026)', async () => {
+    open(GRID);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.page.fullScreen }));
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-journal-full-screen] [data-journal-grid]'),
+      ).not.toBeNull();
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+    });
+    expect(document.querySelector('[data-journal-grid]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.journal.page.fullScreen }));
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.page.exitFullScreen }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+    });
+  });
+
+  it('hides the columns the person unticks and keeps them hidden on the next visit (owner, 27 October 2026)', async () => {
+    const header = (colId: string) => document.querySelector(`.ag-header-cell[col-id="${colId}"]`);
+    try {
+      open(GRID);
+      await waitFor(() => {
+        expect(header('grade')).not.toBeNull();
+      });
+      expect(header('uid')).not.toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+      const grade = await screen.findByRole('menuitemcheckbox', {
+        name: en.journal.page.columnNames.grade,
+      });
+      expect(grade.getAttribute('aria-checked')).toBe('true');
+      fireEvent.click(grade);
+      fireEvent.click(
+        screen.getByRole('menuitemcheckbox', { name: en.journal.page.columnNames.uid }),
+      );
+      await waitFor(() => {
+        expect(header('grade')).toBeNull();
+      });
+      expect(header('uid')).toBeNull();
+      expect(header('result')).not.toBeNull();
+      expect(window.localStorage.getItem('sodiq.list.journal.hidden')).toBe('["grade","uid"]');
+
+      // Another visit reads the choice back.
+      cleanup();
+      open(GRID);
+      await waitFor(() => {
+        expect(header('result')).not.toBeNull();
+      });
+      expect(header('grade')).toBeNull();
+      expect(header('uid')).toBeNull();
+    } finally {
+      window.localStorage.removeItem('sodiq.list.journal.hidden');
+    }
+  });
+
+  it('brings the grid into view once when the journal opens (owner, 27 October 2026)', async () => {
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    try {
+      open(GRID);
+      await waitFor(() => {
+        expect(document.querySelector('[data-journal-grid]')).not.toBeNull();
+      });
+      await waitFor(() => {
+        expect(scrolled.some((one) => one.querySelector('[data-journal-grid]') !== null)).toBe(
+          true,
+        );
+      });
+      const panelScrolls = () =>
+        scrolled.filter((one) => one.querySelector('[data-journal-grid]') !== null).length;
+      expect(panelScrolls()).toBe(1);
+      // Full screen and back is the same journal: the page is not moved again.
+      fireEvent.click(screen.getByRole('button', { name: en.journal.page.fullScreen }));
+      fireEvent.click(await screen.findByRole('button', { name: en.journal.page.exitFullScreen }));
+      expect(panelScrolls()).toBe(1);
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
+  it('shows each student’s photo, larger when pressed, and the initials without one (owner, 28 October 2026)', async () => {
+    const PIXEL = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==',
+      ),
+      (char) => char.charCodeAt(0),
+    );
+    const [first, second] = GRID.students;
+    if (first === undefined || second === undefined) throw new Error('two students');
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({ language: 'en', assignments: [{ role: 'principal', branchId: NORTH.id }] }),
+        ),
+      [GRID_ROUTE]: () =>
+        json({
+          ...GRID,
+          students: GRID.students.map((one) =>
+            one.id === first.id ? { ...one, photoId: uid(950) } : one,
+          ),
+        }),
+      'GET /api/journal/journals': () => json(LIST),
+      [`GET /api/people/students/${first.id}/photo`]: () =>
+        new Response(new Blob([PIXEL], { type: 'image/png' }), {
+          status: 200,
+          headers: { 'Content-Type': 'image/png' },
+        }),
+    });
+    renderApp(`/journal/${JOURNAL}`, 'en');
+    const photoOf = (id: string) =>
+      document.querySelector(`[row-id="${id}"] [col-id="photo"] [data-student-photo]`);
+    await waitFor(() => {
+      expect(photoOf(first.id)?.querySelector('img')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    // No photo: the initials, nothing to open, and no call for it.
+    expect(photoOf(second.id)?.querySelector('img')).toBeNull();
+    expect(photoOf(second.id)?.textContent).toBe(
+      `${second.firstName.slice(0, 1)}${second.lastName.slice(0, 1)}`.toUpperCase(),
+    );
+    expect(calls.filter((call) => call.route.endsWith('/photo')).map((call) => call.route)).toEqual(
+      [`GET /api/people/students/${first.id}/photo`],
+    );
+    // Pressed: the same photo, larger, in a dialog named by the student.
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: en.journal.grid.photoOpen.replace('{{name}}', `${first.lastName} ${first.firstName}`),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: `${first.lastName} ${first.firstName}`,
+    });
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-student-photo-large]')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    });
+    // Shown by default, and in the column chooser like the other columns.
+    fireEvent.click(screen.getByRole('button', { name: en.journal.entry.close }));
+    fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+    const photoChoice = await screen.findByRole('menuitemcheckbox', {
+      name: en.journal.page.columnNames.photo,
+    });
+    expect(photoChoice.getAttribute('aria-checked')).toBe('true');
   });
 
   it('shows the outline while the journal loads', async () => {

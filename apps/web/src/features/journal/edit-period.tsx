@@ -305,6 +305,8 @@ interface LockRow {
   readonly lock: EditLock;
   readonly request: (reason: string) => Promise<unknown>;
   readonly lessonId: string | null;
+  /** Needs the reader now: a request waiting, an unlock running, a lesson locked incomplete, the rating. */
+  readonly urgent: boolean;
 }
 
 /** The words of a lock for the reader: locked since, unlocked until, or the waiting request. */
@@ -353,6 +355,7 @@ export function EditPeriodPanel({
   const language = i18n.language;
   const [asking, setAsking] = useState<LockRow | null>(null);
   const [correctingOf, setCorrectingOf] = useState<LockRow | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const drafts = useDrafts();
   const withdraw = useMutation({
     mutationFn: (request: { id: string; version: number }) =>
@@ -373,6 +376,10 @@ export function EditPeriodPanel({
         lock: lesson.lock,
         request: (reason: string) => requestLessonUnlock(lesson.id, reason),
         lessonId: lesson.id,
+        urgent:
+          lesson.lock.request !== null ||
+          lesson.lock.window === 'unlocked' ||
+          lesson.status === 'locked_incomplete',
       })),
     ...(grid.rating !== null && shown(grid.rating.lock)
       ? [
@@ -383,10 +390,17 @@ export function EditPeriodPanel({
             request: (reason: string) =>
               requestRatingUnlock(grid.journal.id, grid.quarter.id, reason),
             lessonId: null,
+            urgent: true,
           },
         ]
       : []),
   ];
+  // A long quarter locks dozens of lessons: only the ones that need the reader stay in view;
+  // the plain locked ones, newest first, wait behind one button so the grid is not pushed
+  // down (owner, 27 October 2026: "why do we need this big panel always open").
+  const urgent = rows.filter((row) => row.urgent);
+  const plain = rows.filter((row) => !row.urgent).reverse();
+  const listed = showAll ? [...urgent, ...plain] : urgent;
   if (rows.length === 0 && correcting === null) return null;
   const correctedLabel =
     correcting === null
@@ -399,9 +413,24 @@ export function EditPeriodPanel({
           })();
   return (
     <section className={`${PANEL} grid gap-3`} aria-labelledby="edit-period">
-      <h2 id="edit-period" className={SECTION_TITLE}>
-        {t('journal.locks.title')}
-      </h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 id="edit-period" className={SECTION_TITLE}>
+          {t('journal.locks.title')}
+        </h2>
+        {plain.length > 0 && (
+          <Button
+            variant="ghost"
+            aria-expanded={showAll}
+            onClick={() => {
+              setShowAll((open) => !open);
+            }}
+          >
+            {showAll
+              ? t('journal.locks.hideLocked')
+              : t('journal.locks.showLocked', { count: plain.length })}
+          </Button>
+        )}
+      </div>
       {correcting !== null && correctedLabel !== undefined && (
         <p className="flex flex-wrap items-center gap-3 text-sm" role="status">
           <span className="font-semibold">
@@ -415,46 +444,48 @@ export function EditPeriodPanel({
           </Button>
         </p>
       )}
-      <ul className="grid gap-2 text-sm">
-        {rows.map((row) => (
-          <li key={row.key} className="flex flex-wrap items-center gap-3" data-lock-row={row.key}>
-            <span className="font-semibold">{row.label}</span>
-            <LockState lock={row.lock} />
-            {row.lock.canRequest && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setAsking(row);
-                }}
-              >
-                {t('journal.locks.request')}
-              </Button>
-            )}
-            {row.lock.request !== null && (
-              <Button
-                variant="ghost"
-                disabled={withdraw.isPending}
-                onClick={() => {
-                  if (row.lock.request !== null) withdraw.mutate(row.lock.request);
-                }}
-              >
-                {t('journal.locks.withdraw')}
-              </Button>
-            )}
-            {row.lock.canCorrect &&
-              (correcting === null || correcting.lessonId !== row.lessonId) && (
+      {listed.length > 0 && (
+        <ul className="grid gap-2 text-sm">
+          {listed.map((row) => (
+            <li key={row.key} className="flex flex-wrap items-center gap-3" data-lock-row={row.key}>
+              <span className="font-semibold">{row.label}</span>
+              <LockState lock={row.lock} />
+              {row.lock.canRequest && (
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    setCorrectingOf(row);
+                    setAsking(row);
                   }}
                 >
-                  {t('journal.locks.correct')}
+                  {t('journal.locks.request')}
                 </Button>
               )}
-          </li>
-        ))}
-      </ul>
+              {row.lock.request !== null && (
+                <Button
+                  variant="ghost"
+                  disabled={withdraw.isPending}
+                  onClick={() => {
+                    if (row.lock.request !== null) withdraw.mutate(row.lock.request);
+                  }}
+                >
+                  {t('journal.locks.withdraw')}
+                </Button>
+              )}
+              {row.lock.canCorrect &&
+                (correcting === null || correcting.lessonId !== row.lessonId) && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setCorrectingOf(row);
+                    }}
+                  >
+                    {t('journal.locks.correct')}
+                  </Button>
+                )}
+            </li>
+          ))}
+        </ul>
+      )}
       <FailureAlert error={withdraw.error} />
       {asking !== null && (
         <ReasonDialog

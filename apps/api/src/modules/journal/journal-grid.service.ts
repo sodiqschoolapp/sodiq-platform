@@ -952,6 +952,7 @@ export class JournalGridReader {
         lastName: student.lastName,
         paternalName: student.paternalName,
         uid: student.uid,
+        photoId: student.photoId,
         folded: folded(student.id),
         cells: gridCells,
         quarter: quarterFigures,

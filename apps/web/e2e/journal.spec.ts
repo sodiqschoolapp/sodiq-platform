@@ -80,6 +80,12 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await page.keyboard.press('Enter');
   await expect(cell).toContainText('15');
   await expect(cell).toContainText('75%');
+  // Enter saved the number and moved down to the next student in the same column (owner,
+  // 27 October 2026).
+  const focused = page.locator('.ag-cell-focus');
+  await expect(focused).toHaveAttribute('col-id', column ?? '');
+  const below = await focused.locator('xpath=ancestor::*[@row-id][1]').getAttribute('row-id');
+  expect(below).not.toBe(oktamov);
   // The lesson has no plan item ("No plan"): a classwork is added by hand.
   const before = await page.getByRole('button', { name: /^Work: / }).count();
   // The button under the A of the same lesson; the pinned columns may cover its place on screen,
@@ -123,4 +129,45 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
     .getByRole('radio', { name: en.journal.page.lessonMode, exact: true })
     .check({ force: true });
   await expect(page.locator('[data-lesson-mode] [data-student]')).toHaveCount(3);
+
+  // Opening a journal from the list brings its grid into view, also a second time, when its
+  // data is already in the cache and the page draws before the router's own scroll to the
+  // top (owner, 27 October 2026).
+  const gridInView = async () => {
+    await expect(page.locator('[data-journal-grid]')).toBeVisible();
+    await expect.poll(() => page.evaluate<number>('window.scrollY')).toBeGreaterThan(0);
+    // The box is measured from the top of the window: the grid starts inside it.
+    const box = await page.locator('[data-journal-grid]').boundingBox();
+    expect(box?.y ?? Infinity).toBeLessThan(page.viewportSize()?.height ?? 720);
+  };
+  const openFromList = async () => {
+    await expect(heading(page, en.journal.page.title)).toBeVisible();
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.locator('main tbody tr').first().getByRole('button').first().click();
+    await gridInView();
+  };
+  await page.getByRole('link', { name: en.journal.page.title, exact: true }).click();
+  await openFromList();
+  await page.goBack();
+  await openFromList();
+
+  // Fast entry (owner, 28 October 2026): numbers typed with Enter in one burst land in the
+  // students' rows in turn, each saved, with no "changed by someone else" question. Before,
+  // the redraw after the first save stopped the next edit: a number was lost or went into the
+  // first row again. The classwork's total is 20 since above.
+  const rowOf = async (name: string) =>
+    (await page.locator('.ag-row').filter({ hasText: name }).first().getAttribute('row-id')) ?? '';
+  const ids = [
+    await rowOf('Abdullayeva Lola'),
+    await rowOf('Zokirova Nodira'),
+    await rowOf('Oʻktamov Bekzod'),
+  ];
+  const workCell = (id: string) =>
+    page.locator(`[row-id="${id}"] [col-id="${column ?? ''}"]`).last();
+  await workCell(ids[0] ?? '').click();
+  await page.keyboard.type('7\n9\n8\n');
+  await expect(workCell(ids[0] ?? '')).toContainText('35%');
+  await expect(workCell(ids[1] ?? '')).toContainText('45%');
+  await expect(workCell(ids[2] ?? '')).toContainText('40%');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });

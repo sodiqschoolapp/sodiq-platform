@@ -244,6 +244,12 @@ export const journalStudentSchema = z.object({
   lastName: z.string(),
   paternalName: z.string().nullable(),
   uid: z.string(),
+  /**
+   * The current photo, `null` when there is none (the owner, 28 October 2026: a photo column
+   * in the journal). Only its id: the photo itself is read through the student's photo route,
+   * with its own permission and scope.
+   */
+  photoId: z.uuid().nullable(),
   /** Left or moved before the reference date: the folded section (`07`, Layout). */
   folded: z.boolean(),
   /**

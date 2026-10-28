@@ -53,6 +53,7 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [
@@ -370,12 +371,13 @@ describe('saving journal cells', () => {
         },
       });
       await typeMark(uid(101), FIRST, '3');
+      // Both in one wait: the grid draws the cell again between the two, so the mark read on
+      // its own right after the sign could meet the cell between two drawings (CI, 27 October 2026).
       await waitFor(() => {
-        expect(
-          cellOf(uid(101), `${FIRST}:a`)?.querySelector('[data-save-state="failed"]'),
-        ).not.toBe(null);
+        const cell = cellOf(uid(101), `${FIRST}:a`);
+        expect(cell?.querySelector('[data-save-state="failed"]')).not.toBe(null);
+        expect(cell?.querySelector('[data-mark="3"]')).not.toBeNull();
       });
-      expect(cellOf(uid(101), `${FIRST}:a`)?.querySelector('[data-mark="3"]')).not.toBeNull();
       // The top bar names it (12: No lost work), and leaving asks first.
       expect(screen.getByRole('button', { name: en.unsent.failed })).toBeTruthy();
       const notice = document.querySelector<HTMLElement>('[data-unsent-cells]');

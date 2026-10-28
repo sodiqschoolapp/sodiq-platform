@@ -218,6 +218,24 @@
   html {
     @apply font-sans;
   }
+  /*
+   * Whatever acts on a click shows the hand (owner, 27 October 2026): Tailwind 4 leaves a
+   * button on the arrow. A switched-off control keeps the arrow.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  [role='menuitem']:not([data-disabled]),
+  [role='menuitemcheckbox']:not([data-disabled]),
+  [role='menuitemradio']:not([data-disabled]),
+  [role='option']:not([aria-disabled='true']),
+  select:not(:disabled),
+  summary,
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='file']:not(:disabled) {
+    cursor: pointer;
+  }
   /* An icon of components/icons.tsx is 20 px unless its part says otherwise. */
   [data-icon] {
     @apply size-5;

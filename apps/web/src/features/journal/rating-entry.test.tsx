@@ -63,6 +63,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [
@@ -368,6 +369,11 @@ describe('the rating exam and comments in the grid', () => {
 
   const startCorrecting = async (reason: string) => {
     const panel = await screen.findByRole('region', { name: en.journal.locks.title });
+    // A plain locked lesson is folded until shown (owner, 27 October 2026); the rating's row is not.
+    const show = within(panel).queryByRole('button', {
+      name: en.journal.locks.showLocked_one.replace('{{count}}', '1'),
+    });
+    if (show !== null) fireEvent.click(show);
     fireEvent.click(within(panel).getByRole('button', { name: en.journal.locks.correct }));
     const dialog = await screen.findByRole('form', { name: /^Correct:/ });
     fireEvent.change(

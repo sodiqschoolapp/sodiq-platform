@@ -1,0 +1,179 @@
+name: Demo data on the test environment
+
+# Asked for by the owner on 27 October 2026: the test environment filled with
+# invented data, so every feature can be tried live (docs/deploy.md, Demo
+# data). Started by hand from the Actions tab, on main only; nothing else
+# starts it. The run builds the demo school in a PostgreSQL of its own, through
+# the real application (apps/api/src/testing/demo/seed.ts), then REPLACES the
+# whole test database with it: whatever the test environment held before is
+# gone (the owner's choice: a seed over the network to Neon would take hours).
+# Production is never touched: this workflow knows only the environment `test`.
+#
+# The password typed at the start is every demo account's; it is masked in the
+# log at once and written nowhere. The logins are in the run's summary.
+on:
+  workflow_dispatch:
+    inputs:
+      demo_password:
+        description: The password of every demo account (10 characters or more)
+        required: true
+        type: string
+      confirm:
+        description: Type REPLACE to erase the test database and load the demo
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Never at the same time as a deploy of the test environment (ci.yml).
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+env:
+  # The demo is built in the PostgreSQL service of this job, with the public
+  # local values of .env.example. The test database is reached only through
+  # the secret of the environment `test`, in the steps that name it.
+  DATABASE_URL: postgres://sodiq_app:sodiq_app_local@localhost:5432/sodiq_dev
+  DATABASE_MIGRATION_URL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
+  SECOND_STEP_KEY: c29kaXEtbG9jYWwtc2Vjb25kLXN0ZXAta2V5LTAwMDE=
+  TURBO_TELEMETRY_DISABLED: 1
+  # PostgreSQL 18's own client tools, for the dump and the load. Neon's
+  # address asks psql to verify the server's certificate; the image has no
+  # store of root certificates, so it reads the runner's.
+  PG18: >-
+    docker run --rm --network host
+    -v ${{ github.workspace }}:/work -w /work
+    -v /etc/ssl/certs:/etc/ssl/certs:ro
+    -e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
+    postgres:18
+
+jobs:
+  demo:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'REPLACE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment:
+      name: test
+      url: ${{ vars.TEST_URL }}
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Hide the demo password in the log
+        # Read from the event, not from an env line, so that it never shows
+        # unmasked in a step's header.
+        run: |
+          password=$(jq -r '.inputs.demo_password' "$GITHUB_EVENT_PATH")
+          echo "::add-mask::$password"
+          if [ "${#password}" -lt 10 ]; then
+            echo "::error::The demo password needs 10 characters or more."
+            exit 1
+          fi
+          echo "DEMO_PASSWORD=$password" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create the users and the database of this job
+        run: psql -h localhost -U postgres -f db/setup/local.sql
+        env:
+          PGPASSWORD: postgres
+      - name: Apply the migrations to the database of this job
+        run: pnpm db:migrate
+      - name: The test database has the migrations of this commit
+        # The demo replaces the test database with this commit's schema; a
+        # test database on other migrations means the deploy of main has not
+        # run yet (or failed): wait for the green deploy-test, then start again.
+        env:
+          TARGET: ${{ secrets.DATABASE_MIGRATION_URL }}
+          LOCAL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
+        run: |
+          query='select number, name, checksum from schema_migrations order by number'
+          $PG18 psql -X -At -c "$query" "$TARGET" > /tmp/test-migrations.txt
+          $PG18 psql -X -At -c "$query" "$LOCAL" > /tmp/local-migrations.txt
+          if ! diff -q /tmp/test-migrations.txt /tmp/local-migrations.txt > /dev/null; then
+            echo "::error::The test database is not on the migrations of this commit. Wait for the deploy-test of main to be green, then start again."
+            diff /tmp/test-migrations.txt /tmp/local-migrations.txt | cut -c1-120 | head -20
+            exit 1
+          fi
+          echo "Both databases have $(wc -l < /tmp/local-migrations.txt) migrations."
+      - name: Build the demo school through the application
+        run: pnpm --filter @sodiq/api demo:build && pnpm --filter @sodiq/api demo:seed
+      - name: Dump the demo database
+        env:
+          TARGET: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
+        # btree_gist stays out: the test database has it, and only its
+        # creator may drop it.
+        run: |
+          $PG18 pg_dump --format=plain --no-owner --exclude-extension=btree_gist --file=/work/dump.sql "$TARGET"
+          # Progress lines for the load, which otherwise prints nothing for many
+          # minutes: one every 500 objects of the schema, and one before each
+          # table's data. Only outside the data of a COPY, so no row changes.
+          total=$(grep -c '^-- Name: ' dump.sql)
+          # RAISE INFO, not \echo: pg_dump 18 guards the file with \restrict, which
+          # refuses backslash commands until its end, and sets client_min_messages
+          # to warning, which hides a notice (INFO is always sent).
+          awk -v total="$total" '
+            function say(text) { print "DO $$ BEGIN RAISE INFO \x27" text "\x27; END $$;" }
+            copy { print; if ($0 == "\\.") copy = 0; next }
+            /^-- Name: / { n++; if (n % 500 == 0) say("schema: " n " of " total " objects") }
+            /^COPY .* FROM stdin;$/ { say("data: " $2); print; copy = 1; next }
+            { print }
+          ' dump.sql > demo.sql
+          ls -l demo.sql
+      - name: Suspend the test API and worker
+        id: suspend
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          API_SERVICE: ${{ vars.RENDER_API_SERVICE_ID }}
+          WORKER_SERVICE: ${{ vars.RENDER_WORKER_SERVICE_ID }}
+        run: |
+          for service in "$API_SERVICE" "$WORKER_SERVICE"; do
+            curl -fsS -X POST -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services/$service/suspend" > /dev/null
+            echo "Suspended $service"
+          done
+          sleep 20
+      - name: Replace the test database with the demo
+        env:
+          TARGET: ${{ secrets.DATABASE_MIGRATION_URL }}
+        run: |
+          $PG18 psql -X -q -v ON_ERROR_STOP=1 -f db/demo/clear-for-restore.sql "$TARGET"
+          $PG18 psql -X -q --single-transaction -v ON_ERROR_STOP=1 -f demo.sql "$TARGET"
+          $PG18 psql -X -At -c "select name from branches order by name" "$TARGET"
+      - name: Resume the test API and worker
+        if: always() && steps.suspend.outcome != 'skipped'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          API_SERVICE: ${{ vars.RENDER_API_SERVICE_ID }}
+          WORKER_SERVICE: ${{ vars.RENDER_WORKER_SERVICE_ID }}
+        run: |
+          for service in "$API_SERVICE" "$WORKER_SERVICE"; do
+            curl -fsS -X POST -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services/$service/resume" > /dev/null
+            echo "Resumed $service"
+          done
+      - name: Wait for the test site, then the smoke test
+        env:
+          TEST_URL: ${{ vars.TEST_URL }}
+        run: |
+          for attempt in $(seq 1 40); do
+            if curl -fsS "$TEST_URL/api/health" > /dev/null 2>&1; then break; fi
+            sleep 15
+          done
+          node apps/api/dist/deploy/cli.js smoke "$TEST_URL"

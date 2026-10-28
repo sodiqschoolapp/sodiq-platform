@@ -9,9 +9,9 @@ import {
   type JournalStudent,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useRouterState, useSearch } from '@tanstack/react-router';
 import { cn } from 'cn';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field, SelectField } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
@@ -26,7 +26,14 @@ import { monthsText, schoolDateText } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
-import { UndoIcon } from '@/components/icons';
+import { FullscreenExitIcon, FullscreenIcon, UndoIcon, ViewColumnIcon } from '@/components/icons';
+import { readHiddenColumns, storeHiddenColumns } from '@/components/list/list-state';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
@@ -40,7 +47,7 @@ import {
   type Correcting,
 } from './edit-period';
 import { exportJournal, journalGridQuery } from './journal-api';
-import { GRADE_TINT, JournalGridView } from './journal-grid';
+import { GRADE_TINT, JournalGridView, hideableColumnsOf } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
 
@@ -162,6 +169,11 @@ function JournalLoaded({
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
   const [exemptOpen, setExemptOpen] = useState(false);
+  // The grid over the whole window (asked for by the owner, 27 October 2026).
+  const [full, setFull] = useState(false);
+  useFullScreen(full, setFull);
+  // The columns the person hid, kept in the browser like a list's (owner, 27 October 2026).
+  const [hiddenColumns, setHiddenColumns] = useState(() => readHiddenColumns(JOURNAL_COLUMNS));
   // Task 8.9 (decision 1): the reader exports what the grid shows; a lesson reader does not.
   const mayExport = useMayView('journal', 'export');
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
@@ -234,8 +246,73 @@ function JournalLoaded({
   const folded =
     filter === 'members' ? [] : data.students.filter((one) => one.folded && passes(one));
   const lessonMode = search.mode === 'lesson' || narrow;
+  // Opening a journal brings its grid into view, below the selectors and the panels (owner,
+  // 27 October 2026); once per journal, so a change of month or filter does not move the page.
+  const gridPanel = useRef<HTMLDivElement>(null);
+  const scrolledTo = useRef<string | null>(null);
+  const hasGrid = !lessonMode && data.lessons.length > 0;
+  // The router puts the window back at the top when a navigation ends (status "idle"): with the
+  // journal already in the cache the page draws before that, and a scroll then would be undone.
+  const routing = useRouterState({ select: (state) => state.status });
+  useEffect(() => {
+    if (!hasGrid || routing !== 'idle' || scrolledTo.current === data.journal.id) return;
+    scrolledTo.current = data.journal.id;
+    const panel = gridPanel.current;
+    if (panel !== null && typeof panel.scrollIntoView === 'function') {
+      panel.scrollIntoView({ block: 'start' });
+    }
+  }, [hasGrid, routing, data.journal.id]);
   const scrollDate = search.date ?? data.today;
   const nearest = lessonNearest(data.lessons, scrollDate);
+
+  const undoButton: ReactNode = data.lessons.some((one) => one.canEnter) && (
+    <Button
+      variant="secondary"
+      disabled={!undo.available || undo.busy}
+      onClick={undo.undo}
+      title={t('journal.saving.undoHint')}
+    >
+      <UndoIcon aria-hidden="true" />
+      {t('journal.saving.undo')}
+    </Button>
+  );
+  const columnsButton: ReactNode = (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="secondary" />}>
+        <ViewColumnIcon aria-hidden="true" />
+        {t('list.columns')}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        {hideableColumnsOf(data, month).map((column) => (
+          <DropdownMenuCheckboxItem
+            key={column}
+            checked={!hiddenColumns.includes(column)}
+            onCheckedChange={(shown) => {
+              const next = shown
+                ? hiddenColumns.filter((key) => key !== column)
+                : [...hiddenColumns, column];
+              setHiddenColumns(next);
+              storeHiddenColumns(JOURNAL_COLUMNS, next);
+            }}
+          >
+            {t(`journal.page.columnNames.${column}`)}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  // What a save tells the person stays in view in full screen too.
+  const alerts = (
+    <>
+      {notices}
+      {undo.notice}
+      {refusedNumber !== null && (
+        <p role="alert" className="text-sm text-destructive" data-refused-number="true">
+          {t('journal.works.wholeNumber', { total: refusedNumber })}
+        </p>
+      )}
+    </>
+  );
 
   const header = [
     data.journal.unit.name,
@@ -398,17 +475,19 @@ function JournalLoaded({
                 }}
               />
             )}
-            {data.lessons.some((one) => one.canEnter) && (
+            {!lessonMode && data.lessons.length > 0 && (
               <Button
                 variant="secondary"
-                disabled={!undo.available || undo.busy}
-                onClick={undo.undo}
-                title={t('journal.saving.undoHint')}
+                onClick={() => {
+                  setFull(true);
+                }}
               >
-                <UndoIcon aria-hidden="true" />
-                {t('journal.saving.undo')}
+                <FullscreenIcon aria-hidden="true" />
+                {t('journal.page.fullScreen')}
               </Button>
             )}
+            {!lessonMode && data.lessons.length > 0 && columnsButton}
+            {undoButton}
             <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
               {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
             </Link>
@@ -424,16 +503,10 @@ function JournalLoaded({
         />
         {/* Task 8.7 (`07`, Reminders): the panel of the journal, folded. */}
         {data.reminders.length > 0 && <RemindersPanel reminders={data.reminders} folded />}
-        {notices}
-        {undo.notice}
+        {!full && alerts}
         {dialogs}
         {ratingDialogs}
         {commentDialogs}
-        {refusedNumber !== null && (
-          <p role="alert" className="text-sm text-destructive" data-refused-number="true">
-            {t('journal.works.wholeNumber', { total: refusedNumber })}
-          </p>
-        )}
         {data.lessons.length === 0 ? (
           <div className={PANEL}>
             <EmptyState text={t('journal.page.noLessons')} />
@@ -446,8 +519,37 @@ function JournalLoaded({
             entry={entry}
           />
         ) : (
-          <div className={PANEL}>
+          <div
+            ref={gridPanel}
+            className={
+              full
+                ? 'fixed inset-0 z-40 flex flex-col gap-3 bg-background p-4'
+                : `${PANEL} scroll-mt-4`
+            }
+            data-journal-full-screen={full ? 'true' : undefined}
+          >
+            {full && (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="min-w-0 flex-1 truncate text-lg font-semibold">{header}</p>
+                  {undoButton}
+                  {columnsButton}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setFull(false);
+                    }}
+                  >
+                    <FullscreenExitIcon aria-hidden="true" />
+                    {t('journal.page.exitFullScreen')}
+                  </Button>
+                </div>
+                {alerts}
+              </>
+            )}
             <JournalGridView
+              fill={full}
+              hidden={hiddenColumns}
               grid={data}
               month={month}
               members={members}
@@ -475,6 +577,46 @@ function JournalLoaded({
       </div>
     </>
   );
+}
+
+/** Names the journal's hidden columns in the browser's storage (`sodiq.list.journal.hidden`). */
+const JOURNAL_COLUMNS = 'journal';
+
+/**
+ * Full screen for the journal grid: the page draws it over the whole window, and the browser
+ * is asked for its own full screen too (refused in some frames; the window then stays as it
+ * is). Esc, or leaving the browser's full screen, ends it; an Esc inside a dialog is the
+ * dialog's.
+ */
+function useFullScreen(full: boolean, setFull: (full: boolean) => void): void {
+  useEffect(() => {
+    if (!full) return;
+    const root = document.documentElement;
+    if (document.fullscreenElement === null && typeof root.requestFullscreen === 'function') {
+      root.requestFullscreen().catch(() => {
+        // Not allowed here: the grid still covers the window.
+      });
+    }
+    const onChange = () => {
+      if (document.fullscreenElement === null) setFull(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]') !== null) return;
+      setFull(false);
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('keydown', onKey);
+      if (document.fullscreenElement !== null && typeof document.exitFullscreen === 'function') {
+        document.exitFullscreen().catch(() => {
+          // Already left.
+        });
+      }
+    };
+  }, [full, setFull]);
 }
 
 /** The words of each typed mark (`07`, Entering data). */
