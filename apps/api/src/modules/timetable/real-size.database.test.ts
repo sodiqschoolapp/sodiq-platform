@@ -156,6 +156,8 @@ describe(`the real-size run, ${size.name} (task 5.12c)`, () => {
           const placed = await placeDraft(t, branch);
           placedOf.set(branch.id, placed);
           expect(placed.notPlaced, `${branch.name}: lessons not placed`).toEqual([]);
+          // Task 10.1: the doubles of the curriculum are placed, so the publish takes the pair lock.
+          expect(placed.doubles, `${branch.name}: doubles placed`).toBeGreaterThan(0);
 
           // Every step of the builder ready (review correction 3): the
           // templates confirmed, every row placed, every teacher's hours over
@@ -626,13 +628,13 @@ function report(input: {
     '',
     '## Placement (seed placer, until 5.11)',
     '',
-    '| Branch | Blocks | Lessons | Not placed | Time |',
-    '| --- | --- | --- | --- | --- |',
+    '| Branch | Blocks | Lessons | Doubles | Not placed | Time |',
+    '| --- | --- | --- | --- | --- | --- |',
     ...school.branches
       .filter((branch) => input.placedOf.has(branch.id))
       .map((branch) => {
         const placed = input.placedOf.get(branch.id);
-        return `| ${branch.name} | ${String(placed?.blocks ?? 0)} | ${String(placed?.lessons ?? 0)} | ${placed === undefined || placed.notPlaced.length === 0 ? 'none' : placed.notPlaced.map((one) => `${one.unit} ${one.subject} ×${String(one.lessons)}`).join(', ')} | ${(placed?.seconds ?? 0).toFixed(1)} s |`;
+        return `| ${branch.name} | ${String(placed?.blocks ?? 0)} | ${String(placed?.lessons ?? 0)} | ${String(placed?.doubles ?? 0)} | ${placed === undefined || placed.notPlaced.length === 0 ? 'none' : placed.notPlaced.map((one) => `${one.unit} ${one.subject} ×${String(one.lessons)}`).join(', ')} | ${(placed?.seconds ?? 0).toFixed(1)} s |`;
       }),
     '',
     '## Builder steps',
@@ -686,7 +688,7 @@ function report(input: {
     '',
     "- The generate step and the solver's time (task 5.11).",
     '- 1,000 simultaneous users (task 10.1, Speed tests; decision 3).',
-    "- Double lessons: the owner's lines name groups, splits and shared teachers; no row of the data allows doubles, so every block is single.",
+    '- Doubles of split rows: task 10.1 gives one double a week to the whole-class rows of Mathematics (grades 5 to 11), Physics and Physical education (10 and 11), published with their pair lock; the splits stay single.',
     '',
   ];
   return lines.join('\n');

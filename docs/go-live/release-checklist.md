@@ -14,6 +14,14 @@ The release is the newest commit of `main` deployed to the test environment (`de
 - [ ] The feedback button sends a report.
 - [ ] Anything named in the release's pull request under "What to look at" is tried.
 
+## Speed (task 10.1)
+
+`12`, Speed targets: "These targets are tested automatically before each release."
+
+- [ ] The newest **Speed** run (Actions → Speed; by hand or Sunday night) is green, on the release's commit or on an older one with no change since under `apps/api`, `apps/web`, `packages` or `db`. When it is red or too old, start it by hand (about 4 hours) and deploy after it; its report (the run's artifact `speed-report`) says which target was missed.
+- [ ] On the test environment, on a phone on mobile data and on a laptop on the school Wi-Fi (or the browser's network throttling "Fast 4G" and "No throttling"), the home page, a journal and the timetable of a class each open in under 2 seconds on mobile data and under 1 second on Wi-Fi. The Speed run times the server's answer only, not the download and drawing (task 10.1, decision 3).
+- [ ] On the oldest classroom computer of the school, in its browser (the current or the previous version of Chrome, Edge, Firefox or Safari), a journal opens and a cell saves.
+
 Print and PDF are not available on the test environment (no Chromium there); they are checked on production after the deploy (`checklist.md`, section 3).
 
 ## Timing

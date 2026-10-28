@@ -1,7 +1,7 @@
 import type { GridAnswer } from '@sodiq/shared';
 import {
   blockPlacements,
-  checkCandidates,
+  candidateChecker,
   checkedPlacements,
   NEW_BLOCK_ID,
   newPairOf,
@@ -11,6 +11,7 @@ import {
   placeRowsOf,
   slotStatus,
   WEEK_COUNT_RULES,
+  type CandidateCheck,
   type PatternBlock,
   type PatternModel,
   type RuleResult,
@@ -235,7 +236,9 @@ export interface CellStatus {
 /**
  * The status of a cell for a block dropped there: the results of the changed
  * blocks' lessons by `checkCandidates`, the check the server runs on the save
- * (decision 5; 14, Timetable, One rule engine).
+ * (decision 5; 14, Timetable, One rule engine). `check` is the stored
+ * blocks indexed once for a drag (task 10.1, `useSlotStatuses`); left out, they
+ * are indexed for this cell.
  */
 export function cellStatus(
   model: PatternModel,
@@ -243,16 +246,15 @@ export function cellStatus(
   all: readonly PatternBlock[],
   block: PatternBlock,
   cell: BoardCell,
+  check: CandidateCheck = candidateChecker(checkedPlacements(model, all), model.facts),
 ): CellStatus {
   const drop = dropOf(model, board, block, cell);
   if (drop.kind === 'same') return { status: 'free', rule: null, drop };
   if (drop.kind === 'no_slot') return { status: 'blocked', rule: null, drop };
   const { changed } = drop;
-  const results: RuleResult[] = checkCandidates(
-    checkedPlacements(model, all),
-    model.facts,
-    patternPlacements(model, changed),
-  ).filter((one) => !WEEK_COUNT_RULES.includes(one.rule));
+  const results: RuleResult[] = check(patternPlacements(model, changed)).filter(
+    (one) => !WEEK_COUNT_RULES.includes(one.rule),
+  );
   const status = slotStatus(results);
   const first =
     results.find((one) => one.severity === 'blocked') ??
@@ -270,11 +272,13 @@ export function useSlotStatuses(
   return useMemo(() => {
     const statuses = new Map<string, CellStatus>();
     if (model === null || board === null || moving === null) return statuses;
+    // Task 10.1: the stored blocks indexed once for every cell of the drag.
+    const check = candidateChecker(checkedPlacements(model, all), model.facts);
     for (const weekday of board.weekdays) {
       for (const position of board.positions) {
         const cell = board.cellAt(weekday, position);
         if (cell !== null) {
-          statuses.set(cellKey(cell), cellStatus(model, board, all, moving, cell));
+          statuses.set(cellKey(cell), cellStatus(model, board, all, moving, cell, check));
         }
       }
     }

@@ -23,6 +23,7 @@ CLAUDE.local.md
 
 # test output
 apps/api/real-size-report-*.md
+apps/api/speed-report-*.md
 playwright-report/
 test-results/
 

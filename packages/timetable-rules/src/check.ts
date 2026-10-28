@@ -872,6 +872,53 @@ function checkOtherDrafts(placements: readonly Placement[], facts: Facts, result
   }
 }
 
+/**
+ * The keys by which a rule of `checkTimetable` reads placements together
+ * (task 10.1, the owner's answer 5): the functions `teachersOf` (invigilators
+ * included) and `roomsOf` (exam rooms and shared rooms included), and the
+ * fields `classIds`, `studentIds`, `loadRowId`, `blockId` and `doublePairId`
+ * of `Placement`. Every result that names a placement comes from a group of
+ * placements that all share one of these keys with it (`checkDoubles`'s key,
+ * the pair then its row or unit, is covered by `doublePairId` alone), or from
+ * that placement and the facts. A rule that reads placements together by
+ * another key must widen this list: the property test of `check.test.ts`
+ * compares the narrowed check with the full one.
+ */
+const NEIGHBOUR_KEYS: readonly ((one: Placement) => readonly (string | null)[])[] = [
+  teachersOf,
+  roomsOf,
+  (one) => one.classIds,
+  (one) => one.studentIds,
+  (one) => [one.loadRowId],
+  (one) => [one.blockId],
+  (one) => [one.doublePairId],
+];
+
+/** The keys of the candidates, one set per kind of `NEIGHBOUR_KEYS`. */
+const keySetsOf = (candidates: readonly Placement[]): Set<string>[] =>
+  NEIGHBOUR_KEYS.map((keys) => {
+    const set = new Set<string>();
+    for (const one of candidates) {
+      for (const key of keys(one)) if (key !== null) set.add(key);
+    }
+    return set;
+  });
+
+/** The candidates placed among `others` (those of the candidates' ids left out), and the results that name one. */
+function resultsOfCandidates(
+  others: readonly Placement[],
+  facts: Facts,
+  candidates: readonly Placement[],
+  options: CheckOptions,
+): RuleResult[] {
+  const ids = new Set(candidates.map((one) => one.id));
+  return checkTimetable(
+    [...others.filter((one) => !ids.has(one.id)), ...candidates],
+    facts,
+    options,
+  ).filter((result) => result.lessonIds.some((id) => ids.has(id)));
+}
+
 /** Every blocked rule and warning of the placements, in `RULE_ORDER`. */
 export function checkTimetable(
   placements: readonly Placement[],
@@ -915,6 +962,13 @@ export function checkCandidate(
  * The results that name any of several placements placed together among the
  * others (replacing those of the same ids): a block of several lessons, or the
  * two blocks of a swap (task 5.4a, decision 5).
+ *
+ * Task 10.1 (the owner's answer 5: the drag check under 0.2 s): only the
+ * candidates and the others that share a key of `NEIGHBOUR_KEYS` with one of
+ * them are checked, in their order, so the results and their order are those
+ * of the whole timetable. One difference: a placement outside that
+ * neighbourhood whose fact is missing no longer throws in `need`; every route
+ * and the grid build complete facts.
  */
 export function checkCandidates(
   placements: readonly Placement[],
@@ -922,11 +976,54 @@ export function checkCandidates(
   candidates: readonly Placement[],
   options: CheckOptions = {},
 ): RuleResult[] {
-  const ids = new Set(candidates.map((one) => one.id));
-  const others = placements.filter((one) => !ids.has(one.id));
-  return checkTimetable([...others, ...candidates], facts, options).filter((result) =>
-    result.lessonIds.some((id) => ids.has(id)),
-  );
+  const sets = keySetsOf(candidates);
+  const near = (one: Placement) =>
+    NEIGHBOUR_KEYS.some((keys, kind) =>
+      keys(one).some((key) => key !== null && sets[kind]?.has(key) === true),
+    );
+  return resultsOfCandidates(placements.filter(near), facts, candidates, options);
+}
+
+/** `checkCandidates` over placements indexed once (`candidateChecker`). */
+export type CandidateCheck = (candidates: readonly Placement[]) => RuleResult[];
+
+/**
+ * `checkCandidates` for many sets of candidates among the same placements:
+ * the placements indexed by every key of `NEIGHBOUR_KEYS` once, so each check
+ * reads only the neighbourhood (task 10.1: the board checks every slot of the
+ * week when a drag starts). The same results as `checkCandidates`, in the
+ * same order: the neighbours in the order of `placements`.
+ */
+export function candidateChecker(
+  placements: readonly Placement[],
+  facts: Facts,
+  options: CheckOptions = {},
+): CandidateCheck {
+  const index = NEIGHBOUR_KEYS.map((keys) => {
+    const map = new Map<string, number[]>();
+    placements.forEach((one, at) => {
+      for (const key of new Set(keys(one))) {
+        if (key === null) continue;
+        const list = map.get(key);
+        if (list === undefined) map.set(key, [at]);
+        else list.push(at);
+      }
+    });
+    return map;
+  });
+  return (candidates) => {
+    const near = new Set<number>();
+    keySetsOf(candidates).forEach((set, kind) => {
+      for (const key of set) for (const at of index[kind]?.get(key) ?? []) near.add(at);
+    });
+    const others = [...near]
+      .sort((a, b) => a - b)
+      .flatMap((at) => {
+        const one = placements[at];
+        return one === undefined ? [] : [one];
+      });
+    return resultsOfCandidates(others, facts, candidates, options);
+  };
 }
 
 /**
