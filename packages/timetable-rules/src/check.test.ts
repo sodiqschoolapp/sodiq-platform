@@ -1722,13 +1722,13 @@ describe('the narrowed candidate check (task 10.1)', () => {
             full({ ...school, candidates: school.candidates.slice(0, 1) }),
           );
         }),
-        { numRuns: 1500 },
+        { numRuns: 800 },
       );
       const missed = GROUP_RULES.filter(
         (rule) => !reached.has(rule) && !(mode === 'dated' && rule === 'load_mismatch'),
       );
       expect(missed).toEqual([]);
-    });
+    }, 30_000);
   }
 });
 

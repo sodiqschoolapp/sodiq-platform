@@ -179,7 +179,7 @@ function schoolFacts(
       [C, year],
     ]),
     travelMinutes: (x, y) => (x === C || y === C ? null : 30),
-    classDailyLessons: (branchId) => (branchId === A ? 3 : null),
+    classDailyLessons: (branchId) => (branchId === A ? 2 : null),
     loadRows,
     otherDrafts,
   };
