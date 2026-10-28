@@ -860,6 +860,88 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     expect(logged).toEqual([]);
   });
 
+  // .claude/rules/api.md (task 8.8): a second role that reads more widens nothing of the first, in
+  // the answer and in the file (permission review, must-fixes 1 and 3).
+  it('keeps each reader to the scope of the role that lets them in, also with a second role, in the answer and in the file', async () => {
+    const c = await scene();
+    await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
+      { classId: c.s.otherClass, from: '2026-09-01' },
+    ]);
+    const elsewhere = await load.classes.subject({ grades: [7] });
+    const tutor = await account();
+    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+    const branch = c.s.branch;
+    const table = (classId: string) =>
+      `/api/results/reports/results-table?quarterId=${c.q1}&classId=${classId}`;
+    // A Tutor of the first class who is also Head Teacher of another subject.
+    await as(
+      tutor,
+      branch,
+      [{ role: 'head_teacher', branchId: branch, subjectIds: [elsewhere] }],
+      async ({ get, post }) => {
+        const own = resultsTableSchema.parse((await get(table(c.s.classId))).body);
+        expect(own.subjects.map((one) => one.id)).toEqual([c.s.subject]);
+        const other = resultsTableSchema.parse((await get(table(c.s.otherClass))).body);
+        expect(other.subjects).toEqual([]);
+        const file = await post('/api/results/reports/export', {
+          kind: 'table',
+          quarterId: c.q1,
+          classId: c.s.otherClass,
+        });
+        expect(file.status).toBe(200);
+        // The class, the quarter and the stamp, then the heading: the student column alone.
+        expect((await linesOf(file.body as Buffer))[3]).toHaveLength(1);
+        // The attendance file without a class: the own class only.
+        const attendance = await post('/api/results/reports/attendance/export', {
+          from: '2026-10-12',
+          to: '2026-10-31',
+        });
+        expect(attendance.status).toBe(200);
+        const names = (await linesOf(attendance.body as Buffer)).slice(3).map((line) => line[0]);
+        // The range and the moment, the heading, then the own class and the total.
+        expect(names).toHaveLength(2);
+      },
+    );
+    // The same Tutor made Head Tutor too: mastery of the own class journal only (the Head Tutor
+    // reads no mastery, and the Head Teacher post is of another subject).
+    await as(tutor, branch, [{ role: 'head_tutor', branchId: branch }], async ({ get, post }) => {
+      const mastery = subjectMasterySchema.parse(
+        (
+          await get(
+            `/api/results/reports/subject-mastery?quarterId=${c.q1}&subjectId=${c.s.subject}`,
+          )
+        ).body,
+      );
+      expect(mastery.choices.journals.map((one) => one.unit.id)).toEqual([c.s.classId]);
+      expect(
+        (
+          await post('/api/results/reports/export', {
+            kind: 'mastery',
+            quarterId: c.q1,
+            subjectId: c.s.subject,
+            classId: c.s.otherClass,
+          })
+        ).status,
+      ).toBe(403);
+    });
+    // A Head Teacher of maths: the file holds the maths column only.
+    await as(
+      await account(),
+      branch,
+      [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
+      async ({ post }) => {
+        const file = await post('/api/results/reports/export', {
+          kind: 'table',
+          quarterId: c.q1,
+          classId: c.s.classId,
+        });
+        // The student, then the maths result and grade.
+        expect((await linesOf(file.body as Buffer))[3]).toHaveLength(3);
+      },
+    );
+  });
+
   it('counts the school days of the quarter on the closing checklist, passed up to today', async () => {
     const c = await scene();
     const browser = await account();

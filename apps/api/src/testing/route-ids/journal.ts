@@ -22,6 +22,8 @@ const ABSENCE_FILE = `src/modules/journal/exemption-files.test.ts > answers 404 
 const SUPPORT = `src/modules/journal/support-view.test.ts > lists a total and "not held" of the date’s works, and refuses another branch’s journal, a student with no membership and a date outside the year`;
 const L = 'src/modules/journal/lesson-status.test.ts';
 const DISCIPLINE_ITEMS = `src/modules/journal/discipline-report.test.ts > answers 404 for a teacher outside the counts, unknown or of another branch, and for the teacher of another subject to a Head Teacher`;
+const DEPARTMENT_404 =
+  'src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department';
 const DEPARTMENT =
   '03: departments are of the whole school; the report keeps the teachers of the branch of the request';
 const ORPHANS = `${L} > refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was`;
@@ -179,7 +181,7 @@ export const JOURNAL_IDS: RouteIds = {
       record: 'department',
       kind: 'school',
       rule: DEPARTMENT,
-      refusedIn: [],
+      refusedIn: [DEPARTMENT_404],
     },
     branch('query:teacherId', 'staff', STAFF, [DISCIPLINE_ITEMS]),
   ],
@@ -189,7 +191,7 @@ export const JOURNAL_IDS: RouteIds = {
       record: 'department',
       kind: 'school',
       rule: DEPARTMENT,
-      refusedIn: [],
+      refusedIn: [DEPARTMENT_404],
     },
   ],
   'POST /api/journal/orphans/:lessonId/assign': [

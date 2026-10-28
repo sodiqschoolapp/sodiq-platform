@@ -466,6 +466,28 @@ export const NARROWER_SCOPES: RouteScopes = {
     },
   ],
 
+  // Task 9.3b-2: the items behind a count and the file of the counts.
+  'GET /api/journal/discipline/items': [
+    {
+      roles: ['head_tutor'],
+      scope: 'narrower',
+      rule: '02, Head Tutor: the journal discipline of the Tutor subjects (task 8.7, decision 6; task 9.3b-2)',
+      refusedIn: [
+        'src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department',
+      ],
+    },
+  ],
+  'POST /api/journal/discipline/export': [
+    {
+      roles: ['head_tutor'],
+      scope: 'narrower',
+      rule: '02, Head Tutor: the journal discipline of the Tutor subjects (task 8.7, decision 6; task 9.3b-2)',
+      refusedIn: [
+        'src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department',
+      ],
+    },
+  ],
+
   // Results.
   'GET /api/results/early-warning': [
     {

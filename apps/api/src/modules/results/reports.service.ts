@@ -775,7 +775,9 @@ async function masteryIn(context: Context, query: SubjectMasteryQuery): Promise<
   // The scope first, so a refusal after it tells nothing of journals the reader may not read.
   const readable = ofSubject.filter((journal) => mayMaster(context, journal));
   if (readable.length === 0) {
-    if (ofSubject.length === 0) throw notFound();
+    // Only a reader of every journal learns that the subject has none in the branch this year
+    // (permission review, should-fix 5); any other reader is refused the same either way.
+    if (ofSubject.length === 0 && isManagement(context)) throw notFound();
     throw new ApiException('permission_denied', 403);
   }
   const gradedJournals = readable.filter((journal) => graded(journal, quarter.id));

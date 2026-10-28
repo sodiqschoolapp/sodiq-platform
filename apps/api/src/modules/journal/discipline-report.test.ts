@@ -376,4 +376,44 @@ describe('the journal discipline report: its items and its file (task 9.3b-2)', 
       },
     );
   });
+
+  // Permission review, must-fixes 1 and 2, should-fix 4: the Head Tutor's scope (the Tutor
+  // subjects), a second role that reads more, and the department id.
+  it('keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department', async () => {
+    const c = await scene();
+    const elsewhere = await load.classes.subject({ grades: [7] });
+    const linesOf = async (content: Buffer): Promise<unknown[][]> => {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(content as unknown as ArrayBuffer);
+      const lines: unknown[][] = [];
+      workbook.worksheets[0]?.eachRow({ includeEmpty: true }, (row) => {
+        lines.push((row.values as unknown[]).slice(1));
+      });
+      return lines;
+    };
+    const items = `/api/journal/discipline/items?${RANGE}&teacherId=${c.s.teacher.staffId}&column=held`;
+    const body = { from: '2026-10-12', to: '2026-10-28' };
+    for (const roles of [
+      [{ role: 'head_tutor' as const, branchId: c.s.branch }],
+      [
+        { role: 'teacher' as const, branchId: c.s.branch },
+        { role: 'head_teacher' as const, branchId: c.s.branch, subjectIds: [elsewhere] },
+      ],
+    ]) {
+      await as(await account(), c.s.branch, roles, async (calls) => {
+        const what = roles.map((one) => one.role).join('+');
+        expect((await calls.get(items)).status, what).toBe(404);
+        const file = await calls.file('/api/journal/discipline/export', body);
+        expect(file.status, what).toBe(200);
+        expect((await linesOf(file.body as Buffer)).slice(3), what).toEqual([]);
+      });
+    }
+    await as(c.vice, c.s.branch, c.viceIn, async (calls) => {
+      expect((await calls.get(`${items}&departmentId=${UNKNOWN}`)).status).toBe(404);
+      expect(
+        (await calls.file('/api/journal/discipline/export', { ...body, departmentId: UNKNOWN }))
+          .status,
+      ).toBe(404);
+    });
+  });
 });
