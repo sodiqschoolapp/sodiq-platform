@@ -124,7 +124,9 @@ export async function lessonStatusFacts(
       'lessons.cancel_cause',
     ])
     .where('lessons.branch_id', '=', branchId)
-    .where('lessons.id', 'in', ids)
+    // One array parameter, not one per lesson: the closing checklist names every
+    // lesson of a branch's quarter, past the 65,535 parameters of a statement.
+    .where(sql<boolean>`lessons.id = any(${ids}::uuid[])`)
     .execute();
   if (lessons.length === 0) return found;
   const branch = await transaction
@@ -234,7 +236,7 @@ export async function lessonStatusFacts(
       : transaction
           .selectFrom('journal_cells')
           .select(['lesson_id', 'student_id', 'work_id', 'mark', 'score', 'not_graded'])
-          .where('lesson_id', 'in', held)
+          .where(sql<boolean>`lesson_id = any(${held}::uuid[])`)
           .where((eb) =>
             eb.or([
               eb('mark', 'is not', null),
@@ -249,7 +251,7 @@ export async function lessonStatusFacts(
           .selectFrom('journal_comments')
           .select('lesson_id')
           .distinct()
-          .where('lesson_id', 'in', held)
+          .where(sql<boolean>`lesson_id = any(${held}::uuid[])`)
           .where('body', 'is not', null)
           .execute(),
   ]);
