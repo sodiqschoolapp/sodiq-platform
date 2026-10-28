@@ -99,8 +99,8 @@ jobs:
           echo "Roles named by the dump: $(grep -c 'create role' "$RUNNER_TEMP/backup/roles.sql")."
 
       - name: Restore the dump into the proof's server
-        # Owners, grants and policies restore as they are (no --no-owner, no
-        # --no-privileges): an error fails the run.
+        # Owners, grants and policies restore as they are (neither dropped nor
+        # skipped): an error fails the run.
         run: |
           if ! docker run --rm --network host -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             pg_restore --exit-on-error --dbname=postgres://postgres:postgres@localhost:5432/sodiq \
