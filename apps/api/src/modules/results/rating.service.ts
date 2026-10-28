@@ -51,6 +51,8 @@ import { notFound } from '../setup/setup-refusals.js';
 import { momentText } from '../timetable/views-export.service.js';
 import { dateText } from '../timetable/views-file.js';
 import type { QuarterRef } from './grade-changes.js';
+import type { BranchMoment } from './branch-moment.js';
+import { Freshness, preparedOutcomes } from './prepared/read.js';
 import { quarterOutcomes } from './quarter-outcomes.js';
 import { storedRecordsOf } from './stored-records.js';
 
@@ -92,23 +94,18 @@ interface QuarterRow extends QuarterRef {
   readonly yearStatus: string;
 }
 
-interface Context {
-  readonly transaction: Transaction;
+interface Context extends BranchMoment {
   readonly access: Access;
-  readonly branchId: string;
-  readonly timeZone: string;
-  readonly now: Date;
-  readonly today: string;
 }
 
 /** How the quarter's figures are read: provisional, or the close in force (9.2b). */
-interface QuarterState {
+export interface QuarterState {
   readonly closing: { readonly closedAt: Date; readonly version: number } | null;
   readonly notOfficial: boolean;
 }
 
 /** The outcomes of a quarter by subject and student, as the readers of results take them. */
-interface Outcomes {
+export interface Outcomes {
   /** By journal and student: the outcome as that journal reads it. */
   readonly byJournal: ReadonlyMap<string, ReadonlyMap<string, StudentQuarterOutcome>>;
   /** By subject and student: the outcome of the journal of the last membership. */
@@ -314,7 +311,10 @@ async function quarterOf(context: Context, quarterId: string): Promise<QuarterRo
   };
 }
 
-async function quarterStateOf(context: Context, quarter: QuarterRef): Promise<QuarterState> {
+export async function quarterStateOf(
+  context: BranchMoment,
+  quarter: QuarterRef,
+): Promise<QuarterState> {
   const closing = await closingOf(context.transaction, quarter.id);
   return {
     closing:
@@ -328,8 +328,8 @@ async function quarterStateOf(context: Context, quarter: QuarterRef): Promise<Qu
  * `null`), by subject and student: the journal's (`quarterOutcomes`), replaced in a closed quarter
  * by the stored record in force unless its journal was reopened.
  */
-async function outcomesOf(
-  context: Context,
+export async function outcomesOf(
+  context: BranchMoment,
   quarter: QuarterRef,
   state: QuarterState,
   subjectIds: readonly string[] | null,
@@ -516,9 +516,15 @@ async function classesOfYear(context: Context, yearId: string): Promise<RatingCl
   );
 }
 
-const listStateOf = (quarter: QuarterRow, state: QuarterState, readLive: boolean) => {
+const listStateOf = (
+  quarter: QuarterRow,
+  state: QuarterState,
+  readLive: boolean,
+  freshness: Freshness,
+) => {
   const final = state.closing !== null && !readLive ? state.closing : null;
   return {
+    prepared: freshness.stamp,
     quarter: {
       id: quarter.id,
       number: quarter.number,
@@ -669,7 +675,8 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
   // `edge/calculation`, Ma'naviyat soati: an attendance-only subject has no rating.
   if (switchesIn(journal, quarter.id)?.attendanceOnly !== false) throw notFound();
   const state = await quarterStateOf(context, quarter);
-  const outcomes = await outcomesOf(context, quarter, state, [journal.subjectId]);
+  const freshness = new Freshness();
+  const outcomes = await preparedOutcomes(context, quarter, state, [journal.subjectId], freshness);
   const own = outcomes.byJournal.get(journal.id) ?? new Map<string, StudentQuarterOutcome>();
   const members = (await membersOn(transaction, journal, referenceDate)).filter(
     (studentId) => own.get(studentId)?.atLeaving == null,
@@ -683,7 +690,7 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
   );
   const language = (await languagesOf(transaction, [journal])).get(journal.id) ?? 'uz';
   return ratingSubjectListSchema.parse({
-    ...listStateOf(quarter, state, outcomes.readLive),
+    ...listStateOf(quarter, state, outcomes.readLive, freshness),
     journal: journalShown(journal, language),
     rows: placed(places, names, byName).map(({ place, item }) => {
       const outcome = own.get(item.id);
@@ -752,7 +759,8 @@ async function classIn(context: Context, query: RatingClassQuery): Promise<Ratin
   const shown = await classRowOf(context, query.classId, quarter.academicYearId);
   const referenceDate = referenceDateOf(quarter, context.today);
   const state = await quarterStateOf(context, quarter);
-  const outcomes = await outcomesOf(context, quarter, state, null);
+  const freshness = new Freshness();
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
   const members = await membersOn(transaction, { classId: shown.id, groupId: null }, referenceDate);
   const figures = figuresOf(outcomes, members);
   const names = await namesOf(transaction, [...figures.keys()]);
@@ -760,7 +768,7 @@ async function classIn(context: Context, query: RatingClassQuery): Promise<Ratin
     [...figures].map(([studentId, figure]) => ({ id: studentId, value: figure.value })),
   );
   return ratingClassListSchema.parse({
-    ...listStateOf(quarter, state, outcomes.readLive),
+    ...listStateOf(quarter, state, outcomes.readLive, freshness),
     class: shown,
     rows: placed(places, names, byName).map(({ place, item }) => {
       const figure = figures.get(item.id);
@@ -787,7 +795,8 @@ async function classesIn(context: Context, query: RatingClassesQuery): Promise<R
       (query.grade === undefined || one.grade === query.grade) &&
       (query.language === undefined || one.language === query.language),
   );
-  const outcomes = await outcomesOf(context, quarter, state, null);
+  const freshness = new Freshness();
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
   const figures = new Map<string, { value: Fraction | null; students: number }>();
   for (const one of classes) {
     const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);
@@ -802,7 +811,7 @@ async function classesIn(context: Context, query: RatingClassesQuery): Promise<R
     classes.map((one) => ({ id: one.id, value: figures.get(one.id)?.value ?? null })),
   );
   return ratingClassesListSchema.parse({
-    ...listStateOf(quarter, state, outcomes.readLive),
+    ...listStateOf(quarter, state, outcomes.readLive, freshness),
     grade: query.grade ?? null,
     language: query.language ?? null,
     rows: placed(
@@ -912,11 +921,12 @@ export async function gradeFiguresOf(
   access: Access,
   clock: { branchId: string; timeZone: string; now: Date; today: string },
   quarter: QuarterRef,
+  freshness: Freshness,
 ): Promise<{ grade: number; value: number | null; rated: number; students: number }[]> {
   const context: Context = { transaction, access, ...clock };
   const referenceDate = referenceDateOf(quarter, context.today);
   const state = await quarterStateOf(context, quarter);
-  const outcomes = await outcomesOf(context, quarter, state, null);
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
   const byGrade = new Map<number, string[]>();
   for (const one of await classesOfYear(context, quarter.academicYearId)) {
     const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);

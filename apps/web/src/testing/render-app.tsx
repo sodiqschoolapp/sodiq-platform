@@ -106,6 +106,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       },
       daysAgoDate: null,
       entries: [],
+      prepared: { updatedAt: null, updating: false },
     }),
   'GET /api/plans/requests': () => json({ requests: [], events: [] }),
   'GET /api/journal/unlocks': () => json({ requests: [] }),
@@ -116,6 +117,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       threshold: 80,
       total: { attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null },
       classes: [],
+      prepared: { updatedAt: null, updating: false },
     }),
   'GET /api/journal/lessons-today': () =>
     json({
@@ -126,6 +128,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       inProgress: 0,
       complete: 0,
       incomplete: [],
+      prepared: { updatedAt: null, updating: false },
     }),
   'GET /api/timetable/conflicts-summary': () => json({ drafts: [], published: null }),
   'GET /api/results/branch-summary': () =>
@@ -136,6 +139,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       attendanceToday: { attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null },
       quarter: null,
       grades: [],
+      prepared: { updatedAt: null, updating: false },
     }),
   'GET /api/results/closing': () =>
     json({

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { statusLessonSchema } from './journal-status.js';
 
@@ -67,6 +68,8 @@ export const attendanceTodaySchema = z.object({
   /** Every class read, one ratio over all their cells. */
   total: attendanceFigureSchema,
   classes: z.array(attendanceTodayClassSchema),
+  /** Task 9.3b-1: the prepared lesson facts the figures were read from. */
+  prepared: preparedStampSchema,
 });
 
 export type AttendanceToday = z.infer<typeof attendanceTodaySchema>;
@@ -91,6 +94,8 @@ export const lessonsTodaySchema = z.object({
       teacher: z.object({ id: z.uuid(), name: z.string() }).nullable(),
     }),
   ),
+  /** Task 9.3b-1: the prepared lesson facts the counts were read from. */
+  prepared: preparedStampSchema,
 });
 
 export type LessonsToday = z.infer<typeof lessonsTodaySchema>;
@@ -127,6 +132,8 @@ export const branchSummarySchema = z.object({
       students: z.int().min(0),
     }),
   ),
+  /** Task 9.3b-1: the prepared totals the figures were read from. */
+  prepared: preparedStampSchema,
 });
 
 export type BranchSummary = z.infer<typeof branchSummarySchema>;

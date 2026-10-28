@@ -169610,6 +169610,11 @@ export interface operations {
                                 name: string;
                             } | null;
                         }[];
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };
@@ -169944,6 +169949,11 @@ export interface operations {
                             unplanned: number;
                             lateEntries: number;
                         }[];
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };
@@ -171269,6 +171279,11 @@ export interface operations {
                                 since: string;
                             }[] | null;
                         }[];
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };
@@ -180614,6 +180629,11 @@ export interface operations {
                             closed: boolean;
                             notOfficial: boolean;
                         };
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                         provisional: boolean;
                         final: {
                             /** Format: date-time */
@@ -180975,6 +180995,11 @@ export interface operations {
                             closed: boolean;
                             notOfficial: boolean;
                         };
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                         provisional: boolean;
                         final: {
                             /** Format: date-time */
@@ -181316,6 +181341,11 @@ export interface operations {
                             endDate: string;
                             closed: boolean;
                             notOfficial: boolean;
+                        };
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
                         };
                         provisional: boolean;
                         final: {
@@ -182054,6 +182084,11 @@ export interface operations {
                             }[];
                             canHandle: boolean;
                         }[];
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };
@@ -182696,6 +182731,11 @@ export interface operations {
                             rated: number;
                             students: number;
                         }[];
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };

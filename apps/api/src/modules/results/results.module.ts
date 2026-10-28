@@ -23,6 +23,7 @@ import { EarlyWarningService } from './early-warning.service.js';
 import { RatingController } from './rating.controller.js';
 import { RatingService } from './rating.service.js';
 import { StudentResultsController } from './student-results.controller.js';
+import { PreparedTotals, prepareTotalsJob } from './prepared/prepare.job.js';
 import { StudentResultsService } from './student-results.service.js';
 
 /**
@@ -46,15 +47,19 @@ import { StudentResultsService } from './student-results.service.js';
     RatingService,
     EarlyWarningService,
     BranchSummaryService,
+    // Task 9.3b-1: the prepared report totals.
+    PreparedTotals,
   ],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(
     private readonly runner: JobRunner,
     private readonly daily: DailyWork,
+    private readonly prepared: PreparedTotals,
   ) {}
 
   onModuleInit(): void {
+    this.runner.handleWithoutTransaction(prepareTotalsJob, () => this.prepared.run());
     this.runner.handleWithoutTransaction(scheduleTickJob, () => this.daily.tick());
     this.runner.handleWithoutTransaction(resultCheckJob, (data, job) =>
       this.daily.check(data, job.branchIds),

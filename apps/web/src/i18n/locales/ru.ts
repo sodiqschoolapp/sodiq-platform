@@ -7025,6 +7025,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
+  prepared: {
+    updatedAt: 'Обновлено {{moment}}',
+    updating: 'Итоги обновляются: эти цифры посчитаны только что.',
+    refresh: 'Обновить',
+  },
   results: {
     earlyWarning: {
       title: 'Раннее предупреждение',

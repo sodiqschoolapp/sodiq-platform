@@ -10,6 +10,7 @@ import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import {
@@ -327,6 +328,13 @@ export function AttendanceOverview(): React.JSX.Element {
           <p className="text-muted-foreground">{t('home.attendance.noClasses')}</p>
         ) : (
           <>
+            <PreparedStamp
+              stamp={data.prepared}
+              refreshing={attendance.isFetching}
+              onRefresh={() => {
+                void attendance.refetch();
+              }}
+            />
             <p data-total="">
               <span className="font-semibold">{t('home.attendance.branch')}: </span>
               <FigureLine figure={data.total} />
@@ -380,6 +388,13 @@ export function LessonsTodayCard(): React.JSX.Element {
             <p className="font-semibold" data-summary="">
               {t('journal.lessonStatus.summary', { count: data.held, done: data.complete })}
             </p>
+            <PreparedStamp
+              stamp={data.prepared}
+              refreshing={today.isFetching}
+              onRefresh={() => {
+                void today.refetch();
+              }}
+            />
             <p className="text-muted-foreground tabular-nums">
               {t('home.vice.statusCounts', {
                 notStarted: data.notStarted,
@@ -535,6 +550,13 @@ export function BranchSummary(): React.JSX.Element {
             {data.quarter.closed ? t('home.summary.final') : t('home.summary.provisional')}
           </p>
         )}
+        <PreparedStamp
+          stamp={data.prepared}
+          refreshing={summary.isFetching}
+          onRefresh={() => {
+            void summary.refetch();
+          }}
+        />
         {data.grades.length === 0 ? (
           <p className="text-muted-foreground">{t('home.summary.noResults')}</p>
         ) : (

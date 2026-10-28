@@ -29,6 +29,7 @@ import { journalKeysOf, ownerFactsOf, ownerOn } from '../timetable/journal-owner
 import { ownStaffOf } from './attendance-entry.js';
 import { journalRows, staffNames, type JournalRow } from './journal-grid.query.js';
 import { subjectOf, unitOf } from './journal-grid.service.js';
+import { Freshness, preparedLessonStatuses } from '../results/prepared/read.js';
 import { lessonsCounted } from './lesson-counted.js';
 import { lessonStatuses, type LessonStatusRow } from './lesson-status.query.js';
 import { lessonReminders, ratingReminder } from './reminders.js';
@@ -159,17 +160,18 @@ export class LessonStatusService {
     branchId: string,
     rows: readonly CandidateRow[],
     now: Date,
+    /** Task 9.3b-1: the reports read the prepared lesson facts and say how fresh they are. */
+    freshness?: Freshness,
   ): Promise<{
     statuses: Map<string, LessonStatusRow>;
     counted: Map<string, string | null>;
     journals: Map<string, JournalRow>;
   }> {
-    const statuses = await lessonStatuses(
-      transaction,
-      branchId,
-      rows.map((row) => row.id),
-      now,
-    );
+    const ids = rows.map((row) => row.id);
+    const statuses =
+      freshness === undefined
+        ? await lessonStatuses(transaction, branchId, ids, now)
+        : await preparedLessonStatuses({ transaction, branchId, now }, ids, freshness);
     const counted = await lessonsCounted(
       transaction,
       branchId,
@@ -354,6 +356,7 @@ export class LessonStatusService {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const { now, timeZone, today } = await clockOf(transaction, branchId);
+      const freshness = new Freshness();
       const scope = await subjectScopeOf(transaction, access);
       const subjects = scope === null ? null : [...scope];
       if (subjects !== null && subjects.length === 0) {
@@ -365,6 +368,7 @@ export class LessonStatusService {
           inProgress: 0,
           complete: 0,
           incomplete: [],
+          prepared: freshness.stamp,
         });
       }
       let started = startedLessons(transaction, branchId, today, today, now, timeZone);
@@ -384,6 +388,7 @@ export class LessonStatusService {
         branchId,
         rows,
         now,
+        freshness,
       );
       const describe = await this.describer(transaction, rows, statuses, journals);
       const counts = { held: 0, notStarted: 0, inProgress: 0, complete: 0 };
@@ -409,6 +414,7 @@ export class LessonStatusService {
         date: today,
         ahead,
         ...counts,
+        prepared: freshness.stamp,
         incomplete: incomplete.map((one) => ({
           lesson: { ...describe(one.row), status: one.status },
           teacher:
@@ -473,7 +479,14 @@ export class LessonStatusService {
           : await startedLessons(transaction, branchId, query.from, query.to, now, timeZone)
               .where('lessons.subject_id', 'in', chosen)
               .execute();
-      const { statuses, counted } = await this.statusesOf(transaction, branchId, rows, now);
+      const freshness = new Freshness();
+      const { statuses, counted } = await this.statusesOf(
+        transaction,
+        branchId,
+        rows,
+        now,
+        freshness,
+      );
       const empty = (): Omit<DisciplineRow, 'teacher'> => ({
         held: 0,
         notStarted: 0,
@@ -557,6 +570,7 @@ export class LessonStatusService {
         from: query.from,
         to: query.to,
         departments,
+        prepared: freshness.stamp,
         teachers: [...byTeacher]
           .map(([id, counts]) => ({ teacher: { id, name: names.get(id) ?? '' }, ...counts }))
           .sort(

@@ -6693,6 +6693,11 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
+  prepared: {
+    updatedAt: '{{moment}} holatiga yangilandi',
+    updating: 'Jamlanmalar yangilanmoqda: bu raqamlar hozirgina hisoblandi.',
+    refresh: 'Yangilash',
+  },
   results: {
     earlyWarning: {
       title: 'Erta ogohlantirish',

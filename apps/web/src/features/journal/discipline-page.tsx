@@ -7,6 +7,7 @@ import { DateField, SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { disciplineQuery } from './journal-api';
@@ -104,6 +105,15 @@ export function DisciplinePage(): React.JSX.Element {
         ]}
       />
       <div className="grid gap-4">
+        {counts.data !== undefined && (
+          <PreparedStamp
+            stamp={counts.data.prepared}
+            refreshing={counts.isFetching}
+            onRefresh={() => {
+              void counts.refetch();
+            }}
+          />
+        )}
         <div className="flex flex-wrap items-end gap-4">
           <div className="w-44">
             <DateField

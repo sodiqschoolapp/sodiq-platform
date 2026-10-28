@@ -6632,6 +6632,12 @@ export const en = {
       leaving: 'Leaving',
     },
   },
+  // Task 9.3b-1: how fresh the prepared totals of a report are.
+  prepared: {
+    updatedAt: 'Updated {{moment}}',
+    updating: 'Updating the totals: these figures were worked out just now.',
+    refresh: 'Refresh',
+  },
   // Task 9.1: the Results and Attendance tabs of a student and the lessons behind a figure.
   results: {
     earlyWarning: {

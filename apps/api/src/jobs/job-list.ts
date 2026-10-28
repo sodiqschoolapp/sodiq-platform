@@ -2,6 +2,7 @@ import { passwordResetMailJob } from '../modules/auth/password-reset-mail.job.js
 import { branchExportJob } from '../modules/journal/journal-exports.service.js';
 import { deliverNotificationsJob } from '../modules/notifications/deliver.job.js';
 import { DAILY_JOBS } from '../modules/results/daily/daily-jobs.js';
+import { prepareTotalsJob } from '../modules/results/prepared/prepare.job.js';
 import { countsJob } from '../monitoring/counts.job.js';
 import type { JobDefinition } from './job-definition.js';
 
@@ -18,4 +19,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition<unknown>[] = [
   ...DAILY_JOBS,
   // Task 10.2a: the counts per branch for the alerts, every minute.
   countsJob,
+  // Task 9.3b-1: the prepared report totals, every minute.
+  prepareTotalsJob,
 ];

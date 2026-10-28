@@ -25,6 +25,7 @@ const CLASS_B = uid(11);
 
 const ATTENDANCE: AttendanceToday = {
   date: '2026-10-19',
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   weekFrom: '2026-10-19',
   threshold: 65,
   total: { attended: 6, marked: 9, unmarked: 1, exempt: 1, percent: 67 },
@@ -77,6 +78,7 @@ const earlyWarning = (entries: EarlyWarningEntry[]) => ({
     gradedWorks: 5,
   },
   daysAgoDate: null,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   entries,
 });
 
@@ -218,6 +220,7 @@ describe('the home pages of each role (08, Home pages by role)', () => {
     const today: LessonsToday = {
       date: '2026-10-19',
       ahead: 2,
+      prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
       held: 5,
       notStarted: 1,
       inProgress: 1,
@@ -269,6 +272,7 @@ describe('the home pages of each role (08, Home pages by role)', () => {
       date: '2026-10-19',
       students: 1840,
       staff: 196,
+      prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
       attendanceToday: { attended: 6, marked: 9, unmarked: 1, exempt: 1, percent: 67 },
       quarter: { id: uid(40), number: 1, closed: false },
       grades: [{ grade: 7, value: 643, rated: 7, students: 9 }],

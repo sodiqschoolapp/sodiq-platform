@@ -1510,6 +1510,35 @@ export interface Relatives {
   workplace: string | null;
 }
 
+export interface ReportChanges {
+  branch_id: string;
+  changed_at: Timestamp | null;
+  journal_id: string | null;
+  quarter_id: string | null;
+  xid: Generated<string>;
+}
+
+export interface ReportPrepared {
+  branch_id: string;
+  journal_ids: string[];
+  kind: string;
+  next_change_at: Timestamp | null;
+  prepared_at: Timestamp;
+  quarter_id: string;
+  school_inputs: string;
+  seen: string;
+  unit_id: string;
+  value: Json;
+}
+
+export interface ReportPreparedLessons {
+  branch_id: string;
+  journal_id: string;
+  lesson_id: string;
+  quarter_id: string;
+  value: Json;
+}
+
 export interface RequestKeys {
   account_id: string | null;
   created_at: Timestamp;
@@ -2237,6 +2266,9 @@ export interface DB {
   quarters: Quarters;
   relative_accounts: RelativeAccounts;
   relatives: Relatives;
+  report_changes: ReportChanges;
+  report_prepared: ReportPrepared;
+  report_prepared_lessons: ReportPreparedLessons;
   request_keys: RequestKeys;
   result_check_differences: ResultCheckDifferences;
   result_checks: ResultChecks;

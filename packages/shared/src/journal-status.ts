@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { journalSubjectSchema, journalUnitSchema } from './journal-units.js';
 import { correctionSchema } from './journal-correction.js';
@@ -158,6 +159,8 @@ export const disciplineSchema = z.object({
     z.object({ id: z.uuid(), names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }) }),
   ),
   teachers: z.array(disciplineRowSchema),
+  /** Task 9.3b-1: the prepared lesson facts the counts were read from. */
+  prepared: preparedStampSchema,
 });
 
 export type Discipline = z.infer<typeof disciplineSchema>;

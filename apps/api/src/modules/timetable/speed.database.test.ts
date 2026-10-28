@@ -7,6 +7,7 @@ import {
   REQUEST_KEY_HEADER,
   type AttendanceSaved,
   type GridAnswer,
+  type PreparedStamp,
   type PublishCheck,
   type Role,
   type ScoresSaved,
@@ -25,6 +26,12 @@ import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import {
+  inputsNotWatched,
+  prepareBranch,
+  tablesReadByPreparation,
+  withoutStamp,
+} from '../../testing/prepared-kit.js';
 import { QUARTERS } from '../../testing/published-scene.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import {
@@ -429,6 +436,79 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             return found;
           };
           const ids = await idsOf(t, branch, person('teacher'));
+
+          // Task 9.3b-1, the prepared report totals: nothing is prepared yet, so every report
+          // is calculated from source and says "updating"; the preparation reads only watched
+          // inputs; once prepared, each report gives the same figures, "updated at" and not
+          // updating; and a second preparation finds nothing behind.
+          const prepared: [string, Person, string][] = [
+            [
+              'the rating of the classes',
+              person('academic_vice_principal'),
+              `/api/results/rating/classes?quarterId=${ids.quarter}`,
+            ],
+            [
+              'the rating list of a class',
+              person('academic_vice_principal'),
+              `/api/results/rating/class?quarterId=${ids.quarter}&classId=${ids.classId}`,
+            ],
+            [
+              'the early-warning list',
+              person('academic_vice_principal'),
+              '/api/results/early-warning',
+            ],
+            ['the branch summary', person('principal'), '/api/results/branch-summary'],
+            ['attendance today', person('head_tutor'), '/api/journal/attendance-today'],
+            [
+              'the lessons of today',
+              person('academic_vice_principal'),
+              '/api/journal/lessons-today',
+            ],
+            [
+              'the counts per teacher of quarter 4',
+              person('academic_vice_principal'),
+              `/api/journal/discipline?from=${ids.quarterStart}&to=${ids.date}`,
+            ],
+          ];
+          const fromSource = new Map<string, unknown>();
+          for (const [what, who, path] of prepared) {
+            const response = await as(who).get(path);
+            expect(response.status, `${what}: ${JSON.stringify(response.body)}`).toBe(200);
+            const stamp = (response.body as { prepared: PreparedStamp }).prepared;
+            expect(stamp, `${what}: before any preparation`).toEqual({
+              updatedAt: null,
+              updating: true,
+            });
+            fromSource.set(what, withoutStamp(response.body));
+          }
+          const read = await tablesReadByPreparation(t, branch.id);
+          expect(
+            await inputsNotWatched(t, read),
+            `${branch.name}: the inputs of the preparation`,
+          ).toEqual({
+            unwatched: [],
+            schoolInputsWithBranch: [],
+            watchedWithoutBranch: [],
+          });
+          const units = await once(() => prepareBranch(t, branch.id));
+          timings.push({
+            what: `${branch.name}: prepare every report total (${String(units.last)} units)`,
+            target: 'reported',
+            runs: units.runs,
+          });
+          expect(units.last, `${branch.name}: units prepared`).toBeGreaterThan(0);
+          for (const [what, who, path] of prepared) {
+            const response = await as(who).get(path);
+            const stamp = (response.body as { prepared: PreparedStamp }).prepared;
+            expect(stamp.updating, `${what}: after the preparation`).toBe(false);
+            expect(stamp.updatedAt, `${what}: updated at`).toBe(
+              new Date(SPEED_CLOCK).toISOString(),
+            );
+            expect(withoutStamp(response.body), `${what}: the same figures`).toEqual(
+              fromSource.get(what),
+            );
+          }
+          expect(await prepareBranch(t, branch.id), `${branch.name}: nothing behind`).toBe(0);
 
           // Open any page: under 1 s (the reads of a page together, as the browser sends them).
           for (const [page, { role, reads }] of Object.entries(PAGE_READS)) {

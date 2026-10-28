@@ -40,6 +40,8 @@ import { notFound } from '../setup/setup-refusals.js';
 import { accountNames } from '../timetable/edit-lock.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
+import type { BranchMoment } from './branch-moment.js';
+import { Freshness, preparedFigures } from './prepared/read.js';
 import { quarterOutcomes } from './quarter-outcomes.js';
 import { storedRecordsOf } from './stored-records.js';
 
@@ -97,20 +99,33 @@ const DAYS_AGO = 28;
 
 const lower = (id: string) => id.toLowerCase();
 
-interface Context {
-  readonly transaction: Transaction;
+interface Context extends BranchMoment {
   readonly access: Access;
-  readonly branchId: string;
-  readonly timeZone: string;
-  readonly now: Date;
-  readonly today: string;
 }
 
-interface QuarterRow extends QuarterRef {
+export interface QuarterRow extends QuarterRef {
   readonly closed: boolean;
 }
 
 /** One student and subject as `packages/calc` judged it. */
+/**
+ * The figures of a student and subject that do not depend on the thresholds (task 9.3b-1: what the
+ * prepared totals keep): everything the list shows but the reasons and the previous quarter's
+ * figure, which is read from that quarter. `outcome` is what `earlyWarningReasons` judges.
+ */
+export interface JudgedFigures {
+  readonly studentId: string;
+  readonly subjectId: string;
+  readonly journalId: string;
+  readonly result: bigint | null;
+  readonly currentWork: { readonly now: Fraction | null; readonly daysAgo: Fraction | null };
+  readonly attendance: Fraction | null;
+  readonly absenceRun: number;
+  readonly runStartsAt: Date | null;
+  readonly gradedWorks: number;
+  readonly outcome: StudentQuarterOutcome;
+}
+
 interface Judged {
   readonly studentId: string;
   readonly subjectId: string;
@@ -297,7 +312,7 @@ const quarterColumns = [
 ] as const;
 
 async function withClosed(
-  context: Context,
+  context: BranchMoment,
   row: {
     id: string;
     number: number;
@@ -364,7 +379,7 @@ async function startedQuarters(context: Context, yearId: string): Promise<Quarte
   return quarters;
 }
 
-async function thresholdsOf(context: Context): Promise<EarlyWarningThresholds> {
+async function thresholdsOf(context: BranchMoment): Promise<EarlyWarningThresholds> {
   const row = await context.transaction
     .selectFrom('branch_settings')
     .select(['low_result', 'result_drop', 'attendance_percent', 'absences_in_row'])
@@ -389,21 +404,41 @@ const currentWorkOf = (input: StudentQuarterInput, lessons = input.lessons): Fra
     quarterClosed: input.quarterClosed,
   });
 
-/** The current-work figure of each student and subject in the previous quarter of the year. */
-async function previousFigures(
-  context: Context,
+/** The quarter before this one in its year, dated; `null` for the first or an undated one. */
+export async function previousQuarterOf(
+  context: BranchMoment,
   quarter: QuarterRef,
-  subjectIds: readonly string[] | null,
-): Promise<Map<string, Fraction | null>> {
-  const figures = new Map<string, Fraction | null>();
+): Promise<QuarterRow | null> {
   const row = await context.transaction
     .selectFrom('quarters')
     .select(quarterColumns)
     .where('academic_year_id', '=', quarter.academicYearId)
     .where('number', '=', quarter.number - 1)
     .executeTakeFirst();
-  const previous = row === undefined ? null : await withClosed(context, row);
-  if (previous === null) return figures;
+  return row === undefined ? null : withClosed(context, row);
+}
+
+/** The current-work figure of each student and subject in the previous quarter of the year. */
+async function previousFigures(
+  context: BranchMoment,
+  quarter: QuarterRef,
+  subjectIds: readonly string[] | null,
+): Promise<Map<string, Fraction | null>> {
+  const previous = await previousQuarterOf(context, quarter);
+  return previous === null ? new Map() : workFiguresOf(context, previous, subjectIds);
+}
+
+/**
+ * The current-work figure of each student and subject in a quarter, as the next quarter compares
+ * with it (`edge/calculation`, early warning): the stored record of a closed quarter, else the
+ * journal's.
+ */
+export async function workFiguresOf(
+  context: BranchMoment,
+  previous: QuarterRow,
+  subjectIds: readonly string[] | null,
+): Promise<Map<string, Fraction | null>> {
+  const figures = new Map<string, Fraction | null>();
   const stored = previous.closed
     ? await storedRecordsOf(
         context.transaction,
@@ -464,7 +499,75 @@ async function judgeQuarter(
   /** Task 10.1: the reader's own journals only; the previous quarter is still read by subject. */
   journalIds?: readonly string[],
 ): Promise<Map<string, Judged>> {
+  const figures = await quarterFigures(context, quarter, subjectIds, journalIds);
+  if (figures.size === 0) return new Map();
+  return judgedOf(
+    context,
+    figures,
+    await previousFigures(context, quarter, subjectIds),
+    await thresholdsOf(context),
+  );
+}
+
+/** The figures judged against the thresholds, with the previous quarter's figure of each. */
+export async function judgedOf(
+  context: BranchMoment,
+  figures: ReadonlyMap<string, JudgedFigures>,
+  previous: ReadonlyMap<string, Fraction | null>,
+  thresholds?: EarlyWarningThresholds,
+): Promise<Map<string, Judged>> {
   const judged = new Map<string, Judged>();
+  if (figures.size === 0) return judged;
+  const limits = thresholds ?? (await thresholdsOf(context));
+  const journals = new Map(
+    (
+      await journalRows(context.transaction, context.branchId, {
+        journalIds: [...new Set([...figures.values()].map((one) => one.journalId))],
+      })
+    ).map((journal) => [journal.id, journal]),
+  );
+  for (const [key, one] of figures) {
+    const journal = journals.get(one.journalId);
+    if (journal === undefined) continue;
+    const currentWork = {
+      ...one.currentWork,
+      previousQuarter: previous.get(key) ?? null,
+    };
+    const judgement = earlyWarningReasons({
+      thresholds: limits,
+      gradedWorks: one.gradedWorks,
+      outcome: one.outcome,
+      currentWork,
+      attendance: one.attendance,
+      absenceRun: one.absenceRun,
+    });
+    judged.set(key, {
+      studentId: one.studentId,
+      subjectId: one.subjectId,
+      journal,
+      result: one.result,
+      currentWork,
+      attendance: one.attendance,
+      absenceRun: one.absenceRun,
+      runStartsAt: one.runStartsAt,
+      gradedWorks: one.gradedWorks,
+      reasons: judgement.reasons,
+    });
+  }
+  return judged;
+}
+
+/**
+ * The figures of every student and subject of the quarter's graded journals that do not depend on
+ * the thresholds (`JudgedFigures`), by `packages/calc`.
+ */
+export async function quarterFigures(
+  context: BranchMoment,
+  quarter: QuarterRow,
+  subjectIds: readonly string[] | null,
+  journalIds?: readonly string[],
+): Promise<Map<string, JudgedFigures>> {
+  const judged = new Map<string, JudgedFigures>();
   const { journals } = await quarterOutcomes(context.transaction, {
     branchId: context.branchId,
     timeZone: context.timeZone,
@@ -475,9 +578,7 @@ async function judgeQuarter(
     quarterClosed: quarter.closed,
   });
   if (journals.size === 0) return judged;
-  const thresholds = await thresholdsOf(context);
   const daysAgoDate = addDays(referenceDateOf(quarter, context.today), -DAYS_AGO);
-  const previous = await previousFigures(context, quarter, subjectIds);
   const stored = quarter.closed
     ? await storedRecordsOf(
         context.transaction,
@@ -532,32 +633,17 @@ async function judgeQuarter(
       .sort((a, b) => startOf(a) - startOf(b) || (a.lessonId < b.lessonId ? -1 : 1));
     const run = currentAbsenceRun(own.map((lesson) => lesson.lesson));
     const runStart = run.start === null ? undefined : own[run.start];
-    const gradedWorks = ownGradedWorks(one.input.lessons);
-    const currentWork = {
-      now: currentWorkOf(one.input),
-      daysAgo,
-      previousQuarter: previous.get(keyOf(one.studentId, subjectId)) ?? null,
-    };
-    const attendance = quarterAttendanceAverage(one.input);
-    const judgement = earlyWarningReasons({
-      thresholds,
-      gradedWorks,
-      outcome: one.outcome,
-      currentWork,
-      attendance,
-      absenceRun: run.length,
-    });
     judged.set(keyOf(one.studentId, subjectId), {
       studentId: one.studentId,
       subjectId,
-      journal: one.journal,
+      journalId: one.journal.id,
       result: one.outcome.kind === 'number' ? one.outcome.result.shown : null,
-      currentWork,
-      attendance,
+      currentWork: { now: currentWorkOf(one.input), daysAgo },
+      attendance: quarterAttendanceAverage(one.input),
       absenceRun: run.length,
       runStartsAt: runStart === undefined ? null : (starts.get(runStart.lessonId) ?? null),
-      gradedWorks,
-      reasons: judgement.reasons,
+      gradedWorks: ownGradedWorks(one.input.lessons),
+      outcome: one.outcome,
     });
   }
   return judged;
@@ -747,6 +833,7 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
       thresholds: shownThresholds,
       daysAgoDate: null,
       entries: [],
+      prepared: new Freshness().stamp,
     };
   }
   const quarterShown = (one: QuarterRow) => ({
@@ -778,7 +865,20 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
   // entry is still kept only for a journal the reader owns (below).
   const own = query.for === 'own_journals' ? await scope.ownJournals(quarter) : null;
   const subjectIds = own === null ? null : own.subjectIds;
-  const judged = await judgeQuarter(context, quarter, subjectIds, own?.journalIds);
+  // Task 9.3b-1: the figures from the prepared totals, judged against today's thresholds.
+  const freshness = new Freshness();
+  const prepared = await preparedFigures(context, quarter, subjectIds, freshness);
+  const journalIds = own === null ? null : new Set(own.journalIds);
+  const judged = await judgedOf(
+    context,
+    new Map(
+      [...prepared.figures].filter(
+        ([, one]) => journalIds === null || journalIds.has(one.journalId),
+      ),
+    ),
+    prepared.previous,
+    thresholds,
+  );
   const handled = await handledOf(context.transaction, quarter.id, subjectIds);
   await scope.load([...new Set([...judged.values()].map((one) => one.studentId))]);
 
@@ -896,5 +996,6 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
     thresholds: shownThresholds,
     daysAgoDate: addDays(referenceDate, -DAYS_AGO),
     entries,
+    prepared: freshness.stamp,
   });
 }
