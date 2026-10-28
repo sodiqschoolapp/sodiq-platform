@@ -49,6 +49,7 @@ import {
   switchesIn,
   type JournalRow,
 } from '../journal/journal-grid.query.js';
+import { lessonsCounted } from '../journal/lesson-counted.js';
 import { ownerIdOn } from '../plans/plan-scope.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readTutorRows } from '../timetable/load-facts.js';
@@ -448,11 +449,26 @@ async function attendanceIn(
       if (one.date >= query.from && one.date <= query.to) lessons.push(one);
     }
   }
+  // Who each lesson counts for, decided now (decision 4; 8.7 decision 13).
+  const counted = await lessonsCounted(
+    context.transaction,
+    context.branchId,
+    lessons.map((one) => ({
+      id: one.lessonId,
+      journalId: one.journalId,
+      date: one.date,
+      teacherId: one.recordedTeacherId,
+    })),
+  );
+  const teacherOf = (lesson: AttendanceLesson) => counted.get(lesson.lessonId) ?? null;
   // The choices: every value the reader's own cells of the range hold.
   const inScope = lessons.filter((one) => one.classes.some((entry) => readable(entry.classId)));
   const subjectIds = new Set(inScope.map((one) => one.subjectId));
   const teacherIds = new Set(
-    inScope.flatMap((one) => (one.teacherId === null ? [] : [one.teacherId])),
+    inScope.flatMap((one) => {
+      const id = teacherOf(one);
+      return id === null ? [] : [id];
+    }),
   );
   if (query.subjectId !== undefined && !subjectIds.has(lower(query.subjectId))) {
     const known = await context.transaction
@@ -472,7 +488,7 @@ async function attendanceIn(
   const days = new Map<string, Record<keyof AttendanceCounts, number>>();
   for (const lesson of inScope) {
     if (query.subjectId !== undefined && lesson.subjectId !== lower(query.subjectId)) continue;
-    if (query.teacherId !== undefined && lesson.teacherId !== lower(query.teacherId)) continue;
+    if (query.teacherId !== undefined && teacherOf(lesson) !== lower(query.teacherId)) continue;
     if (query.start !== undefined && lesson.start !== query.start) continue;
     for (const entry of lesson.classes) {
       if (!readable(entry.classId)) continue;

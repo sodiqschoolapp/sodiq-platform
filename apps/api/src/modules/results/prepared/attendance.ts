@@ -1,7 +1,6 @@
 import { sql } from 'kysely';
 import { exemptionMarksOf } from '../../journal/exemption-read.js';
 import { journalRows } from '../../journal/journal-grid.query.js';
-import { lessonsCounted } from '../../journal/lesson-counted.js';
 import { lessonStatusFacts } from '../../journal/lesson-status.query.js';
 import type { BranchMoment } from '../branch-moment.js';
 import type { QuarterRow } from '../early-warning.service.js';
@@ -47,8 +46,12 @@ export interface AttendanceLesson {
   /** The start in minutes of the day, branch time: the slot's clock time (build decision). */
   readonly start: number;
   readonly startsAt: Date;
-  /** Who the lesson counts for (`lessonsCounted`); `null` for nobody (a vacancy). */
-  readonly teacherId: string | null;
+  /**
+   * The person recorded on the lesson (`lessons.teacher_id`). Who it counts for (`lessonsCounted`:
+   * the substitute in force, the owner, nobody for a vacancy) is decided on read: it reads tables
+   * the preparation does not watch (substitutions, load rows, versions).
+   */
+  readonly recordedTeacherId: string | null;
   readonly classes: readonly AttendanceClassCounts[];
 }
 
@@ -146,16 +149,6 @@ export async function attendanceOfJournal(
     `.execute(transaction)
   ).rows;
   const exempt = await exemptionMarksOf(transaction, heldIds);
-  const counted = await lessonsCounted(
-    transaction,
-    branchId,
-    held.map((one) => ({
-      id: one.id,
-      journalId,
-      date: one.lesson_date,
-      teacherId: one.teacher_id,
-    })),
-  );
   const byLesson = new Map<string, Map<string | null, Record<Category, number>>>();
   for (const cell of cells) {
     const classes =
@@ -172,7 +165,7 @@ export async function attendanceOfJournal(
     date: one.lesson_date,
     start: one.start,
     startsAt: new Date(one.starts_at),
-    teacherId: counted.get(one.id) ?? null,
+    recordedTeacherId: one.teacher_id,
     classes: [...(byLesson.get(one.id) ?? new Map<string | null, Record<Category, number>>())]
       .map(([classId, counts]) => ({ classId, ...counts }))
       .sort((a, b) => (a.classId ?? '').localeCompare(b.classId ?? '')),
