@@ -40,6 +40,7 @@ const STUDENT: JournalStudent = {
   lastName: 'Zokirov',
   paternalName: null,
   uid: 'S-1',
+  photoId: null,
   folded: false,
   exemptions: [],
   cells: [

@@ -367,6 +367,23 @@ describe('the journal grid', () => {
     });
   });
 
+  it('names the current photo of each student, and none for a student without one (owner, 28 October 2026)', async () => {
+    const browser = await account();
+    const s = await gradedScene();
+    const photo = '0199f000-0000-7000-8000-0000000000aa';
+    await t.database.migrator
+      .updateTable('students')
+      .set({ photo_id: photo, photo_type: 'image/png' })
+      .where('id', '=', s.zokirov)
+      .execute();
+    await as(browser, [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
+      const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+      const photos = new Map(grid.students.map((one) => [one.id, one.photoId]));
+      expect(photos.get(s.zokirov)).toBe(photo);
+      expect(photos.get(s.oktamov)).toBeNull();
+    });
+  });
+
   it('keeps a lesson not yet started and one with no teacher recorded out of every figure', async () => {
     const browser = await account();
     const s = await gradedScene();

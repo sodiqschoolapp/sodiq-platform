@@ -52,6 +52,7 @@ const student = (n: number, lastName: string, cells = [cell(null), cell(null)]) 
   lastName,
   paternalName: null,
   uid: `S-${String(n)}`,
+  photoId: null,
   folded: false,
   exemptions: [],
   cells,

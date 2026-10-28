@@ -15,6 +15,9 @@ import {
   type ColGroupDef,
   type GridApi,
   type CellKeyDownEvent,
+  type GetRowIdParams,
+  type GridReadyEvent,
+  type IsFullWidthRowParams,
   type ICellRendererParams,
   type SuppressKeyboardEventParams,
   type IHeaderGroupParams,
@@ -22,7 +25,7 @@ import {
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -32,6 +35,7 @@ import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
 import { LessonCardDialog } from './lesson-card';
+import { StudentPhotoCell } from './student-photo';
 import { workKey, type WorksEntry } from './works-entry';
 
 /** Task 8.8: the characters of a topic the header shows; the tooltip holds it whole. */
@@ -61,7 +65,13 @@ const shortDate = (date: string): string => `${date.slice(8, 10)}.${date.slice(5
 /** A row of the grid: a student, the line of the folded section, or the bottom row. */
 export type GridRow =
   | { readonly kind: 'student'; readonly student: JournalStudent }
-  | { readonly kind: 'section'; readonly count: number; readonly which: 'left' | 'exempt' }
+  | {
+      readonly kind: 'section';
+      readonly count: number;
+      readonly which: 'left' | 'exempt';
+      /** Whether its students are shown: in the row, so the line is drawn again when it changes. */
+      readonly open: boolean;
+    }
   | { readonly kind: 'bottom'; readonly bottom: JournalBottom };
 
 type Weekday = Parameters<typeof weekdayName>[1];
@@ -345,6 +355,7 @@ interface GridProps {
 
 /** The columns a person may hide in the journal: the UID and the figures (owner, 27 October 2026). */
 export const HIDEABLE_COLUMNS = [
+  'photo',
   'uid',
   'attendance',
   'classwork',
@@ -357,7 +368,7 @@ export type HideableColumn = (typeof HIDEABLE_COLUMNS)[number];
 
 /** The hideable columns this grid draws, in their order: the choices of the column chooser. */
 export function hideableColumnsOf(grid: Grid, month: string | null): HideableColumn[] {
-  const shown: HideableColumn[] = ['uid'];
+  const shown: HideableColumn[] = ['photo', 'uid'];
   if (grid.shape === 'lessons') return shown;
   shown.push('attendance');
   if (grid.journal.attendanceOnly || grid.shape === 'attendance') return shown;
@@ -375,6 +386,39 @@ const dialogKey = (params: SuppressKeyboardEventParams<GridRow>): boolean =>
   !params.editing && (params.event.code === 'KeyC' || params.event.code === 'KeyE');
 
 const NONE_HIDDEN: readonly string[] = [];
+
+/**
+ * One object for every render: a new `defaultColDef` makes the grid set its columns again,
+ * which stops an edit and drops what is typed in it.
+ */
+const DEFAULT_COLUMN: ColDef<GridRow> = { sortable: false, resizable: true, suppressMovable: true };
+
+const MODULES = [AllCommunityModule];
+
+/**
+ * The row of a student, the same object while the student's data is: the grid draws a row
+ * again when its object changes, and a row drawn again loses the number being typed in it.
+ */
+const STUDENT_ROWS = new WeakMap<JournalStudent, GridRow>();
+function studentRow(student: JournalStudent): GridRow {
+  const known = STUDENT_ROWS.get(student);
+  if (known !== undefined) return known;
+  const row: GridRow = { kind: 'student', student };
+  STUDENT_ROWS.set(student, row);
+  return row;
+}
+
+/** The id of a row: the student, a folded section or the bottom row of averages. */
+const rowIdOf = (params: GetRowIdParams<GridRow>): string =>
+  params.data.kind === 'student'
+    ? params.data.student.id
+    : params.data.kind === 'section'
+      ? `section:${params.data.which}`
+      : 'bottom';
+
+/** A folded section is one row across the grid (a new function would redraw every row). */
+const sectionRow = (params: IsFullWidthRowParams<GridRow>): boolean =>
+  params.rowNode.data?.kind === 'section';
 
 /** The corner marker of a cell with a comment (task 8.2). */
 const COMMENTED =
@@ -438,16 +482,14 @@ export function JournalGridView({
         : (grid.bottom.months[month] ?? null);
 
   const rows = useMemo((): GridRow[] => {
-    const shown: GridRow[] = members.map((student) => ({ kind: 'student', student }));
+    const shown: GridRow[] = members.map(studentRow);
     if (exempt.length > 0) {
-      shown.push({ kind: 'section', count: exempt.length, which: 'exempt' });
-      if (exemptOpen)
-        shown.push(...exempt.map((student) => ({ kind: 'student' as const, student })));
+      shown.push({ kind: 'section', count: exempt.length, which: 'exempt', open: exemptOpen });
+      if (exemptOpen) shown.push(...exempt.map(studentRow));
     }
     if (foldedCount > 0) {
-      shown.push({ kind: 'section', count: foldedCount, which: 'left' });
-      if (foldedOpen)
-        shown.push(...folded.map((student) => ({ kind: 'student' as const, student })));
+      shown.push({ kind: 'section', count: foldedCount, which: 'left', open: foldedOpen });
+      if (foldedOpen) shown.push(...folded.map(studentRow));
     }
     return shown;
   }, [members, folded, foldedCount, foldedOpen, exempt, exemptOpen]);
@@ -480,6 +522,17 @@ export function JournalGridView({
         width: 44,
         valueGetter: (params) =>
           params.data?.kind === 'student' ? params.data.student.number : null,
+      },
+      // The owner, 28 October 2026: the students' photos, shown unless the reader hides them.
+      {
+        colId: 'photo',
+        headerName: t('journal.grid.photo'),
+        pinned: 'left',
+        width: 56,
+        cellRenderer: (params: ICellRendererParams<GridRow>) =>
+          params.data?.kind === 'student' ? (
+            <StudentPhotoCell student={params.data.student} />
+          ) : null,
       },
       {
         colId: 'name',
@@ -1182,6 +1235,53 @@ export function JournalGridView({
     entryText,
   ]);
 
+  // New column definitions make the grid stop an edit and drop what is typed in it. A save
+  // changes them (its sign, the lesson's status), so a fast "7, Enter, 9" lost the 9 to the
+  // redraw of the first save, or put it in the first row (owner, 27 October 2026). While a
+  // cell is edited they wait, and are drawn once the edit ends; the rows' values still change
+  // at once, and a save reads the cell's version from its row, never from a held definition.
+  const [shownDefs, setShownDefs] = useState(columnDefs);
+  const latestDefs = useRef(columnDefs);
+  useEffect(() => {
+    latestDefs.current = columnDefs;
+    if ((api.current?.getEditingCells().length ?? 0) > 0) return;
+    setShownDefs(columnDefs);
+  }, [columnDefs]);
+  const drawHeldDefs = useCallback(() => {
+    setShownDefs(latestDefs.current);
+  }, []);
+  // The line of a folded section is drawn from its row, and its toggles are read when it is
+  // pressed: a new renderer on every render made the grid draw every row again (`redrawRows`),
+  // which stopped the edit of a cell.
+  const toggles = useRef({ exempt: onToggleExempt, left: onToggleFolded });
+  useEffect(() => {
+    toggles.current = { exempt: onToggleExempt, left: onToggleFolded };
+  }, [onToggleExempt, onToggleFolded]);
+  const fullWidthRow = useCallback(
+    (params: ICellRendererParams<GridRow>) => {
+      const row = params.data;
+      if (row?.kind !== 'section') return null;
+      return (
+        <button
+          type="button"
+          className="h-full w-full px-4 text-left font-semibold"
+          aria-expanded={row.open}
+          onClick={() => {
+            toggles.current[row.which]?.();
+          }}
+        >
+          {row.which === 'exempt'
+            ? t('journal.grid.exemptSection', { count: row.count })
+            : t('journal.grid.folded', { count: row.count })}
+        </button>
+      );
+    },
+    [t],
+  );
+  const onGridReady = useCallback((event: GridReadyEvent<GridRow>) => {
+    api.current = event.api;
+  }, []);
+
   /** The comment target of a column for a student: an A cell, a stored work's cell or the rating column. */
   const commentCellOf = useCallback(
     (colId: string, studentId: string): CommentCell | null => {
@@ -1290,41 +1390,16 @@ export function JournalGridView({
         // Enter after a typed number saves it and moves down to the next student, as a digit
         // does in an A cell (owner, 27 October 2026; `07`, Keyboard).
         enterNavigatesVerticallyAfterEdit
-        modules={[AllCommunityModule]}
+        modules={MODULES}
         theme={THEME}
         rowData={rows}
-        columnDefs={columnDefs}
+        columnDefs={shownDefs}
+        onCellEditingStopped={drawHeldDefs}
         pinnedBottomRowData={pinnedBottomRowData}
-        defaultColDef={{ sortable: false, resizable: true, suppressMovable: true }}
-        getRowId={(params) =>
-          params.data.kind === 'student'
-            ? params.data.student.id
-            : params.data.kind === 'section'
-              ? `section:${params.data.which}`
-              : 'bottom'
-        }
-        isFullWidthRow={(params) => params.rowNode.data?.kind === 'section'}
-        fullWidthCellRenderer={(params: ICellRendererParams<GridRow>) =>
-          params.data?.kind === 'section' && params.data.which === 'exempt' ? (
-            <button
-              type="button"
-              className="h-full w-full px-4 text-left font-semibold"
-              aria-expanded={exemptOpen}
-              onClick={onToggleExempt}
-            >
-              {t('journal.grid.exemptSection', { count: exempt.length })}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="h-full w-full px-4 text-left font-semibold"
-              aria-expanded={foldedOpen}
-              onClick={onToggleFolded}
-            >
-              {t('journal.grid.folded', { count: foldedCount })}
-            </button>
-          )
-        }
+        defaultColDef={DEFAULT_COLUMN}
+        getRowId={rowIdOf}
+        isFullWidthRow={sectionRow}
+        fullWidthCellRenderer={fullWidthRow}
         // jsdom has no layout: every column is drawn there, as AG Grid cannot measure.
         suppressColumnVirtualisation={import.meta.env.MODE === 'test'}
         onCellKeyDown={onCellKeyDown}
@@ -1334,9 +1409,7 @@ export function JournalGridView({
             entry?.openHistory(colId.slice(0, -2), event.data.student);
           }
         }}
-        onGridReady={(event) => {
-          api.current = event.api;
-        }}
+        onGridReady={onGridReady}
         onFirstDataRendered={(event) => {
           // The lesson of the date at the right edge, whole, with the lessons before it in view on
           // its left: its last column (AVG, else its last work, else A) is brought to the end.

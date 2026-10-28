@@ -6363,6 +6363,7 @@ export const uz: Texts<'one' | 'other'> = {
       fullScreen: 'Toʻliq ekran',
       exitFullScreen: 'Toʻliq ekrandan chiqish',
       columnNames: {
+        photo: 'Rasm',
         uid: 'UID',
         attendance: 'Davomat',
         classwork: 'Sinf ishi oʻrtachasi',
@@ -6409,6 +6410,8 @@ export const uz: Texts<'one' | 'other'> = {
       groupAverage: 'Guruh oʻrtachasi',
       number: '№',
       student: 'Oʻquvchi',
+      photo: 'Rasm',
+      photoOpen: '{{name}} rasmini ochish',
       uid: 'UID',
       attendanceAverage: 'Dav.',
       classworkAverage: 'SI oʻrt.',
