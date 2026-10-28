@@ -1,5 +1,8 @@
 import { Controller, Get, HttpCode, Post } from '@nestjs/common';
 import {
+  disciplineExportSchema,
+  disciplineItemsQuerySchema,
+  disciplineItemsSchema,
   disciplineQuerySchema,
   disciplineSchema,
   lessonsTodayQuerySchema,
@@ -12,6 +15,9 @@ import {
   ownRemindersQuerySchema,
   remindersSchema,
   type Discipline,
+  type DisciplineExport,
+  type DisciplineItems,
+  type DisciplineItemsQuery,
   type DisciplineQuery,
   type LessonsToday,
   type LessonsTodayQuery,
@@ -23,7 +29,15 @@ import {
 } from '@sodiq/shared';
 import type { z } from 'zod';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsNothing, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import {
+  Returns,
+  ReturnsFile,
+  ReturnsNothing,
+  ValidBody,
+  ValidParams,
+  ValidQuery,
+} from '../../http/schemas.js';
+import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { LessonStatusService } from './lesson-status.service.js';
@@ -72,6 +86,29 @@ export class LessonStatusController {
     @CurrentAccess() access: Access,
   ): Promise<Discipline> {
     return this.status.discipline(access, query);
+  }
+
+  /** Task 9.3b-2: the items behind one count of one teacher (review finding 7). */
+  @Get('discipline/items')
+  @Requires('journal_discipline', 'view')
+  @Returns(disciplineItemsSchema)
+  disciplineItems(
+    @ValidQuery(disciplineItemsQuerySchema) query: DisciplineItemsQuery,
+    @CurrentAccess() access: Access,
+  ): Promise<DisciplineItems> {
+    return this.status.disciplineItems(access, query);
+  }
+
+  /** Task 9.3b-2: the counts per teacher as Excel (8.7 decision 6), logged. */
+  @Post('discipline/export')
+  @Requires('journal_discipline', 'export')
+  @ReturnsFile()
+  disciplineExport(
+    @ValidBody(disciplineExportSchema) input: DisciplineExport,
+    @CurrentAccess() access: Access,
+    @RequestId() requestId: string,
+  ): Promise<XlsxFile> {
+    return this.status.disciplineExport(access, input, requestId);
   }
 
   /** `edge/journal`: "They go to an 'orphan lessons' list." */
