@@ -51,7 +51,7 @@ export const TRAVEL_MINUTES = 30;
 
 /** The size of a run: the classes of each grade 1 to 11 in each branch, and the class size. */
 export interface RunSize {
-  readonly name: 'small' | 'full';
+  readonly name: 'small' | 'full' | 'triple';
   /** One list per branch: index 0 is grade 1. */
   readonly classesPerGrade: readonly (readonly number[])[];
   readonly studentsPerClass: number;
@@ -91,6 +91,22 @@ export const SIZES: Record<RunSize['name'], RunSize> = {
     sharedSubjects: 10,
     repeats: 5,
   },
+  // Task 10.1 (`14`, Speed tests: "three times the estimated yearly data"):
+  // three branches, each with three times the classes of a branch of `full`
+  // (240 classes, 6,000 students), so every per-branch read meets three times
+  // a real branch's data (review finding 1 of the plan).
+  triple: {
+    name: 'triple',
+    classesPerGrade: [
+      [9, 9, 9, 9, 9, 6, 6, 6, 6, 6, 6],
+      [9, 9, 9, 9, 9, 6, 6, 6, 6, 6, 6],
+      [6, 9, 9, 9, 9, 6, 6, 6, 6, 6, 6],
+    ],
+    studentsPerClass: 25,
+    lessonsPerTeacher: 12,
+    sharedSubjects: 10,
+    repeats: 20,
+  },
 };
 
 /** How a subject is taught in a grade: whole class, in groups across a pair of classes, or split in halves (mixed with another split subject). */
@@ -101,6 +117,11 @@ interface Lesson {
   readonly perWeek: number;
   readonly way: Way;
   readonly roomType?: 'classroom' | 'laboratory' | 'sports_hall' | 'other';
+  /**
+   * Task 10.1 (the From line of 5.12d): the row allows double lessons, and the
+   * seed placer places one double a week of it. Whole-class rows only.
+   */
+  readonly doubles?: true;
 }
 
 /** The weekly load of a class by grade: 24 lessons in grades 1 to 4, 27 to 30 above. */
@@ -120,7 +141,7 @@ function curriculumOf(grade: number): Lesson[] {
   }
   if (grade <= 9) {
     return [
-      { subject: 'Mathematics', perWeek: 5, way: 'whole' },
+      { subject: 'Mathematics', perWeek: 5, way: 'whole', doubles: true },
       { subject: 'Native language', perWeek: 3, way: 'whole' },
       { subject: 'Literature', perWeek: 2, way: 'whole' },
       { subject: 'Russian', perWeek: 2, way: 'whole' },
@@ -148,7 +169,7 @@ function curriculumOf(grade: number): Lesson[] {
     ];
   }
   return [
-    { subject: 'Mathematics', perWeek: 6, way: 'whole' },
+    { subject: 'Mathematics', perWeek: 6, way: 'whole', doubles: true },
     { subject: 'Native language', perWeek: 2, way: 'whole' },
     { subject: 'Literature', perWeek: 2, way: 'whole' },
     { subject: 'Russian', perWeek: 2, way: 'whole' },
@@ -156,10 +177,16 @@ function curriculumOf(grade: number): Lesson[] {
     { subject: 'History', perWeek: 2, way: 'whole' },
     { subject: 'Geography', perWeek: 1, way: 'whole' },
     { subject: 'Biology', perWeek: 2, way: 'whole' },
-    { subject: 'Physics', perWeek: 3, way: 'whole' },
+    { subject: 'Physics', perWeek: 3, way: 'whole', doubles: true },
     { subject: 'Chemistry', perWeek: 2, way: 'whole', roomType: 'laboratory' },
     { subject: 'Informatics', perWeek: 2, way: 'whole' },
-    { subject: 'Physical education', perWeek: 2, way: 'whole', roomType: 'sports_hall' },
+    {
+      subject: 'Physical education',
+      perWeek: 2,
+      way: 'whole',
+      roomType: 'sports_hall',
+      doubles: true,
+    },
     { subject: 'Law', perWeek: 1, way: 'whole' },
   ];
 }
@@ -210,6 +237,7 @@ interface PlannedRow {
   readonly perWeek: number;
   readonly roomType: Lesson['roomType'] | null;
   readonly mixed: boolean;
+  readonly doubles: boolean;
   /** The rows that must have different teachers (one block). */
   readonly blockKey: string;
 }
@@ -343,9 +371,12 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
     );
     await t.assign(branch, day, {}, RUN_TOMORROW);
 
-    // Rooms: a classroom per class and four more, two laboratories, three
-    // sports halls and three workshops, on one building and floor.
+    // Rooms: a classroom per class and four more, and two laboratories, three
+    // sports halls and three workshops for each 27 classes or so (once in a
+    // branch of `full`, three times in one of `triple`), on one building and floor.
     const classCount = perGrade.reduce((sum, count) => sum + count, 0);
+    const sets = Math.max(1, Math.round(classCount / 27));
+    const numbered = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
     const building = await migrator
       .insertInto('buildings')
       .values({ branch_id: branch, name: 'Main building' })
@@ -361,9 +392,15 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
         name: `Room ${String(101 + index)}`,
         type: 'classroom',
       })),
-      ...[1, 2].map((index) => ({ name: `Laboratory ${String(index)}`, type: 'laboratory' })),
-      ...[1, 2, 3].map((index) => ({ name: `Sports hall ${String(index)}`, type: 'sports_hall' })),
-      ...[1, 2, 3].map((index) => ({ name: `Workshop ${String(index)}`, type: 'other' })),
+      ...numbered(2 * sets).map((index) => ({
+        name: `Laboratory ${String(index)}`,
+        type: 'laboratory',
+      })),
+      ...numbered(3 * sets).map((index) => ({
+        name: `Sports hall ${String(index)}`,
+        type: 'sports_hall',
+      })),
+      ...numbered(3 * sets).map((index) => ({ name: `Workshop ${String(index)}`, type: 'other' })),
     ];
     const rooms = await migrator
       .insertInto('rooms')
@@ -452,6 +489,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
               perWeek: lessonOf.perWeek,
               roomType: lessonOf.roomType ?? null,
               mixed: false,
+              doubles: lessonOf.doubles === true,
               blockKey: `class:${one.id}:${lessonOf.subject}`,
             });
           }
@@ -476,6 +514,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
                 perWeek: lessonOf.perWeek,
                 roomType: 'classroom',
                 mixed: false,
+                doubles: false,
                 blockKey: key,
               });
             }
@@ -500,6 +539,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
                 perWeek: lessonOf.perWeek,
                 roomType: lessonOf.roomType ?? null,
                 mixed: true,
+                doubles: false,
                 blockKey: `split:${one.id}:${lessonOf.subject}`,
               });
             }
@@ -620,6 +660,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
           lessons_per_week: row.perWeek,
           room_type: row.roomType,
           mixed_block: row.mixed,
+          double_lessons: row.doubles,
         })),
       )
       .execute();
@@ -725,6 +766,8 @@ export async function gridOf(t: RunKit, branch: BranchOfRun): Promise<GridAnswer
 export interface Placed {
   readonly lessons: number;
   readonly blocks: number;
+  /** The double lessons placed (task 10.1), each two blocks of one pair. */
+  readonly doubles: number;
   /** The lessons the placer could not place, by class or group, subject and count. */
   readonly notPlaced: readonly {
     readonly unit: string;
@@ -763,17 +806,24 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
     readonly keys: readonly string[];
     readonly subjects: readonly string[];
     readonly template: PatternBlock;
-    readonly cells: readonly {
-      weekday: number;
-      slotPosition: number;
-      start: number;
-      end: number;
-    }[];
+    /** Each place of the item; a double's has the lesson slot of its second half. */
+    readonly cells: readonly Cell[];
     readonly shared: boolean;
+    /** A double lesson (task 10.1): two blocks of one pair in consecutive lesson slots. */
+    readonly pair: boolean;
+  }
+  interface Slot {
+    readonly slotPosition: number;
+    readonly start: number;
+    readonly end: number;
+  }
+  interface Cell extends Slot {
+    readonly weekday: number;
+    readonly second?: Slot;
   }
   const elsewhere = new Set(grid.facts.busyElsewhere.map((one) => one.teacherId));
   const items: Item[] = [];
-  const itemOf = (rowIds: readonly string[], times: number) => {
+  const itemOf = (rowIds: readonly string[], times: number, pair = false) => {
     const unitRows = rowIds.map((id) => model.rowOf(id));
     const classIds = [
       ...new Set(
@@ -785,16 +835,31 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
       rowIds.length === 2 && unitRows.every((row) => row.mixedBlock)
         ? newBlockOf(model, first, rowIds[1])
         : newBlockOf(model, first);
-    const cells = [];
+    const singles: Cell[] = [];
     for (let weekday = 1; weekday <= 7; weekday += 1) {
       for (const slot of model.dayOfRows(unitRows, weekday)?.slots ?? []) {
         if (slot.kind !== 'lesson') continue;
         const [at] = blockPlacements(model, template, weekday, slot.position) ?? [];
         if (at !== undefined) {
-          cells.push({ weekday, slotPosition: slot.position, start: at.start, end: at.end });
+          singles.push({ weekday, slotPosition: slot.position, start: at.start, end: at.end });
         }
       }
     }
+    // A double: a lesson slot and the next lesson slot of the day (a break
+    // between them allowed: edge/timetable, Structure).
+    const cells = pair
+      ? singles.flatMap((cell, index) => {
+          const next = singles[index + 1];
+          return next?.weekday === cell.weekday
+            ? [
+                {
+                  ...cell,
+                  second: { slotPosition: next.slotPosition, start: next.start, end: next.end },
+                },
+              ]
+            : [];
+        })
+      : singles;
     for (let time = 0; time < times; time += 1) {
       items.push({
         rows: unitRows,
@@ -804,6 +869,7 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
         template,
         cells,
         shared: unitRows.some((row) => elsewhere.has(row.teacherId)),
+        pair,
       });
     }
   };
@@ -832,7 +898,13 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
       continue;
     }
     for (const id of row.block) seen.add(id);
-    itemOf(row.block, row.lessonsPerWeek);
+    // Task 10.1: a whole-class row that allows doubles has one double a week.
+    if (row.doubleLessons && row.classId !== null && row.block.length === 1) {
+      itemOf(row.block, 1, true);
+      itemOf(row.block, row.lessonsPerWeek - 2);
+    } else {
+      itemOf(row.block, row.lessonsPerWeek);
+    }
   }
 
   // What is placed, and what each slot holds (classes, teachers, rooms) and
@@ -869,26 +941,45 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
     perDay.clear();
     for (const one of all) add(one.block, one.item);
   };
-  /** The item at a cell with a free room of each row's type; `null` when the slot is taken. */
-  const blockAt = (item: Item, cell: Item['cells'][number], id: string): PatternBlock | null => {
-    if (holdsAny(cell.weekday, cell.start, item.keys)) return null;
+  /**
+   * The item at a cell with a free room of each row's type, the same room in
+   * both halves of a double; `null` when a slot is taken. A double's blocks
+   * are `id` and `id:2`, of the pair `id`.
+   */
+  const blocksAt = (item: Item, cell: Cell, id: string): PatternBlock[] | null => {
+    const starts = [cell.start, ...(cell.second === undefined ? [] : [cell.second.start])];
+    const taken = (ids: readonly string[]) =>
+      starts.some((start) => holdsAny(cell.weekday, start, ids));
+    if (taken(item.keys)) return null;
     const chosen: string[] = [];
     const lessons = [];
     for (const one of item.template.lessons) {
       const type = model.rowOf(one.loadRowId).roomType;
       if (type === null) {
-        if (one.roomId !== null && holdsAny(cell.weekday, cell.start, [one.roomId])) return null;
+        if (one.roomId !== null && taken([one.roomId])) return null;
         lessons.push({ ...one, id: `${id}:${one.loadRowId}` });
         continue;
       }
       const free = (roomsOfType.get(type) ?? []).find(
-        (room) => !chosen.includes(room) && !holdsAny(cell.weekday, cell.start, [room]),
+        (room) => !chosen.includes(room) && !taken([room]),
       );
       if (free === undefined) return null;
       chosen.push(free);
       lessons.push({ ...one, id: `${id}:${one.loadRowId}`, roomId: free });
     }
-    return { ...item.template, ...cell, id, lessons };
+    const { second, ...first } = cell;
+    if (second === undefined) return [{ ...item.template, ...first, id, lessons }];
+    return [
+      { ...item.template, ...first, id, lessons, doublePairId: id },
+      {
+        ...item.template,
+        weekday: cell.weekday,
+        ...second,
+        id: `${id}:2`,
+        lessons: lessons.map((one) => ({ ...one, id: `${id}:2:${one.loadRowId}` })),
+        doublePairId: id,
+      },
+    ];
   };
   const day = (key: string, weekday: number) => perDay.get(`${key}|${String(weekday)}`) ?? 0;
   const score = (item: Item, cell: Item['cells'][number]) =>
@@ -919,7 +1010,7 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
     let item: Item | undefined;
     let fewest = Number.POSITIVE_INFINITY;
     for (const one of left) {
-      const free = one.cells.filter((cell) => blockAt(one, cell, 'probe') !== null).length;
+      const free = one.cells.filter((cell) => blocksAt(one, cell, 'probe') !== null).length;
       const rank = free * 10 - one.rows.length - (one.shared ? 5 : 0);
       if (rank < fewest) {
         fewest = rank;
@@ -932,13 +1023,14 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
     const id = `seed:${String(next)}`;
     let done = false;
     for (const cell of [...item.cells].sort((a, b) => score(item, a) - score(item, b))) {
-      const block = blockAt(item, cell, id);
-      if (block === null || blockedFor([block])) continue;
-      add(block, item);
+      const blocks = blocksAt(item, cell, id);
+      if (blocks === null || blockedFor(blocks)) continue;
+      for (const block of blocks) add(block, item);
       done = true;
       break;
     }
-    if (!done) {
+    // A double that finds no free pair of slots is reported, not rearranged.
+    if (!done && !item.pair) {
       // "Suggest a place" of the engine: a free slot, or a rearrangement of
       // up to two placed blocks that makes room.
       const fresh: PatternBlock = {
@@ -979,13 +1071,21 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
         const unit = row.classId ?? row.groupId ?? '';
         const key = `${unit}|${row.subjectId}`;
         const known = notPlaced.get(key) ?? { unit, subject: row.subjectId, lessons: 0 };
-        notPlaced.set(key, { ...known, lessons: known.lessons + 1 });
+        notPlaced.set(key, { ...known, lessons: known.lessons + (item.pair ? 2 : 1) });
       }
     }
   }
   const blocks = [...placed.values()].map((one) => one.block);
 
-  // Written as `writeBlock` writes them, in one transaction of the migrator.
+  // Written as `writeBlock` writes them, in one transaction of the migrator;
+  // the two blocks of a double share a new pair id.
+  const pairIds = new Map<string, string>();
+  const pairOf = (block: PatternBlock) => {
+    if (block.doublePairId === null) return null;
+    const known = pairIds.get(block.doublePairId) ?? randomUUID();
+    pairIds.set(block.doublePairId, known);
+    return known;
+  };
   await t.database.migrator.transaction().execute(async (transaction) => {
     for (const block of blocks) {
       const written = await transaction
@@ -997,7 +1097,7 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
           slot_position: block.slotPosition,
           start_minutes: block.start,
           end_minutes: block.end,
-          double_pair_id: null,
+          double_pair_id: pairOf(block),
         })
         .returning('id')
         .executeTakeFirstOrThrow();
@@ -1026,6 +1126,7 @@ export async function placeDraft(t: RunKit, branch: BranchOfRun): Promise<Placed
   return {
     lessons: blocks.reduce((sum, block) => sum + block.lessons.length, 0),
     blocks: blocks.length,
+    doubles: pairIds.size,
     notPlaced: [...notPlaced.values()].map((one) => ({
       unit: names.get(one.unit) ?? one.unit,
       subject: subjectNames.get(one.subject) ?? one.subject,
