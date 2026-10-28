@@ -361,7 +361,8 @@ Plan approved on pull request #260 with corrections 1 to 3, after the owner appr
 | Quarter files "provisional" or "final"; range files their range and the export moment; one audit entry per file | Decision 12 |
 | School days of a quarter by `isSchoolDay`, passed up to today | Decision 13 |
 | **Build decision.** The items behind a count are lessons, each with how many of the count it holds (works, history lines), or a rating exam with its lines: the prepared status facts hold no work ids | Review finding 7 of the plan |
-| **Build decision.** Room use is of the lesson periods the branch ran that week (each date and start with a lesson) | `06`: "room use in percent"; no slot count per room is stored |
+| Room use is of the lesson slots of the week's day templates: on each school day, the most lesson slots the template in force of any grade holds | Code review, changes needed 2; the approved plan |
+| The total across branches (this branch's planned load and the other branches') is shown beside the contract, marked under, equal or over | `06`, Weekly load; code review, changes needed 1 |
 | **Build decision.** The reports are pages of Results (a Reports page with their links); "Results" of a role that reads neither the rating nor the early-warning list opens the Reports page | `12`: at most about ten menu items, and the Super Admin has ten |
 | **Build decision.** With a class chosen, the attendance list shows its days in place of the class line; the Tutor of a class is the one in force at each lesson's start | `08`: "Daily attendance of a class as a percent"; `tutorAt` |
 

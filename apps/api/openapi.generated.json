@@ -402310,6 +402310,20 @@
                             "minimum": 0,
                             "maximum": 9007199254740991
                           },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "againstContract": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "under",
+                              "equal",
+                              "over"
+                            ]
+                          },
                           "invigilations": {
                             "type": "integer",
                             "minimum": 0,
@@ -402323,6 +402337,8 @@
                           "planned",
                           "elsewhere",
                           "contract",
+                          "total",
+                          "againstContract",
                           "invigilations"
                         ],
                         "additionalProperties": false

@@ -78048,6 +78048,9 @@ export interface operations {
                             planned: number;
                             elsewhere: number;
                             contract: number | null;
+                            total: number;
+                            /** @enum {string|null} */
+                            againstContract: "under" | "equal" | "over" | null;
                             invigilations: number;
                         }[];
                         classes: {

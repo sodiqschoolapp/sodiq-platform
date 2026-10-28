@@ -130,12 +130,12 @@ describe('the timetable load report (task 9.3b-2)', () => {
           ].sort((a, b) => String(a).localeCompare(String(b))),
         );
         // Room use is of the lesson slots of the week's day templates (review correction 2): five
-      // school days of three lesson slots, though the week's lessons used only two of them.
-      expect(report.rooms.length).toBeGreaterThan(0);
-      for (const room of report.rooms) {
-        expect(room.periods).toBe(15);
-        expect(room.percent).toBe(Math.round((room.lessons * 100) / 15));
-      }
+        // school days of three lesson slots, though the week's lessons used only two of them.
+        expect(report.rooms.length).toBeGreaterThan(0);
+        for (const room of report.rooms) {
+          expect(room.periods).toBe(15);
+          expect(room.percent).toBe(Math.round((room.lessons * 100) / 15));
+        }
         // No class of this version has a gap in its day.
         expect(report.freePeriods).toEqual([]);
       },
@@ -194,6 +194,52 @@ describe('the timetable load report (task 9.3b-2)', () => {
         });
         const file = await post('/api/timetable/reports/load/export', { week: WEEK });
         expect(file.status).toBe(200);
+      },
+    );
+  });
+
+  // `edge/timetable`: "the load report show[s] the lessons per week under each vacancy"; a cancelled
+  // lesson is no lesson of the week (code review 6).
+  it('lists a vacancy’s lessons under it and counts no cancelled lesson', async () => {
+    const s = await publishedScene(t, load, { graded: true, secondSubject: true });
+    const vacancy = await load.vacancy(s.branch);
+    const lessonOn = async (classId: string, subjectId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', classId)
+          .where('subject_id', '=', subjectId)
+          .where('lesson_date', '=', '2026-10-12')
+          .executeTakeFirstOrThrow()
+      ).id;
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ teacher_id: vacancy })
+      .where('id', '=', await lessonOn(s.otherClass, s.subject))
+      .execute();
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: 'School event' })
+      .where('id', '=', await lessonOn(s.classId, s.subject))
+      .execute();
+    await as(
+      s.branch,
+      [{ role: 'academic_vice_principal', branchId: s.branch }],
+      async ({ get }) => {
+        const report = reportOf(await get(`/api/timetable/reports/load?week=${WEEK}`));
+        expect(report.teachers.find((one) => one.teacher.id === vacancy)).toMatchObject({
+          vacancy: true,
+          lessons: 1,
+        });
+        // The first class's maths is cancelled: the teacher keeps the second subject only.
+        expect(report.teachers.find((one) => one.teacher.id === s.teacher.staffId)).toMatchObject({
+          lessons: 1,
+          planned: 2,
+        });
+        expect(
+          report.classes.find((one) => one.unit.id === s.classId && one.subject.id === s.subject),
+        ).toMatchObject({ lessons: 0, load: 1 });
       },
     );
   });

@@ -2,6 +2,7 @@ import { finalQuarterRecord } from '@sodiq/calc';
 import {
   attendanceReportSchema,
   BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
   closingChecklistSchema,
   resultsReportChoicesSchema,
   resultsTableSchema,
@@ -9,10 +10,12 @@ import {
   type AttendanceReport,
 } from '@sodiq/shared';
 import ExcelJS from 'exceljs';
+import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
+import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import {
   dayTemplatesKit,
@@ -96,6 +99,7 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
             .post(path)
             .set('Cookie', browser.cookie)
             .set(BRANCH_HEADER, branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
             .buffer(true)
             .parse(binary)
             .send(body),
@@ -274,6 +278,9 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
 
   const RANGE = 'from=2026-10-12&to=2026-10-31';
 
+  const studentName = (row: { student: { firstName: string; lastName: string } }) =>
+    `${row.student.lastName} ${row.student.firstName}`;
+
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
@@ -352,6 +359,63 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
         expect(first.rows.map((one) => one.counts.expected).sort((a, b) => b - a)).toEqual([15, 3]);
       },
     );
+  });
+
+  // `edge/00-definitions`, Held lesson: "not cancelled, and which has a teacher recorded"; `07`,
+  // exemption entered after the fact: a lesson left "as attended" is attended (code review 3).
+  it('counts no cancelled lesson and no lesson without a teacher, and a lesson left "as attended" under an exemption as attended', async () => {
+    const c = await scene();
+    const roles = [{ role: 'academic_vice_principal' as const, branchId: c.s.branch }];
+    const browser = await account();
+    // Aziz exempt from the 12th, both his lessons with a mark left as attended.
+    await as(browser, c.s.branch, roles, async ({ post }) => {
+      const created = await post('/api/exemptions', {
+        kind: 'full',
+        subjectIds: null,
+        startDate: '2026-10-12',
+        endDate: null,
+        slots: null,
+        category: 'illness',
+        detail: 'A certificate from the clinic',
+        studentIds: [c.students.aziz],
+        choices: [c.lessons.l12, c.lessons.l19].map((lesson) => ({
+          studentId: c.students.aziz,
+          lessonId: lesson.id,
+          choice: 'keep',
+        })),
+      });
+      expect(created.status, JSON.stringify(created.body).slice(0, 600)).toBe(200);
+    });
+    // The 26th cancelled with a reason; the 19th with no teacher recorded ("unresolved").
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ cancel_cause: 'reason', cancel_reason: 'School event' })
+      .where('id', '=', c.lessons.l26.id)
+      .execute();
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ teacher_id: null })
+      .where('id', '=', c.lessons.l19.id)
+      .execute();
+    await as(browser, c.s.branch, [], async ({ get }) => {
+      const report = attendanceOf(
+        await get(`/api/results/reports/attendance?${RANGE}&subjectId=${c.s.subject}`),
+      );
+      // The 12th only: Aziz present (kept as attended), Bobur late, Dilnoza absent, Erkin skipped,
+      // Farrux unmarked, Gulnora exempt.
+      expect(report.rows.map((row) => row.counts)).toEqual([
+        {
+          present: 1,
+          late: 1,
+          absent: 1,
+          skipped: 1,
+          unmarked: 1,
+          exempt: 1,
+          expected: 5,
+          percents: { present: 20, late: 20, absent: 20, skipped: 20, unmarked: 20, exempt: 17 },
+        },
+      ]);
+    });
   });
 
   it('counts a lesson once it has started, with no change of data, and shows "updating" until the totals are prepared', async () => {
@@ -493,6 +557,76 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
   });
 
+  // Decision 1 and `class-scope.ts`: in a group that mixes classes the Tutor reads the own
+  // students only, in the answer and in the file (code review 4).
+  it('gives the Tutor only the own students of a group that mixes classes, in the answer and in the file', async () => {
+    const c = await scene();
+    const hilola = await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
+      { classId: c.s.otherClass, from: '2026-09-01' },
+    ]);
+    const cells = await CellsKit.create(t.database.migrator);
+    const group = await load.classes.group(c.s.branch, c.s.year, cells.subject, [
+      c.s.classId,
+      c.s.otherClass,
+    ]);
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    for (const id of [c.students.aziz, hilola]) {
+      await members.groupMember({
+        branch: c.s.branch,
+        groupId: group,
+        subjectId: cells.subject,
+        studentId: id,
+        from: '2026-09-01',
+      });
+    }
+    await t.database.migrator
+      .insertInto('journals')
+      .values({
+        branch_id: c.s.branch,
+        academic_year_id: c.s.year,
+        class_id: null,
+        group_id: group,
+        subject_id: cells.subject,
+        runs: '{}',
+      })
+      .execute();
+    const lesson = await cells.groupLesson(c.s.branch, c.s.year, group, '2026-10-14');
+    await t.database.migrator
+      .updateTable('lessons')
+      .set({ teacher_id: c.s.teacher.staffId })
+      .where('id', '=', lesson)
+      .execute();
+    const path = `/api/results/reports/attendance?${RANGE}&subjectId=${cells.subject}`;
+    const expectedOf = (report: AttendanceReport) =>
+      report.rows.map((row) => [
+        row.key.kind === 'class' ? row.key.class.id : '',
+        row.counts.expected,
+      ]);
+    const tutor = await account();
+    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+    await as(tutor, c.s.branch, [], async ({ get, post }) => {
+      expect(expectedOf(attendanceOf(await get(path)))).toEqual([[c.s.classId, 1]]);
+      const file = await post('/api/results/reports/attendance/export', {
+        from: '2026-10-12',
+        to: '2026-10-31',
+        subjectId: cells.subject,
+      });
+      expect(file.status).toBe(200);
+      const lines = await linesOf(file.body as Buffer);
+      // The range and the moment, the heading, the own class, the total: one cell each.
+      expect(lines.slice(3).map((line) => line[7])).toEqual([1, 1]);
+    });
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'academic_vice_principal', branchId: c.s.branch }],
+      async ({ get }) => {
+        expect(expectedOf(attendanceOf(await get(path))).map((one) => one[1])).toEqual([1, 1]);
+      },
+    );
+  });
+
   it('groups the attendance by the Tutor in force and refuses a range of more than 92 days or outside one year', async () => {
     const c = await scene();
     const tutor = await account();
@@ -607,6 +741,84 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
       // Absent on the 12th in the journal, 100 in the stored record.
       expect(dilnoza?.results[0]).toMatchObject({ state: 'number', value: 100, grade: 5 });
     });
+  });
+
+  // `edge/00-definitions`, Result states; `edge/calculation`, a student moved in week 6; `07`, Effect
+  // on totals, subject mastery (code review 5).
+  it('shows "Not assessed" and a transferred student’s result, and puts each student in the band of the grade the table shows', async () => {
+    const c = await scene();
+    // Laylo in the other class until the 19th, 10 of 10 there on the 12th, then in the first.
+    const laylo = await student(c.s.branch, { first: 'Laylo', last: 'Hasanova' }, [
+      { classId: c.s.otherClass, from: '2026-09-01', ownUntil: '2026-10-19' },
+      { classId: c.s.classId, from: '2026-10-19' },
+    ]);
+    const [b12] = await lessonsOf(c.s.otherClass, c.s.subject);
+    if (b12 === undefined) throw new Error('The lesson of the other class.');
+    const work = (
+      await t.database.migrator
+        .insertInto('journal_works')
+        .values({ branch_id: c.s.branch, lesson_id: b12.id, kind: 'classwork', total: 10 })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    await saveOn(c.s.branch, b12.date, [
+      { lessonId: b12.id, studentId: laylo, value: 1 },
+      { lessonId: b12.id, studentId: laylo, workId: work, value: 10 },
+    ]);
+    // Dilnoza, absent with no work (attendance only, to be decided): "not assessed" decided.
+    const writer = await load.classes.account();
+    await t.app.get(Transactions).run([c.s.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: c.s.branch,
+        actorId: writer,
+        action: 'results.decision_set',
+      });
+      await transaction
+        .insertInto('quarter_result_decisions')
+        .values({
+          branch_id: c.s.branch,
+          quarter_id: c.q1,
+          subject_id: c.s.subject,
+          student_id: c.students.dilnoza,
+          decision: 'not_assessed',
+          decided_by: writer,
+          decided_at: new Date(0),
+        })
+        .execute();
+    });
+    await as(
+      await account(),
+      c.s.branch,
+      [{ role: 'academic_vice_principal', branchId: c.s.branch }],
+      async ({ get }) => {
+        const table = resultsTableSchema.parse(
+          (await get(`/api/results/reports/results-table?quarterId=${c.q1}&classId=${c.s.classId}`))
+            .body,
+        );
+        const of = (id: string) => table.rows.find((row) => row.student.id === id)?.results[0];
+        expect(of(c.students.dilnoza)?.state).toBe('not_assessed');
+        // The result of the other class follows Laylo into the first.
+        expect(of(laylo)).toMatchObject({ state: 'number' });
+        const mastery = subjectMasterySchema.parse(
+          (
+            await get(
+              `/api/results/reports/subject-mastery?quarterId=${c.q1}&subjectId=${c.s.subject}&classId=${c.s.classId}`,
+            )
+          ).body,
+        );
+        // Each band holds exactly the students whose grade the table shows (`gradeOf`).
+        for (const band of mastery.bands) {
+          const graded = table.rows.filter((row) => row.results[0]?.grade === band.grade);
+          expect(band.students, `grade ${String(band.grade)}`).toBe(graded.length);
+          for (const row of graded) {
+            const value = row.results[0]?.value ?? -1;
+            expect(value >= band.from && value <= band.to, studentName(row)).toBe(true);
+          }
+        }
+        expect(mastery.notAssessed).toBe(1);
+        expect(mastery.exempt).toBe(1);
+      },
+    );
   });
 
   it('opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor', async () => {
