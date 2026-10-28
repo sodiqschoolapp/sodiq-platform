@@ -9,13 +9,16 @@ import { JobQueue } from './jobs/job-queue.js';
 import { SecondStepKeyCheck } from './modules/auth/second-step-key-check.js';
 import { LiveListener } from './modules/notifications/live/listener.js';
 import { LiveSockets } from './modules/notifications/live/socket-server.js';
+import { ShippingLogger } from './monitoring/monitoring.service.js';
 import { startReporting } from './reporting/reporting.js';
 
 // Entry point of the API. The jobs worker has its own: src/worker.ts.
 loadLocalEnvFile();
 // The error reports first, so that a fault of the start is reported too (task 0.10).
 startReporting(loadConfig(process.env).reporting);
-const app = await NestFactory.create<NestExpressApplication>(AppModule);
+const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+// The log lines also go to Grafana when it is configured (task 10.2a).
+app.useLogger(new ShippingLogger());
 await initApp(app);
 // On a stop signal (a release on Render) the connections close in order and
 // a running job gets time to finish; the reports leave last.

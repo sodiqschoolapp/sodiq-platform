@@ -70,6 +70,17 @@ const environmentSchema = z.object({
   // a file into this directory, so a test can follow its link. Refused on a
   // Render service.
   MAIL_OUTBOX_DIR: z.preprocess(emptyAsUnset, z.string().optional()),
+  // Grafana Cloud (task 10.2a; docs/monitoring.md): the push addresses of the
+  // numbers (Influx line protocol) and of the logs (Loki), the user of each,
+  // and one token that may write both. All five or none; none: nothing is
+  // pushed or shipped and everything else works.
+  GRAFANA_METRICS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^https?$/ }).optional()),
+  GRAFANA_METRICS_USER: z.preprocess(emptyAsUnset, z.string().regex(/^\d{1,20}$/).optional()),
+  GRAFANA_LOGS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^https?$/ }).optional()),
+  GRAFANA_LOGS_USER: z.preprocess(emptyAsUnset, z.string().regex(/^\d{1,20}$/).optional()),
+  GRAFANA_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
+  // Set by Render on each instance of a service: which server a number came from.
+  RENDER_INSTANCE_ID: z.preprocess(emptyAsUnset, z.string().max(100).optional()),
 });
 
 const R2_VARIABLES = [
@@ -77,6 +88,14 @@ const R2_VARIABLES = [
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
   'R2_BUCKET',
+] as const;
+
+const GRAFANA_VARIABLES = [
+  'GRAFANA_METRICS_URL',
+  'GRAFANA_METRICS_USER',
+  'GRAFANA_LOGS_URL',
+  'GRAFANA_LOGS_USER',
+  'GRAFANA_TOKEN',
 ] as const;
 
 type VariableName = keyof z.infer<typeof environmentSchema>;
@@ -106,6 +125,16 @@ const PROBLEM: Record<VariableName, string> = {
     'WEB_ORIGIN must be the address of the web app, for example https://app.example.test, with no path',
   MAIL_OUTBOX_DIR:
     'MAIL_OUTBOX_DIR is for the browser tests only and is never set on a server (with RENDER_GIT_COMMIT, TRUST_PROXY=1 or WEB_FILES)',
+  GRAFANA_METRICS_URL:
+    'GRAFANA_METRICS_URL must be the https:// push address of the numbers, set with the four other GRAFANA variables',
+  GRAFANA_METRICS_USER:
+    'GRAFANA_METRICS_USER must be the number of the metrics user, set with the four other GRAFANA variables',
+  GRAFANA_LOGS_URL:
+    'GRAFANA_LOGS_URL must be the https:// push address of the logs, set with the four other GRAFANA variables',
+  GRAFANA_LOGS_USER:
+    'GRAFANA_LOGS_USER must be the number of the logs user, set with the four other GRAFANA variables',
+  GRAFANA_TOKEN: 'GRAFANA_TOKEN must be set with the four other GRAFANA variables',
+  RENDER_INSTANCE_ID: 'RENDER_INSTANCE_ID must be the name of an instance',
 };
 
 export interface AppConfig {
@@ -125,6 +154,24 @@ export interface AppConfig {
   mail: MailConfig;
   /** The Chromium of the PDFs (task 5.9c-1), or the one playwright-core installs. */
   chromiumPath: string | undefined;
+  /** Where the numbers and the logs go (task 10.2a), or nowhere. */
+  monitoring: MonitoringConfig;
+}
+
+export interface MonitoringConfig {
+  /** Grafana Cloud's push addresses, users and token; undefined: nothing is pushed. */
+  grafana:
+    | {
+        metricsUrl: string;
+        metricsUser: string;
+        logsUrl: string;
+        logsUser: string;
+        /** Only the pusher reads it. */
+        token: string;
+      }
+    | undefined;
+  /** The instance of the service on Render, `local` elsewhere. */
+  instance: string;
 }
 
 export interface MailConfig {
@@ -172,6 +219,10 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   if (r2Set.length > 0 && r2Set.length < R2_VARIABLES.length) {
     wrong.push(...R2_VARIABLES.filter((name) => data[name] === undefined));
   }
+  const grafanaSet = GRAFANA_VARIABLES.filter((name) => data[name] !== undefined);
+  if (grafanaSet.length > 0 && grafanaSet.length < GRAFANA_VARIABLES.length) {
+    wrong.push(...GRAFANA_VARIABLES.filter((name) => data[name] === undefined));
+  }
   if (data.PHOTOS_IN_MEMORY === '1' && r2Set.length > 0) {
     wrong.push('PHOTOS_IN_MEMORY');
   }
@@ -203,6 +254,23 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     photos: photosOf(data),
     mail: { webOrigin: data.WEB_ORIGIN, outboxDir: data.MAIL_OUTBOX_DIR },
     chromiumPath: data.CHROMIUM_PATH,
+    monitoring: {
+      grafana:
+        data.GRAFANA_METRICS_URL !== undefined &&
+        data.GRAFANA_METRICS_USER !== undefined &&
+        data.GRAFANA_LOGS_URL !== undefined &&
+        data.GRAFANA_LOGS_USER !== undefined &&
+        data.GRAFANA_TOKEN !== undefined
+          ? {
+              metricsUrl: data.GRAFANA_METRICS_URL,
+              metricsUser: data.GRAFANA_METRICS_USER,
+              logsUrl: data.GRAFANA_LOGS_URL,
+              logsUser: data.GRAFANA_LOGS_USER,
+              token: data.GRAFANA_TOKEN,
+            }
+          : undefined,
+      instance: data.RENDER_INSTANCE_ID ?? 'local',
+    },
   };
 }
 
