@@ -89,6 +89,11 @@ export async function quarterOutcomes(
     readonly quarter: QuarterRef;
     readonly subjectIds: readonly string[] | null;
     /**
+     * Task 10.1: only these journals, when given. Each journal's members are still read over
+     * every journal of the subject (`subjectQuarterLessons`), so their outcomes are the same.
+     */
+    readonly journalIds?: readonly string[];
+    /**
      * The quarter is closed, or being closed by this transaction (task 9.2b): the module drops
      * the "provisional" marker (`07` rule 8). Read by the caller from the stored state.
      */
@@ -105,6 +110,7 @@ export async function quarterOutcomes(
   ).filter(
     (journal) =>
       (input.subjectIds === null || input.subjectIds.includes(journal.subjectId)) &&
+      (input.journalIds === undefined || input.journalIds.includes(journal.id)) &&
       switchesIn(journal, quarter.id)?.attendanceOnly === false,
   );
   const countsFrom = countsFromOf(await goLiveOf(transaction, input.branchId), quarter);

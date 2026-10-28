@@ -31,13 +31,14 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { ownStaffOf } from '../journal/attendance-entry.js';
 import { addDays } from '../journal/exemption-effects.js';
-import type { JournalRow } from '../journal/journal-grid.query.js';
+import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { WHOLE_ROLES } from '../journal/journal-scope.js';
 import type { CountedLesson } from '../journal/subject-quarter-lessons.js';
 import { ownerIdOn } from '../plans/plan-scope.js';
 import { closingOf } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { accountNames } from '../timetable/edit-lock.js';
+import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
 import { quarterOutcomes } from './quarter-outcomes.js';
 import { storedRecordsOf } from './stored-records.js';
@@ -460,6 +461,8 @@ async function judgeQuarter(
   context: Context,
   quarter: QuarterRow,
   subjectIds: readonly string[] | null,
+  /** Task 10.1: the reader's own journals only; the previous quarter is still read by subject. */
+  journalIds?: readonly string[],
 ): Promise<Map<string, Judged>> {
   const judged = new Map<string, Judged>();
   const { journals } = await quarterOutcomes(context.transaction, {
@@ -468,6 +471,7 @@ async function judgeQuarter(
     now: context.now,
     quarter,
     subjectIds,
+    ...(journalIds === undefined ? {} : { journalIds }),
     quarterClosed: quarter.closed,
   });
   if (journals.size === 0) return judged;
@@ -565,6 +569,8 @@ async function handledOf(
   quarterId: string,
   subjectIds: readonly string[] | null,
 ): Promise<Map<string, HandledRow>> {
+  // No subject (a reader of their own journals who owns none): nothing handled to read.
+  if (subjectIds?.length === 0) return new Map();
   let query = transaction
     .selectFrom('early_warning_handled')
     .select(['student_id', 'subject_id', 'reason', 'figure', 'note', 'handled_at', 'handled_by'])
@@ -623,6 +629,52 @@ class Scope {
       classId !== undefined &&
       permittingOf(this.context, ['tutor']).some((one) => one.classIds.includes(classId))
     );
+  }
+
+  /**
+   * The journals the reader owns on the reference date and their subjects, by the
+   * owners of every journal of the year read at once (`ownsJournal`'s rule); none for a
+   * reader who is no Teacher or has no staff record.
+   */
+  async ownJournals(quarter: QuarterRow): Promise<{ subjectIds: string[]; journalIds: string[] }> {
+    const none = { subjectIds: [], journalIds: [] };
+    if (permittingOf(this.context, ['teacher']).length === 0) return none;
+    if (this.staffId === undefined) {
+      this.staffId = await ownStaffOf(this.context.transaction, this.context.access.accountId);
+    }
+    const staffId = this.staffId;
+    if (staffId === null) return none;
+    const journals = await journalRows(this.context.transaction, this.context.branchId, {
+      yearId: quarter.academicYearId,
+    });
+    const facts = await ownerFactsOf(
+      this.context.transaction,
+      this.context.branchId,
+      journals.map((journal) => ({
+        id: journal.id,
+        academic_year_id: journal.academicYearId,
+        class_id: journal.classId,
+        group_id: journal.groupId,
+        subject_id: journal.subjectId,
+      })),
+    );
+    const subjects = new Set<string>();
+    const owned: string[] = [];
+    for (const journal of journals) {
+      const owner = ownerOn(
+        facts.runs.get(journal.id) ?? [],
+        facts.periods.get(journal.id) ?? [],
+        facts.out,
+        this.referenceDate,
+      );
+      const id = owner === null || owner.kind === 'none' ? null : owner.staffId;
+      this.owners.set(journal.id, id);
+      if (id === staffId) {
+        subjects.add(journal.subjectId);
+        owned.push(journal.id);
+      }
+    }
+    return { subjectIds: [...subjects].sort(), journalIds: owned };
   }
 
   async ownsJournal(journal: JournalRow): Promise<boolean> {
@@ -720,9 +772,14 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
       throw new ApiException('permission_denied', 403);
     }
   }
-  const judged = await judgeQuarter(context, quarter, null);
-  const handled = await handledOf(context.transaction, quarter.id, null);
   const scope = new Scope(context, referenceDate);
+  // Task 10.1 (the speed run at full size: the Teacher's home took 35 s): the own journals
+  // are judged by their subjects only, every entry is per student and subject, and each
+  // entry is still kept only for a journal the reader owns (below).
+  const own = query.for === 'own_journals' ? await scope.ownJournals(quarter) : null;
+  const subjectIds = own === null ? null : own.subjectIds;
+  const judged = await judgeQuarter(context, quarter, subjectIds, own?.journalIds);
+  const handled = await handledOf(context.transaction, quarter.id, subjectIds);
   await scope.load([...new Set([...judged.values()].map((one) => one.studentId))]);
 
   const rows: {
