@@ -191,7 +191,8 @@ const PAGE_READS: Record<
 let t: DayTemplatesKit;
 
 beforeAll(async () => {
-  t = await dayTemplatesKit({ start: RUN_CLOCK });
+  // The job queue: an exemption's notice is a job (`Notifications.send`).
+  t = await dayTemplatesKit({ start: RUN_CLOCK, jobs: true });
 });
 
 afterAll(async () => {
