@@ -31,6 +31,8 @@ describe('loadConfig', () => {
       reporting: { dsn: undefined, environment: 'development', release: undefined },
       photos: { store: 'none' },
       mail: { webOrigin: 'http://localhost:5173', outboxDir: undefined },
+      // Task 10.2a: nothing pushed without the Grafana variables.
+      monitoring: { grafana: undefined, instance: 'local' },
     });
   });
 

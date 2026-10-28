@@ -1,13 +1,39 @@
 import { fileURLToPath } from 'node:url';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
 
+// Task 10.2a: the source maps of the web app go to Sentry, only where a token is given (the
+// production image on Render, docs/monitoring.md); without one nothing is sent. The maps are
+// written "hidden" (no link in the files) and deleted after the upload; the image deletes any
+// left (Dockerfile), so the server never serves one.
+const sentryToken = process.env.SENTRY_AUTH_TOKEN ?? '';
+const sentryOrg = process.env.SENTRY_ORG ?? '';
+const sentryProject = process.env.SENTRY_PROJECT ?? '';
+const uploadMaps = sentryToken !== '' && sentryOrg !== '' && sentryProject !== '';
+
 export default defineConfig({
   // svgr: the icon files of Material Symbols as React components (`?react`,
   // src/components/icons.tsx), never as a font ligature (docs/design-system.md, Icons).
-  plugins: [react(), tailwindcss(), svgr()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    svgr(),
+    ...(uploadMaps
+      ? [
+          sentryVitePlugin({
+            org: sentryOrg,
+            project: sentryProject,
+            authToken: sentryToken,
+            release: { name: process.env.RENDER_GIT_COMMIT ?? '' },
+            sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+            telemetry: false,
+          }),
+        ]
+      : []),
+  ],
   // The release of the error reports: the commit Render builds (task 0.10).
   define: {
     'import.meta.env.VITE_RELEASE': JSON.stringify(process.env.RENDER_GIT_COMMIT ?? ''),
@@ -18,6 +44,8 @@ export default defineConfig({
   // computers back to them, runs it (`tooling/browsers.test.ts`).
   build: {
     target: ['chrome111', 'edge111', 'firefox114', 'safari16.4', 'ios16.4'],
+    // Task 10.2a: maps for Sentry only, never linked from the files.
+    sourcemap: 'hidden',
   },
   resolve: {
     alias: {

@@ -393,6 +393,8 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.branch_export',
     'journal.branch_export_ready',
     'journal.branch_export_download',
+    // Task 10.2a: the files of an expired or failed branch export removed by the daily cleanup.
+    'journal.export_file_removed',
     // Task 8.8: a plan's PDF or Excel with its marks, and the plan reports in Excel.
     'plan.export',
     'plan_report.export',

@@ -101,7 +101,10 @@ export interface DayTemplatesKit {
 }
 
 export async function dayTemplatesKit(
-  options: Pick<TestAppOptions, 'photoStore' | 'mailer' | 'pdfRenderer'> & {
+  options: Pick<
+    TestAppOptions,
+    'photoStore' | 'mailer' | 'pdfRenderer' | 'config' | 'monitoringFetch'
+  > & {
     /** For a test whose routes enqueue jobs: the job queue of the test database. */
     jobs?: boolean;
     /** Task 5.12c: the clock's first moment, `START` unless given; the accounts are signed in then. */

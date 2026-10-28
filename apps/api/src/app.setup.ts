@@ -17,6 +17,7 @@ import { sameSiteMiddleware } from './http/same-site.js';
 import { securityHeadersMiddleware } from './http/security-headers.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
 import { webFilesMiddleware } from './http/web-files.js';
+import { RequestMetrics } from './monitoring/request-metrics.js';
 
 /** Every route sits under this prefix, so the browser reaches web app and API on one origin. */
 export const API_PREFIX = 'api';
@@ -45,6 +46,8 @@ export function configureApp(app: NestExpressApplication): void {
   }
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
+  // Every answer from here on is timed and counted, refusals of the middlewares below too (task 10.2a).
+  app.use(app.get(RequestMetrics).middleware());
   app.use(noStoreMiddleware);
   // Before the body parser too: a request from another site is not even read.
   app.use(sameSiteMiddleware(config.trustProxy));

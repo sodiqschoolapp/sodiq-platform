@@ -13,6 +13,10 @@ catalog:
 # of the Swagger UI files inside @nestjs/swagger) only sends install statistics.
 allowBuilds:
   '@scarf/scarf': false
+  # @sentry/cli (task 10.2a, the source maps of the web app through @sentry/vite-plugin)
+  # downloads its binary in a postinstall; the binary comes from its platform package
+  # (@sentry/cli-linux-x64 and the others) instead, so the script is not run.
+  '@sentry/cli': false
 
 # ExcelJS 4.4.0 (task 2.2c-1) depends on uuid 8, which has a moderate audit
 # finding (GHSA-w5hq-g745-h8pq) in v3/v5/v6; ExcelJS calls only v4. uuid 11
@@ -23,3 +27,7 @@ overrides:
   # audit finding (GHSA-q7qp-rjg7-q26m, fixed in 2.5.0). Owner, 24 October 2026;
   # remove once a release of @nestjs/platform-express takes multer 2.5.0 or later.
   'multer@<2.5.0': ^2.5.0
+  # @sentry/vite-plugin 5.4.1 (task 10.2a, plan review correction 6) takes
+  # @sentry/bundler-plugins ^10.76.0; held at 10.76.2 (8 October 2026), a version at
+  # least two weeks old, until a newer one has been out that long.
+  '@sentry/vite-plugin>@sentry/bundler-plugins': 10.76.2

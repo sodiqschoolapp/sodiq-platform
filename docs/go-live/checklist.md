@@ -30,6 +30,9 @@ Approved by the owner on: ____________________ (pending)
 - [ ] **The feedback button** sends a report.
 - [ ] **Email is off** (answer 16): the administrators know that they reset a password from the account in the app; the link "Forgot your password?" writes to the log only.
 - [ ] **Sentry** `sodiq-production` receives nothing unexpected in the first hour.
+- [ ] **Monitoring set up** (`docs/monitoring.md`, task 10.2a): the Grafana variables and the Sentry Secret File on Render, the rules imported and "Normal", UptimeRobot's three checks green, the source maps uploaded (the build log says so).
+- [ ] **The daily export**: the environment `backup` exists, a run of Actions, Backup by hand is green, and `sodiq-backups` holds its file.
+- [ ] **The first restore drill** (`docs/restore.md`, the monthly drill; the Done-when of 10.2a), noted in `restore-drills.md`.
 
 ## 4. The branch, before the first lesson in the platform
 

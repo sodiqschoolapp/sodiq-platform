@@ -19,6 +19,7 @@ import { PlansModule } from './modules/plans/plans.module.js';
 import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
+import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { ReportingModule } from './reporting/reporting.module.js';
 
 /**
@@ -50,7 +51,11 @@ export const SHARED_MODULES = [
 ];
 
 @Module({
-  imports: [...SHARED_MODULES, JobsModule.forRoot({ worker: false })],
+  imports: [
+    ...SHARED_MODULES,
+    JobsModule.forRoot({ worker: false }),
+    MonitoringModule.forRoot('api'),
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}

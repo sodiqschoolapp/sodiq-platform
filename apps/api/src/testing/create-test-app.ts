@@ -17,6 +17,8 @@ import { MAILER, RecordingMailer, type Mailer } from '../mail/mailer.js';
 import { PERMISSION_TABLE } from '../modules/access/permission-table.token.js';
 import { LiveSockets } from '../modules/notifications/live/socket-server.js';
 import { PHOTO_STORE, type PhotoStore } from '../modules/people/photo-store.js';
+import type { Fetch } from '../monitoring/grafana.js';
+import { MONITORING_FETCH } from '../monitoring/monitoring.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { withDatabaseName } from './test-database.js';
 
@@ -58,6 +60,8 @@ export interface TestAppOptions {
    * so that no test prints a mail.
    */
   mailer?: Mailer;
+  /** What the pushes to Grafana are sent through (task 10.2a), with `config.monitoring` set. */
+  monitoringFetch?: Fetch;
 }
 
 /**
@@ -97,6 +101,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   }
   if (options.photoStore !== undefined) {
     builder.overrideProvider(PHOTO_STORE).useValue(options.photoStore);
+  }
+  if (options.monitoringFetch !== undefined) {
+    builder.overrideProvider(MONITORING_FETCH).useValue(options.monitoringFetch);
   }
   if (options.permissionTable !== undefined) {
     builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);

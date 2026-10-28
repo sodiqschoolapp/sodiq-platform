@@ -4,6 +4,7 @@ import { loadConfig } from './config/config.js';
 import { loadLocalEnvFile } from './database/config.js';
 import { JobRunner } from './jobs/job-runner.js';
 import { SecondStepKeyCheck } from './modules/auth/second-step-key-check.js';
+import { ShippingLogger } from './monitoring/monitoring.service.js';
 import { startReporting } from './reporting/reporting.js';
 import { WorkerModule } from './worker.module.js';
 
@@ -11,7 +12,9 @@ import { WorkerModule } from './worker.module.js';
 loadLocalEnvFile();
 // The error reports first, so that a fault of the start is reported too (task 0.10).
 startReporting(loadConfig(process.env).reporting);
-const app = await NestFactory.createApplicationContext(WorkerModule);
+const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
+// The log lines also go to Grafana when it is configured (task 10.2a).
+app.useLogger(new ShippingLogger());
 // On a stop signal a running job gets time to finish (JobQueue).
 app.enableShutdownHooks();
 // The same check as in the API: no job runs with a key that does not open the stored second steps.

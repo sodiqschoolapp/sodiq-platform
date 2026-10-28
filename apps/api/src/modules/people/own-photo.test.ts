@@ -23,6 +23,10 @@ class SwitchedPhotoStore implements PhotoStore {
   get(key: string): Promise<Buffer> {
     return this.memory.get(key);
   }
+
+  deletePrefix(prefix: string): Promise<void> {
+    return this.memory.deletePrefix(prefix);
+  }
 }
 
 // All names are invented. Task 2.3c-2, pull request #66, decision 18:

@@ -54,6 +54,16 @@ export const forcedDeletePurgeJob = defineJob({
 });
 
 /**
+ * Task 10.2a (From 8.9, decision 4): the files of the branch's expired and failed exports removed
+ * from the store, which is called with no transaction open (`photo-store.ts`).
+ */
+export const exportsCleanupJob = defineJob({
+  name: 'journal.exports_cleanup',
+  data: dayData,
+  transaction: 'none',
+});
+
+/**
  * Each daily kind, its branch-time hour (plan decision 15) and its job. `after`: the kind waits
  * until that long after the day's run of another kind was enqueued, so that "did not run" never
  * reads a check still running when a worker that was down sends both in one tick (spec review
@@ -76,6 +86,7 @@ export const DAILY_WORK: readonly {
   { kind: 'results.closing_overdue', at: '07:00', job: closingOverdueJob },
   { kind: 'plans.reminders', at: '07:00', job: planRemindersJob },
   { kind: 'journal.about_to_lock', at: '07:00', job: aboutToLockJob },
+  { kind: 'journal.exports_cleanup', at: '03:00', job: exportsCleanupJob },
 ];
 
 export const DAILY_JOBS: readonly JobDefinition<unknown>[] = [

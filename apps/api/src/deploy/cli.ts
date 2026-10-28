@@ -1,5 +1,9 @@
 import { SystemClock } from '../clock/system-clock.js';
 import { ChromiumPdfRenderer } from '../http/pdf.js';
+import { readFile } from 'node:fs/promises';
+import { compareCounts } from './backup-compare.js';
+import { createRolesSql, rolesOfSchema } from './backup-roles.js';
+import { BackupError, backupStore, markBackup, uploadBackup } from './backup.js';
 import { pdfCheck, PdfCheckError } from './pdf-check.js';
 import { checkRelease, ReleaseCheckError } from './release-check.js';
 import { releaseWindowOpen, tashkentTime } from './release-window.js';
@@ -7,7 +11,7 @@ import { deployServices, DeployError } from './render.js';
 import { smokeTest, SmokeError } from './smoke.js';
 
 // Command line of the deploy jobs (.github/workflows/ci.yml, task 0.10;
-// .github/workflows/deploy-production.yml, task 10.4):
+// .github/workflows/deploy-production.yml, task 10.4; .github/workflows/backup.yml, task 10.2a):
 //
 //   node dist/deploy/cli.js deploy --commit <sha> <serviceId> [<serviceId> ...]
 //     RENDER_API_KEY in the environment. Starts the deploys and waits.
@@ -21,6 +25,16 @@ import { smokeTest, SmokeError } from './smoke.js';
 //   node dist/deploy/cli.js pdf-check
 //     Makes one PDF with the Chromium of this machine (pdf-check.ts); the job
 //     `image` runs it inside the production image.
+//   node dist/deploy/cli.js backup-upload <file>
+//     BACKUP_R2_ACCOUNT_ID, BACKUP_R2_ACCESS_KEY_ID, BACKUP_R2_SECRET_ACCESS_KEY and
+//     BACKUP_R2_BUCKET in the environment. Stores the day's dump (backup.ts; task 10.2a).
+//   node dist/deploy/cli.js backup-mark
+//     GRAFANA_METRICS_URL, GRAFANA_METRICS_USER and GRAFANA_TOKEN in the environment.
+//     Tells Grafana the moment of the last proved and stored dump.
+//   node dist/deploy/cli.js backup-roles < schema.sql
+//     Prints the SQL that creates every role the schema of a dump names (backup-roles.ts).
+//   node dist/deploy/cli.js backup-compare <production counts> <copy counts>
+//     Fails unless the restored copy holds every table and migration (backup-compare.ts).
 //
 // Compiled with the API; the services never run it.
 
@@ -28,9 +42,22 @@ const [command, ...rest] = process.argv.slice(2);
 
 function usage(): never {
   console.error(
-    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | pdf-check',
+    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | pdf-check | backup-upload <file> | backup-mark | backup-roles | backup-compare <counts> <counts>',
   );
   process.exit(2);
+}
+
+/** The named variables of the environment, or a stop that names the missing ones. */
+function required<Name extends string>(names: readonly Name[]): Record<Name, string> {
+  const missing = names.filter((name) => (process.env[name] ?? '') === '');
+  if (missing.length > 0) {
+    console.error(`Not set: ${missing.join(', ')}.`);
+    process.exit(2);
+  }
+  return Object.fromEntries(names.map((name) => [name, process.env[name] ?? ''])) as Record<
+    Name,
+    string
+  >;
 }
 
 try {
@@ -99,6 +126,54 @@ try {
     } finally {
       await renderer.onModuleDestroy();
     }
+  } else if (command === 'backup-upload') {
+    const [file] = rest;
+    const settings = required([
+      'BACKUP_R2_ACCOUNT_ID',
+      'BACKUP_R2_ACCESS_KEY_ID',
+      'BACKUP_R2_SECRET_ACCESS_KEY',
+      'BACKUP_R2_BUCKET',
+    ]);
+    if (file === undefined) {
+      usage();
+    }
+    const stored = await uploadBackup({
+      store: backupStore({
+        accountId: settings.BACKUP_R2_ACCOUNT_ID,
+        accessKeyId: settings.BACKUP_R2_ACCESS_KEY_ID,
+        secretAccessKey: settings.BACKUP_R2_SECRET_ACCESS_KEY,
+      }),
+      bucket: settings.BACKUP_R2_BUCKET,
+      file,
+      now: new SystemClock().now(),
+    });
+    console.log(`Stored ${stored.key}: ${String(stored.bytes)} bytes.`);
+  } else if (command === 'backup-roles') {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    const roles = rolesOfSchema(Buffer.concat(chunks).toString('utf8'));
+    console.log(createRolesSql(roles));
+  } else if (command === 'backup-compare') {
+    const [source, restored] = rest;
+    if (source === undefined || restored === undefined) {
+      usage();
+    }
+    const result = compareCounts(await readFile(source, 'utf8'), await readFile(restored, 'utf8'));
+    for (const line of result.lines) console.log(line);
+    if (result.failures.length > 0) {
+      throw new BackupError(`The restored copy is not sound: ${result.failures.join('; ')}.`);
+    }
+    console.log(`The restored copy holds all ${String(result.lines.length)} tables.`);
+  } else if (command === 'backup-mark') {
+    const settings = required(['GRAFANA_METRICS_URL', 'GRAFANA_METRICS_USER', 'GRAFANA_TOKEN']);
+    const now = new SystemClock().now();
+    await markBackup({
+      url: settings.GRAFANA_METRICS_URL,
+      user: settings.GRAFANA_METRICS_USER,
+      token: settings.GRAFANA_TOKEN,
+      now,
+    });
+    console.log(`Grafana told: the backup of ${now.toISOString()}.`);
   } else {
     usage();
   }
@@ -107,7 +182,8 @@ try {
     error instanceof DeployError ||
     error instanceof SmokeError ||
     error instanceof ReleaseCheckError ||
-    error instanceof PdfCheckError;
+    error instanceof PdfCheckError ||
+    error instanceof BackupError;
   console.error(
     known ? error.message : `Failed: ${error instanceof Error ? error.message : String(error)}`,
   );

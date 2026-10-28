@@ -3769,6 +3769,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         branch_export: 'Запрошен экспорт журналов филиала',
         branch_export_ready: 'Экспорт журналов филиала подготовлен',
         branch_export_download: 'Экспорт журналов филиала скачан',
+        export_file_removed: 'Файлы просроченного или неудавшегося экспорта филиала удалены',
         support_view: 'Открыт вид поддержки',
       },
       plan: {

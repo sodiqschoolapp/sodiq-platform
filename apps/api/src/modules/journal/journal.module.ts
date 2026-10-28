@@ -6,6 +6,7 @@ import { SupportViewController } from './support-view.controller.js';
 import { SupportView } from './support-view.service.js';
 import { SaveRefusals } from './save-refusals.js';
 import { JournalExportsController } from './journal-exports.controller.js';
+import { exportsCleanupJob } from '../results/daily/daily-jobs.js';
 import { branchExportJob, JournalExports } from './journal-exports.service.js';
 import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
@@ -102,6 +103,10 @@ export class JournalModule implements OnModuleInit {
   onModuleInit(): void {
     this.runner.handleWithoutTransaction(branchExportJob, (data, job) =>
       this.exports.runBranchExport(data, job),
+    );
+    // Task 10.2a: a daily kind of the schedule (`results/daily`), run for one branch.
+    this.runner.handleWithoutTransaction(exportsCleanupJob, (_data, job) =>
+      this.exports.cleanupFiles(job),
     );
   }
 }

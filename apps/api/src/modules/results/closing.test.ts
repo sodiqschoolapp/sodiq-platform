@@ -4185,9 +4185,15 @@ describe('the closing checklist (07, Closing a quarter)', () => {
         { kind: 'results.check', day: '2026-10-28' },
         { kind: 'timetable.forced_delete_purge', day: '2026-10-28' },
       ]);
+      // Task 10.2a: the cleanup of the export files from 03:00.
+      await tick('2026-10-28T02:59:00+05:00');
+      expect((await runs()).map((one) => one.kind)).not.toContain('journal.exports_cleanup');
+      await tick('2026-10-28T03:00:00+05:00');
+      expect((await runs()).map((one) => one.kind)).toContain('journal.exports_cleanup');
       await tick('2026-10-28T07:00:00+05:00');
       expect((await runs()).map((one) => one.kind)).toEqual([
         'journal.about_to_lock',
+        'journal.exports_cleanup',
         'plans.reminders',
         'results.check',
         'results.check_missed',
@@ -4208,6 +4214,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       await tick('2026-10-29T08:00:00+05:00');
       expect(await dayOf('2026-10-29')).toEqual([
         'journal.about_to_lock',
+        'journal.exports_cleanup',
         'plans.reminders',
         'results.check',
         'results.closing_overdue',

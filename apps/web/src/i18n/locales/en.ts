@@ -3600,6 +3600,7 @@ export const en = {
         branch_export: 'Export of the branch journals asked for',
         branch_export_ready: 'Export of the branch journals made',
         branch_export_download: 'Export of the branch journals downloaded',
+        export_file_removed: 'Files of an expired or failed branch export removed',
         support_view: 'Support view opened',
       },
       plan: {

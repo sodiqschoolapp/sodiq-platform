@@ -1,5 +1,7 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -29,6 +31,12 @@ export interface PhotoStore {
   put(key: string, bytes: Buffer, type: PhotoType | PlanFileType): Promise<void>;
   /** The bytes under the key; throws when the store fails or holds nothing there. */
   get(key: string): Promise<Buffer>;
+  /**
+   * Removes every file whose key starts with `prefix` (task 10.2a: the files of
+   * an expired or failed branch export, `exports/<id>/`). Nothing there is no
+   * error; throws when the store fails.
+   */
+  deletePrefix(prefix: string): Promise<void>;
 }
 
 /** The key of a staff member's photo: one per upload, never reused. */
@@ -57,6 +65,11 @@ export class NoPhotoStore implements PhotoStore {
   get(): Promise<Buffer> {
     return Promise.reject(new Error('No photo store is configured.'));
   }
+
+  /** No store holds no file: nothing to remove (the daily cleanup never fails for it). */
+  deletePrefix(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 /** Photos in the memory of the process, lost on a restart: tests, the browser tests, a laptop. */
@@ -74,6 +87,13 @@ export class MemoryPhotoStore implements PhotoStore {
     return found === undefined
       ? Promise.reject(new Error('No photo is stored under the key.'))
       : Promise.resolve(Buffer.from(found.bytes));
+  }
+
+  deletePrefix(prefix: string): Promise<void> {
+    for (const key of [...this.objects.keys()]) {
+      if (key.startsWith(prefix)) this.objects.delete(key);
+    }
+    return Promise.resolve();
   }
 
   /** The keys stored so far, in order, for tests that check nothing was written. */
@@ -131,6 +151,20 @@ export class R2PhotoStore implements PhotoStore {
       throw new Error('R2 answered without a body.');
     }
     return Buffer.from(await answer.Body.transformToByteArray());
+  }
+
+  async deletePrefix(prefix: string): Promise<void> {
+    let token: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, ContinuationToken: token }),
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key === undefined) continue;
+        await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: object.Key }));
+      }
+      token = page.IsTruncated === true ? page.NextContinuationToken : undefined;
+    } while (token !== undefined);
   }
 }
 

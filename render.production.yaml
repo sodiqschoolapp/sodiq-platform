@@ -52,6 +52,25 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Grafana Cloud (task 10.2a, docs/monitoring.md): the numbers and the logs.
+      # All five or none; entered in the dashboard.
+      - key: GRAFANA_METRICS_URL
+        sync: false
+      - key: GRAFANA_METRICS_USER
+        sync: false
+      - key: GRAFANA_LOGS_URL
+        sync: false
+      - key: GRAFANA_LOGS_USER
+        sync: false
+      - key: GRAFANA_TOKEN
+        sync: false
+      # The web app's source maps to Sentry (task 10.2a): read by the build; the
+      # token itself is the Secret File `sentry-auth-token` of this service, mounted
+      # into the Docker build as a secret (Dockerfile), never a variable.
+      - key: SENTRY_ORG
+        sync: false
+      - key: SENTRY_PROJECT
+        value: sodiq-production-web
 
   - type: worker
     name: sodiq-worker
@@ -74,4 +93,16 @@ services:
       - key: SECOND_STEP_KEY
         sync: false
       - key: SENTRY_DSN
+        sync: false
+      # Grafana Cloud (task 10.2a, docs/monitoring.md): the numbers and the logs.
+      # All five or none; entered in the dashboard.
+      - key: GRAFANA_METRICS_URL
+        sync: false
+      - key: GRAFANA_METRICS_USER
+        sync: false
+      - key: GRAFANA_LOGS_URL
+        sync: false
+      - key: GRAFANA_LOGS_USER
+        sync: false
+      - key: GRAFANA_TOKEN
         sync: false

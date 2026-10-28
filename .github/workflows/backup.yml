@@ -1,0 +1,140 @@
+name: Backup
+
+# Task 10.2a (`13`, Backups: "a daily full export kept in a second location
+# (Cloudflare R2)"; docs/restore.md). Approved in advance by the owner on
+# 28 October 2026 (docs/build-plan.md, 10.2: new workflow files for the daily
+# export). Every night at 02:30 Tashkent (21:30 UTC), after the nightly check
+# of 02:00, and by hand: the production database is dumped, the dump is
+# restored into this job's own empty PostgreSQL to prove it (owners, grants
+# and row-filter policies included), and only then stored in the private
+# bucket and marked in Grafana ("a backup older than 24 hours" reads it).
+#
+# The repository is public, so this log is too: the output of pg_dump,
+# pg_restore and psql goes to files on the runner and only counts, table
+# names and "match"/"differs" are printed. Nothing is kept as an artifact.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 21 * * *'
+
+permissions:
+  contents: read
+
+# The group of the production deploy (deploy-production.yml, job `deploy`):
+# a dump never runs while a release migrates the database.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment:
+      name: backup
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The proof's own server: the job's PostgreSQL service, never production.
+      PROOF_URL: postgres://postgres:postgres@localhost:5432/postgres
+      TURBO_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the backup commands
+        run: pnpm turbo run build --filter=@sodiq/api
+
+      - name: Dump the production database
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/backup"
+          if ! docker run --rm --network host -e BACKUP_DATABASE_URL \
+            -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
+            sh -c 'pg_dump --format=custom --file=/backup/production.dump "$BACKUP_DATABASE_URL"' \
+            > "$RUNNER_TEMP/backup/dump.log" 2>&1; then
+            echo "pg_dump failed: $(wc -l < "$RUNNER_TEMP/backup/dump.log") lines in its log, not printed."
+            exit 1
+          fi
+          echo "Dump: $(stat -c %s "$RUNNER_TEMP/backup/production.dump") bytes."
+
+      - name: Count the rows of production
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          docker run --rm --network host -e BACKUP_DATABASE_URL \
+            -v "$PWD/db/backup:/sql:ro" -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
+            sh -c 'psql "$BACKUP_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -f /sql/row-counts.sql > /backup/source-counts.txt' \
+            2> "$RUNNER_TEMP/backup/source-counts.log" \
+            || { echo "Counting failed; its log is not printed."; exit 1; }
+
+      - name: Create the roles the dump names in the proof's server
+        # `bash` (not the default): with pipefail, a failed pg_restore in the pipe fails the step.
+        shell: bash
+        run: |
+          docker run --rm -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
+            pg_restore --schema-only --file=- /backup/production.dump \
+            2> "$RUNNER_TEMP/backup/schema.log" \
+            | node apps/api/dist/deploy/cli.js backup-roles > "$RUNNER_TEMP/backup/roles.sql"
+          psql "$PROOF_URL" -X -q -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/backup/roles.sql" \
+            > "$RUNNER_TEMP/backup/roles.log" 2>&1 \
+            || { echo "Creating the roles failed; its log is not printed."; exit 1; }
+          psql "$PROOF_URL" -X -q -v ON_ERROR_STOP=1 \
+            -c "create database sodiq owner sodiq_migrator" > /dev/null
+          echo "Roles named by the dump: $(grep -c 'create role' "$RUNNER_TEMP/backup/roles.sql")."
+
+      - name: Restore the dump into the proof's server
+        # Owners, grants and policies restore as they are (neither dropped nor
+        # skipped): an error fails the run.
+        run: |
+          if ! docker run --rm --network host -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
+            pg_restore --exit-on-error --dbname=postgres://postgres:postgres@localhost:5432/sodiq \
+            /backup/production.dump > "$RUNNER_TEMP/backup/restore.log" 2>&1; then
+            echo "pg_restore failed: $(wc -l < "$RUNNER_TEMP/backup/restore.log") lines in its log, not printed."
+            exit 1
+          fi
+
+      - name: Compare the restored copy with production
+        run: |
+          psql postgres://postgres:postgres@localhost:5432/sodiq -X -q -A -t -v ON_ERROR_STOP=1 \
+            -f db/backup/row-counts.sql > "$RUNNER_TEMP/backup/restored-counts.txt" \
+            2> "$RUNNER_TEMP/backup/restored-counts.log" \
+            || { echo "Counting the copy failed; its log is not printed."; exit 1; }
+          node apps/api/dist/deploy/cli.js backup-compare \
+            "$RUNNER_TEMP/backup/source-counts.txt" "$RUNNER_TEMP/backup/restored-counts.txt"
+
+      - name: Store the dump in the backup bucket
+        env:
+          BACKUP_R2_ACCOUNT_ID: ${{ secrets.BACKUP_R2_ACCOUNT_ID }}
+          BACKUP_R2_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          BACKUP_R2_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          BACKUP_R2_BUCKET: ${{ secrets.BACKUP_R2_BUCKET }}
+        run: node apps/api/dist/deploy/cli.js backup-upload "$RUNNER_TEMP/backup/production.dump"
+
+      - name: Tell Grafana the backup is done
+        env:
+          GRAFANA_METRICS_URL: ${{ secrets.GRAFANA_METRICS_URL }}
+          GRAFANA_METRICS_USER: ${{ secrets.GRAFANA_METRICS_USER }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+        run: node apps/api/dist/deploy/cli.js backup-mark
+
+      - name: Remove the dump from the runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/backup"
