@@ -35,12 +35,16 @@ export interface Density {
 }
 
 /**
- * Enough for three times the estimate of `edge/system-behaviour` (Data
- * volume: 24 million cells and 45 million history entries at the lower end)
- * on the lessons of `triple`; `speed.database.test.ts` reports the counts
- * against the bar.
+ * What fits the Speed workflow's five hours at `triple`. Three times the
+ * estimate of `edge/system-behaviour` (Data volume: 24 million cells and 45
+ * million history entries at the lower end) would need two classworks a lesson
+ * and nine scores in ten corrected: with every trigger on the filler writes
+ * about 2,100 cells a second on four processors (the full-size run of 28
+ * October 2026), so that alone would take about six hours, past GitHub's limit
+ * of a job. `speed.database.test.ts` reports the counts against the bar; the
+ * gap is in `docs/progress.md` (task 10.1, decision 1, Look first).
  */
-export const DENSITY: Density = { classworks: 2, corrections: 90 };
+export const DENSITY: Density = { classworks: 1, corrections: 25 };
 
 export interface Filled {
   readonly days: number;
