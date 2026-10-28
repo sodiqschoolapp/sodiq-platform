@@ -8,7 +8,9 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Permissions** approved by the owner on #260: areas `attendance_report`, `results_reports`, `timetable_load`, `export` on `journal_discipline`; the first two class-scoped for the Tutor.
 - **Prepared totals**: a new unit kind `attendance` per journal and quarter (0141); the results reports read the `outcomes` units, the discipline report the `statuses` units. The quarter-progress card shows the school days passed (`schoolDays` on the closing checklist).
 
-Left out: the plan reports stay worked out on read (decision 10: their time is to be measured in the triple run on `main`); the triple and full speed runs (by hand on `main`).
+- Small speed run: the load report of a week 45 to 78 ms and the plan reports 70 to 207 ms, worked out on read (decisions 9 and 10); the new reports give the same figures prepared as from source; a branch now prepares 352 units in 32 s (228 in 23 to 27 s before the attendance unit).
+
+Left out: the plan reports on prepared totals (decision 10: measured on read, well under 2 s); the triple and full speed runs (by hand on `main`); tests named in the plan but not built, listed in the report of #260.
 
 The next sessions must know:
 

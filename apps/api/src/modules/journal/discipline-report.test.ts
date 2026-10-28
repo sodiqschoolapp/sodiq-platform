@@ -339,7 +339,16 @@ describe('the journal discipline report: its items and its file (task 9.3b-2)', 
       expect(file.status).toBe(200);
       const lines = await linesOf(file.body as Buffer);
       expect(String(lines[0]?.[0])).toContain('12.10.2026');
-      expect(lines.slice(3).length).toBeGreaterThan(0);
+      // The rows of the file are the rows of the screen: the name, then each count in order.
+      const counts = disciplineSchema.parse(
+        ok(await calls.get(`/api/journal/discipline?${RANGE}`)),
+      );
+      expect(lines.slice(3)).toEqual(
+        counts.teachers.map((row) => [
+          row.teacher.name,
+          ...DISCIPLINE_COLUMNS.map((column) => row[column as keyof typeof row]),
+        ]),
+      );
       expect(await entries()).toBe(1);
       const refused = await calls.file('/api/journal/discipline/export', {
         from: '2026-09-01',

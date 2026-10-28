@@ -344,6 +344,12 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
         );
         expect(none.rows).toEqual([]);
         expect(none.total.counts.expected).toBe(0);
+        // The lessons at 08:00 are the first class's maths.
+        const first = attendanceOf(
+          await get(`/api/results/reports/attendance?${RANGE}&subjectId=${c.s.subject}&start=480`),
+        );
+        // The other class's maths too, with the one member added above.
+        expect(first.rows.map((one) => one.counts.expected).sort((a, b) => b - a)).toEqual([15, 3]);
       },
     );
   });
@@ -374,6 +380,10 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     expect(held(after)).toBe(18);
     // Nothing prepared yet: read from source, "updating".
     expect(after.prepared.updating).toBe(true);
+    const fromSource = await as(browser, c.s.branch, [], async ({ get }) =>
+      attendanceOf(await get(path)),
+    );
+    expect(fromSource.prepared.updating).toBe(true);
     t.clock.set(MOMENT);
     try {
       await prepareBranch(t, c.s.branch);
@@ -385,9 +395,6 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
     expect(prepared.prepared.updating).toBe(false);
     expect(prepared.prepared.updatedAt).not.toBeNull();
-    const fromSource = await as(browser, c.s.branch, [], async ({ get }) =>
-      attendanceOf(await get(path)),
-    );
     expect(withoutStamp(prepared)).toEqual(withoutStamp(fromSource));
     expect(held(prepared)).toBe(18);
     // A mark saved after the preparation: behind, the figure from source, then prepared again.
@@ -410,6 +417,43 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
     expect(again.prepared.updating).toBe(false);
     expect(again.rows[0]?.counts.present).toBe(4);
+  });
+
+  // The Done when of 9.3b-2 for the other reports over the journal: behind, "updating" and the
+  // figures from source; prepared, not updating and the same figures (code review, must-fix 2).
+  it('answers the results table and subject mastery from source while behind, then the same figures prepared', async () => {
+    const c = await scene();
+    const browser = await account();
+    const roles = [{ role: 'academic_vice_principal' as const, branchId: c.s.branch }];
+    const paths = [
+      `/api/results/reports/results-table?quarterId=${c.q1}&classId=${c.s.classId}`,
+      `/api/results/reports/subject-mastery?quarterId=${c.q1}&subjectId=${c.s.subject}`,
+    ];
+    let given = false;
+    const read = () =>
+      as(browser, c.s.branch, given ? [] : ((given = true), roles), async ({ get }) =>
+        Promise.all(
+          paths.map(async (path) => {
+            const response = await get(path);
+            expect(response.status, path).toBe(200);
+            return response.body as { prepared: { updating: boolean; updatedAt: string | null } };
+          }),
+        ),
+      );
+    const fromSource = await read();
+    for (const body of fromSource) expect(body.prepared.updating).toBe(true);
+    t.clock.set(MOMENT);
+    try {
+      await prepareBranch(t, c.s.branch);
+    } finally {
+      t.clock.set(START);
+    }
+    const prepared = await read();
+    prepared.forEach((body, index) => {
+      expect(body.prepared.updating, paths[index]).toBe(false);
+      expect(body.prepared.updatedAt, paths[index]).not.toBeNull();
+      expect(withoutStamp(body), paths[index]).toEqual(withoutStamp(fromSource[index]));
+    });
   });
 
   it('gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch', async () => {
@@ -454,6 +498,17 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     const tutor = await account();
     const staff = await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
     await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+    // An acting Tutor of the first class from Monday 19 October: the lessons of the 19th and the
+    // 26th count under them (`tutorAt`: the acting Tutor while one is set).
+    const acting = await account();
+    const actingStaff = await load.classes.person(c.s.branch, ['uz'], {
+      accountId: acting.account.id,
+    });
+    await load.tutorOf(c.s.branch, c.s.classId, acting.account.id, {
+      kind: 'acting',
+      from: new Date('2026-10-19T00:00:00+05:00'),
+      until: null,
+    });
     await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
       { classId: c.s.otherClass, from: '2026-09-01' },
     ]);
@@ -467,6 +522,19 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
         );
         const keys = report.rows.map((one) => (one.key.kind === 'tutor' ? one.key.tutor : null));
         expect(keys).toContainEqual({ id: staff.staffId, name: expect.any(String) as string });
+        expect(keys).toContainEqual({
+          id: actingStaff.staffId,
+          name: expect.any(String) as string,
+        });
+        const own = report.rows.find(
+          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === staff.staffId,
+        );
+        const covered = report.rows.find(
+          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === actingStaff.staffId,
+        );
+        // Six members on the 12th under the Tutor, twice six under the acting Tutor.
+        expect(own ? own.counts.expected + own.counts.exempt : 0).toBe(6);
+        expect(covered ? covered.counts.expected + covered.counts.exempt : 0).toBe(12);
         // The other class has no Tutor: its cells under "no Tutor".
         expect(keys).toContain(null);
         for (const range of ['from=2026-09-01&to=2026-12-15', 'from=2027-05-20&to=2027-06-10']) {
@@ -494,7 +562,8 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
       expect(of(c.students.aziz)?.state).toBe('number');
       expect(of(c.students.aziz)?.grade).toBeGreaterThanOrEqual(2);
       expect(of(c.students.gulnora)).toMatchObject({ state: 'exempt', value: null, grade: null });
-      expect(of(c.students.farrux)?.state).not.toBe('exempt');
+      // Nothing entered for Farrux: "No result" (edge/00-definitions, Result states).
+      expect(of(c.students.farrux)).toMatchObject({ state: 'no_result', value: null, grade: null });
     });
     // Closed: the stored record decides, not what the entries give now.
     const closer = await load.classes.account();
