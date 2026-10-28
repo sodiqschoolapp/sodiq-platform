@@ -132,8 +132,14 @@ test('an Academic Vice Principal puts two students into a class', async ({ page 
   await expect(panel.getByText('Nurmatov Javohir')).toBeVisible();
   await expect(panel.getByText(texts.freeToday.replace('{{n}}', '23'))).toBeVisible();
   // The count of the list (`05`: "the student count of the class card").
-  const counts = await row.locator('td').allInnerTexts();
-  expect(counts).toContain('2');
+  // Retried until the list has read the save again (task 10.1: a one-shot read
+  // of the cells could come before the refetch and read 0).
+  await expect(
+    row
+      .locator('td')
+      .filter({ hasText: /^\s*2\s*$/ })
+      .first(),
+  ).toBeVisible();
   await memberScreenshot(page, 'class-students');
 
   await page.goto('/people/students');
