@@ -16,7 +16,11 @@ interface Sent {
 const sent: Sent[] = [];
 const recording: Fetch = (url, init) => {
   const headers = init.headers as Record<string, string>;
-  sent.push({ url, authorization: headers.Authorization ?? '', body: String(init.body) });
+  sent.push({
+    url,
+    authorization: headers.Authorization ?? '',
+    body: typeof init.body === 'string' ? init.body : '',
+  });
   return Promise.resolve({ ok: true, status: 204 });
 };
 
@@ -174,12 +178,12 @@ describe('the numbers and logs pushed to Grafana', () => {
       .map((line) => JSON.parse(line.text) as Record<string, unknown>);
     expect(requests).toContainEqual({
       kind: 'request',
-      requestId: expect.any(String),
+      requestId: expect.any(String) as unknown,
       method: 'GET',
       route: '/api/setup/slot-types',
       path: '/api/setup/slot-types',
       status: 200,
-      ms: expect.any(Number),
+      ms: expect.any(Number) as unknown,
       branch: t.north,
     });
     expect(requests).toContainEqual(

@@ -6,6 +6,7 @@ import {
   MONITORING_SERVICE,
   type MonitoredService,
 } from './monitoring.service.js';
+import { MonitoringCounts } from './counts.job.js';
 import { RequestMetrics, RequestMetricsInterceptor } from './request-metrics.js';
 
 /** The numbers and logs to Grafana (task 10.2a): `api` in the API, `worker` in the worker. */
@@ -21,6 +22,7 @@ export class MonitoringModule {
         { provide: MONITORING_FETCH, useValue: undefined },
         RequestMetrics,
         Monitoring,
+        MonitoringCounts,
         ...(service === 'api'
           ? [{ provide: APP_INTERCEPTOR, useClass: RequestMetricsInterceptor }]
           : []),
