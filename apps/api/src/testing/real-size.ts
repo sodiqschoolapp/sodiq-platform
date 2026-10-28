@@ -216,7 +216,29 @@ const SUBJECTS = [
 /** Invented names only (`CLAUDE.md`, No real personal data). */
 const FIRST_NAMES = ['Aziza', 'Bekzod', 'Dildora', 'Farrux', 'Gulnoza', 'Jahongir', 'Kamola'];
 const LAST_NAMES = ['Sobirova', 'Toirov', 'Umarova', 'Valiyev', 'Xolmatova', 'Yoqubov', 'Zokirova'];
-const CLASS_NAMES = ['Oxford', 'Cambridge', 'Princeton'];
+/**
+ * One name per class of a grade, so as many as the largest grade of any size
+ * (9 in `triple`): a class name is unique in its branch, year and grade
+ * (`classes_name_key`).
+ */
+export const CLASS_NAMES = [
+  'Oxford',
+  'Cambridge',
+  'Princeton',
+  'Yale',
+  'Harvard',
+  'Stanford',
+  'Columbia',
+  'Cornell',
+  'Brown',
+];
+
+/** The name of the class at this place in its grade; more classes than names is a mistake of the size. */
+function classNameAt(index: number): string {
+  const name = CLASS_NAMES[index];
+  if (name === undefined) throw new Error(`No class name for class ${index + 1} of a grade`);
+  return name;
+}
 
 /** Mulberry32: the same invented data for the same seed. */
 function seededRandom(seed: number): () => number {
@@ -426,7 +448,7 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
         const room = rooms[classes.length]?.id ?? null;
         const classId = await load.classes.schoolClass(branch, year, {
           grade,
-          name: CLASS_NAMES[index] ?? 'Yale',
+          name: classNameAt(index),
           room,
           maxSize: 30,
         });
@@ -500,7 +522,14 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
             const unit = ofGrade.slice(index, index + 2);
             const students = unit.flatMap((one) => one.students);
             const parts = unit.length === 2 ? 3 : 2;
-            const key = `groups:${unit.map((one) => one.id).join('+')}:${lessonOf.subject}`;
+            // The database makes one block of every group of a grade and
+            // subject that spans more than one class (`load_block_rows`, 0056),
+            // so the pairs of a grade share one block and need different
+            // teachers; a class left alone is a block of its own.
+            const key =
+              unit.length === 2
+                ? `groups:${String(grade)}:${lessonOf.subject}`
+                : `groups:${unit.map((one) => one.id).join('+')}:${lessonOf.subject}`;
             for (let part = 0; part < parts; part += 1) {
               const groupId = await group(
                 lessonOf.subject,
