@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 28 October 2026: task 9.3b-2 The reports of `08`
+
+- **Reports** (Results → Reports): Attendance (counts and percent of the expected cells over held lessons, exempt apart, daily attendance of `edge/journal`; by class, by tutor or by day; date range up to 92 days, grade, class, subject, teacher, start time), Results table, Subject mastery, Journal discipline (with the items behind each count and the rating exam's late entries) and Timetable load (lessons against planned load, other branches and contract; classes against the load; rooms; the engine's free periods; invigilations apart). Each has its Excel file, logged.
+- **Permissions** approved by the owner on #260: areas `attendance_report`, `results_reports`, `timetable_load`, `export` on `journal_discipline`; the first two class-scoped for the Tutor.
+- **Prepared totals**: a new unit kind `attendance` per journal and quarter (0141); the results reports read the `outcomes` units, the discipline report the `statuses` units. The quarter-progress card shows the school days passed (`schoolDays` on the closing checklist).
+
+Left out: the plan reports stay worked out on read (decision 10: their time is to be measured in the triple run on `main`); the triple and full speed runs (by hand on `main`).
+
+The next sessions must know:
+
+- A report reading the attendance of a range reads `preparedAttendance` (`results/prepared/read.ts`); a lesson counts once held, decided at preparation with the next lesson start as `next_change_at`.
+- "Period of the day" is the lesson's start time in branch time, not a slot number (no stored number exists).
+- The load report's room use is of the lesson periods the branch ran that week (each date and start with a lesson).
+
 ## 28 October 2026: task 9.3b-1 Prepared totals
 
 - 9.3b split (decision 1, Look first): this part prepares the report totals and moves the reads 10.1 found slow onto them; the new reports of `08` are 9.3b-2, which changes the permission table and waits for the owner.
