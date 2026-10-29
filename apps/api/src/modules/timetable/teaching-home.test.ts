@@ -238,6 +238,33 @@ describe('the teaching home page', () => {
     });
   });
 
+  // Task 10.2b (the owner on #261): the Senior Head Teacher does not reach the hidden Monitoring
+  // branch, so its lessons are read there only as the busy blocks of a branch with no role.
+  it('reads no lesson of the Monitoring branch in full for a Senior Head Teacher', async () => {
+    const browser = await account();
+    const hidden = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
+    const lesson = await lessonOf(hidden, DATE);
+    await t.database.migrator
+      .updateTable('branches')
+      .set({ purpose: 'monitoring' })
+      .where('id', '=', hidden.branch)
+      .execute();
+    try {
+      await at(browser, [{ role: 'senior_head_teacher' }], async (home) => {
+        const read = homeOf(await home(t.north));
+        expect(read.lessons).toEqual([]);
+        expect(read.branches.map((one) => one.id)).not.toContain(hidden.branch);
+        expect(JSON.stringify(read)).not.toContain(lesson.id);
+      });
+    } finally {
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ purpose: null })
+        .where('id', '=', hidden.branch)
+        .execute();
+    }
+  });
+
   it('lists a cancelled lesson and a lesson replaced away in the other branch (spec review must-fix 1)', async () => {
     const browser = await account();
     const here = await publishedScene(t, load, { accounts: { spare: browser.account.id } });

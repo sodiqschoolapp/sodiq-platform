@@ -58,7 +58,15 @@ export function BranchesPage() {
       {
         key: 'name',
         header: t('setup.branches.name'),
-        cell: (row) => row.name,
+        cell: (row) =>
+          row.monitoring ? (
+            <>
+              {row.name}{' '}
+              <span className="text-muted-foreground">({t('setup.branches.monitoring')})</span>
+            </>
+          ) : (
+            row.name
+          ),
         sortValue: (row) => row.name,
         searchText: (row) => row.name,
         opens: true,

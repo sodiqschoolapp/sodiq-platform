@@ -901,4 +901,40 @@ describe('the prepared report totals (task 9.3b-1)', () => {
     }
     expect((await rating(c)).prepared.updating).toBe(false);
   });
+
+  // Task 10.2b: the hidden Monitoring branch is in no school report, so its totals are never
+  // prepared; a run still prepares every other branch.
+  it('prepares nothing of the Monitoring branch, and still the other branches', async () => {
+    const hidden = await scene();
+    const real = await scene();
+    await t.database.migrator
+      .updateTable('branches')
+      .set({ purpose: 'monitoring' })
+      .where('id', '=', hidden.s.branch)
+      .execute();
+    try {
+      const totals = new PreparedTotals(t.app.get(Transactions));
+      t.clock.set(MOMENT);
+      try {
+        await totals.run(10 * 60_000);
+      } finally {
+        t.clock.set(START);
+      }
+      const preparedOf = (branch: string) =>
+        t.database.migrator
+          .selectFrom('report_prepared')
+          .select('kind')
+          .where('branch_id', '=', branch)
+          .execute();
+      expect(await preparedOf(hidden.s.branch)).toEqual([]);
+      expect((await preparedOf(real.s.branch)).length).toBeGreaterThan(0);
+      expect((await rating(real)).prepared.updating).toBe(false);
+    } finally {
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ purpose: null })
+        .where('id', '=', hidden.s.branch)
+        .execute();
+    }
+  });
 });

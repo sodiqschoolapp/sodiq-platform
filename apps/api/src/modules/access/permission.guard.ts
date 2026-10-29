@@ -21,7 +21,7 @@ import { declarationsOf } from './access.decorators.js';
 import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { taughtAt } from './taught-scope.js';
-import { permitting } from './permission-check.js';
+import { permitting, reachingBranch } from './permission-check.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
 /** What the guard allowed for a request of a `@Requires` route. */
@@ -128,22 +128,31 @@ export class PermissionGuard implements CanActivate {
       access.branch === 'none'
         ? null
         : branchHeader.transform(request.headers[BRANCH_HEADER.toLowerCase()]).toLowerCase();
-    if (permitting(access, session.assignments, branchId, this.table).length === 0) {
-      throw new ApiException('permission_denied', 403);
-    }
-    const assignments =
-      branchId === null || !CLASS_SCOPED_AREAS.includes(access.area)
-        ? session.assignments
-        : await this.withClasses(session.assignments, session.accountId, branchId);
-    const allowing = permitting(access, assignments, branchId, this.table);
-    const [assignment] = allowing;
-    if (assignment === undefined) {
+    const first = permitting(access, session.assignments, branchId, this.table);
+    if (first.length === 0) {
       throw new ApiException('permission_denied', 403);
     }
     // An assignment with a branch proves that the branch exists. The two roles
     // without one could name any uuid; an unknown branch is refused like a
     // branch of somebody else, so the answer does not tell which ids exist.
-    if (branchId !== null && assignment.branchId === null && !(await this.exists(branchId))) {
+    // The hidden Monitoring branch is reached by the Super Admin and by the
+    // assignments of the branch itself only (task 10.2b, `reachingBranch`).
+    let monitoring = false;
+    if (branchId !== null && first.some((assignment) => assignment.branchId === null)) {
+      const branch = await this.branchOf(branchId);
+      if (branch === undefined) {
+        throw new ApiException('permission_denied', 403);
+      }
+      monitoring = branch.monitoring;
+    }
+    const reaching = reachingBranch(session.assignments, monitoring);
+    const assignments =
+      branchId === null || !CLASS_SCOPED_AREAS.includes(access.area)
+        ? reaching
+        : await this.withClasses(reaching, session.accountId, branchId);
+    const allowing = permitting(access, assignments, branchId, this.table);
+    const [assignment] = allowing;
+    if (assignment === undefined) {
       throw new ApiException('permission_denied', 403);
     }
     ACCESSES.set(request, {
@@ -208,15 +217,15 @@ export class PermissionGuard implements CanActivate {
     });
   }
 
-  private exists(branchId: string): Promise<boolean> {
+  private branchOf(branchId: string): Promise<{ monitoring: boolean } | undefined> {
     // `branches` is school-wide: the names are read without a branch filter.
     return this.transactions.run([], async (transaction) => {
       const found = await transaction
         .selectFrom('branches')
-        .select('id')
+        .select('purpose')
         .where('id', '=', branchId)
         .executeTakeFirst();
-      return found !== undefined;
+      return found === undefined ? undefined : { monitoring: found.purpose === 'monitoring' };
     });
   }
 }

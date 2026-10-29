@@ -485,4 +485,37 @@ describe('the counts per branch for the alerts', () => {
       expect.stringMatching(/^sodiq_counts,instance=local,service=api pushed=1i /),
     );
   });
+
+  // Task 10.2b: the hidden Monitoring branch sends no count and no failed job, so no alert of the
+  // school fires on it; its own sign-in-and-save check alerts in Grafana.
+  it('pushes nothing of the Monitoring branch, given what it would push of a real branch', async () => {
+    const monitoring = await t.newBranch();
+    await t.database.migrator
+      .updateTable('branches')
+      .set({ purpose: 'monitoring' })
+      .where('id', '=', monitoring)
+      .execute();
+    try {
+      await t.app.get(JobQueue).ready();
+      await sql`
+        insert into pgboss.job (name, data, state, completed_on)
+        values ('journal.branch_export', ${JSON.stringify({ branchIds: [monitoring], data: {} })}::jsonb,
+          'failed'::pgboss.job_state, ${new Date('2026-10-28T09:00:00+05:00')})
+      `.execute(t.database.migrator);
+      t.clock.set(NOW);
+      pushed.length = 0;
+      await t.app.get(MonitoringCounts).run();
+      expect(pushed.filter((line) => line.includes(monitoring))).toEqual([]);
+      // The other branches still send theirs.
+      expect(
+        pushed.filter((line) => line.startsWith('sodiq_branch,') && line.includes(north)),
+      ).toHaveLength(1);
+    } finally {
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ purpose: null })
+        .where('id', '=', monitoring)
+        .execute();
+    }
+  });
 });

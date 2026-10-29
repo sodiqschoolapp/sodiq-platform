@@ -1281,6 +1281,7 @@ export const en = {
       rooms: 'Rooms',
       emptyTitle: 'No branches yet',
       empty: 'Every branch of the school is listed here. Add the first one.',
+      monitoring: 'Hidden: the sign-in-and-save check',
     },
     branch: {
       goLiveTitle: 'Go-live date',

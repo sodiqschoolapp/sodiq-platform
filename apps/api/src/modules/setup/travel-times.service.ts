@@ -31,6 +31,8 @@ export class TravelTimes {
       .selectFrom('branches')
       .select(['id', 'name'])
       .where('id', '<>', branchId)
+      // Never the hidden Monitoring branch (task 10.2b).
+      .where('purpose', 'is', null)
       .orderBy('name')
       .orderBy('id')
       .execute();

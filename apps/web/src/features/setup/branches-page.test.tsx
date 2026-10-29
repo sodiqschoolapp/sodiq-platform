@@ -17,6 +17,7 @@ const LISTED: BranchListItem[] = [
     workingWeekdays: [1, 2, 3, 4, 5],
     buildingCount: 2,
     roomCount: 31,
+    monitoring: false,
   },
   {
     id: SOUTH.id,
@@ -25,6 +26,7 @@ const LISTED: BranchListItem[] = [
     workingWeekdays: [1, 2, 3, 4, 5, 6],
     buildingCount: 0,
     roomCount: 0,
+    monitoring: false,
   },
 ];
 
@@ -88,6 +90,29 @@ describe('the Branches list', () => {
       ['North', 'Chilonzor, 12', 'Monday, Tuesday, Wednesday, Thursday, Friday', '2', '31'],
       ['South', '', 'Monday, Tuesday, Wednesday, Thursday, Friday, Saturday', '0', '0'],
     ]);
+  });
+
+  // Task 10.2b (answer 10): the hidden Monitoring branch is marked in the Super Admin's list.
+  it('marks the hidden Monitoring branch and no other', async () => {
+    const monitoring: BranchListItem = {
+      id: EAST.id,
+      name: 'Monitoring',
+      address: null,
+      workingWeekdays: [1, 2, 3, 4, 5, 6, 7],
+      buildingCount: 1,
+      roomCount: 1,
+      monitoring: true,
+    };
+    fakeApi({
+      'GET /api/auth/session': () => json(superAdmin()),
+      'GET /api/setup/branches': () => json({ branches: [...LISTED, monitoring] }),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(3);
+    });
+    const names = rowsDrawn().map((row) => row[0]);
+    expect(names).toEqual(['North', 'South', `Monitoring (${en.setup.branches.monitoring})`]);
   });
 
   it('switches the current branch to the branch opened and shows its Branch page', async () => {

@@ -38,7 +38,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { tutorClassesAt } from '../access/class-scope.js';
 import type { CurrentAssignment } from '../access/current-assignments.js';
 import type { Access } from '../access/permission.guard.js';
-import { permitting, type Requirement } from '../access/permission-check.js';
+import { permitting, reachingBranch, type Requirement } from '../access/permission-check.js';
 import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import { branchOf } from '../classes/classes.service.js';
 import { loadCalendarSettings, loadEntries } from '../setup/calendar-state.js';
@@ -343,7 +343,7 @@ export class TimetableViews {
       async (transaction) => ({
         branches: await transaction
           .selectFrom('branches')
-          .select(['id', 'name', 'time_zone'])
+          .select(['id', 'name', 'time_zone', 'purpose'])
           .orderBy('name')
           .orderBy('id')
           .execute(),
@@ -353,7 +353,12 @@ export class TimetableViews {
     const week = viewDates(today, 'week');
     const full = branches.filter(
       (branch) =>
-        permitting(HOME_REQUIREMENT, access.assignments, branch.id, this.table).length > 0,
+        permitting(
+          HOME_REQUIREMENT,
+          reachingBranch(access.assignments, branch.purpose === 'monitoring'),
+          branch.id,
+          this.table,
+        ).length > 0,
     );
     const fullIds = new Set(full.map((one) => one.id));
 

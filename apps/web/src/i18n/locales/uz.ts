@@ -1309,6 +1309,7 @@ export const uz: Texts<'one' | 'other'> = {
       rooms: 'Xonalar',
       emptyTitle: 'Hali filial yoʻq',
       empty: 'Maktabning barcha filiallari shu yerda. Birinchisini qoʻshing.',
+      monitoring: 'Yashirin: kirish va saqlash tekshiruvi',
     },
     branch: {
       goLiveTitle: 'Ishga tushirish sanasi',

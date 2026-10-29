@@ -2,6 +2,7 @@ import { roleSchema, SCHOOL_WIDE_ROLES, type Role } from '@sodiq/shared';
 import type { ExpressionBuilder } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { DB } from '../../database/types.generated.js';
+import { reachingBranch } from './permission-check.js';
 
 /**
  * The condition "has not ended at `now`": in force, or beginning later. An
@@ -104,7 +105,9 @@ export interface BranchChoice {
  * The branches an account may choose: every branch for a Super Admin or a
  * Senior Head Teacher ("All branches", "own subjects in all branches"), the
  * branches of its assignments for the others. Display only: every request is
- * checked against its one branch on the server. `branches` has no row filter
+ * checked against its one branch on the server. The hidden Monitoring branch
+ * is listed for the Super Admin and for an assignment of its own only (task
+ * 10.2b, `reachingBranch`). `branches` has no row filter
  * (it is not a branch-owned table), so the list is made here.
  */
 export async function branchChoices(
@@ -121,6 +124,14 @@ export async function branchChoices(
   let query = transaction.selectFrom('branches').select(['id', 'name']);
   if (!schoolWide) {
     query = query.where('id', 'in', own);
+  } else if (
+    reachingBranch(assignments, true).every((assignment) => assignment.branchId !== null)
+  ) {
+    // The hidden Monitoring branch: the Super Admin's and its own assignments only (task 10.2b).
+    query =
+      own.length === 0
+        ? query.where('purpose', 'is', null)
+        : query.where((where) => where.or([where('purpose', 'is', null), where('id', 'in', own)]));
   }
   return query.orderBy('name').orderBy('id').execute();
 }
