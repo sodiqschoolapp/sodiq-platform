@@ -619,6 +619,11 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             ],
             // Task 10.1b: the closing checklist reads the prepared closing units.
             ['the closing checklist', person('academic_vice_principal'), '/api/results/closing'],
+            [
+              'the plan report progress',
+              person('academic_vice_principal'),
+              `/api/plans/reports/progress?quarterId=${ids.quarter}`,
+            ],
           ];
           // Task 10.1b, decision 1 (Look first): at triple size the passes from source, which hold
           // the prepared figures equal to the source, run on the first branch only, for the run's

@@ -22,12 +22,12 @@ import {
   staffNames,
   type JournalRow,
 } from '../journal/journal-grid.query.js';
-import { journalsColumns } from '../journal/journal-works.query.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { clockOf, quarterOfToday, referenceDateOf, type PlanQuarter } from './plan-read.js';
-import { trayCounts } from './plan-outcomes.js';
+import { notCoveredOf, type JournalProgress } from './plan-progress.js';
+import { Freshness, preparedPlanProgress } from '../results/prepared/read.js';
 import { PlansService } from './plans.service.js';
 
 /**
@@ -54,51 +54,6 @@ function reportSubjects(access: Access): Set<string> | null {
       .filter((one) => SUBJECTS.has(one.role))
       .flatMap((one) => one.subjectIds.map((id) => id.toLowerCase())),
   );
-}
-
-/**
- * The items not covered of each journal named in a quarter (`09`, Reports, Progress): the items
- * placed past the journal's rows of the quarter, and (task 9.2d, decision 10) the items "carried
- * in" its tray. One rule for the progress report and the closing checklist (task 10.1b).
- */
-export async function notCoveredOf(
-  transaction: Transaction,
-  journalIds: readonly string[],
-  quarterId: string,
-  rowsOf: (journalId: string) => number,
-): Promise<Map<string, number>> {
-  const counts = new Map<string, number>();
-  if (journalIds.length === 0) return counts;
-  const links = await transaction
-    .selectFrom('lesson_plan_journals')
-    .select(['plan_id', 'journal_id'])
-    .where('journal_id', 'in', [...journalIds])
-    .where('quarter_id', '=', quarterId)
-    .execute();
-  const places =
-    links.length === 0
-      ? []
-      : await transaction
-          .selectFrom('lesson_plan_places')
-          .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
-          .select(['lesson_plan_places.journal_id', 'lesson_plan_places.position'])
-          .where(
-            'lesson_plan_places.plan_id',
-            'in',
-            links.map((link) => link.plan_id),
-          )
-          .where('lesson_plan_items.cleared_at', 'is', null)
-          .execute();
-  const tray = (await trayCounts(transaction, journalIds, quarterId)).counts;
-  for (const journalId of journalIds) {
-    const rows = rowsOf(journalId);
-    counts.set(
-      journalId,
-      places.filter((place) => place.journal_id === journalId && place.position > rows).length +
-        (tray.get(journalId) ?? 0),
-    );
-  }
-  return counts;
 }
 
 const percentOf = (part: number, whole: number): number | null =>
@@ -167,7 +122,10 @@ export class PlanReportsService {
       list.yearId === null ? [] : await journalRows(transaction, branchId, { yearId: list.yearId });
     const inScope = (journal: JournalRow) =>
       subjects === null || subjects.has(journal.subjectId.toLowerCase());
-    const journals = yearJournals.filter((journal) => listed.has(journal.id) && inScope(journal));
+    // In one order (task 10.1b): `journalRows` gives the rows in no fixed order.
+    const journals = yearJournals
+      .filter((journal) => listed.has(journal.id) && inScope(journal))
+      .sort((a, b) => a.id.localeCompare(b.id));
     // Other subjects' plans are counted, never named (decision 1).
     const otherSubjects = yearJournals.filter(
       (journal) => plannedJournal(journal) && !inScope(journal),
@@ -369,62 +327,46 @@ export class PlanReportsService {
         plans: [],
         teachers: [],
         otherSubjects: base.otherSubjects,
+        prepared: { updatedAt: null, updating: false },
       });
     }
-    const all = await journalsColumns(transaction, base.journals, base.timeZone, base.now);
-    const inQuarter = (date: string) => quarter.startDate <= date && date <= quarter.endDate;
+    // Task 10.1b: what each journal counts, from the prepared `plan_progress` units (behind ones
+    // from source by the same function).
+    const freshness = new Freshness();
+    const progress: Map<string, JournalProgress> = await preparedPlanProgress(
+      {
+        transaction,
+        branchId: base.branchId,
+        timeZone: base.timeZone,
+        now: base.now,
+        today: base.today,
+      },
+      quarter,
+      base.journals,
+      freshness,
+    );
     const plans = [];
     const rowCounts = new Map<string, number>();
     // The planned works and those "not held" at each held lesson, for whom it counts.
-    const heldLessons: {
-      id: string;
-      journalId: string;
-      date: string;
-      teacherId: string | null;
-      planned: number;
-      notHeld: number;
-    }[] = [];
+    const heldLessons: (JournalProgress['heldLessons'][number] & { journalId: string })[] = [];
     for (const journal of base.journals) {
-      const found = all.journals.get(journal.id);
-      const rows = (found?.lessons ?? []).filter(
-        (lesson) => lesson.cancelCause === null && inQuarter(lesson.date),
-      );
-      const withTopic = (lessonId: string) => {
-        const item = all.items.get(lessonId);
-        return item !== null && item !== undefined && item.topic.trim() !== '';
-      };
-      const held = rows.filter((lesson) => all.held.has(lesson.id));
-      const delivered = held.filter(
-        (lesson) => withTopic(lesson.id) && !all.notDelivered.has(lesson.id),
-      ).length;
-      rowCounts.set(journal.id, rows.length);
+      const one = progress.get(journal.id);
+      rowCounts.set(journal.id, one?.rows ?? 0);
       plans.push({
         journalId: journal.id,
         unit: unitOf(journal),
         subject: subjectOf(journal),
         teacher: this.teacherOf(base, journal.id),
         department: base.departmentOf.get(journal.id) ?? null,
-        rows: rows.length,
-        planned: rows.filter((lesson) => withTopic(lesson.id)).length,
-        held: held.length,
-        delivered,
+        rows: one?.rows ?? 0,
+        planned: one?.planned ?? 0,
+        held: one?.held ?? 0,
+        delivered: one?.delivered ?? 0,
         notCovered: 0,
-        behind: delivered < held.length,
+        behind: (one?.delivered ?? 0) < (one?.held ?? 0),
       });
-      for (const lesson of held) {
-        const columns = found?.columns.get(lesson.id);
-        const planned = [...(columns?.columns ?? []), ...(columns?.notHeld ?? [])].filter(
-          (column) => column.planWorkId !== null && !column.unplanned,
-        );
-        heldLessons.push({
-          id: lesson.id,
-          journalId: journal.id,
-          date: lesson.date,
-          teacherId: lesson.teacherId,
-          planned: planned.length,
-          notHeld: planned.filter((column) => column.notHeld).length,
-        });
-      }
+      for (const lesson of one?.heldLessons ?? [])
+        heldLessons.push({ ...lesson, journalId: journal.id });
     }
     const uncovered = await notCoveredOf(
       transaction,
@@ -462,6 +404,7 @@ export class PlanReportsService {
         }))
         .sort((a, b) => a.teacher.name.localeCompare(b.teacher.name, 'en')),
       otherSubjects: base.otherSubjects,
+      prepared: freshness.stamp,
     });
   }
 

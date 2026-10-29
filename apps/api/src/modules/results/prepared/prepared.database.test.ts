@@ -886,6 +886,8 @@ describe('the prepared report totals (task 9.3b-1)', () => {
             `/api/results/rating/subject?quarterId=${c.quarter}&journalId=${c.journal}`,
             '/api/results/early-warning',
             '/api/results/branch-summary',
+            // Task 10.1b: the plan progress report on the `plan_progress` units.
+            `/api/plans/reports/progress?quarterId=${c.quarter}`,
           ];
           const fromSource = [];
           for (const path of paths) {

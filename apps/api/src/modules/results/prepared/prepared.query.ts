@@ -13,7 +13,8 @@ import { decode, encode } from './codec.js';
  */
 
 // Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal. Task 10.1b adds
-// `closing` (a quarter and a subject) and `class_figures` (a quarter and a class), 0143.
+// `closing` (a quarter and a subject) and `class_figures` (a quarter and a class), 0143, and
+// `plan_progress` (a quarter and a journal), 0146.
 export const UNIT_KINDS = [
   'outcomes',
   'figures',
@@ -21,6 +22,7 @@ export const UNIT_KINDS = [
   'attendance',
   'closing',
   'class_figures',
+  'plan_progress',
 ] as const;
 export type UnitKind = (typeof UNIT_KINDS)[number];
 

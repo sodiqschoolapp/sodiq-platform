@@ -20,6 +20,8 @@ import { outcomesOf, type Outcomes, type QuarterState } from '../rating.service.
 import { freshLessons, freshUnits, PREPARED_SHAPE, type FreshUnit } from './prepared.query.js';
 import { attendanceOfJournal, type AttendanceLesson } from './attendance.js';
 import { resultItemsOf, type ResultDraft, type ResultItems } from '../closing-results.js';
+import type { JournalRow } from '../../journal/journal-grid.query.js';
+import { journalProgressOf, type JournalProgress } from '../../plans/plan-progress.js';
 import { journalsOfYear, type FiguresValue } from './units.js';
 
 /**
@@ -236,4 +238,45 @@ export async function preparedClosing(
     drafts.push(...part.drafts);
   }
   return { weightsMissing, drafts };
+}
+
+/**
+ * What the progress report of `09` counts of each journal named in a quarter (task 10.1b;
+ * `journalProgressOf`), from the prepared `plan_progress` units and, for the units found behind,
+ * from source by the same function.
+ */
+export async function preparedPlanProgress(
+  moment: BranchMoment,
+  quarter: { readonly id: string; readonly startDate: string; readonly endDate: string },
+  journals: readonly JournalRow[],
+  freshness: Freshness,
+): Promise<Map<string, JournalProgress>> {
+  const found = new Map<string, JournalProgress>();
+  if (journals.length === 0) return found;
+  const fresh = await freshUnits(moment.transaction, {
+    branchId: moment.branchId,
+    kind: 'plan_progress',
+    quarterId: quarter.id,
+    unitIds: journals.map((journal) => journal.id.toLowerCase()),
+    now: moment.now,
+    schoolInputs: PREPARED_SHAPE,
+  });
+  for (const [id, one] of fresh) {
+    freshness.used(one.preparedAt);
+    found.set(id, one.value as JournalProgress);
+  }
+  const behind = journals.filter((journal) => !fresh.has(journal.id.toLowerCase()));
+  if (behind.length > 0) {
+    freshness.missed();
+    for (const [id, one] of await journalProgressOf(
+      moment.transaction,
+      behind,
+      quarter,
+      moment.timeZone,
+      moment.now,
+    )) {
+      found.set(id, one);
+    }
+  }
+  return found;
 }

@@ -79204,6 +79204,11 @@ export interface operations {
                             percentNotHeld: number | null;
                         }[];
                         otherSubjects: number;
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                     };
                 };
             };

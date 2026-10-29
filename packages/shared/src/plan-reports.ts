@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
+import { preparedStampSchema } from './prepared.js';
 import {
   PLAN_FLAGS,
   PLAN_STATES,
@@ -138,6 +139,8 @@ export const planProgressSchema = z.object({
   ),
   /** The plans of the branch's other subjects, counted and never named. */
   otherSubjects: z.int().min(0),
+  /** Task 10.1b: the prepared totals each journal's counts were read from. */
+  prepared: preparedStampSchema,
 });
 
 export type PlanProgress = z.infer<typeof planProgressSchema>;

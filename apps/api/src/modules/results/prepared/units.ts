@@ -13,6 +13,8 @@ import {
 import { outcomesOf, quarterStateOf, type Outcomes } from '../rating.service.js';
 import { attendanceOfJournal } from './attendance.js';
 import { resultItemsOf, type ResultItems } from '../closing-results.js';
+import { journalRows } from '../../journal/journal-grid.query.js';
+import { journalProgressOf } from '../../plans/plan-progress.js';
 import type { UnitKey } from './prepared.query.js';
 
 /**
@@ -233,6 +235,21 @@ export async function unitValue(
         nextChangeAt: await nextChangeOf(moment, quarter, { subjectId: unit.unitId }, true),
       };
     }
+    case 'plan_progress': {
+      // Task 10.1b: what the progress report of `09` counts of the journal.
+      const journals = await journalRows(moment.transaction, moment.branchId, {
+        journalIds: [unit.unitId],
+      });
+      const value = (
+        await journalProgressOf(moment.transaction, journals, quarter, moment.timeZone, moment.now)
+      ).get(unit.unitId);
+      return {
+        journalIds: [unit.unitId],
+        value: value ?? null,
+        // A lesson becomes held at its start; nothing else moves with the clock.
+        nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
+      };
+    }
     case 'class_figures':
       throw new Error(`The unit kind ${unit.kind} is not prepared yet.`);
   }
@@ -256,6 +273,7 @@ export async function unitsOf(moment: BranchMoment): Promise<UnitKey[]> {
     for (const journal of journals) {
       units.push({ kind: 'statuses', quarterId: quarter.id, unitId: journal.id });
       units.push({ kind: 'attendance', quarterId: quarter.id, unitId: journal.id });
+      units.push({ kind: 'plan_progress', quarterId: quarter.id, unitId: journal.id });
     }
   }
   return units;
