@@ -35,6 +35,8 @@ interface Times {
   readonly runs: number[];
   readonly failures: number;
   readonly statuses: Record<string, number>;
+  /** Task 10.1b: answers whose prepared totals were behind ("updating"), worked out from source. */
+  readonly updating: number;
 }
 
 async function readPlan(): Promise<Plan> {
@@ -61,6 +63,7 @@ async function main(): Promise<void> {
       if (action === undefined) return;
       const started = performance.now();
       let status: string;
+      let updating = false;
       try {
         const response = await fetch(`${plan.baseUrl}${action.path}`, {
           method: action.method,
@@ -73,17 +76,18 @@ async function main(): Promise<void> {
           },
           ...(action.body === undefined ? {} : { body: JSON.stringify(action.body) }),
         });
-        await response.arrayBuffer();
+        updating = (await response.text()).includes('"updating":true');
         status = String(response.status);
       } catch {
         status = 'error';
       }
-      const known = times.get(action.name) ?? { runs: [], failures: 0, statuses: {} };
+      const known = times.get(action.name) ?? { runs: [], failures: 0, statuses: {}, updating: 0 };
       known.runs.push(performance.now() - started);
       known.statuses[status] = (known.statuses[status] ?? 0) + 1;
       times.set(action.name, {
         ...known,
         failures: known.failures + (status.startsWith('2') ? 0 : 1),
+        updating: known.updating + (updating ? 1 : 0),
       });
       await pause(gap());
     }

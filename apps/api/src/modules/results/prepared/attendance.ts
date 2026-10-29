@@ -137,14 +137,18 @@ export async function attendanceOfJournal(
         from l join group_memberships m on m.group_id = l.group_id
           and m.valid_from < m.valid_until
           and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+      ),
+      -- Read once by lesson, as attendance today reads them (task 10.1b).
+      cells as materialized (
+        select lesson_id, student_id, mark from journal_cells
+        where lesson_id = any(${heldIds}::uuid[]) and work_id is null
       )
       select x.lesson_id, x.student_id, c.class_id, cell.mark
       from members x
       left join class_memberships c on c.student_id = x.student_id
         and c.valid_from < c.valid_until
         and c.valid_from <= x.lesson_date and x.lesson_date < c.valid_until
-      left join journal_cells cell on cell.lesson_id = x.lesson_id
-        and cell.student_id = x.student_id and cell.work_id is null
+      left join cells cell on cell.lesson_id = x.lesson_id and cell.student_id = x.student_id
       order by x.lesson_id, x.student_id
     `.execute(transaction)
   ).rows;

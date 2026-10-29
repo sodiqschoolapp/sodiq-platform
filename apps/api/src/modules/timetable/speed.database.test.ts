@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { resolve } from 'node:path';
 import {
   BRANCH_HEADER,
@@ -38,6 +39,7 @@ import {
   withoutStamp,
 } from '../../testing/prepared-kit.js';
 import { QUARTERS } from '../../testing/published-scene.js';
+import { PreparedTotals } from '../results/prepared/prepare.job.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import {
   percentile95,
@@ -615,9 +617,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               person('academic_vice_principal'),
               `/api/results/reports/subject-mastery?quarterId=${ids.quarter}&subjectId=${masteredSubject}`,
             ],
+            // Task 10.1b: the closing checklist reads the prepared closing units.
+            ['the closing checklist', person('academic_vice_principal'), '/api/results/closing'],
           ];
+          // Task 10.1b, decision 1 (Look first): at triple size the passes from source, which hold
+          // the prepared figures equal to the source, run on the first branch only, for the run's
+          // time; every pull request runs them on every branch of the small school.
+          const checked = !TRIPLE || branch === school.branches[0];
           const fromSource = new Map<string, unknown>();
-          for (const [what, who, path] of prepared) {
+          for (const [what, who, path] of checked ? prepared : []) {
             const response = await as(who).get(path);
             expect(response.status, `${what}: ${JSON.stringify(response.body)}`).toBe(200);
             const stamp = (response.body as { prepared: PreparedStamp }).prepared;
@@ -627,15 +635,17 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             });
             fromSource.set(what, withoutStamp(response.body));
           }
-          const read = await tablesReadByPreparation(t, branch.id);
-          expect(
-            await inputsNotWatched(t, read),
-            `${branch.name}: the inputs of the preparation`,
-          ).toEqual({
-            unwatched: [],
-            schoolInputsWithBranch: [],
-            watchedWithoutBranch: [],
-          });
+          if (checked) {
+            const read = await tablesReadByPreparation(t, branch.id);
+            expect(
+              await inputsNotWatched(t, read),
+              `${branch.name}: the inputs of the preparation`,
+            ).toEqual({
+              unwatched: [],
+              schoolInputsWithBranch: [],
+              watchedWithoutBranch: [],
+            });
+          }
           const units = await once(() => prepareBranch(t, branch.id));
           timings.push({
             what: `${branch.name}: prepare every report total (${String(units.last)} units)`,
@@ -643,7 +653,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             runs: units.runs,
           });
           expect(units.last, `${branch.name}: units prepared`).toBeGreaterThan(0);
-          for (const [what, who, path] of prepared) {
+          for (const [what, who, path] of checked ? prepared : []) {
             const response = await as(who).get(path);
             const stamp = (response.body as { prepared: PreparedStamp }).prepared;
             expect(stamp.updating, `${what}: after the preparation`).toBe(false);
@@ -654,30 +664,32 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               fromSource.get(what),
             );
           }
-          expect(await prepareBranch(t, branch.id), `${branch.name}: nothing behind`).toBe(0);
-          // Plan decision 5, the named risk: right after a branch-wide change (a weight) every
-          // unit is behind, and the reads are worked out from source until the next run.
-          await t.database.migrator
-            .updateTable('subject_quarter_weights')
-            .set((eb) => ({ attendance: eb.ref('attendance') }))
-            .where('branch_id', '=', branch.id)
-            .execute();
-          for (const [what, who, path] of prepared.slice(0, 3)) {
-            const behind = await once(() => as(who).get(path));
-            const stamp = (behind.last.body as { prepared: PreparedStamp }).prepared;
-            expect(stamp.updating, `${what}: right after a weight change`).toBe(true);
+          if (checked) {
+            expect(await prepareBranch(t, branch.id), `${branch.name}: nothing behind`).toBe(0);
+            // Plan decision 5, the named risk: right after a branch-wide change (a weight) every
+            // unit is behind, and the reads are worked out from source until the next run.
+            await t.database.migrator
+              .updateTable('subject_quarter_weights')
+              .set((eb) => ({ attendance: eb.ref('attendance') }))
+              .where('branch_id', '=', branch.id)
+              .execute();
+            for (const [what, who, path] of prepared.slice(0, 3)) {
+              const behind = await once(() => as(who).get(path));
+              const stamp = (behind.last.body as { prepared: PreparedStamp }).prepared;
+              expect(stamp.updating, `${what}: right after a weight change`).toBe(true);
+              timings.push({
+                what: `${branch.name}: ${what} right after a weight change (every unit behind)`,
+                target: 'reported',
+                runs: behind.runs,
+              });
+            }
+            const again = await once(() => prepareBranch(t, branch.id));
             timings.push({
-              what: `${branch.name}: ${what} right after a weight change (every unit behind)`,
+              what: `${branch.name}: prepare again after a weight change (${String(again.last)} units)`,
               target: 'reported',
-              runs: behind.runs,
+              runs: again.runs,
             });
           }
-          const again = await once(() => prepareBranch(t, branch.id));
-          timings.push({
-            what: `${branch.name}: prepare again after a weight change (${String(again.last)} units)`,
-            target: 'reported',
-            runs: again.runs,
-          });
 
           // Task 9.3b-2, decisions 9 and 10: the reports worked out on read, timed against `08`'s 2 s.
           const vice = as(person('academic_vice_principal'));
@@ -854,7 +866,28 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           LOAD.users,
           new Date(SPEED_CLOCK),
         );
-        load = await runLoad(t.kit.server, users, LOAD);
+        // Task 10.1b (review of the plan, finding 5): the preparation runs every minute during the
+        // load, as the worker runs it on the live system, so the saves of the load put their own
+        // units behind and the job catches up.
+        const loading = runLoad(t.kit.server, users, LOAD);
+        let done = false;
+        const preparing = (async () => {
+          let runs = 0;
+          const started = performance.now();
+          while (!done) {
+            await t.app.get(PreparedTotals, { strict: false }).run();
+            runs += 1;
+            const next = started + runs * 60_000;
+            while (!done && performance.now() < next) await delay(1000);
+          }
+          return runs;
+        })();
+        load = await loading.finally(() => {
+          done = true;
+        });
+        state.notes.push(
+          `Under load the preparation of the totals ran ${String(await preparing)} times, once a minute.`,
+        );
         for (const [name, times] of Object.entries(load)) {
           expect(times.runs.length, `${name}: ran`).toBeGreaterThan(0);
           // At the large sizes every action is reported before the run fails.
@@ -1233,11 +1266,11 @@ function report(input: {
     '',
     `## Under load (${String(LOAD.users)} users for ${String(LOAD.durationMs / 1000)} s, ${String(LOAD.gapMs[0] / 1000)} to ${String(LOAD.gapMs[1] / 1000)} s between actions)`,
     '',
-    '| Action | Target | Requests | Median | 95th percentile | Answers |',
-    '| --- | --- | --- | --- | --- | --- |',
+    '| Action | Target | Requests | Median | 95th percentile | Answers | Updating |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     ...Object.entries(input.load).map(
       ([name, times]) =>
-        `| ${name} | under ${String(targetOf(name) / 1000)} s | ${String(times.runs.length)} | ${ms(median(times.runs))} | ${ms(percentile95(times.runs))} | ${JSON.stringify(times.statuses)} |`,
+        `| ${name} | under ${String(targetOf(name) / 1000)} s | ${String(times.runs.length)} | ${ms(median(times.runs))} | ${ms(percentile95(times.runs))} | ${JSON.stringify(times.statuses)} | ${String(times.updating)} |`,
     ),
     '',
     ...(input.breakdown.length === 0

@@ -132,13 +132,18 @@ export async function freshLessons(
 ): Promise<Map<string, FreshUnit>> {
   if (input.lessonIds.length === 0) return new Map();
   const found = await sql<{ lesson_id: string; prepared_at: Date; value: unknown }>`
-    select l.lesson_id, p.prepared_at, l.value
+    -- Task 10.1b: each unit decided once, not once per lesson.
+    with fresh as materialized (
+      select p.quarter_id, p.unit_id, p.prepared_at
+      from report_prepared p
+      where p.branch_id = ${input.branchId} and p.kind = 'statuses'
+        and ${freshCondition(input.now, input.schoolInputs)}
+    )
+    select l.lesson_id, f.prepared_at, l.value
     from report_prepared_lessons l
-    join report_prepared p on p.branch_id = l.branch_id and p.kind = 'statuses'
-      and p.quarter_id = l.quarter_id and p.unit_id = l.journal_id
+    join fresh f on f.quarter_id = l.quarter_id and f.unit_id = l.journal_id
     where l.branch_id = ${input.branchId}
       and l.lesson_id = any (${[...new Set(input.lessonIds)]}::uuid[])
-      and ${freshCondition(input.now, input.schoolInputs)}
   `.execute(transaction);
   return new Map(
     found.rows.map((row) => [

@@ -2116,13 +2116,13 @@ export class ClosingService {
     const byJournal = [...results.drafts].sort((a, b) => a.journalId.localeCompare(b.journalId));
     for (const draft of byJournal) {
       if (draft.kind === 'no_result') {
-        push(draft.kind, draft.journalId, draft.teacherId, {
+        push(draft.kind, draft.journalId, ownerOf(draft.journalId), {
           students: (draft.studentIds ?? []).map(nameOf),
         });
       } else if (draft.kind === 'part_without_data') {
-        push(draft.kind, draft.journalId, draft.teacherId, { parts: draft.parts ?? [] });
+        push(draft.kind, draft.journalId, ownerOf(draft.journalId), { parts: draft.parts ?? [] });
       } else {
-        push(draft.kind, draft.journalId, draft.teacherId, {
+        push(draft.kind, draft.journalId, ownerOf(draft.journalId), {
           students: (draft.students ?? []).map(({ studentId, ...row }) => ({
             student: nameOf(studentId),
             ...row,
@@ -2285,14 +2285,14 @@ export class ClosingService {
     }
 
     // `07`: "Lesson plans incomplete, or items 'not covered'"; From 8.8: below the minimum.
-    const completeness = await this.planReports.completenessIn(transaction, access, {
-      quarterId: quarter.id,
-    });
-    const progress = await this.planReports.progressIn(transaction, access, {
-      quarterId: quarter.id,
-    });
-    const notCovered = new Map(progress.plans.map((plan) => [plan.journalId, plan.notCovered]));
-    for (const plan of completeness.plans) {
+    // Task 10.1b: the plans of the completeness report and the items not covered by the rule of
+    // the progress report, without the progress report's walk of every lesson and work.
+    const { plans, notCovered } = await this.planReports.closingPlansIn(
+      transaction,
+      access,
+      quarter.id,
+    );
+    for (const plan of plans) {
       const uncovered = notCovered.get(plan.journalId) ?? 0;
       if (plan.state === 'complete' && uncovered === 0 && plan.belowMinimum === null) continue;
       push('plan_incomplete', plan.journalId, ownerOf(plan.journalId), {
@@ -2306,16 +2306,10 @@ export class ClosingService {
     // 11): where no carry is possible, an item not covered with no outcome blocks the close; a
     // journal that no longer runs on the quarter's last day is closed with it (correction 2).
     if (await carryClosedFrom(transaction, quarter.id)) {
-      const running = await journalsRunningOn(
-        transaction,
-        progress.plans.map((plan) => plan.journalId),
-        quarter.endDate,
-      );
-      for (const plan of progress.plans) {
-        if (plan.notCovered === 0 || !running.has(plan.journalId)) continue;
-        push('plan_not_covered', plan.journalId, ownerOf(plan.journalId), {
-          notCovered: plan.notCovered,
-        });
+      const running = await journalsRunningOn(transaction, [...notCovered.keys()], quarter.endDate);
+      for (const [journalId, count] of notCovered) {
+        if (count === 0 || !running.has(journalId)) continue;
+        push('plan_not_covered', journalId, ownerOf(journalId), { notCovered: count });
       }
     }
 

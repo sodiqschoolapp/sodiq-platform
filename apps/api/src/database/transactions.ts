@@ -128,6 +128,11 @@ export class Transactions {
    * `repeatable read`, so that every statement sees the one moment of its
    * first: "taken from one consistent moment" (edge/system-behaviour). Every
    * other transaction keeps the default, `read committed`.
+   *
+   * Task 10.1b: no JIT compilation. The plans of the reads over partitioned history tables cost
+   * past PostgreSQL's threshold, and compiling them took most of their time (587 ms of 588 for
+   * the late entries of the counts per teacher at the school's size), for statements that read a
+   * few rows.
    */
   async run<T>(
     branchIds: readonly string[],
@@ -148,7 +153,8 @@ export class Transactions {
       }
       await sql`
         select set_config(${BRANCH_SETTING}, ${filter}, true),
-          set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true)
+          set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true),
+          set_config('jit', 'off', true)
       `.execute(transaction);
       const result = await work(transaction);
       for (const step of this.beforeCommit) {

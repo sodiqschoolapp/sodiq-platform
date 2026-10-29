@@ -56,6 +56,51 @@ function reportSubjects(access: Access): Set<string> | null {
   );
 }
 
+/**
+ * The items not covered of each journal named in a quarter (`09`, Reports, Progress): the items
+ * placed past the journal's rows of the quarter, and (task 9.2d, decision 10) the items "carried
+ * in" its tray. One rule for the progress report and the closing checklist (task 10.1b).
+ */
+export async function notCoveredOf(
+  transaction: Transaction,
+  journalIds: readonly string[],
+  quarterId: string,
+  rowsOf: (journalId: string) => number,
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (journalIds.length === 0) return counts;
+  const links = await transaction
+    .selectFrom('lesson_plan_journals')
+    .select(['plan_id', 'journal_id'])
+    .where('journal_id', 'in', [...journalIds])
+    .where('quarter_id', '=', quarterId)
+    .execute();
+  const places =
+    links.length === 0
+      ? []
+      : await transaction
+          .selectFrom('lesson_plan_places')
+          .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+          .select(['lesson_plan_places.journal_id', 'lesson_plan_places.position'])
+          .where(
+            'lesson_plan_places.plan_id',
+            'in',
+            links.map((link) => link.plan_id),
+          )
+          .where('lesson_plan_items.cleared_at', 'is', null)
+          .execute();
+  const tray = (await trayCounts(transaction, journalIds, quarterId)).counts;
+  for (const journalId of journalIds) {
+    const rows = rowsOf(journalId);
+    counts.set(
+      journalId,
+      places.filter((place) => place.journal_id === journalId && place.position > rows).length +
+        (tray.get(journalId) ?? 0),
+    );
+  }
+  return counts;
+}
+
 const percentOf = (part: number, whole: number): number | null =>
   whole === 0 ? null : Number(shownPercent(part, whole));
 
@@ -218,6 +263,29 @@ export class PlanReportsService {
     return id === null ? null : { id, name: base.names.get(id) ?? '' };
   }
 
+  /** The plans of the completeness report in a quarter. */
+  private completenessRows(base: ReportBase, quarter: PlanQuarter) {
+    const listed = new Map(base.list.plans.map((plan) => [plan.journalId, plan]));
+    return base.journals.flatMap((journal) => {
+      const found = listed.get(journal.id)?.quarters.find((one) => one.quarterId === quarter.id);
+      if (found === undefined || found.state === 'no_lessons') return [];
+      return [
+        {
+          journalId: journal.id,
+          unit: unitOf(journal),
+          subject: subjectOf(journal),
+          teacher: this.teacherOf(base, journal.id),
+          department: base.departmentOf.get(journal.id) ?? null,
+          state: found.state,
+          rows: found.rows,
+          empty: found.empty,
+          flag: found.flag,
+          belowMinimum: found.belowMinimum,
+        },
+      ];
+    });
+  }
+
   /** `09`, Reports, Completeness. */
   completeness(access: Access, query: PlanReportQuery): Promise<PlanCompleteness> {
     return this.transactions.run(access.branchIds, (transaction) =>
@@ -232,30 +300,7 @@ export class PlanReportsService {
   ): Promise<PlanCompleteness> {
     const base = await this.baseOf(transaction, access, query);
     const quarter = base.quarter;
-    const listed = new Map(base.list.plans.map((plan) => [plan.journalId, plan]));
-    const plans =
-      quarter === null
-        ? []
-        : base.journals.flatMap((journal) => {
-            const found = listed
-              .get(journal.id)
-              ?.quarters.find((one) => one.quarterId === quarter.id);
-            if (found === undefined || found.state === 'no_lessons') return [];
-            return [
-              {
-                journalId: journal.id,
-                unit: unitOf(journal),
-                subject: subjectOf(journal),
-                teacher: this.teacherOf(base, journal.id),
-                department: base.departmentOf.get(journal.id) ?? null,
-                state: found.state,
-                rows: found.rows,
-                empty: found.empty,
-                flag: found.flag,
-                belowMinimum: found.belowMinimum,
-              },
-            ];
-          });
+    const plans = quarter === null ? [] : this.completenessRows(base, quarter);
     type Row = (typeof plans)[number];
     const countsOf = (rows: readonly Row[]) => {
       const complete = rows.filter((one) => one.state === 'complete').length;
@@ -327,40 +372,9 @@ export class PlanReportsService {
       });
     }
     const all = await journalsColumns(transaction, base.journals, base.timeZone, base.now);
-    const links = await transaction
-      .selectFrom('lesson_plan_journals')
-      .select(['plan_id', 'journal_id'])
-      .where(
-        'journal_id',
-        'in',
-        base.journals.map((journal) => journal.id),
-      )
-      .where('quarter_id', '=', quarter.id)
-      .execute();
-    const places =
-      links.length === 0
-        ? []
-        : await transaction
-            .selectFrom('lesson_plan_places')
-            .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
-            .select(['lesson_plan_places.journal_id', 'lesson_plan_places.position'])
-            .where(
-              'lesson_plan_places.plan_id',
-              'in',
-              links.map((link) => link.plan_id),
-            )
-            .where('lesson_plan_items.cleared_at', 'is', null)
-            .execute();
-    // Task 9.2d: the "carried in" tray counts as not covered of this quarter (decision 10).
-    const tray = (
-      await trayCounts(
-        transaction,
-        base.journals.map((journal) => journal.id),
-        quarter.id,
-      )
-    ).counts;
     const inQuarter = (date: string) => quarter.startDate <= date && date <= quarter.endDate;
     const plans = [];
+    const rowCounts = new Map<string, number>();
     // The planned works and those "not held" at each held lesson, for whom it counts.
     const heldLessons: {
       id: string;
@@ -383,9 +397,7 @@ export class PlanReportsService {
       const delivered = held.filter(
         (lesson) => withTopic(lesson.id) && !all.notDelivered.has(lesson.id),
       ).length;
-      const notCovered =
-        places.filter((place) => place.journal_id === journal.id && place.position > rows.length)
-          .length + (tray.get(journal.id) ?? 0);
+      rowCounts.set(journal.id, rows.length);
       plans.push({
         journalId: journal.id,
         unit: unitOf(journal),
@@ -396,8 +408,8 @@ export class PlanReportsService {
         planned: rows.filter((lesson) => withTopic(lesson.id)).length,
         held: held.length,
         delivered,
-        notCovered,
-        behind: delivered < held.length || notCovered > 0,
+        notCovered: 0,
+        behind: delivered < held.length,
       });
       for (const lesson of held) {
         const columns = found?.columns.get(lesson.id);
@@ -413,6 +425,16 @@ export class PlanReportsService {
           notHeld: planned.filter((column) => column.notHeld).length,
         });
       }
+    }
+    const uncovered = await notCoveredOf(
+      transaction,
+      base.journals.map((journal) => journal.id),
+      quarter.id,
+      (journalId) => rowCounts.get(journalId) ?? 0,
+    );
+    for (const plan of plans) {
+      plan.notCovered = uncovered.get(plan.journalId) ?? 0;
+      plan.behind ||= plan.notCovered > 0;
     }
     const counted = await lessonsCounted(transaction, base.branchId, heldLessons);
     const byTeacher = new Map<string, { planned: number; notHeld: number }>();
@@ -441,6 +463,36 @@ export class PlanReportsService {
         .sort((a, b) => a.teacher.name.localeCompare(b.teacher.name, 'en')),
       otherSubjects: base.otherSubjects,
     });
+  }
+
+  /**
+   * What the closing checklist reads of the plans of a quarter (task 10.1b, in place of the whole
+   * completeness and progress reports): each plan of the completeness report with its state, and
+   * the items not covered of every journal in scope, by the rule of the progress report
+   * (`notCoveredOf`) over the plan's rows.
+   */
+  async closingPlansIn(
+    transaction: Transaction,
+    access: Access,
+    quarterId: string,
+  ): Promise<{
+    plans: PlanCompleteness['plans'];
+    notCovered: Map<string, number>;
+  }> {
+    const base = await this.baseOf(transaction, access, { quarterId });
+    const quarter = base.quarter;
+    if (quarter === null) return { plans: [], notCovered: new Map() };
+    const listed = new Map(base.list.plans.map((plan) => [plan.journalId, plan]));
+    const found = (journalId: string) =>
+      listed.get(journalId)?.quarters.find((one) => one.quarterId === quarter.id);
+    const plans = this.completenessRows(base, quarter);
+    const notCovered = await notCoveredOf(
+      transaction,
+      base.journals.map((journal) => journal.id),
+      quarter.id,
+      (journalId) => found(journalId)?.rows ?? 0,
+    );
+    return { plans, notCovered };
   }
 
   /** `09`, Reports, Edit requests: "Number per teacher, who approved, what was changed". */

@@ -3,7 +3,6 @@ import type { ClosingFlagged, ClosingItem } from '@sodiq/shared';
 import type { Transaction } from '../../database/transactions.js';
 import { exemptOnDate } from '../journal/exemption-read.js';
 import { ratingDateOf } from '../journal/rating.js';
-import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import { exemptedIn } from './closing.query.js';
 import type { QuarterRef } from './grade-changes.js';
 import { allowedDecisions, quarterOutcomes, type JournalOutcomes } from './quarter-outcomes.js';
@@ -13,7 +12,8 @@ import { allowedDecisions, quarterOutcomes, type JournalOutcomes } from './quart
  * `07`, Closing a quarter): flags, decisions, rating entries, no result, parts without data and
  * weights. Task 10.1b: one function for the checklist read from source, the close, and the
  * `closing` unit of the prepared totals (a quarter and a subject), which stores what it gives;
- * students are named by id, their names read on each request.
+ * students are named by id, their names read on each request, and the teacher of each item (the
+ * journal's owner on the reference date) is named by the reader too.
  */
 
 /** A flagged student of the checklist, with the journal it is listed under. */
@@ -32,8 +32,6 @@ export interface ResultDraft {
     'undecided' | 'decision_outdated' | 'rating_missing' | 'no_result' | 'part_without_data'
   >;
   readonly journalId: string;
-  /** The journal's owner on the reference date (`edge/journal`). */
-  readonly teacherId: string | null;
   /** `undecided`, `decision_outdated`: the flagged rows; `rating_missing`: id and pending. */
   readonly students?: readonly ({ readonly studentId: string } & Record<string, unknown>)[];
   /** `no_result`: the students. */
@@ -111,27 +109,6 @@ export async function resultItemsOf(
     quarter,
     subjectIds,
   });
-  const reference = scene.today < quarter.endDate ? scene.today : quarter.endDate;
-  const facts = await ownerFactsOf(
-    transaction,
-    branchId,
-    [...outcomes.values()].map(({ journal }) => ({
-      id: journal.id,
-      academic_year_id: journal.academicYearId,
-      class_id: journal.classId,
-      group_id: journal.groupId,
-      subject_id: journal.subjectId,
-    })),
-  );
-  const ownerOf = (journalId: string): string | null => {
-    const owner = ownerOn(
-      facts.runs.get(journalId) ?? [],
-      facts.periods.get(journalId) ?? [],
-      facts.out,
-      reference,
-    );
-    return owner === null || owner.kind === 'none' ? null : owner.staffId;
-  };
   const studentIds = new Set<string>();
   for (const one of outcomes.values()) for (const id of one.members.keys()) studentIds.add(id);
   const flagged = flaggedIn(outcomes);
@@ -139,7 +116,6 @@ export async function resultItemsOf(
   const weightsMissing: string[] = [];
   const drafts: ResultDraft[] = [];
   for (const [journalId, one] of outcomes) {
-    const teacherId = ownerOf(journalId);
     // `07`: "A graded subject has weights that do not total 100 for this quarter" (decision 4).
     if (one.weights.quarterly === null) {
       weightsMissing.push(journalId);
@@ -156,13 +132,12 @@ export async function resultItemsOf(
     const stale = own.filter((row) => row.stale);
     const flaggedRow = (row: Flagged) => ({ studentId: row.studentId, ...row.row });
     if (undecided.length > 0) {
-      drafts.push({ kind: 'undecided', journalId, teacherId, students: undecided.map(flaggedRow) });
+      drafts.push({ kind: 'undecided', journalId, students: undecided.map(flaggedRow) });
     }
     if (stale.length > 0) {
       drafts.push({
         kind: 'decision_outdated',
         journalId,
-        teacherId,
         students: stale.map(flaggedRow),
       });
     }
@@ -183,7 +158,6 @@ export async function resultItemsOf(
         drafts.push({
           kind: 'rating_missing',
           journalId,
-          teacherId,
           students: missing.map(([id]) => ({ studentId: id, pending: pending.has(id) })),
         });
       }
@@ -199,7 +173,6 @@ export async function resultItemsOf(
       drafts.push({
         kind: 'no_result',
         journalId,
-        teacherId,
         studentIds: noResult.map(([id]) => id),
       });
     }
@@ -216,7 +189,7 @@ export async function resultItemsOf(
             result.leftOut.some((left) => left.part === part && left.reason === 'no_data'),
           ),
       );
-      if (parts.length > 0) drafts.push({ kind: 'part_without_data', journalId, teacherId, parts });
+      if (parts.length > 0) drafts.push({ kind: 'part_without_data', journalId, parts });
     }
   }
   return { weightsMissing, drafts };
