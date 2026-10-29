@@ -2137,6 +2137,7 @@ export {
 export {
   LESSON_STATUSES,
   lessonStatusOf,
+  statusCountsOf,
   lessonStatusSchema,
   type LessonStatus,
   type StatusAnswer,

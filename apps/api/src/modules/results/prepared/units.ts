@@ -1,7 +1,12 @@
 import type { Fraction } from '@sodiq/calc';
 import { sql } from 'kysely';
 import type { Transaction } from '../../../database/transactions.js';
-import { lessonStatusFacts, type LessonStatusFacts } from '../../journal/lesson-status.query.js';
+import {
+  countsOfFacts,
+  lessonStatusFacts,
+  type LessonCounts,
+  type LessonStatusFacts,
+} from '../../journal/lesson-status.query.js';
 import { closingOf } from '../../setup/closed-quarters.js';
 import type { BranchMoment } from '../branch-moment.js';
 import {
@@ -156,10 +161,18 @@ async function nextChangeOf(
   return next === null || day < next ? day : next;
 }
 
+/**
+ * A lesson of a `statuses` unit: its facts, and what keeps it from complete (task 10.1b: kept in
+ * `summary` with `row`, which the closing checklist reads, `freshLessons` with `part: 'counts'`).
+ */
+export interface PreparedLesson extends LessonStatusFacts {
+  readonly counts: LessonCounts['counts'];
+}
+
 export interface UnitValue {
   readonly journalIds: readonly string[];
   readonly value: unknown;
-  readonly lessons?: ReadonlyMap<string, LessonStatusFacts>;
+  readonly lessons?: ReadonlyMap<string, PreparedLesson>;
   readonly nextChangeAt: Date | null;
 }
 
@@ -211,7 +224,9 @@ export async function unitValue(
       return {
         journalIds: [unit.unitId],
         value: null,
-        lessons,
+        lessons: new Map(
+          [...lessons].map(([id, one]) => [id, { ...one, counts: countsOfFacts(one).counts }]),
+        ),
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
     }

@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import type { Transaction } from '../../../database/transactions.js';
 import { decode, encode } from './codec.js';
+import type { PreparedLesson } from './units.js';
 
 /**
  * The store of the prepared report totals (task 9.3b-1; db/migrations/0140): which units are
@@ -50,7 +51,7 @@ export const SCHOOL_INPUTS = [
  * kind's value changes shape, so the rows prepared by an older release are behind at once and
  * prepared again by the job, with no migration touching them (task 10.1b, decision 5).
  */
-export const PREPARED_SHAPE = 'shape:2';
+export const PREPARED_SHAPE = 'shape:4';
 
 /**
  * The snapshot of this transaction as text: taken before the preparation reads anything (review
@@ -129,7 +130,11 @@ export async function freshUnits(
   );
 }
 
-/** The prepared facts of the lessons named whose `statuses` unit is fresh. */
+/**
+ * The prepared facts of the lessons named whose `statuses` unit is fresh; with `part: 'counts'`
+ * only each lesson's `row` and `counts` (`PreparedLesson`, the column `summary`), not the facts
+ * (task 10.1b).
+ */
 export async function freshLessons(
   transaction: Transaction,
   input: {
@@ -137,9 +142,12 @@ export async function freshLessons(
     readonly lessonIds: readonly string[];
     readonly now: Date;
     readonly schoolInputs: string;
+    readonly part?: 'counts';
   },
 ): Promise<Map<string, FreshUnit>> {
   if (input.lessonIds.length === 0) return new Map();
+  // `summary` (0148): read apart from `value`, whose facts are large.
+  const value = input.part === undefined ? sql`l.value` : sql`l.summary`;
   const found = await sql<{ lesson_id: string; prepared_at: Date; value: unknown }>`
     -- Task 10.1b: each unit decided once, not once per lesson.
     with fresh as materialized (
@@ -148,7 +156,7 @@ export async function freshLessons(
       where p.branch_id = ${input.branchId} and p.kind = 'statuses'
         and ${freshCondition(input.now, input.schoolInputs)}
     )
-    select l.lesson_id, f.prepared_at, l.value
+    select l.lesson_id, f.prepared_at, ${value} as value
     from report_prepared_lessons l
     join fresh f on f.quarter_id = l.quarter_id and f.unit_id = l.journal_id
     where l.branch_id = ${input.branchId}
@@ -241,7 +249,7 @@ export async function writeUnit(
     readonly preparedAt: Date;
     readonly nextChangeAt: Date | null;
     readonly value: unknown;
-    readonly lessons?: ReadonlyMap<string, unknown>;
+    readonly lessons?: ReadonlyMap<string, PreparedLesson>;
   },
 ): Promise<boolean> {
   const { unit } = input;
@@ -271,7 +279,7 @@ export async function writeUnit(
       where branch_id = ${input.branchId} and quarter_id = ${unit.quarterId}
         and journal_id = ${unit.unitId}
     `.execute(transaction);
-    const rows = [...(input.lessons ?? new Map<string, unknown>())];
+    const rows = [...(input.lessons ?? new Map<string, PreparedLesson>())];
     // A lesson that now falls in this unit (a quarter's dates changed, a lesson moved across a
     // quarter's end) leaves the unit it was in: its key is the lesson (code review, must-fix 2).
     if (rows.length > 0) {
@@ -284,13 +292,16 @@ export async function writeUnit(
     for (let start = 0; start < rows.length; start += 500) {
       const chunk = rows.slice(start, start + 500);
       await sql`
-        insert into report_prepared_lessons (branch_id, quarter_id, journal_id, lesson_id, value)
+        insert into report_prepared_lessons (
+          branch_id, quarter_id, journal_id, lesson_id, value, summary
+        )
         select ${input.branchId}::uuid, ${unit.quarterId}::uuid, ${unit.unitId}::uuid,
-          x.lesson_id, x.value
+          x.lesson_id, x.value, x.summary
         from unnest(
           ${chunk.map(([id]) => id)}::uuid[],
-          ${chunk.map(([, value]) => JSON.stringify(encode(value)))}::jsonb[]
-        ) as x (lesson_id, value)
+          ${chunk.map(([, one]) => JSON.stringify(encode({ row: one.row, facts: one.facts })))}::jsonb[],
+          ${chunk.map(([, one]) => JSON.stringify(encode({ row: one.row, counts: one.counts })))}::jsonb[]
+        ) as x (lesson_id, value, summary)
       `.execute(transaction);
     }
   }

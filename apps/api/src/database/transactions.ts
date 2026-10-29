@@ -45,13 +45,16 @@ export async function transactionMoment(transaction: Transaction): Promise<Date>
  * relaxed.
  */
 export async function assertLessonChangesAudited(transaction: Transaction): Promise<void> {
+  // Task 10.1b: a transaction with no id wrote nothing, so the check is not asked. Asked apart:
+  // a statement naming the function is planned over every history partition (about 20 ms of
+  // each read at the school's size), whichever branch of a `case` runs.
+  const id = await sql<{ xid: string | null }>`
+    select pg_current_xact_id_if_assigned()::text as xid
+  `.execute(transaction);
+  const xid = id.rows[0]?.xid ?? null;
+  if (xid === null) return;
   const found = await sql<{ unaudited: boolean }>`
-    -- Task 10.1b: a transaction with no id wrote nothing, so the check is not asked (planning the
-    -- function over every history partition took about 20 ms of each read at the school's size).
-    select case
-      when pg_current_xact_id_if_assigned() is null then false
-      else lesson_history_unaudited(pg_current_xact_id_if_assigned())
-    end as unaudited
+    select lesson_history_unaudited(${xid}::xid8) as unaudited
   `.execute(transaction);
   if (found.rows[0]?.unaudited !== false) {
     throw new Error(

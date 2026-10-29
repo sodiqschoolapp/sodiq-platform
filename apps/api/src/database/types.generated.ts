@@ -1537,6 +1537,7 @@ export interface ReportPreparedLessons {
   journal_id: string;
   lesson_id: string;
   quarter_id: string;
+  summary: Json | null;
   value: Json;
 }
 

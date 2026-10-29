@@ -108,6 +108,27 @@ describe('exemptions in the database', () => {
       .execute(database.migrator)
       .then((found) => found.rows[0]);
 
+  /**
+   * Who is expected at the lesson among the students named (`null`: every member), and the whole
+   * list of `lesson_expected_students`, which must agree with it (0147, task 10.1b).
+   */
+  const among = async (lesson: string, students: readonly string[] | null) => {
+    const named = await sql<{ student_id: string }>`
+      select s as student_id
+      from lesson_expected_students_among(
+        ${lesson}::uuid, ${students === null ? null : [...students]}::uuid[]
+      ) as s
+      order by 1
+    `.execute(database.migrator);
+    const all = await sql<{ student_id: string }>`
+      select s as student_id from lesson_expected_students(${lesson}::uuid) as s order by 1
+    `.execute(database.migrator);
+    const whole = all.rows.map((row) => row.student_id);
+    const found = named.rows.map((row) => row.student_id);
+    expect(found).toEqual(whole.filter((one) => students === null || students.includes(one)));
+    return found;
+  };
+
   /** A class of grade 7 with one student from 1 September and a lesson of it on the date. */
   async function scene(date = '2026-10-14') {
     const classId = await cells.lessons.load.classes.schoolClass(north, northYear, { grade: 7 });
@@ -393,6 +414,18 @@ describe('exemptions in the database', () => {
         subjects: [cells.subject],
       });
       expect(await expected(lesson, student)).toEqual({ expected: false, kind: 'full' });
+    });
+
+    it('works out the students named only, with the answer of the whole list (0147)', async () => {
+      const { classId, student, lesson } = await scene('2026-10-29');
+      const [other] = await cells.lessons.pupils(north, classId, 1);
+      expect(await among(lesson, [student])).toEqual([student]);
+      await add({ student, from: '2026-10-28', until: '2026-10-30' });
+      // The exempt student is out, named or not; the other is expected, named or in the whole.
+      expect(await among(lesson, [student])).toEqual([]);
+      expect(await among(lesson, [other ?? ''])).toEqual([other]);
+      expect(await among(lesson, null)).toEqual([other]);
+      expect(await among(lesson, [])).toEqual([]);
     });
 
     it('leaves a lesson of another subject open under a subject exemption', async () => {
@@ -730,6 +763,9 @@ describe('exemptions in the database', () => {
       await keptByBulkCancel(row, classA);
       expect(await expected(lesson, a)).toEqual({ expected: false, kind: 'temporary' });
       expect(await expected(lesson, b)).toEqual({ expected: true, kind: null });
+      // The same among the students named (0147): a kept block with no exemption span.
+      expect(await among(lesson, [a])).toEqual([]);
+      expect(await among(lesson, [a, b])).toEqual([b]);
     });
 
     it('takes nobody out of a lesson fed by the chosen classes alone (From 6.1b-2)', async () => {

@@ -2,8 +2,10 @@ import type { Fraction, StudentQuarterOutcome } from '@sodiq/calc';
 import { sql } from 'kysely';
 import type { PreparedStamp } from '@sodiq/shared';
 import {
+  countsOfFacts,
   lessonStatusFacts,
   statusOfFacts,
+  type LessonCounts,
   type LessonStatusFacts,
   type LessonStatusRow,
 } from '../../journal/lesson-status.query.js';
@@ -22,7 +24,7 @@ import { attendanceOfJournal, type AttendanceLesson } from './attendance.js';
 import { resultItemsOf, type ResultDraft, type ResultItems } from '../closing-results.js';
 import type { JournalRow } from '../../journal/journal-grid.query.js';
 import { journalProgressOf, type JournalProgress } from '../../plans/plan-progress.js';
-import { journalsOfYear, type FiguresValue } from './units.js';
+import { journalsOfYear, type FiguresValue, type PreparedLesson } from './units.js';
 
 /**
  * The readers of the prepared report totals (task 9.3b-1). Each gives what the reader of today
@@ -161,7 +163,42 @@ export async function preparedLessonStatuses(
   lessonIds: readonly string[],
   freshness: Freshness,
 ): Promise<Map<string, LessonStatusRow>> {
-  const found = new Map<string, LessonStatusRow>();
+  return preparedLessons(moment, lessonIds, freshness, {
+    prepared: (value) => statusOfFacts(value as LessonStatusFacts, moment.now),
+    source: (one) => statusOfFacts(one, moment.now),
+  });
+}
+
+/**
+ * What the closing checklist reads of each lesson named (task 10.1b): `LessonCounts` from the
+ * fresh `statuses` units without the lessons' facts, and from source for the ones behind.
+ */
+export async function preparedLessonCounts(
+  moment: Pick<BranchMoment, 'transaction' | 'branchId' | 'now'>,
+  lessonIds: readonly string[],
+  freshness: Freshness,
+): Promise<Map<string, LessonCounts>> {
+  return preparedLessons(moment, lessonIds, freshness, {
+    part: 'counts',
+    prepared: (value) => {
+      const { row, counts } = value as Pick<PreparedLesson, 'row' | 'counts'>;
+      return { journalId: row.journalId, held: row.held, locksAt: row.locksAt, counts };
+    },
+    source: countsOfFacts,
+  });
+}
+
+async function preparedLessons<T>(
+  moment: Pick<BranchMoment, 'transaction' | 'branchId' | 'now'>,
+  lessonIds: readonly string[],
+  freshness: Freshness,
+  read: {
+    readonly part?: 'counts';
+    readonly prepared: (value: unknown) => T;
+    readonly source: (one: LessonStatusFacts) => T;
+  },
+): Promise<Map<string, T>> {
+  const found = new Map<string, T>();
   if (lessonIds.length === 0) return found;
   const ids = [...new Set(lessonIds.map((id) => id.toLowerCase()))];
   const fresh = await freshLessons(moment.transaction, {
@@ -169,14 +206,15 @@ export async function preparedLessonStatuses(
     lessonIds: ids,
     now: moment.now,
     schoolInputs: PREPARED_SHAPE,
+    ...(read.part === undefined ? {} : { part: read.part }),
   });
   for (const [id, one] of fresh) {
     freshness.used(one.preparedAt);
-    found.set(id, statusOfFacts(one.value as LessonStatusFacts, moment.now));
+    found.set(id, read.prepared(one.value));
   }
   const behind = ids.filter((id) => !fresh.has(id));
   if (behind.length > 0) {
-    const read = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
+    const facts = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
     // A lesson of no journal, or dated in no quarter, is never prepared: read from source, and not
     // counted as behind, or the stamp would never clear (code review, should-fix 3).
     const quarters = (
@@ -186,9 +224,9 @@ export async function preparedLessonStatuses(
       `.execute(moment.transaction)
     ).rows;
     const dated = (date: string) => quarters.some((one) => one.start <= date && date <= one.end);
-    for (const [id, one] of read) {
+    for (const [id, one] of facts) {
       if (one.row.journalId !== null && dated(one.row.date)) freshness.missed();
-      found.set(id, statusOfFacts(one, moment.now));
+      found.set(id, read.source(one));
     }
   }
   return found;

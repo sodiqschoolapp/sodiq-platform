@@ -52,7 +52,7 @@ import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames } from '../journal/journal-grid.query.js';
 import { subjectOf, unitOf } from '../journal/journal-grid.service.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
-import { lessonStatuses } from '../journal/lesson-status.query.js';
+import { countsOfFacts, lessonStatusFacts } from '../journal/lesson-status.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { carryClosedFrom, carryUnresolved, journalsRunningOn } from '../plans/plan-outcomes.js';
 import { clockOf } from '../plans/plan-read.js';
@@ -80,7 +80,7 @@ import {
   type Flagged,
 } from './closing-results.js';
 import { quarterOutcomes, type JournalOutcomes } from './quarter-outcomes.js';
-import { Freshness, preparedClosing, preparedLessonStatuses } from './prepared/read.js';
+import { Freshness, preparedClosing, preparedLessonCounts } from './prepared/read.js';
 import {
   changesAgainst,
   outcomeShown,
@@ -2059,16 +2059,20 @@ export class ClosingService {
 
     const lessonsHeld = await heldLessonsOf(transaction, branchId, quarter, now);
     // The lessons: inside the edit period, no attendance, numbers missing (`07`; edge/journal).
-    // Task 10.1b: the GET reads the prepared facts of each lesson, the status decided now.
+    // Task 10.1b: the GET reads the prepared counts of each lesson, the lock compared with now.
     const statuses =
       freshness === undefined
-        ? await lessonStatuses(
-            transaction,
-            branchId,
-            lessonsHeld.map((one) => one.id),
-            now,
+        ? new Map(
+            [
+              ...(await lessonStatusFacts(
+                transaction,
+                branchId,
+                lessonsHeld.map((one) => one.id),
+                now,
+              )),
+            ].map(([id, one]) => [id, countsOfFacts(one)]),
           )
-        : await preparedLessonStatuses(
+        : await preparedLessonCounts(
             { transaction, branchId, now },
             lessonsHeld.map((one) => one.id),
             freshness,
@@ -2159,19 +2163,22 @@ export class ClosingService {
           statuses.get(id)?.held === true && locksAt !== null && locksAt.getTime() > now.getTime()
         );
       },
-      (id) => statuses.get(id)?.answer?.status !== 'complete',
+      (id) => {
+        const counts = statuses.get(id)?.counts ?? null;
+        return counts === null || counts.unmarked > 0 || counts.worksMissing > 0;
+      },
     )) {
       push('edit_period', entry.journalId, entry.teacherId, {
         lessons: entry.lessons.length,
         incomplete: entry.incomplete,
       });
     }
-    for (const entry of grouped((id) => (statuses.get(id)?.answer?.unmarked ?? 0) > 0)) {
+    for (const entry of grouped((id) => (statuses.get(id)?.counts?.unmarked ?? 0) > 0)) {
       push('no_attendance', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }
     // A counted work of the lesson with no total, or a number waited for missing (07, Lesson
     // status; the homework checked at a lesson is counted there, never where it was given).
-    for (const entry of grouped((id) => (statuses.get(id)?.answer?.worksMissing ?? 0) > 0)) {
+    for (const entry of grouped((id) => (statuses.get(id)?.counts?.worksMissing ?? 0) > 0)) {
       push('numbers_missing', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }
 
