@@ -342,6 +342,27 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 29 October 2026: the hidden Monitoring branch and the sign-in-and-save check (task 10.2b)
+
+Plan approved on pull request #261 with corrections 1 to 4, after the owner answered the two stop-list questions there (29 October: the Monitoring branch refused to the Senior Head Teacher; a read-only backup login). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (spec texts to change). `/spec-change` for `edge/system-behaviour`, "Cell saves fail in one branch at 08:05": "A test teacher account signs in and saves a cell in a test class of a hidden Monitoring branch, seen only by the Super Admin and left out of every school report, every 5 minutes; an alert fires when it fails between 07:00 and 20:00." For `02`, Roles table and Rules, Senior Head Teacher: "Own subjects in all branches except the hidden Monitoring branch" | Answer 10 and the owner's answer of 29 October are later than the spec |
+| **Look first** (production data access). The daily export reads as `sodiq_backup`, a Neon console role, on a read-only compute; `row-counts.sql` reports `pg_is_in_recovery()` and `compareCounts` fails the run unless it is 1, so a dump read where it could write is never stored. The nightly run fails until the owner has done step 6 of `docs/monitoring.md` | Owner's answer 2; plan review corrections 1 to 3 (no change under `.github/`; `pg_is_in_recovery()` only; pg_dump itself stops on a filtered role) |
+| **Look first** (permissions, owner-approved). A school-wide assignment reaches the Monitoring branch only for the Super Admin (`reachingBranch`, `MONITORING_BRANCH_ROLES`): the guard, `access.assignments`, the switcher, the home page and the deciders of requests; the branch's own assignments reach it as any branch | Owner on #261; permission review must-fix 1: an account with any assignment without a branch has the branch read |
+| **Look first** (a role's power narrowed). A release of a student to or from the Monitoring branch, and a travel time to or from it, are answered 404 like an unknown branch | Permission review must-fix 2 and should-fix 3: invented students never enter a real branch, real ones never the hidden one |
+| `branches.purpose` (0142), nullable, no default, set only through `monitoring_branch_mark` (owner: the migrator), which marks a new, empty branch once (no building, class, staff, student, role or year); `sodiq_app`'s insert on `branches` narrowed to the columns the create writes | Plan decision 2; plan review correction 1 |
+| **Build decision.** The command creates the branch through the branch route, then marks it in a transaction of its own with the audit entry `branch.monitoring` naming the owner's Super Admin assignment; a failed mark leaves an unmarked branch the run names | The plan's one create function would bypass the route's rules and audit; the mark function's empty check keeps it to that branch |
+| One lesson 06:30 to 07:15 on all seven days, four quarters that touch, published from the year's first day (tomorrow at the earliest); the check switches present and late | Plan decision 3 |
+| The audit log and the personal-data report keep the Monitoring branch | Plan decision 4 |
+| The check runs all day; `SignInSaveFailing` fires on no success over 11 minutes (two runs) or no result, 07:00 to 20:00 Tashkent | Plan decisions 5 and 11 |
+| **Build decision.** The invented records have phones of no operator (`+99800000000x`): a staff record and a student's relative need a phone (`staff_person_check`, `student_needs_relative`). UIDs `MON0001` to `MON0003` (a UID holds letters and digits only); contract numbers `MONITORING-n`. The "elsewhere" functions stay unchanged | Plan decision 6 changed at build: "no phone" is impossible |
+| **Build decision.** `staff_count_by_division` leaves out the staff of the Monitoring branch alone; `staff_in_division`, the guard of a division's archive, is unchanged | A guard counts every row |
+| The command signs in as the owner's Super Admin with the second step and builds through the routes over the loopback; `--subject` is an English name of a subject of whole classes; it refuses before writing when the branch exists, the subject is missing or of groups, or a UID is taken | Plan decision 7 |
+| The year runs to `--year-end`; closing it and the next year come with 9.5a and 9.5b (From lines) | Plan decision 8 |
+| A save slower than 0.3 s fails the run; the script reads today's lesson from `GET /api/timetable/home` and the cell from the journal grid (no route answers one cell), and always signs out | Plan decision 9; plan review finding 4 |
+
 ## 28 October 2026: the reports of `08` (task 9.3b-2)
 
 Plan approved on pull request #260 with corrections 1 to 3, after the owner approved the permission table there (stop-list item 5); decisions 1 to 13 confirmed by the review, the build decisions taken in the build. Flagged on issue #42.

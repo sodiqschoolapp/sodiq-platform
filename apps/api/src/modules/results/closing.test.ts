@@ -4285,6 +4285,120 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(await noticesTo(elsewhere.account.id, 'results.closing_overdue')).toEqual([]);
     });
 
+    // Task 10.2b: the hidden Monitoring branch is "left out ... of the daily reminders to the
+    // Super Admins". The branch is marked for the test alone (only one may carry the mark) and
+    // given the state that raises each notice in a real branch (the tests above).
+    const asMonitoring = async (branch: string, work: () => Promise<void>): Promise<void> => {
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ purpose: 'monitoring' })
+        .where('id', '=', branch)
+        .execute();
+      try {
+        await work();
+      } finally {
+        await t.database.migrator
+          .updateTable('branches')
+          .set({ purpose: null })
+          .where('id', '=', branch)
+          .execute();
+      }
+    };
+
+    it('tells the Super Admins no difference and no missed check of the Monitoring branch, while its check still runs', async () => {
+      const b = await closed();
+      const admin = await superAdmin();
+      await asMonitoring(b.s.branch, async () => {
+        await corrupt('quarter_final_results', (transaction) =>
+          transaction
+            .updateTable('quarter_final_results')
+            .set({ record: sql`jsonb_set(record, '{outcome,result,grade}', '2'::jsonb)` })
+            .where('quarter_id', '=', b.q1)
+            .where('student_id', '=', b.aziz)
+            .execute(),
+        );
+        // The check runs there and stores what it found.
+        expect(await check(b.s.branch, '2026-11-03T02:00:00+05:00')).toEqual([
+          { kind: 'stored_module', journal_id: b.journal, student_id: b.aziz },
+        ]);
+        await job(b.s.branch, '2026-11-04T07:00:00+05:00', (transaction) =>
+          daily().checkMissed(transaction, { day: '2026-11-04' }, b.s.branch),
+        );
+      });
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toEqual([]);
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toEqual([]);
+      // The same branch unmarked, the next days: both reach the Super Admin.
+      expect(await check(b.s.branch, '2026-11-05T02:00:00+05:00')).toHaveLength(1);
+      await job(b.s.branch, '2026-11-06T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-11-06' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toHaveLength(1);
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toHaveLength(1);
+    });
+
+    // The rest of the daily work runs there as in any branch (plan, Tests, Jobs): the nightly check
+    // above, the forced-delete purge and the cleanup of export files.
+    it('still enqueues the purge and the export cleanup of the Monitoring branch', async () => {
+      const b = await base();
+      await asMonitoring(b.s.branch, async () => {
+        t.clock.set('2026-10-28T07:00:00+05:00');
+        try {
+          await daily().tick();
+        } finally {
+          t.clock.set(START);
+        }
+      });
+      const kinds = (
+        await t.database.migrator
+          .selectFrom('scheduled_runs')
+          .select('kind')
+          .where('branch_id', '=', b.s.branch)
+          .execute()
+      ).map((one) => one.kind);
+      expect(kinds).toEqual(
+        expect.arrayContaining([
+          'timetable.forced_delete_purge',
+          'journal.exports_cleanup',
+          'results.check',
+        ]),
+      );
+    });
+
+    it('tells the Super Admins of no overdue close and no missing plan window of the Monitoring branch', async () => {
+      const b = await base();
+      const admin = await superAdmin();
+      const quarter2 = await quarterOf(b.s.year, 2);
+      const start = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select(sql<string>`start_date::text`.as('start'))
+          .where('id', '=', quarter2)
+          .executeTakeFirstOrThrow()
+      ).start;
+      const fourteenBefore = new Date(
+        Date.parse(`${start}T07:00:00+05:00`) - 14 * 86_400_000,
+      ).toISOString();
+      await asMonitoring(b.s.branch, async () => {
+        await job(b.s.branch, '2026-11-01T07:00:00+05:00', (transaction) =>
+          daily().closingOverdue(transaction, b.s.branch),
+        );
+        await job(b.s.branch, fourteenBefore, (transaction) =>
+          daily().planReminders(transaction, b.s.branch),
+        );
+      });
+      expect(await noticesTo(admin, 'results.closing_overdue', b.s.branch)).toEqual([]);
+      expect(await noticesTo(admin, 'plans.window_missing', b.s.branch)).toEqual([]);
+      // The same branch unmarked, the same day: both reach the Super Admin.
+      await job(b.s.branch, '2026-11-01T07:00:00+05:00', (transaction) =>
+        daily().closingOverdue(transaction, b.s.branch),
+      );
+      await job(b.s.branch, fourteenBefore, (transaction) =>
+        daily().planReminders(transaction, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.closing_overdue', b.s.branch)).toHaveLength(1);
+      expect(await noticesTo(admin, 'plans.window_missing', b.s.branch)).toHaveLength(1);
+    });
+
     // 10: "Lesson about to lock with data missing | Teacher" (From 8.7), once per lesson.
     it('tells the teacher of an incomplete lesson within 48 hours of its lock, once', async () => {
       const teacher = await account();

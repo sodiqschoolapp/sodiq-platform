@@ -25,6 +25,14 @@ export interface AlertRule {
   routes: readonly string[];
 }
 
+/**
+ * The hours the sign-in-and-save check alerts in (task 10.2b, plan decision 7): from 07:00
+ * (`edge/system-behaviour`, "every 5 minutes from 07:00") to 20:00 in Tashkent, which is 02:00
+ * to 15:00 UTC. Every branch is in Asia/Tashkent today.
+ */
+export const SIGN_IN_SAVE_UTC_HOURS = { from: 2, until: 15 } as const;
+const SIGN_IN_SAVE_HOURS = `hour() >= ${String(SIGN_IN_SAVE_UTC_HOURS.from)} and hour() < ${String(SIGN_IN_SAVE_UTC_HOURS.until)}`;
+
 const SAVE_ROUTES = [
   'POST /api/journal/lessons/:lessonId/attendance',
   'POST /api/journal/lessons/:lessonId/all-present',
@@ -200,6 +208,21 @@ export const ALERT_RULES: readonly AlertRule[] = [
     for: '0m',
     summary:
       'Far fewer first-slot lessons have attendance by 09:00 than usual in branch {{ $labels.branch }}.',
+    routes: [],
+  },
+  {
+    alert: 'SignInSaveFailing',
+    rule: 'the sign-in-and-save check fails',
+    // Synthetic Monitoring writes `probe_success` of the check (job `sign-in-and-save`, every
+    // 5 minutes): no success over 11 minutes is two failed runs in a row, and no result at all
+    // fires too (task 10.2b, plan decision 11). Read from 07:00 to 20:00 Tashkent only.
+    expr:
+      '(max(max_over_time(probe_success{job="sign-in-and-save"}[11m])) == 0' +
+      ' or absent_over_time(probe_success{job="sign-in-and-save"}[11m]))' +
+      ` and on () (${SIGN_IN_SAVE_HOURS})`,
+    for: '0m',
+    summary:
+      'The test teacher could not sign in and save a cell in the Monitoring branch twice in a row.',
     routes: [],
   },
   {

@@ -7,7 +7,8 @@ import type { Post, Posts } from './request-routing.js';
  * branch (task 7.2, routing; `edge/people-roles-accounts`, row 16: "addressed
  * to the post, not the person, and shown to whoever holds it now"). Read from
  * `assignments`, which has no row policy: only rows of the branch and rows
- * with no branch are read (`database.md`).
+ * with no branch are read (`database.md`). The Senior Head Teacher holds no
+ * post in the hidden Monitoring branch (task 10.2b, `reachingBranch`).
  */
 export async function postHolders(
   transaction: Transaction,
@@ -26,7 +27,10 @@ export async function postHolders(
       and (
         (a.role = 'super_admin' and a.branch_id is null)
         or (a.role = 'academic_vice_principal' and a.branch_id = ${branchId})
-        or (a.role = 'senior_head_teacher' and a.branch_id is null and s.subject_id is not null)
+        or (a.role = 'senior_head_teacher' and a.branch_id is null and s.subject_id is not null
+          and not exists (
+            select 1 from branches b where b.id = ${branchId} and b.purpose = 'monitoring'
+          ))
         or (a.role = 'head_teacher' and a.branch_id = ${branchId} and s.subject_id is not null)
       )
     order by a.account_id, a.role

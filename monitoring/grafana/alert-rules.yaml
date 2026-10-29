@@ -95,6 +95,14 @@ groups:
         annotations:
           summary: 'Far fewer first-slot lessons have attendance by 09:00 than usual in branch {{ $labels.branch }}.'
           rule: 'few first-slot attendance marks by 09:00'
+      - alert: SignInSaveFailing
+        expr: '(max(max_over_time(probe_success{job="sign-in-and-save"}[11m])) == 0 or absent_over_time(probe_success{job="sign-in-and-save"}[11m])) and on () (hour() >= 2 and hour() < 15)'
+        for: 0m
+        labels:
+          severity: alert
+        annotations:
+          summary: 'The test teacher could not sign in and save a cell in the Monitoring branch twice in a row.'
+          rule: 'the sign-in-and-save check fails'
       - alert: ServerErrors
         expr: 'sum by (route) (sum_over_time(sodiq_requests_count{status="5xx"}[10m])) > 0'
         for: 0m

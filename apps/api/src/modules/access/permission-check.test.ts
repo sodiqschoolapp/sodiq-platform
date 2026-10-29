@@ -2,7 +2,7 @@ import { checkTable } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_PERMISSIONS } from '../../testing/permission-sample.controller.js';
 import type { CurrentAssignment } from './current-assignments.js';
-import { decide, type Requirement } from './permission-check.js';
+import { decide, reachingBranch, type Requirement } from './permission-check.js';
 
 const NORTH = '0199b1c0-0000-7000-8000-00000000000a';
 const SOUTH = '0199b1c0-0000-7000-8000-00000000000b';
@@ -131,5 +131,31 @@ describe('the permission check', () => {
     expect(
       decideIn({ area: 'requests', action: 'view', branch: 'request' }, [superAdmin], NORTH),
     ).toBeUndefined();
+  });
+});
+
+// Task 10.2b (answer 10; the owner on pull request #261, 29 October 2026): "refuse the
+// Monitoring branch to the Senior Head Teacher; only the Super Admin sees it."
+describe('the hidden Monitoring branch', () => {
+  it("keeps the Super Admin's assignment without a branch and drops the Senior Head Teacher's", () => {
+    const superAdmin = held('super_admin', null);
+    const senior = held('senior_head_teacher', null);
+
+    expect(reachingBranch([senior, superAdmin], true)).toEqual([superAdmin]);
+    expect(reachingBranch([senior], true)).toEqual([]);
+  });
+
+  it('keeps an assignment of the Monitoring branch itself (its test teacher)', () => {
+    const teacher = held('teacher', NORTH);
+    const senior = held('senior_head_teacher', null);
+
+    expect(reachingBranch([senior, teacher], true)).toEqual([teacher]);
+  });
+
+  it('changes nothing in a branch that is not the Monitoring branch', () => {
+    const senior = held('senior_head_teacher', null);
+    const teacher = held('teacher', NORTH);
+
+    expect(reachingBranch([senior, teacher], false)).toEqual([senior, teacher]);
   });
 });

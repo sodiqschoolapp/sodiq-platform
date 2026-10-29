@@ -341,6 +341,50 @@ describe('the move of a student to another branch', () => {
       expect(await rowsOf()).toEqual(mid);
     });
 
+    // Task 10.2b (permission review of the code, must-fix 2): the hidden Monitoring branch is no
+    // target, and its invented students go to no real branch; both answered as an unknown branch.
+    it('answers 404 for a release to or from the hidden Monitoring branch, with nothing written', async () => {
+      const hidden = await t.newBranch();
+      const own = await pupil();
+      const invented = await pupil(east);
+      await t.database.migrator
+        .updateTable('branches')
+        .set({ purpose: 'monitoring' })
+        .where('id', '=', hidden)
+        .execute();
+      try {
+        const before = await rowsOf();
+        refusedWith(await release(own.student.id, { to: hidden }), 404, 'not_found');
+        await t.database.migrator
+          .updateTable('branches')
+          .set({ purpose: null })
+          .where('id', '=', hidden)
+          .execute();
+        await t.database.migrator
+          .updateTable('branches')
+          .set({ purpose: 'monitoring' })
+          .where('id', '=', east)
+          .execute();
+        // As the Super Admin, whose transaction sees every branch.
+        refusedWith(
+          await t.post(`/api/people/students/${invented.student.id}/branch-move`, east, {
+            toBranchId: t.north,
+            from: TODAY,
+            version: invented.student.version,
+          }),
+          404,
+          'not_found',
+        );
+        expect(await rowsOf()).toEqual(before);
+      } finally {
+        await t.database.migrator
+          .updateTable('branches')
+          .set({ purpose: null })
+          .where('id', 'in', [hidden, east])
+          .execute();
+      }
+    });
+
     it('refuses the same branch, a second release, a stale version, a closed state', async () => {
       const { student } = await pupil();
       refusedWith(await release(student.id, { to: t.north }), 409, 'branch_move_same_branch');

@@ -1281,6 +1281,7 @@ export const en = {
       rooms: 'Rooms',
       emptyTitle: 'No branches yet',
       empty: 'Every branch of the school is listed here. Add the first one.',
+      monitoring: 'Hidden: the sign-in-and-save check',
     },
     branch: {
       goLiveTitle: 'Go-live date',
@@ -3332,6 +3333,7 @@ export const en = {
         create: 'Branch created',
         edit: 'Branch changed',
         go_live: 'Branch went live',
+        monitoring: 'Branch made the hidden Monitoring branch',
       },
       travel_time: {
         set: 'Travel time set',

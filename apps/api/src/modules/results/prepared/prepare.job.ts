@@ -54,11 +54,19 @@ export class PreparedTotals implements BeforeApplicationShutdown {
     this.stopping = true;
   }
 
-  /** Every branch in turn, within the budget of one run. */
+  /**
+   * Every branch in turn, within the budget of one run. The hidden Monitoring branch has no
+   * prepared totals: it is in no school report (task 10.2b), and its reads calculate from source.
+   */
   async run(budgetMs = RUN_BUDGET_MS): Promise<void> {
     const deadline = performance.now() + budgetMs;
     const branches = await this.transactions.run([], (transaction) =>
-      transaction.selectFrom('branches').select(['id', 'time_zone']).orderBy('id').execute(),
+      transaction
+        .selectFrom('branches')
+        .select(['id', 'time_zone'])
+        .where('purpose', 'is', null)
+        .orderBy('id')
+        .execute(),
     );
     for (let step = 0; step < branches.length; step += 1) {
       const index = (this.next + step) % branches.length;

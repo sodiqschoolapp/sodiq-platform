@@ -50,7 +50,7 @@ export class MonitoringCounts implements OnModuleInit {
         now: moment,
         branches: await transaction
           .selectFrom('branches')
-          .select(['id', 'time_zone'])
+          .select(['id', 'time_zone', 'purpose'])
           .orderBy('id')
           .execute(),
         jobs: await failedJobs(transaction, moment),
@@ -58,7 +58,13 @@ export class MonitoringCounts implements OnModuleInit {
     });
     const at = now.getTime();
     const points: Point[] = [];
+    // The hidden Monitoring branch sends no count, so no alert of the school fires on it; its
+    // own check alerts in Grafana (task 10.2b).
+    const hidden = new Set(
+      branches.filter((branch) => branch.purpose !== null).map((branch) => branch.id),
+    );
     for (const branch of branches) {
+      if (hidden.has(branch.id)) continue;
       const counts = await this.transactions.run([branch.id], (transaction) =>
         branchCounts(
           transaction,
@@ -88,6 +94,7 @@ export class MonitoringCounts implements OnModuleInit {
       });
     }
     for (const job of jobs) {
+      if (hidden.has(job.branch)) continue;
       points.push({
         measurement: MEASUREMENTS.jobs.name,
         tags: { name: job.name, branch: job.branch },

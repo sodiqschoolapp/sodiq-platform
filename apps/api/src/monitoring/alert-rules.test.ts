@@ -4,7 +4,12 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../testing/create-test-app.js';
 import { routesOf } from '../testing/routes.js';
-import { ALERT_RULES, alertRulesYaml, seriesOfRule } from './alert-rules.js';
+import {
+  ALERT_RULES,
+  alertRulesYaml,
+  seriesOfRule,
+  SIGN_IN_SAVE_UTC_HOURS,
+} from './alert-rules.js';
 import { SERIES } from './series.js';
 
 const root = path.resolve(import.meta.dirname, '../../../..');
@@ -51,6 +56,7 @@ describe('the alert rules', () => {
       'the counts stop arriving',
       'the push down',
       'the worker down',
+      'the sign-in-and-save check fails',
     ]) {
       expect(covered, named).toContain(named);
     }
@@ -96,5 +102,26 @@ describe('the alert rules', () => {
         expect(rule.expr).toContain(route.split(' ')[1] ?? '');
       }
     }
+  });
+
+  // Task 10.2b: "A test teacher account signs in and saves a cell in a test class every 5 minutes
+  // from 07:00" (edge/system-behaviour); the alert reads 07:00 to 20:00 in Tashkent (decision 7)
+  // and two failed runs in a row, or none at all (decision 11).
+  it('alerts on the sign-in-and-save check from 07:00 to 20:00 in Tashkent, on two failed runs or none', () => {
+    const rule = ALERT_RULES.find((one) => one.alert === 'SignInSaveFailing');
+    expect(rule?.expr).toBe(
+      '(max(max_over_time(probe_success{job="sign-in-and-save"}[11m])) == 0' +
+        ' or absent_over_time(probe_success{job="sign-in-and-save"}[11m]))' +
+        ` and on () (hour() >= ${String(SIGN_IN_SAVE_UTC_HOURS.from)} and hour() < ${String(SIGN_IN_SAVE_UTC_HOURS.until)})`,
+    );
+    // The hours of the expression, as moments of Tashkent: 07:00 is the first hour in, 20:00 the
+    // first hour out (hour() is the UTC hour of the evaluation).
+    const hourOf = (time: string) => new Date(`2026-11-02T${time}:00+05:00`).getUTCHours();
+    const inWindow = (time: string) =>
+      hourOf(time) >= SIGN_IN_SAVE_UTC_HOURS.from && hourOf(time) < SIGN_IN_SAVE_UTC_HOURS.until;
+    expect(rule?.expr).toContain('hour() >= 2 and hour() < 15');
+    expect(['06:59', '07:00', '19:59', '20:00'].map(inWindow)).toEqual([false, true, true, false]);
+    // The window holds both arms: a check that fails and a check with no result at all.
+    expect(rule?.expr).toMatch(/^\(.+ == 0 or absent_over_time\(.+\)\) and on \(\) \(/);
   });
 });

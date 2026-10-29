@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 29 October 2026: task 10.2b The sign-in-and-save check in a hidden Monitoring branch
+
+- **Monitoring branch** (`branches.purpose`, 0142): built once by the owner's command `node apps/api/dist/monitoring/cli.js monitoring-branch` through the real routes (one class, three invented students, a test teacher, one lesson at 06:30 every day). Only the Super Admin and its own assignments reach it (the guard, `reachingBranch`); left out of the Super Admin notices, prepared totals, counts to Grafana, travel times and releases.
+- **The check**: `monitoring/synthetic/sign-in-and-save.js`, a Grafana Synthetic Monitoring k6 script (sign in, today's lesson, switch a cell present/late, sign out), run in a test against the built branch; alert `SignInSaveFailing` (07:00 to 20:00, two failed runs or none).
+- **Backup login**: the nightly export must read through Neon's read-only compute (`pg_is_in_recovery()`), else the run fails and nothing is stored.
+
+Left out: running the command and the check on production, the Neon read replica and `sodiq_backup` (the owner, `docs/monitoring.md` steps 6, 9, 10); closing the Monitoring year (9.5a, 9.5b).
+
+The next sessions must know:
+
+- A new reader that lists every branch (a job loop, a target list) decides whether the Monitoring branch belongs (`purpose is null`); a guard that lets a school-wide role in reads `reachingBranch`.
+- Until the owner does step 6 of `docs/monitoring.md`, every nightly backup fails on "read-only: no".
+
 ## 28 October 2026: task 9.3b-2 The reports of `08`
 
 - **Reports** (Results → Reports): Attendance (counts and percent of the expected cells over held lessons, exempt apart, daily attendance of `edge/journal`; by class, by tutor or by day; date range up to 92 days, grade, class, subject, teacher, start time), Results table, Subject mastery, Journal discipline (with the items behind each count and the rating exam's late entries) and Timetable load (lessons against planned load, the total across branches against the contract; classes against the load; rooms; the engine's free periods; invigilations apart). Each has its Excel file, logged.

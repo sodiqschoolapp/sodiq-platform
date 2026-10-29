@@ -116,6 +116,8 @@ export const branchListItemSchema = z.object({
   workingWeekdays: z.array(weekdaySchema),
   buildingCount: z.number().int().nonnegative(),
   roomCount: z.number().int().nonnegative(),
+  /** The hidden branch of the sign-in-and-save check (task 10.2b), shown to the Super Admin only. */
+  monitoring: z.boolean(),
 });
 
 export type BranchListItem = z.infer<typeof branchListItemSchema>;

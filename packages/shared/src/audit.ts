@@ -54,6 +54,7 @@ export const AUDIT_ACTION_GROUPS = {
     'branch.create',
     'branch.edit',
     'branch.go_live',
+    'branch.monitoring',
     'travel_time.set',
     'building.create',
     'building.edit',

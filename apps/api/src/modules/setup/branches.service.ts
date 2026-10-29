@@ -151,6 +151,7 @@ export class Branches {
           'branches.name',
           'branches.address',
           'branches.working_weekdays',
+          'branches.purpose',
           builder
             .selectFrom('buildings')
             .whereRef('buildings.branch_id', '=', 'branches.id')
@@ -172,6 +173,7 @@ export class Branches {
           name: row.name,
           address: row.address,
           workingWeekdays: weekdaysOf(row.working_weekdays),
+          monitoring: row.purpose === 'monitoring',
           // A count; `null` is how the type of a subquery is written, never what it answers.
           buildingCount: Number(row.building_count ?? 0),
           roomCount: Number(row.room_count ?? 0),

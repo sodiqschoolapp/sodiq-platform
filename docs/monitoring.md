@@ -9,9 +9,9 @@ Every value in angle brackets is yours: none goes into a file of the repository,
 | Service | What it does | Where its setup is |
 | --- | --- | --- |
 | **Sentry** | Faults of the API, the worker and the web app, the web app's with its source maps (readable stack traces). A new issue is emailed to the owner by Sentry itself: Grafana's free plan cannot read Sentry, and `14` asks that errors raise an alert at once (plan decision 12, the one exception to "Grafana sends every alert"). | Steps 2 and 3 |
-| **Grafana Cloud** (EU stack) | The API's request times and answers per route and branch, a heartbeat of the API and the worker every minute, the logs, and the counts the database knows per branch, pushed every minute by the worker. Every alert rule of `edge/system-behaviour` lives here (`monitoring/grafana/alert-rules.yaml`) and is sent by email. The sign-in-and-save check every 5 minutes comes with 10.2b. | Steps 1, 3 and 4 |
+| **Grafana Cloud** (EU stack) | The API's request times and answers per route and branch, a heartbeat of the API and the worker every minute, the logs, and the counts the database knows per branch, pushed every minute by the worker. Every alert rule of `edge/system-behaviour` lives here (`monitoring/grafana/alert-rules.yaml`) and is sent by email. The sign-in-and-save check every 5 minutes (Synthetic Monitoring) signs in as the test teacher of the hidden Monitoring branch and saves a cell. | Steps 1, 3, 4, 9 and 10 |
 | **UptimeRobot** | An outside check of `https://app.sodiqschool.uz/`, `/api/health` and the certificate's expiry, independent of Grafana, so a broken Grafana is still noticed. | Step 7 |
-| **The Backup workflow** | Every night at 02:30 Tashkent (and by hand): dumps production, restores the dump into an empty PostgreSQL to prove it, stores it in the R2 bucket `sodiq-backups`, and tells Grafana. A failed run is emailed by GitHub; the rule "a backup older than 24 hours" fires the next day if no run succeeded. | Steps 5 and 6 |
+| **The Backup workflow** | Every night at 02:30 Tashkent (and by hand): dumps production through its read-only compute (task 10.2b), restores the dump into an empty PostgreSQL to prove it, stores it in the R2 bucket `sodiq-backups`, and tells Grafana. A failed run is emailed by GitHub; the rule "a backup older than 24 hours" fires the next day if no run succeeded. | Steps 5 and 6 |
 
 **Who receives the alerts**: the owner, by email, the on-call person of school days until the school names another (`edge/system-behaviour`, "A named person is on call on school days"). Telegram comes later (answer 8): one contact point added in Grafana, nothing else changes.
 
@@ -73,11 +73,18 @@ Repository Settings, Environments, **New environment** `backup`:
 
 - **Deployment branches**: `main` only. **No required reviewer**: the run is every night (plan decision 4).
 - Secrets:
-  - `BACKUP_DATABASE_URL`: the **migrations** address of production (`postgres://sodiq_migrator:<password>@<host>/sodiq?sslmode=verify-full`, the direct host). It is the owner of the tables, so the dump holds every branch's rows (**Look first**, decision 4: this role can also write; a read-only login is a later step of 10.2b);
+  - `BACKUP_DATABASE_URL`: the read-only login of production on its **read-only compute** (task 10.2b; your answer of 29 October 2026 on #261; **Look first**). In Neon's console, project `sodiq-production`:
+    1. Roles, **New role** `sodiq_backup`. A role made in the console is a member of `neon_superuser` and reads past the row filters, so the dump holds every branch's rows. Keep its password in the password manager.
+    2. The production branch, **Add Read Replica** (a read-only compute), the smallest size. Nothing can be written through it, whatever the role.
+    3. Connect: the read replica's endpoint, role `sodiq_backup`, database `sodiq`: `postgres://sodiq_backup:<password>@<read replica host>/sodiq?sslmode=verify-full`. That is the secret.
+
+    Each night the run checks it: `db/backup/row-counts.sql` asks `pg_is_in_recovery()`, and the step that compares the copy fails with "production was read through a connection that can write" unless it is the read replica; the dump is then not stored. A role that cannot pass the row filters makes `pg_dump` itself stop at the dump step (it reads with `row_security` off and stops rather than dump part of a table).
+
+    **Until this is done, every nightly run fails** (BackupOld fires after 24 hours): `sodiq_migrator` on the primary is no longer accepted. Do it the day this change reaches `main`, then run the workflow once by hand;
   - `BACKUP_R2_ACCOUNT_ID`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` (step 5), `BACKUP_R2_BUCKET` = `sodiq-backups`;
   - `GRAFANA_METRICS_URL`, `GRAFANA_METRICS_USER`, `GRAFANA_TOKEN` (step 1).
 
-**Check**: Actions, **Backup**, Run workflow on `main`. Green in about 10 minutes; the log ends with "Stored daily/<date>.dump" and "Grafana told". The bucket holds the file; the rule BackupOld turns Normal.
+**Check**: Actions, **Backup**, Run workflow on `main`. Green in about 10 minutes; the comparison starts with "read-only: yes", and the log ends with "Stored daily/<date>.dump" and "Grafana told". The bucket holds the file; the rule BackupOld turns Normal.
 
 ### 7. UptimeRobot: the outside check
 
@@ -90,6 +97,27 @@ At uptimerobot.com (free plan), with the owner's email as the alert contact:
 ### 8. The first restore drill
 
 Follow `restore.md`, "The monthly drill", once (the "Done when" of 10.2), and note it in `docs/go-live/restore-drills.md`.
+
+### 9. The hidden Monitoring branch (once)
+
+The check of step 10 signs in as the test teacher of a branch that only the Super Admin sees ("Monitoring" in the branch switcher; answer 10 and your answer of 29 October 2026 on #261): one class `M-1`, three invented students (UIDs `MON0001` to `MON0003`), one lesson at 06:30 on every day of the week, four quarters that touch. It is left out of the school's report totals, the counts pushed to Grafana and the notices to the Super Admins, and the Senior Head Teacher cannot open it. Its own nightly check, its teacher's reminders and the audit log go on as in any branch.
+
+1. After 18:00 or at the weekend, in the Render Shell of `sodiq-api`:
+   `node apps/api/dist/monitoring/cli.js monitoring-branch --subject "<English name of a subject taught to whole classes>" --year-end <the day before next year's first day>`
+   (`--year-start` is tomorrow unless given: a timetable is published from tomorrow at the earliest).
+2. It asks for **your** Super Admin login, password and second-step code (not shown as you type), builds the branch through the application's own routes (every change is in the audit log under your name), prints each step, and at the end the test teacher's **login and first password, once**. Nothing is written when the subject is missing or taught in groups, or when one of the UIDs is taken. A run that stops half-way names the step: finish it in the screens as Super Admin, or archive what it made and run it again.
+3. In a private window, sign in as the test teacher with the first password and set a new one (from the password manager). Keep the login and the new password for step 10.
+4. **Check**, the next morning: sign in as the test teacher; the home page shows today's 06:30 lesson.
+
+The year ends on `--year-end`. After it the check fails until the year is closed and the next one started, which comes with the year-end tasks (9.5a and 9.5b).
+
+### 10. The sign-in-and-save check (Grafana Synthetic Monitoring)
+
+1. In Grafana: Testing & synthetics, Synthetic Monitoring, **Secrets**: `monitoring-teacher-login` and `monitoring-teacher-password` (step 9).
+2. Checks, **Add new check**, **Scripted** (k6): job name `sign-in-and-save`, frequency **5 minutes**, one **EU** probe (for example Frankfurt), timeout 30 s. Paste `monitoring/synthetic/sign-in-and-save.js` of the repository as it is, and let the check use the two secrets.
+3. **Check**: the runs turn green (a run before 06:30 Tashkent fails: the lesson has not started; the alert reads 07:00 to 20:00 only). Import `monitoring/grafana/alert-rules.yaml` again (step 4): **SignInSaveFailing** appears.
+
+The script signs in, reads today's lesson from the teacher's home page and the first student's cell from the journal, switches it between present and late, and signs out. A step that fails, or a save slower than 0.3 s, fails the run. It logs nothing of an answer.
 
 ## When an alert comes
 
@@ -107,4 +135,5 @@ Follow `restore.md`, "The monthly drill", once (the "Done when" of 10.2), and no
 | ServerErrors | Any route answered 500. | Sentry. |
 | SlowJournal, SlowSearch, SlowReports, SlowPages | A page is slower than its target of `12` for 10 minutes. | Grafana, the route; Neon's monitoring. |
 | ApiSilent, WorkerSilent, CountsSilent | No numbers from the API, the worker or the counts for 10 minutes. | Render: the service's state and log. If Render is fine, the push to Grafana (its token) is the problem. |
+| SignInSaveFailing | The test teacher could not sign in and save a cell twice in a row (07:00 to 20:00 Tashkent). | Synthetic Monitoring, the check's newest run: which step failed (sign-in, home, journal, save). A failed save: is CellSavesFailing firing too? A failed sign-in: Render and Sentry. After `--year-end`: step 9. |
 | UptimeRobot: down | The address does not answer from outside. | Render's status and the service; Cloudflare/the registrar's DNS. |

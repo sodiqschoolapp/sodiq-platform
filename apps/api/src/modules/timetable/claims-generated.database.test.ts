@@ -876,7 +876,9 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
       'delete:accepted',
       'delete:lesson_holds_data',
     ]);
-  });
+    // About 30 s of generated edits on its own (task 10.2b: it timed out at the default 30 s on
+    // CI beside the new database tests of its part); the time of the run, not what it checks.
+  }, 120_000);
 
   /** A draft of the north with one load row per unit, the units' teachers shared so that rows clash. */
   async function draft(): Promise<{

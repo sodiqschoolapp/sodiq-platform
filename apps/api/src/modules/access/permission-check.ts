@@ -1,4 +1,10 @@
-import { permits, SCHOOL_WIDE_ROLES, type Action, type PermissionTable } from '@sodiq/shared';
+import {
+  permits,
+  SCHOOL_WIDE_ROLES,
+  type Action,
+  type PermissionTable,
+  type Role,
+} from '@sodiq/shared';
 import type { CurrentAssignment } from './current-assignments.js';
 
 /** What a route asks of its caller: an action in an area of the permission table. */
@@ -58,4 +64,28 @@ export function permitting(
         (assignment.branchId === null && SCHOOL_WIDE_ROLES.includes(assignment.role)) ||
         assignment.branchId?.toLowerCase() === branch),
   );
+}
+
+/**
+ * The roles whose assignment without a branch reaches the hidden Monitoring branch of the
+ * sign-in-and-save check (task 10.2b; answer 10: "the Super Admin sees it in the branch
+ * switcher as 'Monitoring'"; the owner on pull request #261, 29 October 2026: "refuse the
+ * Monitoring branch to the Senior Head Teacher; only the Super Admin sees it").
+ */
+export const MONITORING_BRANCH_ROLES: readonly Role[] = ['super_admin'];
+
+/**
+ * The assignments that reach a branch: in the Monitoring branch, those of the branch itself
+ * (its test teacher) and the Super Admin's; elsewhere, all of them.
+ */
+export function reachingBranch<T extends Pick<CurrentAssignment, 'role' | 'branchId'>>(
+  assignments: readonly T[],
+  monitoring: boolean,
+): T[] {
+  return monitoring
+    ? assignments.filter(
+        (assignment) =>
+          assignment.branchId !== null || MONITORING_BRANCH_ROLES.includes(assignment.role),
+      )
+    : [...assignments];
 }

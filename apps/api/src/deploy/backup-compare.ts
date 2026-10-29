@@ -4,8 +4,13 @@
  * `schema.table|count`). The dump has its own snapshot, so a table written at 02:30 (sessions,
  * the job queue, the audit log) may differ by a few rows; that is shown, not failed. The proof
  * fails when a table is missing from the copy, when a table that holds rows came back empty,
- * or when the copy has another set of migrations.
+ * or when the copy has another set of migrations. It also fails when production was read through a
+ * connection that can write: the line `~read-only|1` (`pg_is_in_recovery()`, task 10.2b) says
+ * the export read Neon's read-only compute, so the dump is never stored otherwise.
  */
+
+/** The line of `row-counts.sql` that is no table: whether the connection was read-only. */
+export const READ_ONLY_LINE = '~read-only';
 
 export interface Comparison {
   /** One line per table of production: its name and `match` or `differs`. Never a number. */
@@ -32,8 +37,14 @@ function countsOf(text: string): Map<string, number> {
 export function compareCounts(source: string, restored: string): Comparison {
   const before = countsOf(source);
   const after = countsOf(restored);
-  const lines: string[] = [];
-  const failures: string[] = [];
+  const readOnly = before.get(READ_ONLY_LINE) === 1;
+  before.delete(READ_ONLY_LINE);
+  // The copy is a primary of the job's own: never in recovery, and not compared.
+  after.delete(READ_ONLY_LINE);
+  const lines: string[] = [`read-only: ${readOnly ? 'yes' : 'no'}`];
+  const failures: string[] = readOnly
+    ? []
+    : ['production was read through a connection that can write (not the read-only compute)'];
   if (before.size === 0) failures.push('production listed no table');
   for (const [table, count] of before) {
     const copy = after.get(table);

@@ -1306,6 +1306,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       rooms: 'Кабинеты',
       emptyTitle: 'Филиалов пока нет',
       empty: 'Здесь перечислены все филиалы школы. Добавьте первый.',
+      monitoring: 'Скрыт: проверка входа и сохранения',
     },
     branch: {
       goLiveTitle: 'Дата запуска',
@@ -3503,6 +3504,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         create: 'Филиал создан',
         edit: 'Филиал изменён',
         go_live: 'Филиал запущен',
+        monitoring: 'Филиал сделан скрытым филиалом мониторинга',
       },
       travel_time: {
         set: 'Время в пути задано',

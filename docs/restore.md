@@ -68,7 +68,7 @@ Only when production's database is lost or unusable as a whole, after agreeing i
 
 1. Render: suspend `sodiq-api` and `sodiq-worker` (the users see the service is down).
 2. Neon: restore `main` of `sodiq-production` to the chosen moment (**Restore**, "to a point in time"), or, when Neon's history is gone, create a new project as in `docs/deploy.md`, Production, step 1, and restore the newest dump into it as in step 2 above.
-3. Render: when the address changed, update `DATABASE_URL` on both services and `DATABASE_MIGRATION_URL` and `BACKUP_DATABASE_URL` in GitHub. Resume both services. The smoke test: `node apps/api/dist/deploy/cli.js smoke https://app.sodiqschool.uz` from the laptop's build, or simply sign in.
+3. Render: when the address changed, update `DATABASE_URL` on both services and `DATABASE_MIGRATION_URL` and `BACKUP_DATABASE_URL` in GitHub. `BACKUP_DATABASE_URL` is `sodiq_backup` on a **read-only compute** of the restored project: add a read replica to it first, and the role in its console (`monitoring.md`, step 6); the nightly run refuses any other connection. Resume both services. The smoke test: `node apps/api/dist/deploy/cli.js smoke https://app.sodiqschool.uz` from the laptop's build, or simply sign in.
 4. Tell the school which moment the data is from: every entry after it is typed again.
 
 ## 6. Afterwards

@@ -153,6 +153,7 @@ export interface Branches {
   id: Generated<string>;
   name: string;
   phone: string | null;
+  purpose: string | null;
   time_zone: Generated<string>;
   working_weekdays: Generated<number[]>;
 }

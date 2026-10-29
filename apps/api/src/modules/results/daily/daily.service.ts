@@ -18,6 +18,7 @@ import { Notifications } from '../../notifications/notifications.service.js';
 import { datedQuarters } from '../../plans/plan-read.js';
 import { PlansService } from '../../plans/plans.service.js';
 import { closingOf } from '../../setup/closed-quarters.js';
+import { monitoringBranchId } from '../../setup/monitoring-branch.js';
 import { ownerFactsOf, ownerOn } from '../../timetable/journal-owners.js';
 import { DAILY_WORK, type DailyData } from './daily-jobs.js';
 import { checkBranch } from './result-check.js';
@@ -192,7 +193,7 @@ export class DailyWork {
       this.logger.warn(
         `results.check ${branchId} ${data.day}: ${found.differences.length} differences in ${journals} journals`,
       );
-      const admins = await superAdmins(transaction);
+      const admins = await superAdmins(transaction, branchId);
       if (admins.length > 0) {
         await this.notifications.send(transaction, {
           kind: 'results.check_difference',
@@ -214,7 +215,7 @@ export class DailyWork {
       .where('finished_at', 'is not', null)
       .executeTakeFirst();
     if (done !== undefined) return;
-    const admins = await superAdmins(transaction);
+    const admins = await superAdmins(transaction, branchId);
     if (admins.length === 0) return;
     this.logger.warn(`results.check ${branchId} ${data.day}: no finished run`);
     await this.notifications.send(transaction, {
@@ -595,11 +596,16 @@ async function viceOf(transaction: Transaction, branchId: string): Promise<strin
  */
 async function viceOrAdminsOf(transaction: Transaction, branchId: string): Promise<string[]> {
   const vices = await viceOf(transaction, branchId);
-  return vices.length > 0 ? vices : superAdmins(transaction);
+  return vices.length > 0 ? vices : superAdmins(transaction, branchId);
 }
 
-/** The Super Admins now (school-wide, no branch). */
-async function superAdmins(transaction: Transaction): Promise<string[]> {
+/**
+ * The Super Admins now (school-wide, no branch), told of a branch's work. None for the hidden
+ * Monitoring branch (task 10.2b: "left out ... of the daily reminders to the Super Admins"); its
+ * check and its own teacher's reminders still run.
+ */
+async function superAdmins(transaction: Transaction, branchId: string): Promise<string[]> {
+  if ((await monitoringBranchId(transaction)) === branchId) return [];
   const moment = await transactionMoment(transaction);
   const rows = await transaction
     .selectFrom('assignments')
