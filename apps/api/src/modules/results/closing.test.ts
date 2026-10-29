@@ -34,6 +34,7 @@ import { saveCells } from '../journal/cells.js';
 import { quarterGrades, quarterRefOf } from './grade-changes.js';
 import { DailyWork } from './daily/daily.service.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
+import { prepareBranch } from '../../testing/prepared-kit.js';
 import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 import { carryItem, lockPlansOf, notCoveredAt } from '../plans/plan-outcomes.js';
 
@@ -1823,6 +1824,77 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       .where('quarter_id', '=', quarter)
       .orderBy('student_id')
       .execute();
+
+  // Task 10.1b, plan decision 6: the GET reads the prepared `closing` units; the close and
+  // every write it gates read from source (`edge/system-behaviour`: results "are always
+  // calculated from the entries themselves").
+  it('shows the prepared items on the GET, and refuses the close from source whatever the units hold', async () => {
+    const b = await base();
+    await vice(
+      b.s.branch,
+      async (calls) => {
+        const first = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(itemsOf(first, 'undecided').length).toBeGreaterThan(0);
+        expect(first.prepared.updating).toBe(true);
+        expect(await prepareBranch(t, b.s.branch)).toBeGreaterThan(0);
+        const prepared = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(prepared.prepared.updating).toBe(false);
+        expect(prepared.items).toEqual(first.items);
+        // Review of the plan, finding 1: a unit of a subject covers every journal of the
+        // subject, where a student who moved between two of them is listed.
+        const units = await t.database.migrator
+          .selectFrom('report_prepared')
+          .select(['unit_id', 'journal_ids'])
+          .where('branch_id', '=', b.s.branch)
+          .where('kind', '=', 'closing')
+          .where('quarter_id', '=', b.q1)
+          .execute();
+        for (const unit of units) {
+          const journals = await t.database.migrator
+            .selectFrom('journals')
+            .select('id')
+            .where('branch_id', '=', b.s.branch)
+            .where('subject_id', '=', unit.unit_id)
+            .execute();
+          expect([...unit.journal_ids].sort()).toEqual(journals.map((one) => one.id).sort());
+        }
+        // Should-fix 3: the units hold ids; a name changed after the preparation is read live.
+        const named = itemsOf(prepared, 'undecided')[0]?.students[0]?.student;
+        if (named === undefined) throw new Error('An undecided student.');
+        await t.database.migrator
+          .updateTable('students')
+          .set({ last_name: 'Renamedova' })
+          .where('id', '=', named.id)
+          .execute();
+        const renamed = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(renamed.prepared.updating).toBe(false);
+        expect(
+          itemsOf(renamed, 'undecided')
+            .flatMap((item) => item.students)
+            .find((one) => one.student.id === named.id)?.student.lastName,
+        ).toBe('Renamedova');
+        // The units hold no result item (a value set by hand, standing in for a preparation
+        // that missed a change): the checklist shows what they hold, the close reads the source.
+        await t.database.migrator
+          .updateTable('report_prepared')
+          .set({ value: sql`'{"$o":{"weightsMissing":[],"drafts":[]}}'::jsonb` })
+          .where('branch_id', '=', b.s.branch)
+          .where('kind', '=', 'closing')
+          .execute();
+        const shown = checklistOf(await calls.get(b.s.branch, path(b.q1)));
+        expect(shown.prepared.updating).toBe(false);
+        expect(itemsOf(shown, 'undecided')).toEqual([]);
+        const blocked = await calls.post(
+          b.s.branch,
+          closePath(b.q1),
+          { warnings: warningsOf(shown), lockNow: true, startQuarter: null },
+          randomUUID(),
+        );
+        expect([blocked.status, codeOf(blocked)]).toEqual([409, 'closing_blocked']);
+      },
+      CLOSE,
+    );
+  });
 
   it('closes the quarter for the whole branch: decisions, lock now, warnings acknowledged, every result stored', async () => {
     const teacher = await account();

@@ -342,6 +342,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 29 October 2026: every speed target at three times the size (task 10.1b)
+
+Plan approved on pull request #263 with corrections 1 to 7; decisions 1 to 10 confirmed there (8 changed by correction 7). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a pinned check made lighter). At triple size the passes from source of the speed run (the reads before preparing, `tablesReadByPreparation`, the equality after, the weight change) run on the first branch only; the small run on every pull request and `prepared.database.test.ts` keep them on every branch | Decision 1; the owner's line of 29 October lets the run's time change |
+| **Look first** (spec reading). "Open any page" is the server's answers of the page's reads together, "open a report" one read; the slowest repeat alone, the 95th percentile under load | Decision 2; as 10.1 |
+| **Look first** (a confirmed decision of 9.3b-1 changed). The school-wide inputs write `report_school_changes` (0143) by statement triggers, only when a row changed; a unit is behind while one is not visible in its snapshot; the rows are removed by a run that prepared every branch, once every prepared row has seen them. No shared row, so writers never wait on one another | Decision 3, corrections 2 and 3: the fingerprint read and sorted eight whole tables on every request |
+| **Look first** (the loop's tooling). A migration file whose first line is `-- migrate: no transaction` holds only `create index concurrently if not exists`; the runner builds such an index on a partitioned table in two steps itself (on the parent only, then each partition, attached), drops an index a failed build left invalid, and records the file only when every statement succeeded (0144, 0145) | Decision 4, correction 4; `edge/system-behaviour`: "tables are never locked for long" |
+| **Look first** (lists widened, a pinned test changed). `report_school_changes` in `SCHOOL_WIDE_TABLES`; `report_prepared_kind_check` widened by `closing` and `class_figures` (0143) and `plan_progress` (0146); `speed-workflow.test.ts` pins the two jobs | Decision 10; corrections 3 and 5 |
+| **Look first** (built differently from the plan). `class_figures` is allowed by 0143 and not prepared: the ratings and the branch summary read in 0.2 to 0.3 s at the school's size once the shared costs went (JIT, the fingerprint, the audit check of reads). The plan reports' progress moved onto a unit `plan_progress` (0146) as the From line of 9.3b-1 on 9.3b-2 named | Measured (Step 1); the progress report took 1.9 s at the school's size |
+| Stored values change shape behind `PREPARED_SHAPE`, folded into `school_inputs`; the rows of an older release are behind and prepared again, no migration touches them | Decision 5 |
+| The checklist's GET reads the `closing` units (per quarter and subject) and the prepared lesson facts; the close, the close of a journal, the reminder and the decisions read from source. Students and teachers are named on read (the unit holds ids, and no teacher: a journal's owner comes from the timetable, which no change row watches) | Decisions 6 and 7; review findings 1 and should-fix 3 |
+| Attendance today stays live from the cells (today and the week's days), read once by lesson | Correction 7: measured 0.25 s at the school's size; the triple run decides |
+| No JIT compilation in a request's transaction (`set_config('jit', 'off', true)`); a transaction that wrote nothing skips the commit check of lesson history | Build: JIT took 587 of 588 ms of a read; the check was planned over every partition on each read |
+| The data passes between the two jobs of the Speed workflow as an artifact of the run (`pg_dump -Fc`, kept one day); the measuring phase empties the prepared rows and change rows first (their transaction ids belong to the cluster that built them) | Decision 9, correction 1 |
+| The preparation runs every minute during the load; the report counts the answers that said "updating" | Review of the plan, finding 5 |
+
 ## 29 October 2026: the hidden Monitoring branch and the sign-in-and-save check (task 10.2b)
 
 Plan approved on pull request #261 with corrections 1 to 4, after the owner answered the two stop-list questions there (29 October: the Monitoring branch refused to the Senior Head Teacher; a read-only backup login). Flagged on issue #42.

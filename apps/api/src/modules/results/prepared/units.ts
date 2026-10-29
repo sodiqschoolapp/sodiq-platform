@@ -250,8 +250,6 @@ export async function unitValue(
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
     }
-    case 'class_figures':
-      throw new Error(`The unit kind ${unit.kind} is not prepared yet.`);
   }
 }
 

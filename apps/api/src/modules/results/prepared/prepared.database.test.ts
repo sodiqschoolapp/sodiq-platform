@@ -27,7 +27,12 @@ import { publishedScene, type PublishedScene } from '../../../testing/published-
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
 import { PreparedTotals, prepareUnit } from './prepare.job.js';
-import { pruneSchoolChanges, SCHOOL_INPUTS } from './prepared.query.js';
+import {
+  freshLessons,
+  PREPARED_SHAPE,
+  pruneSchoolChanges,
+  SCHOOL_INPUTS,
+} from './prepared.query.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -738,6 +743,42 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       expect((await read(a, path)).prepared.updating).toBe(false);
       expect((await read(b, path)).prepared.updating).toBe(false);
     });
+  });
+
+  // Task 10.1b: the freshness of the lessons' facts is decided once per unit (journal).
+  it('makes the lessons of a journal behind for a change row of that journal only', async () => {
+    const c = await scene();
+    await prepare(c.s.branch);
+    const fresh = async () => {
+      t.clock.set(MOMENT);
+      try {
+        return await t.app.get(Transactions).run([c.s.branch], async (transaction) =>
+          [
+            ...(
+              await freshLessons(transaction, {
+                branchId: c.s.branch,
+                lessonIds: [c.l12.id, c.l19.id],
+                now: new Date(MOMENT),
+                schoolInputs: PREPARED_SHAPE,
+              })
+            ).keys(),
+          ].sort(),
+        );
+      } finally {
+        t.clock.set(START);
+      }
+    };
+    expect(await fresh()).toEqual([c.l12.id, c.l19.id].sort());
+    const changed = (journalId: string) =>
+      t.database.migrator
+        .insertInto('report_changes')
+        .values({ branch_id: c.s.branch, quarter_id: c.quarter, journal_id: journalId })
+        .execute();
+    // A change of another journal of the branch leaves these lessons fresh.
+    await changed(UNKNOWN);
+    expect(await fresh()).toEqual([c.l12.id, c.l19.id].sort());
+    await changed(c.journal);
+    expect(await fresh()).toEqual([]);
   });
 
   it('leaves a unit behind when a change commits between the snapshot of its preparation and its reads (review correction 2)', async () => {

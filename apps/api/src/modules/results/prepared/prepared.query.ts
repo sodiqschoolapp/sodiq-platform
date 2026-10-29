@@ -13,15 +13,15 @@ import { decode, encode } from './codec.js';
  */
 
 // Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal. Task 10.1b adds
-// `closing` (a quarter and a subject) and `class_figures` (a quarter and a class), 0143, and
-// `plan_progress` (a quarter and a journal), 0146.
+// `closing` (a quarter and a subject), 0143, and `plan_progress` (a quarter and a journal), 0146.
+// The kind `class_figures` that 0143 allows is not prepared: the ratings read their units fast
+// enough as they are (plan decision 11).
 export const UNIT_KINDS = [
   'outcomes',
   'figures',
   'statuses',
   'attendance',
   'closing',
-  'class_figures',
   'plan_progress',
 ] as const;
 export type UnitKind = (typeof UNIT_KINDS)[number];
