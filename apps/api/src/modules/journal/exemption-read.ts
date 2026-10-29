@@ -13,22 +13,28 @@ import type { Transaction } from '../../database/transactions.js';
 export async function exemptionMarksOf(
   transaction: Transaction,
   lessonIds: readonly string[],
+  /** Task 10.1b: of these students only (one student's results page). */
+  studentIds?: readonly string[],
 ): Promise<Map<string, Map<string, ExemptionKind>>> {
   const answer = new Map<string, Map<string, ExemptionKind>>();
   if (lessonIds.length === 0) return answer;
   const found = await sql<{ lesson_id: string; student_id: string; kind: ExemptionKind }>`
     with members as materialized (
-      select l.id as lesson_id, m.student_id
-      from unnest(${[...lessonIds]}::uuid[]) as x(id)
-      join lessons l on l.id = x.id
-      join class_memberships m on m.class_id = l.class_id
-        and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
-      union
-      select l.id, m.student_id
-      from unnest(${[...lessonIds]}::uuid[]) as x(id)
-      join lessons l on l.id = x.id
-      join group_memberships m on m.group_id = l.group_id
-        and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+      select * from (
+        select l.id as lesson_id, m.student_id
+        from unnest(${[...lessonIds]}::uuid[]) as x(id)
+        join lessons l on l.id = x.id
+        join class_memberships m on m.class_id = l.class_id
+          and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+        union
+        select l.id, m.student_id
+        from unnest(${[...lessonIds]}::uuid[]) as x(id)
+        join lessons l on l.id = x.id
+        join group_memberships m on m.group_id = l.group_id
+          and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+      ) all_members
+      where ${studentIds === undefined}::boolean
+        or all_members.student_id = any(${[...(studentIds ?? [])]}::uuid[])
     ),
     -- Only a member with a live span, or of a lesson a kept block may touch, can be
     -- exempt (0124): the others are not asked one by one. Materialized, so the filter runs

@@ -11,6 +11,8 @@ import type { Transaction } from '../../database/transactions.js';
 export async function expectedStudents(
   transaction: Transaction,
   lessonIds: readonly string[],
+  /** Task 10.1b: of these students only (one student's results page). */
+  studentIds?: readonly string[],
 ): Promise<Map<string, string[]>> {
   const expected = new Map<string, string[]>(lessonIds.map((id) => [id, []]));
   if (lessonIds.length === 0) return expected;
@@ -18,6 +20,8 @@ export async function expectedStudents(
     select l.id as lesson_id, s.student_id
     from unnest(${[...lessonIds]}::uuid[]) as l(id)
     cross join lateral lesson_expected_students(l.id) as s(student_id)
+    where ${studentIds === undefined}::boolean
+      or s.student_id = any(${[...(studentIds ?? [])]}::uuid[])
     order by l.id, s.student_id
   `.execute(transaction);
   for (const row of found.rows) {

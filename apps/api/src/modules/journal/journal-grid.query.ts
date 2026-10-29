@@ -345,9 +345,11 @@ export interface GridCellRow {
 export async function lessonCells(
   transaction: Transaction,
   lessonIds: readonly string[],
+  /** Task 10.1b: the cells of these students only (one student's results page). */
+  studentIds?: readonly string[],
 ): Promise<GridCellRow[]> {
-  if (lessonIds.length === 0) return [];
-  const rows = await transaction
+  if (lessonIds.length === 0 || studentIds?.length === 0) return [];
+  let query = transaction
     .selectFrom('journal_cells')
     .select([
       'id',
@@ -361,8 +363,9 @@ export async function lessonCells(
       'changed_how',
       'not_graded',
     ])
-    .where('lesson_id', 'in', [...lessonIds])
-    .execute();
+    .where('lesson_id', 'in', [...lessonIds]);
+  if (studentIds !== undefined) query = query.where('student_id', 'in', [...studentIds]);
+  const rows = await query.execute();
   return rows.map((row) => ({
     id: row.id,
     changedHow: row.changed_how,

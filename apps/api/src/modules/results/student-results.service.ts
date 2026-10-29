@@ -49,6 +49,7 @@ import { countsFromOf, goLiveOf, notInSystem } from '../journal/start-quarter.js
 import { studentRowReading, type StudentRowReading } from '../journal/student-row-reading.js';
 import {
   subjectQuarterLessons,
+  type JournalColumnsCache,
   type StudentSubjectQuarter,
 } from '../journal/subject-quarter-lessons.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -168,6 +169,8 @@ export class StudentResultsService {
         quarters.map((one) => one.id),
       );
       const fourthClosed = quarters.some((one) => one.number === 4 && closings.has(one.id));
+      // Task 10.1b: each journal's columns read once for the four quarters of this read.
+      const columns: JournalColumnsCache = new Map();
       const subjects = [];
       for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
         const rows: unknown[] = [];
@@ -177,7 +180,7 @@ export class StudentResultsService {
         let readsEveryQuarter = true;
         let subject: JournalRow['subject'] | undefined;
         for (const quarter of quarters) {
-          const one = await subjectQuarter(context, year, quarter, subjectId);
+          const one = await subjectQuarter(context, year, quarter, subjectId, columns);
           if (one === undefined || one.attendanceOnly) continue;
           const quarterly = one.weights.quarterly;
           if (quarterly === null) continue;
@@ -534,6 +537,7 @@ async function subjectQuarter(
   year: YearRow,
   quarter: QuarterRow,
   subjectId: string,
+  columns?: JournalColumnsCache,
 ): Promise<SubjectQuarter | undefined> {
   if (quarter.startDate > context.today) return undefined;
   const found = (
@@ -545,6 +549,7 @@ async function subjectQuarter(
       subjectId,
       quarter,
       studentIds: [context.studentId],
+      ...(columns === undefined ? {} : { columns }),
     })
   ).get(context.studentId);
   // A rating entry with no held lesson still makes a result, as the grid shows it.
