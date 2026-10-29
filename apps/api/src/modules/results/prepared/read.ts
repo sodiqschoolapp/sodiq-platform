@@ -130,12 +130,24 @@ export async function preparedFigures(
   const previous = new Map<string, Fraction | null>();
   const before = figures.size === 0 ? null : await previousQuarterOf(moment, quarter);
   if (before !== null) {
-    const earlier = await split(moment, freshness, 'figures', before.id, subjects);
-    for (const one of earlier.fresh.values()) {
-      for (const [key, value] of (one.value as FiguresValue).work) previous.set(key, value);
+    // Only the `work` of the previous quarter is compared (task 10.1b: read alone).
+    const earlier = await freshUnits(moment.transaction, {
+      branchId: moment.branchId,
+      kind: 'figures',
+      quarterId: before.id,
+      unitIds: subjects,
+      now: moment.now,
+      schoolInputs: PREPARED_SHAPE,
+      part: 'work',
+    });
+    for (const one of earlier.values()) {
+      freshness.used(one.preparedAt);
+      for (const [key, value] of one.value as FiguresValue['work']) previous.set(key, value);
     }
-    if (earlier.behind.length > 0) {
-      for (const [key, value] of await workFiguresOf(moment, before, earlier.behind)) {
+    const behind = subjects.filter((id) => !earlier.has(id));
+    if (behind.length > 0) {
+      freshness.missed();
+      for (const [key, value] of await workFiguresOf(moment, before, behind)) {
         previous.set(key, value);
       }
     }

@@ -102,11 +102,18 @@ export async function freshUnits(
     readonly unitIds: readonly string[];
     readonly now: Date;
     readonly schoolInputs: string;
+    /**
+     * Task 10.1b: one field of the stored object only (the early-warning list reads the `work`
+     * of the previous quarter's figures), never the whole value decoded.
+     */
+    readonly part?: string;
   },
 ): Promise<Map<string, FreshUnit>> {
   if (input.unitIds.length === 0) return new Map();
+  const value =
+    input.part === undefined ? sql`p.value` : sql`p.value -> '$o' -> ${input.part}::text`;
   const found = await sql<{ unit_id: string; prepared_at: Date; value: unknown }>`
-    select p.unit_id, p.prepared_at, p.value
+    select p.unit_id, p.prepared_at, ${value} as value
     from report_prepared p
     where p.branch_id = ${input.branchId}
       and p.kind = ${input.kind}
