@@ -1325,7 +1325,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - From 8.7 (pull request #225, decision 6, Look first): the Journal discipline report of `08` moves onto prepared totals with "updated at" and gets its export and the list of lessons behind each count; the counts per teacher of 8.7 (`GET /api/journal/discipline`, worked out on read from `lessonStatuses` and `lessonsCounted`) are the figures it prepares, with the same columns and scope (the branch; own subjects for the Head Teachers; the Tutor subjects for the Head Tutor).
   - From 9.4b (pull request #236, decision 7): `08`, Home pages by role, Academic Vice Principal, "quarter progress": the home card shows the quarter's dates and the closing checklist's counts (`QuarterProgressCard`, `apps/web/src/features/access/home-cards.tsx`); the school days passed of the quarter's total come with the prepared totals here.
 
-- [ ] **10.2b The sign-in-and-save check in a hidden Monitoring branch** (split from 10.2 in pull request #256, decision 1)
+- [x] **10.2b The sign-in-and-save check in a hidden Monitoring branch** (split from 10.2 in pull request #256, decision 1); check green on production: pending, owner
   - Read: `13` (Monitoring), `14` (Whole system), `edge/system-behaviour`, `02` (Roles and access), `docs/monitoring.md`.
   - Build: the hidden Monitoring branch of answer 10, built by a command the owner runs once on the server, left out of every school report and of the daily reminders to the Super Admins; the sign-in-and-save check every 5 minutes from 07:00 as a Grafana Synthetic Monitoring k6 script from an EU probe, and its alert in `apps/api/src/monitoring/alert-rules.ts`.
   - Done when: the check runs green on production for one school day.

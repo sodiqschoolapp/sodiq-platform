@@ -49,9 +49,9 @@ export default async function () {
   const session = (
     await call('POST', '/api/auth/sign-in', { login, password }, undefined, 'sign-in')
   ).json();
-  const branch = session.branches.length === 1 ? session.branches[0].id : undefined;
-  if (branch === undefined) fail('sign-in: the test teacher has not exactly one branch');
   try {
+    const branch = session.branches.length === 1 ? session.branches[0].id : undefined;
+    if (branch === undefined) fail('sign-in: the test teacher has not exactly one branch');
     const home = (await call('GET', '/api/timetable/home', undefined, branch, 'home')).json();
     const lesson = home.lessons.find((one) => one.date === home.today && one.journalId !== null);
     if (lesson === undefined) fail('home: no lesson of today with a journal');
@@ -83,6 +83,12 @@ export default async function () {
       fail(`save: ${String(Math.round(save.timings.duration))} ms`);
     }
   } finally {
-    await call('POST', '/api/auth/sign-out', {}, branch, 'sign-out');
+    // Always signed out, so no session is left behind every 5 minutes; a failed sign-out is a
+    // failed check of its own and never hides why an earlier step failed.
+    const out = await http.asyncRequest('POST', `${BASE}/api/auth/sign-out`, '{}', {
+      headers: { ...JSON_HEADERS, 'Idempotency-Key': key() },
+      tags: { name: 'sign-out' },
+    });
+    check(out, { 'sign-out answered 2xx': (r) => r.status >= 200 && r.status < 300 });
   }
 }

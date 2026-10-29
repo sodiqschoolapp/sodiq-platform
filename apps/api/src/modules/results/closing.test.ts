@@ -4327,6 +4327,41 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       });
       expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toEqual([]);
       expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toEqual([]);
+      // The same branch unmarked, the next days: both reach the Super Admin.
+      expect(await check(b.s.branch, '2026-11-05T02:00:00+05:00')).toHaveLength(1);
+      await job(b.s.branch, '2026-11-06T07:00:00+05:00', (transaction) =>
+        daily().checkMissed(transaction, { day: '2026-11-06' }, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'results.check_difference', b.s.branch)).toHaveLength(1);
+      expect(await noticesTo(admin, 'results.check_missed', b.s.branch)).toHaveLength(1);
+    });
+
+    // The rest of the daily work runs there as in any branch (plan, Tests, Jobs): the nightly check
+    // above, the forced-delete purge and the cleanup of export files.
+    it('still enqueues the purge and the export cleanup of the Monitoring branch', async () => {
+      const b = await base();
+      await asMonitoring(b.s.branch, async () => {
+        t.clock.set('2026-10-28T07:00:00+05:00');
+        try {
+          await daily().tick();
+        } finally {
+          t.clock.set(START);
+        }
+      });
+      const kinds = (
+        await t.database.migrator
+          .selectFrom('scheduled_runs')
+          .select('kind')
+          .where('branch_id', '=', b.s.branch)
+          .execute()
+      ).map((one) => one.kind);
+      expect(kinds).toEqual(
+        expect.arrayContaining([
+          'timetable.forced_delete_purge',
+          'journal.exports_cleanup',
+          'results.check',
+        ]),
+      );
     });
 
     it('tells the Super Admins of no overdue close and no missing plan window of the Monitoring branch', async () => {

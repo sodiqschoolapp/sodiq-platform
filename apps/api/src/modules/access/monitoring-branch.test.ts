@@ -11,8 +11,14 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { createDatabase } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
 import { createTestApp } from '../../testing/create-test-app.js';
+import {
+  assignmentsAnswerSchema,
+  TEACHER_ONLY_PERMISSIONS,
+  TeacherOnlySampleController,
+} from '../../testing/permission-sample.controller.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
@@ -153,5 +159,60 @@ describe('the hidden Monitoring branch and who reaches it', () => {
       post: 'senior_head_teacher',
     });
     expect((await holders(monitoring)).map((holder) => holder.accountId)).not.toContain(account.id);
+  });
+
+  // Permission review of the code, must-fix 1: when another assignment lets the request in, the
+  // Senior Head Teacher's assignment is still not among those a route decides parts from.
+  it('keeps the Senior Head Teacher out of the assignments a route reads, when the Teacher role lets the request in', async () => {
+    const probe = await createTestApp({
+      database: createDatabase(database.appUrl),
+      clock,
+      controllers: [TeacherOnlySampleController],
+      permissionTable: TEACHER_ONLY_PERMISSIONS,
+    });
+    try {
+      const probeKit = signInKit(probe);
+      const { account, cookie } = await probeKit.fullSession('Bekzod', 'Yusupov');
+      await probeKit.giveRole(account.id, { role: 'senior_head_teacher' });
+      await probeKit.giveRole(account.id, { role: 'teacher', branchId: monitoring });
+      await probeKit.giveRole(account.id, { role: 'teacher', branchId: north });
+      const rolesIn = async (branch: string) => {
+        const response = await request(probe.getHttpServer())
+          .get('/api/permission-sample/teacher-only')
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, branch);
+        expect(response.status).toBe(200);
+        return assignmentsAnswerSchema.parse(response.body).roles.sort();
+      };
+      expect(await rolesIn(monitoring)).toEqual(['teacher', 'teacher']);
+      expect(await rolesIn(north)).toEqual(['senior_head_teacher', 'teacher', 'teacher']);
+    } finally {
+      await probe.close();
+    }
+  });
+
+  // Permission review of the code, must-fix 2 and should-fix 3: the hidden branch is no target
+  // of a release or of a travel time, answered as an unknown branch, with nothing written.
+  it('refuses a travel time to it as to an unknown branch', async () => {
+    const strict = signInKit(app, { newAccountsHold: { role: 'super_admin' } });
+    const { cookie } = await strict.completeSession('Kamola', 'Ergasheva');
+    const set = (branch: string, other: string) =>
+      request(server)
+        .put('/api/setup/travel-times')
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, branch)
+        .send({ otherBranchId: other, minutes: 30 });
+    const audit = () =>
+      database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '=', 'travel_time.set')
+        .execute();
+    const before = await audit();
+    expect((await set(north, monitoring)).status).toBe(404);
+    expect((await set(monitoring, north)).status).toBe(404);
+    expect(await database.migrator.selectFrom('travel_times').selectAll().execute()).toEqual([]);
+    expect(await audit()).toEqual(before);
+    expect((await set(north, south)).status).toBe(200);
   });
 });

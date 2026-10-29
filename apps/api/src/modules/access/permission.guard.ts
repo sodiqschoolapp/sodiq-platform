@@ -136,14 +136,21 @@ export class PermissionGuard implements CanActivate {
     // without one could name any uuid; an unknown branch is refused like a
     // branch of somebody else, so the answer does not tell which ids exist.
     // The hidden Monitoring branch is reached by the Super Admin and by the
-    // assignments of the branch itself only (task 10.2b, `reachingBranch`).
+    // assignments of the branch itself only (task 10.2b, `reachingBranch`): an
+    // account with any assignment without a branch has the branch read, so that
+    // a school-wide assignment never reaches it among `access.assignments` either,
+    // also when another assignment is what lets the request in (permission
+    // review must-fix 1).
     let monitoring = false;
-    if (branchId !== null && first.some((assignment) => assignment.branchId === null)) {
+    if (
+      branchId !== null &&
+      session.assignments.some((assignment) => assignment.branchId === null)
+    ) {
       const branch = await this.branchOf(branchId);
-      if (branch === undefined) {
+      if (branch === undefined && first.some((assignment) => assignment.branchId === null)) {
         throw new ApiException('permission_denied', 403);
       }
-      monitoring = branch.monitoring;
+      monitoring = branch?.monitoring ?? false;
     }
     const reaching = reachingBranch(session.assignments, monitoring);
     const assignments =

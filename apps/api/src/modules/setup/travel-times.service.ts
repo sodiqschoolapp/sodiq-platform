@@ -101,6 +101,8 @@ export class TravelTimes {
         .selectFrom('branches')
         .select('id')
         .where('id', 'in', [low, high])
+        // No travel time to or from the hidden Monitoring branch (task 10.2b): an unknown branch.
+        .where('purpose', 'is', null)
         .orderBy('id')
         .forUpdate()
         .execute();

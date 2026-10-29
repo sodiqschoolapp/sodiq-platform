@@ -2,12 +2,7 @@ import { checkTable } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_PERMISSIONS } from '../../testing/permission-sample.controller.js';
 import type { CurrentAssignment } from './current-assignments.js';
-import {
-  decide,
-  MONITORING_BRANCH_ROLES,
-  reachingBranch,
-  type Requirement,
-} from './permission-check.js';
+import { decide, reachingBranch, type Requirement } from './permission-check.js';
 
 const NORTH = '0199b1c0-0000-7000-8000-00000000000a';
 const SOUTH = '0199b1c0-0000-7000-8000-00000000000b';
@@ -162,9 +157,5 @@ describe('the hidden Monitoring branch', () => {
     const teacher = held('teacher', NORTH);
 
     expect(reachingBranch([senior, teacher], false)).toEqual([senior, teacher]);
-  });
-
-  it('is the Super Admin only', () => {
-    expect([...MONITORING_BRANCH_ROLES]).toEqual(['super_admin']);
   });
 });

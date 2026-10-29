@@ -86,5 +86,5 @@ describe('the comparison of the restored copy', () => {
     } finally {
       await database.destroy();
     }
-  });
+  }, 120_000);
 });

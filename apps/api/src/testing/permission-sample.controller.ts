@@ -160,3 +160,25 @@ export class FaultyAccessController {
     return { ok: true };
   }
 }
+
+/**
+ * Task 10.2b (permission review of the code, must-fix 1): a route of an area only the Teacher
+ * holds, answering the roles of `access.assignments`, the list routes decide parts from. For an
+ * application made with `permissionTable: TEACHER_ONLY_PERMISSIONS`.
+ */
+export const TEACHER_ONLY_PERMISSIONS: PermissionTable = {
+  ...PERMISSIONS,
+  teacher_only: permissionRows({ teacher: ['view'] }),
+};
+
+export const assignmentsAnswerSchema = z.object({ roles: z.array(z.string()) });
+
+@Controller('permission-sample')
+export class TeacherOnlySampleController {
+  @Get('teacher-only')
+  @requiresInTable('teacher_only', 'view')
+  @Returns(assignmentsAnswerSchema)
+  teacherOnly(@CurrentAccess() access: Access): { roles: string[] } {
+    return { roles: access.assignments.map((assignment) => assignment.role) };
+  }
+}

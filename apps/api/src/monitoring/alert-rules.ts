@@ -33,12 +33,6 @@ export interface AlertRule {
 export const SIGN_IN_SAVE_UTC_HOURS = { from: 2, until: 15 } as const;
 const SIGN_IN_SAVE_HOURS = `hour() >= ${String(SIGN_IN_SAVE_UTC_HOURS.from)} and hour() < ${String(SIGN_IN_SAVE_UTC_HOURS.until)}`;
 
-/** Whether the check alerts at a moment, by the same hours as its rule. */
-export function signInSaveAlertsAt(moment: Date): boolean {
-  const hour = moment.getUTCHours();
-  return hour >= SIGN_IN_SAVE_UTC_HOURS.from && hour < SIGN_IN_SAVE_UTC_HOURS.until;
-}
-
 const SAVE_ROUTES = [
   'POST /api/journal/lessons/:lessonId/attendance',
   'POST /api/journal/lessons/:lessonId/all-present',

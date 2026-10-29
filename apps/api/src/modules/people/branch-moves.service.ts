@@ -175,12 +175,25 @@ export class BranchMoves {
             .select('branch_id')
             .where('id', '=', studentId)
             .executeTakeFirst();
+          // The hidden Monitoring branch is no target, and its invented students go nowhere
+          // (task 10.2b, permission review must-fix 2): answered as an unknown branch.
           const named = await transaction
             .selectFrom('branches')
             .select('id')
             .where('id', '=', input.toBranchId)
+            .where('purpose', 'is', null)
             .executeTakeFirst();
-          if (seen === undefined || !same(seen.branch_id, branchId) || named === undefined) {
+          const source = await transaction
+            .selectFrom('branches')
+            .select('purpose')
+            .where('id', '=', branchId)
+            .executeTakeFirst();
+          if (
+            seen === undefined ||
+            !same(seen.branch_id, branchId) ||
+            named === undefined ||
+            source?.purpose !== null
+          ) {
             throw notFound();
           }
           await lockOpenQuarters(
@@ -199,6 +212,7 @@ export class BranchMoves {
             .selectFrom('branches')
             .select('id')
             .where('id', '=', input.toBranchId)
+            .where('purpose', 'is', null)
             .executeTakeFirst();
           if (target === undefined) {
             throw notFound();

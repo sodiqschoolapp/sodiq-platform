@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { CHECK_VIOLATION, INSUFFICIENT_PRIVILEGE } from '../../testing/claims-harness.js';
+import { ClassesKit } from '../../testing/classes-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { monitoringBranchId } from './monitoring-branch.js';
@@ -173,6 +174,57 @@ describe('the hidden Monitoring branch in the database', () => {
       .where('purpose', 'is not', null)
       .execute();
     expect(marked).toEqual([]);
+  });
+
+  // Each arm of the empty-branch check of `monitoring_branch_mark`, reached alone (plan review of
+  // the code: a year, a class with its year, a role; a building and a staff member above).
+  it('refuses to mark a branch that holds a year, a class or a role, and an unknown branch', async () => {
+    const yearOnly = await insertBranch(database.migrator, 'With a year');
+    const years = new ClassesKit(database.migrator);
+    await years.year(yearOnly);
+    const withClass = await insertBranch(database.migrator, 'With a class');
+    const year = await years.year(withClass);
+    await database.migrator
+      .insertInto('classes')
+      .values({
+        branch_id: withClass,
+        academic_year_id: year,
+        grade: 7,
+        name: 'Oxford',
+        language: 'uz',
+        max_size: 26,
+      })
+      .execute();
+    const withRole = await insertBranch(database.migrator, 'With a role');
+    const account = await database.migrator
+      .insertInto('accounts')
+      .values({
+        login: 'a.vice',
+        password_hash: '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA',
+        must_change_password: false,
+        created_at: new Date(AT),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.migrator
+      .insertInto('assignments')
+      .values({
+        account_id: account.id,
+        role: 'academic_vice_principal',
+        branch_id: withRole,
+        valid_from: new Date(AT),
+        created_at: new Date(AT),
+      })
+      .execute();
+    for (const branch of [yearOnly, withClass, withRole]) {
+      await expect(mark(branch)).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'monitoring_branch_mark_empty',
+      });
+    }
+    await expect(mark('01a18770-0000-7000-8000-000000000000')).rejects.toMatchObject({
+      code: '23503',
+    });
   });
 
   // Runs after the refusals above: from here on, the Monitoring branch exists.

@@ -9,7 +9,6 @@ import {
   alertRulesYaml,
   seriesOfRule,
   SIGN_IN_SAVE_UTC_HOURS,
-  signInSaveAlertsAt,
 } from './alert-rules.js';
 import { SERIES } from './series.js';
 
@@ -115,10 +114,14 @@ describe('the alert rules', () => {
         ' or absent_over_time(probe_success{job="sign-in-and-save"}[11m]))' +
         ` and on () (hour() >= ${String(SIGN_IN_SAVE_UTC_HOURS.from)} and hour() < ${String(SIGN_IN_SAVE_UTC_HOURS.until)})`,
     );
-    const at = (time: string) => signInSaveAlertsAt(new Date(`2026-11-02T${time}:00+05:00`));
-    expect(at('06:59')).toBe(false);
-    expect(at('07:00')).toBe(true);
-    expect(at('19:59')).toBe(true);
-    expect(at('20:00')).toBe(false);
+    // The hours of the expression, as moments of Tashkent: 07:00 is the first hour in, 20:00 the
+    // first hour out (hour() is the UTC hour of the evaluation).
+    const hourOf = (time: string) => new Date(`2026-11-02T${time}:00+05:00`).getUTCHours();
+    const inWindow = (time: string) =>
+      hourOf(time) >= SIGN_IN_SAVE_UTC_HOURS.from && hourOf(time) < SIGN_IN_SAVE_UTC_HOURS.until;
+    expect(rule?.expr).toContain('hour() >= 2 and hour() < 15');
+    expect(['06:59', '07:00', '19:59', '20:00'].map(inWindow)).toEqual([false, true, true, false]);
+    // The window holds both arms: a check that fails and a check with no result at all.
+    expect(rule?.expr).toMatch(/^\(.+ == 0 or absent_over_time\(.+\)\) and on \(\) \(/);
   });
 });

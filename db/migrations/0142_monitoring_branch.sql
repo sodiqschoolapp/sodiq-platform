@@ -26,7 +26,8 @@ grant insert (name, address, phone, email, working_weekdays) on branches to sodi
 
 -- The command of the owner (`monitoring-branch`, apps/api/src/monitoring/)
 -- marks the branch it has just created, and only such a branch: one that holds
--- no building, class, staff member or year yet. A real branch is never marked.
+-- no building, class, staff member, student, role or year yet. A real branch is
+-- never marked.
 create function monitoring_branch_mark(branch_id uuid)
 returns void
 language plpgsql
@@ -46,6 +47,10 @@ begin
     )
     or exists (
       select 1 from public.academic_years x where x.branch_id = monitoring_branch_mark.branch_id
+    )
+    or exists (select 1 from public.students x where x.branch_id = monitoring_branch_mark.branch_id)
+    or exists (
+      select 1 from public.assignments x where x.branch_id = monitoring_branch_mark.branch_id
     )
   then
     raise exception 'only a new, empty branch is marked as the Monitoring branch'

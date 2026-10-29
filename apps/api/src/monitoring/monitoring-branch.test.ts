@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { BRANCH_HEADER } from '@sodiq/shared';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../database/transactions.js';
 import { Audit } from '../modules/audit/audit.service.js';
@@ -245,5 +247,48 @@ describe('the command that builds the Monitoring branch, and the check that uses
     const script = readFileSync(K6_SCRIPT, 'utf8');
     expect(script).not.toMatch(/console\./);
     expect(script).not.toContain('Sinov');
+  });
+
+  // The owner on #261: "refuse the Monitoring branch to the Senior Head Teacher". A Senior Head
+  // Teacher of the class's own subject is refused its journal and its timetable there, and
+  // reads both once the branch is unmarked (plan, Tests, Permissions; review decision 3).
+  it('refuses the journal and the timetable of the Monitoring class to a Senior Head Teacher of its subject', async () => {
+    const mathematics = await database.migrator
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Mathematics')
+      .executeTakeFirstOrThrow();
+    const plain = signInKit(app);
+    const { account, cookie } = await plain.fullSession('Nodir', 'Qodirov');
+    await plain.giveRole(account.id, { role: 'senior_head_teacher', subjectIds: [mathematics.id] });
+    const journal = await database.migrator
+      .selectFrom('journals')
+      .select('id')
+      .where('branch_id', '=', built.branchId)
+      .executeTakeFirstOrThrow();
+    const reads = async () => {
+      const call = (path: string) =>
+        request(app.getHttpServer())
+          .get(path)
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, built.branchId);
+      return [
+        (await call(`/api/journal/journals/${journal.id}`)).status,
+        (await call(`/api/timetable/views/choices?date=2027-01-14`)).status,
+      ];
+    };
+    expect(await reads()).toEqual([403, 403]);
+    const setPurpose = (purpose: string | null) =>
+      database.migrator
+        .updateTable('branches')
+        .set({ purpose })
+        .where('id', '=', built.branchId)
+        .execute();
+    await setPurpose(null);
+    try {
+      expect(await reads()).toEqual([200, 200]);
+    } finally {
+      await setPurpose('monitoring');
+    }
   });
 });
