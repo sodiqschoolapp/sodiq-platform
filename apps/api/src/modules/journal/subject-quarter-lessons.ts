@@ -146,10 +146,29 @@ interface MemberRow {
 type JournalData = KnownJournal;
 
 /**
- * Task 10.1b: the year's columns of each journal, kept for the quarters of one read-only request
- * (the student results page reads each journal once per quarter). Never kept across a write.
+ * Task 10.1b: the year's columns and the row of each journal, kept for the quarters of one
+ * read-only request (the student results page reads each journal once per quarter). Never kept
+ * across a write.
  */
-export type JournalColumnsCache = Map<string, ReturnType<typeof journalColumns>>;
+export interface JournalColumnsCache {
+  readonly columns: Map<string, ReturnType<typeof journalColumns>>;
+  readonly rows: Map<string, Promise<JournalRow[]>>;
+}
+
+/** `journalRows` of one journal, from the cache when one is given. */
+export function journalRowOf(
+  transaction: Transaction,
+  branchId: string,
+  journalId: string,
+  cache?: JournalColumnsCache,
+): Promise<JournalRow[]> {
+  let read = cache?.rows.get(journalId);
+  if (read === undefined) {
+    read = journalRows(transaction, branchId, { journalId });
+    cache?.rows.set(journalId, read);
+  }
+  return read;
+}
 
 /** The held lessons, works, cells, expected and exempt students of one journal in the quarter. */
 async function journalData(
@@ -161,10 +180,10 @@ async function journalData(
   studentIds: readonly string[],
   cache?: JournalColumnsCache,
 ): Promise<JournalData> {
-  let read = cache?.get(journal.id);
+  let read = cache?.columns.get(journal.id);
   if (read === undefined) {
     read = journalColumns(transaction, journal, timeZone, now);
-    cache?.set(journal.id, read);
+    cache?.columns.set(journal.id, read);
   }
   const columns = await read;
   const lessons = columns.lessons.filter(
@@ -351,7 +370,7 @@ export async function subjectQuarterLessons(
       data.set(row.id, input.known);
       continue;
     }
-    const [journal] = await journalRows(transaction, input.branchId, { journalId: row.id });
+    const [journal] = await journalRowOf(transaction, input.branchId, row.id, input.columns);
     if (journal === undefined) continue;
     data.set(
       row.id,

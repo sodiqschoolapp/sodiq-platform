@@ -49,6 +49,7 @@ import { countsFromOf, goLiveOf, notInSystem } from '../journal/start-quarter.js
 import { studentRowReading, type StudentRowReading } from '../journal/student-row-reading.js';
 import {
   subjectQuarterLessons,
+  journalRowOf,
   type JournalColumnsCache,
   type StudentSubjectQuarter,
 } from '../journal/subject-quarter-lessons.js';
@@ -170,7 +171,7 @@ export class StudentResultsService {
       );
       const fourthClosed = quarters.some((one) => one.number === 4 && closings.has(one.id));
       // Task 10.1b: each journal's columns read once for the four quarters of this read.
-      const columns: JournalColumnsCache = new Map();
+      const columns: JournalColumnsCache = { columns: new Map(), rows: new Map() };
       const subjects = [];
       for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
         const rows: unknown[] = [];
@@ -564,9 +565,12 @@ async function subjectQuarter(
     undefined,
   );
   if (last === undefined) return undefined;
-  const [journal] = await journalRows(context.transaction, context.branchId, {
-    journalId: last.journalId,
-  });
+  const [journal] = await journalRowOf(
+    context.transaction,
+    context.branchId,
+    last.journalId,
+    columns,
+  );
   if (journal === undefined) return undefined;
   const switches = switchesIn(journal, quarter.id);
   if (switches === undefined) return undefined;

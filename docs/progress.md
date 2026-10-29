@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 29 October 2026: task 10.1b Every speed target of `12` at three times the size
+
+- **Speed run in two jobs** (`.github/workflows/speed.yml`): `build` builds and fills the school, `measure` restores its dump and prepares, reads, saves, searches and loads, with the preparation running every minute; a partial report after every branch, and a run out of time fails with "not measured". The small run does both phases in one process on every pull request.
+- **Faster reads** (the school's size, 4 CPUs, one branch, prepared): closing checklist 3.4 → 0.55 s (prepared `closing` units per subject; the plan items without the progress walk), attendance today 2.1 → 0.28 s, counts per teacher 1.45 → 0.33 s, plan progress 1.9 → 0.19 s (prepared `plan_progress` units), results page 1.64 → 1.03 s, the rest 0.04 to 0.3 s; the Vice Principal's home (nine reads at once) about 1.1 s. Shared costs removed: the fingerprint of the school-wide tables (school change rows, 0143), JIT, the audit check of a read, freshness per lesson. Indexes of 0144 and 0145 built without a long lock by an index-only migration kind.
+- The triple numbers are those of the Speed run on the branch (run 40948269374), in the report of #263; a target missed there is written here with its time.
+
+Left out: the `class_figures` unit (not needed once the shared costs went; 0143 still allows the kind); a personal-data test over two partitions (only an index changed); attendance today's past days on a prepared unit (live at 0.28 s).
+
+The next sessions must know:
+
+- An index on a large or partitioned table goes in a migration of its own starting `-- migrate: no transaction` (`migrate.ts`), holding only `create index concurrently if not exists`.
+- A new school-wide input of the prepared totals gets the triggers of 0143 and its name in `SCHOOL_INPUTS`; a change of a stored value's shape raises `PREPARED_SHAPE`.
+- Request transactions run with `jit = off`.
+
 ## 29 October 2026: task 10.2b The sign-in-and-save check in a hidden Monitoring branch
 
 - **Monitoring branch** (`branches.purpose`, 0142): built once by the owner's command `node apps/api/dist/monitoring/cli.js monitoring-branch` through the real routes (one class, three invented students, a test teacher, one lesson at 06:30 every day). Only the Super Admin and its own assignments reach it (the guard, `reachingBranch`); left out of the Super Admin notices, prepared totals, counts to Grafana, travel times and releases.
