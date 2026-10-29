@@ -457,6 +457,7 @@ describe('the record of a branch', () => {
         workingWeekdays: [1, 2, 3, 4, 5, 6],
         buildingCount: 0,
         roomCount: 0,
+        monitoring: false,
       });
     });
 
