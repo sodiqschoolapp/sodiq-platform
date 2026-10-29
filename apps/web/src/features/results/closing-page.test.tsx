@@ -49,6 +49,7 @@ const NO_RESULT: ClosingChecklist['items'][number] = {
 const CHECKLIST: ClosingChecklist = {
   quarters: [{ id: Q1, number: 1, startDate: '2026-09-01', endDate: '2026-10-31' }],
   quarterId: Q1,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   state: 'open',
   opensOn: '2026-10-17',
   lastDay: '2026-10-31',
@@ -139,6 +140,51 @@ describe('the closing checklist', () => {
       ]);
     });
     expect(screen.getByText('Blocking: 1 · warnings: 1')).not.toBeNull();
+  });
+
+  // Task 10.1b: the items come from the prepared totals (`edge/system-behaviour`: "A page that
+  // finds them behind calculates from source and shows 'updating'"); Refresh asks again, nothing
+  // on a timer.
+  it('shows "updating" with Refresh while the totals are behind, then the time they were updated', async () => {
+    let answers = 0;
+    const calls = fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () => {
+        answers += 1;
+        return json({
+          ...CHECKLIST,
+          prepared:
+            answers === 1
+              ? { updatedAt: null, updating: true }
+              : { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
+        });
+      },
+    });
+    renderApp('/results/closing');
+    const state = async () =>
+      (await waitFor(() => {
+        const found = document.querySelector('[data-prepared-state]');
+        expect(found).not.toBeNull();
+        return found;
+      })) as HTMLElement;
+    expect((await state()).dataset.preparedState).toBe('updating');
+    expect((await state()).textContent).toBe(en.prepared.updating);
+    // The items shown while updating are the server's, worked out from the journal.
+    await waitFor(() => {
+      expect(rowsOf()).toHaveLength(2);
+    });
+    const closingCalls = () =>
+      calls.filter((call) => call.route === 'GET /api/results/closing').length;
+    const before = closingCalls();
+    fireEvent.click(screen.getByRole('button', { name: en.prepared.refresh }));
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-prepared-state]')?.getAttribute('data-prepared-state'),
+      ).toBe('updated');
+    });
+    expect(closingCalls()).toBe(before + 1);
+    expect(document.querySelector('[data-prepared-state]')?.textContent).toMatch(/^Updated /);
+    expect(screen.queryByRole('button', { name: en.prepared.refresh })).toBeNull();
   });
 
   // Task 9.2d: "In quarter 4 only merge or drop exist": the items left block the close.

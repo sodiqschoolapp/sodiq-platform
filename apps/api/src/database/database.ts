@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, type LogEvent } from 'kysely';
 import { Pool, types } from 'pg';
 import type { DB } from './types.generated.js';
 
@@ -40,13 +40,17 @@ const schoolDatesAsText = { getTypeParser: parserFor as typeof types.getTypePars
 export interface DatabaseOptions {
   /** The most connections the pool opens. A test of the pool itself uses 1. */
   max?: number;
+  /** Task 10.1b: told of every query and its time (the speed run's breakdown); none by default. */
+  log?: (event: LogEvent) => void;
 }
 
 /** The pool connects on the first query, not here. */
 export function createDatabase(connectionString: string, options: DatabaseOptions = {}): Database {
+  const { log, ...pool } = options;
   return new Kysely<DB>({
     dialect: new PostgresDialect({
-      pool: new Pool({ connectionString, types: schoolDatesAsText, ...options }),
+      pool: new Pool({ connectionString, types: schoolDatesAsText, ...pool }),
     }),
+    ...(log === undefined ? {} : { log }),
   });
 }

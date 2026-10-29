@@ -11,6 +11,8 @@ import type { Database } from './database.js';
  */
 const SCHOOL_WIDE_TABLES: Record<string, string> = {
   schema_migrations: 'The list of applied migrations; the application can only read it.',
+  report_school_changes:
+    'A write of a school-wide input of the prepared report totals (staff, subjects, absences and the rest of SCHOOL_INPUTS) concerns every branch at once, so it has no branch; a row holds a transaction id, a table name and a moment, nothing personal (task 10.1b, decision 10 of pull request #263, Look first).',
   branches: 'The branches themselves; the branch switcher shows their names.',
   travel_times:
     'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',

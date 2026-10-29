@@ -3,11 +3,12 @@
  * Please do not edit it manually.
  */
 
-import type { ColumnType } from "kysely";
+import type { ColumnType } from 'kysely';
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-  ? ColumnType<S, I | undefined, U>
-  : ColumnType<T, T | undefined, T>;
+export type Generated<T> =
+  T extends ColumnType<infer S, infer I, infer U>
+    ? ColumnType<S, I | undefined, U>
+    : ColumnType<T, T | undefined, T>;
 
 export type Json = JsonValue;
 
@@ -1540,6 +1541,12 @@ export interface ReportPreparedLessons {
   value: Json;
 }
 
+export interface ReportSchoolChanges {
+  changed_at: Timestamp | null;
+  table_name: string;
+  xid: Generated<string>;
+}
+
 export interface RequestKeys {
   account_id: string | null;
   created_at: Timestamp;
@@ -2270,6 +2277,7 @@ export interface DB {
   report_changes: ReportChanges;
   report_prepared: ReportPrepared;
   report_prepared_lessons: ReportPreparedLessons;
+  report_school_changes: ReportSchoolChanges;
   request_keys: RequestKeys;
   result_check_differences: ResultCheckDifferences;
   result_checks: ResultChecks;

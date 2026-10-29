@@ -6,7 +6,6 @@ import {
   recalculateAndCompare,
   storedQuarterInputs,
   storedQuarterOutcome,
-  type ResultFlag,
 } from '@sodiq/calc';
 import {
   CLOSING_BLOCKING,
@@ -37,7 +36,6 @@ import {
   type ClosingDecision,
   type ClosingDecisionAnswer,
   type ClosingDecisionInput,
-  type ClosingFlagged,
   type ClosingItem,
   type ClosingJournalDecision,
   type ClosingJournalDecisionInput,
@@ -51,12 +49,10 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { exemptOnDate } from '../journal/exemption-read.js';
 import { journalRows, staffNames } from '../journal/journal-grid.query.js';
 import { subjectOf, unitOf } from '../journal/journal-grid.service.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { lessonStatuses } from '../journal/lesson-status.query.js';
-import { ratingDateOf } from '../journal/rating.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { carryClosedFrom, carryUnresolved, journalsRunningOn } from '../plans/plan-outcomes.js';
 import { clockOf } from '../plans/plan-read.js';
@@ -76,8 +72,15 @@ import { accountNames } from '../timetable/edit-lock.js';
 import { countsFromOf, goLiveOf } from '../journal/start-quarter.js';
 import { journalsWithoutTeacher, ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
-import { exemptedIn } from './closing.query.js';
-import { allowedDecisions, quarterOutcomes, type JournalOutcomes } from './quarter-outcomes.js';
+import {
+  flaggedIn,
+  listedJournalOf,
+  resultItemsOf,
+  studentsOfDraft,
+  type Flagged,
+} from './closing-results.js';
+import { quarterOutcomes, type JournalOutcomes } from './quarter-outcomes.js';
+import { Freshness, preparedClosing, preparedLessonStatuses } from './prepared/read.js';
 import {
   changesAgainst,
   outcomeShown,
@@ -142,15 +145,6 @@ interface StudentName {
   readonly lastName: string;
   readonly paternalName: string | null;
   readonly uid: string;
-}
-
-/** A flagged student of the checklist, with the journal it is listed under. */
-interface Flagged {
-  readonly journalId: string;
-  readonly subjectId: string;
-  readonly studentId: string;
-  readonly row: Omit<ClosingFlagged, 'student'>;
-  readonly stale: boolean;
 }
 
 /** A final record to store, with its shown outcome (task 9.2c). */
@@ -247,6 +241,7 @@ export class ClosingService {
         return closingChecklistSchema.parse({
           quarters: chosen.quarters,
           quarterId: null,
+          prepared: { updatedAt: null, updating: false },
           state: 'not_open',
           opensOn: null,
           lastDay: null,
@@ -262,6 +257,8 @@ export class ClosingService {
         quarter: chosen.quarter,
         opensOn: addDays(chosen.quarter.endDate, -CLOSING_OPENS_DAYS_BEFORE),
       };
+      // Task 10.1b: the items read the prepared units; the answer says when they were prepared.
+      const freshness = new Freshness();
       const schoolDays = await schoolDaysOf(transaction, branchId, chosen.quarter, today);
       const stored = await reopeningsOf(transaction, chosen.quarter.id);
       const reopenings = await this.reopeningsShown(transaction, scene, stored);
@@ -290,7 +287,10 @@ export class ClosingService {
           if (row.journal_id === null || row.ended_by_closing_id !== null) continue;
           const shown = reopenings.find((one) => one.id === row.id);
           if (shown === undefined) continue;
-          const items = await this.itemsOf(transaction, access, scene, row.journal_id);
+          const items = await this.itemsOf(transaction, access, scene, {
+            onlyJournalId: row.journal_id,
+            freshness,
+          });
           const blocking = items.filter((item) => CLOSING_BLOCKING.includes(item.kind)).length;
           const lockNow = items.filter((item) => CLOSING_LOCK_NOW.includes(item.kind)).length;
           reopenedJournals.push({
@@ -306,6 +306,7 @@ export class ClosingService {
         return closingChecklistSchema.parse({
           quarters: chosen.quarters,
           quarterId: chosen.quarter.id,
+          prepared: freshness.stamp,
           state: 'closed',
           opensOn: scene.opensOn,
           lastDay: chosen.quarter.endDate,
@@ -325,7 +326,7 @@ export class ClosingService {
       );
       const everClosed = stored.length > 0 || (await this.everClosed(transaction, scene));
       const open = today >= scene.opensOn;
-      const items = open ? await this.itemsOf(transaction, access, scene) : [];
+      const items = open ? await this.itemsOf(transaction, access, scene, { freshness }) : [];
       const blocking = items.filter((item) => CLOSING_BLOCKING.includes(item.kind)).length;
       const lockNow = items.filter((item) => CLOSING_LOCK_NOW.includes(item.kind)).length;
       // "Quarters are closed in order" holds for the first close (plan decision 12).
@@ -333,6 +334,7 @@ export class ClosingService {
       return closingChecklistSchema.parse({
         quarters: chosen.quarters,
         quarterId: chosen.quarter.id,
+        prepared: freshness.stamp,
         state: open ? 'open' : 'not_open',
         opensOn: scene.opensOn,
         lastDay: chosen.quarter.endDate,
@@ -1036,7 +1038,7 @@ export class ClosingService {
       (row) => row.journal_id === journal.id && row.ended_by_closing_id === null,
     );
     if (reopening === undefined) throw new ApiException('closing_journal_not_reopened', 409);
-    const items = await this.itemsOf(transaction, access, scene, journal.id);
+    const items = await this.itemsOf(transaction, access, scene, { onlyJournalId: journal.id });
     const blocking = items.filter((item) => CLOSING_BLOCKING.includes(item.kind));
     if (blocking.some((item) => !CLOSING_LOCK_NOW.includes(item.kind))) {
       throw new ApiException('closing_blocked', 409);
@@ -2006,8 +2008,14 @@ export class ClosingService {
     transaction: Transaction,
     access: Access,
     scene: Scene,
-    onlyJournalId?: string,
+    options: {
+      /** A reopened journal's own items only (task 9.2c). */
+      readonly onlyJournalId?: string;
+      /** Task 10.1b: read the prepared units, and collect their stamp, on the GET only. */
+      readonly freshness?: Freshness;
+    } = {},
   ): Promise<ClosingItem[]> {
+    const { onlyJournalId, freshness } = options;
     const { branchId, quarter, now } = scene;
     const journals = (
       await journalRows(transaction, branchId, { yearId: quarter.academicYearId })
@@ -2049,28 +2057,22 @@ export class ClosingService {
       drafts.push({ kind, teacherId, journalId, rest });
     };
 
-    // The results: flags, decisions, rating entries, no result, parts without data, weights.
-    const { journals: outcomes } = await quarterOutcomes(transaction, {
-      branchId,
-      timeZone: scene.timeZone,
-      now,
-      quarter,
-      subjectIds: null,
-    });
-    const studentIds = new Set<string>();
-    for (const one of outcomes.values()) for (const id of one.members.keys()) studentIds.add(id);
-    const names = await studentNames(transaction, [...studentIds]);
-    const nameOf = (id: string): StudentName =>
-      names.get(id) ?? { id, firstName: '', lastName: '', paternalName: null, uid: '' };
-    const flagged = flaggedIn(outcomes);
     const lessonsHeld = await heldLessonsOf(transaction, branchId, quarter, now);
     // The lessons: inside the edit period, no attendance, numbers missing (`07`; edge/journal).
-    const statuses = await lessonStatuses(
-      transaction,
-      branchId,
-      lessonsHeld.map((one) => one.id),
-      now,
-    );
+    // Task 10.1b: the GET reads the prepared facts of each lesson, the status decided now.
+    const statuses =
+      freshness === undefined
+        ? await lessonStatuses(
+            transaction,
+            branchId,
+            lessonsHeld.map((one) => one.id),
+            now,
+          )
+        : await preparedLessonStatuses(
+            { transaction, branchId, now },
+            lessonsHeld.map((one) => one.id),
+            freshness,
+          );
     const counted = await lessonsCounted(
       transaction,
       branchId,
@@ -2086,73 +2088,46 @@ export class ClosingService {
         one.held && one.journalId !== null ? [one.journalId] : [],
       ),
     );
-    const exempted = await exemptedIn(transaction, quarter, [...studentIds]);
-    for (const [journalId, one] of outcomes) {
-      const teacher = ownerOf(journalId);
-      // `07`: "A graded subject has weights that do not total 100 for this quarter" (decision 4).
-      if (one.weights.quarterly === null) {
-        if (withLessons.has(journalId)) push('weights_missing', journalId, null);
-        continue;
-      }
-      const listedHere = [...one.members].filter(
-        ([, member]) =>
-          member.outcome !== null &&
-          member.outcome.atLeaving === null &&
-          listedJournalOf(member.found?.spans ?? [], journalId) === journalId,
-      );
-      const own = flagged.filter((row) => row.journalId === journalId);
-      const undecided = own.filter((row) => !row.stale && row.row.decision === null);
-      const stale = own.filter((row) => row.stale);
-      const flaggedRow = (row: Flagged) => ({ student: nameOf(row.studentId), ...row.row });
-      if (undecided.length > 0) {
-        push('undecided', journalId, teacher, { students: undecided.map(flaggedRow) });
-      }
-      if (stale.length > 0) {
-        push('decision_outdated', journalId, teacher, { students: stale.map(flaggedRow) });
-      }
-      // `07`: "A rating exam entry is missing"; From 8.5: a pending entry blocks closing.
-      if (one.ratingShown) {
-        const missing = listedHere.filter(([, member]) => member.found?.ratingExam === null);
-        if (missing.length > 0) {
-          const { date } = await ratingDateOf(transaction, journalId, quarter.id);
-          const pending =
-            date === null
-              ? new Set<string>()
-              : await exemptOnDate(
-                  transaction,
-                  missing.map(([id]) => id),
-                  one.journal.subjectId,
-                  date,
-                );
-          push('rating_missing', journalId, teacher, {
-            students: missing.map(([id]) => ({ student: nameOf(id), pending: pending.has(id) })),
-          });
-        }
-      }
-      // `07`: "Students with no result in a subject and no exemption" (From 8.5).
-      const noResult = listedHere.filter(
-        ([id, member]) =>
-          member.outcome?.kind === 'no_result' &&
-          !exempted.has(`${id}|${one.journal.subjectId}`) &&
-          !exempted.has(`${id}|*`),
-      );
-      if (noResult.length > 0) {
-        push('no_result', journalId, teacher, { students: noResult.map(([id]) => nameOf(id)) });
-      }
-      // `edge/calculation`: "The checklist warns when a part has a weight but no data in a
-      // whole journal." Only once some student of the journal has a number.
-      const numbers = listedHere.flatMap(([, member]) =>
-        member.outcome?.kind === 'number' ? [member.outcome.result] : [],
-      );
-      if (numbers.length > 0) {
-        const parts = (['attendance', 'classwork', 'homework', 'ratingExam'] as const).filter(
-          (part) =>
-            (part !== 'ratingExam' || one.ratingShown) &&
-            numbers.every((result) =>
-              result.leftOut.some((left) => left.part === part && left.reason === 'no_data'),
-            ),
-        );
-        if (parts.length > 0) push('part_without_data', journalId, teacher, { parts });
+
+    // The results: flags, decisions, rating entries, no result, parts without data, weights.
+    // Task 10.1b: the GET reads the prepared `closing` units (behind ones from source); every
+    // write the checklist gates reads them from source (plan decision 6).
+    // A reopened journal: the subject of that journal, whose journals list its students.
+    const only = onlyJournalId === undefined ? undefined : journalById.get(onlyJournalId);
+    const subjectIds = only === undefined ? null : [only.subjectId];
+    const results =
+      freshness === undefined
+        ? await resultItemsOf(transaction, scene, subjectIds)
+        : await preparedClosing(
+            { transaction, branchId, timeZone: scene.timeZone, now, today: scene.today },
+            quarter,
+            subjectIds,
+            freshness,
+          );
+    const names = await studentNames(transaction, [
+      ...new Set(results.drafts.flatMap(studentsOfDraft)),
+    ]);
+    const nameOf = (id: string): StudentName =>
+      names.get(id) ?? { id, firstName: '', lastName: '', paternalName: null, uid: '' };
+    for (const journalId of results.weightsMissing) {
+      if (withLessons.has(journalId)) push('weights_missing', journalId, null);
+    }
+    // By journal, each journal's items in their order: the same from the units as from source.
+    const byJournal = [...results.drafts].sort((a, b) => a.journalId.localeCompare(b.journalId));
+    for (const draft of byJournal) {
+      if (draft.kind === 'no_result') {
+        push(draft.kind, draft.journalId, draft.teacherId, {
+          students: (draft.studentIds ?? []).map(nameOf),
+        });
+      } else if (draft.kind === 'part_without_data') {
+        push(draft.kind, draft.journalId, draft.teacherId, { parts: draft.parts ?? [] });
+      } else {
+        push(draft.kind, draft.journalId, draft.teacherId, {
+          students: (draft.students ?? []).map(({ studentId, ...row }) => ({
+            student: nameOf(studentId),
+            ...row,
+          })),
+        });
       }
     }
 
@@ -2485,44 +2460,6 @@ async function refusingReopenings<T>(work: () => Promise<T>): Promise<T> {
     }
     throw error;
   }
-}
-
-/** The journal a student is listed under: the one of the latest membership in the quarter. */
-function listedJournalOf(
-  spans: readonly { journalId: string; from: string }[],
-  fallback: string,
-): string {
-  const latest = [...spans].sort((a, b) => a.from.localeCompare(b.from)).at(-1);
-  return latest?.journalId ?? fallback;
-}
-
-/** The flagged students of the journals given, each once, under the journal it is listed. */
-function flaggedIn(journals: ReadonlyMap<string, JournalOutcomes>): Flagged[] {
-  const found: Flagged[] = [];
-  for (const [journalId, one] of journals) {
-    for (const [studentId, member] of one.members) {
-      const { outcome, input } = member;
-      if (outcome === null || input === null || outcome.atLeaving !== null) continue;
-      if (listedJournalOf(member.found?.spans ?? [], journalId) !== journalId) continue;
-      if (outcome.flags.length === 0 && !outcome.staleDecision) continue;
-      const stored = member.stored;
-      found.push({
-        journalId,
-        subjectId: one.journal.subjectId,
-        studentId,
-        stale: outcome.staleDecision,
-        row: {
-          flags: [...outcome.flags] satisfies ResultFlag[],
-          basedOn: outcome.basedOn,
-          leftSubjectOn: outcome.leftSubjectOn,
-          decision: stored?.decision ?? null,
-          version: stored?.version ?? null,
-          allowed: allowedDecisions(input),
-        },
-      });
-    }
-  }
-  return found;
 }
 
 /** The count an item names in a reminder. */

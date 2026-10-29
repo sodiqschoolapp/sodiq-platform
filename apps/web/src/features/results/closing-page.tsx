@@ -16,6 +16,7 @@ import { SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -284,6 +285,13 @@ export function ClosingPage(): React.JSX.Element {
                 {quarterLine}
               </p>
             )}
+            <PreparedStamp
+              stamp={data.prepared}
+              refreshing={list.isFetching}
+              onRefresh={() => {
+                void list.refetch();
+              }}
+            />
           </div>
         )}
         <FailureAlert error={remind.error ?? endPeriods.error} />

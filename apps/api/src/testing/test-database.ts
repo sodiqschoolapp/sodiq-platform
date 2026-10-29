@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { escapeIdentifier } from 'pg';
 import { inject } from 'vitest';
 import { databaseUrl } from '../database/config.js';
-import { createDatabase, type Database } from '../database/database.js';
+import { createDatabase, type Database, type DatabaseOptions } from '../database/database.js';
 import {
   createEmptyDatabase,
   dropDatabaseOnceUnused,
@@ -73,9 +73,21 @@ export function dropStaleTestDatabases(nowMs: number): Promise<void> {
  * A new database for one test file. By default it is a copy of the run's
  * template, so it has every migration and no rows. Call `destroy` in `afterAll`.
  */
-export async function createTestDatabase(options: { empty?: boolean } = {}): Promise<TestDatabase> {
+export async function createTestDatabase(
+  options: {
+    empty?: boolean;
+    /**
+     * Task 10.1b: a database of this name that outlives the run (`destroy` closes the connections
+     * and keeps it), so the Speed workflow can dump the data its build phase made.
+     */
+    kept?: string;
+  } = {},
+): Promise<TestDatabase> {
   const runPrefix = inject('testRunPrefix');
-  const name = `${runPrefix}${randomBytes(6).toString('hex')}`;
+  const name = options.kept ?? `${runPrefix}${randomBytes(6).toString('hex')}`;
+  if (options.kept !== undefined) {
+    await onServer((client) => client.query(`drop database if exists ${escapeIdentifier(name)}`));
+  }
   if (options.empty === true) {
     await createEmptyDatabase(name);
   } else {
@@ -90,9 +102,21 @@ export async function createTestDatabase(options: { empty?: boolean } = {}): Pro
       client.query(`revoke temporary on database ${escapeIdentifier(name)} from public, sodiq_app`),
     );
   }
+  return connectTestDatabase(name, { drop: options.kept === undefined });
+}
+
+/**
+ * Task 10.1b: the connections to a database that already exists (the Speed workflow's restored
+ * data, or the database the build phase of the same process left). `destroy` closes them and drops
+ * the database only when `drop` is set.
+ */
+export function connectTestDatabase(
+  name: string,
+  options: { drop: boolean; log?: DatabaseOptions['log'] },
+): TestDatabase {
   const appUrl = withDatabaseName(databaseUrl('DATABASE_URL'), name);
   const migrationUrl = withDatabaseName(databaseUrl('DATABASE_MIGRATION_URL'), name);
-  const app = createDatabase(appUrl);
+  const app = createDatabase(appUrl, options.log === undefined ? {} : { log: options.log });
   const migrator = createDatabase(migrationUrl);
   return {
     name,
@@ -103,7 +127,7 @@ export async function createTestDatabase(options: { empty?: boolean } = {}): Pro
     destroy: async () => {
       await app.destroy();
       await migrator.destroy();
-      await dropDatabaseOnceUnused(name);
+      if (options.drop) await dropDatabaseOnceUnused(name);
     },
   };
 }

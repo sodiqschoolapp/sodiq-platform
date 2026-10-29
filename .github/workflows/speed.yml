@@ -7,8 +7,16 @@ name: Speed
 # (docs/build-plan.md, 10.1). Started by hand from the Actions tab, and every
 # Sunday at 22:00 Tashkent (17:00 UTC), so the release checklist finds a
 # recent run (docs/go-live/release-checklist.md). It reaches no server: the
-# school is built in the PostgreSQL service of this job. The report is the
+# school is built in the PostgreSQL service of a job. The report is the
 # run's artifact, also when the run fails.
+#
+# Task 10.1b (the owner's line of 29 October 2026: the workflow may change for
+# the run's time only): two jobs, each with GitHub's limit of its own. `build`
+# builds, places, publishes and fills the school (about three hours at
+# triple) and hands its database and the state of the run to `measure` as an
+# artifact of this run, kept one day; `measure` restores them and prepares,
+# reads, saves, searches and runs the load. Every run builds from the code it
+# measures: nothing is cached across runs.
 on:
   workflow_dispatch:
   schedule:
@@ -28,11 +36,17 @@ env:
   DATABASE_MIGRATION_URL: postgres://sodiq_migrator:sodiq_migrator_local@localhost:5432/sodiq_dev
   SECOND_STEP_KEY: c29kaXEtbG9jYWwtc2Vjb25kLXN0ZXAta2V5LTAwMDE=
   TURBO_TELEMETRY_DISABLED: 1
+  # PostgreSQL 18's own client tools (the runner's are older than the service
+  # and refuse to dump it), as demo-data.yml uses them.
+  PG18: >-
+    docker run --rm --network host -e PGPASSWORD=postgres
+    -v ${{ github.workspace }}:/work -w /work
+    postgres:18
 
 jobs:
-  speed:
+  build:
     runs-on: ubuntu-24.04
-    # The run itself stops at 5 hours (speed.database.test.ts); the rest is set-up and the report.
+    # The build phase stops itself at 5 hours (speed.database.test.ts); the rest is set-up and the dump.
     timeout-minutes: 340
     services:
       postgres:
@@ -70,10 +84,93 @@ jobs:
           PGPASSWORD: postgres
       - name: Build the packages the tests import
         run: pnpm turbo run build --filter=@sodiq/api^...
-      - name: The speed run, three times the data, and the load
+      - name: The speed run, three times the data, the build phase
         run: pnpm --filter @sodiq/api exec vitest run src/modules/timetable/speed.database.test.ts
         env:
           SPEED_SIZE: triple
+          SPEED_PHASE: build
+      - name: Dump the built school
+        run: |
+          mkdir -p handover
+          $PG18 pg_dump --format=custom --compress=1 --file=handover/speed.dump \
+            postgres://postgres@localhost:5432/sodiq_speed_triple
+          cp apps/api/speed-state-triple.json handover/
+          ls -l handover
+      - name: Hand the school to the measuring job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: speed-handover
+          path: handover/
+          retention-days: 1
+          compression-level: 0
+      - name: Keep the report of the build
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: speed-report-build
+          path: apps/api/speed-report-triple.md
+          if-no-files-found: warn
+  measure:
+    needs: build
+    runs-on: ubuntu-24.04
+    # The measuring phase stops itself at 5 hours (speed.database.test.ts); the rest is set-up and the restore.
+    timeout-minutes: 340
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # The year's journals are about 15 GB; a large statement needs more
+        # shared memory than Docker's 64 MB.
+        options: >-
+          --shm-size 1g
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Free the runner's disk for the data
+        # Tools of the runner image this job never uses.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create the database users and sodiq_dev
+        run: psql -h localhost -U postgres -f db/setup/local.sql
+        env:
+          # The superuser of the service container; only this step uses it.
+          PGPASSWORD: postgres
+      - name: Build the packages the tests import
+        run: pnpm turbo run build --filter=@sodiq/api^...
+      - name: Take the built school
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: speed-handover
+          path: handover
+      - name: Restore the built school
+        # Owners, grants and row filters restore as they are, onto the users of db/setup/local.sql.
+        run: |
+          psql -h localhost -U postgres -c "create database sodiq_speed_triple owner sodiq_migrator"
+          $PG18 pg_restore --exit-on-error --jobs=4 \
+            --dbname=postgres://postgres@localhost:5432/sodiq_speed_triple handover/speed.dump
+          cp handover/speed-state-triple.json apps/api/
+        env:
+          PGPASSWORD: postgres
+      - name: The speed run, three times the data, the measuring phase and the load
+        run: pnpm --filter @sodiq/api exec vitest run src/modules/timetable/speed.database.test.ts
+        env:
+          SPEED_SIZE: triple
+          SPEED_PHASE: measure
+          SPEED_DATABASE: sodiq_speed_triple
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

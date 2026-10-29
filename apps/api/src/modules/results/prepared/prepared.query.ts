@@ -6,19 +6,31 @@ import { decode, encode } from './codec.js';
  * The store of the prepared report totals (task 9.3b-1; db/migrations/0140): which units are
  * fresh, their values, and their preparation. A unit is fresh while every change row that
  * concerns it was visible in the snapshot of its preparation (`seen`), the moment it depends on
- * has not come (`next_change_at`) and the school-wide inputs are the ones it was prepared with
- * (`school_inputs`); anything else is behind, and the reader calculates it from source.
+ * has not come (`next_change_at`), every school-wide change row was visible in that snapshot too
+ * (task 10.1b, db/migrations/0143) and its value has the shape of this release
+ * (`school_inputs` holds `PREPARED_SHAPE`); anything else is behind, and the reader calculates
+ * it from source.
  */
 
-// Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal.
-export const UNIT_KINDS = ['outcomes', 'figures', 'statuses', 'attendance'] as const;
+// Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal. Task 10.1b adds
+// `closing` (a quarter and a subject) and `class_figures` (a quarter and a class), 0143.
+export const UNIT_KINDS = [
+  'outcomes',
+  'figures',
+  'statuses',
+  'attendance',
+  'closing',
+  'class_figures',
+] as const;
 export type UnitKind = (typeof UNIT_KINDS)[number];
 
 /**
- * The school-wide tables the preparation reads (no branch column, so no change row: plan
- * decision 2 cannot reach them). Each is fingerprinted by the place and the writing transaction
- * of every row, so an insert, an update and a delete each change the fingerprint. Held complete
- * by the inputs check of the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`).
+ * The school-wide tables the preparation reads (no branch column, so no change row of a branch).
+ * A write of any of them writes a row of `report_school_changes` (0143), which puts every unit of
+ * every branch behind until a preparation sees it (task 10.1b, decision 3, Look first: in place of
+ * the fingerprint of every row that 9.3b-1 read on each request). Held complete by the inputs
+ * check of the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`), and the triggers of
+ * 0143 by `prepared.database.test.ts`.
  */
 export const SCHOOL_INPUTS = [
   'absences',
@@ -31,22 +43,12 @@ export const SCHOOL_INPUTS = [
   'subjects',
 ] as const;
 
-/** The fingerprint of the school-wide inputs, as this transaction sees them. */
-export async function schoolInputsOf(transaction: Transaction): Promise<string> {
-  const parts = SCHOOL_INPUTS.map(
-    (table) => sql<string>`
-      select ${table}::text || ':' || coalesce(
-        md5(string_agg(t.ctid::text || '/' || t.xmin::text, ',' order by t.ctid)), ''
-      ) as part
-      from ${sql.table(table)} t
-    `,
-  );
-  const found = await sql<{ inputs: string }>`
-    select md5(string_agg(part, '|' order by part)) as inputs
-    from (${sql.join(parts, sql` union all `)}) x
-  `.execute(transaction);
-  return found.rows[0]?.inputs ?? '';
-}
+/**
+ * The shape of the stored values of this release, kept in `school_inputs`: raised whenever a
+ * kind's value changes shape, so the rows prepared by an older release are behind at once and
+ * prepared again by the job, with no migration touching them (task 10.1b, decision 5).
+ */
+export const PREPARED_SHAPE = 'shape:2';
 
 /**
  * The snapshot of this transaction as text: taken before the preparation reads anything (review
@@ -62,12 +64,21 @@ export async function snapshotOf(transaction: Transaction): Promise<string> {
 }
 
 /** The condition "this preparation row is fresh" for a row named `p`. */
+//
+// A change row whose transaction is older than the snapshot's oldest running one was committed
+// before the snapshot and is visible in it, so only the newer ones are tested (task 10.1b: the
+// test reads the index of `xid`, not every change row of the branch).
 const freshCondition = (now: Date, schoolInputs: string) => sql<boolean>`
   (p.next_change_at is null or p.next_change_at > ${now})
   and p.school_inputs = ${schoolInputs}
   and not exists (
+    select from report_school_changes s
+    where s.xid >= pg_snapshot_xmin(p.seen) and not pg_visible_in_snapshot(s.xid, p.seen)
+  )
+  and not exists (
     select from report_changes c
     where c.branch_id = p.branch_id
+      and c.xid >= pg_snapshot_xmin(p.seen)
       and (c.quarter_id is null or c.quarter_id = p.quarter_id)
       and (c.journal_id is null or c.journal_id = any (p.journal_ids))
       and not pg_visible_in_snapshot(c.xid, p.seen)
@@ -286,5 +297,22 @@ export async function pruneChanges(
     delete from report_changes c
     where c.branch_id = ${branchId}
       and pg_visible_in_snapshot(c.xid, ${seen}::pg_snapshot)
+  `.execute(transaction);
+}
+
+/**
+ * Removes the school-wide change rows visible in `seen` (a snapshot taken before a run of the job
+ * prepared every branch) that every prepared unit of every branch has seen: a school change
+ * concerns every branch, so a row is kept while any unit anywhere was prepared before it (review
+ * of the plan, correction 2). Run in a transaction that sees every branch.
+ */
+export async function pruneSchoolChanges(transaction: Transaction, seen: string): Promise<void> {
+  await sql`
+    delete from report_school_changes s
+    where pg_visible_in_snapshot(s.xid, ${seen}::pg_snapshot)
+      and not exists (
+        select from report_prepared p
+        where s.xid >= pg_snapshot_xmin(p.seen) and not pg_visible_in_snapshot(s.xid, p.seen)
+      )
   `.execute(transaction);
 }

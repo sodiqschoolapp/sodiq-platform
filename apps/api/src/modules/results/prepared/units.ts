@@ -12,6 +12,7 @@ import {
 } from '../early-warning.service.js';
 import { outcomesOf, quarterStateOf, type Outcomes } from '../rating.service.js';
 import { attendanceOfJournal } from './attendance.js';
+import { resultItemsOf, type ResultItems } from '../closing-results.js';
 import type { UnitKey } from './prepared.query.js';
 
 /**
@@ -220,6 +221,20 @@ export async function unitValue(
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
     }
+    case 'closing': {
+      // Task 10.1b: the result items of the closing checklist of the subject's journals.
+      const value: ResultItems = await resultItemsOf(moment.transaction, { ...moment, quarter }, [
+        unit.unitId,
+      ]);
+      return {
+        journalIds: journals.filter((one) => one.subjectId === unit.unitId).map((one) => one.id),
+        value,
+        // A lesson becomes held at its start; the reference date of the owners moves at midnight.
+        nextChangeAt: await nextChangeOf(moment, quarter, { subjectId: unit.unitId }, true),
+      };
+    }
+    case 'class_figures':
+      throw new Error(`The unit kind ${unit.kind} is not prepared yet.`);
   }
 }
 
@@ -236,6 +251,7 @@ export async function unitsOf(moment: BranchMoment): Promise<UnitKey[]> {
     for (const subjectId of subjects) {
       units.push({ kind: 'outcomes', quarterId: quarter.id, unitId: subjectId });
       units.push({ kind: 'figures', quarterId: quarter.id, unitId: subjectId });
+      units.push({ kind: 'closing', quarterId: quarter.id, unitId: subjectId });
     }
     for (const journal of journals) {
       units.push({ kind: 'statuses', quarterId: quarter.id, unitId: journal.id });

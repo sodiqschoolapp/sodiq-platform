@@ -17,8 +17,9 @@ import {
 } from '../early-warning.service.js';
 import type { QuarterRef } from '../grade-changes.js';
 import { outcomesOf, type Outcomes, type QuarterState } from '../rating.service.js';
-import { freshLessons, freshUnits, schoolInputsOf, type FreshUnit } from './prepared.query.js';
+import { freshLessons, freshUnits, PREPARED_SHAPE, type FreshUnit } from './prepared.query.js';
 import { attendanceOfJournal, type AttendanceLesson } from './attendance.js';
+import { resultItemsOf, type ResultDraft, type ResultItems } from '../closing-results.js';
 import { journalsOfYear, type FiguresValue } from './units.js';
 
 /**
@@ -31,7 +32,6 @@ import { journalsOfYear, type FiguresValue } from './units.js';
 export class Freshness {
   private oldest: Date | null = null;
   private behind = false;
-  private inputs: Promise<string> | undefined;
 
   used(preparedAt: Date): void {
     if (this.oldest === null || preparedAt < this.oldest) this.oldest = preparedAt;
@@ -39,12 +39,6 @@ export class Freshness {
 
   missed(): void {
     this.behind = true;
-  }
-
-  /** The school-wide inputs as this request's transaction sees them, read once. */
-  schoolInputs(moment: Pick<BranchMoment, 'transaction'>): Promise<string> {
-    this.inputs ??= schoolInputsOf(moment.transaction);
-    return this.inputs;
   }
 
   get stamp(): PreparedStamp {
@@ -66,7 +60,7 @@ async function subjectsOf(moment: BranchMoment, quarter: QuarterRef): Promise<st
 async function split(
   moment: BranchMoment,
   freshness: Freshness,
-  kind: 'outcomes' | 'figures',
+  kind: 'outcomes' | 'figures' | 'closing',
   quarterId: string,
   subjectIds: readonly string[],
 ): Promise<{ fresh: Map<string, FreshUnit>; behind: string[] }> {
@@ -76,7 +70,7 @@ async function split(
     quarterId,
     unitIds: subjectIds,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
   });
   for (const one of fresh.values()) freshness.used(one.preparedAt);
   const behind = subjectIds.filter((id) => !fresh.has(id));
@@ -160,7 +154,7 @@ export async function preparedLessonStatuses(
     branchId: moment.branchId,
     lessonIds: ids,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
   });
   for (const [id, one] of fresh) {
     freshness.used(one.preparedAt);
@@ -204,7 +198,7 @@ export async function preparedAttendance(
     quarterId: quarter.id,
     unitIds: ids,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
   });
   const lessons: AttendanceLesson[] = [];
   for (const one of fresh.values()) {
@@ -217,4 +211,29 @@ export async function preparedAttendance(
     lessons.push(...(await attendanceOfJournal(moment, quarter, journalId)));
   }
   return lessons;
+}
+
+/**
+ * The result items of the closing checklist (task 10.1b; `resultItemsOf`) from the prepared
+ * `closing` units of the subjects named (`null`: every subject of the year) and, for the units
+ * found behind, from source by the same function, one subject at a time.
+ */
+export async function preparedClosing(
+  moment: BranchMoment,
+  quarter: QuarterRef,
+  subjectIds: readonly string[] | null,
+  freshness: Freshness,
+): Promise<ResultItems> {
+  const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
+  const { fresh, behind } = await split(moment, freshness, 'closing', quarter.id, subjects);
+  const parts: ResultItems[] = [...fresh.values()].map((one) => one.value as ResultItems);
+  if (behind.length > 0)
+    parts.push(await resultItemsOf(moment.transaction, { ...moment, quarter }, behind));
+  const weightsMissing: string[] = [];
+  const drafts: ResultDraft[] = [];
+  for (const part of parts) {
+    weightsMissing.push(...part.weightsMissing);
+    drafts.push(...part.drafts);
+  }
+  return { weightsMissing, drafts };
 }

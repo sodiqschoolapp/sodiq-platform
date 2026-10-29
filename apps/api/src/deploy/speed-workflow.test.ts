@@ -31,21 +31,67 @@ describe('the Speed workflow', () => {
     }
   });
 
-  it('runs the speed run at three times the data and keeps its report', () => {
-    expect(workflow).toContain('runs-on: ubuntu-24.04');
-    expect(workflow).toContain('image: postgres:18');
-    expect(workflow).toContain(
-      'run: pnpm --filter @sodiq/api exec vitest run src/modules/timetable/speed.database.test.ts',
-    );
-    expect(workflow).toContain('SPEED_SIZE: triple');
-    const keep = workflow.slice(workflow.indexOf('- name: Keep the report'));
-    expect(keep).toContain('if: always()');
-    expect(keep).toContain('path: apps/api/speed-report-triple.md');
+  // Task 10.1b (a pin changed because the requirement changed: the owner's line of 29 October
+  // 2026 lets the workflow change for the run's time): two jobs, the build and the measure.
+  const jobOf = (name: string) => {
+    const start = workflow.indexOf(`\n  ${name}:\n`);
+    expect(start, name).toBeGreaterThan(0);
+    const next = workflow.slice(start + 1).search(/\n {2}[a-z]+:\n/);
+    return next < 0 ? workflow.slice(start) : workflow.slice(start, start + 1 + next);
+  };
+
+  it('builds the school in one job and measures it in another', () => {
+    const build = jobOf('build');
+    const measure = jobOf('measure');
+    const jobs = workflow.slice(workflow.indexOf('\njobs:\n'));
+    expect(jobs.match(/^ {2}[a-z]+:$/gm)).toEqual(['  build:', '  measure:']);
+    expect(measure).toContain('needs: build');
+    const run =
+      'run: pnpm --filter @sodiq/api exec vitest run src/modules/timetable/speed.database.test.ts';
+    for (const [job, phase] of [
+      [build, 'build'],
+      [measure, 'measure'],
+    ] as const) {
+      expect(job).toContain('runs-on: ubuntu-24.04');
+      expect(job).toContain('image: postgres:18');
+      expect(job).toContain(run);
+      expect(job).toContain('SPEED_SIZE: triple');
+      expect(job).toContain(`SPEED_PHASE: ${phase}`);
+    }
   });
 
-  it('gives the run more time than its own limit of five hours', () => {
-    const minutes = Number(/timeout-minutes: (\d+)/.exec(workflow)?.[1]);
-    expect(minutes).toBeGreaterThan(300);
-    expect(minutes).toBeLessThanOrEqual(360);
+  it('hands the data over within the run, kept one day, never cached across runs', () => {
+    const build = jobOf('build');
+    const measure = jobOf('measure');
+    expect(build).toContain('name: speed-handover');
+    expect(build).toContain('retention-days: 1');
+    expect(measure).toContain('name: speed-handover');
+    expect(workflow).not.toContain('actions/cache');
+    // The server's own major version of the tools (the runner's are older).
+    expect(build).toMatch(/\$PG18 pg_dump /);
+    expect(measure).toMatch(/\$PG18 pg_restore /);
+  });
+
+  it('keeps the report of each job, also when it fails', () => {
+    for (const [job, name] of [
+      [jobOf('build'), 'speed-report-build'],
+      [jobOf('measure'), 'speed-report'],
+    ] as const) {
+      const keep = job.slice(
+        job.indexOf(`name: ${name}
+`) - 200,
+      );
+      expect(keep).toContain('if: always()');
+      expect(keep).toContain('path: apps/api/speed-report-triple.md');
+    }
+  });
+
+  it('gives each job more time than its own limit of five hours', () => {
+    const minutes = [...workflow.matchAll(/timeout-minutes: (\d+)/g)].map((one) => Number(one[1]));
+    expect(minutes).toHaveLength(2);
+    for (const one of minutes) {
+      expect(one).toBeGreaterThan(300);
+      expect(one).toBeLessThanOrEqual(360);
+    }
   });
 });

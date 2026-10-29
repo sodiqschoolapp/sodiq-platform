@@ -176585,6 +176585,11 @@ export interface operations {
                         }[];
                         /** Format: uuid */
                         quarterId: string | null;
+                        prepared: {
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                            updating: boolean;
+                        };
                         /** @enum {string} */
                         state: "not_open" | "open" | "closed";
                         /** Format: date */

@@ -359,6 +359,8 @@ describe('the grid of a draft', () => {
         .where('block_id', '=', b.id)
         .execute();
       expect(entries).toEqual([{ weekday: 2, start_minutes: 590, end_minutes: 635 }]);
+      // Task 10.1b: the move reads only its blocks again; its answer is the board read afresh.
+      expect(moved).toEqual(gridOf(await grid(s.branch, s.version)));
     });
 
     it('refuses a move into a break by its rule, and a slot past the day or a day off as no slot', async () => {

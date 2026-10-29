@@ -9,8 +9,9 @@ import {
   behindUnits,
   isFresh,
   preparedKeys,
+  PREPARED_SHAPE,
   pruneChanges,
-  schoolInputsOf,
+  pruneSchoolChanges,
   snapshotOf,
   unitKeyOf,
   writeUnit,
@@ -60,14 +61,17 @@ export class PreparedTotals implements BeforeApplicationShutdown {
    */
   async run(budgetMs = RUN_BUDGET_MS): Promise<void> {
     const deadline = performance.now() + budgetMs;
-    const branches = await this.transactions.run([], (transaction) =>
-      transaction
+    // Before any branch is listed: a school change visible here is seen by every preparation
+    // below (task 10.1b, review correction 2).
+    const { branches, seen } = await this.transactions.run([], async (transaction) => ({
+      seen: await snapshotOf(transaction),
+      branches: await transaction
         .selectFrom('branches')
         .select(['id', 'time_zone'])
         .where('purpose', 'is', null)
         .orderBy('id')
         .execute(),
-    );
+    }));
     for (let step = 0; step < branches.length; step += 1) {
       const index = (this.next + step) % branches.length;
       const branch = branches[index];
@@ -78,6 +82,15 @@ export class PreparedTotals implements BeforeApplicationShutdown {
         return;
       }
     }
+    // Every branch prepared in this run: the school change rows every unit has seen go. The
+    // transaction sees every branch, the hidden one included, whose units are never prepared.
+    const every = await this.transactions.run([], (transaction) =>
+      transaction.selectFrom('branches').select('id').orderBy('id').execute(),
+    );
+    await this.transactions.run(
+      every.map((one) => one.id),
+      (transaction) => pruneSchoolChanges(transaction, seen),
+    );
   }
 
   /**
@@ -100,7 +113,7 @@ export class PreparedTotals implements BeforeApplicationShutdown {
       // Before anything is listed: a change visible here is seen by every preparation below.
       const seen = await snapshotOf(transaction);
       const moment = await momentOf(transaction, branchId, timeZone);
-      const inputs = await schoolInputsOf(transaction);
+      const inputs = PREPARED_SHAPE;
       const have = await preparedKeys(transaction, branchId);
       const todo = new Map<string, UnitKey>();
       for (const unit of await unitsOf(moment)) {
@@ -155,7 +168,7 @@ export async function prepareUnit(
   `.execute(transaction);
   const seen = await snapshotOf(transaction);
   await options.afterSnapshot?.();
-  const inputs = await schoolInputsOf(transaction);
+  const inputs = PREPARED_SHAPE;
   const moment = await momentOf(transaction, branchId, timeZone);
   if (await isFresh(transaction, { branchId, unit, now: moment.now, schoolInputs: inputs })) {
     return false;

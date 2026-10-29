@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks';
 import { sql } from 'kysely';
 import { Audit } from '../modules/audit/audit.service.js';
 import { Transactions } from '../database/transactions.js';
-import type { DayTemplatesKit } from './day-templates-kit.js';
+import type { AppKit } from './day-templates-kit.js';
 import type { BranchOfRun } from './real-size.js';
 
 /**
@@ -61,7 +61,7 @@ export interface Filled {
  * the app: `journal_cell_moment` asks only that a lesson has begun).
  */
 export async function fillJournals(
-  t: DayTemplatesKit,
+  t: AppKit,
   branches: readonly { readonly branch: BranchOfRun; readonly writer: string }[],
   options: { from: string; until?: string; density?: Density },
 ): Promise<Map<string, Filled>> {
@@ -106,7 +106,7 @@ export async function fillJournals(
 
 /** One branch's school day, in one transaction of the branch. */
 async function fillDay(
-  t: DayTemplatesKit,
+  t: AppKit,
   branch: BranchOfRun,
   writer: string,
   date: string,
@@ -197,7 +197,7 @@ async function fillDay(
 }
 
 /** The rows of the journal tables over every branch, as the run reports them. */
-export async function journalCounts(t: DayTemplatesKit): Promise<{
+export async function journalCounts(t: AppKit): Promise<{
   lessons: number;
   cells: number;
   history: number;

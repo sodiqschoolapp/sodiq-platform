@@ -390,9 +390,23 @@ export class TimetablePattern {
             requestId,
           });
         }
-        return this.gridAfter(transaction, version, access.accountId);
+        // Task 10.1b: a move changes the blocks only; the rows, the load and the facts read
+        // before it stand, so only the blocks and the locks are read again.
+        return this.gridOf(transaction, await this.withBlocksReadAgain(transaction, state));
       }),
     );
+  }
+
+  /** The state of a draft after a write that changed only its blocks (a move). */
+  private async withBlocksReadAgain(
+    transaction: Transaction,
+    state: PatternState,
+  ): Promise<PatternState> {
+    const [blocks, locks] = await Promise.all([
+      readBlocks(transaction, state.version.id),
+      readLocks(transaction, state.version.id),
+    ]);
+    return { ...state, blocks, locks };
   }
 
   /**
