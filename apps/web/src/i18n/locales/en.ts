@@ -3333,6 +3333,7 @@ export const en = {
         create: 'Branch created',
         edit: 'Branch changed',
         go_live: 'Branch went live',
+        monitoring: 'Branch made the hidden Monitoring branch',
       },
       travel_time: {
         set: 'Travel time set',

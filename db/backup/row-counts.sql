@@ -13,3 +13,9 @@ where n.nspname in ('public', 'pgboss')
   and not c.relispartition
 order by n.nspname, c.relname
 \gexec
+
+-- Whether the connection reads a read-only compute (task 10.2b, plan review of #261,
+-- corrections 1 and 2): `pg_is_in_recovery()` is true on Neon's read replica only, and no
+-- session setting can make a primary answer true. The comparison refuses a dump of production
+-- read where it could write (`compareCounts`); the restored copy answers 0 and is not compared.
+select '~read-only|' || pg_is_in_recovery()::int;

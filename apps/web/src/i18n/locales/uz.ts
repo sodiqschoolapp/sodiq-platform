@@ -3375,6 +3375,7 @@ export const uz: Texts<'one' | 'other'> = {
         create: 'Filial yaratildi',
         edit: 'Filial oʻzgartirildi',
         go_live: 'Filial ishga tushirildi',
+        monitoring: 'Filial yashirin Monitoring filialiga aylantirildi',
       },
       travel_time: {
         set: 'Yoʻl vaqti belgilandi',

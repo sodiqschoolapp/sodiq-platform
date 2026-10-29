@@ -4,7 +4,13 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../testing/create-test-app.js';
 import { routesOf } from '../testing/routes.js';
-import { ALERT_RULES, alertRulesYaml, seriesOfRule } from './alert-rules.js';
+import {
+  ALERT_RULES,
+  alertRulesYaml,
+  seriesOfRule,
+  SIGN_IN_SAVE_UTC_HOURS,
+  signInSaveAlertsAt,
+} from './alert-rules.js';
 import { SERIES } from './series.js';
 
 const root = path.resolve(import.meta.dirname, '../../../..');
@@ -51,6 +57,7 @@ describe('the alert rules', () => {
       'the counts stop arriving',
       'the push down',
       'the worker down',
+      'the sign-in-and-save check fails',
     ]) {
       expect(covered, named).toContain(named);
     }
@@ -96,5 +103,22 @@ describe('the alert rules', () => {
         expect(rule.expr).toContain(route.split(' ')[1] ?? '');
       }
     }
+  });
+
+  // Task 10.2b: "A test teacher account signs in and saves a cell in a test class every 5 minutes
+  // from 07:00" (edge/system-behaviour); the alert reads 07:00 to 20:00 in Tashkent (decision 7)
+  // and two failed runs in a row, or none at all (decision 11).
+  it('alerts on the sign-in-and-save check from 07:00 to 20:00 in Tashkent, on two failed runs or none', () => {
+    const rule = ALERT_RULES.find((one) => one.alert === 'SignInSaveFailing');
+    expect(rule?.expr).toBe(
+      '(max(max_over_time(probe_success{job="sign-in-and-save"}[11m])) == 0' +
+        ' or absent_over_time(probe_success{job="sign-in-and-save"}[11m]))' +
+        ` and on () (hour() >= ${String(SIGN_IN_SAVE_UTC_HOURS.from)} and hour() < ${String(SIGN_IN_SAVE_UTC_HOURS.until)})`,
+    );
+    const at = (time: string) => signInSaveAlertsAt(new Date(`2026-11-02T${time}:00+05:00`));
+    expect(at('06:59')).toBe(false);
+    expect(at('07:00')).toBe(true);
+    expect(at('19:59')).toBe(true);
+    expect(at('20:00')).toBe(false);
   });
 });

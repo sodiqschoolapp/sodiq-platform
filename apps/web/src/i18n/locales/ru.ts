@@ -3504,6 +3504,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         create: 'Филиал создан',
         edit: 'Филиал изменён',
         go_live: 'Филиал запущен',
+        monitoring: 'Филиал сделан скрытым филиалом мониторинга',
       },
       travel_time: {
         set: 'Время в пути задано',
