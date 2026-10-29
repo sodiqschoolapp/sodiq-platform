@@ -392,6 +392,10 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           const built = t.database.name;
           await t.close();
           t = await attachedKit(built, { start: SPEED_CLOCK, drop: true, log: spans.log });
+          // Correction 1 of the plan review, proved on every pull request: rows whose transaction
+          // ids come from another cluster (a restored dump's, ahead of this one's counter) are
+          // left by the build; the measuring phase must not read the units behind for them.
+          await foreignChangeRows(t);
         }
         await measurePhase();
       } catch (error) {
@@ -493,6 +497,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           });
         }
         state.lockCount = await doublePairs(t);
+        await write(null, 'the timetable of every branch');
 
         // The measuring day: the clock and the sessions move to it.
         t.clock.set(new Date(SPEED_CLOCK).toISOString());
@@ -547,9 +552,9 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         // Correction 1 of the plan review: the transaction ids of the change rows and of the
         // prepared rows belong to the cluster that built the data; after a restore into another
         // cluster they mean nothing, so the measuring phase starts with nothing prepared.
-        await sql`truncate report_changes, report_prepared, report_prepared_lessons`.execute(
-          t.database.migrator,
-        );
+        await sql`
+          truncate report_changes, report_school_changes, report_prepared, report_prepared_lessons
+        `.execute(t.database.migrator);
         const { school, people, timings } = state;
         for (const branch of school.branches) {
           const own = people[branch.id] ?? [];
@@ -837,6 +842,8 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               );
             }
           }
+          // Plan Step 3: a partial report after every branch, kept if the job is stopped.
+          await write(null, `after the reads of ${branch.name}`);
         }
 
         // Load: the people of the school at once, with the same times.
@@ -910,6 +917,21 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
     LIMIT,
   );
 });
+
+/**
+ * A change row of a branch and a school change row each with a transaction id far ahead of this
+ * cluster's counter, as a restored dump carries them (task 10.1b, correction 1 of the plan review).
+ */
+async function foreignChangeRows(t: AppKit): Promise<void> {
+  await sql`
+    insert into report_changes (branch_id, xid)
+    select id, (pg_current_xact_id()::text::bigint + 1000000000)::text::xid8 from branches
+  `.execute(t.database.migrator);
+  await sql`
+    insert into report_school_changes (table_name, xid)
+    values ('staff', (pg_current_xact_id()::text::bigint + 1000000000)::text::xid8)
+  `.execute(t.database.migrator);
+}
 
 /** The ids the measures of a branch name. */
 async function idsOf(t: AppKit, branch: BranchOfRun, teacher: Person | null) {
