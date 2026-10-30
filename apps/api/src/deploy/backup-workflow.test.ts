@@ -60,6 +60,21 @@ describe('the Backup workflow', () => {
     }
   });
 
+  it("gives the containers that reach production the runner's trusted roots", () => {
+    // postgres:18 has no CA bundle, and `sslmode=verify-full` refuses to connect without one.
+    expect(workflow).toContain(
+      '      TRUSTED_ROOTS: >-\n' +
+        '        -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro\n' +
+        '        -e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt\n' +
+        '        -e SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\n',
+    );
+    for (const name of ['Dump the production database', 'Count the rows of production']) {
+      expect(stepRun(name), name).toContain(
+        'docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \\\n',
+      );
+    }
+  });
+
   it('keeps nothing as an artifact and prints no output of pg_dump, pg_restore or psql', () => {
     expect(workflow).not.toContain('upload-artifact');
     expect(workflow).not.toContain('cache:\n          path');

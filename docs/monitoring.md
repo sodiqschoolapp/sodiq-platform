@@ -63,7 +63,7 @@ The rules come from `apps/api/src/monitoring/alert-rules.ts`. When a later chang
 
 ### 5. Cloudflare R2: the backup bucket
 
-1. R2, **Create bucket** `sodiq-backups`, location **Western Europe** (EU jurisdiction if offered). Public access stays off.
+1. R2, **Create bucket** `sodiq-backups`, location hint **Western Europe**. Not the EU jurisdiction: such a bucket has another address (`<account>.eu.r2.cloudflarestorage.com`), which the upload does not use. Public access stays off.
 2. The bucket, Settings, **Object lifecycle rules**: delete objects **35 days** after upload (plan decision 5: more than Neon's 7 days of restore).
 3. R2, Manage API tokens, **Create API token** `sodiq-backups`: permission **Object Read & Write**, limited to the bucket `sodiq-backups`. Note the access key id and the secret (shown once).
 
@@ -76,7 +76,7 @@ Repository Settings, Environments, **New environment** `backup`:
   - `BACKUP_DATABASE_URL`: the read-only login of production on its **read-only compute** (task 10.2b; your answer of 29 October 2026 on #261; **Look first**). In Neon's console, project `sodiq-production`:
     1. Roles, **New role** `sodiq_backup`. A role made in the console is a member of `neon_superuser` and reads past the row filters, so the dump holds every branch's rows. Keep its password in the password manager.
     2. The production branch, **Add Read Replica** (a read-only compute), the smallest size. Nothing can be written through it, whatever the role.
-    3. Connect: the read replica's endpoint, role `sodiq_backup`, database `sodiq`: `postgres://sodiq_backup:<password>@<read replica host>/sodiq?sslmode=verify-full`. That is the secret.
+    3. Connect: the read replica's endpoint, role `sodiq_backup`, database `sodiq`: `postgres://sodiq_backup:<password>@<read replica host>/sodiq?sslmode=verify-full`. That is the secret. Connection pooling off (`pg_dump` needs the direct endpoint). The workflow gives the dump the runner's trusted roots, so `verify-full` checks Neon's certificate; an address ending in `&sslrootcert=system` works too.
 
     Each night the run checks it: `db/backup/row-counts.sql` asks `pg_is_in_recovery()`, and the step that compares the copy fails with "production was read through a connection that can write" unless it is the read replica; the dump is then not stored. A role that cannot pass the row filters makes `pg_dump` itself stop at the dump step (it reads with `row_security` off and stops rather than dump part of a table).
 
