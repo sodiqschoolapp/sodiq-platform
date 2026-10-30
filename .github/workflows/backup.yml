@@ -49,6 +49,14 @@ jobs:
       # The proof's own server: the job's PostgreSQL service, never production.
       PROOF_URL: postgres://postgres:postgres@localhost:5432/postgres
       TURBO_TELEMETRY_DISABLED: 1
+      # The runner's trusted roots, handed to the postgres:18 containers that
+      # reach production: the image has none, and `sslmode=verify-full` stops
+      # without them. PGSSLROOTCERT serves an address without `sslrootcert`,
+      # SSL_CERT_FILE one with `sslrootcert=system`.
+      TRUSTED_ROOTS: >-
+        -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+        -e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
+        -e SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -66,7 +74,7 @@ jobs:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
         run: |
           mkdir -p "$RUNNER_TEMP/backup"
-          if ! docker run --rm --network host -e BACKUP_DATABASE_URL \
+          if ! docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \
             -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             sh -c 'pg_dump --format=custom --file=/backup/production.dump "$BACKUP_DATABASE_URL"' \
             > "$RUNNER_TEMP/backup/dump.log" 2>&1; then
@@ -79,7 +87,7 @@ jobs:
         env:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
         run: |
-          docker run --rm --network host -e BACKUP_DATABASE_URL \
+          docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \
             -v "$PWD/db/backup:/sql:ro" -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             sh -c 'psql "$BACKUP_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -f /sql/row-counts.sql > /backup/source-counts.txt' \
             2> "$RUNNER_TEMP/backup/source-counts.log" \
