@@ -48,7 +48,8 @@ describe('the rules the solver keeps', () => {
   });
 });
 
-describe('solverProblem: the options of a lesson', () => {
+// Each problem of the sample branch takes about 1 s to build here, 2 s on CI's runner.
+describe('solverProblem: the options of a lesson', { timeout: 30_000 }, () => {
   const branch = solverBranch();
   const problem = problemOf(branch);
 
@@ -155,7 +156,7 @@ describe('solverProblem: the options of a lesson', () => {
   });
 });
 
-describe('solverProblem: mixed splits', () => {
+describe('solverProblem: mixed splits', { timeout: 30_000 }, () => {
   const branch = solverBranch();
   const problem = problemOf(branch);
   const split = problem.lessons.filter((lesson) => lesson.splitClassId === '8a');
@@ -183,7 +184,7 @@ describe('solverProblem: mixed splits', () => {
   });
 });
 
-describe('solverProblem: pins', () => {
+describe('solverProblem: pins', { timeout: 30_000 }, () => {
   const branch = solverBranch();
 
   it('gives a pin one pinned lesson at the time of its slot on the start date, the rest free', () => {
@@ -248,7 +249,7 @@ describe('solverProblem: pins', () => {
   });
 });
 
-describe('solvedPlacements', () => {
+describe('solvedPlacements', { timeout: 30_000 }, () => {
   const branch = solverBranch();
   const model = patternModel(branch.data);
   const problem = solverProblem(model, branch);
