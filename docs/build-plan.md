@@ -1348,7 +1348,7 @@ Decided by the owner on 16 October 2026: these tasks are not needed for the rele
 
 Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is built after the release too, first of this list. Until then a timetable is built in the grid by hand, with the rule engine, "Suggest a place" and the readiness check as they are; Release 1 still includes generation.
 
-- [ ] **5.10 Solver service**
+- [x] **5.10 Solver service**
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
   - Build: `apps/solver` in Kotlin with Timefold Solver Community Edition; hard constraints equal to the blocked rules and soft constraints from the preferences table; pinned lessons kept; a time limit of 5 minutes with a first draft in about a minute.
   - Done when: on sample data of one branch the solver returns a draft that the TypeScript rule engine accepts with zero blocked rules.
@@ -1359,6 +1359,8 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
   - From 5.4c-3b (pull request #138, decisions 3 to 6): `edge/timetable`, Structure: "A mixed block is allowed: boys have physical education while girls have technology, and the reverse in another slot." The solver places a mixed split either whole or as pairings slot by slot with a half of another subject's mixed split of the same class (`partnersIn` of `packages/timetable-rules/src/facts-data.ts`); the engine's re-check accepts exactly those blocks (`checkBlocks`: any other set of rows in one block is `split_apart` with `rows`). `subject_twice` is counted per student (decision 2, Look first).
 
 - [ ] **5.11 Generation in the product**
+  - From 5.10 (pull request #268): the solver is `apps/solver` (`solver solve <problem> <answer>`, or `solver serve` with `POST /runs`, `GET /runs/{id}`, `DELETE /runs/{id}`, a bearer token from `SOLVER_TOKEN`); its problem is `solverProblem` of `packages/timetable-rules` (the options of each lesson from the engine), its answer becomes placements through `solvedPlacements` for `checkTimetable`, and `notPlaced` lists what it left out. The run route reads `subjects.demanding` and `staff.contract_type = 'part_time'` into the problem. A lock (`timetable_locks`) is passed as a lesson with one option and `pinned`, as a pin is. Timefold's score analysis by constraint is a paid feature: the variants' comparison (free slots, demanding subjects late, room changes) is counted in TypeScript from the placements. Deploying the service (Render, `13`: "only while generating") costs money and touches production: stop-list item 1, asked of the owner.
+  - From 5.10 (decision 6, Look first): `teacher_preferred_times` has no input; when the owner records a teacher's preferred days and slots (the `/spec-change` on #42), the problem carries them and the solver weighs them.
   - From the owner (20 October 2026): add the generate step and the solver's time to the real-size run of 5.12c (`docs/build-plan.md`, 5.12c).
   - Read: `06` (Auto-generation, Building a timetable), `edge/timetable` (Generator and editing).
   - Build: step 6 of the builder; the run as a background job on a snapshot; variants with score and comparison; regenerate with locks; generate for chosen classes; place the remaining lessons; lessons not placed listed with the blocking rule named by the rule engine.

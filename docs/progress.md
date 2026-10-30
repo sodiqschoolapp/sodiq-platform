@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 30 October 2026: task 5.10 Solver service
+
+- **`apps/solver`**: Kotlin on Timefold Solver Community Edition 2.7.1 (Java 21, Gradle wrapper 8.14.3). Hard: the six blocked rules two lessons of a draft can break (`rules.json`); medium: lessons not placed; soft: seven preferences by the draft's weights. `solver solve` (CLI) and `solver serve` (`POST /runs`, `GET /runs/{id}`, `DELETE /runs/{id}`, bearer token, runs kept 30 minutes by an injected clock).
+- **`solverProblem`** (`packages/timetable-rules/src/solver.ts`): each lesson's options are the slots and rooms where the engine finds no blocked result for its block alone among the busy-elsewhere lessons; a mixed split's lesson picks a whole combination of two halves; pins are pinned lessons. `solvedPlacements` turns the answer into placements (doubles paired with the engine's check) for `checkTimetable`.
+- **Proved**: the sample branch (18 classes, 314 lessons, `testing/solver-branch.ts`) is placed whole with zero blocked results; a first complete draft within about 1.3 s; an overloaded branch leaves only the overloaded teacher's lessons out.
+
+Left out: the generate step, variants, locks, the not-placed list with its rule (5.11); the solver's time at the real size (5.11's From line on 5.12c); the deploy on Render (owner, money); `teacher_preferred_times` has no input (Look first, #42).
+
+The next sessions must know:
+
+- A blocked rule added to `FIXED_RULES` fails `solver.test.ts` until it is in `SOLVER_OPTION_RULES`, `apps/solver/rules.json` (with a Kotlin constraint) or `SOLVER_AFTER_RULES`.
+- `pnpm --filter @sodiq/solver test` needs Java 21; CI's part "web and packages" runs it (Gradle and Maven Central downloads included). In a cloud session `scripts/gradle.mjs` uses `/opt/gradle` (8.14.3); Maven Central may rate-limit the session (a local `~/.gradle/init.gradle.kts` mirror helps; never committed).
+- Timefold 2's score analysis and `timefold-solver-test` are gone from the free edition: `ConstraintVerifier` is in core, and only the total score is free.
+
 ## 29 October 2026: task 10.1b Every speed target of `12` at three times the size
 
 - **Speed run in two jobs** (`.github/workflows/speed.yml`): `build` builds and fills the school, `measure` restores its dump and prepares, reads, saves, searches and loads, with the preparation running every minute; a partial report after every branch, and a run out of time fails with "not measured". The small run does both phases in one process on every pull request.
