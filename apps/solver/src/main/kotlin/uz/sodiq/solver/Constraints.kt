@@ -19,23 +19,20 @@ import ai.timefold.solver.core.api.score.stream.Joiners
  */
 class TimetableConstraints : ConstraintProvider {
     override fun defineConstraints(factory: ConstraintFactory): Array<Constraint> =
-        arrayOf(
-            teacherDouble(factory),
-            roomDouble(factory),
-            roomSharedFull(factory),
-            roomSharedCapacity(factory),
-            classDouble(factory),
-            studentDouble(factory),
-            notPlaced(factory),
-            splitShort(factory),
-            classNoGaps(factory),
-            teacherFewGaps(factory),
-            subjectSpread(factory),
-            demandingEarly(factory),
-            classEvenDays(factory),
-            mainRoom(factory),
-            partTimeFewDays(factory),
-        )
+        (
+            PAIR_CONSTRAINTS.values.map { it(this, factory) } +
+                listOf(
+                    notPlaced(factory),
+                    splitShort(factory),
+                    classNoGaps(factory),
+                    teacherFewGaps(factory),
+                    subjectSpread(factory),
+                    demandingEarly(factory),
+                    classEvenDays(factory),
+                    mainRoom(factory),
+                    partTimeFewDays(factory),
+                )
+        ).toTypedArray()
 
     /** Two lessons of the draft at overlapping times on one weekday. */
     private fun overlappingPairs(factory: ConstraintFactory) =
@@ -149,16 +146,23 @@ class TimetableConstraints : ConstraintProvider {
             .asConstraint(TEACHER_FEW_GAPS)
 
     /**
-     * 3. Per block and day, every lesson beyond the first; two lessons of rows
-     * that all allow doubles, in consecutive lesson slots in the same rooms,
+     * 3. Per class or group, subject and day, every lesson beyond the first,
+     * whatever block it is in (a mixed half's whole block and its pairing
+     * count together, as `subject_twice` counts per student); two lessons of
+     * one row that allows doubles, in consecutive lesson slots in one room,
      * count once (a possible pair, decision 4).
      */
     fun subjectSpread(factory: ConstraintFactory): Constraint =
         factory
             .forEach(Lesson::class.java)
-            .groupBy({ it.spreadKey }, { it.at().weekday }, ConstraintCollectors.toList())
-            .filter { _, _, lessons -> beyondFirst(lessons) > 0 }
-            .penalize(HardMediumSoftScore.ONE_SOFT) { _, _, lessons -> beyondFirst(lessons).toLong() }
+            .flattenLast { lesson ->
+                val at = lesson.at()
+                at.rows.mapIndexed { index, row ->
+                    SubjectUse(row.unitId, row.subjectId, at.weekday, at.number, row.id, row.doubleLessons, at.rooms.getOrNull(index))
+                }
+            }.groupBy({ "${it.unitId}|${it.subjectId}" }, { it.weekday }, ConstraintCollectors.toList())
+            .filter { _, _, uses -> beyondFirst(uses) > 0 }
+            .penalize(HardMediumSoftScore.ONE_SOFT) { _, _, uses -> beyondFirst(uses).toLong() }
             .asConstraint(SUBJECT_SPREAD)
 
     /** 4. A lesson of a demanding subject: its lesson number less one. */
@@ -217,16 +221,22 @@ class TimetableConstraints : ConstraintProvider {
         /** `teacher_preferred_times` has no input yet: no record holds preferred days and slots (decision 6). */
         const val TEACHER_PREFERRED_TIMES = "teacher_preferred_times"
 
-        /** The constraints named by the rule engine's blocked rules (`rules.json`). */
-        val PAIR_RULES =
-            listOf(
-                TEACHER_DOUBLE,
-                ROOM_DOUBLE,
-                ROOM_SHARED_FULL,
-                ROOM_SHARED_CAPACITY,
-                CLASS_DOUBLE,
-                STUDENT_DOUBLE,
+        /**
+         * The constraints named by the rule engine's blocked rules
+         * (`rules.json`); `defineConstraints` builds exactly these, so the
+         * list and the built constraints cannot differ.
+         */
+        val PAIR_CONSTRAINTS: Map<String, (TimetableConstraints, ConstraintFactory) -> Constraint> =
+            linkedMapOf(
+                TEACHER_DOUBLE to TimetableConstraints::teacherDouble,
+                ROOM_DOUBLE to TimetableConstraints::roomDouble,
+                ROOM_SHARED_FULL to TimetableConstraints::roomSharedFull,
+                ROOM_SHARED_CAPACITY to TimetableConstraints::roomSharedCapacity,
+                CLASS_DOUBLE to TimetableConstraints::classDouble,
+                STUDENT_DOUBLE to TimetableConstraints::studentDouble,
             )
+
+        val PAIR_RULES: List<String> get() = PAIR_CONSTRAINTS.keys.toList()
 
         /** The shortest lesson of a template: one empty slot of a teacher's day (decision 7). */
         const val IDLE_SLOT_MINUTES = 40
@@ -244,8 +254,8 @@ class TimetableConstraints : ConstraintProvider {
             return idle
         }
 
-        fun beyondFirst(lessons: List<Lesson>): Int {
-            val placed = lessons.sortedBy { it.at().number }
+        fun beyondFirst(uses: List<SubjectUse>): Int {
+            val placed = uses.sortedBy { it.number }
             var units = 0
             var index = 0
             while (index < placed.size) {
@@ -253,9 +263,10 @@ class TimetableConstraints : ConstraintProvider {
                 val second = placed.getOrNull(index + 1)
                 val pair =
                     second != null &&
-                        first.placedRows.all { it.doubleLessons } &&
-                        second.at().number == first.at().number + 1 &&
-                        second.at().rooms == first.at().rooms
+                        first.doubleLessons &&
+                        second.rowId == first.rowId &&
+                        second.number == first.number + 1 &&
+                        second.roomId == first.roomId
                 units += 1
                 index += if (pair) 2 else 1
             }
@@ -281,5 +292,15 @@ data class ClassSlot(val classId: String, val weekday: Int, val number: Int)
 data class ClassStart(val classId: String, val weekday: Int, val start: Int)
 
 data class TeacherSpan(val teacherId: String, val weekday: Int, val start: Int, val end: Int)
+
+data class SubjectUse(
+    val unitId: String,
+    val subjectId: String,
+    val weekday: Int,
+    val number: Int,
+    val rowId: String,
+    val doubleLessons: Boolean,
+    val roomId: String?,
+)
 
 data class TeacherDay(val teacherId: String, val weekday: Int)

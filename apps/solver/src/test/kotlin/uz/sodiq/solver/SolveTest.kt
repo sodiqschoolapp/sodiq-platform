@@ -15,7 +15,7 @@ class SolveTest {
         id: String,
         teacher: String,
         lessonsPerWeek: Int = 1,
-    ) = RowJson(id, teacher, "math", listOf("7a"), listOf("s-$id"), lessonsPerWeek, false, null)
+    ) = RowJson(id, teacher, "math", "7a", listOf("7a"), listOf("s-$id"), lessonsPerWeek, false, null)
 
     private fun option(
         weekday: Int,

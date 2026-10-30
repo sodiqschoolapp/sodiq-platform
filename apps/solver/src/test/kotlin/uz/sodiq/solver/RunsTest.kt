@@ -32,7 +32,7 @@ class MovingClock(
 class RunsTest {
     private val problem =
         ProblemJson(
-            rows = listOf(RowJson("a", "t1", "math", listOf("7a"), listOf("s1"), 1, false, null)),
+            rows = listOf(RowJson("a", "t1", "math", "7a", listOf("7a"), listOf("s1"), 1, false, null)),
             lessons = listOf(LessonJson("a#1", listOf("a"), null, false, listOf(OptionJson(1, 480, 525, 1, null, listOf(null))))),
             rooms = emptyList(),
             classes = listOf(ClassJson("7a", 7)),

@@ -21,6 +21,7 @@ data class RowJson(
     val id: String,
     val teacherId: String,
     val subjectId: String,
+    val unitId: String,
     val classIds: List<String>,
     val studentIds: List<String>,
     val lessonsPerWeek: Int,

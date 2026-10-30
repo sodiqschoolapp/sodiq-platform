@@ -46,6 +46,7 @@ fun timetableOf(problem: ProblemJson): Timetable {
                     id = it.id,
                     teacherId = it.teacherId,
                     subjectId = it.subjectId,
+                    unitId = it.unitId,
                     classIds = it.classIds.toSet(),
                     studentIds = it.studentIds.toSet(),
                     lessonsPerWeek = it.lessonsPerWeek,

@@ -31,7 +31,9 @@ fun row(
     mainRoom: String? = null,
     partTime: Boolean = false,
     demanding: Boolean = false,
-) = Row(id, teacher, "subject-$id", classes, students, lessonsPerWeek, doubleLessons, mainRoom, partTime, demanding)
+    subject: String = "subject-$id",
+    unit: String = classes.joinToString(),
+) = Row(id, teacher, subject, unit, classes, students, lessonsPerWeek, doubleLessons, mainRoom, partTime, demanding)
 
 fun at(
     weekday: Int,

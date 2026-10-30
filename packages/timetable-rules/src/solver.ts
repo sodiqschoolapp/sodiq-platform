@@ -89,6 +89,8 @@ export interface SolverRow {
   /** The teacher or the vacancy: one key either way (06, Rules: a vacancy is bound like a teacher). */
   readonly teacherId: string;
   readonly subjectId: string;
+  /** The class or group of the row: `subject_spread` counts per class or group and subject. */
+  readonly unitId: string;
   readonly classIds: readonly string[];
   readonly studentIds: readonly string[];
   readonly lessonsPerWeek: number;
@@ -456,6 +458,7 @@ export function solverProblem(model: PatternModel, input: SolverInput): SolverPr
         id: row.id,
         teacherId: row.teacherId,
         subjectId: row.subjectId,
+        unitId: unit.id,
         classIds: unit.classIds,
         studentIds: unit.studentIds,
         lessonsPerWeek: row.lessonsPerWeek,
@@ -491,15 +494,43 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
   return groups;
 }
 
-/** The lessons the solver did not place, with their rows (5.11 names the rule with the engine). */
+/**
+ * The lessons the solver did not place, with their rows (5.11 names the rule
+ * with the engine). A mixed split is counted by row: each lesson a row is
+ * short of its lessons per week is one, named `<row>#short<n>`, whether the
+ * split's lesson stayed out or placed another combination.
+ */
 export function notPlaced(
   problem: SolverProblem,
   answer: SolverAnswer,
 ): { readonly lessonId: string; readonly rowIds: readonly string[] }[] {
-  const placed = new Set(answer.lessons.filter((one) => one.option !== null).map((one) => one.id));
-  return problem.lessons
-    .filter((lesson) => !placed.has(lesson.id))
-    .map((lesson) => ({ lessonId: lesson.id, rowIds: lesson.rowIds }));
+  const options = new Map(answer.lessons.map((one) => [one.id, one.option]));
+  const rows = new Map(problem.rows.map((row) => [row.id, row]));
+  const missing: { lessonId: string; rowIds: readonly string[] }[] = [];
+  const splitRows = new Map<string, readonly string[]>();
+  for (const lesson of problem.lessons) {
+    if (lesson.splitClassId !== null) {
+      splitRows.set(lesson.splitClassId, lesson.rowIds);
+    } else if ((options.get(lesson.id) ?? null) === null) {
+      missing.push({ lessonId: lesson.id, rowIds: lesson.rowIds });
+    }
+  }
+  const placedOfRow = new Map<string, number>();
+  for (const lesson of problem.lessons) {
+    if (lesson.splitClassId === null) continue;
+    for (const rowId of options.get(lesson.id)?.rowIds ?? []) {
+      placedOfRow.set(rowId, (placedOfRow.get(rowId) ?? 0) + 1);
+    }
+  }
+  for (const rowIds of splitRows.values()) {
+    for (const rowId of rowIds) {
+      const short = (rows.get(rowId)?.lessonsPerWeek ?? 0) - (placedOfRow.get(rowId) ?? 0);
+      for (let index = 1; index <= short; index += 1) {
+        missing.push({ lessonId: `${rowId}#short${index}`, rowIds: [rowId] });
+      }
+    }
+  }
+  return missing;
 }
 
 /**

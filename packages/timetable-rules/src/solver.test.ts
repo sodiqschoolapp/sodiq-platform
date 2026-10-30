@@ -6,6 +6,7 @@ import { checkTimetable } from './check.js';
 import { patternModel, type PatternFactsData } from './facts-data.js';
 import { FIXED_RULES } from './rules.js';
 import {
+  notPlaced,
   SOLVER_AFTER_RULES,
   SOLVER_OPTION_RULES,
   SOLVER_PAIR_RULES,
@@ -64,16 +65,19 @@ describe('solverProblem: the options of a lesson', { timeout: 30_000 }, () => {
     expect(options[0]).toMatchObject({ end: 525, number: 1, rowIds: null, rooms: ['room-6a'] });
   });
 
-  it('leaves out a day off and the days that are not working days', () => {
+  it('leaves out a day off, a weekday with no template and the days that are not working days', () => {
     const data: PatternFactsData = {
       ...branch.data,
       days: branch.data.days.map((one) =>
         one.grade === 6 && one.weekday === 3
           ? { ...one, day: { lessons: false, reason: 'day_off' } }
-          : one,
+          : one.grade === 6 && one.weekday === 5
+            ? { ...one, day: { lessons: false, reason: 'no_template' } }
+            : one,
       ),
     };
-    expect(weekdaysOf(problemOf(branch, data), 'math-6a')).toEqual([1, 2, 4, 5]);
+    // Saturday and Sunday are not working days in the sample branch.
+    expect(weekdaysOf(problemOf(branch, data), 'math-6a')).toEqual([1, 2, 4]);
   });
 
   it("leaves out the hours outside a teacher's availability", () => {
@@ -327,6 +331,30 @@ describe('solvedPlacements', { timeout: 30_000 }, () => {
     expect(placements.every((one) => one.doublePairId === null)).toBe(true);
     const results = checkTimetable([...model.fixed, ...placements], model.facts);
     expect(results.filter((one) => one.rule === 'split_apart')).toEqual([]);
+  });
+
+  it('lists a lesson not placed, and each lesson a mixed split row is short of', () => {
+    const pairing = { weekday: 1, start: 590, end: 635, rooms: ['hall', 'workshop-2'] };
+    // The split's four lessons: the same pairing three times and one left out.
+    const answer = answerOf({
+      'split-8a#1': { ...pairing, rowIds: ['pe-8a-boys', 'tech-8a-girls'] },
+      'split-8a#2': { ...pairing, weekday: 2, rowIds: ['pe-8a-boys', 'tech-8a-girls'] },
+      'split-8a#3': { ...pairing, weekday: 3, rowIds: ['pe-8a-boys', 'tech-8a-girls'] },
+    });
+    const missing = notPlaced(problem, answer).filter((one) =>
+      one.rowIds.some((id) => /^(pe|tech)-8a-/.test(id)),
+    );
+    expect(missing).toEqual([
+      { lessonId: 'pe-8a-girls#short1', rowIds: ['pe-8a-girls'] },
+      { lessonId: 'pe-8a-girls#short2', rowIds: ['pe-8a-girls'] },
+      { lessonId: 'tech-8a-boys#short1', rowIds: ['tech-8a-boys'] },
+      { lessonId: 'tech-8a-boys#short2', rowIds: ['tech-8a-boys'] },
+    ]);
+    // pe-8a-boys has three of two: over its load, which the engine's load_mismatch names.
+    expect(notPlaced(problem, answer)).toContainEqual({
+      lessonId: 'math-5a#1',
+      rowIds: ['math-5a'],
+    });
   });
 
   it('refuses an answer that places rows its lesson does not hold', () => {

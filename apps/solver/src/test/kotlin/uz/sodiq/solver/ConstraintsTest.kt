@@ -204,6 +204,20 @@ class ConstraintsTest {
     }
 
     @Test
+    fun `subject_spread counts a subject twice in a day for a group across two blocks`() {
+        // 8a's girls: technology in the whole technology block, and again paired with the boys' physical education.
+        val techGirls = row("tech-girls", subject = "tech", unit = "8a-girls", students = setOf("g1", "g2"))
+        val techBoys = row("tech-boys", subject = "tech", unit = "8a-boys", students = setOf("b1", "b2"))
+        val peBoys = row("pe-boys", subject = "pe", unit = "8a-boys", students = setOf("b1", "b2"))
+        val all = listOf(techGirls, techBoys, peBoys)
+        val whole = lesson("s1", all, at(1, 480, 525, listOf(techBoys, techGirls), number = 1), splitClassId = "8a")
+        val pairing = lesson("s2", all, at(1, 590, 635, listOf(peBoys, techGirls), number = 3), splitClassId = "8a")
+        verifier.verifyThat(TimetableConstraints::subjectSpread).given(whole, pairing).penalizesBy(1)
+        val otherDay = lesson("s2", all, at(2, 590, 635, listOf(peBoys, techGirls), number = 3), splitClassId = "8a")
+        verifier.verifyThat(TimetableConstraints::subjectSpread).given(whole, otherDay).penalizesBy(0)
+    }
+
+    @Test
     fun `demanding_early counts the lesson number less one`() {
         val math = row("math", demanding = true)
         verifier

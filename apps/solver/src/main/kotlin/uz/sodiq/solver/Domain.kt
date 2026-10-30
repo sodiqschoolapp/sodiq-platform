@@ -17,6 +17,8 @@ data class Row(
     /** The teacher or the vacancy: one key either way (06, Rules: a vacancy is bound like a teacher). */
     val teacherId: String,
     val subjectId: String,
+    /** The class or group of the row. */
+    val unitId: String,
     val classIds: Set<String>,
     val studentIds: Set<String>,
     val lessonsPerWeek: Int,
@@ -135,9 +137,6 @@ class Lesson() {
     val teacherIds: Set<String> get() = at().teacherIds
     val classIds: Set<String> get() = at().classIds
     val studentIds: Set<String> get() = at().studentIds
-
-    /** The key of a block's lessons of the week: its first row, or the split's rows placed. */
-    val spreadKey: String get() = if (splitClassId == null) rows.firstOrNull()?.id ?: id else at().rows.joinToString { it.id }
 
     /** The rooms of its rows that are not shared, without empty ones. */
     fun ownRooms(): List<String> = at().rooms.filterNotNull().filter { facts.rooms[it]?.shared != true }

@@ -22,13 +22,12 @@ import { solverBranch } from '../../../packages/timetable-rules/src/testing/solv
 
 const SOLVER = join(import.meta.dirname, '..', 'dist', 'bin', 'solver');
 const work = mkdtempSync(join(tmpdir(), 'solver-check-'));
-// The start script runs the Java of JAVA_HOME; GitHub's runner defaults to Java
-// 17 and keeps Java 21, which Timefold Solver 2 needs, in JAVA_HOME_21_X64.
+// The start script runs the Java of JAVA_HOME; the build writes the Java 21 it
+// used (Timefold Solver 2 needs it) to dist/java-home, since a runner's default
+// Java may be older (GitHub's is 17).
 const javaEnv = {
   ...process.env,
-  ...(process.env.JAVA_HOME_21_X64 === undefined
-    ? {}
-    : { JAVA_HOME: process.env.JAVA_HOME_21_X64 }),
+  JAVA_HOME: readFileSync(join(import.meta.dirname, '..', 'dist', 'java-home'), 'utf8').trim(),
 };
 
 afterAll(() => rmSync(work, { recursive: true, force: true }));
@@ -160,7 +159,6 @@ describe('the solver service', () => {
     }
     expect(run?.state).toBe('solving');
     expect(run?.answer?.complete).toBe(true);
-    console.log(`First complete draft of the sample branch within ${run?.seconds ?? '?'} s.`);
 
     const stopped = await fetch(`${base}/runs/${id}`, { method: 'DELETE', headers: auth });
     expect(stopped.status).toBe(202);
