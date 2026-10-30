@@ -13,6 +13,7 @@ import { JobQueue } from '../jobs/job-queue.js';
 import { MonitoringCounts } from './counts.job.js';
 import { branchCounts, failedJobs } from './counts.query.js';
 import type { Fetch } from './grafana.js';
+import { linesOfMetrics } from '../testing/otlp-lines.js';
 
 /** Wednesday 28 October 2026, 09:05 in Tashkent. */
 const NOW = '2026-10-28T09:05:00+05:00';
@@ -20,7 +21,7 @@ const TODAY = '2026-10-28';
 
 const pushed: string[] = [];
 const recording: Fetch = (_url, init) => {
-  if (typeof init.body === 'string') pushed.push(...init.body.split('\n'));
+  if (typeof init.body === 'string') pushed.push(...linesOfMetrics(init.body));
   return Promise.resolve({ ok: true, status: 204 });
 };
 

@@ -10,7 +10,7 @@ import { CLOCK } from '../clock/clock.module.js';
 import { CONFIG } from '../config/config.module.js';
 import type { AppConfig } from '../config/config.js';
 import { GrafanaPush, type Fetch, type LogLine } from './grafana.js';
-import type { Point } from './influx.js';
+import type { Point } from './otlp.js';
 import { RequestMetrics, type RequestLine } from './request-metrics.js';
 import { MEASUREMENTS } from './series.js';
 

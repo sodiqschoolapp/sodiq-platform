@@ -9,6 +9,7 @@ import { SAMPLE_ROW_VALUE, SampleController } from '../testing/sample.controller
 import type { Fetch } from './grafana.js';
 import { Monitoring, ShippingLogger } from './monitoring.service.js';
 import { RequestMetrics } from './request-metrics.js';
+import { linesOfMetrics } from '../testing/otlp-lines.js';
 
 const monitoring: AppConfig['monitoring'] = {
   grafana: {
@@ -30,7 +31,7 @@ describe('the monitoring of a process', () => {
   it('beats for the worker under its own name', async () => {
     const bodies: string[] = [];
     const fetcher: Fetch = (_url, init) => {
-      bodies.push(typeof init.body === 'string' ? init.body : '');
+      bodies.push(...linesOfMetrics(typeof init.body === 'string' ? init.body : ''));
       return Promise.resolve({ ok: true, status: 204 });
     };
     const clock = new FixedClock('2026-10-28T09:00:30+05:00');

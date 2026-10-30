@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { lineOf } from '../monitoring/influx.js';
+import { metricsBody } from '../monitoring/otlp.js';
 import { MEASUREMENTS } from '../monitoring/series.js';
 
 /**
@@ -86,19 +86,21 @@ export async function markBackup(input: {
   post?: Post;
 }): Promise<void> {
   const post: Post = input.post ?? ((url, init) => fetch(url, init));
-  const line = lineOf({
-    measurement: MEASUREMENTS.backup.name,
-    tags: { service: 'backup' },
-    fields: { last_success: Math.floor(input.now.getTime() / 1000) },
-    at: input.now.getTime(),
-  });
+  const body = metricsBody([
+    {
+      measurement: MEASUREMENTS.backup.name,
+      tags: { service: 'backup' },
+      fields: { last_success: Math.floor(input.now.getTime() / 1000) },
+      at: input.now.getTime(),
+    },
+  ]);
   const answer = await post(input.url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Type': 'application/json',
       Authorization: `Basic ${Buffer.from(`${input.user}:${input.token}`).toString('base64')}`,
     },
-    body: line,
+    body,
     signal: AbortSignal.timeout(10_000),
   });
   if (!answer.ok) {
