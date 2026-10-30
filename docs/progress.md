@@ -13,7 +13,7 @@ Left out: the generate step, variants, locks, the not-placed list with its rule 
 The next sessions must know:
 
 - A blocked rule added to `FIXED_RULES` fails `solver.test.ts` until it is in `SOLVER_OPTION_RULES`, `apps/solver/rules.json` (with a Kotlin constraint) or `SOLVER_AFTER_RULES`.
-- `pnpm --filter @sodiq/solver test` needs Java 21; CI's part "web and packages" runs it (Gradle and Maven Central downloads included). In a cloud session `scripts/gradle.mjs` uses `/opt/gradle` (8.14.3); Maven Central may rate-limit the session (a local `~/.gradle/init.gradle.kts` mirror helps; never committed).
+- `pnpm --filter @sodiq/solver test` needs Java 21; CI's part "web and packages" runs it (Gradle and Maven Central downloads included). The built `dist/bin/solver` runs the Java of `JAVA_HOME`: on GitHub's runner that is 17 unless set to `JAVA_HOME_21_X64`, as the check does; a deploy sets Java 21. In a cloud session `scripts/gradle.mjs` uses `/opt/gradle` (8.14.3); Maven Central may rate-limit the session (a local `~/.gradle/init.gradle.kts` mirror helps; never committed).
 - Timefold 2's score analysis and `timefold-solver-test` are gone from the free edition: `ConstraintVerifier` is in core, and only the total score is free.
 
 ## 29 October 2026: task 10.1b Every speed target of `12` at three times the size

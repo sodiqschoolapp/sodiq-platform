@@ -22,6 +22,14 @@ import { solverBranch } from '../../../packages/timetable-rules/src/testing/solv
 
 const SOLVER = join(import.meta.dirname, '..', 'dist', 'bin', 'solver');
 const work = mkdtempSync(join(tmpdir(), 'solver-check-'));
+// The start script runs the Java of JAVA_HOME; GitHub's runner defaults to Java
+// 17 and keeps Java 21, which Timefold Solver 2 needs, in JAVA_HOME_21_X64.
+const javaEnv = {
+  ...process.env,
+  ...(process.env.JAVA_HOME_21_X64 === undefined
+    ? {}
+    : { JAVA_HOME: process.env.JAVA_HOME_21_X64 }),
+};
 
 afterAll(() => rmSync(work, { recursive: true, force: true }));
 
@@ -29,7 +37,10 @@ function solve(problem: SolverProblem, name: string): SolverAnswer {
   const problemPath = join(work, `${name}-problem.json`);
   const answerPath = join(work, `${name}-answer.json`);
   writeFileSync(problemPath, JSON.stringify(problem));
-  execFileSync(SOLVER, ['solve', problemPath, answerPath], { stdio: ['ignore', 'ignore', 'pipe'] });
+  execFileSync(SOLVER, ['solve', problemPath, answerPath], {
+    env: javaEnv,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
   return JSON.parse(readFileSync(answerPath, 'utf8')) as SolverAnswer;
 }
 
@@ -103,7 +114,7 @@ describe('the solver service', () => {
 
   async function start(token: string): Promise<string> {
     const child = spawn(SOLVER, ['serve', '--port', '0'], {
-      env: { ...process.env, SOLVER_TOKEN: token },
+      env: { ...javaEnv, SOLVER_TOKEN: token },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     service = child;
