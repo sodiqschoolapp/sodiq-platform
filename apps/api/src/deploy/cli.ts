@@ -1,9 +1,16 @@
 import { SystemClock } from '../clock/system-clock.js';
 import { ChromiumPdfRenderer } from '../http/pdf.js';
-import { readFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { compareCounts } from './backup-compare.js';
 import { createRolesSql, rolesOfSchema } from './backup-roles.js';
 import { BackupError, backupStore, markBackup, uploadBackup } from './backup.js';
+import {
+  createSnapshot,
+  deleteSnapshot,
+  NeonError,
+  snapshotAddress,
+  snapshotName,
+} from './neon-snapshot.js';
 import { pdfCheck, PdfCheckError } from './pdf-check.js';
 import { checkRelease, ReleaseCheckError } from './release-check.js';
 import { releaseWindowOpen, tashkentTime } from './release-window.js';
@@ -25,6 +32,12 @@ import { smokeTest, SmokeError } from './smoke.js';
 //   node dist/deploy/cli.js pdf-check
 //     Makes one PDF with the Chromium of this machine (pdf-check.ts); the job
 //     `image` runs it inside the production image.
+//   node dist/deploy/cli.js backup-snapshot
+//     NEON_API_KEY, NEON_PROJECT_ID, BACKUP_DATABASE_URL, GITHUB_RUN_ID and GITHUB_ENV in the
+//     environment. Makes the run's branch of production with a read-only compute, and hands the
+//     next steps SNAPSHOT_URL (masked) and SNAPSHOT_BRANCH_ID (neon-snapshot.ts; task 10.2b).
+//   node dist/deploy/cli.js backup-snapshot-delete
+//     NEON_API_KEY, NEON_PROJECT_ID and SNAPSHOT_BRANCH_ID in the environment. Deletes it.
 //   node dist/deploy/cli.js backup-upload <file>
 //     BACKUP_R2_ACCOUNT_ID, BACKUP_R2_ACCESS_KEY_ID, BACKUP_R2_SECRET_ACCESS_KEY and
 //     BACKUP_R2_BUCKET in the environment. Stores the day's dump (backup.ts; task 10.2a).
@@ -42,7 +55,7 @@ const [command, ...rest] = process.argv.slice(2);
 
 function usage(): never {
   console.error(
-    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | pdf-check | backup-upload <file> | backup-mark | backup-roles | backup-compare <counts> <counts>',
+    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | pdf-check | backup-snapshot | backup-snapshot-delete | backup-upload <file> | backup-mark | backup-roles | backup-compare <counts> <counts>',
   );
   process.exit(2);
 }
@@ -126,6 +139,44 @@ try {
     } finally {
       await renderer.onModuleDestroy();
     }
+  } else if (command === 'backup-snapshot') {
+    const settings = required([
+      'NEON_API_KEY',
+      'NEON_PROJECT_ID',
+      'BACKUP_DATABASE_URL',
+      'GITHUB_RUN_ID',
+      'GITHUB_ENV',
+    ]);
+    const log = (line: string) => {
+      console.log(line);
+    };
+    const neon = { apiKey: settings.NEON_API_KEY, projectId: settings.NEON_PROJECT_ID, log };
+    // The address is checked before any branch is made.
+    snapshotAddress(settings.BACKUP_DATABASE_URL, 'snapshot.invalid');
+    const snapshot = await createSnapshot(
+      neon,
+      snapshotName(new SystemClock().now(), settings.GITHUB_RUN_ID),
+    );
+    // The next steps read the address from the job's environment; GitHub hides it in the log.
+    const address = snapshotAddress(settings.BACKUP_DATABASE_URL, snapshot.host);
+    console.log(`::add-mask::${address}`);
+    console.log(`::add-mask::${decodeURIComponent(new URL(address).password)}`);
+    await appendFile(
+      settings.GITHUB_ENV,
+      `SNAPSHOT_BRANCH_ID=${snapshot.branchId}\nSNAPSHOT_URL=${address}\n`,
+    );
+  } else if (command === 'backup-snapshot-delete') {
+    const settings = required(['NEON_API_KEY', 'NEON_PROJECT_ID', 'SNAPSHOT_BRANCH_ID']);
+    await deleteSnapshot(
+      {
+        apiKey: settings.NEON_API_KEY,
+        projectId: settings.NEON_PROJECT_ID,
+        log: (line) => {
+          console.log(line);
+        },
+      },
+      settings.SNAPSHOT_BRANCH_ID,
+    );
   } else if (command === 'backup-upload') {
     const [file] = rest;
     const settings = required([
@@ -183,7 +234,8 @@ try {
     error instanceof SmokeError ||
     error instanceof ReleaseCheckError ||
     error instanceof PdfCheckError ||
-    error instanceof BackupError;
+    error instanceof BackupError ||
+    error instanceof NeonError;
   console.error(
     known ? error.message : `Failed: ${error instanceof Error ? error.message : String(error)}`,
   );

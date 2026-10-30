@@ -204,7 +204,9 @@ const PAGES = [
 test('every page of Phases 0 to 2 is drawn with the design system in light, dark and at phone width', async ({
   page,
 }) => {
-  test.setTimeout(600_000);
+  // Under CI's 10-minute step limit, which also starts the servers: a stall fails here with a
+  // report and a trace (the walk takes 3 to 4 minutes).
+  test.setTimeout(420_000);
   const account = accountOf('pages');
 
   // Signed out: the sign-in frame.

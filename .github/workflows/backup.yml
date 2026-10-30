@@ -4,10 +4,13 @@ name: Backup
 # (Cloudflare R2)"; docs/restore.md). Approved in advance by the owner on
 # 28 October 2026 (docs/build-plan.md, 10.2: new workflow files for the daily
 # export). Every night at 02:30 Tashkent (21:30 UTC), after the nightly check
-# of 02:00, and by hand: the production database is dumped, the dump is
+# of 02:00, and by hand: a branch of production is made at that moment with
+# a read-only compute only (task 10.2b; the live read replica ended the dump
+# with "conflict with recovery", 30 October 2026), it is dumped, the dump is
 # restored into this job's own empty PostgreSQL to prove it (owners, grants
 # and row-filter policies included), and only then stored in the private
-# bucket and marked in Grafana ("a backup older than 24 hours" reads it).
+# bucket and marked in Grafana ("a backup older than 24 hours" reads it). The
+# branch is deleted at the end of every run, failed or not.
 #
 # The repository is public, so this log is too: the output of pg_dump,
 # pg_restore and psql goes to files on the runner and only counts, table
@@ -76,9 +79,17 @@ jobs:
       - name: Build the backup commands
         run: pnpm turbo run build --filter=@sodiq/api
 
+      - name: Take a snapshot of production
+        # Hands SNAPSHOT_URL (masked) and SNAPSHOT_BRANCH_ID to the next steps.
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: node apps/api/dist/deploy/cli.js backup-snapshot
+
       - name: Dump the production database
         env:
-          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ env.SNAPSHOT_URL }}
         run: |
           mkdir -p "$RUNNER_TEMP/backup"
           if ! docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \
@@ -93,7 +104,7 @@ jobs:
 
       - name: Count the rows of production
         env:
-          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ env.SNAPSHOT_URL }}
         run: |
           docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \
             -v "$PWD/db/backup:/sql:ro" -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
@@ -152,6 +163,13 @@ jobs:
           GRAFANA_METRICS_USER: ${{ secrets.GRAFANA_METRICS_USER }}
           GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
         run: node apps/api/dist/deploy/cli.js backup-mark
+
+      - name: Delete the snapshot
+        if: always() && env.SNAPSHOT_BRANCH_ID != ''
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: node apps/api/dist/deploy/cli.js backup-snapshot-delete
 
       - name: Remove the dump from the runner
         if: always()

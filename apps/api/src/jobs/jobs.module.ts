@@ -24,6 +24,7 @@ export class JobsModule {
           useFactory: (config: AppConfig): JobQueueOptions => ({
             connectionString: config.databaseUrl,
             worker: role.worker,
+            unscheduled: config.unscheduledJobs,
           }),
         },
         JobQueue,

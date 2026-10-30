@@ -53,12 +53,31 @@ describe('the Backup workflow', () => {
         'secrets.GRAFANA_METRICS_URL',
         'secrets.GRAFANA_METRICS_USER',
         'secrets.GRAFANA_TOKEN',
+        'secrets.NEON_API_KEY',
+        'secrets.NEON_PROJECT_ID',
       ].sort(),
     );
     // Every address written in the file is the job's own server.
     for (const url of workflow.match(/postgres:\/\/[^\s"']+/g) ?? []) {
       expect(url).toMatch(/^postgres:\/\/postgres:postgres@localhost:5432\//);
     }
+  });
+
+  it("reads a snapshot of production made for the run, and deletes it whatever the run's end", () => {
+    // The live read replica ended the dump with "conflict with recovery" (30 October 2026).
+    expect(stepRun('Take a snapshot of production')).toContain(
+      'run: node apps/api/dist/deploy/cli.js backup-snapshot\n',
+    );
+    for (const name of ['Dump the production database', 'Count the rows of production']) {
+      expect(stepRun(name), name).toContain('BACKUP_DATABASE_URL: ${{ env.SNAPSHOT_URL }}\n');
+      expect(stepRun(name), name).not.toContain('secrets.');
+    }
+    const remove = stepRun('Delete the snapshot');
+    expect(remove).toContain("if: always() && env.SNAPSHOT_BRANCH_ID != ''\n");
+    expect(remove).toContain('run: node apps/api/dist/deploy/cli.js backup-snapshot-delete\n');
+    // The secret address is read by the snapshot step only.
+    expect(workflow.match(/secrets\.BACKUP_DATABASE_URL/g)).toHaveLength(1);
+    expect(stepRun('Take a snapshot of production')).toContain('secrets.BACKUP_DATABASE_URL');
   });
 
   it("gives the containers that reach production the runner's trusted roots", () => {
@@ -150,6 +169,7 @@ describe('the Backup workflow', () => {
     expect(workflow).not.toContain('--no-owner');
     expect(workflow).not.toContain('--no-privileges');
     const order = [
+      'Take a snapshot of production',
       'Dump the production database',
       'Count the rows of production',
       'Create the roles the dump names in the proof',
@@ -157,6 +177,7 @@ describe('the Backup workflow', () => {
       'Compare the restored copy with production',
       'Store the dump in the backup bucket',
       'Tell Grafana the backup is done',
+      'Delete the snapshot',
     ].map((name) => workflow.indexOf(`- name: ${name}`));
     expect(order.every((index) => index > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);

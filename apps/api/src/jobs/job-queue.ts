@@ -14,6 +14,8 @@ export interface JobQueueOptions {
   worker: boolean;
   /** How often the worker looks for jobs. Tests shorten it. */
   pollingIntervalSeconds?: number;
+  /** Jobs with a cron the worker leaves unscheduled (the browser tests only; config.ts). */
+  unscheduled?: readonly string[];
   /** Called for a fault inside pg-boss. Without it the fault is logged. */
   onError?: (error: Error) => void;
 }
@@ -94,7 +96,11 @@ export class JobQueue implements BeforeApplicationShutdown {
           // The definition in the code is the source of the options.
           await boss.updateQueue(definition.name, definition.options);
         }
-        if (worker && definition.cron !== undefined) {
+        if (
+          worker &&
+          definition.cron !== undefined &&
+          !(this.options.unscheduled ?? []).includes(definition.name)
+        ) {
           // Stored once per name; a second worker writes the same row again.
           await boss.schedule(
             definition.name,

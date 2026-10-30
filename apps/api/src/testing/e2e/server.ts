@@ -18,5 +18,9 @@ process.env.PHOTOS_IN_MEMORY = '1';
 await rm(E2E_MAIL_OUTBOX, { recursive: true, force: true });
 process.env.MAIL_OUTBOX_DIR = E2E_MAIL_OUTBOX;
 process.env.WEB_ORIGIN = process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5174';
+// No prepared totals every minute (task 9.3b-1): in this one process they took the API's
+// connections for up to 20 s a minute on CI's small runners, and the browser tests stalled
+// (30 October 2026). The reads calculate the totals from source instead.
+process.env.JOBS_UNSCHEDULED = 'results.prepare_totals';
 await import('../../main.js');
 await import('../../worker.js');
