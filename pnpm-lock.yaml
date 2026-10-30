@@ -314,6 +314,21 @@ importers:
         specifier: 'catalog:'
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.2(@types/node@24.19.1)(jiti@2.7.0))
 
+  apps/solver:
+    devDependencies:
+      '@sodiq/timetable-rules':
+        specifier: workspace:*
+        version: link:../../packages/timetable-rules
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.1
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.2(@types/node@24.19.1)(jiti@2.7.0))
+
   apps/web:
     dependencies:
       '@atlaskit/pragmatic-drag-and-drop':

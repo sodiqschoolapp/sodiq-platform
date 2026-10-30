@@ -392,7 +392,7 @@ export function solverBranch(options: { overloaded?: boolean } = {}): SolverBran
     subjects: SUBJECTS.map((id) => ({
       id,
       active: true,
-      languageRule: false,
+      languageRule: true,
       tutorSubject: id === 'tutor-hour',
     })),
     rooms,

@@ -12,7 +12,6 @@ repositories {
 dependencies {
     implementation("ai.timefold.solver:timefold-solver-core:2.7.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.4")
-    testImplementation("ai.timefold.solver:timefold-solver-test:2.7.1")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
 }

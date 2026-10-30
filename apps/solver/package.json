@@ -1,0 +1,19 @@
+{
+  "name": "@sodiq/solver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/gradle.mjs installDist",
+    "lint": "eslint check scripts vitest.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/gradle.mjs test installDist && vitest run",
+    "test:changed": "node scripts/gradle.mjs test installDist && vitest run"
+  },
+  "devDependencies": {
+    "@sodiq/timetable-rules": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

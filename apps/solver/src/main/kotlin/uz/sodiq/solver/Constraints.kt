@@ -49,13 +49,13 @@ class TimetableConstraints : ConstraintProvider {
         overlappingPairs(factory)
             .filter { a, b -> a.teacherIds.any { it in b.teacherIds } }
             .penalize(HardMediumSoftScore.ONE_HARD) { a, b -> a.teacherIds.count { it in b.teacherIds }.toLong() }
-            .asConstraint("teacher_double")
+            .asConstraint(TEACHER_DOUBLE)
 
     fun roomDouble(factory: ConstraintFactory): Constraint =
         overlappingPairs(factory)
             .filter { a, b -> a.ownRooms().any { it in b.ownRooms() } }
             .penalize(HardMediumSoftScore.ONE_HARD) { a, b -> a.ownRooms().count { it in b.ownRooms() }.toLong() }
-            .asConstraint("room_double")
+            .asConstraint(ROOM_DOUBLE)
 
     /** Every use of a shared room with the uses running at its start (the most at once is reached at some start). */
     private fun sharedTogether(factory: ConstraintFactory) =
@@ -77,20 +77,20 @@ class TimetableConstraints : ConstraintProvider {
         sharedTogether(factory)
             .filter { at, count, _ -> count > at.room.lessonsAtOnce }
             .penalize(HardMediumSoftScore.ONE_HARD) { at, count, _ -> count - at.room.lessonsAtOnce }
-            .asConstraint("room_shared_full")
+            .asConstraint(ROOM_SHARED_FULL)
 
     fun roomSharedCapacity(factory: ConstraintFactory): Constraint =
         sharedTogether(factory)
             .filter { at, _, students -> students > at.room.capacity }
             .penalize(HardMediumSoftScore.ONE_HARD)
-            .asConstraint("room_shared_capacity")
+            .asConstraint(ROOM_SHARED_CAPACITY)
 
     /** Two blocks of one class at once; the lessons of one block at once are no clash (`checkClashes`). */
     fun classDouble(factory: ConstraintFactory): Constraint =
         overlappingPairs(factory)
             .filter { a, b -> a.classIds.any { it in b.classIds } }
             .penalize(HardMediumSoftScore.ONE_HARD)
-            .asConstraint("class_double")
+            .asConstraint(CLASS_DOUBLE)
 
     fun studentDouble(factory: ConstraintFactory): Constraint =
         overlappingPairs(factory)
@@ -98,7 +98,7 @@ class TimetableConstraints : ConstraintProvider {
                 val (small, large) = if (a.studentIds.size <= b.studentIds.size) a to b else b to a
                 small.studentIds.any { it in large.studentIds }
             }.penalize(HardMediumSoftScore.ONE_HARD)
-            .asConstraint("student_double")
+            .asConstraint(STUDENT_DOUBLE)
 
     fun notPlaced(factory: ConstraintFactory): Constraint =
         factory
@@ -200,6 +200,12 @@ class TimetableConstraints : ConstraintProvider {
             .asConstraint(PART_TIME_FEW_DAYS)
 
     companion object {
+        const val TEACHER_DOUBLE = "teacher_double"
+        const val ROOM_DOUBLE = "room_double"
+        const val ROOM_SHARED_FULL = "room_shared_full"
+        const val ROOM_SHARED_CAPACITY = "room_shared_capacity"
+        const val CLASS_DOUBLE = "class_double"
+        const val STUDENT_DOUBLE = "student_double"
         const val CLASS_NO_GAPS = "class_no_gaps"
         const val TEACHER_FEW_GAPS = "teacher_few_gaps"
         const val SUBJECT_SPREAD = "subject_spread"
@@ -214,12 +220,12 @@ class TimetableConstraints : ConstraintProvider {
         /** The constraints named by the rule engine's blocked rules (`rules.json`). */
         val PAIR_RULES =
             listOf(
-                "teacher_double",
-                "room_double",
-                "room_shared_full",
-                "room_shared_capacity",
-                "class_double",
-                "student_double",
+                TEACHER_DOUBLE,
+                ROOM_DOUBLE,
+                ROOM_SHARED_FULL,
+                ROOM_SHARED_CAPACITY,
+                CLASS_DOUBLE,
+                STUDENT_DOUBLE,
             )
 
         /** The shortest lesson of a template: one empty slot of a teacher's day (decision 7). */
