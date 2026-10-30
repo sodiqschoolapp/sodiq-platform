@@ -1,0 +1,11 @@
+{
+  "comment": "The blocked rules of packages/timetable-rules that the solver keeps as hard constraints between two lessons of a draft (task 5.10). The Kotlin constraints carry these names; packages/timetable-rules/src/solver.test.ts checks that every fixed rule is here, in SOLVER_OPTION_RULES or in SOLVER_AFTER_RULES.",
+  "pairRules": [
+    "teacher_double",
+    "room_double",
+    "room_shared_full",
+    "room_shared_capacity",
+    "class_double",
+    "student_double"
+  ]
+}

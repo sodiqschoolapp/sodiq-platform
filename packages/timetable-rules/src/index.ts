@@ -292,3 +292,21 @@ export {
   type PickedItems,
   type TakenPlan,
 } from './up-to-date.js';
+// Task 5.10: the solver's problem and the re-check of its answer.
+export {
+  MOST_ROOM_COMBINATIONS,
+  notPlaced,
+  SOLVER_AFTER_RULES,
+  SOLVER_OPTION_RULES,
+  SOLVER_PAIR_RULES,
+  SOLVER_SECONDS,
+  SolverPinError,
+  solvedPlacements,
+  solverProblem,
+  type SolverAnswer,
+  type SolverInput,
+  type SolverLesson,
+  type SolverOption,
+  type SolverProblem,
+  type SolverRow,
+} from './solver.js';
