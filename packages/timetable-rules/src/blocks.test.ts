@@ -240,7 +240,7 @@ describe('blocksOfRows', () => {
       fc.property(sceneArb, ({ groups, rows }) => {
         const groupMap = groupsOf(
           ...groups.map((one, index) =>
-            group(`g${String(index)}`, one.classIds, [...one.grades], one.subjectId),
+            group(`g${String(index)}`, one.classIds, one.grades, one.subjectId),
           ),
         );
         // Ids out of their order in the list, as stored rows come.
