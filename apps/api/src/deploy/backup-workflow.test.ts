@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -72,6 +73,42 @@ describe('the Backup workflow', () => {
       expect(stepRun(name), name).toContain(
         'docker run --rm --network host -e BACKUP_DATABASE_URL $TRUSTED_ROOTS \\\n',
       );
+    }
+  });
+
+  it('prints the error lines of a failed dump or count with every value hidden', () => {
+    // The first run on production failed with "1 lines in its log, not printed": nothing told
+    // a refused connection from a refused read (30 October 2026).
+    const script = /\n {6}HIDE_VALUES: '([^'\n]+)'\n/.exec(workflow)?.[1];
+    expect(script).toBeDefined();
+    for (const [name, log] of [
+      ['Dump the production database', '"$RUNNER_TEMP/backup/dump.log"'],
+      ['Count the rows of production', '"$RUNNER_TEMP/backup/source-counts.log"'],
+    ] as const) {
+      expect(stepRun(name), name).toContain(`sed -nE "$HIDE_VALUES" ${log} | head -n 3 || true`);
+    }
+    const log = [
+      'pg_dump: error: connection to server at "ep-quiet-sky-a1b2c3.c-2.eu-central-1.aws.neon.tech" (3.120.10.20), port 5432 failed: FATAL:  password authentication failed for user "sodiq_backup"',
+      'pg_dump: error: missing "=" after "postgresql://sodiq_backup:npg_secret@ep-quiet-sky-a1b2c3.eu-central-1.aws.neon.tech/sodiq" in connection info string',
+      'pg_dump: error: could not translate host name ep-quiet-sky-a1b2c3.eu-central-1.aws.neon.tech to address',
+      'psql:/sql/row-counts.sql:3: ERROR:  permission denied for table students',
+      'pg_dump: detail: Query was: COPY public.students (id, first_name) TO stdout;',
+    ].join('\n');
+    const printed = execFileSync('sed', ['-nE', script ?? ''], { input: log, encoding: 'utf8' });
+    expect(printed.split('\n').filter(Boolean)).toEqual([
+      'pg_dump: error: connection to server at "..." (...), port 5432 failed: FATAL:  password authentication failed for user "..."',
+      'pg_dump: error: missing "..." after "..." in connection info string',
+      'pg_dump: error: could not translate host name <host> to address',
+      'psql:/sql/row-counts.sql:3: ERROR:  permission denied for table students',
+    ]);
+    for (const secret of [
+      'ep-quiet-sky',
+      'npg_secret',
+      'sodiq_backup',
+      '3.120.10.20',
+      'first_name',
+    ]) {
+      expect(printed).not.toContain(secret);
     }
   });
 
