@@ -5,7 +5,7 @@ import type {
   LessonsToday,
   Role,
 } from '@sodiq/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -265,6 +265,59 @@ describe('the home pages of each role (08, Home pages by role)', () => {
     expect(
       await screen.findByRole('region', { name: en.home.earlyWarning.forBranch }),
     ).toBeDefined();
+  });
+
+  // Task 10.1b: the checklist's items come from the prepared totals; the card says when, and
+  // Refresh asks again while they are behind (nothing on a timer).
+  it('shows on the quarter card when the checklist was prepared, and "updating" with Refresh', async () => {
+    let answers = 0;
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/results/closing': () => {
+        answers += 1;
+        return json({
+          quarters: [{ id: uid(50), number: 1, startDate: '2026-09-01', endDate: '2026-10-31' }],
+          quarterId: uid(50),
+          prepared:
+            answers === 1
+              ? { updatedAt: null, updating: true }
+              : { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
+          state: 'open',
+          opensOn: '2026-10-17',
+          lastDay: '2026-10-31',
+          closable: false,
+          lockNowNeeded: false,
+          startQuarter: false,
+          earlierOpen: false,
+          closing: null,
+          reopenings: [],
+          reopening: null,
+          changes: [],
+          closedJournals: [],
+          reopenedJournals: [],
+          check: null,
+          canApply: false,
+          canEdit: true,
+          schoolDays: { passed: 30, total: 40 },
+          blocking: 1,
+          warnings: 2,
+          items: [],
+        });
+      },
+    });
+    renderApp('/');
+    const card = await screen.findByRole('region', { name: en.home.vice.quarter });
+    const state = () =>
+      card.querySelector('[data-prepared-state]')?.getAttribute('data-prepared-state');
+    await waitFor(() => {
+      expect(state()).toBe('updating');
+    });
+    fireEvent.click(within(card).getByRole('button', { name: en.prepared.refresh }));
+    await waitFor(() => {
+      expect(state()).toBe('updated');
+    });
+    expect(answers).toBe(2);
+    expect(within(card).queryByRole('button', { name: en.prepared.refresh })).toBeNull();
   });
 
   it('gives the Principal the branch summary with results by grade in one decimal, in Russian', async () => {

@@ -193,4 +193,127 @@ describe('migration runner', () => {
     expect(results.flat().sort()).toEqual(['0001_create_table', '0002_second_table']);
     expect(await appliedNames()).toEqual(['0001_create_table', '0002_second_table']);
   });
+
+  // Task 10.1b, decision 4 and correction 4 of the plan review: indexes on large tables are built
+  // without a long lock (`edge/system-behaviour`: "tables are never locked for long").
+  describe('an index-only file, run outside a transaction', () => {
+    const PARTITIONED = `
+      create table scratch_history (id integer not null, lesson integer not null, at date not null)
+        partition by range (at);
+      create table scratch_history_a partition of scratch_history
+        for values from ('2026-01-01') to ('2026-07-01');
+      create table scratch_history_b partition of scratch_history default;
+      insert into scratch_history values (1, 10, '2026-02-01'), (2, 20, '2026-09-01');
+      create table scratch_plain (id integer primary key, lesson integer not null);
+    `;
+
+    async function indexes(): Promise<{ name: string; valid: boolean; parent: string | null }[]> {
+      const found = await sql<{ name: string; valid: boolean; parent: string | null }>`
+        select c.relname as name, x.indisvalid as valid, p.relname as parent
+        from pg_index x
+        join pg_class c on c.oid = x.indexrelid
+        left join pg_inherits i on i.inhrelid = x.indexrelid
+        left join pg_class p on p.oid = i.inhparent
+        where c.relname like '%lesson_idx'
+        order by c.relname
+      `.execute(database.migrator);
+      return found.rows;
+    }
+
+    it('builds the index of a plain table, and of each partition attached to the parent', async () => {
+      await file('0001_tables.sql', PARTITIONED);
+      await file(
+        '0002_indexes.sql',
+        [
+          '-- migrate: no transaction',
+          '-- The lessons of the history.',
+          'create index concurrently if not exists scratch_history_lesson_idx on scratch_history (lesson);',
+          'create index concurrently if not exists scratch_plain_lesson_idx on scratch_plain (lesson);',
+        ].join('\n'),
+      );
+
+      expect(await run()).toEqual(['0001_tables', '0002_indexes']);
+
+      expect(await appliedNames()).toEqual(['0001_tables', '0002_indexes']);
+      expect(await indexes()).toEqual([
+        { name: 'scratch_history_a_lesson_idx', valid: true, parent: 'scratch_history_lesson_idx' },
+        { name: 'scratch_history_b_lesson_idx', valid: true, parent: 'scratch_history_lesson_idx' },
+        { name: 'scratch_history_lesson_idx', valid: true, parent: null },
+        { name: 'scratch_plain_lesson_idx', valid: true, parent: null },
+      ]);
+      expect(await run()).toEqual([]);
+    });
+
+    it('refuses any other statement in such a file before anything runs', async () => {
+      await file('0001_tables.sql', PARTITIONED);
+      await file(
+        '0002_indexes.sql',
+        [
+          '-- migrate: no transaction',
+          'create index concurrently if not exists scratch_plain_lesson_idx on scratch_plain (lesson);',
+          'drop table scratch_plain;',
+        ].join('\n'),
+      );
+
+      await expect(run()).rejects.toThrow(
+        /"0002_indexes.sql" runs outside a transaction and may hold only.*drop table scratch_plain/,
+      );
+      expect(await tableExists('scratch_plain')).toBe(false);
+      expect(await tableExists('schema_migrations')).toBe(false);
+    });
+
+    it('drops an index a failed build left invalid and builds it again', async () => {
+      await file('0001_tables.sql', PARTITIONED);
+      await run();
+      // A failed concurrent build leaves its index behind, invalid (duplicates under a unique one).
+      await sql`insert into scratch_plain values (1, 5), (2, 5)`.execute(database.migrator);
+      await expect(
+        sql`create unique index concurrently scratch_plain_lesson_idx on scratch_plain (lesson)`.execute(
+          database.migrator,
+        ),
+      ).rejects.toThrow(/could not create unique index/);
+      expect(await indexes()).toEqual([
+        { name: 'scratch_plain_lesson_idx', valid: false, parent: null },
+      ]);
+      await file(
+        '0002_indexes.sql',
+        [
+          '-- migrate: no transaction',
+          'create index concurrently if not exists scratch_plain_lesson_idx on scratch_plain (lesson);',
+        ].join('\n'),
+      );
+
+      expect(await run()).toEqual(['0002_indexes']);
+
+      expect(await indexes()).toEqual([
+        { name: 'scratch_plain_lesson_idx', valid: true, parent: null },
+      ]);
+    });
+
+    it('keeps what a stopped run built and finishes the file on the next run', async () => {
+      await file('0001_tables.sql', PARTITIONED);
+      await file(
+        '0002_indexes.sql',
+        [
+          '-- migrate: no transaction',
+          'create index concurrently if not exists scratch_plain_lesson_idx on scratch_plain (lesson);',
+          'create index concurrently if not exists scratch_late_lesson_idx on scratch_late (lesson);',
+        ].join('\n'),
+      );
+
+      await expect(run()).rejects.toThrow(
+        /Migration 0002_indexes stopped: .*scratch_late.* the next run finishes the file/,
+      );
+      expect(await appliedNames()).toEqual(['0001_tables']);
+      expect((await indexes()).map((one) => one.name)).toEqual(['scratch_plain_lesson_idx']);
+
+      await sql`create table scratch_late (lesson integer)`.execute(database.migrator);
+      expect(await run()).toEqual(['0002_indexes']);
+      expect(await appliedNames()).toEqual(['0001_tables', '0002_indexes']);
+      expect((await indexes()).map((one) => one.name)).toEqual([
+        'scratch_late_lesson_idx',
+        'scratch_plain_lesson_idx',
+      ]);
+    });
+  });
 });

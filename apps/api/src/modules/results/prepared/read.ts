@@ -2,8 +2,10 @@ import type { Fraction, StudentQuarterOutcome } from '@sodiq/calc';
 import { sql } from 'kysely';
 import type { PreparedStamp } from '@sodiq/shared';
 import {
+  countsOfFacts,
   lessonStatusFacts,
   statusOfFacts,
+  type LessonCounts,
   type LessonStatusFacts,
   type LessonStatusRow,
 } from '../../journal/lesson-status.query.js';
@@ -17,9 +19,12 @@ import {
 } from '../early-warning.service.js';
 import type { QuarterRef } from '../grade-changes.js';
 import { outcomesOf, type Outcomes, type QuarterState } from '../rating.service.js';
-import { freshLessons, freshUnits, schoolInputsOf, type FreshUnit } from './prepared.query.js';
+import { freshLessons, freshUnits, PREPARED_SHAPE, type FreshUnit } from './prepared.query.js';
 import { attendanceOfJournal, type AttendanceLesson } from './attendance.js';
-import { journalsOfYear, type FiguresValue } from './units.js';
+import { resultItemsOf, type ResultDraft, type ResultItems } from '../closing-results.js';
+import type { JournalRow } from '../../journal/journal-grid.query.js';
+import { journalProgressOf, type JournalProgress } from '../../plans/plan-progress.js';
+import { journalsOfYear, type FiguresValue, type PreparedLesson } from './units.js';
 
 /**
  * The readers of the prepared report totals (task 9.3b-1). Each gives what the reader of today
@@ -31,7 +36,6 @@ import { journalsOfYear, type FiguresValue } from './units.js';
 export class Freshness {
   private oldest: Date | null = null;
   private behind = false;
-  private inputs: Promise<string> | undefined;
 
   used(preparedAt: Date): void {
     if (this.oldest === null || preparedAt < this.oldest) this.oldest = preparedAt;
@@ -39,12 +43,6 @@ export class Freshness {
 
   missed(): void {
     this.behind = true;
-  }
-
-  /** The school-wide inputs as this request's transaction sees them, read once. */
-  schoolInputs(moment: Pick<BranchMoment, 'transaction'>): Promise<string> {
-    this.inputs ??= schoolInputsOf(moment.transaction);
-    return this.inputs;
   }
 
   get stamp(): PreparedStamp {
@@ -66,7 +64,7 @@ async function subjectsOf(moment: BranchMoment, quarter: QuarterRef): Promise<st
 async function split(
   moment: BranchMoment,
   freshness: Freshness,
-  kind: 'outcomes' | 'figures',
+  kind: 'outcomes' | 'figures' | 'closing',
   quarterId: string,
   subjectIds: readonly string[],
 ): Promise<{ fresh: Map<string, FreshUnit>; behind: string[] }> {
@@ -76,7 +74,7 @@ async function split(
     quarterId,
     unitIds: subjectIds,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
   });
   for (const one of fresh.values()) freshness.used(one.preparedAt);
   const behind = subjectIds.filter((id) => !fresh.has(id));
@@ -134,12 +132,24 @@ export async function preparedFigures(
   const previous = new Map<string, Fraction | null>();
   const before = figures.size === 0 ? null : await previousQuarterOf(moment, quarter);
   if (before !== null) {
-    const earlier = await split(moment, freshness, 'figures', before.id, subjects);
-    for (const one of earlier.fresh.values()) {
-      for (const [key, value] of (one.value as FiguresValue).work) previous.set(key, value);
+    // Only the `work` of the previous quarter is compared (task 10.1b: read alone).
+    const earlier = await freshUnits(moment.transaction, {
+      branchId: moment.branchId,
+      kind: 'figures',
+      quarterId: before.id,
+      unitIds: subjects,
+      now: moment.now,
+      schoolInputs: PREPARED_SHAPE,
+      part: 'work',
+    });
+    for (const one of earlier.values()) {
+      freshness.used(one.preparedAt);
+      for (const [key, value] of one.value as FiguresValue['work']) previous.set(key, value);
     }
-    if (earlier.behind.length > 0) {
-      for (const [key, value] of await workFiguresOf(moment, before, earlier.behind)) {
+    const behind = subjects.filter((id) => !earlier.has(id));
+    if (behind.length > 0) {
+      freshness.missed();
+      for (const [key, value] of await workFiguresOf(moment, before, behind)) {
         previous.set(key, value);
       }
     }
@@ -153,22 +163,58 @@ export async function preparedLessonStatuses(
   lessonIds: readonly string[],
   freshness: Freshness,
 ): Promise<Map<string, LessonStatusRow>> {
-  const found = new Map<string, LessonStatusRow>();
+  return preparedLessons(moment, lessonIds, freshness, {
+    prepared: (value) => statusOfFacts(value as LessonStatusFacts, moment.now),
+    source: (one) => statusOfFacts(one, moment.now),
+  });
+}
+
+/**
+ * What the closing checklist reads of each lesson named (task 10.1b): `LessonCounts` from the
+ * fresh `statuses` units without the lessons' facts, and from source for the ones behind.
+ */
+export async function preparedLessonCounts(
+  moment: Pick<BranchMoment, 'transaction' | 'branchId' | 'now'>,
+  lessonIds: readonly string[],
+  freshness: Freshness,
+): Promise<Map<string, LessonCounts>> {
+  return preparedLessons(moment, lessonIds, freshness, {
+    part: 'counts',
+    prepared: (value) => {
+      const { row, counts } = value as Pick<PreparedLesson, 'row' | 'counts'>;
+      return { journalId: row.journalId, held: row.held, locksAt: row.locksAt, counts };
+    },
+    source: countsOfFacts,
+  });
+}
+
+async function preparedLessons<T>(
+  moment: Pick<BranchMoment, 'transaction' | 'branchId' | 'now'>,
+  lessonIds: readonly string[],
+  freshness: Freshness,
+  read: {
+    readonly part?: 'counts';
+    readonly prepared: (value: unknown) => T;
+    readonly source: (one: LessonStatusFacts) => T;
+  },
+): Promise<Map<string, T>> {
+  const found = new Map<string, T>();
   if (lessonIds.length === 0) return found;
   const ids = [...new Set(lessonIds.map((id) => id.toLowerCase()))];
   const fresh = await freshLessons(moment.transaction, {
     branchId: moment.branchId,
     lessonIds: ids,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
+    ...(read.part === undefined ? {} : { part: read.part }),
   });
   for (const [id, one] of fresh) {
     freshness.used(one.preparedAt);
-    found.set(id, statusOfFacts(one.value as LessonStatusFacts, moment.now));
+    found.set(id, read.prepared(one.value));
   }
   const behind = ids.filter((id) => !fresh.has(id));
   if (behind.length > 0) {
-    const read = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
+    const facts = await lessonStatusFacts(moment.transaction, moment.branchId, behind, moment.now);
     // A lesson of no journal, or dated in no quarter, is never prepared: read from source, and not
     // counted as behind, or the stamp would never clear (code review, should-fix 3).
     const quarters = (
@@ -178,9 +224,9 @@ export async function preparedLessonStatuses(
       `.execute(moment.transaction)
     ).rows;
     const dated = (date: string) => quarters.some((one) => one.start <= date && date <= one.end);
-    for (const [id, one] of read) {
+    for (const [id, one] of facts) {
       if (one.row.journalId !== null && dated(one.row.date)) freshness.missed();
-      found.set(id, statusOfFacts(one, moment.now));
+      found.set(id, read.source(one));
     }
   }
   return found;
@@ -204,7 +250,7 @@ export async function preparedAttendance(
     quarterId: quarter.id,
     unitIds: ids,
     now: moment.now,
-    schoolInputs: await freshness.schoolInputs(moment),
+    schoolInputs: PREPARED_SHAPE,
   });
   const lessons: AttendanceLesson[] = [];
   for (const one of fresh.values()) {
@@ -217,4 +263,70 @@ export async function preparedAttendance(
     lessons.push(...(await attendanceOfJournal(moment, quarter, journalId)));
   }
   return lessons;
+}
+
+/**
+ * The result items of the closing checklist (task 10.1b; `resultItemsOf`) from the prepared
+ * `closing` units of the subjects named (`null`: every subject of the year) and, for the units
+ * found behind, from source by the same function, one subject at a time.
+ */
+export async function preparedClosing(
+  moment: BranchMoment,
+  quarter: QuarterRef,
+  subjectIds: readonly string[] | null,
+  freshness: Freshness,
+): Promise<ResultItems> {
+  const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
+  const { fresh, behind } = await split(moment, freshness, 'closing', quarter.id, subjects);
+  const parts: ResultItems[] = [...fresh.values()].map((one) => one.value as ResultItems);
+  if (behind.length > 0)
+    parts.push(await resultItemsOf(moment.transaction, { ...moment, quarter }, behind));
+  const weightsMissing: string[] = [];
+  const drafts: ResultDraft[] = [];
+  for (const part of parts) {
+    weightsMissing.push(...part.weightsMissing);
+    drafts.push(...part.drafts);
+  }
+  return { weightsMissing, drafts };
+}
+
+/**
+ * What the progress report of `09` counts of each journal named in a quarter (task 10.1b;
+ * `journalProgressOf`), from the prepared `plan_progress` units and, for the units found behind,
+ * from source by the same function.
+ */
+export async function preparedPlanProgress(
+  moment: BranchMoment,
+  quarter: { readonly id: string; readonly startDate: string; readonly endDate: string },
+  journals: readonly JournalRow[],
+  freshness: Freshness,
+): Promise<Map<string, JournalProgress>> {
+  const found = new Map<string, JournalProgress>();
+  if (journals.length === 0) return found;
+  const fresh = await freshUnits(moment.transaction, {
+    branchId: moment.branchId,
+    kind: 'plan_progress',
+    quarterId: quarter.id,
+    unitIds: journals.map((journal) => journal.id.toLowerCase()),
+    now: moment.now,
+    schoolInputs: PREPARED_SHAPE,
+  });
+  for (const [id, one] of fresh) {
+    freshness.used(one.preparedAt);
+    found.set(id, one.value as JournalProgress);
+  }
+  const behind = journals.filter((journal) => !fresh.has(journal.id.toLowerCase()));
+  if (behind.length > 0) {
+    freshness.missed();
+    for (const [id, one] of await journalProgressOf(
+      moment.transaction,
+      behind,
+      quarter,
+      moment.timeZone,
+      moment.now,
+    )) {
+      found.set(id, one);
+    }
+  }
+  return found;
 }

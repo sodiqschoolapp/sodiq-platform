@@ -1,5 +1,5 @@
 import type { BlockGroup, BlockRow } from '@sodiq/timetable-rules';
-import { blockOf } from '@sodiq/timetable-rules';
+import { blocksOfRows } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
 import { groupPlacementGaps } from '../classes/class-groups.js';
 import type { StoredLoadRow } from './load-facts.js';
@@ -74,10 +74,12 @@ export async function readUnplaced(
   from: string,
 ): Promise<Map<string, number>> {
   const blockRows = rows.map(blockRowOf);
+  // Task 10.1b: every row's block worked out at once.
+  const blocks = blocksOfRows(blockRows, groups);
   const counts = new Map<string, number>();
   for (const row of blockRows) {
     if (row.groupId === null || counts.has(row.id)) continue;
-    const block = blockOf(row.id, blockRows, groups);
+    const block = blocks.get(row.id) ?? [];
     const classIds = [
       ...new Set(
         block.flatMap((part) =>

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { JOURNAL_PARTS, journalSubjectSchema, journalUnitSchema } from './journal.js';
+import { preparedStampSchema } from './prepared.js';
 import { RESULT_FLAGS } from './results.js';
 
 /**
@@ -478,6 +479,11 @@ export const closingChecklistSchema = z.object({
   ),
   /** `null` when the branch has no dated quarter. */
   quarterId: z.uuid().nullable(),
+  /**
+   * Task 10.1b: the items over the results and the lessons come from the prepared totals; when
+   * they were prepared, and whether some were behind and read from source (`edge/system-behaviour`).
+   */
+  prepared: preparedStampSchema,
   /** `not_open` before the checklist opens, `closed` once closed: no items. */
   state: z.enum(['not_open', 'open', 'closed']),
   opensOn: schoolDateSchema.nullable(),

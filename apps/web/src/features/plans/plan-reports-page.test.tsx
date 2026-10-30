@@ -75,6 +75,7 @@ const PROGRESS: PlanProgress = {
   ],
   teachers: [{ teacher, plannedWorks: 8, notHeld: 2, percentNotHeld: 25 }],
   otherSubjects: 0,
+  prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
 };
 
 const MINIMUMS: PlanMinimums = {
@@ -129,6 +130,36 @@ describe('the plan reports', () => {
         '1 plan of a subject outside your scope is not shown.',
       );
     });
+  });
+
+  // Task 10.1b: progress reads the prepared totals (`edge/system-behaviour`: "A page that finds
+  // them behind calculates from source and shows 'updating'"); Refresh asks again.
+  it('shows "updating" on progress with Refresh while the totals are behind, then the time they were updated', async () => {
+    let answers = 0;
+    open('/plans/reports?report=progress', {
+      'GET /api/plans/reports/progress': () => {
+        answers += 1;
+        return json({
+          ...PROGRESS,
+          prepared:
+            answers === 1
+              ? { updatedAt: null, updating: true }
+              : { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
+        });
+      },
+    });
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-prepared-state]')?.getAttribute('data-prepared-state'),
+      ).toBe('updating');
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.prepared.refresh }));
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-prepared-state]')?.getAttribute('data-prepared-state'),
+      ).toBe('updated');
+    });
+    expect(answers).toBe(2);
   });
 
   it('shows each plan with its warnings, and progress with the share of "not held"', async () => {

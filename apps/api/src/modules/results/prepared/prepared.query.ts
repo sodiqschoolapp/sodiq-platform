@@ -1,24 +1,39 @@
 import { sql } from 'kysely';
 import type { Transaction } from '../../../database/transactions.js';
 import { decode, encode } from './codec.js';
+import type { PreparedLesson } from './units.js';
 
 /**
  * The store of the prepared report totals (task 9.3b-1; db/migrations/0140): which units are
  * fresh, their values, and their preparation. A unit is fresh while every change row that
  * concerns it was visible in the snapshot of its preparation (`seen`), the moment it depends on
- * has not come (`next_change_at`) and the school-wide inputs are the ones it was prepared with
- * (`school_inputs`); anything else is behind, and the reader calculates it from source.
+ * has not come (`next_change_at`), every school-wide change row was visible in that snapshot too
+ * (task 10.1b, db/migrations/0143) and its value has the shape of this release
+ * (`school_inputs` holds `PREPARED_SHAPE`); anything else is behind, and the reader calculates
+ * it from source.
  */
 
-// Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal.
-export const UNIT_KINDS = ['outcomes', 'figures', 'statuses', 'attendance'] as const;
+// Task 9.3b-2 adds `attendance` (db/migrations/0141): a quarter and a journal. Task 10.1b adds
+// `closing` (a quarter and a subject), 0143, and `plan_progress` (a quarter and a journal), 0146.
+// The kind `class_figures` that 0143 allows is not prepared: the ratings read their units fast
+// enough as they are (plan decision 11).
+export const UNIT_KINDS = [
+  'outcomes',
+  'figures',
+  'statuses',
+  'attendance',
+  'closing',
+  'plan_progress',
+] as const;
 export type UnitKind = (typeof UNIT_KINDS)[number];
 
 /**
- * The school-wide tables the preparation reads (no branch column, so no change row: plan
- * decision 2 cannot reach them). Each is fingerprinted by the place and the writing transaction
- * of every row, so an insert, an update and a delete each change the fingerprint. Held complete
- * by the inputs check of the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`).
+ * The school-wide tables the preparation reads (no branch column, so no change row of a branch).
+ * A write of any of them writes a row of `report_school_changes` (0143), which puts every unit of
+ * every branch behind until a preparation sees it (task 10.1b, decision 3, Look first: in place of
+ * the fingerprint of every row that 9.3b-1 read on each request). Held complete by the inputs
+ * check of the speed run (`speed.database.test.ts`, `testing/prepared-kit.ts`), and the triggers of
+ * 0143 by `prepared.database.test.ts`.
  */
 export const SCHOOL_INPUTS = [
   'absences',
@@ -31,22 +46,12 @@ export const SCHOOL_INPUTS = [
   'subjects',
 ] as const;
 
-/** The fingerprint of the school-wide inputs, as this transaction sees them. */
-export async function schoolInputsOf(transaction: Transaction): Promise<string> {
-  const parts = SCHOOL_INPUTS.map(
-    (table) => sql<string>`
-      select ${table}::text || ':' || coalesce(
-        md5(string_agg(t.ctid::text || '/' || t.xmin::text, ',' order by t.ctid)), ''
-      ) as part
-      from ${sql.table(table)} t
-    `,
-  );
-  const found = await sql<{ inputs: string }>`
-    select md5(string_agg(part, '|' order by part)) as inputs
-    from (${sql.join(parts, sql` union all `)}) x
-  `.execute(transaction);
-  return found.rows[0]?.inputs ?? '';
-}
+/**
+ * The shape of the stored values of this release, kept in `school_inputs`: raised whenever a
+ * kind's value changes shape, so the rows prepared by an older release are behind at once and
+ * prepared again by the job, with no migration touching them (task 10.1b, decision 5).
+ */
+export const PREPARED_SHAPE = 'shape:4';
 
 /**
  * The snapshot of this transaction as text: taken before the preparation reads anything (review
@@ -62,12 +67,21 @@ export async function snapshotOf(transaction: Transaction): Promise<string> {
 }
 
 /** The condition "this preparation row is fresh" for a row named `p`. */
+//
+// A change row whose transaction is older than the snapshot's oldest running one was committed
+// before the snapshot and is visible in it, so only the newer ones are tested (task 10.1b: the
+// test reads the index of `xid`, not every change row of the branch).
 const freshCondition = (now: Date, schoolInputs: string) => sql<boolean>`
   (p.next_change_at is null or p.next_change_at > ${now})
   and p.school_inputs = ${schoolInputs}
   and not exists (
+    select from report_school_changes s
+    where s.xid >= pg_snapshot_xmin(p.seen) and not pg_visible_in_snapshot(s.xid, p.seen)
+  )
+  and not exists (
     select from report_changes c
     where c.branch_id = p.branch_id
+      and c.xid >= pg_snapshot_xmin(p.seen)
       and (c.quarter_id is null or c.quarter_id = p.quarter_id)
       and (c.journal_id is null or c.journal_id = any (p.journal_ids))
       and not pg_visible_in_snapshot(c.xid, p.seen)
@@ -89,11 +103,18 @@ export async function freshUnits(
     readonly unitIds: readonly string[];
     readonly now: Date;
     readonly schoolInputs: string;
+    /**
+     * Task 10.1b: one field of the stored object only (the early-warning list reads the `work`
+     * of the previous quarter's figures), never the whole value decoded.
+     */
+    readonly part?: string;
   },
 ): Promise<Map<string, FreshUnit>> {
   if (input.unitIds.length === 0) return new Map();
+  const value =
+    input.part === undefined ? sql`p.value` : sql`p.value -> '$o' -> ${input.part}::text`;
   const found = await sql<{ unit_id: string; prepared_at: Date; value: unknown }>`
-    select p.unit_id, p.prepared_at, p.value
+    select p.unit_id, p.prepared_at, ${value} as value
     from report_prepared p
     where p.branch_id = ${input.branchId}
       and p.kind = ${input.kind}
@@ -109,7 +130,11 @@ export async function freshUnits(
   );
 }
 
-/** The prepared facts of the lessons named whose `statuses` unit is fresh. */
+/**
+ * The prepared facts of the lessons named whose `statuses` unit is fresh; with `part: 'counts'`
+ * only each lesson's `row` and `counts` (`PreparedLesson`, the column `summary`), not the facts
+ * (task 10.1b).
+ */
 export async function freshLessons(
   transaction: Transaction,
   input: {
@@ -117,17 +142,25 @@ export async function freshLessons(
     readonly lessonIds: readonly string[];
     readonly now: Date;
     readonly schoolInputs: string;
+    readonly part?: 'counts';
   },
 ): Promise<Map<string, FreshUnit>> {
   if (input.lessonIds.length === 0) return new Map();
+  // `summary` (0148): read apart from `value`, whose facts are large.
+  const value = input.part === undefined ? sql`l.value` : sql`l.summary`;
   const found = await sql<{ lesson_id: string; prepared_at: Date; value: unknown }>`
-    select l.lesson_id, p.prepared_at, l.value
+    -- Task 10.1b: each unit decided once, not once per lesson.
+    with fresh as materialized (
+      select p.quarter_id, p.unit_id, p.prepared_at
+      from report_prepared p
+      where p.branch_id = ${input.branchId} and p.kind = 'statuses'
+        and ${freshCondition(input.now, input.schoolInputs)}
+    )
+    select l.lesson_id, f.prepared_at, ${value} as value
     from report_prepared_lessons l
-    join report_prepared p on p.branch_id = l.branch_id and p.kind = 'statuses'
-      and p.quarter_id = l.quarter_id and p.unit_id = l.journal_id
+    join fresh f on f.quarter_id = l.quarter_id and f.unit_id = l.journal_id
     where l.branch_id = ${input.branchId}
       and l.lesson_id = any (${[...new Set(input.lessonIds)]}::uuid[])
-      and ${freshCondition(input.now, input.schoolInputs)}
   `.execute(transaction);
   return new Map(
     found.rows.map((row) => [
@@ -216,7 +249,7 @@ export async function writeUnit(
     readonly preparedAt: Date;
     readonly nextChangeAt: Date | null;
     readonly value: unknown;
-    readonly lessons?: ReadonlyMap<string, unknown>;
+    readonly lessons?: ReadonlyMap<string, PreparedLesson>;
   },
 ): Promise<boolean> {
   const { unit } = input;
@@ -246,7 +279,7 @@ export async function writeUnit(
       where branch_id = ${input.branchId} and quarter_id = ${unit.quarterId}
         and journal_id = ${unit.unitId}
     `.execute(transaction);
-    const rows = [...(input.lessons ?? new Map<string, unknown>())];
+    const rows = [...(input.lessons ?? new Map<string, PreparedLesson>())];
     // A lesson that now falls in this unit (a quarter's dates changed, a lesson moved across a
     // quarter's end) leaves the unit it was in: its key is the lesson (code review, must-fix 2).
     if (rows.length > 0) {
@@ -259,13 +292,16 @@ export async function writeUnit(
     for (let start = 0; start < rows.length; start += 500) {
       const chunk = rows.slice(start, start + 500);
       await sql`
-        insert into report_prepared_lessons (branch_id, quarter_id, journal_id, lesson_id, value)
+        insert into report_prepared_lessons (
+          branch_id, quarter_id, journal_id, lesson_id, value, summary
+        )
         select ${input.branchId}::uuid, ${unit.quarterId}::uuid, ${unit.unitId}::uuid,
-          x.lesson_id, x.value
+          x.lesson_id, x.value, x.summary
         from unnest(
           ${chunk.map(([id]) => id)}::uuid[],
-          ${chunk.map(([, value]) => JSON.stringify(encode(value)))}::jsonb[]
-        ) as x (lesson_id, value)
+          ${chunk.map(([, one]) => JSON.stringify(encode({ row: one.row, facts: one.facts })))}::jsonb[],
+          ${chunk.map(([, one]) => JSON.stringify(encode({ row: one.row, counts: one.counts })))}::jsonb[]
+        ) as x (lesson_id, value, summary)
       `.execute(transaction);
     }
   }
@@ -286,5 +322,22 @@ export async function pruneChanges(
     delete from report_changes c
     where c.branch_id = ${branchId}
       and pg_visible_in_snapshot(c.xid, ${seen}::pg_snapshot)
+  `.execute(transaction);
+}
+
+/**
+ * Removes the school-wide change rows visible in `seen` (a snapshot taken before a run of the job
+ * prepared every branch) that every prepared unit of every branch has seen: a school change
+ * concerns every branch, so a row is kept while any unit anywhere was prepared before it (review
+ * of the plan, correction 2). Run in a transaction that sees every branch.
+ */
+export async function pruneSchoolChanges(transaction: Transaction, seen: string): Promise<void> {
+  await sql`
+    delete from report_school_changes s
+    where pg_visible_in_snapshot(s.xid, ${seen}::pg_snapshot)
+      and not exists (
+        select from report_prepared p
+        where s.xid >= pg_snapshot_xmin(p.seen) and not pg_visible_in_snapshot(s.xid, p.seen)
+      )
   `.execute(transaction);
 }

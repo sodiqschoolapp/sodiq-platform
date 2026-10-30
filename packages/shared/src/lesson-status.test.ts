@@ -1,6 +1,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { lessonStatusOf, type StatusFacts, type StatusWork } from './lesson-status.js';
+import {
+  lessonStatusOf,
+  statusCountsOf,
+  type StatusFacts,
+  type StatusWork,
+} from './lesson-status.js';
 
 const NOW = new Date('2026-10-20T10:00:00Z');
 const LATER = new Date('2026-10-29T10:00:00Z');
@@ -262,6 +267,18 @@ describe('lessonStatusOf (07, Lesson status)', () => {
           // The reader sets `data` from what is entered: never false with a mark or a number.
           const answer = lessonStatusOf({ ...input, data: input.data || entered }, now);
           if (entered) expect(answer?.status).not.toBe('not_started');
+        }),
+      );
+    });
+
+    it('keeps the same counts at every moment, the ones the status gives (task 10.1b)', () => {
+      fc.assert(
+        fc.property(factsArb, moment, (input, now) => {
+          const answer = lessonStatusOf(input, now);
+          expect(statusCountsOf(input)).toEqual({
+            unmarked: answer?.unmarked,
+            worksMissing: answer?.worksMissing,
+          });
         }),
       );
     });

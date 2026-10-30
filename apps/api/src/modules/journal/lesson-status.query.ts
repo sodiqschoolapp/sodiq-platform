@@ -1,6 +1,7 @@
 import {
   lessonStateOf,
   lessonStatusOf,
+  statusCountsOf,
   type StatusAnswer,
   type StatusFacts,
   type StatusWork,
@@ -82,6 +83,26 @@ export interface LessonStatusFacts {
 export const statusOfFacts = (one: LessonStatusFacts, now: Date): LessonStatusRow => ({
   ...one.row,
   answer: one.facts === null ? null : lessonStatusOf(one.facts, now),
+});
+
+/**
+ * What the closing checklist reads of a lesson (task 10.1b): its journal, whether it is held, its
+ * lock, and what keeps it from complete (`null` for a lesson not held). The counts do not depend
+ * on the clock, so the prepared totals keep them; the lock is compared with the clock on read.
+ */
+export interface LessonCounts {
+  readonly journalId: string | null;
+  readonly held: boolean;
+  readonly locksAt: Date | null;
+  readonly counts: Pick<StatusAnswer, 'unmarked' | 'worksMissing'> | null;
+}
+
+/** The counts of a lesson from its facts, as `lessonStatusOf` gives them at every moment. */
+export const countsOfFacts = (one: LessonStatusFacts): LessonCounts => ({
+  journalId: one.row.journalId,
+  held: one.row.held,
+  locksAt: one.row.locksAt,
+  counts: one.facts === null || !one.facts.held ? null : statusCountsOf(one.facts),
 });
 
 /** The status facts of the lessons named, of the branch named, at `now`. */

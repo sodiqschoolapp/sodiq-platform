@@ -16,6 +16,7 @@ import { closeQuarter } from '../../../testing/closing-kit.js';
 import {
   dayTemplatesKit,
   START,
+  UNKNOWN,
   type DayTemplatesKit,
 } from '../../../testing/day-templates-kit.js';
 import { LoadKit } from '../../../testing/load-kit.js';
@@ -26,6 +27,13 @@ import { publishedScene, type PublishedScene } from '../../../testing/published-
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
 import { PreparedTotals, prepareUnit } from './prepare.job.js';
+import {
+  freshLessons,
+  isFresh,
+  PREPARED_SHAPE,
+  pruneSchoolChanges,
+  SCHOOL_INPUTS,
+} from './prepared.query.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -610,6 +618,271 @@ describe('the prepared report totals (task 9.3b-1)', () => {
     expect((await rating(c)).prepared.updating).toBe(true);
   });
 
+  // Task 10.1b, decision 3 (Look first): the school-wide inputs write change rows of their own
+  // (0143) in place of the fingerprint read on each request.
+  describe('the school-wide change rows (task 10.1b)', () => {
+    const schoolChanges = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('report_school_changes')
+          .select(['table_name'])
+          .orderBy('xid')
+          .execute()
+      ).map((one) => one.table_name);
+
+    it('watches every school-wide input on insert, update and delete', async () => {
+      const found = await sql<{ table: string; event: string }>`
+        select c.relname as table, substring(g.tgname from '_school_([a-z]+)$') as event
+        from pg_trigger g join pg_class c on c.oid = g.tgrelid join pg_proc p on p.oid = g.tgfoid
+        where p.proname = 'report_changed_school'
+        order by 1, 2
+      `.execute(t.database.migrator);
+      expect(found.rows).toEqual(
+        [...SCHOOL_INPUTS]
+          .sort()
+          .flatMap((table) => ['delete', 'insert', 'update'].map((event) => ({ table, event }))),
+      );
+    });
+
+    it('makes every unit behind on an insert, an update or a delete of a school-wide input; a statement that changes no row writes none', async () => {
+      const c = await scene();
+      const path = '/api/results/early-warning';
+      const m = t.database.migrator;
+      const behindAfter = async (table: string, write: () => Promise<unknown>) => {
+        await prepare(c.s.branch);
+        expect((await read(c, path)).prepared.updating, table).toBe(false);
+        await write();
+        expect((await schoolChanges()).at(-1), table).toBe(table);
+        expect((await read(c, path)).prepared.updating, table).toBe(true);
+      };
+      let subject = '';
+      await behindAfter('subjects', async () => {
+        subject = await load.classes.subject({ name: 'Astronomy', grades: [7] });
+      });
+      await behindAfter('subjects', () =>
+        m.updateTable('subjects').set({ colour: 'red' }).where('id', '=', subject).execute(),
+      );
+      await behindAfter('staff', () =>
+        sql`update staff set first_name = first_name where id = (select min(id::text)::uuid from staff)`.execute(
+          m,
+        ),
+      );
+      // A delete: the switches the new subject was created with.
+      await behindAfter('subject_switches', () =>
+        m.deleteFrom('subject_switches').where('subject_id', '=', subject).execute(),
+      );
+      // A statement that changes no row writes none, and the units stay fresh.
+      await prepare(c.s.branch);
+      const before = await schoolChanges();
+      await m.updateTable('subjects').set({ colour: 'red' }).where('id', '=', UNKNOWN).execute();
+      await m
+        .deleteFrom('absences')
+        .where(sql<boolean>`false`)
+        .execute();
+      expect(await schoolChanges()).toEqual(before);
+      expect((await read(c, path)).prepared.updating).toBe(false);
+    });
+
+    it('lets two writers of two school-wide inputs go on at once: no shared row is written (review of the plan, finding 2)', async () => {
+      const c = await scene();
+      const first = await t.database.migrator.connection().execute(async (one) => {
+        await sql`begin`.execute(one);
+        try {
+          await one
+            .updateTable('subjects')
+            .set({ colour: 'blue' })
+            .where('id', '=', c.s.subject)
+            .execute();
+          // The other writer commits while this one is still open: it would wait on a shared row.
+          await sql`update staff set first_name = first_name where id = (select min(id::text)::uuid from staff)`.execute(
+            t.database.migrator,
+          );
+          return true;
+        } finally {
+          await sql`commit`.execute(one);
+        }
+      });
+      expect(first).toBe(true);
+      expect((await schoolChanges()).slice(-2)).toEqual(['subjects', 'staff']);
+    });
+
+    it('keeps a school change row until every branch has prepared after it (review correction 2)', async () => {
+      const a = await scene();
+      const b = await scene();
+      await prepare(a.s.branch);
+      await prepare(b.s.branch);
+      const path = '/api/results/early-warning';
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ colour: 'teal' })
+        .where('id', '=', a.s.subject)
+        .execute();
+      // Branch A prepared again and the school rows pruned: B has not seen the change yet.
+      await prepare(a.s.branch);
+      // The pruning of a run over every branch, with a snapshot taken now.
+      const all = await t.database.migrator.selectFrom('branches').select('id').execute();
+      await t.app.get(Transactions).run(
+        all.map((one) => one.id),
+        async (every) => {
+          const now = await sql<{ seen: string }>`
+            select pg_current_snapshot()::text as seen
+          `.execute(every);
+          await pruneSchoolChanges(every, now.rows[0]?.seen ?? '');
+        },
+      );
+      expect(await schoolChanges()).toContain('subjects');
+      expect((await read(a, path)).prepared.updating).toBe(false);
+      expect((await read(b, path)).prepared.updating).toBe(true);
+      // Every branch prepared: the row goes, and both stay fresh.
+      t.clock.set(MOMENT);
+      try {
+        await t.app.get(PreparedTotals).run(Number.POSITIVE_INFINITY);
+      } finally {
+        t.clock.set(START);
+      }
+      expect(await schoolChanges()).toEqual([]);
+      expect((await read(a, path)).prepared.updating).toBe(false);
+      expect((await read(b, path)).prepared.updating).toBe(false);
+    });
+  });
+
+  // Task 10.1b: the freshness of the lessons' facts is decided once per unit (journal).
+  it('makes the lessons of a journal behind for a change row of that journal only', async () => {
+    const c = await scene();
+    await prepare(c.s.branch);
+    const fresh = async () => {
+      t.clock.set(MOMENT);
+      try {
+        return await t.app.get(Transactions).run([c.s.branch], async (transaction) =>
+          [
+            ...(
+              await freshLessons(transaction, {
+                branchId: c.s.branch,
+                lessonIds: [c.l12.id, c.l19.id],
+                now: new Date(MOMENT),
+                schoolInputs: PREPARED_SHAPE,
+              })
+            ).keys(),
+          ].sort(),
+        );
+      } finally {
+        t.clock.set(START);
+      }
+    };
+    expect(await fresh()).toEqual([c.l12.id, c.l19.id].sort());
+    const changed = (journalId: string) =>
+      t.database.migrator
+        .insertInto('report_changes')
+        .values({ branch_id: c.s.branch, quarter_id: c.quarter, journal_id: journalId })
+        .execute();
+    // A change of another journal of the branch leaves these lessons fresh.
+    await changed(UNKNOWN);
+    expect(await fresh()).toEqual([c.l12.id, c.l19.id].sort());
+    await changed(c.journal);
+    expect(await fresh()).toEqual([]);
+  });
+
+  // Task 10.1b: the shape of the stored values, a school write during a preparation, the clock,
+  // and a membership, each for the new kinds.
+  describe('the units of task 10.1b', () => {
+    const closing = (c: Awaited<ReturnType<typeof scene>>) =>
+      `/api/results/closing?quarterId=${c.quarter}`;
+
+    it('reads a unit prepared under an older shape as behind (decision 5: no migration touches it)', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      expect((await read(c, closing(c))).prepared.updating).toBe(false);
+      await t.database.migrator
+        .updateTable('report_prepared')
+        .set({ school_inputs: 'shape:1' })
+        .where('branch_id', '=', c.s.branch)
+        .execute();
+      expect((await read(c, closing(c))).prepared.updating).toBe(true);
+      expect(await prepare(c.s.branch)).toBeGreaterThan(0);
+      expect((await read(c, closing(c))).prepared.updating).toBe(false);
+    });
+
+    it('leaves a unit behind when a school-wide input is written between the snapshot of its preparation and its reads', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      t.clock.set(MOMENT);
+      try {
+        await t.app.get(Transactions).run([c.s.branch], (transaction) =>
+          prepareUnit(
+            transaction,
+            c.s.branch,
+            'Asia/Tashkent',
+            { kind: 'closing', quarterId: c.quarter, unitId: c.s.subject },
+            {
+              afterSnapshot: async () => {
+                await t.database.migrator
+                  .updateTable('subjects')
+                  .set({ colour: 'green' })
+                  .where('id', '=', c.s.subject)
+                  .execute();
+              },
+            },
+          ),
+        );
+        const fresh = await t.app.get(Transactions).run([c.s.branch], (transaction) =>
+          isFresh(transaction, {
+            branchId: c.s.branch,
+            unit: { kind: 'closing', quarterId: c.quarter, unitId: c.s.subject },
+            now: new Date(MOMENT),
+            schoolInputs: PREPARED_SHAPE,
+          }),
+        );
+        expect(fresh).toBe(false);
+      } finally {
+        t.clock.set(START);
+      }
+    });
+
+    it('is behind once the next lesson starts, with no change of data, for each new kind (CLAUDE.md, state from stored moments)', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const units = await t.database.migrator
+        .selectFrom('report_prepared')
+        .select(['kind', 'unit_id', 'next_change_at'])
+        .where('branch_id', '=', c.s.branch)
+        .where('quarter_id', '=', c.quarter)
+        .where('kind', 'in', ['closing', 'plan_progress'])
+        .execute();
+      expect(new Set(units.map((one) => one.kind))).toEqual(new Set(['closing', 'plan_progress']));
+      // The checklist moves at midnight while the quarter runs; a journal with no lesson left in
+      // the quarter has no next change.
+      expect(units.some((one) => one.kind === 'closing' && one.next_change_at !== null)).toBe(true);
+      for (const unit of units) {
+        if (unit.next_change_at === null) continue;
+        const at = new Date(unit.next_change_at);
+        const freshAt = (now: Date) =>
+          t.app.get(Transactions).run([c.s.branch], (transaction) =>
+            isFresh(transaction, {
+              branchId: c.s.branch,
+              unit: { kind: unit.kind as 'closing', quarterId: c.quarter, unitId: unit.unit_id },
+              now,
+              schoolInputs: PREPARED_SHAPE,
+            }),
+          );
+        expect(await freshAt(new Date(at.getTime() - 1)), unit.kind).toBe(true);
+        expect(await freshAt(at), unit.kind).toBe(false);
+      }
+    });
+
+    it("makes the checklist behind when a student's class row is written, as a move between journals writes it (review of the plan, finding 1)", async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      expect((await read(c, closing(c))).prepared.updating).toBe(false);
+      // A membership is a branch-wide input: any write of the student's class row.
+      await t.database.migrator
+        .updateTable('class_memberships')
+        .set((eb) => ({ valid_from: eb.ref('valid_from') }))
+        .where('student_id', '=', c.bobur)
+        .execute();
+      expect((await read(c, closing(c))).prepared.updating).toBe(true);
+    });
+  });
+
   it('leaves a unit behind when a change commits between the snapshot of its preparation and its reads (review correction 2)', async () => {
     const c = await scene();
     await prepare(c.s.branch);
@@ -756,6 +1029,11 @@ describe('the prepared report totals (task 9.3b-1)', () => {
             `/api/results/rating/subject?quarterId=${c.quarter}&journalId=${c.journal}`,
             '/api/results/early-warning',
             '/api/results/branch-summary',
+            // Task 10.1b: the plan progress report on the `plan_progress` units, the closing
+            // checklist on the `closing` units and the counts per teacher on the lesson facts.
+            `/api/plans/reports/progress?quarterId=${c.quarter}`,
+            `/api/results/closing?quarterId=${c.quarter}`,
+            '/api/journal/discipline?from=2026-10-01&to=2026-10-27',
           ];
           const fromSource = [];
           for (const path of paths) {

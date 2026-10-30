@@ -68,9 +68,13 @@ export interface StatusAnswer {
 
 const PRESENT = new Set([1, 2]);
 
-/** The status of a lesson at `now`; `null` for a lesson not held (no status, `07`). */
-export function lessonStatusOf(facts: StatusFacts, now: Date): StatusAnswer | null {
-  if (!facts.held) return null;
+/**
+ * What keeps a held lesson from complete, the same at every moment (task 10.1b: the prepared
+ * totals keep it per lesson, so the closing checklist reads it without the lesson's facts).
+ */
+export function statusCountsOf(
+  facts: StatusFacts,
+): Pick<StatusAnswer, 'unmarked' | 'worksMissing'> {
   const unmarked = facts.waited.filter((student) => !facts.marks.has(student)).length;
   const present = facts.waited.filter((student) => PRESENT.has(facts.marks.get(student) ?? -1));
   const worksMissing = facts.works.filter((work) => {
@@ -79,6 +83,13 @@ export function lessonStatusOf(facts: StatusFacts, now: Date): StatusAnswer | nu
     const optional = new Set(work.optional);
     return present.some((student) => !optional.has(student) && !done.has(student));
   }).length;
+  return { unmarked, worksMissing };
+}
+
+/** The status of a lesson at `now`; `null` for a lesson not held (no status, `07`). */
+export function lessonStatusOf(facts: StatusFacts, now: Date): StatusAnswer | null {
+  if (!facts.held) return null;
+  const { unmarked, worksMissing } = statusCountsOf(facts);
   const complete = unmarked === 0 && worksMissing === 0;
   let status: LessonStatus;
   if (complete) status = 'complete';

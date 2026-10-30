@@ -503,6 +503,13 @@ export function QuarterProgressCard(): React.JSX.Element {
                     })
                   : t('home.vice.checklist', { blocking: data.blocking, warnings: data.warnings })}
             </p>
+            <PreparedStamp
+              stamp={data.prepared}
+              refreshing={closing.isFetching}
+              onRefresh={() => {
+                void closing.refetch();
+              }}
+            />
             <Link to="/results/closing" className="text-link justify-self-start">
               {t('home.vice.openChecklist')}
             </Link>

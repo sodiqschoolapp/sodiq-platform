@@ -17,7 +17,6 @@ import {
   type PlanQuery,
   type PlanFlag,
   type PlanState,
-  type PlanWindowState,
   type PlanWork,
   type PlanWorkInput,
 } from '@sodiq/shared';
@@ -74,6 +73,7 @@ import {
   ownerPeriodsOf,
   passGate,
   storedWindowOf,
+  storedWindowsOf,
   type GatePass,
   type GateTarget,
 } from './plan-gate.js';
@@ -291,31 +291,35 @@ export class PlansService {
       links.map((link) => link.plan_id),
       now,
     );
-    const windowStates = new Map<string, PlanWindowState>();
-    const stateOf = async (quarter: PlanQuarter, ownerId: string | null) => {
-      const key = `${quarter.id}|${ownerId ?? ''}`;
-      const known = windowStates.get(key);
-      if (known !== undefined) return known;
-      const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
-      const found = windowStateOf(window, now).state;
-      windowStates.set(key, found);
-      return found;
+    const ownerOfQuarter = (journalId: string, quarter: PlanQuarter) => {
+      const owner = ownerOn(
+        facts.runs.get(journalId) ?? [],
+        facts.periods.get(journalId) ?? [],
+        facts.out,
+        referenceDateOf(quarter, today),
+      );
+      return { owner, ownerId: owner === null || owner.kind === 'none' ? null : owner.staffId };
     };
+    // Task 10.1b: every window and extension read at once, not three queries per plan.
+    const windows = await storedWindowsOf(
+      transaction,
+      quarters,
+      readable.flatMap((journal) =>
+        quarters.map((quarter) => ownerOfQuarter(journal.id, quarter).ownerId),
+      ),
+      timeZone,
+    );
+    const stateOf = (quarter: PlanQuarter, ownerId: string | null) =>
+      windowStateOf(windows.get(`${quarter.id}|${ownerId ?? ''}`) ?? null, now).state;
     const flags = new Map<string, PlanFlag | null>();
     // Task 8.8: whether the owner's window has ended, for the minimum's warning.
     const ended = new Set<string>();
     for (const journal of readable) {
       for (const quarter of quarters) {
         const key = `${journal.id}|${quarter.id}`;
-        const owner = ownerOn(
-          facts.runs.get(journal.id) ?? [],
-          facts.periods.get(journal.id) ?? [],
-          facts.out,
-          referenceDateOf(quarter, today),
-        );
-        const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
+        const { owner, ownerId } = ownerOfQuarter(journal.id, quarter);
         const rows = counts.get(key) ?? 0;
-        const windowState = await stateOf(quarter, ownerId);
+        const windowState = stateOf(quarter, ownerId);
         if (windowState === 'ended') ended.add(key);
         flags.set(
           key,

@@ -939,6 +939,12 @@ describe('journal cells in the database', () => {
       );
       expect(expected.get(classLesson)).toEqual([one, two].sort());
       expect(expected.get(groupLesson)).toEqual([two]);
+      // Of the students named only (task 10.1b, one student's results page).
+      const ofOne = await inBranch(north, (transaction) =>
+        expectedStudents(transaction, [classLesson, groupLesson], [one ?? '']),
+      );
+      expect(ofOne.get(classLesson)).toEqual([one]);
+      expect(ofOne.get(groupLesson)).toEqual([]);
       expect(await inBranch(north, (transaction) => expectedStudents(transaction, []))).toEqual(
         new Map(),
       );

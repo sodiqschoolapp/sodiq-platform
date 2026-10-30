@@ -69,6 +69,7 @@ export {
   BLOCK_PROBLEM_ORDER,
   blockOf,
   blockProblems,
+  blocksOfRows,
   groupsLinked,
   loadBlocks,
   splitAndWhole,

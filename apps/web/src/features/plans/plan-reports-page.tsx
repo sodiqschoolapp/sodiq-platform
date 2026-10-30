@@ -9,6 +9,7 @@ import { DownloadIcon } from '@/components/icons';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { PreparedStamp } from '@/components/prepared-stamp';
 import { Button } from '@/components/ui/button';
 import { PANEL } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
@@ -434,6 +435,15 @@ export function PlanReportsPage(): React.JSX.Element {
       />
       <div className="grid gap-4">
         {download.isError && <FailureAlert error={download.error} />}
+        {report === 'progress' && progress.data !== undefined && (
+          <PreparedStamp
+            stamp={progress.data.prepared}
+            refreshing={progress.isFetching}
+            onRefresh={() => {
+              void progress.refetch();
+            }}
+          />
+        )}
         <div className="flex flex-wrap items-end gap-4">
           <Segmented
             label={t('plans.reports.report')}

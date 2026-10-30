@@ -145,6 +145,31 @@ interface MemberRow {
 /** A journal's quarter as this reader counts it. */
 type JournalData = KnownJournal;
 
+/**
+ * Task 10.1b: the year's columns and the row of each journal, kept for the quarters of one
+ * read-only request (the student results page reads each journal once per quarter). Never kept
+ * across a write.
+ */
+export interface JournalColumnsCache {
+  readonly columns: Map<string, ReturnType<typeof journalColumns>>;
+  readonly rows: Map<string, Promise<JournalRow[]>>;
+}
+
+/** `journalRows` of one journal, from the cache when one is given. */
+export function journalRowOf(
+  transaction: Transaction,
+  branchId: string,
+  journalId: string,
+  cache?: JournalColumnsCache,
+): Promise<JournalRow[]> {
+  let read = cache?.rows.get(journalId);
+  if (read === undefined) {
+    read = journalRows(transaction, branchId, { journalId });
+    cache?.rows.set(journalId, read);
+  }
+  return read;
+}
+
 /** The held lessons, works, cells, expected and exempt students of one journal in the quarter. */
 async function journalData(
   transaction: Transaction,
@@ -153,8 +178,14 @@ async function journalData(
   now: Date,
   quarter: { readonly startDate: string; readonly endDate: string },
   studentIds: readonly string[],
+  cache?: JournalColumnsCache,
 ): Promise<JournalData> {
-  const columns = await journalColumns(transaction, journal, timeZone, now);
+  let read = cache?.columns.get(journal.id);
+  if (read === undefined) {
+    read = journalColumns(transaction, journal, timeZone, now);
+    cache?.columns.set(journal.id, read);
+  }
+  const columns = await read;
   const lessons = columns.lessons.filter(
     (one) => one.date >= quarter.startDate && one.date <= quarter.endDate,
   );
@@ -164,9 +195,10 @@ async function journalData(
       transaction,
       lessons.map((one) => ({ id: one.id, teacherId: one.teacherId, startsAt: one.startsAt })),
     ),
-    lessonCells(transaction, lessonIds),
-    expectedStudents(transaction, lessonIds),
-    exemptionMarksOf(transaction, lessonIds),
+    // Task 10.1b: of the students asked only (one student on the results page).
+    lessonCells(transaction, lessonIds, studentIds),
+    expectedStudents(transaction, lessonIds, studentIds),
+    exemptionMarksOf(transaction, lessonIds, studentIds),
   ]);
   const wanted = new Set(studentIds);
   return {
@@ -297,6 +329,8 @@ export async function subjectQuarterLessons(
     readonly quarter: { readonly id: string; readonly startDate: string; readonly endDate: string };
     readonly studentIds: readonly string[];
     readonly known?: KnownJournal;
+    /** Task 10.1b: a read-only request's cache of the journals' columns. */
+    readonly columns?: JournalColumnsCache;
   },
 ): Promise<Map<string, StudentSubjectQuarter>> {
   const answer = new Map<string, StudentSubjectQuarter>();
@@ -336,11 +370,19 @@ export async function subjectQuarterLessons(
       data.set(row.id, input.known);
       continue;
     }
-    const [journal] = await journalRows(transaction, input.branchId, { journalId: row.id });
+    const [journal] = await journalRowOf(transaction, input.branchId, row.id, input.columns);
     if (journal === undefined) continue;
     data.set(
       row.id,
-      await journalData(transaction, journal, input.timeZone, input.now, quarter, input.studentIds),
+      await journalData(
+        transaction,
+        journal,
+        input.timeZone,
+        input.now,
+        quarter,
+        input.studentIds,
+        input.columns,
+      ),
     );
   }
 

@@ -746,30 +746,36 @@ export class LessonStatusService {
     });
     // "Entries made after the edit period" (From 8.4): the history lines written under the
     // person's own unlock, never a correction, an optional cell or an orphan assignment.
-    const lessonIds = rows.map((row) => row.id);
+    // Task 10.1b: found by the unlocks of the branch (a few rows; 0145), then kept to the lessons
+    // counted; read by the lessons, a quarter's ids were planned over every history partition.
+    const countedLessons = new Set(rows.map((row) => row.id));
+    const unlocks = (
+      await transaction
+        .selectFrom('journal_unlocks')
+        .select('id')
+        .where('branch_id', '=', branchId)
+        .execute()
+    ).map((one) => one.id);
     const late =
-      lessonIds.length === 0
+      countedLessons.size === 0 || unlocks.length === 0
         ? []
         : (
             await sql<{ lesson_id: string; staff_id: string; lines: string }>`
               select h.lesson_id, u.staff_id, count(*)::text as lines
               from (
                 select lesson_id, unlock_id from journal_cell_history
-                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                  and unlock_id is not null
+                where unlock_id = any(${unlocks}::uuid[]) and changed_how = 'late_entry'
                 union all
                 select lesson_id, unlock_id from journal_work_history
-                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                  and unlock_id is not null
+                where unlock_id = any(${unlocks}::uuid[]) and changed_how = 'late_entry'
                 union all
                 select lesson_id, unlock_id from journal_comment_history
-                where lesson_id = any(${lessonIds}::uuid[]) and changed_how = 'late_entry'
-                  and unlock_id is not null
+                where unlock_id = any(${unlocks}::uuid[]) and changed_how = 'late_entry'
               ) h
               join journal_unlocks u on u.id = h.unlock_id
               group by h.lesson_id, u.staff_id
             `.execute(transaction)
-          ).rows;
+          ).rows.filter((one) => countedLessons.has(one.lesson_id));
     // Task 9.3b-2, decision 11: a rating exam's entries after the edit period, when the exam's
     // date is in the range (left to this report by 8.7, build decision); an exam is no lesson.
     const examLate =

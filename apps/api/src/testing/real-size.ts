@@ -1343,7 +1343,7 @@ export const checkStops = (check: PublishCheck) => ({
 });
 
 /** What the report says about the machine. */
-export async function machineOf(t: DayTemplatesKit): Promise<string> {
+export async function machineOf(t: Pick<DayTemplatesKit, 'database'>): Promise<string> {
   const version = await sql<{ server_version: string }>`show server_version`.execute(
     t.database.migrator,
   );

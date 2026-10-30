@@ -1537,7 +1537,14 @@ export interface ReportPreparedLessons {
   journal_id: string;
   lesson_id: string;
   quarter_id: string;
+  summary: Json | null;
   value: Json;
+}
+
+export interface ReportSchoolChanges {
+  changed_at: Timestamp | null;
+  table_name: string;
+  xid: Generated<string>;
 }
 
 export interface RequestKeys {
@@ -2270,6 +2277,7 @@ export interface DB {
   report_changes: ReportChanges;
   report_prepared: ReportPrepared;
   report_prepared_lessons: ReportPreparedLessons;
+  report_school_changes: ReportSchoolChanges;
   request_keys: RequestKeys;
   result_check_differences: ResultCheckDifferences;
   result_checks: ResultChecks;

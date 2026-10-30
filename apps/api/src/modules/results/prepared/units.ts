@@ -1,7 +1,12 @@
 import type { Fraction } from '@sodiq/calc';
 import { sql } from 'kysely';
 import type { Transaction } from '../../../database/transactions.js';
-import { lessonStatusFacts, type LessonStatusFacts } from '../../journal/lesson-status.query.js';
+import {
+  countsOfFacts,
+  lessonStatusFacts,
+  type LessonCounts,
+  type LessonStatusFacts,
+} from '../../journal/lesson-status.query.js';
 import { closingOf } from '../../setup/closed-quarters.js';
 import type { BranchMoment } from '../branch-moment.js';
 import {
@@ -12,6 +17,9 @@ import {
 } from '../early-warning.service.js';
 import { outcomesOf, quarterStateOf, type Outcomes } from '../rating.service.js';
 import { attendanceOfJournal } from './attendance.js';
+import { resultItemsOf, type ResultItems } from '../closing-results.js';
+import { journalRows } from '../../journal/journal-grid.query.js';
+import { journalProgressOf } from '../../plans/plan-progress.js';
 import type { UnitKey } from './prepared.query.js';
 
 /**
@@ -153,10 +161,18 @@ async function nextChangeOf(
   return next === null || day < next ? day : next;
 }
 
+/**
+ * A lesson of a `statuses` unit: its facts, and what keeps it from complete (task 10.1b: kept in
+ * `summary` with `row`, which the closing checklist reads, `freshLessons` with `part: 'counts'`).
+ */
+export interface PreparedLesson extends LessonStatusFacts {
+  readonly counts: LessonCounts['counts'];
+}
+
 export interface UnitValue {
   readonly journalIds: readonly string[];
   readonly value: unknown;
-  readonly lessons?: ReadonlyMap<string, LessonStatusFacts>;
+  readonly lessons?: ReadonlyMap<string, PreparedLesson>;
   readonly nextChangeAt: Date | null;
 }
 
@@ -208,7 +224,9 @@ export async function unitValue(
       return {
         journalIds: [unit.unitId],
         value: null,
-        lessons,
+        lessons: new Map(
+          [...lessons].map(([id, one]) => [id, { ...one, counts: countsOfFacts(one).counts }]),
+        ),
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
     }
@@ -216,6 +234,33 @@ export async function unitValue(
       return {
         journalIds: [unit.unitId],
         value: await attendanceOfJournal(moment, quarter, unit.unitId),
+        // A lesson becomes held at its start; nothing else moves with the clock.
+        nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
+      };
+    }
+    case 'closing': {
+      // Task 10.1b: the result items of the closing checklist of the subject's journals.
+      const value: ResultItems = await resultItemsOf(moment.transaction, { ...moment, quarter }, [
+        unit.unitId,
+      ]);
+      return {
+        journalIds: journals.filter((one) => one.subjectId === unit.unitId).map((one) => one.id),
+        value,
+        // A lesson becomes held at its start; the reference date of the owners moves at midnight.
+        nextChangeAt: await nextChangeOf(moment, quarter, { subjectId: unit.unitId }, true),
+      };
+    }
+    case 'plan_progress': {
+      // Task 10.1b: what the progress report of `09` counts of the journal.
+      const journals = await journalRows(moment.transaction, moment.branchId, {
+        journalIds: [unit.unitId],
+      });
+      const value = (
+        await journalProgressOf(moment.transaction, journals, quarter, moment.timeZone, moment.now)
+      ).get(unit.unitId);
+      return {
+        journalIds: [unit.unitId],
+        value: value ?? null,
         // A lesson becomes held at its start; nothing else moves with the clock.
         nextChangeAt: await nextChangeOf(moment, quarter, { journalId: unit.unitId }, false),
       };
@@ -236,10 +281,12 @@ export async function unitsOf(moment: BranchMoment): Promise<UnitKey[]> {
     for (const subjectId of subjects) {
       units.push({ kind: 'outcomes', quarterId: quarter.id, unitId: subjectId });
       units.push({ kind: 'figures', quarterId: quarter.id, unitId: subjectId });
+      units.push({ kind: 'closing', quarterId: quarter.id, unitId: subjectId });
     }
     for (const journal of journals) {
       units.push({ kind: 'statuses', quarterId: quarter.id, unitId: journal.id });
       units.push({ kind: 'attendance', quarterId: quarter.id, unitId: journal.id });
+      units.push({ kind: 'plan_progress', quarterId: quarter.id, unitId: journal.id });
     }
   }
   return units;

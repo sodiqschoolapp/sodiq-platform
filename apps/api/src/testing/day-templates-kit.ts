@@ -2,14 +2,14 @@ import type { INestApplication } from '@nestjs/common';
 import { BRANCH_HEADER, type DayTemplate, type SlotType } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
 import { expect } from 'vitest';
-import { sql } from 'kysely';
+import { sql, type LogEvent } from 'kysely';
 import { insertBranch } from './branch-filter-sql.js';
 import { ClassesKit } from './classes-kit.js';
 import { LoadKit } from './load-kit.js';
 import { createTestApp, type TestAppOptions } from './create-test-app.js';
 import { FixedClock } from './fixed-clock.js';
 import { signInKit, type SignInKit } from './sign-in-kit.js';
-import { createTestDatabase, type TestDatabase } from './test-database.js';
+import { connectTestDatabase, createTestDatabase, type TestDatabase } from './test-database.js';
 
 /**
  * Saturday 10 October 2026, 23:55 in Tashkent (18:55 UTC): today is
@@ -23,6 +23,40 @@ export const TODAY = '2026-10-10';
 export const TOMORROW = '2026-10-11';
 /** Monday after the start. */
 export const MONDAY = '2026-10-12';
+
+/** What a test needs of a kit to reach the application and its database (task 10.1b). */
+export type AppKit = Pick<DayTemplatesKit, 'database' | 'app' | 'kit' | 'clock' | 'close'>;
+
+/**
+ * Task 10.1b: the application on a database that already holds a school (the Speed workflow's
+ * restored data), the clock at `start`, the job queue of that database. `close` keeps the
+ * database unless `drop` is set.
+ */
+export async function attachedKit(
+  name: string,
+  options: { start: string; drop: boolean; log?: (event: LogEvent) => void },
+): Promise<AppKit> {
+  const database = connectTestDatabase(name, {
+    drop: options.drop,
+    ...(options.log === undefined ? {} : { log: options.log }),
+  });
+  const clock = new FixedClock(options.start);
+  const app = await createTestApp({
+    database: database.app,
+    clock,
+    jobsDatabaseUrl: database.appUrl,
+  });
+  return {
+    database,
+    app,
+    kit: signInKit(app),
+    clock,
+    async close() {
+      await app.close();
+      await database.destroy();
+    },
+  };
+}
 
 export const UNKNOWN = '0199a000-0000-7000-8000-000000000099';
 
@@ -109,10 +143,12 @@ export async function dayTemplatesKit(
     jobs?: boolean;
     /** Task 5.12c: the clock's first moment, `START` unless given; the accounts are signed in then. */
     start?: string;
+    /** Task 10.1b: the database kept under this name after the run (`createTestDatabase`). */
+    kept?: string;
   } = {},
 ): Promise<DayTemplatesKit> {
-  const database = await createTestDatabase();
-  const { jobs, start, ...rest } = options;
+  const { jobs, start, kept, ...rest } = options;
+  const database = await createTestDatabase(kept === undefined ? {} : { kept });
   const clock = new FixedClock(start ?? START);
   const north = await insertBranch(database.migrator, 'North');
   const south = await insertBranch(database.migrator, 'South');

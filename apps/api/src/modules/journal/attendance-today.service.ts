@@ -283,6 +283,13 @@ async function cellsOf(
       from l join group_memberships m on m.group_id = l.group_id
         and m.valid_from < m.valid_until
         and m.valid_from <= l.lesson_date and l.lesson_date < m.valid_until
+    ),
+    -- Task 10.1b: the attendance cells of the lessons read once by lesson, then matched to the
+    -- members: a probe per member and lesson under the branch filter took 1.8 s at the school's
+    -- size, where the filter turned the key lookup into an intersection of two indexes.
+    cells as materialized (
+      select lesson_id, student_id, mark from journal_cells
+      where lesson_id = any(${held}::uuid[]) and work_id is null
     )
     select x.lesson_id, x.lesson_date::text as lesson_date, x.starts_at, x.student_id,
       c.class_id, cell.mark
@@ -291,8 +298,7 @@ async function cellsOf(
       and c.valid_from < c.valid_until
       and c.valid_from <= x.lesson_date and x.lesson_date < c.valid_until
       and c.class_id = any(${[...classIds]}::uuid[])
-    left join journal_cells cell on cell.lesson_id = x.lesson_id
-      and cell.student_id = x.student_id and cell.work_id is null
+    left join cells cell on cell.lesson_id = x.lesson_id and cell.student_id = x.student_id
     order by x.starts_at, x.lesson_id, x.student_id
   `.execute(transaction);
   return found.rows;

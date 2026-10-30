@@ -4,7 +4,7 @@ import { Transactions, transactionMoment, type Transaction } from '../database/t
 import { PreparedTotals } from '../modules/results/prepared/prepare.job.js';
 import { SCHOOL_INPUTS } from '../modules/results/prepared/prepared.query.js';
 import { startedQuarters, unitsOf, unitValue } from '../modules/results/prepared/units.js';
-import type { DayTemplatesKit } from './day-templates-kit.js';
+import type { AppKit } from './day-templates-kit.js';
 
 /**
  * Task 9.3b-1: the checks of the prepared report totals over a filled school (the speed run's
@@ -14,7 +14,7 @@ import type { DayTemplatesKit } from './day-templates-kit.js';
  * (review of the plan, finding 3: the list derived, not written by hand).
  */
 
-const timeZoneOf = async (t: DayTemplatesKit, branchId: string): Promise<string> =>
+const timeZoneOf = async (t: AppKit, branchId: string): Promise<string> =>
   (
     await t.database.migrator
       .selectFrom('branches')
@@ -34,10 +34,7 @@ const scans = async (transaction: Transaction) =>
   );
 
 /** The tables every unit of the branch reads while it is prepared from source. */
-export async function tablesReadByPreparation(
-  t: DayTemplatesKit,
-  branchId: string,
-): Promise<string[]> {
+export async function tablesReadByPreparation(t: AppKit, branchId: string): Promise<string[]> {
   const timeZone = await timeZoneOf(t, branchId);
   return t.app.get(Transactions).run([branchId], async (transaction) => {
     const now = await transactionMoment(transaction);
@@ -58,7 +55,7 @@ export async function tablesReadByPreparation(
 }
 
 /** The tables with the change triggers of 0140, and whether each belongs to a branch. */
-export async function watchedTables(t: DayTemplatesKit): Promise<{
+export async function watchedTables(t: AppKit): Promise<{
   watched: string[];
   branchTables: string[];
 }> {
@@ -84,7 +81,7 @@ export async function watchedTables(t: DayTemplatesKit): Promise<{
 
 /** What the inputs check finds wrong: tables read but neither watched nor school-wide inputs. */
 export async function inputsNotWatched(
-  t: DayTemplatesKit,
+  t: AppKit,
   read: readonly string[],
 ): Promise<{
   unwatched: string[];
@@ -101,7 +98,7 @@ export async function inputsNotWatched(
 }
 
 /** The preparation of one branch, as the worker's job runs it; answers the units prepared. */
-export async function prepareBranch(t: DayTemplatesKit, branchId: string): Promise<number> {
+export async function prepareBranch(t: AppKit, branchId: string): Promise<number> {
   const timeZone = await timeZoneOf(t, branchId);
   return t.app.get(PreparedTotals, { strict: false }).prepareBranch(branchId, timeZone);
 }

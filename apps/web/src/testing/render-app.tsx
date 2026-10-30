@@ -145,6 +145,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
     json({
       quarters: [],
       quarterId: null,
+      prepared: { updatedAt: null, updating: false },
       state: 'not_open',
       opensOn: null,
       lastDay: null,

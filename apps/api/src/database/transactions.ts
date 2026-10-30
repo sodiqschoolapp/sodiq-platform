@@ -45,8 +45,16 @@ export async function transactionMoment(transaction: Transaction): Promise<Date>
  * relaxed.
  */
 export async function assertLessonChangesAudited(transaction: Transaction): Promise<void> {
+  // Task 10.1b: a transaction with no id wrote nothing, so the check is not asked. Asked apart:
+  // a statement naming the function is planned over every history partition (about 20 ms of
+  // each read at the school's size), whichever branch of a `case` runs.
+  const id = await sql<{ xid: string | null }>`
+    select pg_current_xact_id_if_assigned()::text as xid
+  `.execute(transaction);
+  const xid = id.rows[0]?.xid ?? null;
+  if (xid === null) return;
   const found = await sql<{ unaudited: boolean }>`
-    select lesson_history_unaudited(pg_current_xact_id_if_assigned()) as unaudited
+    select lesson_history_unaudited(${xid}::xid8) as unaudited
   `.execute(transaction);
   if (found.rows[0]?.unaudited !== false) {
     throw new Error(
@@ -128,6 +136,11 @@ export class Transactions {
    * `repeatable read`, so that every statement sees the one moment of its
    * first: "taken from one consistent moment" (edge/system-behaviour). Every
    * other transaction keeps the default, `read committed`.
+   *
+   * Task 10.1b: no JIT compilation. The plans of the reads over partitioned history tables cost
+   * past PostgreSQL's threshold, and compiling them took most of their time (587 ms of 588 for
+   * the late entries of the counts per teacher at the school's size), for statements that read a
+   * few rows.
    */
   async run<T>(
     branchIds: readonly string[],
@@ -148,7 +161,8 @@ export class Transactions {
       }
       await sql`
         select set_config(${BRANCH_SETTING}, ${filter}, true),
-          set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true)
+          set_config(${MOMENT_SETTING}, ${this.clock.now().toISOString()}, true),
+          set_config('jit', 'off', true)
       `.execute(transaction);
       const result = await work(transaction);
       for (const step of this.beforeCommit) {

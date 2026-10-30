@@ -84,6 +84,88 @@ export async function storedWindowOf(
   };
 }
 
+/**
+ * `storedWindowOf` for every quarter and person named at once (task 10.1b: the plan list asked
+ * it three queries per plan). The same values, keyed `<quarter id>|<staff id or ''>`.
+ */
+export async function storedWindowsOf(
+  transaction: Transaction,
+  quarters: readonly PlanQuarter[],
+  staffIds: readonly (string | null)[],
+  timeZone: string,
+): Promise<
+  Map<string, (StoredWindow & { readonly id: string; startDate: string; endDate: string }) | null>
+> {
+  const found = new Map<
+    string,
+    (StoredWindow & { readonly id: string; startDate: string; endDate: string }) | null
+  >();
+  if (quarters.length === 0) return found;
+  const windows = await transaction
+    .selectFrom('lesson_plan_windows')
+    .select([
+      'id',
+      'quarter_id',
+      'starts_at',
+      'ends_at',
+      sql<string>`start_date::text`.as('start_date'),
+      sql<string>`end_date::text`.as('end_date'),
+    ])
+    .where(
+      'quarter_id',
+      'in',
+      quarters.map((quarter) => quarter.id),
+    )
+    .execute();
+  const people = [...new Set(staffIds.flatMap((id) => (id === null ? [] : [id])))];
+  const extensions =
+    windows.length === 0 || people.length === 0
+      ? []
+      : await transaction
+          .selectFrom('lesson_plan_window_extensions')
+          .select(['window_id', 'staff_id', 'ends_at'])
+          .where(
+            'window_id',
+            'in',
+            windows.map((window) => window.id),
+          )
+          .where('staff_id', 'in', people)
+          .orderBy('granted_at', 'desc')
+          .orderBy('id', 'desc')
+          .execute();
+  // The latest extension of each window and person, as `storedWindowOf` takes it.
+  const latest = new Map<string, Date>();
+  for (const one of extensions) {
+    const key = `${one.window_id}|${one.staff_id}`;
+    if (!latest.has(key)) latest.set(key, one.ends_at);
+  }
+  for (const quarter of quarters) {
+    const window = windows.find((one) => one.quarter_id === quarter.id);
+    for (const staffId of new Set(staffIds)) {
+      found.set(`${quarter.id}|${staffId ?? ''}`, null);
+    }
+    if (window === undefined) continue;
+    const { endsAt: quarterEndsAt } = await dayMoments(
+      transaction,
+      quarter.endDate,
+      quarter.endDate,
+      timeZone,
+    );
+    for (const staffId of new Set(staffIds)) {
+      found.set(`${quarter.id}|${staffId ?? ''}`, {
+        id: window.id,
+        startsAt: window.starts_at,
+        endsAt: window.ends_at,
+        quarterEndsAt,
+        extensionEndsAt: staffId === null ? null : (latest.get(`${window.id}|${staffId}`) ?? null),
+        startDate: window.start_date,
+        endDate: window.end_date,
+      });
+    }
+  }
+  return found;
+}
+
 /** The approved requests of a plan's journal whose period is open now, with their ticked lessons. */
 export async function openPeriodsOf(
   transaction: Transaction,

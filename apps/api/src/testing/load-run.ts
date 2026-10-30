@@ -40,7 +40,13 @@ export interface LoadPlan {
 /** Times of each action, in milliseconds, with the answers by status. */
 export type LoadTimes = Record<
   string,
-  { readonly runs: number[]; readonly failures: number; readonly statuses: Record<string, number> }
+  {
+    readonly runs: number[];
+    readonly failures: number;
+    readonly statuses: Record<string, number>;
+    /** Task 10.1b: answers whose prepared totals were behind ("updating"). */
+    readonly updating: number;
+  }
 >;
 
 /** The 95th percentile of the runs (nearest rank). */
