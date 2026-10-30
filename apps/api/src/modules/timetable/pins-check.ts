@@ -1,6 +1,6 @@
 import { weekdaySchema, type DraftReadiness, type LoadRow, type PinAnswer } from '@sodiq/shared';
 import {
-  blockOf,
+  blocksOfRows,
   checkTimetable,
   isTutorRow,
   pinnedPlacements,
@@ -50,10 +50,11 @@ export function pinRowsOf(
   rows: readonly StoredLoadRow[],
   groups: ReadonlyMap<string, BlockGroup>,
 ): Map<string, PinRow & { readonly stored: StoredLoadRow }> {
-  const blockRows = rows.map(blockRowOf);
+  // Task 10.1b: every row's block worked out at once.
+  const blocks = blocksOfRows(rows.map(blockRowOf), groups);
   return new Map(
     rows.map((row) => {
-      const block = row.group_id === null ? [] : blockOf(row.id, blockRows, groups);
+      const block = row.group_id === null ? [] : (blocks.get(row.id) ?? []);
       return [
         row.id,
         {

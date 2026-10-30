@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import {
-  blockOf,
+  blocksOfRows,
   elsewherePlacement,
   firstOn,
   patternModel,
@@ -301,7 +301,8 @@ export async function readPatternFacts(
           .execute();
   const mainRoomOf = new Map(mainRooms.map((one) => [one.id, one.main_room_id]));
   const grades = [...new Set(units.flatMap((unit) => unit.unit.grades))].sort((a, b) => a - b);
-  const blockRows = rows.map(blockRowOf);
+  // Task 10.1b: every row's block worked out at once.
+  const blocks = blocksOfRows(rows.map(blockRowOf), load.groups);
 
   const data: PatternFactsData = {
     branchId,
@@ -356,7 +357,7 @@ export async function readPatternFacts(
     })),
     classDailyLessons: settings?.class_daily_lessons ?? null,
     rows: rows.map((row) => {
-      const block = row.group_id === null ? [] : blockOf(row.id, blockRows, load.groups);
+      const block = row.group_id === null ? [] : (blocks.get(row.id) ?? []);
       return {
         id: row.id,
         classId: row.class_id,

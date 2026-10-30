@@ -280,6 +280,11 @@ interface SpeedState {
   counts: { lessons: number; cells: number; history: number };
   lockCount: number;
   buildSeconds: number;
+  /**
+   * The targets of the build phase it missed (task 10.1b): asserted when the run ends, so a miss
+   * of the board still hands the school to the measuring phase and the report has every number.
+   */
+  readonly misses: { readonly what: string; readonly ms: number; readonly target: number }[];
 }
 
 /** A person of the speed run: an account with one role in a branch, signed in. */
@@ -402,7 +407,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         await write(error instanceof Error ? error.message : String(error));
         throw error;
       }
+      // The targets the build phase missed, asserted once every number is in the report.
+      for (const miss of state.misses) expect.soft(miss.ms, miss.what).toBeLessThan(miss.target);
       await write(null);
+
+      /** A target of the build phase, kept to be asserted at the end of the run (at triple). */
+      function missed(what: string, runs: readonly number[], target: number): void {
+        const ms = Math.max(...runs);
+        if (TRIPLE && ms >= target) state.misses.push({ what, ms, target });
+      }
 
       /** Build, place, publish, sign in, fill: the data the measuring phase reads. */
       async function buildPhase(): Promise<SpeedState> {
@@ -419,6 +432,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           counts,
           lockCount: 0,
           buildSeconds: 0,
+          misses: [],
         };
         const { timings, fills, notes } = state;
         // Placed, checked and published branch by branch, as the real-size run does.
@@ -435,15 +449,14 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             target: 'under 1 s',
             runs: board.runs,
           });
-          if (TRIPLE)
-            expect.soft(Math.max(...board.runs), 'open the board').toBeLessThan(TARGET.page);
+          missed(`${branch.name}: open the board`, board.runs, TARGET.page);
           const move = moveCheck(board.last, size.repeats);
           timings.push({
             what: `${branch.name}: check a move at every slot of the week (${String(move.slots)} slots)`,
             target: 'under 0.2 s',
             runs: move.runs,
           });
-          if (TRIPLE) expect.soft(Math.max(...move.runs), 'check a move').toBeLessThan(TARGET.move);
+          missed(`${branch.name}: check a move`, move.runs, TARGET.move);
           // The narrowed check equals the full one at every slot of one block (plan, Fixes).
           expect(sameAsFull(board.last), `${branch.name}: narrowed and full check`).toBe(true);
           const vice = asVice(t, branch);
@@ -468,7 +481,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               target: 'under 1 s',
               runs: moves,
             });
-            if (TRIPLE) expect.soft(Math.max(...moves), 'a saved move').toBeLessThan(TARGET.page);
+            missed(`${branch.name}: a saved move`, moves, TARGET.page);
           }
           const check = await timed(size.repeats, async () => {
             const response = await vice.get(

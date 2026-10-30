@@ -7,6 +7,7 @@ import {
 } from '@sodiq/shared';
 import {
   blockOf,
+  loadBlocks,
   blockProblems,
   loadRowProblems,
   splitAndWhole,
@@ -506,6 +507,13 @@ export class LoadFacts {
     private readonly unplaced: ReadonlyMap<string, number>,
   ) {}
 
+  /**
+   * The blocks of the version's rows as stored, by row id, worked out once (task 10.1b): asked
+   * for each row, `blockOf` grouped every row again, and the board of a branch three times the
+   * school's size took over a second.
+   */
+  private storedBlocks: ReadonlyMap<string, readonly string[]> | undefined;
+
   static async of(
     transaction: Transaction,
     context: VersionContext,
@@ -582,6 +590,20 @@ export class LoadFacts {
 
   /** The rows of the block of `row` among the version's rows, `row` included; empty for a class row. */
   blockOf(row: FactsRow): StoredLoadRow[] {
+    // A row of the version as stored (the same object): its block among the stored rows. The
+    // blocks are the linked parts of the rows, whatever their order.
+    const stored = this.versionRows.find((one) => one === row);
+    if (stored !== undefined) {
+      this.storedBlocks ??= new Map(
+        loadBlocks(this.versionRows.map(blockRowOf), this.groups).flatMap((ids) =>
+          ids.map((id) => [id, ids] as const),
+        ),
+      );
+      const ids = new Set(this.storedBlocks.get(row.id) ?? []);
+      // In the order of `rowsWith`: the other rows as stored, then the row.
+      const others = this.versionRows.filter((one) => one !== stored && ids.has(one.id));
+      return ids.has(stored.id) ? [...others, stored] : others;
+    }
     const rows = this.rowsWith(row);
     const ids = new Set(blockOf(row.id, rows.map(blockRowOf), this.groups).map((one) => one.id));
     return rows.filter((one) => ids.has(one.id));

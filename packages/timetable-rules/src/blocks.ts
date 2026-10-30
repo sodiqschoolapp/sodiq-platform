@@ -114,6 +114,24 @@ export function blockOf(
   return rows.filter((row) => block.includes(row.id));
 }
 
+/**
+ * The block of every row, by row id, as `blockOf` gives it for each (task 10.1b): the rows are
+ * grouped once, so a reader of every row's block does not group them again for each row. A class
+ * row has none.
+ */
+export function blocksOfRows(
+  rows: readonly BlockRow[],
+  groups: ReadonlyMap<string, BlockGroup>,
+): Map<string, BlockRow[]> {
+  const found = new Map<string, BlockRow[]>();
+  for (const ids of loadBlocks(rows, groups)) {
+    const members = new Set(ids);
+    const block = rows.filter((row) => members.has(row.id));
+    for (const id of ids) found.set(id, block);
+  }
+  return found;
+}
+
 /** Whether both rows are halves of one split marked as a mixed block (decision 12). */
 function mixedHalves(a: BlockRow, b: BlockRow, groups: ReadonlyMap<string, BlockGroup>): boolean {
   const groupA = a.groupId === null ? undefined : groups.get(a.groupId);

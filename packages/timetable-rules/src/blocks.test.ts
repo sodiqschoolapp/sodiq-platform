@@ -1,6 +1,8 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   blockOf,
+  blocksOfRows,
   blockProblems,
   loadBlocks,
   splitAndWhole,
@@ -209,5 +211,53 @@ describe('splitAndWhole', () => {
     for (const one of rows) {
       expect(splitAndWhole(one, rows, groups), one.id).toBe(false);
     }
+  });
+});
+
+// Task 10.1b: the block of every row worked out at once, as `blockOf` gives it for each row
+// (the board of a branch three times the school's size asked `blockOf` per row).
+describe('blocksOfRows', () => {
+  const classIds = ['oxford', 'princeton', 'cambridge', 'yale'];
+  const groupArb = fc.record({
+    classIds: fc.uniqueArray(fc.constantFrom(...classIds), { minLength: 1, maxLength: 3 }),
+    grades: fc.constantFrom([7], [8], [9, 10], [10, 9]),
+    subjectId: fc.constantFrom('english', 'pe'),
+  });
+  const sceneArb = fc.array(groupArb, { minLength: 1, maxLength: 6 }).chain((groups) =>
+    fc
+      .array(
+        fc.record({
+          group: fc.option(fc.nat({ max: groups.length - 1 }), { nil: null }),
+          subjectId: fc.constantFrom('english', 'pe'),
+        }),
+        { minLength: 1, maxLength: 10 },
+      )
+      .map((rows) => ({ groups, rows })),
+  );
+
+  it('gives each row the block blockOf gives it, in the same order', () => {
+    fc.assert(
+      fc.property(sceneArb, ({ groups, rows }) => {
+        const groupMap = groupsOf(
+          ...groups.map((one, index) =>
+            group(`g${String(index)}`, one.classIds, one.grades, one.subjectId),
+          ),
+        );
+        // Ids out of their order in the list, as stored rows come.
+        const all = rows.map((one, index) =>
+          one.group === null
+            ? classRow(`r${String(9 - index)}`, 'oxford', one.subjectId)
+            : row(`r${String(9 - index)}`, `g${String(one.group)}`, { subjectId: one.subjectId }),
+        );
+        const found = blocksOfRows(all, groupMap);
+        for (const one of all) {
+          expect(found.get(one.id) ?? []).toEqual(blockOf(one.id, all, groupMap));
+        }
+      }),
+    );
+  });
+
+  it('gives a class row no block', () => {
+    expect(blocksOfRows([classRow('a', 'oxford')], groupsOf()).get('a') ?? []).toEqual([]);
   });
 });
