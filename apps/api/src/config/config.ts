@@ -70,6 +70,12 @@ const environmentSchema = z.object({
   // a file into this directory, so a test can follow its link. Refused on a
   // Render service.
   MAIL_OUTBOX_DIR: z.preprocess(emptyAsUnset, z.string().optional()),
+  // The browser tests only: names of jobs with a cron, separated by commas, that
+  // the worker leaves unscheduled. The prepared totals of every minute (task
+  // 9.3b-1) share the one process and its connections with the API there, and
+  // the browser tests stalled while they ran (30 October 2026). Refused on a
+  // Render service.
+  JOBS_UNSCHEDULED: z.preprocess(emptyAsUnset, z.string().optional()),
   // Grafana Cloud (task 10.2a; docs/monitoring.md): the push addresses of the
   // numbers (Influx line protocol) and of the logs (Loki), the user of each,
   // and one token that may write both. All five or none; none: nothing is
@@ -137,6 +143,8 @@ const PROBLEM: Record<VariableName, string> = {
     'WEB_ORIGIN must be the address of the web app, for example https://app.example.test, with no path',
   MAIL_OUTBOX_DIR:
     'MAIL_OUTBOX_DIR is for the browser tests only and is never set on a server (with RENDER_GIT_COMMIT, TRUST_PROXY=1 or WEB_FILES)',
+  JOBS_UNSCHEDULED:
+    'JOBS_UNSCHEDULED is for the browser tests only and is never set on a server (with RENDER_GIT_COMMIT, TRUST_PROXY=1 or WEB_FILES)',
   GRAFANA_METRICS_URL:
     'GRAFANA_METRICS_URL must be the https:// push address of the numbers, set with the four other GRAFANA variables',
   GRAFANA_METRICS_USER:
@@ -166,6 +174,8 @@ export interface AppConfig {
   mail: MailConfig;
   /** The Chromium of the PDFs (task 5.9c-1), or the one playwright-core installs. */
   chromiumPath: string | undefined;
+  /** The browser tests only: jobs with a cron that the worker does not schedule. */
+  unscheduledJobs: readonly string[];
   /** Where the numbers and the logs go (task 10.2a), or nowhere. */
   monitoring: MonitoringConfig;
 }
@@ -247,6 +257,9 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   if (data.MAIL_OUTBOX_DIR !== undefined && onServer) {
     wrong.push('MAIL_OUTBOX_DIR');
   }
+  if (data.JOBS_UNSCHEDULED !== undefined && onServer) {
+    wrong.push('JOBS_UNSCHEDULED');
+  }
   if (wrong.length > 0) {
     const problems = wrong.map((name) => PROBLEM[name]);
     throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
@@ -266,6 +279,10 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     photos: photosOf(data),
     mail: { webOrigin: data.WEB_ORIGIN, outboxDir: data.MAIL_OUTBOX_DIR },
     chromiumPath: data.CHROMIUM_PATH,
+    unscheduledJobs: (data.JOBS_UNSCHEDULED ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name !== ''),
     monitoring: {
       grafana:
         data.GRAFANA_METRICS_URL !== undefined &&

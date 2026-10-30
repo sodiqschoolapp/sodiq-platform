@@ -33,6 +33,7 @@ describe('loadConfig', () => {
       mail: { webOrigin: 'http://localhost:5173', outboxDir: undefined },
       // Task 10.2a: nothing pushed without the Grafana variables.
       monitoring: { grafana: undefined, instance: 'local' },
+      unscheduledJobs: [],
     });
   });
 
@@ -75,6 +76,26 @@ describe('loadConfig', () => {
         'MAIL_OUTBOX_DIR is for the browser tests only',
       );
       expect(loadConfig({ ...VALID, [name]: value }).mail.outboxDir).toBeUndefined();
+    });
+  });
+
+  describe('the jobs left unscheduled', () => {
+    it('are none unless named, and a list of names in the browser tests', () => {
+      expect(loadConfig(VALID).unscheduledJobs).toEqual([]);
+      expect(
+        loadConfig({ ...VALID, JOBS_UNSCHEDULED: ' results.prepare_totals, monitoring.counts ,' })
+          .unscheduledJobs,
+      ).toEqual(['results.prepare_totals', 'monitoring.counts']);
+    });
+
+    it.each([
+      ['RENDER_GIT_COMMIT', 'abc123'],
+      ['TRUST_PROXY', '1'],
+      ['WEB_FILES', '/srv/web'],
+    ])('are refused on a server (%s)', (name, value) => {
+      expect(
+        problemOf({ ...VALID, JOBS_UNSCHEDULED: 'results.prepare_totals', [name]: value }),
+      ).toContain('JOBS_UNSCHEDULED is for the browser tests only');
     });
   });
 

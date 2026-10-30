@@ -550,3 +550,38 @@ describe('the job schema', () => {
     });
   });
 });
+
+describe('the crons of the worker', () => {
+  let database: TestDatabase;
+
+  beforeAll(async () => {
+    database = await createTestDatabase();
+  });
+
+  afterAll(async () => {
+    await database.destroy();
+  });
+
+  it('schedules every job with a cron except those left unscheduled (the browser tests)', async () => {
+    const kept = defineJob({
+      name: 'sample.kept_cron',
+      data: z.strictObject({}),
+      cron: '* * * * *',
+    });
+    const left = defineJob({
+      name: 'sample.left_cron',
+      data: z.strictObject({}),
+      cron: '* * * * *',
+    });
+    const queue = new JobQueue(
+      { connectionString: database.appUrl, worker: true, unscheduled: [left.name] },
+      [kept, left],
+    );
+    await queue.ready();
+    await queue.beforeApplicationShutdown();
+    const scheduled = await sql<{
+      name: string;
+    }>`select name from pgboss.schedule order by name`.execute(database.migrator);
+    expect(scheduled.rows.map((row) => row.name)).toEqual([kept.name]);
+  });
+});

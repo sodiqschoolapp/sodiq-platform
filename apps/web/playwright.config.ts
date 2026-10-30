@@ -18,6 +18,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${String(WEB_PORT)}`,
     trace: 'retain-on-failure',
+    // A click or a read whose element never comes fails here with its line, never after the
+    // whole test's time: a stalled page walk ran into CI's 10-minute step limit with no report
+    // and no trace (30 October 2026).
+    actionTimeout: 30_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // Never an existing server: every run has its own database `sodiq_e2e`,
