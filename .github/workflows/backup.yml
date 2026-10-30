@@ -11,7 +11,10 @@ name: Backup
 #
 # The repository is public, so this log is too: the output of pg_dump,
 # pg_restore and psql goes to files on the runner and only counts, table
-# names and "match"/"differs" are printed. Nothing is kept as an artifact.
+# names and "match"/"differs" are printed. When the dump or the count of
+# production fails, its error lines are printed with every quoted value,
+# address and host hidden (`HIDE_VALUES`), so a refused connection can be
+# told from a refused read. Nothing is kept as an artifact.
 on:
   workflow_dispatch:
   schedule:
@@ -57,6 +60,10 @@ jobs:
         -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
         -e PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
         -e SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+      # The sed script that prints the error lines of a log with every quoted
+      # value (a host, a role, a table), every value in brackets (an address),
+      # a connection URI and a Neon host replaced: what failed, never with what.
+      HIDE_VALUES: '/error:/I{s/"[^"]*"/"..."/g;s#postgres(ql)?://[^ ]*#<address>#g;s/\([^)]*\)/(...)/g;s/[A-Za-z0-9.-]+\.neon\.tech/<host>/g;p}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -78,7 +85,8 @@ jobs:
             -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             sh -c 'pg_dump --format=custom --file=/backup/production.dump "$BACKUP_DATABASE_URL"' \
             > "$RUNNER_TEMP/backup/dump.log" 2>&1; then
-            echo "pg_dump failed: $(wc -l < "$RUNNER_TEMP/backup/dump.log") lines in its log, not printed."
+            echo "pg_dump failed: $(wc -l < "$RUNNER_TEMP/backup/dump.log") lines in its log, values hidden:"
+            sed -nE "$HIDE_VALUES" "$RUNNER_TEMP/backup/dump.log" | head -n 3 || true
             exit 1
           fi
           echo "Dump: $(stat -c %s "$RUNNER_TEMP/backup/production.dump") bytes."
@@ -91,7 +99,9 @@ jobs:
             -v "$PWD/db/backup:/sql:ro" -v "$RUNNER_TEMP/backup:/backup" postgres:18 \
             sh -c 'psql "$BACKUP_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -f /sql/row-counts.sql > /backup/source-counts.txt' \
             2> "$RUNNER_TEMP/backup/source-counts.log" \
-            || { echo "Counting failed; its log is not printed."; exit 1; }
+            || { echo "Counting failed; its log, values hidden:"
+                 sed -nE "$HIDE_VALUES" "$RUNNER_TEMP/backup/source-counts.log" | head -n 3 || true
+                 exit 1; }
 
       - name: Create the roles the dump names in the proof's server
         # `bash` (not the default): with pipefail, a failed pg_restore in the pipe fails the step.
