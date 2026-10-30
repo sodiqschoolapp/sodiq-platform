@@ -220,7 +220,7 @@ describe('blocksOfRows', () => {
   const classIds = ['oxford', 'princeton', 'cambridge', 'yale'];
   const groupArb = fc.record({
     classIds: fc.uniqueArray(fc.constantFrom(...classIds), { minLength: 1, maxLength: 3 }),
-    grades: fc.constantFrom([7], [8], [9, 10], [10, 9]),
+    grades: fc.constantFrom<number[]>([7], [8], [9, 10], [10, 9]),
     subjectId: fc.constantFrom('english', 'pe'),
   });
   const sceneArb = fc.array(groupArb, { minLength: 1, maxLength: 6 }).chain((groups) =>
