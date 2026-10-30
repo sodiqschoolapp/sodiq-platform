@@ -5,7 +5,7 @@ import { Transactions, transactionMoment } from '../database/transactions.js';
 import { defineJob } from '../jobs/job-definition.js';
 import { JobRunner } from '../jobs/job-runner.js';
 import { branchCounts, failedJobs } from './counts.query.js';
-import type { Point } from './influx.js';
+import type { Point } from './otlp.js';
 import { Monitoring } from './monitoring.service.js';
 import { MEASUREMENTS } from './series.js';
 

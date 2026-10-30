@@ -11,7 +11,7 @@ import type { Observable } from 'rxjs';
 import { CLOCK } from '../clock/clock.module.js';
 import { requestIdOf } from '../http/request-id.js';
 import { declarationsOf } from '../modules/access/access.decorators.js';
-import type { Point } from './influx.js';
+import type { Point } from './otlp.js';
 import { DURATION_BOUNDS, MEASUREMENTS } from './series.js';
 
 /**

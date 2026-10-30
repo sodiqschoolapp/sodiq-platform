@@ -4,6 +4,7 @@ import path from 'node:path';
 import { HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BackupError, backupKey, markBackup, uploadBackup, type ObjectStore } from './backup.js';
+import { linesOfMetrics } from '../testing/otlp-lines.js';
 
 const NOW = new Date('2026-10-28T21:40:00Z');
 
@@ -67,21 +68,27 @@ describe('the daily export', () => {
   });
 
   it('tells Grafana the moment of the backup, and fails the run when Grafana refuses', async () => {
-    const posts: { url: string; body: string; authorization: string | undefined }[] = [];
+    const posts: { url: string; body: string[]; authorization: string | undefined }[] = [];
     await markBackup({
       url: 'https://metrics.example.test/push',
       user: '1001',
       token: 'token',
       now: NOW,
       post: (url, init) => {
-        posts.push({ url, body: init.body, authorization: init.headers.Authorization });
+        posts.push({
+          url,
+          body: linesOfMetrics(init.body),
+          authorization: init.headers.Authorization,
+        });
         return Promise.resolve({ ok: true, status: 204 });
       },
     });
     expect(posts).toEqual([
       {
         url: 'https://metrics.example.test/push',
-        body: `sodiq_backup,service=backup last_success=${String(NOW.getTime() / 1000)}i ${String(NOW.getTime())}000000`,
+        body: [
+          `sodiq_backup,service=backup last_success=${String(NOW.getTime() / 1000)}i ${String(NOW.getTime())}000000`,
+        ],
         authorization: `Basic ${Buffer.from('1001:token').toString('base64')}`,
       },
     ]);

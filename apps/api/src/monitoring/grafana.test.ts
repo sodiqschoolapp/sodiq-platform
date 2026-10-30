@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../config/config.js';
 import { GrafanaPush, PUSH_TIMEOUT_MS, type Fetch } from './grafana.js';
-import { escapeTag, lineOf } from './influx.js';
+import { metricsBody } from './otlp.js';
 
 const config = {
   metricsUrl: 'https://metrics.example.test/push',
@@ -16,7 +16,7 @@ const config = {
 const point = { measurement: 'sodiq_process', tags: { service: 'api' }, fields: { up: 1 }, at: 1 };
 
 // Task 10.2a, pull request #256 (`edge/system-behaviour`: "Only that function fails"; plan
-// decision 8: Influx line protocol, whole numbers).
+// decision 8: whole numbers; OTLP since the first backup of 30 October 2026).
 describe('the pushes to Grafana', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -102,33 +102,118 @@ describe('the pushes to Grafana', () => {
   });
 });
 
-describe('Influx lines', () => {
-  it('escapes tags so that a value never makes another tag or field', () => {
-    fc.assert(
-      fc.property(fc.string(), fc.string(), (route, branch) => {
-        const line = lineOf({
+describe('the OTLP body of the numbers', () => {
+  it('sends each field as a gauge named measurement_field, with the tags as attributes', () => {
+    const body = JSON.parse(
+      metricsBody([
+        {
           measurement: 'sodiq_requests',
-          tags: { route, branch },
+          tags: { route: '/api/x', branch: 'none', method: 'GET', empty: '' },
+          fields: { count: 2, ms_sum: 15 },
+          at: 60_000,
+        },
+        {
+          measurement: 'sodiq_requests',
+          tags: { route: '/api/y' },
           fields: { count: 1 },
           at: 60_000,
+        },
+      ]),
+    ) as unknown;
+    expect(body).toEqual({
+      resourceMetrics: [
+        {
+          resource: { attributes: [] },
+          scopeMetrics: [
+            {
+              scope: { name: 'sodiq' },
+              metrics: [
+                {
+                  name: 'sodiq_requests_count',
+                  gauge: {
+                    dataPoints: [
+                      {
+                        asInt: '2',
+                        timeUnixNano: '60000000000',
+                        // In the order of their keys; an empty tag left out.
+                        attributes: [
+                          { key: 'branch', value: { stringValue: 'none' } },
+                          { key: 'method', value: { stringValue: 'GET' } },
+                          { key: 'route', value: { stringValue: '/api/x' } },
+                        ],
+                      },
+                      {
+                        asInt: '1',
+                        timeUnixNano: '60000000000',
+                        attributes: [{ key: 'route', value: { stringValue: '/api/y' } }],
+                      },
+                    ],
+                  },
+                },
+                {
+                  name: 'sodiq_requests_ms_sum',
+                  gauge: {
+                    dataPoints: [
+                      {
+                        asInt: '15',
+                        timeUnixNano: '60000000000',
+                        attributes: [
+                          { key: 'branch', value: { stringValue: 'none' } },
+                          { key: 'method', value: { stringValue: 'GET' } },
+                          { key: 'route', value: { stringValue: '/api/x' } },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('keeps every tag value as it is, whatever its characters', () => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 1 }), fc.string({ minLength: 1 }), (route, branch) => {
+        const body = JSON.parse(
+          metricsBody([
+            { measurement: 'sodiq_requests', tags: { route, branch }, fields: { count: 1 }, at: 1 },
+          ]),
+        ) as {
+          resourceMetrics: {
+            scopeMetrics: {
+              metrics: {
+                gauge: {
+                  dataPoints: { attributes: { key: string; value: { stringValue: string } }[] }[];
+                };
+              }[];
+            }[];
+          }[];
+        };
+        const attributes =
+          body.resourceMetrics[0]?.scopeMetrics[0]?.metrics[0]?.gauge.dataPoints[0]?.attributes ??
+          [];
+        expect(
+          Object.fromEntries(attributes.map((one) => [one.key, one.value.stringValue])),
+        ).toEqual({
+          route,
+          branch,
         });
-        // The line splits at its unescaped spaces into exactly three parts.
-        const parts = line.split(/(?<!\\) /);
-        expect(parts).toHaveLength(3);
-        expect(parts[1]).toBe('count=1i');
-        expect(parts[2]).toBe('60000000000');
-        expect(line).not.toContain('\n');
-        for (const value of [route, branch].filter((one) => one !== '')) {
-          expect(parts[0]).toContain(escapeTag(value));
-        }
       }),
     );
   });
 
-  it('takes whole numbers only', () => {
+  it('takes whole numbers and plain names only', () => {
     expect(() =>
-      lineOf({ measurement: 'sodiq_x', tags: {}, fields: { share: 0.5 }, at: 1 }),
+      metricsBody([{ measurement: 'sodiq_x', tags: {}, fields: { share: 0.5 }, at: 1 }]),
     ).toThrow('Not a whole-number field');
-    expect(() => lineOf({ measurement: 'Bad name', tags: {}, fields: { a: 1 }, at: 1 })).toThrow();
+    expect(() =>
+      metricsBody([{ measurement: 'Bad name', tags: {}, fields: { a: 1 }, at: 1 }]),
+    ).toThrow('Not a measurement name');
+    expect(() => metricsBody([{ measurement: 'sodiq_x', tags: {}, fields: {}, at: 1 }])).toThrow(
+      'A point needs a field.',
+    );
   });
 });

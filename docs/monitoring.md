@@ -25,7 +25,7 @@ Do one step at a time and check it before the next. Production must be up (`docs
 
 1. At grafana.com create a free account and a stack in an **EU** region (for example `eu-west`), name `sodiq`.
 2. In the stack's page (My Account, the stack, Details) note:
-   - under **Prometheus** (or "Metrics"): the **Influx push** address, `https://<host>/api/v1/push/influx/write`, and the **user** (a number);
+   - the **OTLP** address of the numbers and its **user**: in the stack's Grafana, Connections, Add new connection, **HTTP Metrics**, Configuration details, format **Otel**: the address in the curl example, `https://otlp-gateway-prod-<region>.grafana.net/otlp/v1/metrics`, and the number after `-u` (the stack's instance id). New stacks take OTLP and no Influx line protocol: an Influx address is answered 530;
    - under **Loki** (or "Logs"): the **push** address, `https://<host>/loki/api/v1/push`, and its **user** (a number).
 3. Create an **access policy** `sodiq-push` with the scopes `metrics:write` and `logs:write` only, and one **token** of it. It is shown once: keep it in the password manager.
 
@@ -39,7 +39,7 @@ Do one step at a time and check it before the next. Production must be up (`docs
 
 On `sodiq-api` **and** `sodiq-worker` (Environment), the five values of step 1:
 
-- `GRAFANA_METRICS_URL` (the Influx push address), `GRAFANA_METRICS_USER`;
+- `GRAFANA_METRICS_URL` (the OTLP address), `GRAFANA_METRICS_USER` (its user);
 - `GRAFANA_LOGS_URL` (the Loki push address), `GRAFANA_LOGS_USER`;
 - `GRAFANA_TOKEN` (the token of `sodiq-push`).
 

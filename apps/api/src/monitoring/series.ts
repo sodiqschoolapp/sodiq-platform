@@ -1,7 +1,7 @@
 /**
  * Every series the API, the worker and the backup workflow push to Grafana
- * (task 10.2a), by the name Grafana stores: `<measurement>_<field>` of the
- * Influx line (`influx.ts`). `monitoring/grafana/alert-rules.yaml` reads only
+ * (task 10.2a), by the name Grafana stores: `<measurement>_<field>`, the name of
+ * each gauge (`otlp.ts`). `monitoring/grafana/alert-rules.yaml` reads only
  * these; `alert-rules.test.ts` keeps the two lists together.
  */
 export const MEASUREMENTS = {

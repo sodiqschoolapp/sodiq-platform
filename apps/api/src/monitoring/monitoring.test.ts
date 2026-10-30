@@ -4,6 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadConfig, type AppConfig } from '../config/config.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../testing/day-templates-kit.js';
+import { linesOfMetrics } from '../testing/otlp-lines.js';
 import type { Fetch } from './grafana.js';
 import { Monitoring, ShippingLogger } from './monitoring.service.js';
 
@@ -26,7 +27,7 @@ const recording: Fetch = (url, init) => {
 
 const monitoring: AppConfig['monitoring'] = {
   grafana: {
-    metricsUrl: 'https://metrics.example.test/api/v1/push/influx/write',
+    metricsUrl: 'https://metrics.example.test/otlp/v1/metrics',
     metricsUser: '1001',
     logsUrl: 'https://logs.example.test/loki/api/v1/push',
     logsUser: '2002',
@@ -35,11 +36,11 @@ const monitoring: AppConfig['monitoring'] = {
   instance: 'local',
 };
 
-/** The Influx lines of every push of numbers so far. */
+/** The numbers of every push so far, as readable lines (`linesOfMetrics`). */
 const linesSent = () =>
   sent
     .filter((one) => one.url === monitoring.grafana?.metricsUrl)
-    .flatMap((one) => one.body.split('\n'));
+    .flatMap((one) => linesOfMetrics(one.body));
 
 /** The log lines of every push of logs so far, with their stream's labels. */
 const logsSent = () =>

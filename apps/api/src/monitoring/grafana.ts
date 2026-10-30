@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { MonitoringConfig } from '../config/config.js';
-import { lineOf, type Point } from './influx.js';
+import { metricsBody, type Point } from './otlp.js';
 
 /** How long one push may take (`edge/system-behaviour`: only that function fails). */
 export const PUSH_TIMEOUT_MS = 5_000;
@@ -17,7 +17,7 @@ export interface LogLine {
 }
 
 /**
- * The two pushes to Grafana Cloud (task 10.2a, plan decision 8): numbers in Influx line protocol,
+ * The two pushes to Grafana Cloud (task 10.2a, plan decision 8): numbers as OTLP's JSON (`otlp.ts`),
  * logs as Loki's JSON. A push that fails or takes longer than 5 seconds is dropped, never tried
  * again in a loop and never awaited by a request; the first failure after a success is logged
  * once (by status, never by what was sent), so a Grafana that is down does not fill the log.
@@ -34,8 +34,8 @@ export class GrafanaPush {
   async metrics(points: readonly Point[]): Promise<void> {
     if (points.length === 0) return;
     await this.send('metrics', this.config.metricsUrl, this.config.metricsUser, {
-      'Content-Type': 'text/plain; charset=utf-8',
-      body: points.map(lineOf).join('\n'),
+      'Content-Type': 'application/json',
+      body: metricsBody(points),
     });
   }
 
