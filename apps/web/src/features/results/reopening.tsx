@@ -1,5 +1,4 @@
 import {
-  CLOSING_BLOCKING,
   closingRecalculationApplyInputSchema,
   closingReopenInputSchema,
   type ClosingChange,
@@ -29,6 +28,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText } from '@/lib/dates';
 import { warningsSeen } from './close-quarter-dialog';
+import { closingEffect } from './closing-effect';
 import {
   applyRecalculation,
   closeJournalAgain,
@@ -300,15 +300,17 @@ export function ReopenedJournalPanel({
             <li key={`${item.kind}:${String(index)}`} data-item={item.kind}>
               <span
                 className={
-                  CLOSING_BLOCKING.includes(item.kind) ? 'font-semibold text-destructive' : ''
+                  closingEffect(item.kind) === 'blocking' ? 'font-semibold text-destructive' : ''
                 }
               >
                 {t(`results.closing.kinds.${item.kind}`)}
               </span>
               {SEPARATOR}
-              {CLOSING_BLOCKING.includes(item.kind)
+              {closingEffect(item.kind) === 'blocking'
                 ? t('results.closing.blocking')
-                : t('results.closing.warning')}
+                : closingEffect(item.kind) === 'lock_now'
+                  ? t('results.closing.lockOnClose')
+                  : t('results.closing.warning')}
             </li>
           ))}
         </ul>

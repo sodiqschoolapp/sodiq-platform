@@ -320,6 +320,51 @@ describe('the home pages of each role (08, Home pages by role)', () => {
     expect(within(card).queryByRole('button', { name: en.prepared.refresh })).toBeNull();
   });
 
+  // The owner, 31 October 2026: the lessons "Lock now and close" locks are counted apart from
+  // the blocking items, as on the checklist (edge/journal, Closing and reopening).
+  it('counts on the quarter card the items "Lock now and close" ends apart', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('academic_vice_principal')),
+      'GET /api/results/closing': () =>
+        json({
+          quarters: [{ id: uid(50), number: 1, startDate: '2026-09-01', endDate: '2026-10-31' }],
+          quarterId: uid(50),
+          prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
+          state: 'open',
+          opensOn: '2026-10-17',
+          lastDay: '2026-10-31',
+          closable: false,
+          lockNowNeeded: true,
+          startQuarter: false,
+          earlierOpen: false,
+          closing: null,
+          reopenings: [],
+          reopening: null,
+          changes: [],
+          closedJournals: [],
+          reopenedJournals: [],
+          check: null,
+          canApply: false,
+          canEdit: true,
+          schoolDays: { passed: 30, total: 40 },
+          blocking: 3,
+          warnings: 0,
+          items: [
+            { kind: 'weights_missing', teacher: null, journal: null },
+            { kind: 'edit_period', teacher: null, journal: null, lessons: 2, incomplete: 0 },
+            { kind: 'edit_period', teacher: null, journal: null, lessons: 1, incomplete: 1 },
+          ],
+        }),
+    });
+    renderApp('/');
+    const card = await screen.findByRole('region', { name: en.home.vice.quarter });
+    expect(
+      await within(card).findByText(
+        'Closing checklist: 1 blocking, 2 locked when you close, 0 warnings',
+      ),
+    ).toBeDefined();
+  });
+
   it('gives the Principal the branch summary with results by grade in one decimal, in Russian', async () => {
     const summary: BranchSummary = {
       date: '2026-10-19',

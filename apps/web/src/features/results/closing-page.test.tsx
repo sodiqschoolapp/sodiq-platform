@@ -142,6 +142,69 @@ describe('the closing checklist', () => {
     expect(screen.getByText('Blocking: 1 · warnings: 1')).not.toBeNull();
   });
 
+  // The owner, 31 October 2026: "Nothing blocks closing" stood above rows that said "Blocks
+  // closing". Lessons still inside the edit period are locked by "Lock now and close"
+  // (edge/journal, Closing and reopening), so they are named apart from the blocking items.
+  const EDIT_PERIOD: ClosingChecklist['items'][number] = {
+    kind: 'edit_period',
+    teacher: TEACHER,
+    journal: JOURNAL,
+    lessons: 2,
+    incomplete: 1,
+  };
+  const openLine = async (): Promise<string | null> =>
+    waitFor(() => {
+      const found = document.querySelector('[data-closing-state="open"]');
+      if (found === null) throw new Error('The line.');
+      return found.textContent;
+    });
+
+  it('says what "Lock now and close" locks when nothing else blocks the close', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({
+          ...CHECKLIST,
+          closable: true,
+          lockNowNeeded: true,
+          blocking: 1,
+          warnings: 1,
+          items: [EDIT_PERIOD, NO_RESULT],
+        }),
+    });
+    renderApp('/results/closing');
+    expect(await openLine()).toBe(en.results.closing.closableLockNow);
+    await waitFor(() => {
+      expect(rowsOf().map((row) => row.slice(0, 2))).toEqual([
+        [en.results.closing.kinds.edit_period, en.results.closing.lockOnClose],
+        [en.results.closing.kinds.no_result, en.results.closing.warning],
+      ]);
+    });
+  });
+
+  it('counts the items "Lock now and close" ends apart from the blocking ones', async () => {
+    fakeApi({
+      'GET /api/auth/session': sessionAs('academic_vice_principal'),
+      'GET /api/results/closing': () =>
+        json({
+          ...CHECKLIST,
+          lockNowNeeded: true,
+          blocking: 2,
+          warnings: 1,
+          items: [CHECKLIST.items[0], EDIT_PERIOD, NO_RESULT],
+        }),
+    });
+    renderApp('/results/closing');
+    expect(await openLine()).toBe('Blocking: 1 · locked when you close: 1 · warnings: 1');
+    await waitFor(() => {
+      expect(rowsOf().map((row) => row.slice(0, 2))).toEqual([
+        [en.results.closing.kinds.undecided, en.results.closing.blocking],
+        [en.results.closing.kinds.edit_period, en.results.closing.lockOnClose],
+        [en.results.closing.kinds.no_result, en.results.closing.warning],
+      ]);
+    });
+  });
+
   // Task 10.1b: the items come from the prepared totals (`edge/system-behaviour`: "A page that
   // finds them behind calculates from source and shows 'updating'"); Refresh asks again, nothing
   // on a timer.

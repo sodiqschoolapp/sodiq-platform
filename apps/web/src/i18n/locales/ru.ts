@@ -3236,6 +3236,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       quarterClosed: 'Закрыта.',
       checklistOpens: 'Список закрытия открывается {{date}}.',
       checklist: 'Список закрытия: блокирующих {{blocking}}, предупреждений {{warnings}}',
+      checklistLockNow:
+        'Список закрытия: блокирующих {{blocking}}, блокируются при закрытии {{lockNow}}, предупреждений {{warnings}}',
       openChecklist: 'Открыть список',
       nothingWaiting: 'Ни одному уроку не нужен учитель или кабинет.',
     },
@@ -7367,6 +7369,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       item: 'Пункт',
       severity: 'Влияние',
       blocking: 'Блокирует закрытие',
+      lockOnClose: 'Блокируется при закрытии',
       warning: 'Предупреждение',
       teacher: 'Учитель',
       unit: 'Класс или группа',
@@ -7385,6 +7388,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       noQuarter: 'В филиале ещё нет четверти с датами.',
       opensOn: 'Чек-лист откроется {{date}}.',
       closable: 'Ничто не мешает закрытию.',
+      closableLockNow:
+        'Больше ничто не мешает закрытию: уроки, ещё открытые для изменения, блокируются через «Заблокировать сейчас и закрыть».',
+      countsLockNow:
+        'Блокирует: {{blocking}} · блокируется при закрытии: {{lockNow}} · предупреждений: {{warnings}}',
       counts: 'Блокирует: {{blocking}} · предупреждений: {{warnings}}',
       notOpenYet: 'Чек-лист открывается за две недели до конца четверти.',
       nothingLeft: 'В этой четверти нечего завершать.',

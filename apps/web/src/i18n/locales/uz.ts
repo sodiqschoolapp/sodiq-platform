@@ -3111,6 +3111,8 @@ export const uz: Texts<'one' | 'other'> = {
       quarterClosed: 'Yopilgan.',
       checklistOpens: 'Yopish roʻyxati {{date}} kuni ochiladi.',
       checklist: 'Yopish roʻyxati: toʻsuvchi {{blocking}}, ogohlantirish {{warnings}}',
+      checklistLockNow:
+        'Yopish roʻyxati: toʻsuvchi {{blocking}}, yopishda qulflanadi {{lockNow}}, ogohlantirish {{warnings}}',
       openChecklist: 'Roʻyxatni ochish',
       nothingWaiting: 'Hech bir darsga oʻqituvchi yoki xona kerak emas.',
     },
@@ -7010,6 +7012,7 @@ export const uz: Texts<'one' | 'other'> = {
       item: 'Band',
       severity: 'Taʼsiri',
       blocking: 'Yopishga toʻsqinlik qiladi',
+      lockOnClose: 'Yopishda qulflanadi',
       warning: 'Ogohlantirish',
       teacher: 'Oʻqituvchi',
       unit: 'Sinf yoki guruh',
@@ -7024,6 +7027,10 @@ export const uz: Texts<'one' | 'other'> = {
       noQuarter: 'Filialda hali sanalari belgilangan chorak yoʻq.',
       opensOn: 'Roʻyxat {{date}} kuni ochiladi.',
       closable: 'Yopishga hech narsa toʻsqinlik qilmaydi.',
+      closableLockNow:
+        'Yopishga boshqa hech narsa toʻsqinlik qilmaydi: tahrirlash uchun hali ochiq darslar «Hozir qulflash va yopish» bilan qulflanadi.',
+      countsLockNow:
+        'Toʻsqinlik qiladi: {{blocking}} · yopishda qulflanadi: {{lockNow}} · ogohlantirishlar: {{warnings}}',
       counts: 'Toʻsqinlik qiladi: {{blocking}} · ogohlantirishlar: {{warnings}}',
       notOpenYet: 'Roʻyxat chorak tugashidan ikki hafta oldin ochiladi.',
       nothingLeft: 'Bu chorakda tugatiladigan narsa qolmadi.',
