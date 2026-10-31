@@ -27,6 +27,12 @@ ARG RENDER_GIT_COMMIT
 # is in no layer and no history of the image.
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
+# sentry-cli checks sentry.io's certificate against the system's trusted roots,
+# which the slim image lacks: the upload of 31 October 2026 failed with "unable
+# to get local issuer certificate". Node carries roots of its own; the CLI does not.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN npx -y pnpm@12.8.1 install --frozen-lockfile
 # A declared argument is in the environment of the commands below; one not
