@@ -82,6 +82,14 @@ describe('the production image', () => {
     expect(dockerfile).toContain(
       'RUN --mount=type=secret,id=sentry-auth-token,required=false \\\n',
     );
+    // sentry-cli needs the system's trusted roots to reach sentry.io (31 October 2026), in
+    // the build stage, before the build that uploads.
+    const stage = dockerfile.slice(
+      dockerfile.indexOf('FROM base AS build'),
+      dockerfile.indexOf('FROM base AS dependencies'),
+    );
+    expect(stage).toContain('apt-get install -y --no-install-recommends ca-certificates');
+    expect(stage.indexOf('ca-certificates')).toBeLessThan(stage.indexOf('RUN --mount=type=secret'));
     const build = dockerfile.slice(dockerfile.indexOf('RUN --mount=type=secret'));
     expect(build.slice(0, build.indexOf('\n\n'))).toContain(
       "turbo run build --filter=@sodiq/api --filter=@sodiq/web \\\n    && find apps/web/dist -name '*.map' -delete",

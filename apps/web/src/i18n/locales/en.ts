@@ -3068,6 +3068,8 @@ export const en = {
       quarterClosed: 'Closed.',
       checklistOpens: 'The closing checklist opens on {{date}}.',
       checklist: 'Closing checklist: {{blocking}} blocking, {{warnings}} warnings',
+      checklistLockNow:
+        'Closing checklist: {{blocking}} blocking, {{lockNow}} locked when you close, {{warnings}} warnings',
       openChecklist: 'Open the checklist',
       nothingWaiting: 'No lesson needs a teacher or a room.',
     },
@@ -6949,6 +6951,7 @@ export const en = {
       item: 'Item',
       severity: 'Effect',
       blocking: 'Blocks closing',
+      lockOnClose: 'Locked when you close',
       warning: 'Warning',
       teacher: 'Teacher',
       unit: 'Class or group',
@@ -6963,6 +6966,10 @@ export const en = {
       noQuarter: 'The branch has no quarter with dates yet.',
       opensOn: 'The checklist opens on {{date}}.',
       closable: 'Nothing blocks closing.',
+      closableLockNow:
+        'Nothing else blocks closing: the lessons still open for editing are locked by "Lock now and close".',
+      countsLockNow:
+        'Blocking: {{blocking}} · locked when you close: {{lockNow}} · warnings: {{warnings}}',
       counts: 'Blocking: {{blocking}} · warnings: {{warnings}}',
       notOpenYet: 'The checklist opens two weeks before the quarter ends.',
       nothingLeft: 'Nothing is left to finish in this quarter.',

@@ -1,6 +1,7 @@
 import type {
   AttendanceFigure,
   AttendanceTodayClass,
+  ClosingItemKind,
   EarlyWarningEntry,
   EarlyWarningList,
 } from '@sodiq/shared';
@@ -8,6 +9,7 @@ import { timeText } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
 import { PreparedStamp } from '@/components/prepared-stamp';
@@ -22,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { closingQuery } from '@/features/results/closing-api';
+import { closingCounts } from '@/features/results/closing-effect';
 import { tenthsText } from '@/features/results/rating-page';
 import { planRequestsQuery } from '@/features/plans/plans-api';
 import { unlocksQuery } from '@/features/journal/unlocks-api';
@@ -464,6 +467,14 @@ export function ConflictsCard(): React.JSX.Element {
 }
 
 /** `08`, Academic Vice Principal: "quarter progress and the closing checklist" (plan decision 7). */
+/** The checklist's counts, the items "Lock now and close" ends named apart (as on its page). */
+function checklistLine(t: TFunction, items: readonly { kind: ClosingItemKind }[]): string {
+  const counts = closingCounts(items);
+  return counts.lockNow > 0
+    ? t('home.vice.checklistLockNow', counts)
+    : t('home.vice.checklist', counts);
+}
+
 export function QuarterProgressCard(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = languageOf(i18n.language);
@@ -501,7 +512,7 @@ export function QuarterProgressCard(): React.JSX.Element {
                       date:
                         data.opensOn === null ? '—' : schoolDateText(data.opensOn, language, false),
                     })
-                  : t('home.vice.checklist', { blocking: data.blocking, warnings: data.warnings })}
+                  : checklistLine(t, data.items)}
             </p>
             <PreparedStamp
               stamp={data.prepared}

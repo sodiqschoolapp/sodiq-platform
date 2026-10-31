@@ -1,5 +1,4 @@
 import {
-  CLOSING_BLOCKING,
   type ClosingChecklist,
   type ClosingDecision,
   type ClosingFlagged,
@@ -9,6 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
@@ -24,6 +24,7 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText, schoolDateText } from '@/lib/dates';
 import { CloseQuarterDialog } from './close-quarter-dialog';
+import { closingCounts, closingEffect, type ClosingEffect } from './closing-effect';
 import {
   ChangesList,
   RecalculationSection,
@@ -51,7 +52,31 @@ export function closingSearch(search: Record<string, unknown>): ClosingSearch {
 
 type Row = ClosingItem & { rowId: string };
 
-const isBlocking = (item: ClosingItem): boolean => CLOSING_BLOCKING.includes(item.kind);
+/** The words of an item's effect (`results.closing`). */
+const EFFECT_TEXT = {
+  blocking: 'blocking',
+  lock_now: 'lockOnClose',
+  warning: 'warning',
+} as const satisfies Record<ClosingEffect, string>;
+
+const EFFECT_ORDER: Record<ClosingEffect, number> = { blocking: 0, lock_now: 1, warning: 2 };
+
+/**
+ * The line beside the quarter of an open checklist: what still stands against the close. The
+ * items "Lock now and close" ends are named apart from the blocking ones, which they are not
+ * once the close locks them (`edge/journal`, Closing and reopening).
+ */
+function quarterCounts(t: TFunction, data: ClosingChecklist): string {
+  const counts = closingCounts(data.items);
+  if (data.closable) {
+    return counts.lockNow > 0
+      ? t('results.closing.closableLockNow')
+      : t('results.closing.closable');
+  }
+  return counts.lockNow > 0
+    ? t('results.closing.countsLockNow', counts)
+    : t('results.closing.counts', counts);
+}
 
 /** The separators of the parts of a line (not words of a language). */
 const SEPARATOR = ' · ';
@@ -142,12 +167,12 @@ export function ClosingPage(): React.JSX.Element {
         key: 'severity',
         header: t('results.closing.severity'),
         cell: (row) =>
-          isBlocking(row) ? (
+          closingEffect(row.kind) === 'blocking' ? (
             <span className="font-semibold text-destructive">{t('results.closing.blocking')}</span>
           ) : (
-            t('results.closing.warning')
+            t(`results.closing.${EFFECT_TEXT[closingEffect(row.kind)]}`)
           ),
-        sortValue: (row) => (isBlocking(row) ? 0 : 1),
+        sortValue: (row) => EFFECT_ORDER[closingEffect(row.kind)],
       },
       {
         key: 'teacher',
@@ -200,12 +225,7 @@ export function ClosingPage(): React.JSX.Element {
               })
             : data.earlierOpen
               ? t('results.closing.earlierOpen')
-              : data.closable
-                ? t('results.closing.closable')
-                : t('results.closing.counts', {
-                    blocking: data.blocking,
-                    warnings: data.warnings,
-                  });
+              : quarterCounts(t, data);
 
   return (
     <>
@@ -462,7 +482,7 @@ function ItemPanel({ row, checklist }: { row: Row; checklist: ClosingChecklist }
     <div className="grid gap-4 text-sm">
       <p>
         <span className="font-semibold">
-          {isBlocking(row) ? t('results.closing.blocking') : t('results.closing.warning')}
+          {t(`results.closing.${EFFECT_TEXT[closingEffect(row.kind)]}`)}
         </span>
         {row.teacher !== null && <span className="text-muted-foreground"> {row.teacher.name}</span>}
       </p>
