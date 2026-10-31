@@ -50,14 +50,14 @@ On `sodiq-api` only:
 - `SENTRY_ORG`: the slug of step 2 (`SENTRY_PROJECT` is already `sodiq-production-web` in the Blueprint);
 - a **Secret File** (Environment, Secret Files) named exactly `sentry-auth-token` whose content is the token of step 2. The image's build reads it as a Docker build secret: it is in no layer of the image and in no variable of the running service.
 
-Save. The next production deploy (`docs/deploy.md`) builds with them. **Check**: in the build log of `sodiq-api` the Sentry plugin says it uploaded the source maps; a few minutes after the deploy, Grafana, Explore, the metric `sodiq_process_up` shows `service="api"` and `service="worker"`; Explore, Loki, `{service="api"}` shows request lines.
+Save. The next production deploy (`docs/deploy.md`) builds with them. **Check**: in the build log of `sodiq-api` the Sentry plugin says it uploaded the source maps; a few minutes after the deploy, Grafana, Explore, the metric `sodiq_process_up` shows `service="api"` (one series per instance: the API runs two) and `service="worker"`, each at 1; Explore, Loki, `{service="api"}` shows request lines.
 
 ### 4. Grafana: the rules, the contact point, the email
 
 1. Alerting, Contact points, **New**: `owner email`, integration Email, the owner's address. Make it the default of the notification policy.
-2. Alerting, Alert rules, **Import** (to Grafana-managed rules), from file: `monitoring/grafana/alert-rules.yaml` of the repository, data source the stack's Prometheus, folder `sodiq`. 19 rules appear.
-3. For **ApiSilent**, **WorkerSilent**, **CountsSilent** and **BackupOld**, open each and check "Alert state if no data" is **Alerting** (their expressions already fire on a missing series; this is a second guard).
-4. **Check**: Alerting, Alert rules: every rule is "Normal", except **BackupOld** until the first backup (step 6) and **FirstSlotFewMarks** which is "Normal" outside 09:00 to 09:30.
+2. Alerting, Alert rules, **Import** (to Grafana-managed rules), from file: `monitoring/grafana/alert-rules.yaml` of the repository, data source the stack's Prometheus, folder `sodiq`, with **Pause imported alerting rules** switched off (it is on by default and would import every rule paused). 20 rules appear, SignInSaveFailing among them.
+3. Leave "Alert state if no data" at **Normal** (the import's default) on every rule. ApiSilent, WorkerSilent, CountsSilent and BackupOld already fire on a missing series in their expressions (`or vector(0)`, `absent_over_time`), and a healthy rule's query answers no series at all, which Grafana calls "no data": set to **Alerting**, it fires while everything is well (found on 30 October 2026).
+4. **Check**: Alerting, Alert rules: every rule is "Normal", except **BackupOld** until the first backup (step 6), **FirstSlotFewMarks** which is "Normal" outside 09:00 to 09:30, and **SignInSaveFailing**, which also fires from 07:00 to 20:00 while the check of step 10 sends nothing: silence it until step 10 is green (step 10, point 1).
 
 The rules come from `apps/api/src/monitoring/alert-rules.ts`. When a later change of the repository changes the file, import it again (Grafana replaces rules of the same name).
 
@@ -112,9 +112,10 @@ The year ends on `--year-end`. After it the check fails until the year is closed
 
 ### 10. The sign-in-and-save check (Grafana Synthetic Monitoring)
 
-1. In Grafana: Testing & synthetics, Synthetic Monitoring, **Secrets**: `monitoring-teacher-login` and `monitoring-teacher-password` (step 9).
-2. Checks, **Add new check**, **Scripted** (k6): job name `sign-in-and-save`, frequency **5 minutes**, one **EU** probe (for example Frankfurt), timeout 30 s. Paste `monitoring/synthetic/sign-in-and-save.js` of the repository as it is, and let the check use the two secrets.
-3. **Check**: the runs turn green (a run before 06:30 Tashkent fails: the lesson has not started; the alert reads 07:00 to 20:00 only). Import `monitoring/grafana/alert-rules.yaml` again (step 4): **SignInSaveFailing** appears.
+1. Until the Monitoring branch's first lesson day (the day after step 9 ran), **SignInSaveFailing** would email from 07:00 with no check yet or no lesson to save: Alerting, Silences, **New silence**, matcher `alertname` = `SignInSaveFailing`, ending at 08:00 of that first lesson day, comment "Monitoring branch starts". It ends by itself.
+2. In Grafana: Testing & synthetics, Synthetic Monitoring, **Secrets**: `monitoring-teacher-login` and `monitoring-teacher-password` (step 9).
+3. Checks, **Add new check**, **Scripted** (k6): job name `sign-in-and-save`, frequency **5 minutes**, one **EU** probe (for example Frankfurt), timeout 30 s. Paste `monitoring/synthetic/sign-in-and-save.js` of the repository as it is, and let the check use the two secrets.
+4. **Check**: from 06:30 of the first lesson day the runs turn green (a run before 06:30 Tashkent fails: the lesson has not started; the alert reads 07:00 to 20:00 only).
 
 The script signs in, reads today's lesson from the teacher's home page and the first student's cell from the journal, switches it between present and late, and signs out. A step that fails, or a save slower than 0.3 s, fails the run. It logs nothing of an answer.
 
