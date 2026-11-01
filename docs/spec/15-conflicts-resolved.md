@@ -8,7 +8,7 @@ Where the sources disagree, the main file wins. Where the main file is silent, t
 | Topic | What the sources say | Decision |
 | --- | --- | --- |
 | Principal's rights | Main file: view only. Ziyoly notes: the director has full rights in the branch. | View only. |
-| Roles | Main file: 14 user types. Ziyoly notes: 15 roles. Demo: 16. | The 14 of the main file, plus the Senior Head Teacher added by the school later. New roles can be added in the permission matrix. |
+| Roles | Main file: 14 user types. Ziyoly notes: 15 roles. Demo: 16. | The 14 of the main file, plus the Senior Head Teacher added by the school later, and the Class teacher (Sinf rahbari) of grades 0–4 (owner, 1 November 2026). New roles can be added in the permission matrix. |
 | Languages | Main file: Uzbek, Russian, English. Texnik topshiriq: at least Uzbek and Russian. myss.uz: Uzbek. | All three, complete. |
 | Scope | Texnik topshiriq and the Ziyoly demo cover admissions, finance, HR, chat, tasks, gamification. Main file: academics first. | Three releases, academic core first. The rest is listed under Later modules. |
 | Mobile apps | Texnik topshiriq requires Android and iOS apps. Main file: web first. | Phone-friendly web from Release 1. Apps in Release 3. |
