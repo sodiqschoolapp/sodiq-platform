@@ -15,7 +15,7 @@ This folder is the product spec for the Sodiq School platform. It is the single 
 | File | Covers |
 | --- | --- |
 | `01-overview.md` | Priorities, decisions at a glance, the three releases, how data flows |
-| `02-roles-and-access.md` | The 15 roles, Head Teachers by subject, Senior Head Teacher, permission rules, accounts and sign-in |
+| `02-roles-and-access.md` | The 16 roles, Head Teachers by subject, Senior Head Teacher, permission rules, accounts and sign-in |
 | `03-school-setup.md` | Branches, rooms, divisions, departments, academic year, quarters, calendar, slot types and day templates, grade bands |
 | `04-people.md` | Student record, UID sets, close relatives (shown as "Parent"), staff record, movements |
 | `05-classes-groups-subjects.md` | Classes (grade and name), groups and splits, subjects, teaching load, language of instruction, grading weights |

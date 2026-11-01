@@ -1,6 +1,6 @@
 # Spec change: the Class teacher (Sinf rahbari) of grades 0–4, and grade 0
 
-Proposal for the owner, 1 November 2026. Nothing in `docs/spec/` is changed yet. When the owner approves, apply it with `/spec-change` (one commit), and log it in `docs/spec-changes.md`. Where a sentence is quoted as "old", replace it word for word.
+Proposal as approved by the owner on 1 November 2026, in chat ("ok let's go with this"). The spec and `docs/spec-changes.md` hold the final wording. Four small additions were made while applying: "(a closed quarter keeps the state it closed with)" in the Rating journal definition; "(a closed quarter keeps its results)" and "(a score, \"did not sit\" or \"exempt\")" in the Grades 0–4 bullet of `05`; and "other teachers may teach subjects of the class too" in the Class teacher row of `02`.
 
 ## What the owner said (1 November 2026, in chat)
 
