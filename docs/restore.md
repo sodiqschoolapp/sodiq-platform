@@ -14,9 +14,11 @@ There are two backups:
 
 Every value in angle brackets is yours. Passwords are typed when `psql` asks, never on the command line.
 
+**On Windows** (the first drill, 1 November 2026): install PostgreSQL 18's **Command Line Tools** only (the EnterpriseDB installer, no server), and in each PowerShell window first run `$env:Path += ";C:\Program Files\PostgreSQL\18\bin"`. `sslrootcert=system` fails there ("certificate verify failed"): download the root of Neon's certificates once, `Invoke-WebRequest https://letsencrypt.org/certs/isrgrootx1.pem -OutFile C:\restore\isrgrootx1.pem`, and end every address below with `?sslmode=verify-full&sslrootcert=C:/restore/isrgrootx1.pem` (forward slashes) in place of `?sslmode=verify-full`.
+
 ## 1. A side copy from Neon's restore history (the usual case)
 
-1. Neon console, project `sodiq-production`, **Branches**, **Create branch**: name `restore-<date>`, parent `main`, **from a point in time**: the moment just before the damage (Tashkent time shown in your browser's zone; check it). The copy opens within seconds; production is not touched.
+1. Neon console, project `sodiq-production`, **Branches**, **Create branch**: name `restore-<date>`, parent `production` (the project's default branch), **Branch data and schema from a past point in time**, Auto-delete after 1 hour or more: the moment just before the damage (Tashkent time shown in your browser's zone; check it). The copy opens within seconds; production is not touched.
 2. The branch has its own host (Connection details, the branch `restore-<date>`, **direct**, not pooled). It carries the same roles, `sodiq_migrator` and `sodiq_app`, with the same passwords, and the same row filters: the same access rules as production.
 3. Go on with "Reading the copy" below.
 
@@ -24,18 +26,21 @@ Every value in angle brackets is yours. Passwords are typed when `psql` asks, ne
 
 When the damage is older than 7 days, or Neon's history is gone.
 
-1. Cloudflare dashboard, R2, `sodiq-backups`, `daily/`: download the dump of the day before the damage (`<date>.dump`) to the laptop. It holds every person of the school: keep it on the laptop's encrypted disk only and delete it at the end (step 6).
-2. Neon console, project `sodiq-production`, **Create branch** `restore-<date>` from `main` at the current moment: it carries the roles `sodiq_migrator` and `sodiq_app`, so the copy keeps the same access rules. In its **SQL editor** (the console role may create a database), on the database `neondb`:
+1. Cloudflare dashboard, R2, `sodiq-backups`, `daily/`: download the dump of the day before the damage (`<date>.dump`; the browser saves it as `daily_<date>.dump`) to the laptop. It holds every person of the school: keep it on the laptop's encrypted disk only and delete it at the end (step 6).
+2. Neon console, project `sodiq-production`, **Create branch** `restore-<date>` from `production`, **Branch data and schema** (the current moment), Auto-delete a day or more so that it outlives the restore: it carries the roles `sodiq_migrator` and `sodiq_app`, so the copy keeps the same access rules. In its **SQL editor** (the console role may create a database), on the database `neondb`:
    ```sql
    create database sodiq_restore owner sodiq_migrator;
    ```
-   Then on the laptop restore the dump into it as its owner:
+   Then on the laptop restore the dump into it as its owner, leaving out Neon's own default privileges (`ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin`), which no role of ours may set: with them `--exit-on-error` stops at the very end (first drill):
    ```bash
-   pg_restore --exit-on-error --no-owner --role=sodiq_migrator \
+   pg_restore -l <date>.dump | grep -v 'DEFAULT ACL' > restore.list
+   pg_restore --exit-on-error --no-owner --role=sodiq_migrator -L restore.list \
      --dbname="postgresql://sodiq_migrator@<branch host>/sodiq_restore?sslmode=verify-full" <date>.dump
    ```
+   On Windows (PowerShell) the first line is `(pg_restore -l <date>.dump) -notmatch 'DEFAULT ACL' | Set-Content -Encoding ascii restore.list`.
+   It prints nothing until it ends. From a laptop in Tashkent it took about 35 minutes (1 November 2026): thousands of small statements, each a round trip to Frankfurt, most of them for the partitions' indexes, keys and grants. While it runs, the SQL editor of the branch, database `sodiq_restore`, shows the statement of the moment: `select state, left(query, 90) from pg_stat_activity where datname = 'sodiq_restore' and pid <> pg_backend_pid();`. For a real recovery, run it from a machine near Frankfurt to save most of that time.
    (`pg_restore` of PostgreSQL 18; `--no-owner --role=sodiq_migrator`: only `sodiq_migrator` owns tables there, as in production; the grants to `sodiq_app` and the row filters of the dump come back as they are.) The command ends without an error. In the steps below, the database of this copy is `sodiq_restore`, not `sodiq`.
-3. Check the copy: `select count(*) from schema_migrations;` gives the number of migrations of that day, and `select max(changed_at) from journal_cell_history;` a moment of the evening before the dump.
+3. Check the copy: `select count(*) from schema_migrations;` gives the number of migrations of that day, and `select max(changed_at) from journal_cell_history;` a moment of the evening before the dump (empty while production holds no saved cell, as on 1 November 2026). Then read it as `sodiq_app` (section 3, database `sodiq_restore`): with no branch set, `select count(*) from lessons;` gives 0; with a branch set, that branch's lessons. This proves the grants and the row filters came back.
 4. Go on with "Reading the copy".
 
 ## 3. Reading the copy
@@ -79,7 +84,7 @@ Delete the side copy: Neon, Branches, `restore-<date>`, **Delete**. Delete any d
 
 Once a month, on a quiet day (not at the end of a quarter):
 
-1. Open a side copy from Neon's history at a moment of yesterday (section 1) and read one lesson's cells (section 3).
+1. Open a side copy from Neon's history at a moment of yesterday (section 1) and read one lesson's cells (section 3). The hidden Monitoring branch always has one: its 06:30 lesson, saved every 5 minutes by the sign-in-and-save check (`docs/monitoring.md`, steps 9 and 10); set the branch with `(select id from branches where purpose = 'monitoring')` and read `journal_cells` joined to `lessons` of that date.
 2. Open a side copy from the newest daily export (section 2) and check it (step 3).
 3. Delete both (section 6).
 4. Note it in `docs/go-live/restore-drills.md`: the date, which copies, the minutes each took, anything that did not work as written. No data, no id.
