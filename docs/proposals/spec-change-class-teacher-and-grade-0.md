@@ -9,6 +9,7 @@ Proposal for the owner, 1 November 2026. Nothing in `docs/spec/` is changed yet.
 - Primary is always grades 0–4. The school also has grade 0.
 - The Class teacher holds Ma'naviyat soati and the Homework slot of her class.
 - The Head Tutor oversees the Class teachers, as the Head Tutor oversees the Tutors.
+- Primary grades usually have no rating exams. The school does not want two records for one subject (no "Mathematics 0–4"). Instead, a switch for the Super Admin turns rating exams in primary grades on and off. Primary is graded the same way across grades 0–4.
 
 ## The idea in one paragraph
 
@@ -22,6 +23,10 @@ A new role, **Class teacher** (uz *Sinf rahbari*, ru *Классный руко�
 4. **Other teachers still teach in primary classes.** A Class teacher is not required on every row of her class. English or physical education in 1 London can be taught by a subject teacher, as today.
 5. **Rollover from grade 4 to grade 5.** The Class teacher is not copied to 5 London, which needs a Tutor. The class is listed in the rollover plan as needing a Tutor. From grade 0 to grade 1, and up to grade 4, the Class teacher is copied as a draft like the Tutor today.
 6. **Grade 0 is shown as "0 London"**, in the same form as every other grade.
+7. **One switch for the whole school, not one per subject.** "Rating exams in grades 0–4" is a single school setting kept by the Super Admin, off by default. When it is on, every rating subject has its rating exam in grades 0–4 as well. A switch per subject would be finer, but the owner said primary usually has no rating exams and asked for one switch.
+8. **A second quarterly distribution, typed, not worked out.** A rating subject taught in grades 0–4 has, for each quarter, the usual distribution with the rating exam and also one without it (attendance, classwork, homework, total 100), used in grades 0–4 while the switch is off. Scaling 10 · 30 · 20 up to 100 would give fractions such as 16.7, so the school types it. Example: Mathematics, quarter 1, A 10 · CW 30 · HW 20 · RE 40 in grades 5–11 and A 10 · CW 50 · HW 40 in grades 0–4.
+9. **Changing the switch mid-year.** It acts on open quarters only; closed quarters keep their results. A change is logged with a reason, shows how many grades change in each journal and recalculates at once, like a weights change. Turning it off is refused while a journal of grades 0–4 in an open quarter holds a rating exam entry (a score, "did not sit" or "exempt"), and the journals are listed.
+10. **A group of grades 4 and 5 together in a rating subject** is refused while the switch is off, because half the group would have a rating exam and half not. Turning the switch off is refused while such a group exists in an open quarter. This should be rare.
 
 ---
 
@@ -122,6 +127,42 @@ New: "For each class: promote (grade 0 to grade 1, and so on), merge, split or d
 
 ---
 
+## 11. Rating exams in grades 0–4
+
+### `docs/spec/edge-cases/00-definitions.md`, table of terms
+
+Add this row after the row "Tutor of a class":
+
+| Rating journal | A journal of a rating subject (one whose rating exam switch is on), except a journal of grades 0–4 while the school setting "Rating exams in grades 0–4" is off for its quarter: that journal has no rating exam column and uses the subject's distribution without the rating exam. Every rule that names a rating subject, a rating journal or the rating exam of a journal means a rating journal. |
+
+### `docs/spec/05-classes-groups-subjects.md`, Grading weights on a subject
+
+**Table.** Add this row after the row "Quarterly, rating subject":
+
+| Quarterly, rating subject in grades 0–4 without the rating exam | Attendance, classwork, homework | The quarter result in grades 0–4 while "Rating exams in grades 0–4" is off | A 10 · CW 50 · HW 40 |
+
+**Bullets.** Old: "A subject without a rating exam has no rating part, and its journal has no rating exam column."
+New: "A subject without a rating exam has no rating part, and its journal has no rating exam column. **Grades 0–4.** A school setting, "Rating exams in grades 0–4", kept by the Super Admin and off by default, decides whether rating subjects have their rating exam in grades 0–4. While it is off, a journal of grades 0–4 of a rating subject has no rating exam column, and the subject needs, for each quarter, the distribution without the rating exam beside its usual one. Changing the setting acts on open quarters only, is logged with a reason, shows how many grades will change in each journal and recalculates at once. Turning it off is refused while a journal of grades 0–4 in an open quarter holds a rating exam entry, or while a group of grades 4 and 5 of a rating subject exists in an open quarter; the journals and groups are listed."
+
+### `docs/spec/05-classes-groups-subjects.md`, Group row
+
+Old: "or of two grades (physical education for 9 Edinburgh and 10 Brown together)."
+New: "or of two grades (physical education for 9 Edinburgh and 10 Brown together); a group of grades 4 and 5 in a rating subject is refused while \"Rating exams in grades 0–4\" is off."
+
+### `docs/spec/07-journal.md`
+
+**Rating exam.** Old: "One score from 0 to 100 per student per quarter, only in rating subjects."
+New: "One score from 0 to 100 per student per quarter, only in rating journals (in grades 0–4 only while \"Rating exams in grades 0–4\" is on)."
+
+Rule 8 and the closing checklist read "rating subject" and stay as written: the definition makes them mean a rating journal.
+
+### `docs/spec/edge-cases/academic-year.md`
+
+**Row "The timetable is published on 1 September while a subject has no weights."** Old: "its daily distribution and its quarterly distribution for each quarter the version touches."
+New: "its daily distribution and its quarterly distribution for each quarter the version touches, and, for a rating subject in a class or group of grades 0–4 while \"Rating exams in grades 0–4\" is off, its distribution without the rating exam for those quarters."
+
+The spec has no table of school settings; the setting is defined once, in `05` (above).
+
 ## Side effects: what could go wrong
 
 - **Permissions (a stop item since the pilot, 28 October).** A new role adds a row to the permission table, copied from the Tutor's class-scoped rights and the Teacher's own-lesson rights. A copy that misses one area fails closed (the Class teacher is refused). A copy that is too wide gives a Teacher-level person a Tutor's reading of contact fields, which is the Tutor's right today for own class only. Every route needs allow and refuse tests for the new role. The task that builds this waits for the owner (CLAUDE.md, stop item 5).
@@ -130,6 +171,7 @@ New: "For each class: promote (grade 0 to grade 1, and so on), merge, split or d
 - **Tutor lessons follow the Class teacher.** Ma'naviyat soati and the Homework slot of 1 London go to its Class teacher through the same machinery (0067). A Class teacher with about 20 lessons a week in her own class plus the Tutor lessons must still fit her availability. The solver and the clash rules are unchanged.
 - **Head Tutor reports.** "Attendance by tutor" and the journal discipline of Tutors must include Class teachers, or the Head Tutor loses sight of grades 0–4.
 - **Rollover 4 → 5.** Without the rule in section 10, 5 London would carry a Class teacher into grade 5, which the new check refuses.
+- **Rating exams in grades 0–4 touch the journal and results path.** Which weights a journal uses, whether it has a rating exam column, the quarter close check and the results all depend on the new setting. `packages/calc` takes the weights and the parts as inputs and may need no change. If it does need one, that is a stop item since the pilot (CLAUDE.md, item 4). Either way, it is a **Look first** reading of a journal calculation rule. Results of closed quarters must not move: a test turns the setting on and off and checks a closed quarter's results.
 - **Lesson plans.** Readers are "teachers with the same subject and grade in their profile". A Class teacher with Mathematics for grade 1 in her profile reads grade-1 mathematics plans. That is wanted, and needs no change.
 
 ## Code and tests that must change (all built; a new task in `docs/build-plan.md`)
@@ -143,3 +185,4 @@ New: "For each class: promote (grade 0 to grade 1, and so on), merge, split or d
 - Head Tutor views and reports, the category column and filter, the teacher list.
 - i18n in three languages: uz "Sinf rahbari", ru "Классный руководитель", en "Class teacher", and the refusal texts.
 - Demo seed (`apps/api/src/testing/demo`): a grade 0 and Class teachers for grades 0–4.
+- Rating exams in grades 0–4: the school setting (Super Admin, audited) and its refusals. The second quarterly distribution in `subject_quarter_weights` (0020) and the subject settings screen. The choice of weights and of the rating exam column per journal (`apps/api/src/modules/journal`, `results`). The quarter close checklist, the publish check, the refusal of a grade 4–5 group, and recalculation of the prepared totals (9.3b) when the setting changes.
