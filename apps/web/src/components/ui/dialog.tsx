@@ -6,6 +6,9 @@ import { cn } from 'cn';
 // `alert-dialog.tsx` because the registry could not be reached from the cloud
 // environment (task 0.8b-3). Without the close cross of the registry's version:
 // every dialog of the app names its own closing button with a translated text.
+// A dialog is never taller than the screen: its content scrolls inside it, and its footer (the
+// buttons) stays at the bottom while it does (the owner, 1 November 2026: the comments dialog
+// ran off a laptop's screen with no way to reach its last field).
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -43,7 +46,7 @@ function DialogContent({ className, ...props }: DialogPrimitive.Popup.Props) {
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground shadow-float duration-160 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl bg-popover p-4 text-popover-foreground shadow-float duration-160 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}
@@ -63,7 +66,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        '-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted p-4 sm:flex-row sm:justify-end',
+        'sticky -bottom-4 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted p-4 sm:flex-row sm:justify-end',
         className,
       )}
       {...props}

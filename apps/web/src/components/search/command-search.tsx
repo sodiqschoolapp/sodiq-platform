@@ -363,7 +363,7 @@ export function CommandSearch() {
           {t(onMac() ? 'search.shortcutMac' : 'search.shortcut')}
         </span>
       </DialogTrigger>
-      <DialogContent className="top-[15%] translate-y-0 gap-3 sm:max-w-md">
+      <DialogContent className="top-[15%] max-h-[calc(85dvh-1rem)] translate-y-0 gap-3 sm:max-w-md">
         <DialogTitle className="sr-only">{t('search.label')}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(kinds.length > 0 ? 'search.placeholderRecords' : 'search.placeholder')}
