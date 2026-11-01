@@ -104,7 +104,9 @@ const size = SIZES[SIZE_NAME === 'triple' || SIZE_NAME === 'full' ? SIZE_NAME : 
 const TRIPLE = size.name === 'triple';
 /** The whole year filled and the 1,000 users: every size but the small one. */
 const LARGE = size.name !== 'small';
-const LIMIT = LARGE ? 5 * 60 * 60_000 : 10 * 60_000;
+// The small run took about 8 of its 10 minutes on a slow shared CI machine and stopped before the
+// load (1 November 2026); it now has 15, inside the 25 of its CI job.
+const LIMIT = LARGE ? 5 * 60 * 60_000 : 15 * 60_000;
 const REPORT = resolve(import.meta.dirname, `../../../speed-report-${size.name}.md`);
 /**
  * Task 10.1b: the phase of this process (`speed-phases.ts`). The build phase leaves its database

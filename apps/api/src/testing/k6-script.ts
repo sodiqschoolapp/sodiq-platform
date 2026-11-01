@@ -24,6 +24,13 @@ class K6Failure extends Error {}
 export async function runK6Script(input: {
   base: string;
   secrets: Record<string, string>;
+  /**
+   * The duration the script is told for a request, from the one measured. A test of what the
+   * script does gives every request a fixed time, so a slow shared CI machine never decides it
+   * (a save of 329 ms against the 300 ms limit failed CI on 30 October 2026); a test of the
+   * limit itself gives the save the time to check. By default the time measured.
+   */
+  timing?: (request: { method: string; path: string }, measuredMs: number) => number;
 }): Promise<{ requests: K6Request[]; failure: string | null }> {
   const source = readFileSync(K6_SCRIPT, 'utf8');
   const imports = [
@@ -53,7 +60,11 @@ export async function runK6Script(input: {
       const started = performance.now();
       const response = await fetch(url, { method, headers, body: payload ?? undefined });
       const text = await response.text();
-      const duration = performance.now() - started;
+      const measured = performance.now() - started;
+      const duration =
+        input.timing === undefined
+          ? measured
+          : input.timing({ method, path: new URL(url).pathname }, measured);
       for (const line of response.headers.getSetCookie()) {
         const [pair] = line.split(';');
         const at = pair?.indexOf('=') ?? -1;

@@ -171,8 +171,15 @@ describe('the command that builds the Monitoring branch, and the check that uses
 
   let teacherReady = false;
 
-  /** Runs the k6 check of the repository at a moment in Tashkent. */
-  const runCheck = async (moment: string) => {
+  /**
+   * Runs the k6 check of the repository at a moment in Tashkent. Every request takes 50 ms for
+   * the script unless a test says otherwise: what the script does is tested here, the 300 ms
+   * limit on its own below, and the speed of the save by the speed run (task 10.1).
+   */
+  const runCheck = async (
+    moment: string,
+    timing: (request: { method: string; path: string }) => number = () => 50,
+  ) => {
     if (!teacherReady) {
       const first = new MonitoringApi(base);
       await first.post('/api/auth/sign-in', {
@@ -192,6 +199,7 @@ describe('the command that builds the Monitoring branch, and the check that uses
         'monitoring-teacher-login': built.teacherLogin,
         'monitoring-teacher-password': TEACHER_PASSWORD,
       },
+      timing,
     });
   };
 
@@ -235,6 +243,22 @@ describe('the command that builds the Monitoring branch, and the check that uses
     const [after] = await cells();
     expect(after?.version).toBe((before?.version ?? 0) + 1);
     expect([before?.mark, after?.mark].sort()).toEqual([1, 2]);
+  });
+
+  // `12`, cell save: 0.3 s. The script fails a slower save and still signs out; one just under
+  // the limit passes.
+  it('fails a save slower than 0.3 s, and still signs out', async () => {
+    const save = (request: { method: string; path: string }) =>
+      request.method === 'POST' && request.path.endsWith('/attendance');
+    const slow = await runCheck('2027-01-14T07:10:00+05:00', (request) =>
+      save(request) ? 301 : 50,
+    );
+    expect(slow.failure).toBe('save: 301 ms');
+    expect(slow.requests.at(-1)).toMatchObject({ path: '/api/auth/sign-out', status: 204 });
+    const quick = await runCheck('2027-01-14T07:15:00+05:00', (request) =>
+      save(request) ? 299 : 50,
+    );
+    expect(quick.failure).toBeNull();
   });
 
   it("fails, and still signs out, before the day's lesson has started", async () => {
