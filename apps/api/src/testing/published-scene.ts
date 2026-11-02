@@ -77,11 +77,12 @@ async function teacherOf(
   subject: string,
   accountId?: string,
   second?: string,
+  grade = 7,
 ) {
   const teacher = await load.teacher(branch, {
     subjects: [
-      { subject, grades: [7] },
-      ...(second === undefined ? [] : [{ subject: second, grades: [7] }]),
+      { subject, grades: [grade] },
+      ...(second === undefined ? [] : [{ subject: second, grades: [grade] }]),
     ],
     ...(accountId === undefined ? {} : { accountId }),
   });
@@ -123,8 +124,14 @@ export async function publishedScene(
     shared?: boolean;
     /** Task 7.1c: the subject, made before the scene (a plan of last year names it). */
     subject?: string;
+    /**
+     * Task 9.4e: the grade of both classes, 7 unless said; a class of grades 0–4 takes a
+     * Class teacher in place of a Tutor (`LoadKit.tutorOf` gives the role of the grade).
+     */
+    grade?: number;
   } = {},
 ) {
+  const grade = input.grade ?? 7;
   const branch = input.branch ?? (await t.newBranch());
   const year = await load.classes.year(branch);
   for (const [index, [start, end]] of QUARTERS.entries()) {
@@ -147,7 +154,7 @@ export async function publishedScene(
   const subject =
     input.subject ??
     (await load.classes.subject({
-      grades: [7],
+      grades: [grade],
       journalType: input.graded === true ? 'graded' : 'attendance_only',
     }));
   if (input.graded === true) {
@@ -175,11 +182,11 @@ export async function publishedScene(
   }
   const room = await load.classes.room(branch);
   const otherRoom = await load.classes.room(branch);
-  const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
-  const otherClass = await load.classes.schoolClass(branch, year, { grade: 7, room: otherRoom });
+  const classId = await load.classes.schoolClass(branch, year, { grade, room });
+  const otherClass = await load.classes.schoolClass(branch, year, { grade, room: otherRoom });
   const secondSubject =
     input.secondSubject === true
-      ? await load.classes.subject({ grades: [7], journalType: 'attendance_only' })
+      ? await load.classes.subject({ grades: [grade], journalType: 'attendance_only' })
       : null;
   const teacher = await teacherOf(
     t,
@@ -188,9 +195,18 @@ export async function publishedScene(
     subject,
     input.accounts?.teacher,
     secondSubject ?? undefined,
+    grade,
   );
-  const otherTeacher = await teacherOf(t, load, branch, subject);
-  const spareTeacher = await teacherOf(t, load, branch, subject, input.accounts?.spare);
+  const otherTeacher = await teacherOf(t, load, branch, subject, undefined, undefined, grade);
+  const spareTeacher = await teacherOf(
+    t,
+    load,
+    branch,
+    subject,
+    input.accounts?.spare,
+    undefined,
+    grade,
+  );
   const created = await t.post('/api/timetable/versions', branch, {
     academicYearId: year,
     startsOn: MONDAY,
@@ -238,6 +254,7 @@ export async function publishedScene(
   return {
     branch,
     year,
+    grade,
     subject,
     room,
     otherRoom,

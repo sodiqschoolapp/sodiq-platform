@@ -67,7 +67,7 @@ const GRID_TUTOR = at(
 );
 const WRITES_TUTOR = at(
   SCOPE,
-  'refuses the Tutor of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
+  'refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
 );
 const WRITES_TEACHER = at(
   SCOPE,
@@ -79,11 +79,11 @@ const UNLOCK_HEADS = at(
 );
 const UNLOCKS = at(
   SCOPE,
-  'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing',
+  'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s',
 );
 const REMINDERS = at(
   SCOPE,
-  "gives every role its own reminders only, never the lessons of the journal's teacher",
+  "gives every role its own reminders only, never the lessons of the journal's teacher, with a %s",
 );
 const HISTORIES = at(
   SCOPE,
@@ -91,7 +91,7 @@ const HISTORIES = at(
 );
 const CARD = at(
   SCOPE,
-  'refuses the lesson card to a Tutor of another class and a Senior Head Teacher of another subject',
+  'refuses the lesson card to a %s of another class and a Senior Head Teacher of another subject',
 );
 const CARDS_TODAY = at(
   SCOPE,
@@ -99,7 +99,7 @@ const CARDS_TODAY = at(
 );
 const BRANCH_EXPORTS = at(
   SCOPE,
-  'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing',
+  'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing, with a %s',
 );
 const READERS_TUTOR = at(
   READERS,
