@@ -495,7 +495,7 @@ export const NARROWER_SCOPES: RouteScopes = {
       scope: 'narrower',
       rule: '08, Early warning, Who sees it: "the Head Tutor and the Vice Principal for Spiritual and Moral Education for attendance"',
       refusedIn: [
-        'src/modules/results/early-warning.test.ts > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal',
+        'src/modules/results/early-warning.test.ts > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s',
       ],
     },
   ],
@@ -505,7 +505,7 @@ export const NARROWER_SCOPES: RouteScopes = {
       scope: 'narrower',
       rule: '08, Rating: the Head Tutor ranks the students of a class across subjects, not a journal in one subject',
       refusedIn: [
-        'src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area',
+        'src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area, with a %s',
       ],
     },
   ],
@@ -515,7 +515,7 @@ export const NARROWER_SCOPES: RouteScopes = {
       scope: 'narrower',
       rule: '08, Rating: the ranking of the classes of the branch is for management',
       refusedIn: [
-        'src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area',
+        'src/modules/results/rating.test.ts > opens each list only to its readers, decided in the route, and refuses the roles outside the area, with a %s',
       ],
     },
   ],

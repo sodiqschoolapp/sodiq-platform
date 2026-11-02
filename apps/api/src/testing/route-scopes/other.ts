@@ -471,6 +471,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'edge/people-roles-accounts: "Search returns only records the person may open" (the Tutor: own class)',
       `${CLASS_SEARCH} > finds own class and no other, by name and by a Cyrillic look-alike spelling`,
+      `${CLASS_SEARCH} > finds for a Class teacher own class and the groups drawing from it, and no other`,
     ),
     HEADS_OWN_CLASSES,
   ],
@@ -480,6 +481,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes',
       `${CLASS_SEARCH} > finds the groups drawing from own class, and not one drawing from another class only`,
+      `${CLASS_SEARCH} > finds for a Class teacher own class and the groups drawing from it, and no other`,
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],
