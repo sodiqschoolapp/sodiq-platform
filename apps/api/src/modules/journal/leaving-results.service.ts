@@ -130,7 +130,13 @@ export class LeavingResults {
         if (reading !== 'whole') continue;
         const switches = switchesIn(journal, quarter.id);
         if (switches === undefined || switches.attendanceOnly) continue;
-        const weights = await gridWeights(transaction, branchId, subjectId, quarter.id);
+        const weights = await gridWeights(
+          transaction,
+          branchId,
+          subjectId,
+          quarter.id,
+          switches.withoutRating,
+        );
         if (weights.quarterly === null) continue;
         const ratingShown = switches.ratingExam && weights.quarterly.ratingExam !== null;
         const atLeaving = found.atLeaving ?? lastDay;

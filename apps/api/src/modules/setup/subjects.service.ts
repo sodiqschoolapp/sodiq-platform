@@ -7,6 +7,7 @@ import type {
   GradeChanges,
   JournalType,
   Names,
+  PrimaryQuarterWeights,
   QuarterWeights,
   Subject,
   SubjectColour,
@@ -16,7 +17,7 @@ import type {
   SubjectQuarterWeights,
   SubjectRecord,
 } from '@sodiq/shared';
-import { gradeRanges, schoolDateOf } from '@sodiq/shared';
+import { gradeRanges, PRIMARY_GRADES, schoolDateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -57,7 +58,7 @@ import {
 import { weightsNoticeAccounts } from '../results/weights-notice.js';
 import { lockOpenQuarter } from './closed-quarters.js';
 import { switchKey, switchesOf, type QuarterSwitches } from './subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
+import { dailyWeightsFit, primaryWeightsFit, quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
 /** The field of the record each unique index of the names covers. */
@@ -77,6 +78,9 @@ const SUBJECT_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Task 3.2a, decision 16 (db/migrations/0046): an active group of any branch needs it.
   subject_grade_groups: 'subject_grade_groups',
   subject_has_groups: 'subject_has_groups',
+  // Task 9.4f (0153, decision 5): the rating switch turned on while a group of grades 4 and 5 of
+  // the subject exists and "Rating exams in grades 0–4" is off.
+  groups_rating_primary_span: 'groups_rating_primary_span',
 };
 
 const SUBJECT_COLUMNS = [
@@ -816,6 +820,153 @@ export class Subjects {
   }
 
   /**
+   * Task 9.4f (decision 7; `05`, Grading weights on a subject): one quarter's distribution without
+   * the rating exam of a rating subject, the row its journals of grades 0–4 use while the quarter's
+   * state of "Rating exams in grades 0–4" is off. Refused for a subject without the rating exam in
+   * the quarter, an attendance-only or archived subject, a closed quarter or year; a change of a
+   * stored one in a started quarter needs a reason and has the preview of 9.1.
+   */
+  setPrimaryWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: PrimaryQuarterWeights,
+    requestId: string,
+  ): Promise<SubjectQuarterWeights> {
+    return this.writePrimaryWeights(access, id, quarterId, weights, requestId, false);
+  }
+
+  /** Task 9.4f: the write above, rolled back, with the grades it alters. */
+  previewPrimaryWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: PrimaryQuarterWeights,
+    requestId: string,
+  ): Promise<GradeChanges> {
+    return previewOf(() =>
+      this.writePrimaryWeights(access, id, quarterId, weights, requestId, true),
+    );
+  }
+
+  private writePrimaryWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: PrimaryQuarterWeights,
+    requestId: string,
+    preview: boolean,
+  ): Promise<SubjectQuarterWeights> {
+    const branchId = branchOf(access);
+    return refusingConstraints(
+      () =>
+        this.transactions.run(access.branchIds, async (transaction) => {
+          await this.readSubjectId(transaction, id);
+          const quarter = await transaction
+            .selectFrom('quarters')
+            .select(['id', 'academic_year_id'])
+            .where('id', '=', quarterId)
+            .executeTakeFirst();
+          if (quarter === undefined) {
+            throw notFound();
+          }
+          // The locks of the usual distribution, in the same order (9.2b).
+          await lockOpenQuarter(transaction, quarterId);
+          const subject = await this.lockGraded(transaction, id);
+          await this.lockOpenYear(transaction, quarter.academic_year_id);
+          const switches = await this.switchesIn(transaction, subject.id, quarterId);
+          if (switches.journal_type !== 'graded' || !switches.rating_exam) {
+            throw refused('primary_weights_no_rating');
+          }
+          const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+          const before = await grades.read(quarterId);
+          const change = await this.writePrimary(
+            transaction,
+            access,
+            branchId,
+            subject.id,
+            switches,
+            quarterId,
+            weights,
+            requestId,
+          );
+          await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
+            { quarterId, change, before },
+          ]);
+          return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
+        }),
+      {
+        quarters_closed: 'quarter_closed',
+        subject_quarter_primary_weights_rating: 'primary_weights_no_rating',
+      },
+    );
+  }
+
+  /** Task 9.4f: writes one quarter's distribution without the rating exam, with its audit entry. */
+  private async writePrimary(
+    transaction: Transaction,
+    access: Access,
+    branchId: string,
+    subjectId: string,
+    switches: QuarterSwitches,
+    quarterId: string,
+    weights: { attendance: number; classwork: number; homework: number; reason?: string },
+    requestId: string,
+  ): Promise<QuarterChange> {
+    const before = await transaction
+      .selectFrom('subject_quarter_primary_weights')
+      .select(['attendance', 'classwork', 'homework', 'weights_round', 'rating_round'])
+      .where('branch_id', '=', branchId)
+      .where('subject_id', '=', subjectId)
+      .where('quarter_id', '=', quarterId)
+      .forUpdate()
+      .executeTakeFirst();
+    const oldValue =
+      before === undefined || !primaryWeightsFit(switches, before)
+        ? null
+        : { attendance: before.attendance, classwork: before.classwork, homework: before.homework };
+    const newValue = {
+      attendance: weights.attendance,
+      classwork: weights.classwork,
+      homework: weights.homework,
+    };
+    if (oldValue !== null && JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+      return 'unchanged';
+    }
+    const columns = {
+      ...newValue,
+      weights_round: switches.weights_round,
+      rating_round: switches.rating_round,
+    };
+    if (before === undefined) {
+      await transaction
+        .insertInto('subject_quarter_primary_weights')
+        .values({ branch_id: branchId, subject_id: subjectId, quarter_id: quarterId, ...columns })
+        .execute();
+    } else {
+      await transaction
+        .updateTable('subject_quarter_primary_weights')
+        .set(columns)
+        .where('branch_id', '=', branchId)
+        .where('subject_id', '=', subjectId)
+        .where('quarter_id', '=', quarterId)
+        .execute();
+    }
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'subject_quarter_primary_weights.set',
+      record: { type: 'subject', id: subjectId },
+      oldValue: { weights: oldValue },
+      newValue: { weights: newValue },
+      details: { quarterId, ...(weights.reason === undefined ? {} : { reason: weights.reason }) },
+      requestId,
+    });
+    return oldValue === null ? 'first' : 'changed';
+  }
+
+  /**
    * Copies quarter 1's distribution of a year to quarters 2 to 4 of that year,
    * over what they hold (answer 6, decision 16). All or nothing: a refusal
    * leaves every quarter as it was. Task 9.2b (From 2.1): a closed quarter
@@ -934,6 +1085,55 @@ export class Subjects {
                 requestId,
               );
               written.push({ quarterId: quarter.id, change, before });
+            }
+          }
+          // Task 9.4f: quarter 1's distribution without the rating exam, when it has one, goes
+          // with the copy to every quarter that has the rating exam.
+          const primarySource =
+            first === undefined || firstSwitches === undefined || !firstSwitches.rating_exam
+              ? undefined
+              : await transaction
+                  .selectFrom('subject_quarter_primary_weights')
+                  .select(['attendance', 'classwork', 'homework', 'weights_round', 'rating_round'])
+                  .where('branch_id', '=', branchId)
+                  .where('subject_id', '=', id)
+                  .where('quarter_id', '=', first.id)
+                  .executeTakeFirst();
+          if (
+            primarySource !== undefined &&
+            firstSwitches !== undefined &&
+            primaryWeightsFit(firstSwitches, primarySource)
+          ) {
+            for (const quarter of quarters) {
+              const own = switches.get(switchKey(id, quarter.id));
+              if (quarter.number === 1 || own === undefined || !own.rating_exam) continue;
+              const before = written.find((one) => one.quarterId === quarter.id)?.before;
+              const change = await this.writePrimary(
+                transaction,
+                access,
+                branchId,
+                id,
+                own,
+                quarter.id,
+                {
+                  attendance: primarySource.attendance,
+                  classwork: primarySource.classwork,
+                  homework: primarySource.homework,
+                  ...(record.reason === undefined ? {} : { reason: record.reason }),
+                },
+                requestId,
+              );
+              const at = written.findIndex((one) => one.quarterId === quarter.id);
+              const merged: QuarterChange =
+                at === -1
+                  ? change
+                  : [written[at]?.change, change].includes('changed')
+                    ? 'changed'
+                    : [written[at]?.change, change].includes('first')
+                      ? 'first'
+                      : 'unchanged';
+              if (at === -1) written.push({ quarterId: quarter.id, change, before });
+              else written[at] = { quarterId: quarter.id, change: merged, before };
             }
           }
           await this.afterWrite(
@@ -1389,6 +1589,17 @@ export class Subjects {
         .where('academic_years.status', 'in', ['planned', 'current'])
         .execute(),
     ]);
+    // Task 9.4f (decision 7): a quarter whose state of "Rating exams in grades 0–4" is off also
+    // needs the distribution without the rating exam of a rating subject with a grade of 0 to 4.
+    const [primary, offQuarters] = await Promise.all([
+      transaction
+        .selectFrom('subject_quarter_primary_weights')
+        .select(['subject_id', 'quarter_id', 'weights_round', 'rating_round'])
+        .where('branch_id', '=', branchId)
+        .where('subject_id', 'in', ids)
+        .execute(),
+      quarterStatesOff(transaction, branchId),
+    ]);
     // Task 8.2: each quarter counts against the subject's switches there.
     const switches = await switchesOf(
       transaction,
@@ -1408,13 +1619,22 @@ export class Subjects {
       const counted = quarters.filter(
         (quarter) => switches.get(switchKey(row.id, quarter.id))?.journal_type === 'graded',
       );
-      const fitting = weights.filter((stored) => {
-        const own = switches.get(switchKey(row.id, stored.quarter_id));
-        return (
-          stored.subject_id === row.id &&
-          own?.journal_type === 'graded' &&
-          counted.some((quarter) => quarter.id === stored.quarter_id) &&
-          quarterWeightsFit(own, stored)
+      const fitting = counted.filter((quarter) => {
+        const own = switches.get(switchKey(row.id, quarter.id));
+        if (own === undefined) return false;
+        const usual = weights.some(
+          (stored) =>
+            stored.subject_id === row.id &&
+            stored.quarter_id === quarter.id &&
+            quarterWeightsFit(own, stored),
+        );
+        if (!usual) return false;
+        if (!primaryNeeded(row.grades, own, offQuarters.has(quarter.id))) return true;
+        return primary.some(
+          (stored) =>
+            stored.subject_id === row.id &&
+            stored.quarter_id === quarter.id &&
+            primaryWeightsFit(own, stored),
         );
       }).length;
       return {
@@ -1477,6 +1697,23 @@ export class Subjects {
       [subject.id],
       quarters.map((quarter) => quarter.id),
     );
+    // Task 9.4f: the distribution without the rating exam and the quarters whose state is off.
+    const [primary, offQuarters] = await Promise.all([
+      transaction
+        .selectFrom('subject_quarter_primary_weights')
+        .select([
+          'quarter_id',
+          'attendance',
+          'classwork',
+          'homework',
+          'weights_round',
+          'rating_round',
+        ])
+        .where('branch_id', '=', branchId)
+        .where('subject_id', '=', subject.id)
+        .execute(),
+      quarterStatesOff(transaction, branchId),
+    ]);
     return {
       yearId: year.id,
       yearStatus: year.status as SubjectQuarterWeights['yearStatus'],
@@ -1506,10 +1743,53 @@ export class Subjects {
           fits: stored !== null && fits(stored, ratingExam),
           graded: (own?.journal_type ?? subject.journal_type) === 'graded',
           ratingExam,
+          primary: ((): SubjectQuarterWeights['quarters'][number]['primary'] => {
+            const row = primary.find((one) => one.quarter_id === quarter.id);
+            return row === undefined || own === undefined || !primaryWeightsFit(own, row)
+              ? null
+              : { attendance: row.attendance, classwork: row.classwork, homework: row.homework };
+          })(),
+          primaryNeeded:
+            own !== undefined && primaryNeeded(subject.grades, own, offQuarters.has(quarter.id)),
         };
       }),
     };
   }
+}
+
+/**
+ * Task 9.4f (decision 7): the quarters of the branch whose state of "Rating exams in grades 0–4"
+ * is off (`quarter_rating_states`, 0153).
+ */
+async function quarterStatesOff(
+  transaction: Transaction,
+  branchId: string,
+): Promise<ReadonlySet<string>> {
+  const rows = await transaction
+    .selectFrom('quarter_rating_states')
+    .select('quarter_id')
+    .where('branch_id', '=', branchId)
+    .where('rating_exams_primary', '=', false)
+    .execute();
+  return new Set(rows.map((row) => row.quarter_id));
+}
+
+/**
+ * Task 9.4f (decision 7): the subject's journals of grades 0–4 use the distribution without the
+ * rating exam in the quarter: it has the rating exam there, a grade of 0 to 4, and the quarter's
+ * state is off. It is needed (counted missing) only then.
+ */
+function primaryNeeded(
+  grades: readonly number[],
+  own: { readonly journal_type: string; readonly rating_exam: boolean },
+  stateOff: boolean,
+): boolean {
+  return (
+    stateOff &&
+    own.journal_type === 'graded' &&
+    own.rating_exam &&
+    grades.some((grade) => PRIMARY_GRADES.includes(grade))
+  );
 }
 
 /**

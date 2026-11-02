@@ -152,6 +152,11 @@ describe('the preview and the reason of a change of weights or values', () => {
       .selectAll()
       .orderBy(['branch_id', 'subject_id', 'quarter_id'])
       .execute(),
+    primary: await t.database.migrator
+      .selectFrom('subject_quarter_primary_weights')
+      .selectAll()
+      .orderBy(['branch_id', 'subject_id', 'quarter_id'])
+      .execute(),
     quarters: await t.database.migrator.selectFrom('quarters').selectAll().orderBy('id').execute(),
     audit: (
       await t.database.migrator
@@ -179,6 +184,8 @@ describe('the preview and the reason of a change of weights or values', () => {
 
   /** 60 · 20 · 20: Aziz (60 × 50 + 20 × 90) ÷ 80 = 60, grade 3; Bekzod 62.5, grade 3. */
   const CHANGED = { attendance: 60, classwork: 20, homework: 20, ratingExam: null };
+  /** Task 9.4f: a distribution without the rating exam. */
+  const PRIMARY = { attendance: 10, classwork: 50, homework: 40 };
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
@@ -426,6 +433,16 @@ describe('the preview and the reason of a change of weights or values', () => {
       ],
       [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/preview`, CHANGED],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/preview`, CHANGED],
+      // Task 9.4f: the preview of the distribution without the rating exam.
+      [
+        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}/primary/preview`,
+        PRIMARY,
+      ],
+      [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/primary/preview`, PRIMARY],
+      [
+        `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/primary/preview`,
+        PRIMARY,
+      ],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: other.s.year }],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: UNKNOWN }],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/copy/preview`, { yearId: x.s.year }],
@@ -445,6 +462,7 @@ describe('the preview and the reason of a change of weights or values', () => {
     const before = await rowsOf();
     const subject = x.s.subject;
     const withReason = { ...CHANGED, reason: 'Agreed by the department' };
+    const primaryWithReason = { ...PRIMARY, reason: 'Agreed by the department' };
     for (const [method, path, body] of [
       [
         'put',
@@ -453,6 +471,22 @@ describe('the preview and the reason of a change of weights or values', () => {
       ],
       ['put', `/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}`, withReason],
       ['put', `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}`, withReason],
+      // Task 9.4f: the distribution without the rating exam.
+      [
+        'put',
+        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}/primary`,
+        primaryWithReason,
+      ],
+      [
+        'put',
+        `/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/primary`,
+        primaryWithReason,
+      ],
+      [
+        'put',
+        `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/primary`,
+        primaryWithReason,
+      ],
       [
         'post',
         `/api/setup/subjects/${subject}/quarter-weights/copy`,

@@ -215,8 +215,11 @@ describe('publish', () => {
       hoursRange?: readonly [number, number];
       /** Another teacher than one of the branch's own. */
       teacherFor?: (branch: string, subject: string) => Promise<string>;
+      /** Task 9.4f: the grade of the class and the subject, 7 unless named. */
+      grade?: number;
     } = {},
   ) {
+    const grade = input.grade ?? 7;
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
     await datedQuarters(year);
@@ -230,14 +233,15 @@ describe('publish', () => {
     );
     await t.assign(branch, regular);
     const subject = await load.classes.subject({
-      grades: [7],
+      grades: [grade],
       journalType: input.journalType ?? 'attendance_only',
     });
     const room = await load.classes.room(branch);
-    const classId = await load.classes.schoolClass(branch, year, { grade: 7, room });
+    const classId = await load.classes.schoolClass(branch, year, { grade, room });
     let teacherId: string;
     if (input.teacherFor === undefined) {
-      teacherId = (await load.teacher(branch, { subjects: [{ subject, grades: [7] }] })).staffId;
+      teacherId = (await load.teacher(branch, { subjects: [{ subject, grades: [grade] }] }))
+        .staffId;
       await hours(branch, teacherId, input.hoursRange);
     } else {
       teacherId = await input.teacherFor(branch, subject);
@@ -927,6 +931,74 @@ describe('publish', () => {
       expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
         { code: 'subject_quarter_weights', path: `subjects.${s.subject}.quarters.1` },
       ]);
+    });
+
+    // Task 9.4f (`edge/academic-year`, publishing without weights; `05`, Grades 0–4): a rating
+    // subject of a class of grades 0–4 needs its distribution without the rating exam in each
+    // touched quarter whose state of "Rating exams in grades 0–4" is off, and only there.
+    it('refuses a rating subject of grade 1 without its distribution without the rating exam while the state is off', async () => {
+      const s = await scene({ journalType: 'graded', grade: 1 });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', s.subject)
+        .execute();
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({
+          branch_id: s.branch,
+          subject_id: s.subject,
+          attendance: 20,
+          classwork: 40,
+          homework: 40,
+        })
+        .execute();
+      const quarters = await quarterIds(s.year);
+      for (const quarter of quarters) {
+        await t.database.migrator
+          .insertInto('subject_quarter_weights')
+          .values({
+            branch_id: s.branch,
+            subject_id: s.subject,
+            quarter_id: quarter,
+            attendance: 20,
+            classwork: 30,
+            homework: 30,
+            rating_exam: 20,
+          })
+          .execute();
+      }
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual(
+        [1, 2, 3, 4].map((quarter) => ({
+          code: 'subject_quarter_primary_weights',
+          path: `subjects.${s.subject}.quarters.${String(quarter)}`,
+        })),
+      );
+      // Quarters 2 to 4 typed; quarter 1's state turned on: nothing is missing.
+      for (const quarter of quarters.slice(1)) {
+        await t.database.migrator
+          .insertInto('subject_quarter_primary_weights')
+          .values({
+            branch_id: s.branch,
+            subject_id: s.subject,
+            quarter_id: quarter,
+            attendance: 10,
+            classwork: 50,
+            homework: 40,
+            weights_round: 1,
+            rating_round: 1,
+          })
+          .execute();
+      }
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'subject_quarter_primary_weights', path: `subjects.${s.subject}.quarters.1` },
+      ]);
+      await t.database.migrator
+        .updateTable('quarter_rating_states')
+        .set({ rating_exams_primary: true })
+        .where('quarter_id', '=', quarters[0] ?? '')
+        .execute();
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
     });
 
     it('counts only the distributions of the current round', async () => {

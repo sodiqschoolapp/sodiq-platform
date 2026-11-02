@@ -129,6 +129,12 @@ export async function publishedScene(
      * Class teacher in place of a Tutor (`LoadKit.tutorOf` gives the role of the grade).
      */
     grade?: number;
+    /**
+     * Task 9.4f: the subject (given in `subject`) has the rating exam: its quarterly weights are
+     * 20 · 30 · 30 with a rating exam of 20, and its distribution without the rating exam
+     * 10 · 50 · 40 (the done-when of 9.4f).
+     */
+    ratingExam?: boolean;
   } = {},
 ) {
   const grade = input.grade ?? 7;
@@ -175,10 +181,29 @@ export async function publishedScene(
           branch_id: branch,
           subject_id: subject,
           quarter_id: quarter.id,
-          ...weights,
+          ...(input.ratingExam === true
+            ? { attendance: 20, classwork: 30, homework: 30, rating_exam: 20 }
+            : weights),
         })),
       )
       .execute();
+    if (input.ratingExam === true) {
+      await t.database.migrator
+        .insertInto('subject_quarter_primary_weights')
+        .values(
+          quarters.map((quarter) => ({
+            branch_id: branch,
+            subject_id: subject,
+            quarter_id: quarter.id,
+            attendance: 10,
+            classwork: 50,
+            homework: 40,
+            weights_round: 1,
+            rating_round: 1,
+          })),
+        )
+        .execute();
+    }
   }
   const room = await load.classes.room(branch);
   const otherRoom = await load.classes.room(branch);

@@ -91,6 +91,13 @@ describe('the readers of the rating exam and comments', () => {
     const oxford = await load.classes.schoolClass(branch, year, { grade });
     const cambridge = await load.classes.schoolClass(branch, year, { grade });
     const group = await load.classes.group(branch, year, cells.subject, [oxford, cambridge]);
+    // Task 9.4f: a journal of grades 0–4 has the rating exam only while its quarter's state of
+    // "Rating exams in grades 0–4" is on (`05`, Grades 0–4); this scene's group has one.
+    await t.database.migrator
+      .updateTable('quarter_rating_states')
+      .set({ rating_exams_primary: true })
+      .where('branch_id', '=', branch)
+      .execute();
     await t.database.migrator
       .insertInto('subject_quarter_weights')
       .values({

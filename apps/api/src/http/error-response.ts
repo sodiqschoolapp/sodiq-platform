@@ -147,6 +147,14 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The distribution has a rating exam part exactly when the subject has a rating exam.',
   quarter_one_not_set: 'Quarter 1 has no distribution that fits the subject.',
   reason_required: 'A change of stored weights or values in an open quarter needs a reason.',
+  rating_primary_refused:
+    'Rating exams in grades 0–4 cannot be turned off while a journal of grades 0–4 holds a rating exam entry or a group of grades 4 and 5 of a rating subject exists.',
+  setting_unchanged: 'The setting already has this value in every open quarter.',
+  groups_rating_primary_span:
+    'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4.',
+  class_grade_rating_primary:
+    'The class cannot move into grades 0–4: its rating exam entries or a closed quarter would change.',
+  primary_weights_no_rating: 'The subject has no rating exam in this quarter.',
   staff_id_exhausted: 'All staff IDs of this year of first hire are given.',
   staff_department_required: 'A staff member in the Academic division has a department there.',
   subject_outside_department: 'A subject of a teacher is in their Academic department.',

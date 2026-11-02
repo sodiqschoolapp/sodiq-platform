@@ -104,6 +104,8 @@ export const AUDIT_ACTION_GROUPS = {
     'subject.restore',
     'subject_daily_weights.set',
     'subject_quarter_weights.set',
+    'subject_quarter_primary_weights.set',
+    'school_settings.rating_exams_primary',
   ],
   people: [
     'staff.create',

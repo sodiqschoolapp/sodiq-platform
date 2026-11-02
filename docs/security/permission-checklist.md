@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 478, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 453.
+- Routes of the application: 483, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 458.
 - Routes with a limit inside the route: 153.
-- Routes that take an id: 382, with 813 ids (branch 723, school 74, own 2, none 14).
-- Areas of the permission table: 56.
+- Routes that take an id: 384, with 817 ids (branch 725, school 76, own 2, none 14).
+- Areas of the permission table: 57.
 
 ## Routes without a role
 
@@ -1137,6 +1137,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/setup/subjects/:id/archive` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
 | `POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
+| `POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
+| `POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
 | `POST /api/setup/subjects/:id/quarter-weights/copy` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
 | `POST /api/setup/subjects/:id/quarter-weights/copy` | `body:yearId` | academic year | branch | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged`<br>`src/modules/setup/subjects.test.ts > of another branch's quarter or year, or an unknown one, are not found; nothing is written` |
 | `POST /api/setup/subjects/:id/quarter-weights/copy/preview` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
@@ -1353,6 +1355,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/setup/subjects/:id/daily-weights` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged`<br>`src/modules/setup/subjects.test.ts > of another branch's quarter or year, or an unknown one, are not found; nothing is written` |
+| `PUT /api/setup/subjects/:id/quarter-weights/:quarterId/primary` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
+| `PUT /api/setup/subjects/:id/quarter-weights/:quarterId/primary` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
 | `PUT /api/setup/travel-times` | `body:otherBranchId` | branch | school | 03, travel times: a pair of the school's branches; the Super Admin works in every branch, so another branch is the partner, not a refusal |
 | `PUT /api/timetable/exams/:id` | `path:id` | exam | branch | `src/modules/timetable/exams.test.ts > answers 404 for every id of the path and the body, as the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/exams.test.ts > answers 404 for every id of the path and the body, as the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/exams.test.ts > repeats a save with its key, refuses the key of another account, and checks a repeat before its answer` |
 | `PUT /api/timetable/exams/:id` | `body:subjectId` | subject | school | `src/modules/timetable/exams.test.ts > answers 404 for every id of the path and the body, as the Super Admin, and changes nothing` |
@@ -1766,6 +1770,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | super_admin | yes | yes | yes | yes | yes |
 | principal | yes |  |  |  | yes |
 | academic_vice_principal | yes |  |  |  | yes |
+
+### `school_settings`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  | yes |  |  |
 
 ### `settings`
 

@@ -1453,6 +1453,12 @@ export interface QuarterFinalResults {
   subject_id: string;
 }
 
+export interface QuarterRatingStates {
+  branch_id: string;
+  quarter_id: string;
+  rating_exams_primary: boolean;
+}
+
 export interface QuarterReopenings {
   branch_id: string;
   closing_id: string;
@@ -1618,6 +1624,11 @@ export interface SchemaMigrations {
   checksum: string;
   name: string;
   number: number;
+}
+
+export interface SchoolSettings {
+  id: Generated<boolean>;
+  rating_exams_primary: boolean;
 }
 
 export interface SecondStepRecoveryCodes {
@@ -1940,6 +1951,17 @@ export interface SubjectPlanMinimums {
   id: Generated<string>;
   subject_id: string;
   version: Generated<number>;
+}
+
+export interface SubjectQuarterPrimaryWeights {
+  attendance: number;
+  branch_id: string;
+  classwork: number;
+  homework: number;
+  quarter_id: string;
+  rating_round: number;
+  subject_id: string;
+  weights_round: number;
 }
 
 export interface SubjectQuarterWeights {
@@ -2270,6 +2292,7 @@ export interface DB {
   quarter_closing_journals: QuarterClosingJournals;
   quarter_closings: QuarterClosings;
   quarter_final_results: QuarterFinalResults;
+  quarter_rating_states: QuarterRatingStates;
   quarter_reopenings: QuarterReopenings;
   quarter_result_decisions: QuarterResultDecisions;
   quarters: Quarters;
@@ -2286,6 +2309,7 @@ export interface DB {
   rooms: Rooms;
   scheduled_runs: ScheduledRuns;
   schema_migrations: SchemaMigrations;
+  school_settings: SchoolSettings;
   second_step_recovery_codes: SecondStepRecoveryCodes;
   sessions: Sessions;
   sign_in_throttle: SignInThrottle;
@@ -2314,6 +2338,7 @@ export interface DB {
   students: Students;
   subject_daily_weights: SubjectDailyWeights;
   subject_plan_minimums: SubjectPlanMinimums;
+  subject_quarter_primary_weights: SubjectQuarterPrimaryWeights;
   subject_quarter_weights: SubjectQuarterWeights;
   subject_switches: SubjectSwitches;
   subjects: Subjects;

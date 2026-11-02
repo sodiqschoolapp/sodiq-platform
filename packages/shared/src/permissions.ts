@@ -361,6 +361,16 @@ export const PERMISSIONS = freezeTable({
     principal: ['view'],
     academic_vice_principal: ['view', 'edit'],
   }),
+  /**
+   * `school_settings` (task 9.4f, pull request #276; `05`, Grading weights on a subject,
+   * Grades 0–4: "A school setting 'Rating exams in grades 0–4', kept by the Super Admin"): the
+   * preview and the change of a setting of the whole school, for the Super Admin alone. Reading it
+   * is under `settings` view. A new area for new routes, approved by the owner (answer A on the
+   * pull request); no role is widened.
+   */
+  school_settings: rows({
+    super_admin: ['view', 'edit'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],
