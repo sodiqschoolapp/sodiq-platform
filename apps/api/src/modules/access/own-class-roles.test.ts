@@ -36,16 +36,12 @@ const TUTOR_ALONE = [
   /\.has\(\s*'tutor'\s*\)/,
   /\[\s*'tutor'\s*\]/,
   /role',\s*'=',\s*'tutor'/,
+  /'tutor'\s*[!=]==\s*[\w.]*role\b/,
+  /\.includes\(\s*'tutor'\s*\)/,
 ];
 
-/**
- * Where the Tutor role alone is meant: the give of a row chooses which of the
- * two refusals of the grade it answers (`class_needs_class_teacher` for a
- * Tutor given a class of grades 0–4).
- */
-const ALLOWED: Readonly<Record<string, number>> = {
-  'apps/api/src/modules/classes/class-tutors.service.ts': 1,
-};
+/** Nowhere is the Tutor role alone meant (correction 9 of the plan review: no service copy of the grade rule). */
+const ALLOWED: Readonly<Record<string, number>> = {};
 
 // Task 9.4e (edge/00-definitions, Tutor of a class): "Every rule that names the Tutor of a
 // class … applies in the same way to the Class teacher of a class of grades 0–4." Code that
@@ -78,6 +74,8 @@ describe('the own class of a Tutor or a Class teacher', () => {
       "roles.has('tutor')",
       "permitting(context, ['tutor'])",
       ".where('assignments.role', '=', 'tutor')",
+      "'tutor' === assignment.role",
+      "roles.includes('tutor')",
     ]) {
       expect(
         TUTOR_ALONE.some((pattern) => pattern.test(sample)),

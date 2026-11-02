@@ -32,7 +32,6 @@ import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { tutorCandidatesQuery, tutorPreviewQuery } from './classes-api';
 
-/** The name of a Tutor row or a candidate: surname first, or the account without a record. */
 /**
  * The texts of the Tutors part of a class: "Class teacher" for a class of
  * grades 0–4, "Tutor" for 5–11 (task 9.4e; `05`, Class: "tutor (grades
@@ -42,6 +41,7 @@ export function tutorTexts(grade: number): 'classes' | 'classes.classTeacher' {
   return ownClassRoleFor(grade) === 'class_teacher' ? 'classes.classTeacher' : 'classes';
 }
 
+/** The name of a Tutor row or a candidate: surname first, or the account without a record. */
 export function tutorName(
   t: (key: 'classes.noRecordName') => string,
   person: { name: { firstName: string; lastName: string } | null },

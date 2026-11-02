@@ -4,7 +4,6 @@ import {
   instructionLanguageSchema,
   isOwnClassRole,
   OWN_CLASS_ROLES,
-  ownClassRoleFor,
   roleSchema,
   schoolDateOf,
   type ClassDetail,
@@ -237,13 +236,8 @@ export class ClassTutors {
     if (!isOwnClassRole(roleSchema.parse(assignment.role))) {
       throw new ApiException('tutor_not_tutor', 409);
     }
-    // Task 9.4e, decision 3: the role of the class's grade, as class_tutors_fill (0152).
-    if (assignment.role !== ownClassRoleFor(held.grade)) {
-      throw new ApiException(
-        assignment.role === 'tutor' ? 'class_needs_class_teacher' : 'class_needs_tutor',
-        409,
-      );
-    }
+    // Task 9.4e, decision 3: the role of the class's grade is the database's rule
+    // (class_tutors_fill, 0152), answered through CLASS_REFUSALS.
     const now = await transactionMoment(transaction);
     const zone = await zoneOf(transaction, branchId);
     const validFrom = await this.momentOf(transaction, give.from, now, zone);
@@ -383,7 +377,7 @@ export class ClassTutors {
   private async lockClass(
     transaction: Transaction,
     classId: string,
-  ): Promise<{ language: string; grade: number }> {
+  ): Promise<{ language: string }> {
     const locked = await transaction
       .selectFrom('classes')
       .select('id')
@@ -396,7 +390,7 @@ export class ClassTutors {
     const held = await transaction
       .selectFrom('classes')
       .innerJoin('academic_years', 'academic_years.id', 'classes.academic_year_id')
-      .select(['classes.language', 'classes.grade', 'classes.archived_at', 'academic_years.status'])
+      .select(['classes.language', 'classes.archived_at', 'academic_years.status'])
       .where('classes.id', '=', classId)
       .executeTakeFirstOrThrow();
     if (held.status === 'closed') {
@@ -405,7 +399,7 @@ export class ClassTutors {
     if (held.archived_at !== null) {
       throw new ApiException('class_archived', 409);
     }
-    return { language: held.language, grade: held.grade };
+    return { language: held.language };
   }
 
   /** Today is now; a later date is 00:00 of that day; an earlier one is refused. */

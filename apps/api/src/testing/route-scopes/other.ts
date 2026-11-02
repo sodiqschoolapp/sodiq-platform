@@ -675,11 +675,12 @@ export const OTHER_SCOPES: RouteScopes = {
   }),
 };
 
-function groupLines(test: string): ScopeLine[] {
+function groupLines(test: string, classTeacher?: string): ScopeLine[] {
   return [
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes',
       test,
+      ...(classTeacher === undefined ? [] : [classTeacher]),
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],
