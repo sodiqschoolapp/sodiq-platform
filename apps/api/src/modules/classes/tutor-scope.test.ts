@@ -384,6 +384,47 @@ describe('the class scope of a Tutor', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of 1 London exports
+    // own class with every group the Tutor reads, and nothing of 7 Oxford.
+    it('writes the own class of a Class teacher, with Contact and the score, and counts the rest', async () => {
+      const london = await classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+      const browser = await t.kit.completeSession('Malika', 'Karimova');
+      await classes.person(t.north, ['uz'], {
+        accountId: browser.account.id,
+        first: 'Malika',
+        last: 'Karimova',
+      });
+      const given = await t.kit.giveRole(browser.account.id, {
+        role: 'class_teacher',
+        branchId: t.north,
+        validFrom: FROM,
+      });
+      await classes.tutorRow(t.north, london, given.id, { from: FROM });
+      const pupil = await members.student(t.north, { grade: 1 });
+      await members.member({
+        branch: t.north,
+        classId: london,
+        studentId: pupil,
+        from: '2026-09-01',
+      });
+      const response = await exportOf([pupil, own], browser.cookie, {
+        columns: ['uid', 'name', 'phone', 'diagnosticScore', 'address'],
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers['x-export-rows-left-out']).toBe('1');
+      const file = await fileOf(response);
+      expect(file.columns).toBe('uid,name,phone,diagnosticScore');
+      expect(file.sheet.rows.map((row) => row[0])).toEqual([await uidOf(pupil)]);
+      const [entry] = (await t.entries('student.export')).slice(-1);
+      expect(entry?.assignment_id).toBe(given.id);
+      // Her class only: a student of 7 Oxford is refused on the record.
+      refusedWith(
+        await t.get(`/api/people/students/${own}`, t.north, browser.cookie),
+        403,
+        'permission_denied',
+      );
+    });
+
     it('exports the whole branch for a Tutor who is also Principal, naming the Principal', async () => {
       const mixed = await tutorOf('Dildora', 'Rasulova');
       const principal = (

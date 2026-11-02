@@ -543,7 +543,7 @@ describe('classes', () => {
         'Sinf',
         'Oʻquv yili',
         'Taʼlim tili',
-        'Tyutor',
+        'Tyutor yoki sinf rahbari',
         'Asosiy xona',
         'Sigʻim',
         'Holati',
