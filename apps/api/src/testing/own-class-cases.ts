@@ -25,3 +25,16 @@ export async function gradeOf(migrator: Database, classId: string): Promise<numb
     .executeTakeFirstOrThrow();
   return found.grade;
 }
+
+/**
+ * Ends every Super Admin role but the kit's own: a test run once per own-class role gives a
+ * Super Admin each time, and at most 3 accounts hold the role (`MAX_SUPER_ADMINS`).
+ */
+export async function endTestSuperAdmins(migrator: Database, keep: string): Promise<void> {
+  await migrator
+    .updateTable('assignments')
+    .set((builder) => ({ valid_until: builder.ref('valid_from') }))
+    .where('role', '=', 'super_admin')
+    .where('id', '!=', keep)
+    .execute();
+}

@@ -1,11 +1,17 @@
 import { REQUEST_KEY_HEADER, absenceReasonSchema, studentAbsencesSchema } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import {
+  OWN_CLASS_CASES,
+  endTestSuperAdmins,
+  gradeOf,
+  ownRoleOf,
+} from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -67,7 +73,10 @@ describe('the reasons of absence', () => {
 
   const student = async (branch: string, classId: string, last: string): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Olim', last_name: last })
@@ -81,7 +90,7 @@ describe('the reasons of absence', () => {
   async function tutorOf(branch: string, classId: string): Promise<Browser> {
     const browser = await account();
     const assignment = await t.kit.giveRole(browser.account.id, {
-      role: 'tutor',
+      role: ownRoleOf(await gradeOf(t.database.migrator, classId)),
       branchId: branch,
       validFrom: new Date('2026-09-01T00:00:00+05:00'),
     });
@@ -90,11 +99,12 @@ describe('the reasons of absence', () => {
     return browser;
   }
 
-  async function scene() {
+  async function scene(grade = 7) {
     const owner = await account();
     const s = await publishedScene(t, load, {
       graded: true,
       accounts: { teacher: owner.account.id },
+      grade,
     });
     const lessons = (
       await t.database.migrator
@@ -128,6 +138,10 @@ describe('the reasons of absence', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
+  });
+
+  afterEach(async () => {
+    await endTestSuperAdmins(t.database.migrator, t.adminAssignment);
   });
 
   afterAll(async () => {
@@ -170,53 +184,56 @@ describe('the reasons of absence', () => {
     expect((await reasonsOf(s.branch)).map((row) => row.category)).toEqual([null]);
   });
 
-  it('lets the Academic Vice Principal and the Super Admin write any class, and refuses a Tutor of another class and every other role', async () => {
-    const s = await scene();
-    const otherTutor = await tutorOf(s.branch, s.otherClass);
-    const path = `/api/journal/student-absences/${s.ahmedov}/2026-10-12`;
-    const before = await reasonsOf(s.branch);
-    const entriesBefore = (await reasonEntries()).length;
-    await as(s.branch, otherTutor, [], async ({ put }) => {
-      const refused = await put(path, { category: 'unknown', note: '' });
-      expect(refused.status).toBe(403);
-      expect(codeOf(refused)).toBe('absence_scope');
-    });
-    for (const role of [
-      'principal',
-      'head_tutor',
-      'spiritual_vice_principal',
-      'teacher',
-    ] as const) {
-      const browser = await account();
-      await as(s.branch, browser, [{ role, branchId: s.branch }], async ({ put }) => {
-        expect((await put(path, { category: 'unknown', note: '' })).status, role).toBe(403);
+  it.each(OWN_CLASS_CASES)(
+    'lets the Academic Vice Principal and the Super Admin write any class, and refuses a %s of another class and every other role',
+    async (_who, grade) => {
+      const s = await scene(grade);
+      const otherTutor = await tutorOf(s.branch, s.otherClass);
+      const path = `/api/journal/student-absences/${s.ahmedov}/2026-10-12`;
+      const before = await reasonsOf(s.branch);
+      const entriesBefore = (await reasonEntries()).length;
+      await as(s.branch, otherTutor, [], async ({ put }) => {
+        const refused = await put(path, { category: 'unknown', note: '' });
+        expect(refused.status).toBe(403);
+        expect(codeOf(refused)).toBe('absence_scope');
       });
-    }
-    expect(await reasonsOf(s.branch)).toEqual(before);
-    expect(await reasonEntries()).toHaveLength(entriesBefore);
-    const vice = await account();
-    await as(
-      s.branch,
-      vice,
-      [{ role: 'academic_vice_principal', branchId: s.branch }],
-      async ({ put }) => {
-        expect((await put(path, { category: 'school_permitted', note: 'Olympiad' })).status).toBe(
-          200,
-        );
-      },
-    );
-    const admin = await account();
-    await as(s.branch, admin, [{ role: 'super_admin' }], async ({ put }) => {
-      expect(
-        (
-          await put(`/api/journal/student-absences/${s.other}/2026-10-12`, {
-            category: 'unexcused',
-            note: '',
-          })
-        ).status,
-      ).toBe(200);
-    });
-  });
+      for (const role of [
+        'principal',
+        'head_tutor',
+        'spiritual_vice_principal',
+        'teacher',
+      ] as const) {
+        const browser = await account();
+        await as(s.branch, browser, [{ role, branchId: s.branch }], async ({ put }) => {
+          expect((await put(path, { category: 'unknown', note: '' })).status, role).toBe(403);
+        });
+      }
+      expect(await reasonsOf(s.branch)).toEqual(before);
+      expect(await reasonEntries()).toHaveLength(entriesBefore);
+      const vice = await account();
+      await as(
+        s.branch,
+        vice,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async ({ put }) => {
+          expect((await put(path, { category: 'school_permitted', note: 'Olympiad' })).status).toBe(
+            200,
+          );
+        },
+      );
+      const admin = await account();
+      await as(s.branch, admin, [{ role: 'super_admin' }], async ({ put }) => {
+        expect(
+          (
+            await put(`/api/journal/student-absences/${s.other}/2026-10-12`, {
+              category: 'unexcused',
+              note: '',
+            })
+          ).status,
+        ).toBe(200);
+      });
+    },
+  );
 
   it('refuses a date with no class membership, another branch’s student and an unknown one', async () => {
     const s = await scene();
@@ -251,139 +268,149 @@ describe('the reasons of absence', () => {
     expect(await reasonEntries()).toHaveLength(entriesBefore);
   });
 
-  it('lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a Tutor to own classes', async () => {
-    const s = await scene();
-    const tutor = await tutorOf(s.branch, s.classId);
-    const [first, second] = s.lessons;
-    await as(s.branch, s.owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
-      expect(
-        (
-          await post(`/api/journal/lessons/${first ?? ''}/attendance`, {
-            saves: [
-              { studentId: s.ahmedov, mark: 0, version: null },
-              { studentId: s.boboyev, mark: 1, version: null },
-            ],
-          })
-        ).status,
-      ).toBe(200);
-      await post(`/api/journal/lessons/${second ?? ''}/attendance`, {
-        saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+  it.each(OWN_CLASS_CASES)(
+    'lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a %s to own classes',
+    async (_who, grade) => {
+      const s = await scene(grade);
+      const tutor = await tutorOf(s.branch, s.classId);
+      const [first, second] = s.lessons;
+      await as(s.branch, s.owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+        expect(
+          (
+            await post(`/api/journal/lessons/${first ?? ''}/attendance`, {
+              saves: [
+                { studentId: s.ahmedov, mark: 0, version: null },
+                { studentId: s.boboyev, mark: 1, version: null },
+              ],
+            })
+          ).status,
+        ).toBe(200);
+        await post(`/api/journal/lessons/${second ?? ''}/attendance`, {
+          saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+        });
       });
-    });
-    await as(s.branch, tutor, [], async ({ get, put }) => {
-      await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
-        category: 'family',
-        note: 'Wedding',
+      await as(s.branch, tutor, [], async ({ get, put }) => {
+        await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
+          category: 'family',
+          note: 'Wedding',
+        });
+        const answer = await get(
+          `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+        );
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        const list = studentAbsencesSchema.parse(answer.body);
+        expect(list.classes.map((one) => one.id)).toEqual([s.classId]);
+        expect(
+          list.days.map((day) => [
+            day.student.id,
+            day.date,
+            day.lessons.length,
+            day.reason?.category ?? null,
+          ]),
+        ).toEqual([
+          [s.boboyev, '2026-10-21', 0, 'family'],
+          [s.ahmedov, '2026-10-12', 1, null],
+        ]);
+        expect(list.days.every((day) => day.canEdit)).toBe(true);
+        // A cleared reason leaves the list (decision 8; spec review of the code, must-fix 7).
+        await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
+          category: null,
+          note: '',
+        });
+        const cleared = studentAbsencesSchema.parse(
+          (
+            await get(
+              `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+            )
+          ).body,
+        );
+        expect(cleared.days.map((day) => day.student.id)).toEqual([s.ahmedov]);
+        await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
+          category: 'family',
+          note: 'Wedding',
+        });
+        const refused = await get(`/api/journal/student-absences?classId=${s.otherClass}`);
+        expect(refused.status).toBe(403);
+        expect(codeOf(refused)).toBe('absence_scope');
+        // At most 31 days.
+        expect(
+          (
+            await get(
+              `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-11-01`,
+            )
+          ).status,
+        ).toBe(400);
       });
-      const answer = await get(
-        `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
-      );
-      expect(answer.status, JSON.stringify(answer.body)).toBe(200);
-      const list = studentAbsencesSchema.parse(answer.body);
-      expect(list.classes.map((one) => one.id)).toEqual([s.classId]);
-      expect(
-        list.days.map((day) => [
-          day.student.id,
-          day.date,
-          day.lessons.length,
-          day.reason?.category ?? null,
-        ]),
-      ).toEqual([
-        [s.boboyev, '2026-10-21', 0, 'family'],
-        [s.ahmedov, '2026-10-12', 1, null],
-      ]);
-      expect(list.days.every((day) => day.canEdit)).toBe(true);
-      // A cleared reason leaves the list (decision 8; spec review of the code, must-fix 7).
-      await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
-        category: null,
-        note: '',
-      });
-      const cleared = studentAbsencesSchema.parse(
-        (
-          await get(
-            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
-          )
-        ).body,
-      );
-      expect(cleared.days.map((day) => day.student.id)).toEqual([s.ahmedov]);
-      await put(`/api/journal/student-absences/${s.boboyev}/2026-10-21`, {
-        category: 'family',
-        note: 'Wedding',
-      });
-      const refused = await get(`/api/journal/student-absences?classId=${s.otherClass}`);
-      expect(refused.status).toBe(403);
-      expect(codeOf(refused)).toBe('absence_scope');
-      // At most 31 days.
-      expect(
-        (
-          await get(
-            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-11-01`,
-          )
-        ).status,
-      ).toBe(400);
-    });
-    // The Head Tutor reads every class, writes none.
-    const headTutor = await account();
-    await as(s.branch, headTutor, [{ role: 'head_tutor', branchId: s.branch }], async ({ get }) => {
-      const list = studentAbsencesSchema.parse(
-        (
-          await get(
-            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
-          )
-        ).body,
-      );
-      expect(list.classes.map((one) => one.id).sort()).toEqual([s.classId, s.otherClass].sort());
-      expect(list.days.every((day) => !day.canEdit)).toBe(true);
-    });
-    // The other readers (permission review of the code, should-fix 5): the Principal and the
-    // Vice Principal for Spiritual and Moral Education read and write nothing, the Super Admin both.
-    for (const [role, edits] of [
-      ['principal', false],
-      ['spiritual_vice_principal', false],
-      ['super_admin', true],
-    ] as const) {
-      const browser = await account();
+      // The Head Tutor reads every class, writes none.
+      const headTutor = await account();
       await as(
         s.branch,
-        browser,
-        [role === 'super_admin' ? { role } : { role, branchId: s.branch }],
+        headTutor,
+        [{ role: 'head_tutor', branchId: s.branch }],
         async ({ get }) => {
-          const answer = await get(
-            `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+          const list = studentAbsencesSchema.parse(
+            (
+              await get(
+                `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+              )
+            ).body,
           );
-          expect(answer.status, role).toBe(200);
-          const list = studentAbsencesSchema.parse(answer.body);
-          expect(list.days).toHaveLength(2);
-          expect(list.days.every((day) => day.canEdit === edits)).toBe(true);
+          expect(list.classes.map((one) => one.id).sort()).toEqual(
+            [s.classId, s.otherClass].sort(),
+          );
+          expect(list.days.every((day) => !day.canEdit)).toBe(true);
         },
       );
-    }
-    for (const role of ['teacher', 'head_teacher', 'senior_head_teacher'] as const) {
-      const browser = await account();
-      await as(
-        s.branch,
-        browser,
-        [
-          role === 'senior_head_teacher'
-            ? { role, subjectIds: [s.subject] }
-            : {
-                role,
-                branchId: s.branch,
-                ...(role === 'head_teacher' ? { subjectIds: [s.subject] } : {}),
-              },
-        ],
-        async ({ get }) => {
-          expect((await get('/api/journal/student-absences')).status, role).toBe(403);
-        },
-      );
-    }
-    const elsewhere = await scene();
-    await as(s.branch, headTutor, [], async ({ get }) => {
-      for (const classId of [elsewhere.classId, randomUUID()]) {
-        expect((await get(`/api/journal/student-absences?classId=${classId}`)).status).toBe(404);
+      // The other readers (permission review of the code, should-fix 5): the Principal and the
+      // Vice Principal for Spiritual and Moral Education read and write nothing, the Super Admin both.
+      for (const [role, edits] of [
+        ['principal', false],
+        ['spiritual_vice_principal', false],
+        ['super_admin', true],
+      ] as const) {
+        const browser = await account();
+        await as(
+          s.branch,
+          browser,
+          [role === 'super_admin' ? { role } : { role, branchId: s.branch }],
+          async ({ get }) => {
+            const answer = await get(
+              `/api/journal/student-absences?classId=${s.classId}&from=2026-10-01&to=2026-10-31`,
+            );
+            expect(answer.status, role).toBe(200);
+            const list = studentAbsencesSchema.parse(answer.body);
+            expect(list.days).toHaveLength(2);
+            expect(list.days.every((day) => day.canEdit === edits)).toBe(true);
+          },
+        );
       }
-    });
-  });
+      for (const role of ['teacher', 'head_teacher', 'senior_head_teacher'] as const) {
+        const browser = await account();
+        await as(
+          s.branch,
+          browser,
+          [
+            role === 'senior_head_teacher'
+              ? { role, subjectIds: [s.subject] }
+              : {
+                  role,
+                  branchId: s.branch,
+                  ...(role === 'head_teacher' ? { subjectIds: [s.subject] } : {}),
+                },
+          ],
+          async ({ get }) => {
+            expect((await get('/api/journal/student-absences')).status, role).toBe(403);
+          },
+        );
+      }
+      const elsewhere = await scene();
+      await as(s.branch, headTutor, [], async ({ get }) => {
+        for (const classId of [elsewhere.classId, randomUUID()]) {
+          expect((await get(`/api/journal/student-absences?classId=${classId}`)).status).toBe(404);
+        }
+      });
+    },
+  );
 
   it('marks the day of a 0 typed after a 1 earlier that day (decision 9)', async () => {
     const owner = await account();

@@ -28,6 +28,7 @@ import { MembersKit } from '../../testing/members-kit.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { OWN_CLASS_CASES, gradeOf, ownRoleOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -89,7 +90,10 @@ describe('exemptions', () => {
 
   const student = async (branch: string, classId: string, last: string): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Olim', last_name: last })
@@ -103,7 +107,7 @@ describe('exemptions', () => {
   async function tutorOf(branch: string, classId: string): Promise<Browser> {
     const browser = await account();
     const assignment = await t.kit.giveRole(browser.account.id, {
-      role: 'tutor',
+      role: ownRoleOf(await gradeOf(t.database.migrator, classId)),
       branchId: branch,
       validFrom: new Date('2026-09-01T00:00:00+05:00'),
     });
@@ -112,11 +116,12 @@ describe('exemptions', () => {
     return browser;
   }
 
-  async function scene() {
+  async function scene(grade = 7) {
     const owner = await account();
     const s = await publishedScene(t, load, {
       graded: true,
       accounts: { teacher: owner.account.id },
+      grade,
     });
     const lessons = (
       await t.database.migrator
@@ -1327,51 +1332,54 @@ describe('exemptions', () => {
   });
 
   describe('the teaching home (edge/exemptions, row 11; 07, "An exemption ends")', () => {
-    it('shows the Tutor "exempt today" with the category and "back from exemption" the day after the end', async () => {
-      const s = await scene();
-      await as(s.branch, s.vice, [], async ({ post }) => {
-        expect(
-          (
-            await post(
-              '/api/exemptions',
-              body({ studentIds: [s.ahmedov], startDate: '2026-10-20', endDate: '2026-10-26' }),
-            )
-          ).status,
-        ).toBe(200);
-        expect(
-          (
-            await post(
-              '/api/exemptions',
-              body({
-                studentIds: [s.boboyev],
-                startDate: '2026-10-27',
-                endDate: '2026-10-30',
-                category: 'family',
-              }),
-            )
-          ).status,
-        ).toBe(200);
-      });
-      const tutor = await tutorOf(s.branch, s.classId);
-      await as(s.branch, tutor, [], async ({ get }) => {
-        const cards = exemptionsTodaySchema.parse(
-          (await get('/api/journal/exemptions-today')).body,
-        );
-        expect(cards.date).toBe('2026-10-27');
-        expect(cards.exemptToday.map((one) => [one.student.id, one.category])).toEqual([
-          [s.boboyev, 'family'],
-        ]);
-        expect(cards.backToday.map((one) => one.student.id)).toEqual([s.ahmedov]);
-      });
-      const other = await tutorOf(s.branch, s.otherClass);
-      await as(s.branch, other, [], async ({ get }) => {
-        const cards = exemptionsTodaySchema.parse(
-          (await get('/api/journal/exemptions-today')).body,
-        );
-        expect(cards.exemptToday).toEqual([]);
-        expect(cards.backToday).toEqual([]);
-      });
-    });
+    it.each(OWN_CLASS_CASES)(
+      'shows the %s "exempt today" with the category and "back from exemption" the day after the end',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        await as(s.branch, s.vice, [], async ({ post }) => {
+          expect(
+            (
+              await post(
+                '/api/exemptions',
+                body({ studentIds: [s.ahmedov], startDate: '2026-10-20', endDate: '2026-10-26' }),
+              )
+            ).status,
+          ).toBe(200);
+          expect(
+            (
+              await post(
+                '/api/exemptions',
+                body({
+                  studentIds: [s.boboyev],
+                  startDate: '2026-10-27',
+                  endDate: '2026-10-30',
+                  category: 'family',
+                }),
+              )
+            ).status,
+          ).toBe(200);
+        });
+        const tutor = await tutorOf(s.branch, s.classId);
+        await as(s.branch, tutor, [], async ({ get }) => {
+          const cards = exemptionsTodaySchema.parse(
+            (await get('/api/journal/exemptions-today')).body,
+          );
+          expect(cards.date).toBe('2026-10-27');
+          expect(cards.exemptToday.map((one) => [one.student.id, one.category])).toEqual([
+            [s.boboyev, 'family'],
+          ]);
+          expect(cards.backToday.map((one) => one.student.id)).toEqual([s.ahmedov]);
+        });
+        const other = await tutorOf(s.branch, s.otherClass);
+        await as(s.branch, other, [], async ({ get }) => {
+          const cards = exemptionsTodaySchema.parse(
+            (await get('/api/journal/exemptions-today')).body,
+          );
+          expect(cards.exemptToday).toEqual([]);
+          expect(cards.backToday).toEqual([]);
+        });
+      },
+    );
   });
 
   describe('the absences with a reason and no exemption (edge/exemptions, row 9)', () => {

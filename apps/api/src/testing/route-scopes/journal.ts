@@ -413,7 +413,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           EXEMPTIONS,
-          'shows the Tutor "exempt today" with the category and "back from exemption" the day after the end',
+          'shows the %s "exempt today" with the category and "back from exemption" the day after the end',
         ),
       ],
     },
@@ -444,7 +444,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           ABSENCES,
-          'lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a Tutor to own classes',
+          'lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a %s to own classes',
         ),
       ],
     },
@@ -457,7 +457,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           ABSENCES,
-          'lets the Academic Vice Principal and the Super Admin write any class, and refuses a Tutor of another class and every other role',
+          'lets the Academic Vice Principal and the Super Admin write any class, and refuses a %s of another class and every other role',
         ),
       ],
     },
@@ -467,7 +467,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   'DELETE /api/journal/student-absences/:studentId/:date/file': [
@@ -475,7 +475,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   'GET /api/journal/student-absences/:studentId/:date/file': [
@@ -483,7 +483,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   // Task 9.3b-2: the items behind a count and the file of the counts, in the counts' scope.
