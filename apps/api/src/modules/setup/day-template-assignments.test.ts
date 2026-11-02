@@ -211,11 +211,28 @@ describe('where day templates apply', () => {
       [body(main, { level: 'default', weekday: 1 }), 'weekday'],
       [body(main, { level: 'grades', gradeFrom: 9, gradeTo: 5 }), 'gradeTo'],
       [body(main, { level: 'grades', gradeFrom: 1, gradeTo: 12 }), 'gradeTo'],
+      [body(main, { level: 'grades', gradeFrom: -1, gradeTo: 4 }), 'gradeFrom'],
     ] as const) {
       const response = await t.post('/api/setup/day-template-assignments', branch, record);
       expect(response.status).toBe(400);
       expect(detailPaths(response)).toContain(path);
     }
+  });
+
+  // Task 9.4d: grades 0 to 4 take a template of their own (05, Class: "Grade (0–11)").
+  it('set a template for grades 0 to 4', async () => {
+    const { branch, templates } = await branchWith('Primary');
+    const response = await t.post(
+      '/api/setup/day-template-assignments',
+      branch,
+      body(templates.Primary ?? '', { level: 'grades', gradeFrom: 0, gradeTo: 4 }),
+    );
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    expect(assignmentSchema.parse(response.body)).toMatchObject({
+      level: 'grades',
+      gradeFrom: 0,
+      gradeTo: 4,
+    });
   });
 
   it('refuse an archived template', async () => {
@@ -466,8 +483,8 @@ describe('where day templates apply', () => {
 
       const table = await tableOn(branch, MONDAY);
       expect(table.weekdays).toEqual([1, 2, 3, 4, 5]);
-      expect(table.cells).toHaveLength(5 * 11);
-      for (const grade of [1, 8, 9, 11]) {
+      expect(table.cells).toHaveLength(5 * 12);
+      for (const grade of [0, 1, 8, 9, 11]) {
         expect(cell(table, 5, grade)).toBe('Friday');
       }
       expect(cell(table, 1, 8)).toBe('Main');
@@ -562,7 +579,7 @@ describe('where day templates apply', () => {
         change: { lengthMinutes: 40, from: MONDAY },
       });
       const answer = templatePreviewSchema.parse(response.body);
-      expect(answer.changed).toHaveLength(5 * 11);
+      expect(answer.changed).toHaveLength(5 * 12);
       const after = answer.after.cells[0]?.template;
       expect(after?.name).toBe('Main');
       expect(after?.end).toBe(480 + 40 + 40 + 40);
@@ -585,7 +602,7 @@ describe('where day templates apply', () => {
       expect(answer.after.cells.map((one) => one.template)).toEqual(
         answer.before.cells.map((one) => one.template),
       );
-      expect(answer.changed).toHaveLength(5 * 11);
+      expect(answer.changed).toHaveLength(5 * 12);
     });
 
     it('covers a new version and the end of a setting', async () => {
@@ -606,7 +623,7 @@ describe('where day templates apply', () => {
         ).body,
       );
       expect(version.changed.every((one) => one.weekday === 5)).toBe(true);
-      expect(version.changed).toHaveLength(11);
+      expect(version.changed).toHaveLength(12);
 
       const ended = templatePreviewSchema.parse(
         (

@@ -12,7 +12,7 @@ import { PreparedStamp } from '@/components/prepared-stamp';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
-import { ExcelButton, percentText, textOf, useDownload, wholeOf } from './report-parts';
+import { ExcelButton, gradeOf, percentText, textOf, useDownload } from './report-parts';
 import {
   exportResultsReport,
   resultsReportChoicesQuery,
@@ -34,7 +34,7 @@ export function subjectMasterySearch(search: Record<string, unknown>): SubjectMa
     const value = textOf(search[key]);
     if (value !== undefined) result[key] = value;
   }
-  const grade = wholeOf(search.grade, 1, 11);
+  const grade = gradeOf(search.grade);
   if (grade !== undefined) result.grade = grade;
   return result;
 }

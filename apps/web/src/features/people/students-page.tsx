@@ -16,6 +16,7 @@ import {
   type StudentFieldGroup,
   type StudentLeaving,
   type StudentListItem,
+  GRADES,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -479,9 +480,9 @@ export function StudentsPage() {
       {
         key: 'grade',
         label: t('people.students.grade'),
-        options: Array.from({ length: 11 }, (_unused, index) => ({
-          value: String(index + 1),
-          label: t('setup.subjects.grade', { grade: index + 1 }),
+        options: GRADES.map((one) => ({
+          value: String(one),
+          label: t('setup.subjects.grade', { grade: one }),
         })),
         matches: (row, value) => row.grade === Number(value),
       },

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolGradeQuerySchema, schoolGradeSchema } from './grades.js';
 import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { journalSubjectSchema, journalUnitSchema } from './journal.js';
@@ -51,8 +52,8 @@ export const ratingClassQuerySchema = z.object({
 
 export type RatingClassQuery = z.infer<typeof ratingClassQuerySchema>;
 
-/** A grade of the school (`05`: grades 1 to 11), sent as text in a query. */
-const gradeQuerySchema = z.coerce.number().int().min(1).max(11);
+/** A grade of the school (`05`: grades 0 to 11), sent as text in a query. */
+const gradeQuerySchema = schoolGradeQuerySchema;
 
 export const ratingClassesQuerySchema = z.object({
   quarterId: z.uuid(),
@@ -70,7 +71,7 @@ export const ratingExportSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('classes'),
     quarterId: z.uuid(),
-    grade: z.int().min(1).max(11).optional(),
+    grade: schoolGradeSchema.optional(),
     language: instructionLanguageSchema.optional(),
   }),
 ]);
@@ -99,7 +100,7 @@ const ratingClassSchema = z.object({
   id: z.uuid(),
   /** The class shown with its grade ("7 Oxford"). */
   name: z.string(),
-  grade: z.int().min(1).max(11),
+  grade: schoolGradeSchema,
   language: instructionLanguageSchema,
 });
 
@@ -110,7 +111,7 @@ const ratingJournalSchema = z.object({
   subject: journalSubjectSchema,
   unit: journalUnitSchema,
   /** The grades of the class, or of the classes the group draws from. */
-  grades: z.array(z.int().min(1).max(11)),
+  grades: z.array(schoolGradeSchema),
   language: instructionLanguageSchema,
 });
 
@@ -193,7 +194,7 @@ export const ratingClassListSchema = ratingStateOfListSchema.extend({
 export type RatingClassList = z.infer<typeof ratingClassListSchema>;
 
 export const ratingClassesListSchema = ratingStateOfListSchema.extend({
-  grade: z.int().min(1).max(11).nullable(),
+  grade: schoolGradeSchema.nullable(),
   language: instructionLanguageSchema.nullable(),
   rows: z.array(
     z.object({

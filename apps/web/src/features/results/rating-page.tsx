@@ -6,6 +6,7 @@ import type {
   RatingKind,
   RatingSubjectList,
 } from '@sodiq/shared';
+import { GRADES } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -30,6 +31,7 @@ import {
   ratingClassQuery,
   ratingSubjectQuery,
 } from './rating-api';
+import { gradeOf } from './report-parts';
 import { useMayReport } from './reports-page';
 
 export interface RatingSearch extends ListSearch {
@@ -54,8 +56,8 @@ export function ratingSearch(search: Record<string, unknown>): RatingSearch {
     const value = text(search[key]);
     if (value !== undefined) result[key] = value;
   }
-  const grade = Number(search.grade);
-  if (Number.isInteger(grade) && grade >= 1 && grade <= 11) result.grade = grade;
+  const grade = gradeOf(search.grade);
+  if (grade !== undefined) result.grade = grade;
   if (search.language === 'uz' || search.language === 'ru') result.language = search.language;
   return result;
 }
@@ -503,10 +505,7 @@ export function RatingPage(): React.JSX.Element {
                     value={search.grade === undefined ? '' : String(search.grade)}
                     options={[
                       { value: '', label: t('results.ratingList.allGrades') },
-                      ...Array.from({ length: 11 }, (_, index) => ({
-                        value: String(index + 1),
-                        label: String(index + 1),
-                      })),
+                      ...GRADES.map((grade) => ({ value: String(grade), label: String(grade) })),
                     ]}
                     onChange={(event) => {
                       go(

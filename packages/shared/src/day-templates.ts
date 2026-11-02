@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { weekdaySchema } from './setup.js';
+import { FIRST_GRADE, LAST_GRADE } from './grades.js';
 
 /**
  * Slot types and day templates (docs/spec/03-school-setup.md, Slot types and
@@ -21,11 +22,8 @@ export const SLOT_LENGTH_MAX_MINUTES = 180;
 /** Answer 10: "1 to 20 ordered slots with at least one lesson slot". */
 export const DAY_TEMPLATE_SLOTS_MAX = 20;
 
-/** The grades of the school (answer 13: "grades 1 to 11"). */
-export const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
-
-export const FIRST_GRADE = 1;
-export const LAST_GRADE = 11;
+/** The grades of the school, 0 to 11 (answer 13; task 9.4d): kept in `grades.ts`. */
+export { FIRST_GRADE, GRADES, LAST_GRADE } from './grades.js';
 
 /** Answer 9: "kind lesson or break (lunch is a break named Lunch)". */
 export const SLOT_KINDS = ['lesson', 'break'] as const;
@@ -349,7 +347,7 @@ export const tableCellSchema = z.object({
 export type TableCell = z.infer<typeof tableCellSchema>;
 
 /**
- * The resulting template for every working weekday and grade 1 to 11 on a
+ * The resulting template for every working weekday and grade 0 to 11 on a
  * date (`03`: "School setup shows the template that results for every weekday
  * and grade in one table"; answer 13).
  */

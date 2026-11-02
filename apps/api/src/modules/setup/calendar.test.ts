@@ -372,6 +372,39 @@ describe('the calendar', () => {
     await create(branch, record({ firstDate: THURSDAY }));
   });
 
+  // Task 9.4d: a range of grades may start at 0, and a whole-branch entry holds grades 0 to 11
+  // (edge/time-dates-calendar: "Every calendar entry applies to the whole branch or to a range of
+  // grades"; 0151).
+  it('takes a day off for grade 0 and refuses it beside a whole-branch one, naming the field', async () => {
+    const { branch } = await branchWith();
+    const zero = await create(branch, record({ name: 'Grade 0 off', gradeFrom: 0, gradeTo: 0 }));
+    expect([zero.gradeFrom, zero.gradeTo]).toEqual([0, 0]);
+    const whole = await t.post('/api/setup/calendar-entries', branch, record({}));
+    expect(whole.status).toBe(409);
+    expect(errorCode(whole)).toBe('calendar_overlap');
+    expect(detailPaths(whole)).toEqual(['firstDate', 'lastDate']);
+    await create(branch, record({ name: 'The rest off', gradeFrom: 1, gradeTo: 11 }));
+
+    const other = (await branchWith()).branch;
+    await create(other, record({ name: 'All off' }));
+    const after = await t.post(
+      '/api/setup/calendar-entries',
+      other,
+      record({ name: 'Grade 0 off', gradeFrom: 0, gradeTo: 0 }),
+    );
+    expect(errorCode(after)).toBe('calendar_overlap');
+    expect(detailPaths(after)).toEqual(['firstDate', 'lastDate']);
+    const before = await t.auditCount();
+    const below = await t.post(
+      '/api/setup/calendar-entries',
+      other,
+      record({ firstDate: TUESDAY, gradeFrom: -1, gradeTo: 0 }),
+    );
+    expect(below.status).toBe(400);
+    expect(errorCode(below)).toBe('validation_failed');
+    expect(await t.auditCount()).toBe(before);
+  });
+
   it('answers the overlap of two creates at one moment once, from the database', async () => {
     const { branch } = await branchWith();
     const [first, second] = await Promise.all([
@@ -448,7 +481,7 @@ describe('the calendar', () => {
       calendarDateSchema.parse((await t.get(`/api/setup/calendar-day?date=${date}`, branch)).body);
 
     const holiday = await dayOf(WEDNESDAY);
-    expect(holiday.grades).toHaveLength(11);
+    expect(holiday.grades).toHaveLength(12);
     expect(new Set(holiday.grades.map((one) => JSON.stringify(one.day)))).toEqual(
       new Set([
         JSON.stringify({
@@ -459,15 +492,20 @@ describe('the calendar', () => {
         }),
       ]),
     );
-    expect((await dayOf(TUESDAY)).grades[4]?.day).toMatchObject({
+    expect((await dayOf(TUESDAY)).grades.find((one) => one.grade === 4)?.day).toMatchObject({
       lessons: true,
       dayTemplateName: 'Main',
       followsWeekday: 2,
       entryId: null,
     });
     const thursday = await dayOf(THURSDAY);
-    expect(thursday.grades[7]?.day).toMatchObject({ lessons: true, dayTemplateName: 'Main' });
-    expect(thursday.grades[8]?.day).toMatchObject({ lessons: false, entryName: 'Seniors off' });
+    // Read by grade, not by place: grade 0 comes first (task 9.4d).
+    const ofGrade = (day: typeof thursday, grade: number) =>
+      day.grades.find((one) => one.grade === grade)?.day;
+    expect(thursday.grades.map((one) => one.grade)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(ofGrade(thursday, 0)).toMatchObject({ lessons: true, dayTemplateName: 'Main' });
+    expect(ofGrade(thursday, 8)).toMatchObject({ lessons: true, dayTemplateName: 'Main' });
+    expect(ofGrade(thursday, 9)).toMatchObject({ lessons: false, entryName: 'Seniors off' });
     expect((await dayOf(SATURDAY)).grades[0]?.day).toMatchObject({
       lessons: true,
       dayTemplateName: 'Short',
@@ -776,7 +814,7 @@ describe('the calendar', () => {
       id: existing.id,
     });
     expect(calendarPreviewSchema.parse(archive.body).changes).toEqual([
-      expect.objectContaining({ firstDate: '2026-11-02', gradeFrom: 1, gradeTo: 11 }),
+      expect.objectContaining({ firstDate: '2026-11-02', gradeFrom: 0, gradeTo: 11 }),
     ]);
 
     const refused = await t.post('/api/setup/calendar-entries/preview', branch, {

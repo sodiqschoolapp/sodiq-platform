@@ -912,7 +912,7 @@ function sheetOf(
 }
 
 /**
- * Results by grade for the branch summary (task 9.4b, plan decision 5): per grade 1 to 11 of the
+ * Results by grade for the branch summary (task 9.4b, plan decision 5): per grade 0 to 11 of the
  * year's classes, the mean of its students' figures across subjects by the rule of the class
  * figure (`classFigure`), read as the classes list reads them (`outcomesOf`: the stored records
  * of a closed quarter, never calculated again), students on the reference date.

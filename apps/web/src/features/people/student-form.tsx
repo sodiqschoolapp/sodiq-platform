@@ -16,6 +16,7 @@ import {
   type RelativeHolder,
   type RelativePhoneMatchResult,
   type StudentRecord,
+  GRADES,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -560,9 +561,7 @@ export function StudentForm({
           label={t('people.students.grade')}
           options={[
             option('', t('people.students.choose')),
-            ...Array.from({ length: 11 }, (_unused, index) =>
-              option(String(index + 1), t('setup.subjects.grade', { grade: index + 1 })),
-            ),
+            ...GRADES.map((one) => option(String(one), t('setup.subjects.grade', { grade: one }))),
           ]}
           {...bind('grade')}
         />

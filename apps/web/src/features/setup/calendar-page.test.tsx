@@ -126,7 +126,7 @@ const PREVIEW: CalendarPreview = {
     {
       firstDate: '2026-10-17',
       lastDate: '2026-10-17',
-      gradeFrom: 1,
+      gradeFrom: 0,
       gradeTo: 11,
       before: { lessons: false, reason: 'not_working_day', entryId: null, entryName: null },
       after: {

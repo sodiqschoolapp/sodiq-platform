@@ -46,7 +46,7 @@ interface TemplateTableViewProps {
   caption: string;
   /** The date under the table, where no Date field above names it (the preview). */
   showDate?: boolean;
-  /** The grades shown, 1 to 11 unless said (the draft builder shows the grades of its classes). */
+  /** The grades shown, 0 to 11 unless said (the draft builder shows the grades of its classes). */
   grades?: readonly number[];
 }
 

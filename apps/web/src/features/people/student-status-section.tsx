@@ -12,10 +12,12 @@ import {
   type StudentRestore,
   type StudentReturn,
   type StudentUndoLeaving,
+  GRADES,
 } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { wholeNumber } from '@/components/form/form-messages';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
 import { failureText } from '@/api/failure-text';
@@ -493,7 +495,8 @@ export function ReturnForm({
     },
     read: (typed) => ({
       from: typed.from,
-      grade: Number(typed.grade),
+      // wholeNumber, never Number(): an empty grade is "required", not grade 0 (task 9.4d).
+      grade: wholeNumber(typed.grade),
       classId: typed.classId,
       contract: { number: typed.contractNumber, signedOn: typed.contractSignedOn },
       reason: typed.reason.trim() === '' ? null : typed.reason,
@@ -562,7 +565,7 @@ export function ReturnForm({
   const { onChange: chooseClass } = classId;
   const choice = useClassChoice({
     from: from.value,
-    grade: Number(grade.value),
+    grade: grade.value === '' ? null : Number(grade.value),
     preferred: left?.id ?? null,
     chosen: classId.value,
     choose: useCallback(
@@ -595,9 +598,9 @@ export function ReturnForm({
         />
         <SelectField
           label={t('people.students.grade')}
-          options={Array.from({ length: 11 }, (_unused, index) => ({
-            value: String(index + 1),
-            label: t('setup.subjects.grade', { grade: index + 1 }),
+          options={GRADES.map((one) => ({
+            value: String(one),
+            label: t('setup.subjects.grade', { grade: one }),
           }))}
           {...grade}
         />

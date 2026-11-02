@@ -10,6 +10,7 @@ import {
 import {
   attendanceReportSchema,
   classDisplayName,
+  FIRST_GRADE,
   fillText,
   isLanguage,
   REPORT_DAYS_MAX,
@@ -529,7 +530,7 @@ async function attendanceIn(
         row: {
           key: {
             kind: 'class' as const,
-            class: { id: key, name: shown?.name ?? '', grade: shown?.grade ?? 1 },
+            class: { id: key, name: shown?.name ?? '', grade: shown?.grade ?? FIRST_GRADE },
           },
           counts: shownCounts(counts),
           daily: dailyOf(counts),

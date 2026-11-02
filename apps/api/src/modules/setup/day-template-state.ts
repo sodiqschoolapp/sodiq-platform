@@ -238,7 +238,7 @@ export const lessonSlotsOf = (day: Day): number =>
   day.slots.filter((slot) => slot.lessonNumber !== null).length;
 
 /**
- * The resulting template for every working weekday and grade 1 to 11 on the
+ * The resulting template for every working weekday and grade 0 to 11 on the
  * date (`03`: "School setup shows the template that results for every weekday
  * and grade in one table"; answer 13). The settings in force on the date are
  * read for every weekday (`templateFor`).

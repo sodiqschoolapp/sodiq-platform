@@ -267,6 +267,25 @@ describe('classes', () => {
       }
     });
 
+    // Task 9.4d: grade 0 to 11 (05, Class: "Grade (0–11) … 0 London").
+    it('creates the class 0 London, lists it, and refuses grades -1, 12 and 1.5 with nothing written', async () => {
+      const created = await create({ name: 'London', grade: 0 });
+      expect(created.grade).toBe(0);
+      expect(detailOf(await get(`/api/classes/${created.id}`).expect(200)).grade).toBe(0);
+      const listed = classListSchema
+        .parse((await get('/api/classes').expect(200)).body)
+        .classes.find((one) => one.id === created.id);
+      expect(listed?.grade).toBe(0);
+      const [entry] = await entries('class.create', created.id);
+      expect(entry?.new_value).toMatchObject({ grade: 0, name: 'London' });
+      const before = await rowsOf();
+      for (const grade of [-1, 12, 1.5]) {
+        const response = await post('/api/classes', body({ name: 'Leeds', grade })).expect(400);
+        expect(errorCode(response), String(grade)).toBe('validation_failed');
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('is refused to the readers, with no row and no entry', async () => {
       const before = await rowsOf();
       for (const reader of readers) {

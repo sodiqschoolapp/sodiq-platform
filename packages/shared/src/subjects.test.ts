@@ -141,12 +141,14 @@ describe('a subject record', () => {
 
 describe('the grades of a subject', () => {
   // Answer 8: "any of 1 to 11, ticked".
-  it('are 1 to 11, at least one, each once, in ascending order', () => {
-    expect(SUBJECT_GRADES).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  it('are 0 to 11, at least one, each once, in ascending order', () => {
+    expect(SUBJECT_GRADES).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(subjectGradesSchema.parse([0, 1, 2, 3, 4])).toEqual([0, 1, 2, 3, 4]);
+    expect(subjectGradesSchema.safeParse([1, 0]).success).toBe(false);
+    expect(subjectGradesSchema.safeParse([-1]).success).toBe(false);
     expect(subjectGradesSchema.parse([1, 9, 11])).toEqual([1, 9, 11]);
     expect(subjectGradesSchema.safeParse([9, 1, 11]).success).toBe(false);
     expect(subjectGradesSchema.safeParse([]).success).toBe(false);
-    expect(subjectGradesSchema.safeParse([0]).success).toBe(false);
     expect(subjectGradesSchema.safeParse([12]).success).toBe(false);
     expect(subjectGradesSchema.safeParse([5, 5]).success).toBe(false);
     expect(subjectGradesSchema.safeParse([5.5]).success).toBe(false);

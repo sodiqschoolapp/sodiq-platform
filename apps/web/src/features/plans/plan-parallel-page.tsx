@@ -1,3 +1,4 @@
+import { GRADES } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,8 +10,6 @@ import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { schoolDateText } from '@/lib/dates';
 import { planParallelQuery, plansQuery } from './plans-api';
-
-const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
 /**
  * The parallel classes (task 7.3, pull request #216, decision 13; `09`,

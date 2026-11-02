@@ -83,7 +83,7 @@ describe('dayOn', () => {
   // Done when: a holiday inside a week.
   it('gives a holiday inside a week no lessons and leaves the days around it', () => {
     const holiday = settings([entry({ id: 'holiday', kind: 'day_off' })]);
-    for (let grade = 1; grade <= 11; grade += 1) {
+    for (let grade = 0; grade <= 11; grade += 1) {
       expect(dayOn(grade, wednesday, holiday)).toEqual({
         lessons: false,
         reason: 'day_off',
@@ -257,6 +257,19 @@ describe('isSchoolDay', () => {
         settings([entry({ id: 'seniors', kind: 'day_off', gradeFrom: 9, gradeTo: 11 })]),
       ),
     ).toBe(true);
+  });
+
+  // Task 9.4d: grade 0 is a grade of the school (05, Class: "Grade (0–11)").
+  it('is a school day when only grade 0 has lessons', () => {
+    const others = settings([entry({ id: 'others', kind: 'day_off', gradeFrom: 1, gradeTo: 11 })]);
+    expect(dayOn(0, wednesday, others)).toMatchObject({ lessons: true });
+    expect(isSchoolDay(wednesday, others)).toBe(true);
+    expect(
+      isSchoolDay(
+        wednesday,
+        settings([entry({ id: 'all', kind: 'day_off', gradeFrom: 0, gradeTo: 11 })]),
+      ),
+    ).toBe(false);
   });
 
   it('is a school day on a working weekday before any template is set', () => {

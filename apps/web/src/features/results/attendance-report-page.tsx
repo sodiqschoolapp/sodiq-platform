@@ -21,6 +21,7 @@ import {
   percentText,
   textOf,
   useDownload,
+  gradeOf,
   wholeOf,
 } from './report-parts';
 import { attendanceReportQuery, exportAttendance, type AttendanceFilters } from './reports-api';
@@ -46,7 +47,7 @@ export function attendanceReportSearch(search: Record<string, unknown>): Attenda
     const value = textOf(search[key]);
     if (value !== undefined) result[key] = value;
   }
-  const grade = wholeOf(search.grade, 1, 11);
+  const grade = gradeOf(search.grade);
   if (grade !== undefined) result.grade = grade;
   const start = wholeOf(search.start, 0, 1439);
   if (start !== undefined) result.start = start;
