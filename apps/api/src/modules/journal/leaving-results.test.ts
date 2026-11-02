@@ -18,6 +18,7 @@ import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from './cells.js';
+import { OWN_CLASS_CASES } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -101,9 +102,13 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
    * present on the 12th with a classwork 6 of 10, nothing yet on the 19th; the lesson of
    * the 26th is after the leaving. Her classmate Komil stays.
    */
-  async function leftScene(accounts?: { readonly teacher?: string; readonly spare?: string }) {
+  async function leftScene(
+    accounts?: { readonly teacher?: string; readonly spare?: string },
+    grade = 7,
+  ) {
     const scene = await publishedScene(t, load, {
       graded: true,
+      grade,
       ...(accounts === undefined ? {} : { accounts }),
     });
     const lessons = await t.database.migrator
@@ -116,13 +121,13 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
     const [first, second] = lessons;
     if (first === undefined || second === undefined) throw new Error('Two lessons.');
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const left = await members.student(scene.branch, { startsOn: '2026-09-01', grade: 7 });
+    const left = await members.student(scene.branch, { startsOn: '2026-09-01', grade });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Yulduz', last_name: 'Sobirova' })
       .where('id', '=', left)
       .execute();
-    const stays = await members.student(scene.branch, { startsOn: '2026-09-01', grade: 7 });
+    const stays = await members.student(scene.branch, { startsOn: '2026-09-01', grade });
     await members.member({
       branch: scene.branch,
       classId: scene.classId,
@@ -351,24 +356,27 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
     }
   });
 
-  it('refuses the Tutor of the class alone, a student who left being of no class now, and answers a Tutor who also reads the record', async () => {
-    const s = await leftScene();
-    const path = `/api/people/students/${s.left}/leaving-results`;
-    // The Tutor of the class on the last day and still now (from 1 September, no end).
-    const tutor = await account();
-    await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
-    await as(tutor, [], async (get) => {
-      const response = await get(s.scene.branch, path);
-      expect(response.status, JSON.stringify(response.body)).toBe(403);
-    });
-    // The same Tutor given the Head Tutor's reading of the record: the Tutor reads the class
-    // journal whole (6.2: own classes whole), so the subject is answered.
-    await as(tutor, [{ role: 'head_tutor', branchId: s.scene.branch }], async (get) => {
-      const answer = resultsOf(await get(s.scene.branch, path));
-      expect(answer.results.map((one) => one.subject.id)).toEqual([s.scene.subject]);
-    });
-  });
+  it.each(OWN_CLASS_CASES)(
+    'refuses the %s of the class alone, a student who left being of no class now, and answers one who also reads the record',
+    async (_who, grade) => {
+      const s = await leftScene(undefined, grade);
+      const path = `/api/people/students/${s.left}/leaving-results`;
+      // The Tutor of the class on the last day and still now (from 1 September, no end).
+      const tutor = await account();
+      await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
+      await as(tutor, [], async (get) => {
+        const response = await get(s.scene.branch, path);
+        expect(response.status, JSON.stringify(response.body)).toBe(403);
+      });
+      // The same Tutor given the Head Tutor's reading of the record: the Tutor reads the class
+      // journal whole (6.2: own classes whole), so the subject is answered.
+      await as(tutor, [{ role: 'head_tutor', branchId: s.scene.branch }], async (get) => {
+        const answer = resultsOf(await get(s.scene.branch, path));
+        expect(answer.results.map((one) => one.subject.id)).toEqual([s.scene.subject]);
+      });
+    },
+  );
 
   it('answers 404 for another branch’s student and an unknown one', async () => {
     const s = await leftScene();

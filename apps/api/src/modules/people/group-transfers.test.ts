@@ -13,6 +13,7 @@ import {
 } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
+import { OWN_CLASS_CASES, gradeOf } from '../../testing/own-class-cases.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
   expect(response.status, JSON.stringify(response.body)).toBe(status);
@@ -41,6 +42,9 @@ describe('group transfers and the History tab', () => {
   let headAssignment: string;
   let tutor: string;
   let tutorClass: string;
+  /** Task 9.4e: the Class teacher of a class of grade 1. */
+  let classTeacher: string;
+  let primaryClass: string;
   let spiritual: string;
   let count = 0;
 
@@ -59,7 +63,7 @@ describe('group transfers and the History tab', () => {
       paternalName: null,
       sex: 'female',
       birthDate: `2013-06-${String((count % 28) + 1).padStart(2, '0')}`,
-      grade: 7,
+      grade: await gradeOf(t.database.migrator, classId),
       startsOn: '2026-09-02',
       documentType: null,
       documentNumber: null,
@@ -166,13 +170,13 @@ describe('group transfers and the History tab', () => {
 
   async function signedIn(first: string, last: string, role: string) {
     const browser = await t.kit.completeSession(first, last);
-    if (role === 'tutor') {
+    if (role === 'tutor' || role === 'class_teacher') {
       await classes.person(t.north, ['uz'], { accountId: browser.account.id, first, last });
     }
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
       branchId: t.north,
-      ...(role === 'tutor' ? { validFrom: FROM } : {}),
+      ...(role === 'tutor' || role === 'class_teacher' ? { validFrom: FROM } : {}),
       ...(role === 'head_teacher' ? { subjectIds: [headSubject] } : {}),
     });
     return { cookie: browser.cookie, assignment: given.id, accountId: browser.account.id };
@@ -191,6 +195,10 @@ describe('group transfers and the History tab', () => {
     tutor = tutoring.cookie;
     tutorClass = await schoolClass();
     await classes.tutorRow(t.north, tutorClass, tutoring.assignment, { from: FROM });
+    const teaching = await signedIn('Malika', 'Karimova', 'class_teacher');
+    classTeacher = teaching.cookie;
+    primaryClass = await classes.schoolClass(t.north, year, { grade: 1 });
+    await classes.tutorRow(t.north, primaryClass, teaching.assignment, { from: FROM });
     spiritual = (await signedIn('Sardor', 'Murodov', 'spiritual_vice_principal')).cookie;
   });
 
@@ -880,22 +888,27 @@ describe('group transfers and the History tab', () => {
       ]);
     });
 
-    it('lets the Tutor of the class read it and refuses a Tutor of another class', async () => {
-      const own = await pupil(tutorClass);
-      expect((await get(`/api/people/students/${own.id}/history`, tutor)).status).toBe(200);
-      const elsewhere = await pupil(await schoolClass());
-      refusedWith(
-        await get(`/api/people/students/${elsewhere.id}/history`, tutor),
-        403,
-        'permission_denied',
-      );
-      refusedWith(
-        await get(`/api/people/students/${own.id}/history`, spiritual),
-        403,
-        'permission_denied',
-      );
-      refusedWith(await get(`/api/people/students/${UNKNOWN}/history`), 404, 'not_found');
-    });
+    it.each(OWN_CLASS_CASES)(
+      'lets the %s of the class read it and refuses one of another class',
+      async (_who, grade) => {
+        const [reader, readerClass] =
+          grade === 7 ? [tutor, tutorClass] : [classTeacher, primaryClass];
+        const own = await pupil(readerClass);
+        expect((await get(`/api/people/students/${own.id}/history`, reader)).status).toBe(200);
+        const elsewhere = await pupil(await schoolClass());
+        refusedWith(
+          await get(`/api/people/students/${elsewhere.id}/history`, reader),
+          403,
+          'permission_denied',
+        );
+        refusedWith(
+          await get(`/api/people/students/${own.id}/history`, spiritual),
+          403,
+          'permission_denied',
+        );
+        refusedWith(await get(`/api/people/students/${UNKNOWN}/history`), 404, 'not_found');
+      },
+    );
 
     it('says on the record who reads the History tab and who moves', async () => {
       const own = await pupil(tutorClass);

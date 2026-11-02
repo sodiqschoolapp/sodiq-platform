@@ -275,7 +275,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/people/students/:id/history': [
     TUTOR_OWN_CLASS(
       '04, Profile tabs (History); the Tutor reads own classes (task 3.3a, decision 9 as changed by correction 3)',
-      `${GROUP_TRANSFERS} > lets the Tutor of the class read it and refuses a Tutor of another class`,
+      `${GROUP_TRANSFERS} > lets the %s of the class read it and refuses one of another class`,
     ),
     {
       ...HEADS_OWN_CLASSES,
@@ -285,7 +285,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/people/students/:id/leaving-results': [
     TUTOR_OWN_CLASS(
       '02, Tutor: "the profiles of own class"; a student who left is of no class now',
-      `${LEAVING} > refuses the Tutor of the class alone, a student who left being of no class now, and answers a Tutor who also reads the record`,
+      `${LEAVING} > refuses the %s of the class alone, a student who left being of no class now, and answers one who also reads the record`,
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],
