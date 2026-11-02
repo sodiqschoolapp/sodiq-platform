@@ -333,6 +333,37 @@ describe('the subjects page', () => {
     await savedRecordPanel(subjectsText.newTitle);
   });
 
+  // Task 9.4d: a subject taught from grade 0 (05, Class: "Grade (0–11)").
+  it('offers grade 0 to 11 and sends grades 0 and 1', async () => {
+    const { calls } = await openList();
+    fireEvent.click(screen.getByRole('button', { name: subjectsText.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: subjectsText.newTitle }),
+    ).getByRole('form', { name: subjectsText.newTitle });
+    for (const grade of [0, 11]) {
+      expect(
+        within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', String(grade))),
+      ).toBeDefined();
+    }
+    type(within(form).getByLabelText(subjectsText.nameUz), 'Oʻqish');
+    type(within(form).getByLabelText(subjectsText.nameRu), 'Чтение');
+    type(within(form).getByLabelText(subjectsText.nameEn), 'Reading');
+    fireEvent.change(within(form).getByLabelText(subjectsText.department), {
+      target: { value: STEAM },
+    });
+    fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '1')));
+    fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '0')));
+    type(within(form).getByLabelText(subjectsText.parts.attendance), '10');
+    type(within(form).getByLabelText(subjectsText.parts.classwork), '50');
+    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/setup/subjects')?.body).toMatchObject({
+        grades: [0, 1],
+      });
+    });
+  });
+
   it('sends an attendance-only subject without weights and without a rating exam', async () => {
     const { calls } = await openList();
 

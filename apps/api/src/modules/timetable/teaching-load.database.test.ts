@@ -662,6 +662,27 @@ describe('teaching load in the database', () => {
       );
     });
 
+    // Task 9.4d: grade 0 as any grade (05, Teaching load: "Only teachers whose profile has the
+    // subject and every grade of the class or group").
+    it('takes a teacher of grade 0 on a row of a grade 0 class, and refuses one without it', async () => {
+      const zero = await kit.classes.subject({ grades: [0, 1] });
+      const london = await kit.classes.schoolClass(north, northYear, { grade: 0 });
+      const version = await kit.version(north, northYear, { startsOn: STARTS_ON });
+      const holds = await kit.teacher(north, {
+        languages: ['uz'],
+        subjects: [{ subject: zero, grades: [0] }],
+      });
+      const lacks = await kit.teacher(north, {
+        languages: ['uz'],
+        subjects: [{ subject: zero, grades: [1] }],
+      });
+      const row = { branch_id: north, version_id: version, class_id: london, subject_id: zero };
+      expect((await refusal(insertRow({ ...row, teacher_id: lacks.staffId }))).constraint).toBe(
+        'load_teacher_subject',
+      );
+      await insertRow({ ...row, teacher_id: holds.staffId });
+    });
+
     it('needs the subject in both grades of a two-grade group', async () => {
       const two = await kit.classes.subject({ grades: [7, 8] });
       const seventh = await kit.classes.schoolClass(north, northYear, { grade: 7 });

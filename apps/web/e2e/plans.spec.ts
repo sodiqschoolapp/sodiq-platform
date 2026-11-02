@@ -139,7 +139,19 @@ test('the Head Teacher writes a master, and the teacher copies it into the plan'
   await page.goto('/plans/masters');
   await expect(heading(page, en.plans.masters.title)).toBeVisible();
   await page.getByRole('button', { name: en.plans.masters.add }).first().click();
+  // Task 9.4d: the subject is taught in grades 0 and 7. A master of grade 0 is saved first, on
+  // the same screen; the master the teacher copies is of grade 7.
+  const zero = page.getByRole('form', { name: en.plans.masters.newTitle });
+  await zero.getByRole('combobox', { name: en.plans.masters.grade }).selectOption('0');
+  await zero.getByRole('combobox', { name: en.plans.masters.quarter }).selectOption('1');
+  await zero.getByRole('textbox', { name: en.plans.masters.name }).fill('Core 0');
+  await zero.getByRole('button', { name: en.form.save }).click();
+  await expect(heading(page, 'Core 0')).toBeVisible();
+  await page.goto('/plans/masters');
+  await expect(page.locator('tbody tr').filter({ hasText: 'Core 0' })).toHaveCount(1);
+  await page.getByRole('button', { name: en.plans.masters.add }).first().click();
   const create = page.getByRole('form', { name: en.plans.masters.newTitle });
+  await create.getByRole('combobox', { name: en.plans.masters.grade }).selectOption('7');
   await create.getByRole('combobox', { name: en.plans.masters.quarter }).selectOption('1');
   await create.getByRole('textbox', { name: en.plans.masters.name }).fill('Core');
   await create.getByRole('button', { name: en.form.save }).click();

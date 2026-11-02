@@ -291,6 +291,27 @@ describe('the page of where day templates apply', () => {
     );
   });
 
+  // Task 9.4d: grades 0 to 4 take a template of their own; -1 is refused on the field.
+  it('sends a setting for grades 0 to 4 to its preview, and refuses grade -1 before anything is sent', async () => {
+    const calls = await openPage();
+    const form = screen.getByRole('form', { name: en.setup.templateSettings.setTitle });
+    type(within(form).getByLabelText(en.setup.templateSettings.level), 'grades');
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeFrom), '-1');
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeTo), '4');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText('Enter a number that is 0 or more.')).toBeDefined();
+    const previews = () =>
+      calls.filter((call) => call.route === 'POST /api/setup/day-template-table/preview');
+    expect(previews()).toHaveLength(0);
+
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeFrom), '0');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(previews().length).toBeGreaterThan(0);
+    });
+    expect(JSON.stringify(previews()[0]?.body)).toContain('"gradeFrom":0');
+  });
+
   it('ends a weekday setting from a date after the preview, and never offers to end the default', async () => {
     const calls = await openPage('academic_vice_principal', {
       'POST /api/setup/day-template-table/preview': () =>

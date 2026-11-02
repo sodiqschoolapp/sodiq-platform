@@ -6668,8 +6668,9 @@ try {
   );
   {
     const lessonsKit = await LessonsKit.create(migrator);
+    // Task 9.4d: taught in grade 0 too, so the Head Teacher also writes a master of grade 0.
     const planning = await lessonsKit.load.classes.subject({
-      grades: [7],
+      grades: [0, 7],
       name: 'Planning M',
       journalType: 'graded',
     });

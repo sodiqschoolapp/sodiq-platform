@@ -270,8 +270,11 @@ describe('student records', () => {
     // Task 9.4d: grade 0 to 11 (05, Class: "Grade (0–11)"; answer 17).
     it('stores a student of grade 0 and refuses grades -1 and 12 with nothing written', async () => {
       const student = await create({ grade: 0 });
-      expect((await detail(student.id)).grade).toBe(0);
-      const zeroClass = await t.classOf(t.north, 0, '2026-09-02');
+      const read = await detail(student.id);
+      expect(read.grade).toBe(0);
+      // Placed through the route in a class of grade 0 (the kit names one of the grade).
+      expect(read.class?.grade).toBe(0);
+      const zeroClass = read.class?.id;
       const before = await snapshot();
       for (const grade of [-1, 12]) {
         // The schema refuses the grade before the class is read: a class of grade 0 is named.

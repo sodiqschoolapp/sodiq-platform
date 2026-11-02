@@ -346,13 +346,34 @@ describe('the student list', () => {
 
   // Task 9.4d: grade 0 is a filter value of its own, never read as "all grades".
   it('filters by grade 0', async () => {
-    openList('principal');
+    const zero: StudentListItem = {
+      ...ZARINA,
+      id: uid(3),
+      uid: '2600001',
+      firstName: 'Laylo',
+      lastName: 'Karimova',
+      grade: 0,
+      plannedClass: null,
+    };
+    openList('principal', {
+      'GET /api/people/students': () =>
+        json({
+          students: [OTKIR, ZARINA, zero],
+          canArchive: false,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+    });
     renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ grade: '0' }))}`);
     await screen.findByRole('heading', { name: en.people.students.title });
     await waitFor(() => {
       expect(document.querySelector('option[value="0"]')?.textContent).toBe('Grade 0');
     });
-    expect(rowsDrawn()).toHaveLength(0);
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    expect(rowsDrawn()[0]?.[2]).toBe('Karimova Laylo');
   });
 
   it('is in Russian', async () => {
@@ -623,6 +644,7 @@ describe('adding a student', () => {
     classId?: string,
     phones: { relative?: string; own?: string } = {},
     typedUid = '2606001',
+    grade = '7',
   ) {
     fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
@@ -637,7 +659,7 @@ describe('adding a student', () => {
     type(en.people.students.firstName, "O'tkir");
     type(en.people.students.sex, 'male');
     type(en.people.students.birthDate, '2014-03-02');
-    type(en.people.students.grade, '7');
+    type(en.people.students.grade, grade);
     type(en.people.students.startsOn, '2026-09-02');
     type(en.people.students.contractNumber, 'SQ-2026/099');
     type(en.people.students.contractSignedOn, '2026-08-20');
@@ -654,6 +676,28 @@ describe('adding a student', () => {
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     return form;
   }
+
+  // Task 9.4d: a student of grade 0 (05, Class: "Grade (0–11)").
+  it('offers grade 0 to 11 and sends grade 0', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9), grade: 0 }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () =>
+        json(detailOf({ ...OTKIR, id: uid(9), grade: 0 })),
+    });
+    renderApp(PATH);
+    const form = await fillAndSave(undefined, {}, '2606009', '0');
+    const grade = within(form).getByLabelText<HTMLSelectElement>(en.people.students.grade);
+    expect([...grade.options].map((one) => one.value)).toEqual([
+      '',
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(String),
+    ]);
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/people/students')?.body).toMatchObject({
+        grade: 0,
+      });
+    });
+  });
 
   // Task 9.4c: a UID in any form, asked nothing about the grade's set.
   it('sends a UID of letters as typed without its spaces, and asks nothing about a set', async () => {
@@ -1496,6 +1540,13 @@ describe('leaving, return and delete', () => {
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
+    // Task 9.4d: the grade of a return is 0 to 11, starting at the student's own; it has no
+    // empty choice, so no empty grade can be sent as 0.
+    expect(
+      [...within(form).getByLabelText<HTMLSelectElement>(en.people.students.grade).options].map(
+        (one) => one.value,
+      ),
+    ).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(String));
     type(en.people.students.returnFrom, '2026-10-05');
     type(en.people.students.grade, '8');
     // Task 3.3b: the class of grade 8 in the year of the date.
