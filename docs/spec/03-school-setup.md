@@ -10,7 +10,7 @@ Setup is done once per branch and then drives every other screen. Super Admin ow
 | Branch | Name, address, working weekdays, contacts. Every record belongs to one branch. The Super Admin sees every branch in one list under School setup: name, address, working weekdays, number of buildings and of rooms. Opening a branch switches the current branch to it. A new branch is added from this list, in the side panel. The list needs no new permission: it uses the rights to view and create branches. | Super Admin |
 | Building, floor, room | Rooms are added floor by floor. Room: name or number, floor, type (classroom, laboratory, sports hall, hall, other), capacity, status (in use, under repair, closed). The Super Admin's forced delete (`06`) also removes a building, floor or room that no lesson, timetable entry or other record references, with a reason, an audit entry and 30 days to restore; a referenced one stays archive-only. | Super Admin |
 | Division | One list for the whole school; see Divisions below. Every staff record has a main division and can have further divisions. Academic is built in. | Super Admin |
-| Department (kafedra) | Inside Academic: STEAM, Foreign languages, National, Natural sciences, General, Tutors. A department groups subjects and teachers. It has no head, except Tutors, whose head is the Head Tutor; Head Teachers are appointed to subjects (see Roles and access). Other divisions may have departments too; there they are only groupings. | Super Admin |
+| Department (kafedra) | Inside Academic: STEAM, Foreign languages, National, Natural sciences, General, Tutors. A department groups subjects and teachers. It has no head, except Tutors, whose head is the Head Tutor, who also oversees the Class teachers; Head Teachers are appointed to subjects (see Roles and access). Other divisions may have departments too; there they are only groupings. | Super Admin |
 | Academic year | Start and end date. Status: planned, current, closed. Exactly one current year per branch. | Super Admin |
 | Quarters | Four per year, each with start and end. No overlaps, no gaps inside teaching time. Months are derived from dates. | Academic Vice Principal |
 | Academic calendar | Days off (holidays, vacations) and special days: shortened day, exam week, open-doors day, a working Saturday. Each date resolves to "no lessons" or to one day template. | Academic Vice Principal |
@@ -23,7 +23,7 @@ A division is the top-level unit a staff member is employed in. The school has e
 
 | Division | Uzbek name | Who belongs | Departments |
 | --- | --- | --- | --- |
-| Academic | O'quv bo'limi | Teachers, Head Teachers, Senior Head Teachers, Tutors, the Head Tutor, teaching and laboratory assistants | STEAM, Foreign languages, National, Natural sciences, General, Tutors |
+| Academic | O'quv bo'limi | Teachers, Head Teachers, Senior Head Teachers, Tutors, Class teachers, the Head Tutor, teaching and laboratory assistants | STEAM, Foreign languages, National, Natural sciences, General, Tutors |
 | Management | Rahbariyat | Principals, the Academic Vice Principals, the Vice Principals for Spiritual and Moral Education, Super Admins, office assistants | None |
 | Student Services | O'quvchilarga xizmat ko'rsatish bo'limi | Nurses and doctors, psychologists, librarians, club leaders, event organisers, the youth leader | Medical, Psychology, Library, Clubs and events |
 | Admissions and Marketing | Qabul va marketing bo'limi | Admissions managers, call centre, marketing | None |
