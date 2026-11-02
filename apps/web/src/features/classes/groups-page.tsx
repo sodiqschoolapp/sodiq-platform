@@ -3,6 +3,7 @@ import {
   classDisplayName,
   classNameKey,
   INSTRUCTION_LANGUAGES,
+  isOwnClassRole,
   PERMISSIONS,
   permits,
   type GroupCreate,
@@ -67,7 +68,7 @@ export function GroupsPage() {
       permits(PERMISSIONS, held.role, 'groups', 'view') &&
       (held.branchId === null || held.branchId === branchId),
   );
-  const ownClassesOnly = readers.length > 0 && readers.every((held) => held.role === 'tutor');
+  const ownClassesOnly = readers.length > 0 && readers.every((held) => isOwnClassRole(held.role));
   // The years, classes and subjects of the forms: read only by those who change groups.
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && canEdit });

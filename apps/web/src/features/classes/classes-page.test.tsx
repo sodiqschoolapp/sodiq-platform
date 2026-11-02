@@ -111,6 +111,7 @@ const detailOf = (row: SchoolClass, tutors: ClassTutor[] = []): ClassDetail => (
 const CANDIDATES: TutorCandidate[] = [
   {
     assignmentId: uid(601),
+    role: 'tutor',
     staffId: uid(701),
     name: { firstName: 'Kamola', lastName: 'Rahimova' },
     languages: ['uz', 'ru'],
@@ -120,6 +121,7 @@ const CANDIDATES: TutorCandidate[] = [
   },
   {
     assignmentId: uid(602),
+    role: 'tutor',
     staffId: uid(702),
     name: { firstName: 'Sergey', lastName: 'Ivanov' },
     languages: ['ru'],
@@ -232,7 +234,7 @@ describe('the class list', () => {
     setWindowWidth(1440);
     await openList({ language: 'ru' });
     const headers = [...document.querySelectorAll('thead th')].map((cell) => cell.textContent);
-    expect(headers).toContain(ru.classes.tutor);
+    expect(headers).toContain(ru.classes.tutorOrClassTeacher);
     expect(rowsDrawn()[1]?.slice(0, 4)).toEqual([
       '8 Princeton',
       '2026–2027',
@@ -243,9 +245,12 @@ describe('the class list', () => {
 
   it('finds the classes with no Tutor with its filter', async () => {
     await openList();
-    fireEvent.change(screen.getByLabelText(en.classes.tutor, { selector: 'select' }), {
-      target: { value: 'none' },
-    });
+    fireEvent.change(
+      screen.getByLabelText(en.classes.tutorOrClassTeacher, { selector: 'select' }),
+      {
+        target: { value: 'none' },
+      },
+    );
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(1);
     });
@@ -272,7 +277,7 @@ describe('the class list', () => {
     expect(terms).toEqual([
       en.classes.language,
       en.classes.students,
-      en.classes.tutor,
+      en.classes.kinds.tutor,
       en.classes.mainRoom,
       en.classes.average,
       en.classes.attendance,
@@ -298,7 +303,7 @@ describe('the class list', () => {
       'maxSize',
       'status',
     ]);
-    expect(EXPORT_TEXTS.en.classes.columns.tutor).toBe(en.classes.tutor);
+    expect(EXPORT_TEXTS.en.classes.columns.tutor).toBe(en.classes.tutorOrClassTeacher);
   });
 });
 
@@ -772,6 +777,80 @@ describe('a class in the side panel', () => {
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await savedInPanel(panel);
     expect(calls.some((call) => call.route === `POST /api/classes/${OXFORD.id}/tutors`)).toBe(true);
+  });
+
+  // Task 9.4e (05, Class: "tutor (grades 5–11) or Class teacher (grades 0–4)"): a class of
+  // grade 1 has a Class teacher, the part says so and offers only holders of that role.
+  it('gives a class of grade 1 a Class teacher, offering only Class teachers', async () => {
+    const london = schoolClass(40, { grade: 1, name: 'London', tutor: null });
+    const malika: TutorCandidate = {
+      assignmentId: uid(603),
+      role: 'class_teacher',
+      staffId: uid(703),
+      name: { firstName: 'Malika', lastName: 'Karimova' },
+      languages: ['uz'],
+      from: '2026-09-01',
+      until: null,
+      classes: [],
+    };
+    const calls = await openList({
+      classes: [london],
+      extra: {
+        'GET /api/classes/tutor-candidates': () => json({ candidates: [...CANDIDATES, malika] }),
+        [`POST /api/classes/${london.id}/tutors`]: () => json(detailOf(london)),
+        [`POST /api/classes/${london.id}/tutors/preview`]: () => json(NO_CHANGE),
+      },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()[0]?.[3]).toBe(en.classes.classTeacher.noTutor);
+    });
+    fireEvent.click(rowButton('1 London'));
+    const panel = await screen.findByRole('complementary', { name: '1 London' });
+    expect(await within(panel).findByText(en.classes.classTeacher.noTutorRows)).toBeTruthy();
+    expect(within(panel).queryByRole('button', { name: en.classes.giveTutor })).toBeNull();
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.classes.classTeacher.giveTutor }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.classes.classTeacher.giveTutor,
+    });
+    const person = field(form, en.classes.person) as HTMLSelectElement;
+    await waitFor(() => {
+      expect([...person.options].map((option) => option.value)).toEqual(['', uid(603)]);
+    });
+    type(person, uid(603));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/classes/${london.id}/tutors`)?.body,
+      ).toMatchObject({ assignmentId: uid(603), kind: 'tutor' });
+    });
+  });
+
+  it('shows the refusal of a second own class of a Class teacher as its text', async () => {
+    const london = schoolClass(41, { grade: 2, name: 'London', tutor: null });
+    await openList({
+      classes: [london],
+      extra: {
+        'GET /api/classes/tutor-candidates': () =>
+          json({ candidates: [{ ...CANDIDATES[0], role: 'class_teacher' }] }),
+        [`POST /api/classes/${london.id}/tutors`]: () => refusal('class_teacher_one_class', 409),
+        [`POST /api/classes/${london.id}/tutors/preview`]: () => json(NO_CHANGE),
+      },
+    });
+    fireEvent.click(rowButton('2 London'));
+    const panel = await screen.findByRole('complementary', { name: '2 London' });
+    fireEvent.click(
+      await within(panel).findByRole('button', { name: en.classes.classTeacher.giveTutor }),
+    );
+    const form = await within(panel).findByRole('form', {
+      name: en.classes.classTeacher.giveTutor,
+    });
+    type(await within(form).findByLabelText(en.classes.person), uid(601));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect((await within(form).findByRole('alert')).textContent).toBe(
+      en.errors.class_teacher_one_class,
+    );
   });
 
   it('shows a refusal of the language rule as its text', async () => {

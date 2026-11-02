@@ -69,6 +69,7 @@ import { AvailabilitySection } from './availability-section';
 import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 import { StaffForm } from './staff-form';
 import { schoolDateText } from '@/lib/dates';
+import { offeredSubjects } from './offered-subjects';
 import { SECTION_TITLE } from '@/components/ui/control';
 
 interface StaffPanelProps {
@@ -583,11 +584,11 @@ function TeachingSection({
   const academicDivision = staff.divisions.find((division) => division.divisionId === academic?.id);
   const department =
     academicDivision?.departmentMove?.departmentId ?? academicDivision?.departmentId;
-  const offered = subjects.filter(
-    (subject) =>
-      staff.subjects.some((own) => own.subjectId === subject.id) ||
-      (subject.archivedAt === null &&
-        (subject.departmentMove?.departmentId ?? subject.departmentId) === department),
+  // Task 9.4e: a subject of grades 0–4 may come from any department.
+  const offered = offeredSubjects(
+    subjects,
+    department,
+    staff.subjects.map((own) => own.subjectId),
   );
   const plannedDepartment = academic?.departments.find(
     (one) => one.id === academicDivision?.departmentMove?.departmentId,

@@ -4,6 +4,7 @@ import {
   permits,
   classTutorGiveSchema,
   listName,
+  ownClassRoleFor,
   type ClassDetail,
   type ClassTutor,
   type ClassTutorEnd,
@@ -32,6 +33,15 @@ import { schoolDateText } from '@/lib/dates';
 import { tutorCandidatesQuery, tutorPreviewQuery } from './classes-api';
 
 /** The name of a Tutor row or a candidate: surname first, or the account without a record. */
+/**
+ * The texts of the Tutors part of a class: "Class teacher" for a class of
+ * grades 0–4, "Tutor" for 5–11 (task 9.4e; `05`, Class: "tutor (grades
+ * 5–11) or Class teacher (grades 0–4)").
+ */
+export function tutorTexts(grade: number): 'classes' | 'classes.classTeacher' {
+  return ownClassRoleFor(grade) === 'class_teacher' ? 'classes.classTeacher' : 'classes';
+}
+
 export function tutorName(
   t: (key: 'classes.noRecordName') => string,
   person: { name: { firstName: string; lastName: string } | null },
@@ -71,18 +81,19 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
   const editing = panel.editing;
   const giving: ClassTutorKind | null =
     editing === 'give:tutor' ? 'tutor' : editing === 'give:acting' ? 'acting' : null;
+  const texts = tutorTexts(schoolClass.grade);
   return (
     <section className="grid gap-3">
-      <h3 className={SECTION_TITLE}>{t('classes.tutors')}</h3>
+      <h3 className={SECTION_TITLE}>{t(`${texts}.tutors`)}</h3>
       {schoolClass.tutors.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('classes.noTutorRows')}</p>
+        <p className="text-sm text-muted-foreground">{t(`${texts}.noTutorRows`)}</p>
       ) : (
         <ul className="grid gap-3">
           {schoolClass.tutors.map((row) => (
             <li key={row.id} className="grid gap-1 text-sm">
               <span className="font-semibold">
                 {t('classes.kindOf', {
-                  kind: t(`classes.kinds.${row.kind}`),
+                  kind: t(`${texts}.kinds.${row.kind}`),
                   name: tutorName(t, row),
                 })}
               </span>
@@ -98,6 +109,7 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
               {canEdit && row.state !== 'ended' && editing === `end:${row.id}` ? (
                 <EndForm
                   row={row}
+                  texts={texts}
                   today={schoolClass.today}
                   onEnd={async (end) => {
                     await onEnd(row.id, end);
@@ -119,7 +131,7 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
                         panel.start(`end:${row.id}`);
                       }}
                     >
-                      {t('classes.endTutor')}
+                      {t(`${texts}.endTutor`)}
                     </Button>
                   </div>
                 )
@@ -151,7 +163,7 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
               panel.start('give:tutor');
             }}
           >
-            {t('classes.giveTutor')}
+            {t(`${texts}.giveTutor`)}
           </Button>
           <Button
             variant="secondary"
@@ -160,7 +172,7 @@ export function ClassTutors({ schoolClass, canEdit, panel, onGive, onEnd }: Clas
               panel.start('give:acting');
             }}
           >
-            {t('classes.setActing')}
+            {t(`${texts}.setActing`)}
           </Button>
         </div>
       )}
@@ -202,7 +214,8 @@ function GiveForm({
     }),
     save: onGive,
   });
-  const label = kind === 'tutor' ? t('classes.giveTutor') : t('classes.setActing');
+  const texts = tutorTexts(schoolClass.grade);
+  const label = kind === 'tutor' ? t(`${texts}.giveTutor`) : t(`${texts}.setActing`);
   const assignmentId = form.bind('assignmentId').value;
   const from = form.bind('from').value;
   const until = form.bind('until').value;
@@ -224,11 +237,15 @@ function GiveForm({
   if (candidates.data === undefined) {
     return <LoadingOutline lines={2} />;
   }
-  if (candidates.data.candidates.length === 0) {
+  // Task 9.4e: only the holders of the role of the class's grade (class_tutors_fill, 0152).
+  const offered = candidates.data.candidates.filter(
+    (candidate) => candidate.role === ownClassRoleFor(schoolClass.grade),
+  );
+  if (offered.length === 0) {
     // H22 of issue #105: what to do, and where, instead of a form nothing can be saved in.
     return (
       <div className="grid gap-3">
-        <p className="text-sm">{t('classes.noCandidates')}</p>
+        <p className="text-sm">{t(`${texts}.noCandidates`)}</p>
         <div className="flex flex-wrap gap-2">
           {role !== null && permits(PERMISSIONS, role, 'staff', 'view') && (
             <Link
@@ -264,10 +281,7 @@ function GiveForm({
     <RecordForm form={form} label={label} onCancel={onCancel}>
       <SelectField
         label={t('classes.person')}
-        options={[
-          { value: '', label: t('classes.choosePerson') },
-          ...candidates.data.candidates.map(option),
-        ]}
+        options={[{ value: '', label: t('classes.choosePerson') }, ...offered.map(option)]}
         {...form.bind('assignmentId')}
       />
       <DateField label={t('classes.from')} min={schoolClass.today} {...form.bind('from')} />
@@ -286,9 +300,7 @@ function GiveForm({
           <TutorPreview
             preview={preview.data}
             name={(() => {
-              const chosen = candidates.data.candidates.find(
-                (one) => one.assignmentId === assignmentId,
-              );
+              const chosen = offered.find((one) => one.assignmentId === assignmentId);
               return chosen === undefined ? '' : tutorName(t, chosen);
             })()}
           />
@@ -365,11 +377,13 @@ function TutorPreview({ preview, name }: { preview: ClassTutorPreview; name: str
 /** The end of a Tutor row from a date, after a confirmation naming the person. */
 function EndForm({
   row,
+  texts,
   today,
   onEnd,
   onCancel,
 }: {
   row: ClassTutor;
+  texts: 'classes' | 'classes.classTeacher';
   today: string;
   onEnd: (end: ClassTutorEnd) => Promise<void>;
   onCancel: () => void;
@@ -381,11 +395,11 @@ function EndForm({
     initial: { from: today },
     save: async (end) => {
       const go = await confirm({
-        title: t('classes.endTitle'),
+        title: t(`${texts}.endTitle`),
         text: t('classes.endText'),
         names: [
           t('classes.kindOf', {
-            kind: t(`classes.kinds.${row.kind}`),
+            kind: t(`${texts}.kinds.${row.kind}`),
             name: `${tutorName(t, row)}, ${schoolDateText(end.from, i18n.language)}`,
           }),
         ],
@@ -399,7 +413,7 @@ function EndForm({
     },
   });
   return (
-    <RecordForm form={form} label={t('classes.endTutor')} onCancel={onCancel}>
+    <RecordForm form={form} label={t(`${texts}.endTutor`)} onCancel={onCancel}>
       <DateField label={t('classes.endOn')} min={today} {...form.bind('from')} />
     </RecordForm>
   );

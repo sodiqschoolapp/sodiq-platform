@@ -85,12 +85,12 @@ describe('the Tutors of a class', () => {
       .orderBy('id', 'desc')
       .executeTakeFirst();
 
-  /** A class of North with no Tutor. */
+  /** A class of North with no Tutor, of grades 5–11, which take a Tutor (task 9.4e). */
   const newClass = (language: 'uz' | 'ru' = 'uz', branch = north, year = northYear) => {
     count += 1;
     return classes.schoolClass(branch, year, {
       language,
-      grade: (count % 11) + 1,
+      grade: (count % 7) + 5,
       name: `Tutored ${'abcdefghijklmnopqrstuvwxyz'[count % 26] ?? 'a'}${'q'.repeat(Math.floor(count / 26))}`,
     });
   };
@@ -364,6 +364,106 @@ describe('the Tutors of a class', () => {
       expect(
         errorCode(await give(held, { assignmentId: person.assignmentId }, principal).expect(403)),
       ).toBe('permission_denied');
+      expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  // Task 9.4e (db/migrations/0152; the owner's spec change of 1 November 2026):
+  // `edge/people-roles-accounts`: "A class of grade 2 is given a Tutor, or a class of
+  // grade 6 a Class teacher. Refused, not a warning … A Class teacher has one own class at
+  // a time; giving a second is refused, except as acting Class teacher for a period."
+  describe('the Class teacher of a class of grades 0–4', () => {
+    let grade = 0;
+    const primaryClass = () => {
+      count += 1;
+      grade = (grade + 1) % 5;
+      return classes.schoolClass(north, northYear, {
+        grade,
+        name: `Primary ${'abcdefghijklmnopqrstuvwxyz'[count % 26] ?? 'a'}${'q'.repeat(Math.floor(count / 26))}`,
+      });
+    };
+    async function classTeacher() {
+      const person = await classes.person(north, ['uz']);
+      return {
+        ...person,
+        assignmentId: await classes.role(person.accountId, north, 'class_teacher'),
+      };
+    }
+
+    it('offers the Class teachers with their role beside the Tutors', async () => {
+      const malika = await classTeacher();
+      const person = await tutor();
+      const list = tutorCandidateListSchema.parse(
+        (await get('/api/classes/tutor-candidates').expect(200)).body,
+      );
+      expect(list.candidates.find((one) => one.assignmentId === malika.assignmentId)?.role).toBe(
+        'class_teacher',
+      );
+      expect(list.candidates.find((one) => one.assignmentId === person.assignmentId)?.role).toBe(
+        'tutor',
+      );
+    });
+
+    it('gives a class of grades 0–4 a Class teacher, as main and as acting, with its audit entry', async () => {
+      const held = await primaryClass();
+      const malika = await classTeacher();
+      const given = await give(held, { assignmentId: malika.assignmentId });
+      expect(given.status, JSON.stringify(given.body)).toBe(201);
+      expect(detailOf(given).tutors[0]).toMatchObject({ staffId: malika.staffId, kind: 'tutor' });
+      expect((await entry('class.tutor_given', held))?.new_value).toMatchObject({
+        assignmentId: malika.assignmentId,
+        kind: 'tutor',
+      });
+      const other = await classTeacher();
+      await give(held, { assignmentId: other.assignmentId, kind: 'acting' }).expect(201);
+    });
+
+    it('refuses a Tutor for a class of grades 0–4 and a Class teacher for one of 5–11, changing nothing', async () => {
+      const primary = await primaryClass();
+      const upper = await newClass();
+      const person = await tutor();
+      const malika = await classTeacher();
+      const before = await rowsOf();
+      for (const kind of ['tutor', 'acting']) {
+        const refusedTutor = await give(primary, { assignmentId: person.assignmentId, kind });
+        expect(refusedTutor.status, JSON.stringify(refusedTutor.body)).toBe(409);
+        expect(errorCode(refusedTutor)).toBe('class_needs_class_teacher');
+        const refusedTeacher = await give(upper, { assignmentId: malika.assignmentId, kind });
+        expect(refusedTeacher.status, JSON.stringify(refusedTeacher.body)).toBe(409);
+        expect(errorCode(refusedTeacher)).toBe('class_needs_tutor');
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a second own class at the same time, and lets her act for another class', async () => {
+      const own = await primaryClass();
+      const second = await primaryClass();
+      const malika = await classTeacher();
+      await give(own, { assignmentId: malika.assignmentId }).expect(201);
+      const before = await rowsOf();
+      const refused = await give(second, { assignmentId: malika.assignmentId });
+      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+      expect(errorCode(refused)).toBe('class_teacher_one_class');
+      expect(await rowsOf()).toEqual(before);
+      await give(second, { assignmentId: malika.assignmentId, kind: 'acting' }).expect(201);
+    });
+
+    it('refuses a grade edit that would leave the class with the wrong role', async () => {
+      const held = await classes.schoolClass(north, northYear, { grade: 4, name: 'Leeds' });
+      const malika = await classTeacher();
+      await give(held, { assignmentId: malika.assignmentId }).expect(201);
+      const read = detailOf(await get(`/api/classes/${held}`).expect(200));
+      const before = await rowsOf();
+      const refused = await put(`/api/classes/${held}`, {
+        version: read.version,
+        grade: 5,
+        name: read.name,
+        language: read.language,
+        mainRoomId: null,
+        maxSize: read.maxSize,
+      });
+      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+      expect(errorCode(refused)).toBe('class_grade_tutor_role');
       expect(await rowsOf()).toEqual(before);
     });
   });

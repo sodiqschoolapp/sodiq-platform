@@ -169,6 +169,25 @@ describe('who sees what: the students a Teacher teaches', () => {
     await row(v2, both.staffId, { class_id: princeton });
     // And Mathematics in the own class 7 Harvard: read as its Tutor.
     await row(v2, both.staffId, { class_id: harvard });
+    // Task 9.4e, decision 2 of pull request #275: Malika Karimova (invented), Class teacher of
+    // 1 London, who also teaches English in 7 Princeton through her Teacher role.
+    const london = await load.classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+    inLondon = await members.student(t.north, { grade: 1 });
+    await members.member({
+      branch: t.north,
+      classId: london,
+      studentId: inLondon,
+      from: '2026-09-01',
+    });
+    const malika = await teacherOf('Malika', 'Karimova', [english]);
+    const classTeacherRole = await t.kit.giveRole(malika.accountId, {
+      role: 'class_teacher',
+      branchId: t.north,
+      validFrom: tutorFrom,
+    });
+    await load.classes.tutorRow(t.north, london, classTeacherRole.id, { from: tutorFrom });
+    await row(v2, malika.staffId, { class_id: princeton }, english);
+    classTeacher = malika.cookie;
     // The main Teacher also holds the role in the south, with no load there.
     await t.kit.giveRole(main.accountId, { role: 'teacher', branchId: t.south });
     await publish();
@@ -176,7 +195,7 @@ describe('who sees what: the students a Teacher teaches', () => {
     await t.database.migrator
       .updateTable('students')
       .set({ diagnostic_score: 55 })
-      .where('id', 'in', [elsewhere, taughtByBoth])
+      .where('id', 'in', [elsewhere, taughtByBoth, inLondon])
       .execute();
     olderTeacher = older.cookie;
     laterTeacher = later.cookie;
@@ -187,6 +206,8 @@ describe('who sees what: the students a Teacher teaches', () => {
   let olderTeacher: string;
   let tieTeacher: string;
   let tutorTeacher: string;
+  let classTeacher: string;
+  let inLondon: string;
   let taughtByBoth: string;
   let laterTeacher: string;
   let draftTeacher: string;
@@ -364,6 +385,29 @@ describe('who sees what: the students a Teacher teaches', () => {
       expect(own.contact).not.toBeNull();
       expect(own.statuses).not.toEqual([]);
       expect(own).toMatchObject({ diagnosticScore: 55, readsDiagnostic: true, identity: null });
+    });
+  });
+
+  // Task 9.4e, decision 2 of pull request #275 (approved by the owner): the Class teacher reads
+  // own class as its Tutor would, and a class she only teaches as a Teacher, never its Contact.
+  describe('a Class teacher who also teaches', () => {
+    it('reads own class 1 London with Contact and the score, and a taught 7 Princeton student Basic only', async () => {
+      const own = studentDetailSchema.parse(
+        (await get(`/api/people/students/${inLondon}`, classTeacher).expect(200)).body,
+      );
+      expect(own.contact).not.toBeNull();
+      expect(own).toMatchObject({ diagnosticScore: 55, readsDiagnostic: true, identity: null });
+      const taught = studentDetailSchema.parse(
+        (await get(`/api/people/students/${taughtByBoth}`, classTeacher).expect(200)).body,
+      );
+      expect(taught).toMatchObject({
+        contact: null,
+        diagnosticScore: null,
+        readsDiagnostic: false,
+      });
+      // Neither taught nor of her class: refused.
+      const refused = await get(`/api/people/students/${classmate}`, classTeacher);
+      expect(refused.status, JSON.stringify(refused.body)).toBe(403);
     });
   });
 });

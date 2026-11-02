@@ -2,6 +2,7 @@ import {
   classDisplayName,
   LOAD_LESSONS_MAX,
   PERMISSIONS,
+  ownClassRoleFor,
   permits,
   loadRowEditSchema,
   loadRowRecordSchema,
@@ -160,6 +161,9 @@ export function LoadRowForm({
   const schoolClass =
     unit !== null && 'classId' in unit ? classes.find((one) => one.id === unit.classId) : undefined;
   const unitGrades = group?.grades ?? (schoolClass === undefined ? [] : [schoolClass.grade]);
+  // Task 9.4e: a Tutor row of a class of grades 0–4 is held by its Class teacher.
+  const primaryClass =
+    schoolClass !== undefined && ownClassRoleFor(schoolClass.grade) === 'class_teacher';
   // The subjects taught in every grade of the unit; a group's own subject only.
   const offeredSubjects = subjects.filter(
     (subject) =>
@@ -304,15 +308,25 @@ export function LoadRowForm({
       ) : teachers.data?.tutorRow === true ? (
         <p className="text-sm" data-tutor-row="">
           {teachers.data.teachers[0] === undefined
-            ? t('timetable.load.noTutorTeacher', {
-                subject: (() => {
-                  const chosen = subjects.find((one) => one.id === subjectId);
-                  return chosen === undefined ? '' : nameOf(chosen.names, i18n.language);
-                })(),
-              })
-            : t('timetable.load.tutorRowTeacher', {
-                name: teachers.data.teachers[0].name ?? t('timetable.load.gone'),
-              })}
+            ? t(
+                primaryClass
+                  ? 'timetable.load.noClassTeacherTeacher'
+                  : 'timetable.load.noTutorTeacher',
+                {
+                  subject: (() => {
+                    const chosen = subjects.find((one) => one.id === subjectId);
+                    return chosen === undefined ? '' : nameOf(chosen.names, i18n.language);
+                  })(),
+                },
+              )
+            : t(
+                primaryClass
+                  ? 'timetable.load.classTeacherRowTeacher'
+                  : 'timetable.load.tutorRowTeacher',
+                {
+                  name: teachers.data.teachers[0].name ?? t('timetable.load.gone'),
+                },
+              )}
         </p>
       ) : teachers.data !== undefined && teacherOptions.length === 0 ? (
         <NoTeacherReasons
@@ -411,7 +425,13 @@ function NoTeacherReasons({
     return (
       <p className="text-sm">
         {answer.noTutor
-          ? t('timetable.load.noTutorTeacher', { subject: subjectName })
+          ? t(
+              grades.length === 1 &&
+                grades.every((grade) => ownClassRoleFor(grade) === 'class_teacher')
+                ? 'timetable.load.noClassTeacherTeacher'
+                : 'timetable.load.noTutorTeacher',
+              { subject: subjectName },
+            )
           : t('timetable.load.noSubjectTeacher', { subject: subjectName })}{' '}
         {!answer.noTutor && role !== null && permits(PERMISSIONS, role, 'staff', 'view') && (
           <Link

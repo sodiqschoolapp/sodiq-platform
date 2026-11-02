@@ -112,7 +112,9 @@ try {
         .filter((one) => branch.classes.some((it) => it.tutorStaffId === one.staffId))
         .map((one) => {
           const tutorOf = branch.classes.filter((it) => it.tutorStaffId === one.staffId);
-          return `| Teacher and Tutor of ${tutorOf.map((it) => `${String(it.grade)} ${it.name}`).join(', ')} | ${branch.name} | ${one.account.name} (${one.subjects.join(', ')}) | \`${one.account.login}\` |`;
+          // Task 9.4e: a class of grades 0–4 has a Class teacher in the Tutor's place.
+          const held = tutorOf.every((it) => it.grade <= 4) ? 'Class teacher' : 'Tutor';
+          return `| Teacher and ${held} of ${tutorOf.map((it) => `${String(it.grade)} ${it.name}`).join(', ')} | ${branch.name} | ${one.account.name} (${one.subjects.join(', ')}) | \`${one.account.login}\` |`;
         }),
       ...[...branch.teachers.values()]
         .filter((one) => !branch.classes.some((it) => it.tutorStaffId === one.staffId))
