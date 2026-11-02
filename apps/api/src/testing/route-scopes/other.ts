@@ -100,7 +100,7 @@ const studentResultLines = (head: string[], teacher: ScopeLine): ScopeLine[] => 
 // correction 2): one subject to the subject heads (own subjects), the Teacher (own journal) and
 // the Tutor (own classes); a class across subjects to the Tutor (own classes); the classes of the
 // branch to management only.
-const RATING_BIG = `${RATING} > opens each list only to its readers, decided in the route, and refuses the roles outside the area`;
+const RATING_BIG = `${RATING} > opens each list only to its readers, decided in the route, and refuses the roles outside the area, with a %s`;
 const RATING_EXPORT = `${RESULTS_OWN} > refuses an export outside the scope of the Tutor, the Teacher and both Head Teachers, logging nothing`;
 const RATING_SENIOR = `${RESULTS_OWN} > refuses a Senior Head Teacher of another subject the subject list, and every Senior Head Teacher the class list`;
 const RATING_CHOICES_HEADS = `${RESULTS_OWN} > leaves the journals of another subject out of the choices of a Head Teacher and a Senior Head Teacher`;
@@ -165,9 +165,9 @@ const headViewLines = (tutor: ScopeLine): ScopeLine[] => [
 // The reports of `08` over the journal (task 9.3b-2, decision 1, approved by the owner): the
 // readers table of `reports.service.ts`.
 const REPORTS = 'src/modules/results/reports.test.ts';
-const REPORT_TUTOR = `${REPORTS} > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
-const REPORT_READERS = `${REPORTS} > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor`;
-const REPORT_EXPORT_SCOPE = `${REPORTS} > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing`;
+const REPORT_TUTOR = `${REPORTS} > gives the %s own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
+const REPORT_READERS = `${REPORTS} > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a %s, no mastery for the Head Tutor`;
+const REPORT_EXPORT_SCOPE = `${REPORTS} > refuses an export outside the scope of the %s and both Head Teachers, logging nothing`;
 const REPORTS_RULE =
   '08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1)';
 const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
@@ -378,7 +378,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'class',
       rule: '08, Early-warning list: the Tutor, the students of own classes on the reference date (task 9.4a, decision 1)',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
     {
@@ -386,7 +386,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'subjects',
       rule: '02, Scope: "For own subjects in own branch: ... the early-warning list"',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
     {
@@ -402,7 +402,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'own_lessons',
       rule: '08, Early-warning list: the Teacher, own journals (task 9.4a, decision 1)',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
   ],

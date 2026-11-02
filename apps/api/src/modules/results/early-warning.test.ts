@@ -21,6 +21,7 @@ import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES, gradeOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -134,7 +135,10 @@ describe('the early-warning list (08, Early-warning list)', () => {
     rows: readonly Omit<MemberRow, 'branch' | 'studentId'>[],
   ): Promise<string> => {
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await kit.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await kit.student(branch, {
+      startsOn: '2026-09-01',
+      grade: rows[0] === undefined ? 7 : await gradeOf(t.database.migrator, rows[0].classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: name.first, last_name: name.last })
@@ -235,8 +239,12 @@ describe('the early-warning list (08, Early-warning list)', () => {
    *   10, then in the first class, absent on the 19th and 26th (From 8.6: judged on her own
    *   results across journals; the run is of one journal).
    */
-  async function scene(accounts?: { readonly teacher?: string; readonly spare?: string }) {
+  async function scene(
+    accounts?: { readonly teacher?: string; readonly spare?: string },
+    grade = 7,
+  ) {
     const s = await publishedScene(t, load, {
+      grade,
       graded: true,
       secondSubject: true,
       ...(accounts === undefined ? {} : { accounts }),
@@ -367,129 +375,134 @@ describe('the early-warning list (08, Early-warning list)', () => {
     ]);
   });
 
-  it('shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal', async () => {
-    const owner = await account();
-    const spare = await account();
-    const c = await scene({ teacher: owner.account.id, spare: spare.account.id });
-    const another = await load.classes.subject({ grades: [7] });
-    const third = await load.classes.subject({ grades: [7] });
-    const tutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    const otherTutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: otherTutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.otherClass, otherTutor.account.id);
-    const branch = c.s.branch;
-    const { anvar, laylo } = c.students;
+  it.each(OWN_CLASS_CASES)(
+    'shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s',
+    async (_who, grade) => {
+      const owner = await account();
+      const spare = await account();
+      const c = await scene({ teacher: owner.account.id, spare: spare.account.id }, grade);
+      const another = await load.classes.subject({ grades: [grade] });
+      const third = await load.classes.subject({ grades: [grade] });
+      const tutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      const otherTutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: otherTutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.otherClass, otherTutor.account.id);
+      const branch = c.s.branch;
+      const { anvar, laylo } = c.students;
 
-    const cases: {
-      name: string;
-      held: Omit<Held, 'validFrom'>[];
-      browser?: Browser;
-      students: string[];
-      attendanceOnly?: boolean;
-      canHandle?: boolean;
-    }[] = [
-      {
-        name: 'Super Admin',
-        held: [],
-        browser: await superAdmin(),
-        students: [anvar, laylo],
-        canHandle: true,
-      },
-      {
-        name: 'Academic Vice Principal',
-        held: [{ role: 'academic_vice_principal', branchId: branch }],
-        students: [anvar, laylo],
-        canHandle: false,
-      },
-      {
-        name: 'Head Teacher of the subject',
-        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
-        students: [anvar, laylo],
-        canHandle: false,
-      },
-      {
-        name: 'Senior Head Teacher of the subject',
-        held: [{ role: 'senior_head_teacher', subjectIds: [c.s.subject] }],
-        students: [anvar, laylo],
-      },
-      {
-        name: 'Head Teacher of another subject',
-        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [another] }],
-        students: [],
-      },
-      {
-        name: 'Teacher who owns the journal',
-        held: [{ role: 'teacher', branchId: branch }],
-        browser: owner,
-        students: [anvar, laylo],
-        canHandle: true,
-      },
-      {
-        name: 'Teacher of no journal of the class',
-        held: [{ role: 'teacher', branchId: branch }],
-        browser: spare,
-        students: [],
-      },
-      {
-        name: 'Tutor of the first class',
-        held: [],
-        browser: tutor,
-        students: [anvar, laylo],
-        canHandle: true,
-      },
-      // Laylo left the other class on the 18th: not of its Tutor on the reference date.
-      { name: 'Tutor of the other class', held: [], browser: otherTutor, students: [] },
-      {
-        name: 'Head Tutor',
-        held: [{ role: 'head_tutor', branchId: branch }],
-        students: [anvar, laylo],
-        attendanceOnly: true,
-      },
-      {
-        name: 'Vice Principal for Spiritual and Moral Education',
-        held: [{ role: 'spiritual_vice_principal', branchId: branch }],
-        students: [anvar, laylo],
-        attendanceOnly: true,
-        canHandle: false,
-      },
-    ];
-    for (const one of cases) {
-      const browser = one.browser ?? (await account());
-      await as(browser, branch, one.held, async ({ get }) => {
-        const list = listOf(await get(PATH));
-        expect(list.entries.map((entry) => entry.student.id).sort(), one.name).toEqual(
-          [...one.students].sort(),
-        );
-        for (const entry of list.entries) {
-          expect(entry.attendanceOnly, one.name).toBe(one.attendanceOnly ?? false);
-          if (one.canHandle !== undefined) expect(entry.canHandle, one.name).toBe(one.canHandle);
-          if (one.attendanceOnly === true) {
-            expect(
-              entry.reasons.every((reason) =>
-                ['low_attendance', 'absences_in_row'].includes(reason.kind),
-              ),
-              one.name,
-            ).toBe(true);
-            expect(entry.figures.result, one.name).toBeNull();
-            expect(entry.figures.currentWork.now, one.name).toBeNull();
-            expect(entry.figures.gradedWorks, one.name).toBeNull();
+      const cases: {
+        name: string;
+        held: Omit<Held, 'validFrom'>[];
+        browser?: Browser;
+        students: string[];
+        attendanceOnly?: boolean;
+        canHandle?: boolean;
+      }[] = [
+        {
+          name: 'Super Admin',
+          held: [],
+          browser: await superAdmin(),
+          students: [anvar, laylo],
+          canHandle: true,
+        },
+        {
+          name: 'Academic Vice Principal',
+          held: [{ role: 'academic_vice_principal', branchId: branch }],
+          students: [anvar, laylo],
+          canHandle: false,
+        },
+        {
+          name: 'Head Teacher of the subject',
+          held: [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
+          students: [anvar, laylo],
+          canHandle: false,
+        },
+        {
+          name: 'Senior Head Teacher of the subject',
+          held: [{ role: 'senior_head_teacher', subjectIds: [c.s.subject] }],
+          students: [anvar, laylo],
+        },
+        {
+          name: 'Head Teacher of another subject',
+          held: [{ role: 'head_teacher', branchId: branch, subjectIds: [another] }],
+          students: [],
+        },
+        {
+          name: 'Teacher who owns the journal',
+          held: [{ role: 'teacher', branchId: branch }],
+          browser: owner,
+          students: [anvar, laylo],
+          canHandle: true,
+        },
+        {
+          name: 'Teacher of no journal of the class',
+          held: [{ role: 'teacher', branchId: branch }],
+          browser: spare,
+          students: [],
+        },
+        {
+          name: 'Tutor of the first class',
+          held: [],
+          browser: tutor,
+          students: [anvar, laylo],
+          canHandle: true,
+        },
+        // Laylo left the other class on the 18th: not of its Tutor on the reference date.
+        { name: 'Tutor of the other class', held: [], browser: otherTutor, students: [] },
+        {
+          name: 'Head Tutor',
+          held: [{ role: 'head_tutor', branchId: branch }],
+          students: [anvar, laylo],
+          attendanceOnly: true,
+        },
+        {
+          name: 'Vice Principal for Spiritual and Moral Education',
+          held: [{ role: 'spiritual_vice_principal', branchId: branch }],
+          students: [anvar, laylo],
+          attendanceOnly: true,
+          canHandle: false,
+        },
+      ];
+      for (const one of cases) {
+        const browser = one.browser ?? (await account());
+        await as(browser, branch, one.held, async ({ get }) => {
+          const list = listOf(await get(PATH));
+          expect(list.entries.map((entry) => entry.student.id).sort(), one.name).toEqual(
+            [...one.students].sort(),
+          );
+          for (const entry of list.entries) {
+            expect(entry.attendanceOnly, one.name).toBe(one.attendanceOnly ?? false);
+            if (one.canHandle !== undefined) expect(entry.canHandle, one.name).toBe(one.canHandle);
+            if (one.attendanceOnly === true) {
+              expect(
+                entry.reasons.every((reason) =>
+                  ['low_attendance', 'absences_in_row'].includes(reason.kind),
+                ),
+                one.name,
+              ).toBe(true);
+              expect(entry.figures.result, one.name).toBeNull();
+              expect(entry.figures.currentWork.now, one.name).toBeNull();
+              expect(entry.figures.gradedWorks, one.name).toBeNull();
+            }
           }
-        }
-      });
-    }
-    // The owner also Head Teacher of another subject: the second role widens nothing.
-    await as(
-      owner,
-      branch,
-      [{ role: 'head_teacher', branchId: branch, subjectIds: [third] }],
-      async ({ get }) => {
-        const list = listOf(await get(PATH));
-        expect(list.entries.map((entry) => entry.student.id).sort()).toEqual([anvar, laylo].sort());
-      },
-    );
-  });
+        });
+      }
+      // The owner also Head Teacher of another subject: the second role widens nothing.
+      await as(
+        owner,
+        branch,
+        [{ role: 'head_teacher', branchId: branch, subjectIds: [third] }],
+        async ({ get }) => {
+          const list = listOf(await get(PATH));
+          expect(list.entries.map((entry) => entry.student.id).sort()).toEqual(
+            [anvar, laylo].sort(),
+          );
+        },
+      );
+    },
+  );
 
   it('marks a reason handled with a note, audited, hides it, and refuses in order: 404 for each body id, 403 out of scope, 409 not listed', async () => {
     const owner = await account();
