@@ -188,6 +188,40 @@ describe('the timetable files', () => {
       );
     });
 
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of a class of grade 1;
+    // a refused print writes no entry.
+    it('lets a Class teacher print the school and own class, nothing else, writing nothing for a refusal', async () => {
+      const p = await publishedScene(t, load, { grade: 1 });
+      const given = await person('Oysha', 'Rustamova', { role: 'class_teacher' }, p.branch);
+      await load.teacher(p.branch, { accountId: given.accountId });
+      const assignment = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', given.accountId)
+        .executeTakeFirstOrThrow();
+      await load.classes.tutorRow(p.branch, p.classId, assignment.id);
+      const cookie = given.cookie;
+      ok(await send({ kind: 'branch' }, cookie, p.branch));
+      ok(await send({ kind: 'class', classId: p.classId }, cookie, p.branch));
+      const before = await t.auditCount();
+      refused(
+        await send({ kind: 'class', classId: p.otherClass }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      refused(
+        await send({ kind: 'room', roomId: p.room }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      refused(
+        await send({ kind: 'teacher', staffId: p.teacher.staffId }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      expect(await t.auditCount()).toBe(before);
+    });
+
     it('lets the Head Tutor print the school and every class, no room and no other teacher', async () => {
       const cookie = cookies.headTutor ?? '';
       ok(await send({ kind: 'branch' }, cookie));

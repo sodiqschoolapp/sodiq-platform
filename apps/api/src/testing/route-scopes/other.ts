@@ -139,6 +139,8 @@ const ratingLines = (tests: {
 
 // The timetable views (task 5.9a, decisions 3 and 4; `06`, Views and outputs).
 const VIEWS_TUTOR = `${VIEWS} > gives the Tutor the school and own class only, no room`;
+// Task 9.4e: the same as a Class teacher of a class of grade 1.
+const VIEWS_CLASS_TEACHER = `${VIEWS} > gives a Class teacher the school and own class only, no room, and lists them as her choices`;
 const VIEWS_HEAD = `${VIEWS} > gives a Head Teacher the teachers of own subjects, in those subjects only`;
 const VIEWS_SENIOR = `${VIEWS} > gives a Senior Head Teacher the teachers of own subjects in every branch, nothing else`;
 const VIEWS_TEACHER = `${VIEWS} > gives a teacher their own timetable and nobody else’s`;
@@ -546,7 +548,7 @@ export const OTHER_SCOPES: RouteScopes = {
       roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '02, Tutor: "Sees the school timetable and the timetable of own class" (5.9a decision 3)',
-      refusedIn: [`${VIEWS} > lists what each role may open`],
+      refusedIn: [`${VIEWS} > lists what each role may open`, VIEWS_CLASS_TEACHER],
     },
     {
       roles: ['head_teacher', 'senior_head_teacher'],
@@ -560,7 +562,7 @@ export const OTHER_SCOPES: RouteScopes = {
       roles: ['teacher'],
       scope: 'own_lessons',
       rule: VIEWS_RULE_TEACHER,
-      refusedIn: [`${VIEWS} > lists what each role may open`],
+      refusedIn: [`${VIEWS} > lists what each role may open`, VIEWS_CLASS_TEACHER],
     },
   ],
   'GET /api/timetable/views/branch': headViewLines({
@@ -570,24 +572,30 @@ export const OTHER_SCOPES: RouteScopes = {
     refusedIn: [],
   }),
   'GET /api/timetable/views/class': headViewLines(
-    TUTOR_OWN_CLASS('02, Tutor: "the timetable of own class" (5.9a decision 3)', VIEWS_TUTOR),
+    TUTOR_OWN_CLASS(
+      '02, Tutor: "the timetable of own class" (5.9a decision 3)',
+      VIEWS_TUTOR,
+      VIEWS_CLASS_TEACHER,
+    ),
   ),
   'GET /api/timetable/views/room': headViewLines(
     TUTOR_OWN_CLASS(
       '06, Views and outputs: the Tutor the school and own class, no room (5.9a decision 3)',
       VIEWS_TUTOR,
+      VIEWS_CLASS_TEACHER,
     ),
   ),
   'GET /api/timetable/views/teacher': headViewLines({
     roles: ['tutor', 'class_teacher'],
     scope: 'own_lessons',
     rule: '5.9a decision 3: the Tutor reads the own teacher view only',
-    refusedIn: [VIEWS_TUTOR],
+    refusedIn: [VIEWS_TUTOR, VIEWS_CLASS_TEACHER],
   }),
   'POST /api/timetable/views/export': [
     TUTOR_OWN_CLASS(
       '06, Views and outputs, with the 5.9a scope: the Tutor prints the school and own class',
       `${VIEWS_EXPORT} > lets the Tutor print the school and own class, nothing else`,
+      `${VIEWS_EXPORT} > lets a Class teacher print the school and own class, nothing else, writing nothing for a refusal`,
       `${VIEWS_EXPORT} > writes none for a refusal or a PDF that could not be made, and sends no file`,
     ),
     {
@@ -624,7 +632,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'own_lessons',
       rule: 'Task 5.9b: the caller’s own lessons and exams of the week; the query takes no field',
       refusedIn: [
-        `${TIMETABLE_OWN} > lists only the own lessons on the home page of a Tutor, a Head Teacher and a Senior Head Teacher`,
+        `${TIMETABLE_OWN} > lists only the own lessons on the home page of a Tutor, a Class teacher, a Head Teacher and a Senior Head Teacher`,
       ],
     },
     {

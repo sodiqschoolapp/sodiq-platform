@@ -209,6 +209,44 @@ describe('the timetable views', () => {
       );
     });
 
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of a class of grade 1.
+    it('gives a Class teacher the school and own class only, no room, and lists them as her choices', async () => {
+      const p = await publishedScene(t, load, { grade: 1 });
+      const given = await person('Oysha', 'Rustamova', { role: 'class_teacher' }, p.branch);
+      await load.teacher(p.branch, { accountId: given.accountId });
+      await load.classes.tutorRow(p.branch, p.classId, given.assignmentId);
+      const cookie = given.cookie;
+      viewOf(await view('branch', {}, cookie, p.branch));
+      const own = viewOf(await view('class', { classId: p.classId }, cookie, p.branch));
+      expect(own.lessons.map((one) => one.unit.id)).toEqual([p.classId]);
+      refused(
+        await view('class', { classId: p.otherClass }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      refused(
+        await view('room', { roomId: p.room }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      refused(
+        await view('teacher', { staffId: p.teacher.staffId }, cookie, p.branch),
+        403,
+        'timetable_view_scope',
+      );
+      const choices = viewChoicesSchema.parse(
+        (
+          await t.get(
+            query('/api/timetable/views/choices', { date: NEXT_MONDAY }),
+            p.branch,
+            cookie,
+          )
+        ).body,
+      );
+      expect(choices.classes.map((one) => one.id)).toEqual([p.classId]);
+      expect(choices.rooms).toEqual([]);
+    });
+
     it('reads the Tutor rows in force now, whatever the date viewed (decision 12)', async () => {
       // The former Tutor's row ended on 5 October: a date it covered is refused.
       refused(
