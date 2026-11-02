@@ -233,6 +233,24 @@ describe('rating exams in grades 0–4 in the database', () => {
     throw new Error('Nothing waited for a lock.');
   }
 
+  /** A closing of the quarter, as the close writes its row. */
+  const closeQuarterOf = (branch: string, quarter: string) =>
+    inBranch(branch, async (transaction) => {
+      await audited(transaction, branch);
+      await transaction
+        .insertInto('quarter_closings')
+        .values({
+          branch_id: branch,
+          quarter_id: quarter,
+          version: 1,
+          closed_at: new Date(0),
+          closed_by: account,
+          lock_now: false,
+          warnings: sql`'[]'::jsonb`,
+        })
+        .execute();
+    });
+
   /** A transaction held open after `work` until `release` is called; its answer or refusal after. */
   function held(branches: string[], work: (transaction: Transaction) => Promise<unknown>) {
     let release: () => void = () => undefined;
@@ -410,15 +428,6 @@ describe('rating exams in grades 0–4 in the database', () => {
     const failed = await refusal(setting(true, [quarter]));
     expect(failed.constraint).toBe('quarter_rating_state_closed');
     expect(await stateOf(quarter)).toBe(false);
-    // The quarter's branch and id never change.
-    const fixed = await refusal(
-      database.migrator
-        .updateTable('quarter_rating_states')
-        .set({ branch_id: north })
-        .where('quarter_id', '=', quarterOf(b, 2))
-        .execute(),
-    );
-    expect(fixed.code).toBeDefined();
     // A new year's quarters take the school's value, whatever the insert names.
     await setting(true, []);
     const year = await kit.load.classes.year(b, 'planned', '2027-09-01', '2028-05-31');
@@ -553,6 +562,60 @@ describe('rating exams in grades 0–4 in the database', () => {
     });
   });
 
+  describe('a class moved into grades 0–4, the other moves (decision 6)', () => {
+    const regrade = (classId: string, grade: number) =>
+      database.migrator.updateTable('classes').set({ grade }).where('id', '=', classId).execute();
+
+    it('refuses 5 → 4 with an entry in an open quarter and 7 → 4 with a closed quarter, both off', async () => {
+      const b = await fresh();
+      await setting(false, quartersOf(b));
+      const id = await subject([4, 5, 7]);
+      const fifth = await journalOf(b, id, 5);
+      const exam = await examRow(b, fifth.journal);
+      await entry(b, exam, fifth.student);
+      expect((await refusal(regrade(fifth.classId, 4))).message).toContain(
+        'classes_grade_rating_primary',
+      );
+      const closed = await fresh();
+      await setting(false, quartersOf(closed));
+      const seventh = await classOf(closed, 7);
+      await database.migrator
+        .insertInto('journals')
+        .values({
+          branch_id: closed,
+          academic_year_id: years.get(closed)?.year ?? '',
+          class_id: seventh,
+          subject_id: id,
+          runs: sql`'{[2026-09-01,)}'::datemultirange`,
+        })
+        .execute();
+      // Open, every quarter off and no entry: the move is made, and made back.
+      await regrade(seventh, 4);
+      await regrade(seventh, 7);
+      await closeQuarterOf(closed, quarterOf(closed, 1));
+      expect((await refusal(regrade(seventh, 4))).message).toContain(
+        'classes_grade_rating_primary',
+      );
+      // A quarter closed with the state on keeps its column whatever the grade: allowed.
+      const onBranch = await fresh();
+      await setting(true, quartersOf(onBranch));
+      const other = await classOf(onBranch, 7);
+      await database.migrator
+        .insertInto('journals')
+        .values({
+          branch_id: onBranch,
+          academic_year_id: years.get(onBranch)?.year ?? '',
+          class_id: other,
+          subject_id: id,
+          runs: sql`'{[2026-09-01,)}'::datemultirange`,
+        })
+        .execute();
+      await closeQuarterOf(onBranch, quarterOf(onBranch, 1));
+      await setting(false, quartersOf(onBranch).slice(1));
+      await regrade(other, 4);
+    });
+  });
+
   describe('the distribution without the rating exam (decision 7)', () => {
     const write = (
       branch: string,
@@ -656,6 +719,18 @@ describe('rating exams in grades 0–4 in the database', () => {
           )
         ).constraint,
       ).toBe('quarters_closed');
+      // An insert in a closed quarter is refused too.
+      expect(
+        (
+          await refusal(
+            write(branch, await subject([1]), quarterOf(branch, 2), {
+              attendance: 20,
+              classwork: 40,
+              homework: 40,
+            }),
+          )
+        ).constraint,
+      ).toBe('quarters_closed');
       // An open quarter of the same year takes it.
       await write(branch, id, quarterOf(branch, 1), {
         attendance: 10,
@@ -681,36 +756,87 @@ describe('rating exams in grades 0–4 in the database', () => {
           )
         ).constraint,
       ).toBe('academic_years_closed');
+      // An update in a year closed after the row was written.
+      const laterBranch = await fresh();
+      await write(laterBranch, id, quarterOf(laterBranch, 1), {
+        attendance: 10,
+        classwork: 50,
+        homework: 40,
+      });
+      await kit.load.classes.setYear(years.get(laterBranch)?.year ?? '', 'closed');
+      expect(
+        (
+          await refusal(
+            write(laterBranch, id, quarterOf(laterBranch, 1), {
+              attendance: 20,
+              classwork: 40,
+              homework: 40,
+            }),
+          )
+        ).constraint,
+      ).toBe('academic_years_closed');
+    });
+
+    it("refuses an update into another round than the quarter's", async () => {
+      const b = await fresh();
+      const id = await subject([1]);
+      await write(b, id, quarterOf(b, 1), { attendance: 10, classwork: 50, homework: 40 });
+      for (const [rounds, constraint] of [
+        [{ weights_round: 2 }, 'subject_weights_current_round'],
+        [{ rating_round: 2 }, 'subject_quarter_weights_current_rating_round'],
+      ] as const) {
+        const failed = await refusal(
+          inBranch(b, (transaction) =>
+            transaction
+              .updateTable('subject_quarter_primary_weights')
+              .set(rounds)
+              .where('branch_id', '=', b)
+              .where('subject_id', '=', id)
+              .execute(),
+          ),
+        );
+        expect(failed.constraint).toBe(constraint);
+      }
     });
   });
 
   it('keeps both new branch tables to the branch of the request', async () => {
     const id = await subject([1]);
-    await database.migrator
-      .insertInto('subject_quarter_primary_weights')
-      .values({
-        branch_id: south,
-        subject_id: id,
-        quarter_id: quarterOf(south, 3),
-        attendance: 10,
-        classwork: 50,
-        homework: 40,
-        weights_round: 1,
-        rating_round: 1,
-      })
-      .execute();
+    for (const branch of [north, south]) {
+      await database.migrator
+        .insertInto('subject_quarter_primary_weights')
+        .values({
+          branch_id: branch,
+          subject_id: id,
+          quarter_id: quarterOf(branch, 3),
+          attendance: 10,
+          classwork: 50,
+          homework: 40,
+          weights_round: 1,
+          rating_round: 1,
+        })
+        .execute();
+    }
     await inBranch(north, async (transaction) => {
       const states = await transaction
         .selectFrom('quarter_rating_states')
         .select('branch_id')
         .execute();
-      expect(states.length).toBeGreaterThan(0);
+      expect(states.map((one) => one.branch_id)).toContain(north);
       expect(states.every((one) => one.branch_id === north)).toBe(true);
       const weights = await transaction
         .selectFrom('subject_quarter_primary_weights')
         .select('branch_id')
+        .where('subject_id', '=', id)
         .execute();
-      expect(weights.every((one) => one.branch_id === north)).toBe(true);
+      // North's row is read, south's is not.
+      expect(weights.map((one) => one.branch_id)).toEqual([north]);
+      const southStates = await transaction
+        .selectFrom('quarter_rating_states')
+        .select('quarter_id')
+        .where('quarter_id', '=', quarterOf(south, 1))
+        .execute();
+      expect(southStates).toEqual([]);
     });
   });
 
@@ -837,6 +963,125 @@ describe('rating exams in grades 0–4 in the database', () => {
       side.release();
       await side.done;
       expect(await turning).toBe('quarter_rating_state_closed');
+    });
+
+    it('makes a close wait for a turn-off being written, and closes the quarter in the state off', async () => {
+      const b = await fresh();
+      await setting(true, quartersOf(b));
+      const side = held([...years.keys()], async (transaction) => {
+        await audited(transaction, null);
+        await writeSetting(transaction, false, [quarterOf(b, 1)]);
+      });
+      await side.started;
+      const closing = closeQuarterOf(b, quarterOf(b, 1)).then(
+        () => 'done',
+        (error: { constraint?: string }) => error.constraint,
+      );
+      await untilWaiting();
+      side.release();
+      await side.done;
+      expect(await closing).toBe('done');
+      expect(await stateOf(quarterOf(b, 1))).toBe(false);
+    });
+
+    it('makes a turn-off wait for a group of grades 4 and 5 being written, and refuses it after', async () => {
+      const b = await fresh();
+      await setting(true, quartersOf(b));
+      const id = await subject([4, 5]);
+      const fourth = await classOf(b, 4);
+      const fifth = await classOf(b, 5);
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const started = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const creating = database.migrator.transaction().execute(async (transaction) => {
+        const row = await transaction
+          .insertInto('groups')
+          .values({
+            branch_id: b,
+            academic_year_id: years.get(b)?.year ?? '',
+            subject_id: id,
+            name: 'Group held',
+            language: 'uz',
+            max_size: 20,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        for (const classId of [fourth, fifth]) {
+          await transaction
+            .insertInto('group_classes')
+            .values({ branch_id: b, group_id: row.id, class_id: classId })
+            .execute();
+        }
+        // The deferred rules run now (`.claude/rules/database.md`): the setting row is held.
+        await sql`set constraints all immediate`.execute(transaction);
+        ready();
+        await gate;
+      });
+      await started;
+      const turning = setting(false, quartersOf(b)).then(
+        () => 'done',
+        (error: { constraint?: string }) => error.constraint,
+      );
+      await untilWaiting();
+      release();
+      await creating;
+      expect(await turning).toBe('quarter_rating_state_groups');
+    });
+
+    it('gives a quarter inserted while the setting is turned the value it was turned to', async () => {
+      const b = await fresh();
+      await setting(false, []);
+      const side = held([...years.keys()], async (transaction) => {
+        await audited(transaction, null);
+        await writeSetting(transaction, true, []);
+      });
+      await side.started;
+      const created = kit.load.classes.year(b, 'planned', '2027-09-01', '2028-05-31');
+      await untilWaiting();
+      side.release();
+      await side.done;
+      const year = await created;
+      const states = await database.migrator
+        .selectFrom('quarter_rating_states')
+        .innerJoin('quarters', 'quarters.id', 'quarter_rating_states.quarter_id')
+        .select('quarter_rating_states.rating_exams_primary')
+        .where('quarters.academic_year_id', '=', year)
+        .execute();
+      expect(states.map((one) => one.rating_exams_primary)).toEqual([true, true, true, true]);
+      await setting(false, []);
+    });
+
+    it('makes the rating switch wait for a turn-off and refuses it after', async () => {
+      const b = await fresh();
+      await setting(true, []);
+      const id = await subject([4, 5], false);
+      await group(b, id, [await classOf(b, 4), await classOf(b, 5)]);
+      const side = held([...years.keys()], async (transaction) => {
+        await audited(transaction, null);
+        await writeSetting(transaction, false, []);
+      });
+      await side.started;
+      const switching = database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', id)
+        .execute()
+        .then(
+          () => 'done',
+          (error: { message?: string }) =>
+            error.message?.includes('groups_rating_primary_span') === true
+              ? 'refused'
+              : error.message,
+        );
+      await untilWaiting();
+      side.release();
+      await side.done;
+      expect(await switching).toBe('refused');
     });
   });
 });

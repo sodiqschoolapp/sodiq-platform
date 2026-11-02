@@ -77,16 +77,30 @@ create trigger quarter_rating_states_report_delete
 -- definition: the API reads it from here (`journalRows`), so the grid and the
 -- guards cannot disagree. Run as the invoker: the branch filter applies.
 
-create function journal_primary(journal_ref uuid) returns boolean
+-- A class, or a group by the classes it draws from: the publish check reads a load row's unit
+-- with it (spec review of the code, should-fix 4: no second copy of the rule).
+create function unit_primary(class_ref uuid, group_ref uuid) returns boolean
 language sql
 stable
 set search_path = pg_catalog, public
 as $$
   select coalesce(bool_and(c.grade <= 4), false)
-  from journals j
-  left join group_classes gc on j.class_id is null and gc.group_id = j.group_id
-  join classes c on c.id = coalesce(j.class_id, gc.class_id)
-  where j.id = journal_ref
+  from classes c
+  where (class_ref is not null and c.id = class_ref)
+    or (
+      class_ref is null
+      and c.id in (select gc.class_id from group_classes gc where gc.group_id = group_ref)
+    )
+$$;
+
+grant execute on function unit_primary(uuid, uuid) to sodiq_app;
+
+create function journal_primary(journal_ref uuid) returns boolean
+language sql
+stable
+set search_path = pg_catalog, public
+as $$
+  select coalesce((select unit_primary(j.class_id, j.group_id) from journals j where j.id = journal_ref), false)
 $$;
 
 grant execute on function journal_primary(uuid) to sodiq_app;
@@ -236,10 +250,6 @@ language plpgsql
 set search_path = pg_catalog, public
 as $$
 begin
-  if new.quarter_id is distinct from old.quarter_id or new.branch_id is distinct from old.branch_id then
-    raise exception 'quarter_rating_state_fixed'
-      using errcode = 'check_violation', constraint = 'quarter_rating_state_fixed';
-  end if;
   if new.rating_exams_primary = old.rating_exams_primary then
     return new;
   end if;
@@ -430,10 +440,40 @@ begin
 end;
 $function$;
 
+-- The number of active groups of a subject of a year that is not closed, in every branch, that
+-- draw from a class of grade 4 and one of grade 5: a count only (the permission review of the
+-- code, must-fix 1). The subject is school-wide and its edit runs for the branch of the request,
+-- so the row filter would hide another branch's group; as `subject_groups_elsewhere` (0047), a
+-- SECURITY DEFINER named in the allow-list of `catalog.test.ts`.
+create function subject_primary_span_groups(subject uuid) returns integer
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select count(*)::integer
+  from public.groups g
+  join public.academic_years y on y.id = g.academic_year_id
+  where g.subject_id = subject_primary_span_groups.subject
+    and g.archived_at is null
+    and y.status <> 'closed'
+    and exists (
+      select 1 from public.group_classes gc join public.classes c on c.id = gc.class_id
+      where gc.group_id = g.id and c.grade = 4
+    )
+    and exists (
+      select 1 from public.group_classes gc join public.classes c on c.id = gc.class_id
+      where gc.group_id = g.id and c.grade = 5
+    )
+$$;
+
+revoke execute on function subject_primary_span_groups(uuid) from public;
+grant execute on function subject_primary_span_groups(uuid) to sodiq_app;
+
 -- The same refusal when a subject's rating switch is turned on (decision 5):
 -- a new switch row with the rating exam, where the subject's row before it had
 -- none, while the setting is off and an active group of grades 4 and 5 of the
--- subject exists in a year that is not closed.
+-- subject exists in a year that is not closed, in any branch.
 create function subject_switches_rating_primary() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -456,15 +496,9 @@ begin
   if (select s.rating_exams_primary from school_settings s) then
     return null;
   end if;
-  if exists (
-    select 1
-    from groups g
-    join academic_years y on y.id = g.academic_year_id
-    where g.subject_id = new.subject_id
-      and g.archived_at is null
-      and y.status <> 'closed'
-      and group_spans_primary(g.id)
-  ) then
+  -- Every branch's groups: a group writer of another branch holds the subject `for share`
+  -- (group_rules), and the subject's update holds it, so neither misses the other.
+  if subject_primary_span_groups(new.subject_id) > 0 then
     raise exception 'groups_rating_primary_span'
       using errcode = 'check_violation', constraint = 'groups_rating_primary_span';
   end if;
@@ -491,11 +525,19 @@ begin
   if not (old.grade >= 5 and new.grade <= 4) then
     return new;
   end if;
+  -- The states `for no key update` in the order of the id, the order the change of the setting
+  -- takes them in (spec review of the code, must-fixes 2 and 3): a rating exam or entry write
+  -- holds its state row `for share`, so the two never pass each other; then the quarters
+  -- `for key share`, so a close of one waits for this edit or this edit for it (should-fix 2).
   perform 1 from quarter_rating_states r
     join quarters q on q.id = r.quarter_id
     where q.academic_year_id = new.academic_year_id
     order by r.quarter_id
-    for share of r;
+    for no key update of r;
+  perform 1 from quarters q
+    where q.academic_year_id = new.academic_year_id
+    order by q.id
+    for key share;
   if exists (
     select 1
     from journals j

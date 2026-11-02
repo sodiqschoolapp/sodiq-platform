@@ -287,6 +287,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
   'subject_groups_elsewhere(uuid,smallint[],boolean)':
     'The number of active groups of a subject outside the branches of the transaction that a change of its grades or its archive would leave without the subject, a count only (task 3.2a, decisions 12 and 16 of pull request #91, Look first): the refusal names "a group of another branch" and a count.',
+  'subject_primary_span_groups(uuid)':
+    'The number of active groups of a subject in every branch that draw from grades 4 and 5, a count only (task 9.4f, the permission review of the code of pull request #276, Look first): turning the subject\'s rating exam on is refused while one exists and "Rating exams in grades 0–4" is off, whichever branch the edit is made in.',
   'subject_group_grades(uuid)':
     'The grades of the active groups of a subject in every branch with the number of those groups outside the branches of the transaction, grades and counts only (task 3.2a, decision 12 of pull request #91, Look first): a subject cannot lose a grade, nor be archived, while a group of another branch needs it.',
   'tutor_classes_of_language(uuid,text)':

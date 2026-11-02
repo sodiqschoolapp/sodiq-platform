@@ -211,24 +211,4 @@ export class SubjectsController {
   ): Promise<SubjectQuarterWeights> {
     return this.subjects.setPrimaryWeights(access, params.id, params.quarterId, weights, requestId);
   }
-
-  /** Task 9.4f: the grades the change above would alter in each journal; changes nothing. */
-  @Post('subjects/:id/quarter-weights/:quarterId/primary/preview')
-  @HttpCode(200)
-  @Requires('subjects', 'edit')
-  @Returns(gradeChangesSchema)
-  previewPrimaryWeights(
-    @CurrentAccess() access: Access,
-    @ValidParams(subjectQuarterParamsSchema) params: SubjectQuarterParams,
-    @ValidBody(primaryQuarterWeightsSchema) weights: PrimaryQuarterWeights,
-    @RequestId() requestId: string,
-  ): Promise<GradeChanges> {
-    return this.subjects.previewPrimaryWeights(
-      access,
-      params.id,
-      params.quarterId,
-      weights,
-      requestId,
-    );
-  }
 }

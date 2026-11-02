@@ -178,6 +178,19 @@ export class SchoolSettingsService {
             .set({ rating_exams_primary: change.on })
             .execute();
           if (changed.length > 0) {
+            // The rows in the order of the id first (spec review of the code, must-fix 3): a class
+            // grade edit takes the states of its year in that order too.
+            await transaction
+              .selectFrom('quarter_rating_states')
+              .select('quarter_id')
+              .where(
+                'quarter_id',
+                'in',
+                changed.map((quarter) => quarter.id),
+              )
+              .orderBy('quarter_id')
+              .forNoKeyUpdate()
+              .execute();
             await transaction
               .updateTable('quarter_rating_states')
               .set({ rating_exams_primary: change.on })
@@ -220,6 +233,8 @@ export class SchoolSettingsService {
       {
         quarter_rating_state_entries: 'rating_primary_refused',
         quarter_rating_state_groups: 'rating_primary_refused',
+        // A quarter closed between the read of the open quarters and the update (should-fix 1).
+        quarter_rating_state_closed: 'quarter_closed',
       },
     );
   }
@@ -461,13 +476,13 @@ function refusalDetails(
     ...refusals.entries.map((one, index) => ({
       path: `entries.${String(index)}`,
       code: 'rating_entry',
-      message: `${one.branchName} · ${String(one.number)} · ${one.unit.name} · ${one.subject.names.en}`,
+      message: `${one.branchName} · ${String(one.number)} · ${one.unit.name}`,
       recordId: one.journalId,
     })),
     ...refusals.groups.map((one, index) => ({
       path: `groups.${String(index)}`,
       code: 'rating_group',
-      message: `${one.branchName} · ${one.name} · ${one.subject.names.en}`,
+      message: `${one.branchName} · ${one.name}`,
       recordId: one.groupId,
     })),
   ];

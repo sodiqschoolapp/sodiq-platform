@@ -446,12 +446,8 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },
-  // Task 9.4f: the distribution without the rating exam and its preview, as the usual one.
+  // Task 9.4f: the distribution without the rating exam, as the usual one.
   'PUT /api/setup/subjects/:id/quarter-weights/:quarterId/primary': {
-    branch: 'request',
-    roles: SUBJECT_WRITERS,
-  },
-  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview': {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },

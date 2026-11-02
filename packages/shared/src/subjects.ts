@@ -113,7 +113,7 @@ export type QuarterWeights = z.infer<typeof quarterWeightsSchema>;
  * homework, totalling 100.
  */
 export const primaryQuarterWeightsSchema = z
-  .object({
+  .strictObject({
     attendance: weightSchema,
     classwork: weightSchema,
     homework: weightSchema,

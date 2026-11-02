@@ -1912,7 +1912,7 @@ export class TimetablePublish {
       (quarter) => quarter.end_date !== null && quarter.end_date >= startsOn,
     );
     // Task 9.4f: the subjects of the load taught in a class or group of grades 0–4 (every grade of
-    // the unit within 0–4, as `journal_primary` reads a journal), the distributions without the
+    // the unit within 0–4: `unit_primary`, the rule `journal_primary` reads), the distributions without the
     // rating exam and the quarters whose state is off.
     const primaryUnits = await sql<{ subject_id: string }>`
       select distinct r.subject_id
@@ -1921,12 +1921,7 @@ export class TimetablePublish {
         ${rows.map((row) => row.class_id)}::uuid[],
         ${rows.map((row) => row.group_id)}::uuid[]
       ) as r(subject_id, class_id, group_id)
-      where (
-        select coalesce(bool_and(c.grade <= 4), false)
-        from classes c
-        where c.id = r.class_id
-          or c.id in (select gc.class_id from group_classes gc where gc.group_id = r.group_id)
-      )
+      where unit_primary(r.class_id, r.group_id)
     `.execute(transaction);
     const primarySubjects = new Set(primaryUnits.rows.map((row) => row.subject_id));
     const [primary, offRows] = await Promise.all([

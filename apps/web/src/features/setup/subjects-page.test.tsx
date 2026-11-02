@@ -581,10 +581,6 @@ describe('the subjects page', () => {
         quarter(3, RATED),
         quarter(4, RATED),
       ],
-      extra: {
-        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary/preview`]: () =>
-          json({ reasonRequired: false, quarters: [] }),
-      },
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });

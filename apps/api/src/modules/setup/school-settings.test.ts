@@ -291,6 +291,29 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
       ),
     );
     expect([date.status, codeOf(date)]).toEqual([409, 'rating_exam_off']);
+    // So is an entry at the entry route ("exempt" is the Academic Vice Principal's).
+    const exempt = await at(() =>
+      t.post(
+        `/api/journal/journals/${london.journal}/rating/${london.quarters[0] ?? ''}/entries`,
+        london.s.branch,
+        { studentId: london.student, entry: { kind: 'exempt' }, reason: null, version: null },
+        vice,
+      ),
+    );
+    expect([exempt.status, codeOf(exempt)]).toEqual([409, 'rating_exam_off']);
+    // Without its distribution without the rating exam in quarter 1, the closing checklist
+    // blocks 1 London's journal: its weights are missing (`07`, Closing).
+    await t.database.migrator
+      .deleteFrom('subject_quarter_primary_weights')
+      .where('branch_id', '=', london.s.branch)
+      .where('quarter_id', '=', london.quarters[0] ?? '')
+      .execute();
+    const blocked = await checklistOf(london.s.branch, london.quarters[0] ?? '');
+    expect(
+      blocked.items
+        .filter((item) => item.kind === 'weights_missing')
+        .map((item) => item.journal?.id),
+    ).toContain(london.journal);
   });
 
   it('previews the grades that change, writes nothing, then changes with a reason and an audit entry', async () => {
@@ -461,6 +484,216 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
     expect([created.status, codeOf(created)]).toEqual([409, 'groups_rating_primary_span']);
   });
 
+  it('refuses a class added to a group and a restore that make grades 4 and 5 while the setting is off', async () => {
+    const branch = await t.newBranch();
+    const year = await load.classes.year(branch);
+    const fourth = await load.classes.schoolClass(branch, year, { grade: 4 });
+    const fifth = await load.classes.schoolClass(branch, year, { grade: 5 });
+    const created = await at(() =>
+      t.post('/api/groups', branch, {
+        academicYearId: year,
+        subjectId: mathematics,
+        classIds: [fourth],
+        name: 'Maths 4',
+        language: 'uz',
+        maxSize: 20,
+      }),
+    );
+    const group = ok(created) as { id: string; version: number };
+    const edited = await at(() =>
+      t.put(`/api/groups/${group.id}`, branch, {
+        classIds: [fourth, fifth],
+        name: 'Maths 4',
+        language: 'uz',
+        maxSize: 20,
+        version: group.version,
+      }),
+    );
+    expect([edited.status, codeOf(edited)]).toEqual([409, 'groups_rating_primary_span']);
+    // Made while the setting was on, archived, then restored after it was turned off.
+    ok(await change({ on: true, reason: 'Groups of grades 4 and 5' }));
+    const both = ok(
+      await at(() =>
+        t.post('/api/groups', branch, {
+          academicYearId: year,
+          subjectId: mathematics,
+          classIds: [fourth, fifth],
+          name: 'Maths 4-5',
+          language: 'uz',
+          maxSize: 20,
+        }),
+      ),
+    ) as { id: string };
+    // While it stands, the turn-off is refused at the route and the group is named.
+    const shownGroups = ratingExamsPrimaryPreviewSchema.parse(ok(await preview({ on: false })));
+    expect(shownGroups.groups.map((one) => one.groupId)).toEqual([both.id]);
+    const refusedOff = await change({ on: false, reason: 'Back to the default' });
+    expect([refusedOff.status, codeOf(refusedOff)]).toEqual([409, 'rating_primary_refused']);
+    expect(
+      (refusedOff.body as { error: { details: { recordId?: string }[] } }).error.details.map(
+        (one) => one.recordId,
+      ),
+    ).toEqual([both.id]);
+    ok(await at(() => t.post(`/api/groups/${both.id}/archive`, branch)));
+    ok(await change({ on: false, reason: 'Back to the default' }));
+    const restored = await at(() =>
+      t.post(`/api/groups/${both.id}/restore`, branch, { confirmMixedLanguage: false }),
+    );
+    expect([restored.status, codeOf(restored)]).toEqual([409, 'groups_rating_primary_span']);
+  });
+
+  it('refuses turning the rating exam on in one branch while another branch has a group of grades 4 and 5', async () => {
+    const plain = await load.classes.subject({ grades: [4, 5], name: 'Geometry' });
+    const elsewhere = await t.newBranch();
+    const otherYear = await load.classes.year(elsewhere);
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      const row = await transaction
+        .insertInto('groups')
+        .values({
+          branch_id: elsewhere,
+          academic_year_id: otherYear,
+          subject_id: plain,
+          name: 'Geometry 4-5',
+          language: 'uz',
+          max_size: 20,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      for (const grade of [4, 5]) {
+        const classId = await load.classes.schoolClass(elsewhere, otherYear, { grade });
+        await transaction
+          .insertInto('group_classes')
+          .values({ branch_id: elsewhere, group_id: row.id, class_id: classId })
+          .execute();
+      }
+    });
+    const branch = await t.newBranch();
+    await load.classes.year(branch);
+    const subject = await t.database.migrator
+      .selectFrom('subjects')
+      .selectAll()
+      .where('id', '=', plain)
+      .executeTakeFirstOrThrow();
+    const edited = await at(() =>
+      t.put(`/api/setup/subjects/${plain}`, branch, {
+        names: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en },
+        departmentId: subject.department_id,
+        grades: subject.grades,
+        colour: subject.colour,
+        journalType: 'graded',
+        ratingExam: true,
+        groupSubject: subject.group_subject,
+        languageRule: subject.language_rule,
+        demanding: subject.demanding,
+        daily: { attendance: 20, classwork: 40, homework: 40 },
+        switchesFrom: 1,
+      }),
+    );
+    expect([edited.status, codeOf(edited)]).toEqual([409, 'groups_rating_primary_span']);
+  });
+
+  it('refuses at the route a turn-off that met an entry written at the same moment', async () => {
+    const london = await scene(1);
+    ok(await change({ on: true, reason: 'Turned on' }));
+    const quarter = london.quarters[0] ?? '';
+    const vice = await viceOf(london.s.branch);
+    ok(
+      await at(() =>
+        t.put(
+          `/api/journal/journals/${london.journal}/rating/${quarter}/date`,
+          london.s.branch,
+          { date: '2026-10-12', version: null },
+          vice,
+        ),
+      ),
+    );
+    const exam = await t.database.migrator
+      .selectFrom('journal_rating_exams')
+      .select('id')
+      .where('journal_id', '=', london.journal)
+      .executeTakeFirstOrThrow();
+    const writer = await load.classes.account();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let written: () => void = () => undefined;
+    const ready = new Promise<void>((resolve) => {
+      written = resolve;
+    });
+    t.clock.set(MOMENT);
+    // The held side: an entry as the entry route writes it, its quarter's state held `for share`.
+    const heldSide = t.app.get(Transactions).run([london.s.branch], async (transaction) => {
+      await t.app.get(Audit).record(transaction, {
+        branchId: london.s.branch,
+        actorId: writer,
+        action: 'journal.rating_entry',
+      });
+      await transaction
+        .insertInto('journal_rating_entries')
+        .values({
+          branch_id: london.s.branch,
+          rating_exam_id: exam.id,
+          student_id: london.student,
+          kind: 'score',
+          score: 70,
+          version: 1,
+          changed_by: writer,
+          changed_how: 'entry',
+          changed_at: new Date(MOMENT),
+        })
+        .execute();
+      written();
+      await gate;
+    });
+    await ready;
+    // The route's request, started now: its read of the entries sees none, and its update waits.
+    const sent = new Promise<Response>((resolve, reject) => {
+      request(t.kit.server)
+        .put(CHANGE)
+        .set('Cookie', t.admin)
+        .send({ on: false, reason: 'Turned off' })
+        .then(resolve, reject);
+    });
+    for (let tries = 0; tries < 300; tries += 1) {
+      const found = await sql<{ waiting: number }>`
+        select count(*)::int as waiting
+        from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where a.datname = current_database() and not l.granted
+      `.execute(t.database.migrator);
+      if ((found.rows[0]?.waiting ?? 0) > 0) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    release();
+    await heldSide;
+    const refused = await sent;
+    t.clock.set(START);
+    expect([refused.status, codeOf(refused)]).toEqual([409, 'rating_primary_refused']);
+    expect(await stateOf(quarter)).toBe(true);
+    // Cleared, so the next tests start with the setting off.
+    await at(() =>
+      t.app.get(Transactions).run([london.s.branch], async (transaction) => {
+        await t.app.get(Audit).record(transaction, {
+          branchId: london.s.branch,
+          actorId: writer,
+          action: 'journal.rating_entry',
+        });
+        await transaction
+          .updateTable('journal_rating_entries')
+          .set({
+            kind: null,
+            score: null,
+            reason: 'Entered by mistake',
+            changed_by: writer,
+            changed_how: 'entry',
+          })
+          .where('rating_exam_id', '=', exam.id)
+          .execute();
+      }),
+    );
+    ok(await change({ on: false, reason: 'Turned off' }));
+  });
+
   it('refuses a class moved from grade 5 into 4 at its route while a closed quarter has the state off', async () => {
     const branch = await t.newBranch();
     const year = await load.classes.year(branch);
@@ -536,8 +769,23 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
       }),
     );
     expect([refused.status, codeOf(refused)]).toEqual([409, 'primary_weights_no_rating']);
+    // A change of the stored one needs a reason, as the usual one (9.1).
+    const bare = await at(() =>
+      t.put(path, london.s.branch, { attendance: 30, classwork: 40, homework: 30 }),
+    );
+    expect([bare.status, codeOf(bare)]).toEqual([409, 'reason_required']);
+    ok(
+      await at(() =>
+        t.put(path, london.s.branch, {
+          attendance: 30,
+          classwork: 40,
+          homework: 30,
+          reason: 'Agreed again',
+        }),
+      ),
+    );
     const [entry] = (await t.entries('subject_quarter_primary_weights.set', mathematics)).slice(-1);
-    expect(entry?.new_value).toEqual({ weights: { attendance: 20, classwork: 40, homework: 40 } });
+    expect(entry?.new_value).toEqual({ weights: { attendance: 30, classwork: 40, homework: 30 } });
   });
 
   it('lets the Principal and the Academic Vice Principal read the setting, and refuses them the change', async () => {
