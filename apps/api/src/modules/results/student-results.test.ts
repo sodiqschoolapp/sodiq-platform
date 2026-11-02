@@ -25,6 +25,7 @@ import { MembersKit, type MemberRow } from '../../testing/members-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES, gradeOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -112,7 +113,10 @@ describe('the student results (08, Student results)', () => {
     rows: readonly Omit<MemberRow, 'branch' | 'studentId'>[],
   ): Promise<string> => {
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await kit.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await kit.student(branch, {
+      startsOn: '2026-09-01',
+      grade: rows[0] === undefined ? 7 : await gradeOf(t.database.migrator, rows[0].classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: name.first, last_name: name.last })
@@ -150,10 +154,12 @@ describe('the student results (08, Student results)', () => {
   async function scene(
     accounts?: { readonly teacher?: string; readonly spare?: string },
     secondSubject = false,
+    grade = 7,
   ) {
     const s = await publishedScene(t, load, {
       graded: true,
       secondSubject,
+      grade,
       ...(accounts === undefined ? {} : { accounts }),
     });
     const [l12, l19, l26] = await lessonsOf(s.classId);
@@ -674,56 +680,63 @@ describe('the student results (08, Student results)', () => {
     });
   });
 
-  it('answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class', async () => {
-    const owner = await account();
-    const s = await scene({ teacher: owner.account.id }, true);
-    if (s.scene.secondSubject === null) throw new Error('A second subject.');
-    // Shoira of the other class: maths with the other teacher, the second subject (attendance
-    // only, Monday, the second lesson) with the owner of the first class's maths.
-    const shoira = await student(s.scene.branch, { first: 'Shoira', last: 'Nazarova' }, [
-      { classId: s.scene.otherClass, from: '2026-09-01' },
-    ]);
-    const q1 = await quarterOf(s.scene, 1);
-    await as(owner, [{ role: 'teacher', branchId: s.scene.branch }], async (get) => {
-      const base = `/api/results/students/${shoira}`;
-      expect(resultsOf(await get(s.scene.branch, base)).subjects).toEqual([]);
-      const attendance = studentAttendanceSchema.parse(
-        (await get(s.scene.branch, `${base}/attendance`)).body,
-      );
-      expect(attendance.subjects.map((one) => one.subject.id)).toEqual([s.scene.secondSubject]);
-      expect(
-        studentResultTabsSchema.parse((await get(s.scene.branch, `${base}/tabs`)).body),
-      ).toEqual({ results: false, attendance: true });
-      const maths = await get(
-        s.scene.branch,
-        `${base}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
-      );
-      expect(maths.status, JSON.stringify(maths.body)).toBe(403);
-      expect(codeOf(maths)).toBe('permission_denied');
-    });
+  it.each(OWN_CLASS_CASES)(
+    'answers a Teacher who teaches the student another subject only that subject, and the class %s every subject of the class',
+    async (_who, grade) => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id }, true, grade);
+      if (s.scene.secondSubject === null) throw new Error('A second subject.');
+      // Shoira of the other class: maths with the other teacher, the second subject (attendance
+      // only, Monday, the second lesson) with the owner of the first class's maths.
+      const shoira = await student(s.scene.branch, { first: 'Shoira', last: 'Nazarova' }, [
+        { classId: s.scene.otherClass, from: '2026-09-01' },
+      ]);
+      const q1 = await quarterOf(s.scene, 1);
+      await as(owner, [{ role: 'teacher', branchId: s.scene.branch }], async (get) => {
+        const base = `/api/results/students/${shoira}`;
+        expect(resultsOf(await get(s.scene.branch, base)).subjects).toEqual([]);
+        const attendance = studentAttendanceSchema.parse(
+          (await get(s.scene.branch, `${base}/attendance`)).body,
+        );
+        expect(attendance.subjects.map((one) => one.subject.id)).toEqual([s.scene.secondSubject]);
+        expect(
+          studentResultTabsSchema.parse((await get(s.scene.branch, `${base}/tabs`)).body),
+        ).toEqual({ results: false, attendance: true });
+        const maths = await get(
+          s.scene.branch,
+          `${base}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
+        );
+        expect(maths.status, JSON.stringify(maths.body)).toBe(403);
+        expect(codeOf(maths)).toBe('permission_denied');
+      });
 
-    // The Tutor of the first class reads its journal whole: Results, Attendance and the works.
-    const tutor = await account();
-    await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
-    await as(tutor, [], async (get) => {
-      const base = `/api/results/students/${s.aziz}`;
-      expect(
-        resultsOf(await get(s.scene.branch, base)).subjects.map((one) => one.subject.id),
-      ).toEqual([s.scene.subject]);
-      expect(
-        studentResultTabsSchema.parse((await get(s.scene.branch, `${base}/tabs`)).body),
-      ).toEqual({ results: true, attendance: true });
-      const trace = studentResultLessonsSchema.parse(
-        (await get(s.scene.branch, `${base}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`))
-          .body,
-      );
-      expect(trace.reading).toBe('whole');
-      expect(trace.lessons[0]?.classworks.map((one) => one.score)).toEqual([9]);
-      // The other class's student: no record of the Tutor's.
-      expect((await get(s.scene.branch, `/api/results/students/${shoira}`)).status).toBe(403);
-    });
-  });
+      // The Tutor of the first class reads its journal whole: Results, Attendance and the works.
+      const tutor = await account();
+      await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
+      await as(tutor, [], async (get) => {
+        const base = `/api/results/students/${s.aziz}`;
+        expect(
+          resultsOf(await get(s.scene.branch, base)).subjects.map((one) => one.subject.id),
+        ).toEqual([s.scene.subject]);
+        expect(
+          studentResultTabsSchema.parse((await get(s.scene.branch, `${base}/tabs`)).body),
+        ).toEqual({ results: true, attendance: true });
+        const trace = studentResultLessonsSchema.parse(
+          (
+            await get(
+              s.scene.branch,
+              `${base}/lessons?subjectId=${s.scene.subject}&quarterId=${q1}`,
+            )
+          ).body,
+        );
+        expect(trace.reading).toBe('whole');
+        expect(trace.lessons[0]?.classworks.map((one) => one.score)).toEqual([9]);
+        // The other class's student: no record of the Tutor's.
+        expect((await get(s.scene.branch, `/api/results/students/${shoira}`)).status).toBe(403);
+      });
+    },
+  );
 
   it('reads a subject role only through its assignments in the branch of the request', async () => {
     const s = await scene();

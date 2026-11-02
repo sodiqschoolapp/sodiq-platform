@@ -312,7 +312,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/results/students/:id': [
     TUTOR_OWN_CLASS(
       RESULTS_RULE_TUTOR,
-      `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class`,
+      `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class %s every subject of the class`,
       ...RESULTS_TUTOR_TESTS,
     ),
     ...studentResultLines(RESULTS_HEAD_TESTS, TEACHER_TAUGHT(...RESULTS_HEAD_TESTS)).slice(1),
@@ -334,7 +334,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'own_lessons',
       rule: '02, Teacher: journals of own classes and groups (task 9.1, decision 4)',
       refusedIn: [
-        `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class`,
+        `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class %s every subject of the class`,
       ],
     },
   ),

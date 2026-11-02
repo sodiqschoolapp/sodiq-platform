@@ -29,6 +29,7 @@ import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES, gradeOf } from '../../testing/own-class-cases.js';
 
 /**
  * Monday 26 October 2026, 10:00 in Tashkent: the maths of both classes (08:00) and the second
@@ -151,7 +152,10 @@ describe('the home pages (08, Home pages by role)', () => {
     startsOn = '2026-09-01',
   ): Promise<string> => {
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await kit.student(branch, { startsOn, grade: 7 });
+    const id = await kit.student(branch, {
+      startsOn,
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: first, last_name: 'Karimov' })
@@ -197,8 +201,12 @@ describe('the home pages (08, Home pages by role)', () => {
    * - Gulnora present at both; Hamid present at maths and absent (0) at the second subject.
    * The branch threshold is 65.
    */
-  async function scene(input: { cancelSecond?: boolean } = {}) {
-    const s = await publishedScene(t, load, { graded: true, secondSubject: true });
+  async function scene(input: { cancelSecond?: boolean; grade?: number } = {}) {
+    const s = await publishedScene(t, load, {
+      graded: true,
+      secondSubject: true,
+      grade: input.grade ?? 7,
+    });
     const [mathsA] = await lessonsOn(s.classId, '2026-10-26');
     const [mathsB, secondB] = await lessonsOn(s.otherClass, '2026-10-26');
     if (mathsA === undefined || mathsB === undefined || secondB === undefined) {
@@ -291,170 +299,182 @@ describe('the home pages (08, Home pages by role)', () => {
     await t.close();
   });
 
-  describe('attendance today (edge/journal, Attendance figures)', () => {
-    let c: Awaited<ReturnType<typeof scene>>;
+  // Task 9.4e: once with the Tutor of a class of grade 7, once with the Class teacher of grade 1.
+  describe.each(OWN_CLASS_CASES)(
+    'attendance today (edge/journal, Attendance figures), with a %s',
+    (_who, grade) => {
+      let c: Awaited<ReturnType<typeof scene>>;
 
-    beforeAll(async () => {
-      c = await scene();
-    });
+      beforeAll(async () => {
+        c = await scene({ grade });
+      });
 
-    it('gives a Tutor the own class: the day, the week, below the threshold and who is absent now', async () => {
-      const tutor = await account();
-      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-      const answer = await as(tutor, c.s.branch, [], async ({ get }) =>
-        attendanceOf(await get(ATTENDANCE)),
-      );
-      expect(answer).toMatchObject({ date: '2026-10-26', weekFrom: '2026-10-26', threshold: 65 });
-      // The own class only.
-      expect(answer.classes.map((one) => one.class.id)).toEqual([c.s.classId]);
-      const own = classOf(answer, c.s.classId);
-      // Present or late over marked: Botir, Charos and Farrux (the lesson left as attended under
-      // his exemption counts) of those and Anvar and Jasur; Dilnoza unmarked; Erkin exempt.
-      expect(own?.day).toEqual({ attended: 3, marked: 5, unmarked: 1, exempt: 1, percent: 60 });
-      expect(own?.week).toEqual(own?.day);
-      expect(own?.below).toBe(true);
-      // Anvar's latest marked lesson is 0; Jasur's too, but he is exempt now.
-      expect(own?.absentNow?.map((one) => one.student.id)).toEqual([c.a.anvar]);
-      expect(own?.absentNow?.[0]?.since).toBe(new Date('2026-10-26T08:00:00+05:00').toISOString());
-    });
-
-    it('gives the Head Tutor and the Spiritual Vice Principal every class, with no names (review correction 3)', async () => {
-      for (const role of ['head_tutor', 'spiritual_vice_principal'] as const) {
-        const answer = await as(
-          await account(),
-          c.s.branch,
-          [{ role, branchId: c.s.branch }],
-          async ({ get }) => attendanceOf(await get(ATTENDANCE)),
+      it('gives a Tutor the own class: the day, the week, below the threshold and who is absent now', async () => {
+        const tutor = await account();
+        await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+        await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+        const answer = await as(tutor, c.s.branch, [], async ({ get }) =>
+          attendanceOf(await get(ATTENDANCE)),
         );
-        expect(answer.classes.map((one) => one.class.id).sort(), role).toEqual(
+        expect(answer).toMatchObject({ date: '2026-10-26', weekFrom: '2026-10-26', threshold: 65 });
+        // The own class only.
+        expect(answer.classes.map((one) => one.class.id)).toEqual([c.s.classId]);
+        const own = classOf(answer, c.s.classId);
+        // Present or late over marked: Botir, Charos and Farrux (the lesson left as attended under
+        // his exemption counts) of those and Anvar and Jasur; Dilnoza unmarked; Erkin exempt.
+        expect(own?.day).toEqual({ attended: 3, marked: 5, unmarked: 1, exempt: 1, percent: 60 });
+        expect(own?.week).toEqual(own?.day);
+        expect(own?.below).toBe(true);
+        // Anvar's latest marked lesson is 0; Jasur's too, but he is exempt now.
+        expect(own?.absentNow?.map((one) => one.student.id)).toEqual([c.a.anvar]);
+        expect(own?.absentNow?.[0]?.since).toBe(
+          new Date('2026-10-26T08:00:00+05:00').toISOString(),
+        );
+      });
+
+      it('gives the Head Tutor and the Spiritual Vice Principal every class, with no names (review correction 3)', async () => {
+        for (const role of ['head_tutor', 'spiritual_vice_principal'] as const) {
+          const answer = await as(
+            await account(),
+            c.s.branch,
+            [{ role, branchId: c.s.branch }],
+            async ({ get }) => attendanceOf(await get(ATTENDANCE)),
+          );
+          expect(answer.classes.map((one) => one.class.id).sort(), role).toEqual(
+            [c.s.classId, c.s.otherClass].sort(),
+          );
+          expect(
+            answer.classes.every((one) => one.absentNow === null),
+            role,
+          ).toBe(true);
+          const other = classOf(answer, c.s.otherClass);
+          // Gulnora 1 and 1, Hamid 1 and 0: 3 of 4, above 65.
+          expect(other?.day, role).toEqual({
+            attended: 3,
+            marked: 4,
+            unmarked: 0,
+            exempt: 0,
+            percent: 75,
+          });
+          expect(other?.below, role).toBe(false);
+          // One ratio over every cell: 6 of 9, 66.67 shown 67.
+          expect(answer.total, role).toEqual({
+            attended: 6,
+            marked: 9,
+            unmarked: 1,
+            exempt: 1,
+            percent: 67,
+          });
+        }
+      });
+
+      it('names who is absent now in every class to the Super Admin; latest marked lesson, not the first', async () => {
+        const answer = await as(await superAdmin(), c.s.branch, [], async ({ get }) =>
+          attendanceOf(await get(ATTENDANCE)),
+        );
+        // The branch's two classes, no class of the other branches of this file (`CLAUDE.md`,
+        // Branch on every row), though the Super Admin's transaction holds every branch.
+        expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
           [c.s.classId, c.s.otherClass].sort(),
         );
-        expect(
-          answer.classes.every((one) => one.absentNow === null),
-          role,
-        ).toBe(true);
-        const other = classOf(answer, c.s.otherClass);
-        // Gulnora 1 and 1, Hamid 1 and 0: 3 of 4, above 65.
-        expect(other?.day, role).toEqual({
-          attended: 3,
-          marked: 4,
+        // Hamid: present at 08:00, absent at 08:55. Gulnora's 1 then 1 is not.
+        expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
+          c.b.hamid,
+        ]);
+        expect(classOf(answer, c.s.classId)?.absentNow?.map((one) => one.student.id)).toEqual([
+          c.a.anvar,
+        ]);
+      });
+
+      it('names who is absent now only in the own class of a Head Tutor who is also its Tutor (review should-fix 3)', async () => {
+        const both = await account();
+        await load.classes.person(c.s.branch, ['uz'], { accountId: both.account.id });
+        await load.tutorOf(c.s.branch, c.s.otherClass, both.account.id);
+        const answer = await as(
+          both,
+          c.s.branch,
+          [{ role: 'head_tutor', branchId: c.s.branch }],
+          async ({ get }) => attendanceOf(await get(ATTENDANCE)),
+        );
+        expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
+          [c.s.classId, c.s.otherClass].sort(),
+        );
+        expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
+          c.b.hamid,
+        ]);
+        expect(classOf(answer, c.s.classId)?.absentNow).toBeNull();
+      });
+
+      it('takes no date and no other field: today only (permission review should-fix 2)', async () => {
+        const response = await as(await superAdmin(), c.s.branch, [], ({ get }) =>
+          get(`${ATTENDANCE}?date=2026-10-19`),
+        );
+        expect(response.status).toBe(400);
+      });
+
+      it('reads the day in branch time: at 00:30 on Tuesday the day is empty and the week holds Monday', async () => {
+        const reader = await account();
+        let given = false;
+        const read = (moment: string) =>
+          as(
+            reader,
+            c.s.branch,
+            given ? [] : [{ role: 'head_tutor', branchId: c.s.branch }],
+            async ({ get }) => {
+              given = true;
+              return attendanceOf(await get(ATTENDANCE));
+            },
+            moment,
+          );
+        const late = await read('2026-10-26T23:30:00+05:00');
+        expect(late.date).toBe('2026-10-26');
+        expect(classOf(late, c.s.classId)?.day.percent).toBe(60);
+        const tuesday = await read('2026-10-27T00:30:00+05:00');
+        expect(tuesday).toMatchObject({ date: '2026-10-27', weekFrom: '2026-10-26' });
+        const own = classOf(tuesday, c.s.classId);
+        expect(own?.day).toEqual({ attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null });
+        expect(own?.week.percent).toBe(60);
+        expect(own?.below).toBe(false);
+      });
+
+      it('leaves a cancelled lesson out of the cells', async () => {
+        const cancelled = await scene({ cancelSecond: true });
+        const answer = await as(await superAdmin(), cancelled.s.branch, [], async ({ get }) =>
+          attendanceOf(await get(ATTENDANCE)),
+        );
+        const other = classOf(answer, cancelled.s.otherClass);
+        // The maths alone: Gulnora and Hamid present; nothing unmarked from the cancelled lesson.
+        expect(other?.day).toEqual({
+          attended: 2,
+          marked: 2,
           unmarked: 0,
           exempt: 0,
-          percent: 75,
+          percent: 100,
         });
-        expect(other?.below, role).toBe(false);
-        // One ratio over every cell: 6 of 9, 66.67 shown 67.
-        expect(answer.total, role).toEqual({
-          attended: 6,
-          marked: 9,
-          unmarked: 1,
-          exempt: 1,
-          percent: 67,
-        });
-      }
-    });
+        expect(other?.absentNow).toEqual([]);
+      });
 
-    it('names who is absent now in every class to the Super Admin; latest marked lesson, not the first', async () => {
-      const answer = await as(await superAdmin(), c.s.branch, [], async ({ get }) =>
-        attendanceOf(await get(ATTENDANCE)),
-      );
-      // The branch's two classes, no class of the other branches of this file (`CLAUDE.md`,
-      // Branch on every row), though the Super Admin's transaction holds every branch.
-      expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
-        [c.s.classId, c.s.otherClass].sort(),
-      );
-      // Hamid: present at 08:00, absent at 08:55. Gulnora's 1 then 1 is not.
-      expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
-        c.b.hamid,
-      ]);
-      expect(classOf(answer, c.s.classId)?.absentNow?.map((one) => one.student.id)).toEqual([
-        c.a.anvar,
-      ]);
-    });
-
-    it('names who is absent now only in the own class of a Head Tutor who is also its Tutor (review should-fix 3)', async () => {
-      const both = await account();
-      await load.classes.person(c.s.branch, ['uz'], { accountId: both.account.id });
-      await load.tutorOf(c.s.branch, c.s.otherClass, both.account.id);
-      const answer = await as(
-        both,
-        c.s.branch,
-        [{ role: 'head_tutor', branchId: c.s.branch }],
-        async ({ get }) => attendanceOf(await get(ATTENDANCE)),
-      );
-      expect(answer.classes.map((one) => one.class.id).sort()).toEqual(
-        [c.s.classId, c.s.otherClass].sort(),
-      );
-      expect(classOf(answer, c.s.otherClass)?.absentNow?.map((one) => one.student.id)).toEqual([
-        c.b.hamid,
-      ]);
-      expect(classOf(answer, c.s.classId)?.absentNow).toBeNull();
-    });
-
-    it('takes no date and no other field: today only (permission review should-fix 2)', async () => {
-      const response = await as(await superAdmin(), c.s.branch, [], ({ get }) =>
-        get(`${ATTENDANCE}?date=2026-10-19`),
-      );
-      expect(response.status).toBe(400);
-    });
-
-    it('reads the day in branch time: at 00:30 on Tuesday the day is empty and the week holds Monday', async () => {
-      const reader = await account();
-      let given = false;
-      const read = (moment: string) =>
-        as(
-          reader,
-          c.s.branch,
-          given ? [] : [{ role: 'head_tutor', branchId: c.s.branch }],
-          async ({ get }) => {
-            given = true;
-            return attendanceOf(await get(ATTENDANCE));
+      it('refuses the roles of no home row that reads it (403), each with the role in the branch', async () => {
+        const refused: Omit<Held, 'validFrom'>[] = [
+          { role: 'teacher', branchId: c.s.branch },
+          {
+            role: 'head_teacher',
+            branchId: c.s.branch,
+            subjectIds: [await load.classes.subject({ grades: [7] })],
           },
-          moment,
-        );
-      const late = await read('2026-10-26T23:30:00+05:00');
-      expect(late.date).toBe('2026-10-26');
-      expect(classOf(late, c.s.classId)?.day.percent).toBe(60);
-      const tuesday = await read('2026-10-27T00:30:00+05:00');
-      expect(tuesday).toMatchObject({ date: '2026-10-27', weekFrom: '2026-10-26' });
-      const own = classOf(tuesday, c.s.classId);
-      expect(own?.day).toEqual({ attended: 0, marked: 0, unmarked: 0, exempt: 0, percent: null });
-      expect(own?.week.percent).toBe(60);
-      expect(own?.below).toBe(false);
-    });
-
-    it('leaves a cancelled lesson out of the cells', async () => {
-      const cancelled = await scene({ cancelSecond: true });
-      const answer = await as(await superAdmin(), cancelled.s.branch, [], async ({ get }) =>
-        attendanceOf(await get(ATTENDANCE)),
-      );
-      const other = classOf(answer, cancelled.s.otherClass);
-      // The maths alone: Gulnora and Hamid present; nothing unmarked from the cancelled lesson.
-      expect(other?.day).toEqual({ attended: 2, marked: 2, unmarked: 0, exempt: 0, percent: 100 });
-      expect(other?.absentNow).toEqual([]);
-    });
-
-    it('refuses the roles of no home row that reads it (403), each with the role in the branch', async () => {
-      const refused: Omit<Held, 'validFrom'>[] = [
-        { role: 'teacher', branchId: c.s.branch },
-        {
-          role: 'head_teacher',
-          branchId: c.s.branch,
-          subjectIds: [await load.classes.subject({ grades: [7] })],
-        },
-        { role: 'principal', branchId: c.s.branch },
-        { role: 'academic_vice_principal', branchId: c.s.branch },
-      ];
-      for (const held of refused) {
-        const response = await as(await account(), c.s.branch, [held], ({ get }) =>
-          get(ATTENDANCE),
-        );
-        expect(response.status, held.role).toBe(403);
-        expect(codeOf(response), held.role).toBe('permission_denied');
-      }
-    });
-  });
+          { role: 'principal', branchId: c.s.branch },
+          { role: 'academic_vice_principal', branchId: c.s.branch },
+        ];
+        for (const held of refused) {
+          const response = await as(await account(), c.s.branch, [held], ({ get }) =>
+            get(ATTENDANCE),
+          );
+          expect(response.status, held.role).toBe(403);
+          expect(codeOf(response), held.role).toBe('permission_denied');
+        }
+      });
+    },
+  );
 
   // `edge/journal`, "Daily attendance percent of a class": "over class and group lessons"
   // (spec review of the code, must-fix 2).
