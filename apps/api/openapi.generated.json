@@ -117405,13 +117405,13 @@
                   "gradeFrom": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "gradeTo": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "dayTemplateId": {
@@ -123875,13 +123875,13 @@
                           "gradeFrom": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "gradeTo": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "dayTemplateId": {
@@ -131150,13 +131150,13 @@
                   "gradeFrom": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "gradeTo": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "dayTemplateId": {
@@ -133396,13 +133396,13 @@
                           "gradeFrom": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "gradeTo": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "dayTemplateId": {
@@ -133683,13 +133683,13 @@
                           "gradeFrom": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "gradeTo": {
                             "nullable": true,
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "dayTemplateId": {
@@ -139047,13 +139047,13 @@
                   "gradeFrom": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "gradeTo": {
                     "nullable": true,
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "dayTemplateId": {
@@ -166095,7 +166095,7 @@
                             "type": "array",
                             "items": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -168065,7 +168065,7 @@
                     "type": "array",
                     "items": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     }
                   },
@@ -168204,7 +168204,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -172032,7 +172032,7 @@
                     "type": "array",
                     "items": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     }
                   },
@@ -172171,7 +172171,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -174176,7 +174176,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -176149,7 +176149,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -178122,7 +178122,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -402501,7 +402501,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             },
@@ -443003,7 +443003,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "pattern": "^(?:[1-9]|1[01])$"
+              "pattern": "^(?:[0-9]|1[01])$"
             }
           },
           {
@@ -443161,7 +443161,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "language": {
@@ -443274,7 +443274,7 @@
                             "type": "array",
                             "items": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -445109,7 +445109,7 @@
                   },
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "language": {
@@ -445220,7 +445220,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -447233,7 +447233,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -449270,7 +449270,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -451304,7 +451304,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -453338,7 +453338,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -455453,7 +455453,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -457572,7 +457572,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -459616,7 +459616,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -461660,7 +461660,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -472103,7 +472103,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "pattern": "^(?:[1-9]|1[01])$"
+              "pattern": "^(?:[0-9]|1[01])$"
             }
           },
           {
@@ -472175,7 +472175,7 @@
                             "type": "array",
                             "items": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -537758,7 +537758,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         }
@@ -592011,7 +592011,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         }
@@ -598346,7 +598346,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         }
@@ -606835,7 +606835,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "startsOn": {
@@ -606897,7 +606897,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -606942,7 +606942,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -608942,7 +608942,7 @@
                   },
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "documentType": {
@@ -609373,7 +609373,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -609435,7 +609435,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -609480,7 +609480,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -609851,7 +609851,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -609877,7 +609877,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -609991,7 +609991,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -610016,7 +610016,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -610138,7 +610138,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -610163,7 +610163,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -617853,7 +617853,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -617915,7 +617915,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -617960,7 +617960,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -618331,7 +618331,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -618357,7 +618357,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -618471,7 +618471,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -618496,7 +618496,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -618618,7 +618618,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -618643,7 +618643,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -620768,7 +620768,7 @@
                   },
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "documentType": {
@@ -620954,7 +620954,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -621016,7 +621016,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -621061,7 +621061,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -621432,7 +621432,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -621458,7 +621458,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -621572,7 +621572,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -621597,7 +621597,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -621719,7 +621719,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -621744,7 +621744,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -623906,7 +623906,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -623968,7 +623968,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -624013,7 +624013,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -624384,7 +624384,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -624410,7 +624410,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -624524,7 +624524,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -624549,7 +624549,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -624671,7 +624671,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -624696,7 +624696,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -628763,7 +628763,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -628825,7 +628825,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -628870,7 +628870,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -629241,7 +629241,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -629267,7 +629267,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -629381,7 +629381,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -629406,7 +629406,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -629528,7 +629528,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -629553,7 +629553,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -631711,7 +631711,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -631773,7 +631773,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -631818,7 +631818,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -632189,7 +632189,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -632215,7 +632215,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -632329,7 +632329,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -632354,7 +632354,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -632476,7 +632476,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -632501,7 +632501,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -634665,7 +634665,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -634727,7 +634727,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -634772,7 +634772,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -635143,7 +635143,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -635169,7 +635169,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -635283,7 +635283,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -635308,7 +635308,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -635430,7 +635430,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -635455,7 +635455,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -637565,7 +637565,7 @@
                   },
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "classId": {
@@ -637699,7 +637699,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -637761,7 +637761,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -637806,7 +637806,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -638177,7 +638177,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -638203,7 +638203,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -638317,7 +638317,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -638342,7 +638342,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -638464,7 +638464,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -638489,7 +638489,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -640647,7 +640647,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -640709,7 +640709,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -640754,7 +640754,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -641125,7 +641125,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -641151,7 +641151,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -641265,7 +641265,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -641290,7 +641290,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -641412,7 +641412,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -641437,7 +641437,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -643613,7 +643613,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -643675,7 +643675,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -643720,7 +643720,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -644091,7 +644091,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -644117,7 +644117,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -644231,7 +644231,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -644256,7 +644256,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -644378,7 +644378,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -644403,7 +644403,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -648431,7 +648431,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -648493,7 +648493,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -648538,7 +648538,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -648909,7 +648909,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -648935,7 +648935,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -649049,7 +649049,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -649074,7 +649074,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -649196,7 +649196,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -649221,7 +649221,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -651434,7 +651434,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -651496,7 +651496,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -651541,7 +651541,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -651912,7 +651912,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -651938,7 +651938,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -652052,7 +652052,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -652077,7 +652077,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -652199,7 +652199,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -652224,7 +652224,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -654382,7 +654382,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -654444,7 +654444,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -654489,7 +654489,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -654860,7 +654860,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -654886,7 +654886,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -655000,7 +655000,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -655025,7 +655025,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -655147,7 +655147,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -655172,7 +655172,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -657336,7 +657336,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -657398,7 +657398,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -657443,7 +657443,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -657814,7 +657814,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -657840,7 +657840,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -657954,7 +657954,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -657979,7 +657979,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -658101,7 +658101,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -658126,7 +658126,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -660332,7 +660332,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -660394,7 +660394,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -660439,7 +660439,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -660810,7 +660810,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -660836,7 +660836,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -660950,7 +660950,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -660975,7 +660975,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -661097,7 +661097,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -661122,7 +661122,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -663326,7 +663326,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -663388,7 +663388,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -663433,7 +663433,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -663804,7 +663804,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -663830,7 +663830,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -663944,7 +663944,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -663969,7 +663969,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -664091,7 +664091,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -664116,7 +664116,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -666265,7 +666265,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -666327,7 +666327,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -666372,7 +666372,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -666743,7 +666743,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -666769,7 +666769,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -666883,7 +666883,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -666908,7 +666908,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -667030,7 +667030,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -667055,7 +667055,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -669213,7 +669213,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -669275,7 +669275,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -669320,7 +669320,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -669691,7 +669691,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -669717,7 +669717,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -669831,7 +669831,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -669856,7 +669856,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -669978,7 +669978,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -670003,7 +670003,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -672157,7 +672157,7 @@
                                       },
                                       "grade": {
                                         "type": "integer",
-                                        "minimum": 1,
+                                        "minimum": 0,
                                         "maximum": 11
                                       },
                                       "name": {
@@ -672182,7 +672182,7 @@
                                       },
                                       "grade": {
                                         "type": "integer",
-                                        "minimum": 1,
+                                        "minimum": 0,
                                         "maximum": 11
                                       },
                                       "name": {
@@ -672286,7 +672286,7 @@
                                         },
                                         "grade": {
                                           "type": "integer",
-                                          "minimum": 1,
+                                          "minimum": 0,
                                           "maximum": 11
                                         },
                                         "name": {
@@ -672428,7 +672428,7 @@
                                   },
                                   "grade": {
                                     "type": "integer",
-                                    "minimum": 1,
+                                    "minimum": 0,
                                     "maximum": 11
                                   },
                                   "name": {
@@ -672469,7 +672469,7 @@
                                   },
                                   "grade": {
                                     "type": "integer",
-                                    "minimum": 1,
+                                    "minimum": 0,
                                     "maximum": 11
                                   },
                                   "name": {
@@ -674515,7 +674515,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -674577,7 +674577,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -674622,7 +674622,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -674993,7 +674993,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -675019,7 +675019,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -675133,7 +675133,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -675158,7 +675158,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -675280,7 +675280,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -675305,7 +675305,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -677454,7 +677454,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -677516,7 +677516,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -677561,7 +677561,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -677932,7 +677932,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -677958,7 +677958,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -678072,7 +678072,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -678097,7 +678097,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -678219,7 +678219,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -678244,7 +678244,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -682180,7 +682180,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "fromBranch": {
@@ -686034,7 +686034,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "startsOn": {
@@ -686096,7 +686096,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -686141,7 +686141,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -686512,7 +686512,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -686538,7 +686538,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "name": {
@@ -686652,7 +686652,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -686677,7 +686677,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -686799,7 +686799,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -686824,7 +686824,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -688975,7 +688975,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "fromBranch": {
@@ -690861,7 +690861,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "branch": {
@@ -690907,7 +690907,7 @@
                           "properties": {
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -690954,7 +690954,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "branch": {
@@ -691000,7 +691000,7 @@
                           "properties": {
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -691255,12 +691255,12 @@
                           "properties": {
                             "kept": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "merged": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -693378,7 +693378,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "startsOn": {
@@ -693440,7 +693440,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -693485,7 +693485,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -693856,7 +693856,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -693882,7 +693882,7 @@
                             },
                             "grade": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             },
                             "name": {
@@ -693996,7 +693996,7 @@
                                   },
                                   "grade": {
                                     "type": "integer",
-                                    "minimum": 1,
+                                    "minimum": 0,
                                     "maximum": 11
                                   },
                                   "name": {
@@ -694021,7 +694021,7 @@
                                   },
                                   "grade": {
                                     "type": "integer",
-                                    "minimum": 1,
+                                    "minimum": 0,
                                     "maximum": 11
                                   },
                                   "name": {
@@ -694143,7 +694143,7 @@
                                 },
                                 "grade": {
                                   "type": "integer",
-                                  "minimum": 1,
+                                  "minimum": 0,
                                   "maximum": 11
                                 },
                                 "name": {
@@ -694168,7 +694168,7 @@
                                 },
                                 "grade": {
                                   "type": "integer",
-                                  "minimum": 1,
+                                  "minimum": 0,
                                   "maximum": 11
                                 },
                                 "name": {
@@ -723184,7 +723184,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "startsOn": {
@@ -736690,7 +736690,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -738735,7 +738735,7 @@
                 "properties": {
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "name": {
@@ -738811,7 +738811,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -741011,7 +741011,7 @@
                                 },
                                 "grade": {
                                   "type": "integer",
-                                  "minimum": 1,
+                                  "minimum": 0,
                                   "maximum": 11
                                 },
                                 "name": {
@@ -746566,7 +746566,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -748709,7 +748709,7 @@
                 "properties": {
                   "grade": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 11
                   },
                   "name": {
@@ -748789,7 +748789,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -750956,7 +750956,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -753123,7 +753123,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -755331,7 +755331,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -759540,7 +759540,7 @@
                     },
                     "grade": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "name": {
@@ -767477,7 +767477,7 @@
                             "type": "array",
                             "items": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -767493,7 +767493,7 @@
                                 },
                                 "grade": {
                                   "type": "integer",
-                                  "minimum": 1,
+                                  "minimum": 0,
                                   "maximum": 11
                                 },
                                 "name": {
@@ -769528,7 +769528,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -769544,7 +769544,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -769633,12 +769633,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -771541,12 +771541,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -773476,7 +773476,7 @@
                                 },
                                 "grade": {
                                   "type": "integer",
-                                  "minimum": 1,
+                                  "minimum": 0,
                                   "maximum": 11
                                 },
                                 "name": {
@@ -773548,7 +773548,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -775391,7 +775391,7 @@
                     "type": "array",
                     "items": {
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     }
                   },
@@ -779181,7 +779181,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -779197,7 +779197,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -779286,12 +779286,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -781319,7 +781319,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -781335,7 +781335,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -781424,12 +781424,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -783402,7 +783402,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -783418,7 +783418,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -783507,12 +783507,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -785501,7 +785501,7 @@
                       "type": "array",
                       "items": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       }
                     },
@@ -785517,7 +785517,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "name": {
@@ -785606,12 +785606,12 @@
                             "anyOf": [
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             ]
@@ -787539,7 +787539,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -789491,7 +789491,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -791414,7 +791414,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -793337,7 +793337,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "name": {
@@ -933654,7 +933654,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             },
@@ -983386,7 +983386,7 @@
                             "type": "array",
                             "items": {
                               "type": "integer",
-                              "minimum": 1,
+                              "minimum": 0,
                               "maximum": 11
                             }
                           },
@@ -983423,7 +983423,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "language": {
@@ -985440,7 +985440,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         },
@@ -987459,7 +987459,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         },
                         "language": {
@@ -989337,9 +989337,17 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 11
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 11
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?:[0-9]|1[01])$"
+                }
+              ]
             }
           },
           {
@@ -989459,7 +989467,7 @@
                     "grade": {
                       "nullable": true,
                       "type": "integer",
-                      "minimum": 1,
+                      "minimum": 0,
                       "maximum": 11
                     },
                     "language": {
@@ -989488,7 +989496,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               },
                               "language": {
@@ -991403,7 +991411,7 @@
                       },
                       "grade": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       },
                       "language": {
@@ -997416,7 +997424,7 @@
                         "properties": {
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "value": {
@@ -999271,9 +999279,17 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 11
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 11
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?:[0-9]|1[01])$"
+                }
+              ]
             }
           },
           {
@@ -999563,7 +999579,7 @@
                                       },
                                       "grade": {
                                         "type": "integer",
-                                        "minimum": 1,
+                                        "minimum": 0,
                                         "maximum": 11
                                       }
                                     },
@@ -999831,7 +999847,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         },
@@ -999850,7 +999866,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             },
@@ -1001751,9 +1001767,17 @@
                     "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
                   },
                   "grade": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 11
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 11
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^(?:[0-9]|1[01])$"
+                      }
+                    ]
                   },
                   "classId": {
                     "type": "string",
@@ -1003733,7 +1003757,7 @@
                           },
                           "grade": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           },
                           "language": {
@@ -1005706,7 +1005730,7 @@
                         },
                         "grade": {
                           "type": "integer",
-                          "minimum": 1,
+                          "minimum": 0,
                           "maximum": 11
                         }
                       },
@@ -1007661,9 +1007685,17 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 11
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 11
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?:[0-9]|1[01])$"
+                }
+              ]
             }
           },
           {
@@ -1007910,7 +1007942,7 @@
                           "type": "array",
                           "items": {
                             "type": "integer",
-                            "minimum": 1,
+                            "minimum": 0,
                             "maximum": 11
                           }
                         },
@@ -1007929,7 +1007961,7 @@
                               },
                               "grade": {
                                 "type": "integer",
-                                "minimum": 1,
+                                "minimum": 0,
                                 "maximum": 11
                               }
                             },
@@ -1009866,7 +1009898,7 @@
                       },
                       "grade": {
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 0,
                         "maximum": 11
                       },
                       "classId": {

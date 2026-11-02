@@ -12,7 +12,7 @@ import { PreparedStamp } from '@/components/prepared-stamp';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
-import { ExcelButton, percentText, textOf, useDownload, wholeOf } from './report-parts';
+import { ExcelButton, gradeOf, percentText, textOf, useDownload } from './report-parts';
 import {
   exportResultsReport,
   resultsReportChoicesQuery,
@@ -34,7 +34,7 @@ export function subjectMasterySearch(search: Record<string, unknown>): SubjectMa
     const value = textOf(search[key]);
     if (value !== undefined) result[key] = value;
   }
-  const grade = wholeOf(search.grade, 1, 11);
+  const grade = gradeOf(search.grade);
   if (grade !== undefined) result.grade = grade;
   return result;
 }
@@ -57,6 +57,9 @@ export function SubjectMasteryPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const search: SubjectMasterySearch = useSearch({ from: '/app/results/mastery' });
+  // Read again: the router keeps the raw text of the address beside the parsed search, and an
+  // empty `grade=` must never reach a request (task 9.4d: 0 is a grade).
+  const searchGrade = gradeOf(search.grade);
   const { branchId } = useView();
   const choices = useQuery(resultsReportChoicesQuery(branchId));
   const quarters = choices.data?.quarters ?? [];
@@ -66,7 +69,7 @@ export function SubjectMasteryPage(): React.JSX.Element {
   const filters: MasteryFilters = {
     ...(quarter === undefined ? {} : { quarterId: quarter.id }),
     ...(subject === undefined ? {} : { subjectId: subject.id }),
-    ...(search.grade === undefined ? {} : { grade: search.grade }),
+    ...(searchGrade === undefined ? {} : { grade: searchGrade }),
     ...(search.class === undefined ? {} : { classId: search.class }),
     ...(search.teacher === undefined ? {} : { teacherId: search.teacher }),
   };
@@ -86,7 +89,7 @@ export function SubjectMasteryPage(): React.JSX.Element {
   const keep: SubjectMasterySearch = {
     ...(search.quarter === undefined ? {} : { quarter: search.quarter }),
     ...(search.subject === undefined ? {} : { subject: search.subject }),
-    ...(search.grade === undefined ? {} : { grade: search.grade }),
+    ...(searchGrade === undefined ? {} : { grade: searchGrade }),
     ...(search.class === undefined ? {} : { class: search.class }),
     ...(search.teacher === undefined ? {} : { teacher: search.teacher }),
   };
@@ -246,7 +249,7 @@ export function SubjectMasteryPage(): React.JSX.Element {
                 <div className="w-40">
                   <SelectField
                     label={t('results.reports.mastery.grade')}
-                    value={search.grade === undefined ? '' : String(search.grade)}
+                    value={searchGrade === undefined ? '' : String(searchGrade)}
                     options={[
                       { value: '', label: t('results.reports.mastery.allGrades') },
                       ...data.choices.grades.map((one) => ({

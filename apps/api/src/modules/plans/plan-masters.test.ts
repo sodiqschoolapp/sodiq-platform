@@ -473,6 +473,39 @@ describe('master plans', () => {
       }
     });
 
+    // Task 9.4d: a master plan of grade 0 (05, Class: "Grade (0–11)"; 09, Master plans).
+    it('keeps a master of grade 0, lists it by grade 0, reads the parallel classes of grade 0, and refuses grade -1 and 12', async () => {
+      const x = await scene({
+        subject: await load.classes.subject({ grades: [0, 7, 8], journalType: 'graded' }),
+      });
+      const zero = masterOf(await createMaster(x, x.head, { grade: 0, name: 'Grade 0' }), 201);
+      expect(zero.grade).toBe(0);
+      const listed = (query: string) =>
+        at(NOV02, async () =>
+          send('get', `/api/plans/masters?yearId=${x.s.year}&${query}`, x.s.branch, x.head.cookie),
+        );
+      expect(
+        planMastersSchema.parse(ok(await listed('grade=0')).body).masters.map((one) => one.id),
+      ).toEqual([zero.id]);
+      const parallel = (grade: string) =>
+        at(NOV02, async () =>
+          send(
+            'get',
+            `/api/plans/parallel?subjectId=${x.s.subject}&grade=${grade}&quarterId=${x.q2}`,
+            x.s.branch,
+            x.head.cookie,
+          ),
+        );
+      expect((await parallel('0')).status).toBe(200);
+      for (const grade of ['-1', '12']) {
+        expect((await listed(`grade=${grade}`)).status, grade).toBe(400);
+        expect((await parallel(grade)).status, grade).toBe(400);
+        expect(
+          (await createMaster(x, x.head, { grade: Number(grade), name: 'Wrong' })).status,
+        ).toBe(400);
+      }
+    });
+
     it('lets every reader of plans read the masters, and a teacher only those of the subject and grade in the profile', async () => {
       const x = await scene();
       const master = await masterWith(x, 1);

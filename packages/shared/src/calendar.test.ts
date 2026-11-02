@@ -61,12 +61,14 @@ describe('calendarEntryRecordSchema', () => {
     expect(pathsOf({ ...dayOff, firstDate: '2027-02-30' })).toContain('firstDate');
   });
 
-  it('takes both grades or neither, 1 to 11, upwards', () => {
+  it('takes both grades or neither, 0 to 11, upwards', () => {
     expect(pathsOf({ ...dayOff, gradeFrom: 1, gradeTo: 11 })).toEqual([]);
     expect(pathsOf({ ...dayOff, gradeFrom: 9 })).toEqual(['gradeTo']);
     expect(pathsOf({ ...dayOff, gradeTo: 9 })).toEqual(['gradeFrom']);
     expect(pathsOf({ ...dayOff, gradeFrom: 9, gradeTo: 8 })).toEqual(['gradeTo']);
-    expect(pathsOf({ ...dayOff, gradeFrom: 0, gradeTo: 12 })).toEqual(['gradeFrom', 'gradeTo']);
+    expect(pathsOf({ ...dayOff, gradeFrom: -1, gradeTo: 12 })).toEqual(['gradeFrom', 'gradeTo']);
+    // Grade 0 (task 9.4d).
+    expect(pathsOf({ ...dayOff, gradeFrom: 0, gradeTo: 0 })).toEqual([]);
   });
 
   it('asks a special day for a template and a day off for none of its fields', () => {

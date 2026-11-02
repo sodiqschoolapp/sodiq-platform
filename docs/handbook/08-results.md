@@ -278,7 +278,7 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 - Cancelled lessons and lessons that have not started count for nothing.
 - "Absent now" lists a student whose latest marked lesson today is "absent" (0) and who is not exempt at this moment. Late and "at school but not at the lesson" do not count.
 - A class is "below" when its percent today, rounded, is under the attendance threshold of the early-warning list (80 unless the Academic Vice Principal changed it).
-- Results by grade is the mean quarter result of the students of each grade (1 to 11), with one decimal, marked "Provisional" during the quarter and "Final" once it is closed; a closed quarter shows its stored results.
+- Results by grade is the mean quarter result of the students of each grade (0 to 11), with one decimal, marked "Provisional" during the quarter and "Final" once it is closed; a closed quarter shows its stored results.
 - Students are counted when active and their start date has come; staff are counted when they have not left, vacancies left out.
 - Timetable conflicts are the errors and warnings of each draft, as its conflict panel counts them, and the warnings of the version in force.
 - Every figure comes from the same calculations as the journal and the reports; the home page never calculates on its own.

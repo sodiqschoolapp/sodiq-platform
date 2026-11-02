@@ -126,7 +126,8 @@ export interface DemoSubject {
   readonly grades: readonly number[];
 }
 
-const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+/** Grades 0 to 11 (task 9.4d). */
+const ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 export const SUBJECTS: readonly DemoSubject[] = [
   {
@@ -246,8 +247,20 @@ export interface CurriculumLine {
   readonly roomType?: 'classroom' | 'laboratory' | 'sports_hall' | 'other';
 }
 
-/** The weekly load of a class of grades 5 to 9: 28 to 30 lessons. */
+/**
+ * The weekly load of a class: 28 to 30 lessons in grades 5 to 9; a short week of whole-class
+ * lessons in grade 0 (task 9.4d; invented, not a rule of the school).
+ */
 export function curriculumOf(grade: number): CurriculumLine[] {
+  if (grade === 0) {
+    return [
+      { subject: 'Mathematics', perWeek: 4, way: 'whole' },
+      { subject: 'Native language', perWeek: 4, way: 'whole' },
+      { subject: 'English', perWeek: 2, way: 'whole' },
+      { subject: 'Art', perWeek: 2, way: 'whole' },
+      { subject: 'Physical education', perWeek: 2, way: 'whole', roomType: 'sports_hall' },
+    ];
+  }
   return [
     { subject: 'Mathematics', perWeek: 5, way: 'whole' },
     { subject: 'Native language', perWeek: 3, way: 'whole' },
@@ -286,6 +299,8 @@ export const BRANCHES: readonly DemoBranch[] = [
     name: 'Demo Yunusobod',
     address: 'Demo street 1, Yunusobod, Tashkent',
     classes: [
+      // Task 9.4d: a class of grade 0, shown "0 London" (05, Class).
+      { grade: 0, name: 'London' },
       { grade: 5, name: 'Oxford' },
       { grade: 5, name: 'Cambridge' },
       { grade: 7, name: 'Oxford' },

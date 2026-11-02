@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolGradeSchema, schoolGradeTextSchema } from './grades.js';
 import { schoolDateSchema } from './academic-year.js';
 import { INSTRUCTION_LANGUAGES } from './settings.js';
 import { subjectColourSchema } from './subjects.js';
@@ -870,7 +871,7 @@ export type PlanPlace = z.infer<typeof planPlaceSchema>;
  */
 export const PLAN_MASTER_NAME_MAX_LENGTH = 60;
 
-const gradeText = z.string().regex(/^(?:[1-9]|1[01])$/);
+const gradeText = schoolGradeTextSchema;
 
 const quarterText = z.string().regex(/^[1-4]$/);
 
@@ -897,7 +898,7 @@ export const planMasterSummarySchema = z.object({
   id: z.uuid(),
   scope: z.enum(PLAN_MASTER_SCOPES),
   subject: planMasterSubjectSchema,
-  grade: z.int().min(1).max(11),
+  grade: schoolGradeSchema,
   language: z.enum(INSTRUCTION_LANGUAGES),
   startYear: z.int(),
   quarter: z.int().min(1).max(4),
@@ -920,7 +921,7 @@ export const planMastersSchema = z.object({
   keeps: z.array(
     z.object({
       subject: planMasterSubjectSchema,
-      grades: z.array(z.int().min(1).max(11)),
+      grades: z.array(schoolGradeSchema),
       scopes: z.array(z.enum(PLAN_MASTER_SCOPES)),
     }),
   ),
@@ -940,7 +941,7 @@ export const planMasterCreateSchema = z.strictObject({
   yearId: z.uuid(),
   quarter: z.int().min(1).max(4),
   subjectId: z.uuid(),
-  grade: z.int().min(1).max(11),
+  grade: schoolGradeSchema,
   language: z.enum(INSTRUCTION_LANGUAGES),
   name: filledText(PLAN_MASTER_NAME_MAX_LENGTH),
   scope: z.enum(PLAN_MASTER_SCOPES),
@@ -1079,7 +1080,7 @@ export const planParallelSchema = z.object({
     z.object({
       journalId: z.uuid(),
       unit: planUnitSchema,
-      grades: z.array(z.int().min(1).max(11)),
+      grades: z.array(schoolGradeSchema),
       rows: z.int().min(0),
       /** The last row whose lesson has started, with its item. */
       reached: planParallelRowSchema.nullable(),

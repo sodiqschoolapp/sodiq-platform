@@ -499,6 +499,19 @@ describe('class membership in the database', () => {
       ).toMatchObject({ constraint: 'class_memberships_outside_year' });
     });
 
+    // Task 9.4d: grade 0 as any grade (05, Class: "Grade (0–11)").
+    it('places a student of grade 0 in a class of grade 0, and refuses one of grade 1 there', async () => {
+      const london = await schoolClass(north, northYear, { grade: 0 });
+      const first = await members.student(north, { grade: 1 });
+      expect(
+        await refusal(
+          place({ branch: north, classId: london, studentId: first, from: '2026-10-14' }),
+        ),
+      ).toMatchObject({ constraint: 'class_memberships_grade' });
+      const zero = await members.student(north, { grade: 0 });
+      await place({ branch: north, classId: london, studentId: zero, from: '2026-10-14' });
+    });
+
     it('refuses a class of another grade, a grade edit of a class with members and of a student in a class', async () => {
       const eighth = await schoolClass(north, northYear, { grade: 8 });
       const student = await members.student(north, { grade: 7 });

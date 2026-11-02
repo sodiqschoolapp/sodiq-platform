@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolGradeQuerySchema, schoolGradeSchema } from './grades.js';
 import { schoolDateSchema } from './academic-year.js';
 import { attendanceFigureSchema } from './home.js';
 import { DISCIPLINE_DAYS_MAX } from './journal-status.js';
@@ -18,9 +19,9 @@ import { instructionLanguageSchema } from './settings.js';
 /** A rounded percent, `null` when there is nothing to divide by. */
 const percentSchema = z.int().min(0).max(100).nullable();
 
-const gradeSchema = z.int().min(1).max(11);
+const gradeSchema = schoolGradeSchema;
 
-const queryGradeSchema = z.coerce.number().int().min(1).max(11);
+const queryGradeSchema = schoolGradeQuerySchema;
 
 const subjectNamesSchema = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
 
@@ -250,7 +251,7 @@ export const resultsReportExportSchema = z.discriminatedUnion('kind', [
     kind: z.literal('mastery'),
     quarterId: z.uuid(),
     subjectId: z.uuid(),
-    grade: z.int().min(1).max(11).optional(),
+    grade: schoolGradeSchema.optional(),
     classId: z.uuid().optional(),
     teacherId: z.uuid().optional(),
   }),

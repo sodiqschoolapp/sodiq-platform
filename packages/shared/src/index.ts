@@ -378,7 +378,12 @@ export {
   type SetupIdParams,
   type Weekday,
 } from './setup.js';
-export { gradeRanges } from './grades.js';
+export {
+  gradeRanges,
+  schoolGradeQuerySchema,
+  schoolGradeSchema,
+  schoolGradeTextSchema,
+} from './grades.js';
 export {
   PHONE_FORMAT,
   phoneDigits,

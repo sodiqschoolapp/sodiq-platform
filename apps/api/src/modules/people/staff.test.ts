@@ -459,6 +459,49 @@ describe('staff records', () => {
       expect(entry).toMatchObject({ assignment_id: t.viceAssignment });
     });
 
+    // Task 9.4d: a teacher's grades taught run from 0 (05, Class: "Grade (0–11)").
+    it('takes grade 0 of a subject taught in it, and refuses grade -1 and 12', async () => {
+      const reading = (
+        await t.database.migrator
+          .insertInto('subjects')
+          .values({
+            name_uz: 'Oʻqish',
+            name_ru: 'Чтение',
+            name_en: 'Reading',
+            department_id: steam,
+            grades: [0, 1, 2, 3, 4],
+            colour: 'green',
+            journal_type: 'graded',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const created = await create();
+      const response = await put(`/api/people/staff/${created.id}/teaching`, t.north, {
+        subjects: [{ subjectId: reading, grades: [0, 1] }],
+        languages: ['uz'],
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(staffDetailSchema.parse(response.body).subjects).toEqual([
+        { subjectId: reading, grades: [0, 1] },
+      ]);
+      const before = await snapshot();
+      for (const grades of [
+        [-1, 0],
+        [0, 12],
+      ]) {
+        refusedWith(
+          await put(`/api/people/staff/${created.id}/teaching`, t.north, {
+            subjects: [{ subjectId: reading, grades }],
+            languages: ['uz'],
+          }),
+          400,
+          'validation_failed',
+        );
+      }
+      expect(await snapshot()).toEqual(before);
+    });
+
     it('refuses a subject of another department, a grade the subject lacks and an unknown subject', async () => {
       const created = await create({
         divisions: [{ divisionId: academic, departmentId: languages, main: true }],

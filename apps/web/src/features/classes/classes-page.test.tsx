@@ -15,6 +15,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { uz } from '@/i18n/locales/uz';
 import { actionsAreLast, edit, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
@@ -340,6 +341,53 @@ describe('a new class', () => {
         maxSize: 28,
       });
     });
+  });
+
+  // Task 9.4d: grades 0 to 11, a class shown as "0 London" (05, Class), "Grade 0", "0 класс",
+  // "0-sinf" in the three languages.
+  it('lists 0 London, offers grade 0 to 11 in the form and sends grade 0', async () => {
+    setWindowWidth(1440);
+    const london = schoolClass(30, { grade: 0, name: 'London' });
+    const calls = await openList({
+      classes: [london, OXFORD],
+      extra: {
+        'POST /api/classes': (body) =>
+          json(detailOf(schoolClass(31, body as Partial<SchoolClass>)), 201),
+      },
+    });
+    await waitFor(() => {
+      expect(rowsDrawn()[0]?.[0]).toBe('0 London');
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.classes.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.classes.newTitle }),
+    ).getByRole('form', { name: en.classes.newTitle });
+    const grade = field(form, en.classes.grade) as HTMLSelectElement;
+    expect([...grade.options].map((option) => option.value)).toEqual([
+      '',
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(String),
+    ]);
+    expect(grade.options[1]?.textContent).toBe('Grade 0');
+    type(grade, '0');
+    type(field(form, en.classes.className), 'Leeds');
+    type(field(form, en.classes.maxSize), '20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/classes')?.body).toMatchObject({
+        grade: 0,
+        name: 'Leeds',
+      });
+    });
+    cleanup();
+    await openList({ language: 'ru', classes: [london] });
+    fireEvent.click(await screen.findByRole('button', { name: ru.classes.add }));
+    const russian = within(
+      await screen.findByRole('complementary', { name: ru.classes.newTitle }),
+    ).getByRole('form', { name: ru.classes.newTitle });
+    expect((field(russian, ru.classes.grade) as HTMLSelectElement).options[1]?.textContent).toBe(
+      '0 класс',
+    );
+    expect(uz.classes.gradeOption.replace('{{grade}}', '0')).toBe('0-sinf');
   });
 
   it('refuses a code such as 7-A in the form, sending nothing', async () => {

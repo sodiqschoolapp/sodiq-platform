@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolGradeSchema } from './grades.js';
 
 /**
  * The record of the sample form (task 0.8b-2, `/dev/patterns` of the web app).
@@ -8,7 +9,7 @@ import { z } from 'zod';
 export const sampleRecordSchema = z.object({
   name: z.string().trim().min(2).max(100),
   className: z.string().trim().min(1).max(40),
-  grade: z.number().int().min(1).max(11),
+  grade: schoolGradeSchema,
   language: z.enum(['uz', 'ru']),
   /** Nothing for a record without a score. */
   score: z.number().int().min(0).max(100).nullable(),

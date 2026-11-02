@@ -194,7 +194,7 @@ describe('assignmentRecordSchema', () => {
     ).toEqual(['weekday']);
   });
 
-  it('refuses a range that runs downwards, a grade outside 1 to 11 and weekday 8', () => {
+  it('refuses a range that runs downwards, a grade outside 0 to 11 and weekday 8', () => {
     expect(
       paths(
         assignmentRecordSchema.safeParse({
@@ -212,7 +212,7 @@ describe('assignmentRecordSchema', () => {
           ...base,
           level: 'grades',
           weekday: null,
-          gradeFrom: 0,
+          gradeFrom: -1,
           gradeTo: 12,
         }),
       ),

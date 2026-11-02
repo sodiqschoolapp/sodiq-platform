@@ -215,7 +215,7 @@ describe('the calendar in the database', () => {
       );
     });
 
-    it('with both grades or neither, 1 to 11, upwards', async () => {
+    it('with both grades or neither, 0 to 11, upwards', async () => {
       const branch = await newBranch();
       const refused = check('calendar_entries_grades_check');
       expect(await refusal(addEntry(branch, { gradeFrom: 9, gradeTo: 9 }))).toEqual(ACCEPTED);
@@ -226,8 +226,15 @@ describe('the calendar in the database', () => {
         await refusal(addEntry(branch, { first: '2027-04-01', gradeFrom: 9, gradeTo: 8 })),
       ).toEqual(refused);
       expect(
-        await refusal(addEntry(branch, { first: '2027-04-01', gradeFrom: 0, gradeTo: 3 })),
+        await refusal(addEntry(branch, { first: '2027-04-01', gradeFrom: -1, gradeTo: 3 })),
       ).toEqual(refused);
+      // Grade 0 (task 9.4d): a range may start at 0, and 0 to 0 is one grade.
+      expect(
+        await refusal(addEntry(branch, { first: '2027-04-05', gradeFrom: 0, gradeTo: 0 })),
+      ).toEqual(ACCEPTED);
+      expect(
+        await refusal(addEntry(branch, { first: '2027-04-06', gradeFrom: 0, gradeTo: 11 })),
+      ).toEqual(ACCEPTED);
       expect(
         await refusal(addEntry(branch, { first: '2027-04-01', gradeFrom: 10, gradeTo: 12 })),
       ).toEqual(refused);
@@ -270,6 +277,20 @@ describe('the calendar in the database', () => {
       ).toEqual(OVERLAP);
       expect(
         await refusal(addEntry(branch, { first: '2027-04-01', gradeFrom: 5, gradeTo: 11 })),
+      ).toEqual(ACCEPTED);
+    });
+
+    // Task 9.4d (0151): a whole-branch entry holds grades 0 to 11, so grade 0 meets it.
+    it('for grade 0 too: a grade 0 day off on a whole-branch one is refused', async () => {
+      const branch = await newBranch();
+      await addEntry(branch, { first: '2027-05-03' });
+      expect(
+        await refusal(addEntry(branch, { first: '2027-05-03', gradeFrom: 0, gradeTo: 0 })),
+      ).toEqual(OVERLAP);
+      await addEntry(branch, { first: '2027-05-04', gradeFrom: 0, gradeTo: 0 });
+      expect(await refusal(addEntry(branch, { first: '2027-05-04' }))).toEqual(OVERLAP);
+      expect(
+        await refusal(addEntry(branch, { first: '2027-05-04', gradeFrom: 1, gradeTo: 11 })),
       ).toEqual(ACCEPTED);
     });
 

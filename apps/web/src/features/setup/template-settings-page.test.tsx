@@ -53,7 +53,7 @@ const tableWith = (fridayName: string | null): TemplateTable => ({
   date: TOMORROW,
   weekdays: [1, 2, 3, 4, 5],
   cells: [1, 2, 3, 4, 5].flatMap((weekday) =>
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({
       weekday: weekday as 1 | 2 | 3 | 4 | 5,
       grade,
       template:
@@ -68,7 +68,7 @@ const PREVIEW: TemplatePreview = {
   plans: [],
   before: tableWith(null),
   after: tableWith('Friday'),
-  changed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({ weekday: 5, grade })),
+  changed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((grade) => ({ weekday: 5, grade })),
   lessons: NO_LESSONS,
   slotsInUse: [],
 };
@@ -110,7 +110,8 @@ async function openPage(
 
 /** The cell of the table of templates for a weekday (1 = Monday) and a grade. */
 const cellOf = (tableElement: HTMLElement, weekday: number, grade: number): string =>
-  tableElement.querySelectorAll('tbody tr')[grade - 1]?.querySelectorAll('td')[weekday - 1]
+  // Grades 0 to 11 in order (task 9.4d): row 0 is grade 0.
+  tableElement.querySelectorAll('tbody tr')[grade]?.querySelectorAll('td')[weekday - 1]
     ?.textContent ?? '';
 
 // docs/spec/03-school-setup.md, Slot types and day templates: "School setup
@@ -122,7 +123,7 @@ describe('the page of where day templates apply', () => {
     const calls = await openPage();
 
     const tableElement = screen.getByRole('table', { name: en.setup.templateTable.title });
-    expect(tableElement.querySelectorAll('tbody tr')).toHaveLength(11);
+    expect(tableElement.querySelectorAll('tbody tr')).toHaveLength(12);
     expect([...tableElement.querySelectorAll('thead th')].map((cell) => cell.textContent)).toEqual([
       en.setup.templateTable.grade,
       'Monday',
@@ -248,8 +249,8 @@ describe('the page of where day templates apply', () => {
       change: record,
     });
     const changed = dialog.querySelectorAll('[data-changed="true"]');
-    expect(changed).toHaveLength(11);
-    expect(within(dialog).getByText('11 cells change.')).toBeDefined();
+    expect(changed).toHaveLength(12);
+    expect(within(dialog).getByText('12 cells change.')).toBeDefined();
     // A changed cell is the info tint with the edit icon and a hidden word,
     // explained by a legend; never an orange outline (pull request #80,
     // decision 5).
@@ -288,6 +289,27 @@ describe('the page of where day templates apply', () => {
     expect(calls.some((call) => call.route === 'POST /api/setup/day-template-table/preview')).toBe(
       false,
     );
+  });
+
+  // Task 9.4d: grades 0 to 4 take a template of their own; -1 is refused on the field.
+  it('sends a setting for grades 0 to 4 to its preview, and refuses grade -1 before anything is sent', async () => {
+    const calls = await openPage();
+    const form = screen.getByRole('form', { name: en.setup.templateSettings.setTitle });
+    type(within(form).getByLabelText(en.setup.templateSettings.level), 'grades');
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeFrom), '-1');
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeTo), '4');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    expect(await within(form).findByText('Enter a number that is 0 or more.')).toBeDefined();
+    const previews = () =>
+      calls.filter((call) => call.route === 'POST /api/setup/day-template-table/preview');
+    expect(previews()).toHaveLength(0);
+
+    type(within(form).getByLabelText(en.setup.templateSettings.gradeFrom), '0');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(previews().length).toBeGreaterThan(0);
+    });
+    expect(JSON.stringify(previews()[0]?.body)).toContain('"gradeFrom":0');
   });
 
   it('ends a weekday setting from a date after the preview, and never offers to end the default', async () => {

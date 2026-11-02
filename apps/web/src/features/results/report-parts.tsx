@@ -1,3 +1,4 @@
+import { FIRST_GRADE, LAST_GRADE } from '@sodiq/shared';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { DownloadIcon } from '@/components/icons';
@@ -15,11 +16,24 @@ export const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const textOf = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
-/** A whole number of the address within its bounds, or nothing. */
+/**
+ * A whole number of the address within its bounds, or nothing. Only a number or the text of
+ * one counts: an empty text, `null` or `true` is nothing, never 0 or 1 (`Number('')` is 0, and
+ * 0 is a grade since task 9.4d).
+ */
 export const wholeOf = (value: unknown, min: number, max: number): number | undefined => {
-  const number = Number(value);
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^-?\d{1,15}$/.test(value)
+        ? Number(value)
+        : Number.NaN;
   return Number.isInteger(number) && number >= min && number <= max ? number : undefined;
 };
+
+/** A grade of the school (0 to 11) in the address, or nothing. */
+export const gradeOf = (value: unknown): number | undefined =>
+  wholeOf(value, FIRST_GRADE, LAST_GRADE);
 
 /** A date of the browser's calendar `days` from today (or from the Monday of this week). */
 export const localDate = (days: number, fromMonday = false): string => {

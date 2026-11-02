@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { wholeNumber } from '@/components/form/form-messages';
 import { Field, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
@@ -287,7 +288,8 @@ function NewMasterForm({
     read: (typed) => ({
       yearId: '00000000-0000-4000-8000-000000000000',
       subjectId: typed.subjectId,
-      grade: Number(typed.grade),
+      // wholeNumber, never Number(): an empty grade is "required", not grade 0 (task 9.4d).
+      grade: wholeNumber(typed.grade),
       language: typed.language as PlanMasterCreate['language'],
       quarter: Number(typed.quarter),
       name: typed.name,

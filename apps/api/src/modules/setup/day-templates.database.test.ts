@@ -542,8 +542,18 @@ describe('slot types and day templates in the database', () => {
       ),
     ).toEqual(keyCheck);
     expect(
-      await refusal(assign(branch, template, { level: 'grades', gradeFrom: 0, gradeTo: 4 }, from)),
+      await refusal(assign(branch, template, { level: 'grades', gradeFrom: -1, gradeTo: 4 }, from)),
     ).toEqual(check('day_template_assignments_grade_from_check'));
+    expect(
+      await refusal(assign(branch, template, { level: 'grades', gradeFrom: 0, gradeTo: 12 }, from)),
+    ).toEqual(check('day_template_assignments_grade_to_check'));
+    expect(
+      await refusal(assign(branch, template, { level: 'grades', gradeFrom: 0, gradeTo: -1 }, from)),
+    ).toEqual(check('day_template_assignments_grade_to_check'));
+    // Grade 0 to 11 (task 9.4d): grades 0 to 4 take a template of their own.
+    expect(
+      await refusal(assign(branch, template, { level: 'grades', gradeFrom: 0, gradeTo: 4 }, from)),
+    ).toEqual(ACCEPTED);
     expect(await refusal(assign(branch, template, { level: 'weekday', weekday: 8 }, from))).toEqual(
       check('day_template_assignments_weekday_check'),
     );

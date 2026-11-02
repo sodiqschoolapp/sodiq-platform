@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { phoneLeftEmpty } from './phones.js';
+import { schoolGradeSchema } from './grades.js';
 import { schoolDateSchema } from './academic-year.js';
 import { personNameSchema } from './accounts.js';
 import { classNotRestoredSchema, studentClassSchema } from './classes.js';
@@ -109,8 +110,8 @@ export const scholarshipCoverageSchema = z.enum(SCHOLARSHIP_COVERAGES);
 
 export type ScholarshipCoverage = z.infer<typeof scholarshipCoverageSchema>;
 
-/** Grades 1 to 11 (answer 17). */
-export const studentGradeSchema = z.int().min(1).max(11);
+/** Grades 0 to 11 (answer 17; task 9.4d). */
+export const studentGradeSchema = schoolGradeSchema;
 
 /** `04`, UID sets, Release 1: "up to 20 characters" (task 9.4c). */
 export const STUDENT_UID_MAX_LENGTH = 20;

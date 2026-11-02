@@ -3,6 +3,7 @@ import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { personNameSchema } from './accounts.js';
 import { instructionLanguageSchema } from './settings.js';
 import { roomStatusSchema } from './setup.js';
+import { GRADES, schoolGradeSchema } from './grades.js';
 
 /**
  * Classes and their Tutors (docs/spec/05-classes-groups-subjects.md, Class;
@@ -18,8 +19,8 @@ export const CLASS_NAME_MAX_LENGTH = 40;
 /** Decision 14: the maximum size of a class, from 1 to 60. */
 export const CLASS_MAX_SIZE = 60;
 
-/** `05`: "Grade (1–11)". */
-export const CLASS_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
+/** `05`: "Grade (0–11)" (task 9.4d). */
+export const CLASS_GRADES: readonly number[] = GRADES;
 
 /**
  * The Cyrillic letters folded to the Latin letter their capital looks like,
@@ -77,10 +78,10 @@ export function classNameKey(name: string): string {
     .toLowerCase();
 }
 
-/** A class as it is shown: grade and name, "7 Oxford" (`05`). */
+/** A class as it is shown: grade and name, "7 Oxford", "0 London" (`05`). */
 export const classDisplayName = (grade: number, name: string): string => `${String(grade)} ${name}`;
 
-export const classGradeSchema = z.int().min(1).max(11);
+export const classGradeSchema = schoolGradeSchema;
 
 /**
  * Decision 17: begins with a letter, so "7-A" and "A" are refused; then

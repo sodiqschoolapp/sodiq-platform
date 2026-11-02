@@ -126,7 +126,7 @@ const PREVIEW: CalendarPreview = {
     {
       firstDate: '2026-10-17',
       lastDate: '2026-10-17',
-      gradeFrom: 1,
+      gradeFrom: 0,
       gradeTo: 11,
       before: { lessons: false, reason: 'not_working_day', entryId: null, entryName: null },
       after: {
@@ -221,6 +221,34 @@ describe('the calendar page', () => {
       ru.setup.calendar.kinds.day_off,
       ru.setup.calendar.kinds.special_day,
     ]);
+  });
+
+  // Task 9.4d: a range of grades starts at 0, and a new range covers 0 to 11 until changed.
+  it('offers grades 0 to 11 for a range, starting at 0, and sends a day off for grade 0', async () => {
+    const { calls } = await openList('academic_vice_principal', {
+      'POST /api/setup/calendar-entries/preview': () => json(PREVIEW),
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.setup.calendar.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.setup.calendar.newTitle }),
+    ).getByRole('form', { name: en.setup.calendar.newTitle });
+    type(within(form).getByLabelText(en.setup.calendar.name), 'Grade 0 off');
+    type(within(form).getByLabelText(en.setup.calendar.firstDate), '2026-10-19');
+    type(within(form).getByLabelText(en.setup.calendar.lastDate), '2026-10-19');
+    type(within(form).getByLabelText(en.setup.calendar.scope), 'grades');
+    const from = within(form).getByLabelText<HTMLSelectElement>(en.setup.calendar.gradeFrom);
+    const to = within(form).getByLabelText<HTMLSelectElement>(en.setup.calendar.gradeTo);
+    expect([...from.options].map((one) => one.value)).toEqual(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(String),
+    );
+    expect([from.value, to.value]).toEqual(['0', '11']);
+    type(to, '0');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === 'POST /api/setup/calendar-entries/preview')?.body,
+      ).toMatchObject({ record: { gradeFrom: 0, gradeTo: 0 } });
+    });
   });
 
   it('adds a working Saturday after its preview', async () => {

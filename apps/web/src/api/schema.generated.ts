@@ -182821,7 +182821,7 @@ export interface operations {
         parameters: {
             query: {
                 quarterId: string;
-                grade?: number;
+                grade?: number | string;
                 language?: "uz" | "ru";
             };
             header: {
@@ -184531,7 +184531,7 @@ export interface operations {
             query: {
                 from: string;
                 to: string;
-                grade?: number;
+                grade?: number | string;
                 classId?: string;
                 subjectId?: string;
                 teacherId?: string;
@@ -184967,7 +184967,7 @@ export interface operations {
                     from: string;
                     /** Format: date */
                     to: string;
-                    grade?: number;
+                    grade?: number | string;
                     /** Format: uuid */
                     classId?: string;
                     /** Format: uuid */
@@ -185986,7 +185986,7 @@ export interface operations {
             query: {
                 quarterId: string;
                 subjectId: string;
-                grade?: number;
+                grade?: number | string;
                 classId?: string;
                 teacherId?: string;
             };

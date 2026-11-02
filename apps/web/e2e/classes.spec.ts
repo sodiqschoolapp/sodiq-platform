@@ -10,7 +10,7 @@ import { codeNow } from './totp';
 // ("The same holds when a Tutor is given a class. This is blocked, not a
 // warning"); task 3.1a, pull request #88. An Academic Vice Principal creates
 // "7 Oxford", an Uzbek class, gives it a Tutor who teaches in Uzbek, and is
-// not let choose one who teaches in Russian only. With SCREENSHOTS=1 the list
+// not let choose one who teaches in Russian only; then "0 London" (task 9.4d). With SCREENSHOTS=1 the list
 // and the panel are saved for the report under docs/screens/3.1a/. All names
 // are invented.
 const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/3.1a');
@@ -79,6 +79,18 @@ test('an Academic Vice Principal creates a class and gives it a Tutor of its lan
   await expect(panel.getByText(`${texts.kinds.tutor}: Salimova Zuhra`)).toBeVisible();
   await expect(row).toContainText('Salimova Zuhra');
   await screenshot(page, 'class-with-tutor');
+
+  // Task 9.4d (05, Class: "Grade (0–11) … 0 London"): a class of grade 0 is created on the same
+  // screen and listed as "0 London". It takes no Tutor: from task 9.4e it takes a Class teacher.
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  const zero = page.getByRole('form', { name: texts.newTitle });
+  await zero.getByLabel(texts.grade, { exact: true }).selectOption('0');
+  await zero.getByLabel(texts.className, { exact: true }).fill('London');
+  await zero.getByLabel(texts.language, { exact: true }).selectOption('uz');
+  await zero.getByLabel(texts.maxSize, { exact: true }).fill('20');
+  await zero.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(page.getByRole('complementary', { name: '0 London' })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: '0 London' })).toContainText(texts.noTutor);
 });
 
 // Task 3.1b, pull request #89 (edge/students-classes-groups, "A student is

@@ -182,10 +182,10 @@ describe('subjects in the database', () => {
       });
     });
 
-    // Answer 8: "any of 1 to 11, ticked".
+    // Answer 8: "any of 1 to 11, ticked"; from grade 0 since task 9.4d.
     it.each([
       ['no grade', []],
-      ['grade 0', [0]],
+      ['grade -1', [-1]],
       ['grade 12', [12]],
       ['a grade twice', [5, 5]],
       ['grades out of order', [7, 5]],
@@ -194,7 +194,7 @@ describe('subjects in the database', () => {
       await expect(insertSubject({ grades })).rejects.toMatchObject({ code: CHECK_VIOLATION });
     });
 
-    it('refuse grades of two dimensions and take 1 to 11 in order', async () => {
+    it('refuse grades of two dimensions and take 0 to 11 in order', async () => {
       await expect(
         asApp((transaction) =>
           sql`insert into subjects (name_uz, name_ru, name_en, department_id, grades, colour, journal_type)
@@ -203,9 +203,9 @@ describe('subjects in the database', () => {
           ),
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
-      await expect(insertSubject({ grades: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] })).resolves.toEqual(
-        expect.any(String),
-      );
+      await expect(
+        insertSubject({ grades: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }),
+      ).resolves.toEqual(expect.any(String));
     });
 
     // `edge/calculation`: attendance-only subjects have no weights and no result.

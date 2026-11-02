@@ -62,8 +62,8 @@ export type DayResult =
       readonly entryId: string | null;
     };
 
-/** The grades of a school, 1 to 11. */
-const FIRST_GRADE = 1;
+/** The grades of a school, 0 to 11 (task 9.4d; the same pair as `packages/shared`). */
+const FIRST_GRADE = 0;
 const LAST_GRADE = 11;
 
 /** Whether the entry covers the date for the grade (a whole-branch entry covers every grade). */

@@ -585,7 +585,13 @@ describe('student records in the database', () => {
 
     it('keeps the grade, the score, the JSHSHIR and the phone in shape', async () => {
       await refusedUpdate({ grade: 12 });
-      await refusedUpdate({ grade: 0 });
+      await refusedUpdate({ grade: -1 });
+      // Grade 0 to 11 (task 9.4d): a student of grade 0, out of any class, is kept.
+      count += 1;
+      const zero = await createStudent({ branch: north, uid: String(2507000 + count) });
+      await inBranch(north, (transaction) =>
+        transaction.updateTable('students').set({ grade: 0 }).where('id', '=', zero).execute(),
+      );
       await refusedUpdate({ diagnostic_score: 101 });
       await refusedUpdate({ jshshir: '1234' });
       await refusedUpdate({ phone: '998901234567' });

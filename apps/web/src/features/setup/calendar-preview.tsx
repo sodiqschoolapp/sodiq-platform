@@ -47,7 +47,7 @@ export function datesText(first: string, last: string, language: string): string
     : `${schoolDateText(first, language, first.slice(0, 4) !== last.slice(0, 4))} – ${schoolDateText(last, language)}`;
 }
 
-/** "Whole branch" (no grades, or all of 1 to 11) or "Grades 9–11". */
+/** "Whole branch" (no grades, or all of 0 to 11) or "Grades 9–11". */
 export function gradesText(t: TFunction, gradeFrom: number | null, gradeTo: number | null): string {
   if (
     gradeFrom === null ||

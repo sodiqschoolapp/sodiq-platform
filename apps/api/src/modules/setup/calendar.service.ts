@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  FIRST_GRADE,
   GRADES,
+  LAST_GRADE,
   nextDay,
   schoolDateOf,
   type CalendarChange,
@@ -196,11 +198,16 @@ function datesFrom(first: string, last: string): string[] {
   return dates;
 }
 
-/** Whether two closed ranges of grades overlap; no grades is the whole branch, 1 to 11. */
+/**
+ * Whether two closed ranges of grades overlap; no grades is the whole branch, 0 to 11, as
+ * `calendar_entries_no_overlap` reads it (0151; task 9.4d).
+ */
 const gradesOverlap = (
   a: { gradeFrom: number | null; gradeTo: number | null },
   b: { gradeFrom: number | null; gradeTo: number | null },
-) => (a.gradeFrom ?? 1) <= (b.gradeTo ?? 11) && (b.gradeFrom ?? 1) <= (a.gradeTo ?? 11);
+) =>
+  (a.gradeFrom ?? FIRST_GRADE) <= (b.gradeTo ?? LAST_GRADE) &&
+  (b.gradeFrom ?? FIRST_GRADE) <= (a.gradeTo ?? LAST_GRADE);
 
 /**
  * The academic calendar of a branch (docs/spec/03-school-setup.md, Academic
@@ -988,7 +995,7 @@ function dayAnswer(context: Context, entries: readonly StoredEntry[], day: DayRe
 
 /**
  * The days that differ before and after a save, for every date given and
- * grade 1 to 11, in runs: consecutive grades of one date with the same before
+ * grade 0 to 11, in runs: consecutive grades of one date with the same before
  * and after, then consecutive dates with the same runs of grades.
  */
 function changesOn(

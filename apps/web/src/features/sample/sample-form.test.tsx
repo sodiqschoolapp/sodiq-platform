@@ -112,8 +112,10 @@ describe('the fields of a record form', () => {
     }
     type(grade, '12');
     expect(errorOf(grade)).toBe(en.form.tooBig.replace('{{max}}', '11'));
+    type(grade, '-1');
+    expect(errorOf(grade)).toBe(en.form.tooSmall.replace('{{min}}', '0'));
     type(grade, '0');
-    expect(errorOf(grade)).toBe(en.form.tooSmall.replace('{{min}}', '1'));
+    expect(errorOf(grade)).toBeNull();
     type(grade, '');
     expect(errorOf(grade)).toBe(en.form.required);
     type(grade, ' 7 ');

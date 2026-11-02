@@ -330,7 +330,10 @@ export async function buildDemoSchool(input: {
     });
     if (teaching.length > 0) {
       await there.put(`/api/people/staff/${record.id}/teaching`, {
-        subjects: teaching.map((one) => ({ subjectId: subjectId(one), grades: [5, 6, 7, 8, 9] })),
+        subjects: teaching.map((one) => ({
+          subjectId: subjectId(one),
+          grades: [0, 5, 6, 7, 8, 9],
+        })),
         languages: ['uz'],
       });
     }
@@ -704,9 +707,12 @@ export async function buildDemoSchool(input: {
       `${branch.name}: ${String(teachers.size)} teachers, ${String(planned.length)} rows of the load`,
     );
 
-    // A Tutor for each class: a teacher of the branch who teaches it.
+    // A Tutor for each class of grades 5 to 11: a teacher of the branch who teaches it. A class of
+    // grades 0 to 4 takes a Class teacher, never a Tutor (the spec change of 1 November 2026,
+    // item 1); task 9.4e gives 0 London hers.
     const tutors = new Set<string>();
     for (const one of classes) {
+      if (one.grade <= 4) continue;
       // A teacher of the class's own rows, one class each.
       const staffId = planned
         .filter((candidate) => candidate.classId === one.id)

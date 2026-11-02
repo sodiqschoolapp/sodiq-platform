@@ -1139,6 +1139,23 @@ describe('the subjects and languages of a staff member', () => {
     expect(calls.some((call) => call.route.endsWith('/teaching'))).toBe(false);
   });
 
+  // Task 9.4d: a teacher's grades taught include grade 0 when the subject is taught in it.
+  it('offers and sends grade 0 of a subject taught in it', async () => {
+    const calls = openList('academic_vice_principal', {
+      'GET /api/setup/subjects': () =>
+        json({ subjects: [{ ...MATHEMATICS, grades: [0, 5, 6, 7] }], mayMoveDepartment: false }),
+      [`PUT /api/people/staff/${AKMAL.id}/teaching`]: () => json(detailOf(AKMAL)),
+    });
+    const form = await teachingForm();
+    fireEvent.click(within(grades(form)).getByLabelText('Grade 0'));
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `PUT /api/people/staff/${AKMAL.id}/teaching`)?.body,
+      ).toMatchObject({ subjects: [{ subjectId: MATHEMATICS.id, grades: [0, 5, 6] }] });
+    });
+  });
+
   // Review of the build: the languages are a group that must hold one choice.
   it('says nothing of the languages as they are unticked after a Save, and asks on the next Save', async () => {
     const calls = openList('academic_vice_principal');

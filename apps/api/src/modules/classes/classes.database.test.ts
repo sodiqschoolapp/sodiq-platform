@@ -184,7 +184,11 @@ describe('classes and their Tutors in the database', () => {
       expect(await refused({ name: `B${'a'.repeat(CLASS_NAME_MAX_LENGTH)}` })).toBe(
         'classes_name_check',
       );
-      expect(await refused({ name: 'Grade', grade: 0 })).toBe('classes_grade_check');
+      // Grade 0 to 11 (05, Class; the spec change of 1 November 2026, item 3; task 9.4d).
+      expect((await insertClass(north, northYear, { name: 'London', grade: 0 })).name_key).toBe(
+        'london',
+      );
+      expect(await refused({ name: 'Grade', grade: -1 })).toBe('classes_grade_check');
       expect(await refused({ name: 'Grade', grade: 12 })).toBe('classes_grade_check');
       expect(await refused({ name: 'Size', size: 0 })).toBe('classes_max_size_check');
       expect(await refused({ name: 'Size', size: CLASS_MAX_SIZE + 1 })).toBe(

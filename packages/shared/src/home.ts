@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolGradeSchema } from './grades.js';
 import { preparedStampSchema } from './prepared.js';
 import { schoolDateSchema } from './academic-year.js';
 import { statusLessonSchema } from './journal-status.js';
@@ -37,7 +38,7 @@ const studentNameSchema = z.object({
 });
 
 export const attendanceTodayClassSchema = z.object({
-  class: z.object({ id: z.uuid(), name: z.string(), grade: z.int().min(1).max(11) }),
+  class: z.object({ id: z.uuid(), name: z.string(), grade: schoolGradeSchema }),
   day: attendanceFigureSchema,
   /** Monday of the date's week to the date. */
   week: attendanceFigureSchema,
@@ -121,10 +122,10 @@ export const branchSummarySchema = z.object({
       closed: z.boolean(),
     })
     .nullable(),
-  /** Grades 1 to 11 with students in a class on the reference date. */
+  /** Grades 0 to 11 with students in a class on the reference date. */
   grades: z.array(
     z.object({
-      grade: z.int().min(1).max(11),
+      grade: schoolGradeSchema,
       /** The mean quarter result of its students with a number, in tenths (`oneDecimal`). */
       value: z.int().min(0).max(1000).nullable(),
       /** Students with a number. */

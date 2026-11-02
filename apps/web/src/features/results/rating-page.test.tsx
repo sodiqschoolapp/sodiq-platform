@@ -282,6 +282,29 @@ describe('the rating page', () => {
     ).toContain('7|ru');
   });
 
+  // Task 9.4d: grade 0 is offered and kept from the address; an empty grade is no filter.
+  it('offers and sends grade 0 of the classes list', async () => {
+    const calls = open(
+      [{ role: 'principal', branchId: NORTH.id }],
+      CHOICES,
+      'en',
+      '/results/rating?kind=classes&grade=0',
+    );
+    const picker = await screen.findByLabelText(en.results.ratingList.grade);
+    expect([...picker.querySelectorAll('option')].map((one) => one.getAttribute('value'))).toEqual([
+      '',
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(String),
+    ]);
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === 'GET /api/results/rating/classes')
+          .map((call) => new URLSearchParams(call.query).get('grade')),
+      ).toContain('0');
+    });
+    expect((picker as HTMLSelectElement).value).toBe('0');
+  });
+
   // 05, Reports: "Language is a filter in ... rating": it narrows the pickers too (decision 8).
   it('narrows the classes to pick by the language', async () => {
     const calls = open(

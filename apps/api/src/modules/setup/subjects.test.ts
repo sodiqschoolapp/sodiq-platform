@@ -277,6 +277,29 @@ describe('subjects', () => {
       );
     });
 
+    // Task 9.4d: a subject is taught in grades 0 to 11 (05, Class: "Grade (0–11)").
+    it('is created with grades 0 to 4 and refused with grade -1 or 12; nothing is written', async () => {
+      const response = await t.post(
+        '/api/setup/subjects',
+        t.north,
+        body({ grades: [0, 1, 2, 3, 4] }),
+      );
+      expect(response.status).toBe(201);
+      expect(subjectSchema.parse(response.body).grades).toEqual([0, 1, 2, 3, 4]);
+      const before = await rows();
+      const audit = await auditCount();
+      for (const grades of [
+        [-1, 0],
+        [0, 12],
+      ]) {
+        const wrong = await t.post('/api/setup/subjects', t.north, body({ grades }));
+        expect(wrong.status).toBe(400);
+        expect(errorCode(wrong)).toBe('validation_failed');
+      }
+      expect(await rows()).toEqual(before);
+      expect(await auditCount()).toBe(audit);
+    });
+
     // The build plan's "done when": a graded subject cannot be saved with
     // weights that do not total 100 (answer 6; `05`: "The form will not save
     // otherwise").

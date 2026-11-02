@@ -55,7 +55,14 @@ describe('the rating export', () => {
       }).success,
     ).toBe(false);
     expect(
-      ratingExportSchema.safeParse({ kind: 'classes', quarterId: QUARTER, grade: 0 }).success,
+      ratingExportSchema.safeParse({ kind: 'classes', quarterId: QUARTER, grade: -1 }).success,
     ).toBe(false);
+    expect(
+      ratingExportSchema.safeParse({ kind: 'classes', quarterId: QUARTER, grade: 12 }).success,
+    ).toBe(false);
+    // Grade 0 (task 9.4d).
+    expect(
+      ratingExportSchema.safeParse({ kind: 'classes', quarterId: QUARTER, grade: 0 }).success,
+    ).toBe(true);
   });
 });

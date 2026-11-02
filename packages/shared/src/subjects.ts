@@ -41,7 +41,7 @@ export const journalTypeSchema = z.enum(JOURNAL_TYPES);
 
 export type JournalType = z.infer<typeof journalTypeSchema>;
 
-/** Answer 8: "any of 1 to 11, ticked". */
+/** Answer 8: "any of 1 to 11, ticked", from grade 0 since task 9.4d. */
 export const SUBJECT_GRADES = Array.from(
   { length: LAST_GRADE - FIRST_GRADE + 1 },
   (_, index) => FIRST_GRADE + index,
@@ -107,7 +107,7 @@ export const quarterWeightsSchema = z
 export type QuarterWeights = z.infer<typeof quarterWeightsSchema>;
 
 /**
- * The grades of a subject: at least one, each once, from 1 to 11, in
+ * The grades of a subject: at least one, each once, from 0 to 11, in
  * ascending order. The form sends them in that order; a body in another order
  * is refused, so two bodies that mean the same cannot differ (as the working
  * weekdays of a branch).

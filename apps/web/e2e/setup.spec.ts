@@ -840,13 +840,13 @@ test('the Academic Vice Principal adds slot types, builds a template, reorders i
   await set.getByRole('button', { name: en.form.save, exact: true }).click();
   const preview = page.getByRole('dialog', { name: en.setup.templateTable.previewTitle });
   await expect(preview).toBeVisible();
-  // Every working weekday (Monday to Friday) of grades 1 to 11 changes.
-  await expect(preview.locator('[data-changed="true"]')).toHaveCount(55);
+  // Every working weekday (Monday to Friday) of grades 0 to 11 changes (task 9.4d).
+  await expect(preview.locator('[data-changed="true"]')).toHaveCount(60);
   await preview.getByRole('button', { name: en.setup.templateTable.save, exact: true }).click();
   await expect(preview).toBeHidden();
   await expect(saved(set)).toBeVisible();
   const table = page.getByRole('table', { name: en.setup.templateTable.title });
-  await expect(table.getByRole('cell').filter({ hasText: 'Main' })).toHaveCount(55);
+  await expect(table.getByRole('cell').filter({ hasText: 'Main' })).toHaveCount(60);
 });
 
 /** A school date `days` after today in Tashkent, the branch time of the test branch. */
@@ -924,8 +924,9 @@ test('the Academic Vice Principal adds a day off for some grades and a working S
     'Main · lessons of Monday · Working Saturday',
   );
   await check.getByLabel(en.setup.calendar.checkDate, { exact: true }).fill(wednesday);
-  await expect(check.getByRole('row').nth(8)).toContainText('Main');
-  await expect(check.getByRole('row').nth(9)).toContainText(
+  // Row 0 is the header and row 1 grade 0 (task 9.4d): grade 8 is row 9, grade 9 row 10.
+  await expect(check.getByRole('row').nth(9)).toContainText('Main');
+  await expect(check.getByRole('row').nth(10)).toContainText(
     `${en.setup.calendar.reasons.day_off} (Seniors off)`,
   );
 });
