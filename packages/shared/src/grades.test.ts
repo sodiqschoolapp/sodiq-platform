@@ -81,6 +81,11 @@ describe('the grades of the school', () => {
       for (const wrong of [-1, 12, 1.5]) expect(schema.safeParse(wrong).success).toBe(false);
     }
     expect(schoolGradeQuerySchema.parse('0')).toBe(0);
+    expect(schoolGradeQuerySchema.parse(0)).toBe(0);
+    // An empty `?grade=` is refused, never read as 0 (z.coerce would read it as 0).
+    for (const text of ['', ' ', '07', '1.5']) {
+      expect(schoolGradeQuerySchema.safeParse(text).success, text).toBe(false);
+    }
     expect(schoolGradeQuerySchema.safeParse('-1').success).toBe(false);
     expect(schoolGradeQuerySchema.safeParse('12').success).toBe(false);
     for (const text of ['0', '7', '11'])

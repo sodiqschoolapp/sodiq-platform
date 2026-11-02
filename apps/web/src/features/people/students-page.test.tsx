@@ -344,6 +344,17 @@ describe('the student list', () => {
     expect(rowsDrawn()[0]?.[2]).toBe('Saidova Zarina');
   });
 
+  // Task 9.4d: grade 0 is a filter value of its own, never read as "all grades".
+  it('filters by grade 0', async () => {
+    openList('principal');
+    renderApp(`${PATH}?f=${encodeURIComponent(JSON.stringify({ grade: '0' }))}`);
+    await screen.findByRole('heading', { name: en.people.students.title });
+    await waitFor(() => {
+      expect(document.querySelector('option[value="0"]')?.textContent).toBe('Grade 0');
+    });
+    expect(rowsDrawn()).toHaveLength(0);
+  });
+
   it('is in Russian', async () => {
     openList('principal', {}, 'ru');
     renderApp(PATH, 'ru');

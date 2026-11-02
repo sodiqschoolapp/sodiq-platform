@@ -74,12 +74,15 @@ export function AttendanceReportPage(): React.JSX.Element {
   const language = i18n.language;
   const navigate = useNavigate();
   const search: AttendanceReportSearch = useSearch({ from: '/app/results/attendance' });
+  // Read again: the router keeps the raw text of the address beside the parsed search, and an
+  // empty `grade=` must never reach a request (task 9.4d: 0 is a grade).
+  const searchGrade = gradeOf(search.grade);
   const { branchId } = useView();
   const filters: AttendanceFilters = {
     from: search.from ?? localDate(0, true),
     to: search.to ?? localDate(0),
     groupBy: search.by === 'tutor' ? 'tutor' : 'class',
-    ...(search.grade === undefined ? {} : { grade: search.grade }),
+    ...(searchGrade === undefined ? {} : { grade: searchGrade }),
     ...(search.class === undefined ? {} : { classId: search.class }),
     ...(search.subject === undefined ? {} : { subjectId: search.subject }),
     ...(search.teacher === undefined ? {} : { teacherId: search.teacher }),
@@ -90,7 +93,7 @@ export function AttendanceReportPage(): React.JSX.Element {
   const keep: AttendanceReportSearch = {
     ...(search.from === undefined ? {} : { from: search.from }),
     ...(search.to === undefined ? {} : { to: search.to }),
-    ...(search.grade === undefined ? {} : { grade: search.grade }),
+    ...(searchGrade === undefined ? {} : { grade: searchGrade }),
     ...(search.class === undefined ? {} : { class: search.class }),
     ...(search.subject === undefined ? {} : { subject: search.subject }),
     ...(search.teacher === undefined ? {} : { teacher: search.teacher }),
@@ -230,7 +233,7 @@ export function AttendanceReportPage(): React.JSX.Element {
               <div className="w-40">
                 <SelectField
                   label={t('results.reports.attendance.grade')}
-                  value={search.grade === undefined ? '' : String(search.grade)}
+                  value={searchGrade === undefined ? '' : String(searchGrade)}
                   options={[
                     { value: '', label: t('results.reports.attendance.allGrades') },
                     ...choices.grades.map((one) => ({ value: String(one), label: String(one) })),

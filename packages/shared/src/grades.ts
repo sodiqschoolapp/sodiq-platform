@@ -17,11 +17,17 @@ export const GRADES: readonly number[] = Array.from(
 /** A grade of the school in a body or an answer. */
 export const schoolGradeSchema = z.int().min(FIRST_GRADE).max(LAST_GRADE);
 
-/** A grade of the school in a query string. */
-export const schoolGradeQuerySchema = z.coerce.number().int().min(FIRST_GRADE).max(LAST_GRADE);
-
 /** A grade of the school as the text of a query string, "0" to "11" (no sign, no leading zero). */
 export const schoolGradeTextSchema = z.string().regex(/^(?:[0-9]|1[01])$/);
+
+/**
+ * A grade of the school in a query string, read as its number. Never `z.coerce`: it reads an
+ * empty `?grade=` as 0, which is a grade since task 9.4d; an empty grade is refused.
+ */
+export const schoolGradeQuerySchema = z.union([
+  schoolGradeSchema,
+  schoolGradeTextSchema.transform(Number),
+]);
 
 /**
  * Grades as ranges (task 2.7b-1, finding 19; `04` Teacher list columns, read

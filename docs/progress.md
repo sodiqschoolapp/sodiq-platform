@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 2 November 2026: task 9.4d Grade 0
+
+- **Database** (0151): every grade check takes 0 to 11 (`classes`, `students`, `day_template_assignments` from and to, `calendar_entries`, `timetable_version_days`, `lesson_plan_masters`) and `subject_grades_valid` (the grades of a subject and of a teacher's subject); -1 and 12 stay refused. `calendar_entries_no_overlap` reads a whole-branch entry as grades 0 to 11, so a grade 0 entry beside a whole-branch one of its kind and date is refused (it refuses more, not less). No row changed.
+- **One grade range**: `FIRST_GRADE` 0 and `LAST_GRADE` 11 with `GRADES`, `schoolGradeSchema`, `schoolGradeQuerySchema` and `schoolGradeTextSchema` in `packages/shared/src/grades.ts`; every grade schema of the package reads them. The rule engine keeps its own pair (`packages/timetable-rules/src/calendar.ts`), so a date where only grade 0 has lessons is a school day.
+- **Web**: every grade picker and filter offers 0 to 11 from the shared lists ("0 London", "Grade 0", "0 класс", "0-sinf" from the existing texts).
+- **Found on the way**: `z.coerce.number()` reads an empty `?grade=` as 0, and the router keeps the raw text of the address beside a route's parsed search. The grade query schema now takes a whole number or its text and refuses an empty one; the report and rating pages read the grade through `gradeOf`, which drops an empty one; the forms read a typed grade with `wholeNumber`, so an empty grade stays "required".
+- **Demo seed**: 0 London in Demo Yunusobod, a short week of whole-class lessons, every subject taught from grade 0 and the teachers' grades taught with 0; no Tutor (9.4e gives it a Class teacher). Run on a scratch database: 18 students, placed and published.
+
+Left out: the Class teacher (9.4e), rating exams in grades 0–4 (9.4f), the 0 → 1 rollover (9.5b); the test helpers `testing/real-size.ts` and `testing/cells-kit.ts` still build a school of grades 1 to 11 (a size, not a rule).
+
+The next sessions must know:
+
+- A grade is read with the shared constants and schemas, never a hand-written 1 to 11; a list of grades read by place (`grades[4]`) is read by value instead, since grade 0 comes first.
+- A number read from a query string or a typed field is never `Number()` or `z.coerce` alone where 0 is valid: `Number('')` is 0.
+
 ## 29 October 2026: task 10.1b Every speed target of `12` at three times the size
 
 - **Speed run in two jobs** (`.github/workflows/speed.yml`): `build` builds and fills the school, `measure` restores its dump and prepares, reads, saves, searches and loads, with the preparation running every minute; a partial report after every branch, and a run out of time fails with "not measured". The small run does both phases in one process on every pull request.

@@ -87,6 +87,9 @@ export function RatingPage(): React.JSX.Element {
   const language = i18n.language;
   const navigate = useNavigate();
   const search: RatingSearch = useSearch({ from: '/app/results/rating' });
+  // Read again: the router keeps the raw text of the address beside the parsed search, and an
+  // empty `grade=` must never reach a request (task 9.4d: 0 is a grade).
+  const searchGrade = gradeOf(search.grade);
   const { branchId } = useView();
   const mayClose = useMayView('quarter_closing');
   const mayWarn = useMayView('early_warning');
@@ -114,7 +117,7 @@ export function RatingPage(): React.JSX.Element {
   const classes = (data?.classes ?? []).filter((one) => inLanguage(one.language));
   const classChosen = classes.find((one) => one.id === search.class) ?? classes[0];
   const filters = {
-    ...(search.grade === undefined ? {} : { grade: search.grade }),
+    ...(searchGrade === undefined ? {} : { grade: searchGrade }),
     ...(search.language === undefined ? {} : { language: search.language }),
   };
 
@@ -502,7 +505,7 @@ export function RatingPage(): React.JSX.Element {
                 <div className="w-40">
                   <SelectField
                     label={t('results.ratingList.grade')}
-                    value={search.grade === undefined ? '' : String(search.grade)}
+                    value={searchGrade === undefined ? '' : String(searchGrade)}
                     options={[
                       { value: '', label: t('results.ratingList.allGrades') },
                       ...GRADES.map((grade) => ({ value: String(grade), label: String(grade) })),

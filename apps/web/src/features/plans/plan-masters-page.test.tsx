@@ -6,7 +6,7 @@ import type {
   PlanMasters,
   PlanParallel,
 } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -193,6 +193,58 @@ describe('Master plans', () => {
         scope: 'branch',
       });
     });
+  });
+
+  // Task 9.4d: a master of grade 0 (05, Class: "Grade (0–11)"); an empty grade is never sent as 0.
+  it('creates a master of grade 0, and sends nothing while the subject offers no grade', async () => {
+    const calls = open({
+      path: '/plans/masters',
+      routes: {
+        'GET /api/plans/masters': () =>
+          json({ ...MASTERS, keeps: [{ subject, grades: [0, 7], scopes: ['branch'] }] }),
+        'POST /api/plans/masters': () => json({ ...MASTER_ONE, id: uid(34), grade: 0 }, 201),
+      },
+    });
+    await screen.findByRole('heading', { name: en.plans.masters.title });
+    fireEvent.click(
+      (await screen.findAllByRole('button', { name: en.plans.masters.add }))[0] as HTMLElement,
+    );
+    const form = await screen.findByRole('form', { name: en.plans.masters.newTitle });
+    const grade = within(form).getByRole<HTMLSelectElement>('combobox', {
+      name: en.plans.masters.grade,
+    });
+    expect([...grade.options].map((one) => one.value)).toEqual(['0', '7']);
+    expect(grade.value).toBe('0');
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.masters.name }), {
+      target: { value: 'Grade 0' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/plans/masters')?.body).toMatchObject({
+        grade: 0,
+        name: 'Grade 0',
+      });
+    });
+    cleanup();
+
+    const none = open({
+      path: '/plans/masters',
+      routes: {
+        'GET /api/plans/masters': () =>
+          json({ ...MASTERS, keeps: [{ subject, grades: [], scopes: ['branch'] }] }),
+      },
+    });
+    await screen.findByRole('heading', { name: en.plans.masters.title });
+    fireEvent.click(
+      (await screen.findAllByRole('button', { name: en.plans.masters.add }))[0] as HTMLElement,
+    );
+    const empty = await screen.findByRole('form', { name: en.plans.masters.newTitle });
+    fireEvent.change(within(empty).getByRole('textbox', { name: en.plans.masters.name }), {
+      target: { value: 'No grade' },
+    });
+    fireEvent.click(within(empty).getByRole('button', { name: en.form.save }));
+    await screen.findByText(en.form.required);
+    expect(none.some((call) => call.route === 'POST /api/plans/masters')).toBe(false);
   });
 
   it('shows the list in Russian, and no Add for a teacher', async () => {

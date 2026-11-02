@@ -7,7 +7,7 @@ import type {
   SessionResponse,
   SubjectMastery,
 } from '@sodiq/shared';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
@@ -232,6 +232,45 @@ describe('the reports of 08 (task 9.3b-2)', () => {
           .filter((call) => call.route === 'POST /api/results/reports/export')
           .map((call) => call.body),
       ).toEqual([{ kind: 'mastery', quarterId: QUARTER.id, subjectId: SUBJECT.id, grade: 7 }]);
+    });
+  });
+
+  // Task 9.4d: grade 0 is a grade of the address (plan review, correction 1); an empty
+  // grade is no filter, never grade 0.
+  it('keeps grade 0 of the address and sends it, and reads an empty grade as no filter', async () => {
+    const gradeSent = (calls: ReturnType<typeof open>, route: string) =>
+      calls
+        .filter((call) => call.route === route)
+        .map((call) => new URLSearchParams(call.query).get('grade'));
+    const attendance = open(VICE, '/results/attendance?from=2026-10-12&to=2026-10-31&grade=0');
+    await waitFor(() => {
+      expect(gradeSent(attendance, 'GET /api/results/reports/attendance')).toContain('0');
+    });
+    cleanup();
+    const empty = open(VICE, '/results/attendance?from=2026-10-12&to=2026-10-31&grade=');
+    await waitFor(() => {
+      expect(gradeSent(empty, 'GET /api/results/reports/attendance').length).toBeGreaterThan(0);
+    });
+    expect(gradeSent(empty, 'GET /api/results/reports/attendance')).toEqual(
+      gradeSent(empty, 'GET /api/results/reports/attendance').map(() => null),
+    );
+    cleanup();
+    const mastery = open(VICE, '/results/mastery?grade=0');
+    await waitFor(() => {
+      expect(rowsOf()[0]).toEqual(['5', '84–100', '1', '50%']);
+    });
+    expect(
+      mastery
+        .filter((call) => call.route === 'GET /api/results/reports/subject-mastery')
+        .map((call) => new URLSearchParams(call.query).get('grade')),
+    ).toContain('0');
+    fireEvent.click(screen.getByRole('button', { name: en.results.reports.excel }));
+    await waitFor(() => {
+      expect(
+        mastery
+          .filter((call) => call.route === 'POST /api/results/reports/export')
+          .map((call) => call.body),
+      ).toEqual([{ kind: 'mastery', quarterId: QUARTER.id, subjectId: SUBJECT.id, grade: 0 }]);
     });
   });
 
