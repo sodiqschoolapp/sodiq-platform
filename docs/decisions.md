@@ -342,6 +342,22 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 2 November 2026: the Class teacher of grades 0–4 (task 9.4e)
+
+Plan approved on pull request #275; the owner chose reading A of decision 2 (stop-list item 5, permissions). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (checks refuse less because the requirement changed). A subject row whose grades taught are all within 0–4 may come from any department: `staff_profile_check` (`staff_subject_department`), `staff_subject_in_use`, `teachersOutside` and the services' own checks (0152, `primary_grades_only`); `department_move_loads` (from 0075) leaves out a load row of a class of grades 0–4 or of a group whose every class is of grades 0–4. A row with grade 5 beside 0–4 still needs the department | `docs/spec-changes.md`, 1 November 2026, item 2; `04`, Academic; `edge/people-roles-accounts` (decision 1) |
+| **Look first** (permissions; approved by the owner). The `class_teacher` row is the `tutor` row in every area (`rows()` of `permissions.ts`; a test pins it), with own class from the same `class_tutors` rows (`OWN_CLASS_ROLES`); her teaching comes from a Teacher assignment she also holds | `02`, Class teacher; `02`, introduction (decision 2) |
+| **Look first** (tests changed because the requirement changed). Tests that gave a class of grades 1–4 a Tutor now use grades 5–11 (`class-tutors.test.ts`, `classes.database.test.ts`); the hand-written role lists of `permissions.test.ts`, `roles.test.ts`, `menu.test.ts`, `staff.test.ts`, `accounts.test.ts` and `account-access.test.ts` name the 16th role; the export headings "Tutor" of the class and student files read "Tutor or Class teacher" | The spec change of 1 November 2026, item 1 |
+| A class of grades 0–4 takes a `class_teacher` row and one of 5–11 a `tutor` row, main and acting (`class_tutors_needs_class_teacher`, `class_tutors_needs_tutor`) | `edge/people-roles-accounts`, "Refused, not a warning" (decision 3) |
+| One own class at a time: `class_tutors_one_class`, an exclusion over the account (`own_class_account`, filled by `class_tutors_fill`), across branches; acting rows outside it | `02`, Class teacher (decision 4) |
+| A grade edit across 4 ↔ 5 is refused while a row of the other role is in force or planned (`classes_grade_tutor_role`) | Decision 5; rollover is 9.5b |
+| The lists show one column, "Tutor or Class teacher"; the Tutors part of a class of grades 0–4 reads "Class teacher" and offers its holders only | `05`, Class (decision 6) |
+| The staff import still creates only Teachers and Tutors | Spec change, "Staying as written" (decision 7) |
+| The role-end mirror (`assignments_class_tutors_end`) fires for `class_teacher` too | Found by the spec-reviewer of the plan |
+
 ## 29 October 2026: every speed target at three times the size (task 10.1b)
 
 Plan approved on pull request #263 with corrections 1 to 7; decisions 1 to 10 confirmed there (8 changed by correction 7). Flagged on issue #42.
