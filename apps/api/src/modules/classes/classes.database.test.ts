@@ -641,7 +641,7 @@ describe('classes and their Tutors in the database', () => {
     // of every branch, so the entry of the end names them whatever branch the
     // transaction filters to (`class_tutor_ends`, db/migrations/0044).
     it("names the rows it moved in another branch than the transaction's", async () => {
-      const far = await insertClass(south, southYear, { name: 'Named far', grade: 2 });
+      const far = await insertClass(south, southYear, { name: 'Named far', grade: 6 });
       const person = await tutor(north, ['uz'], [south]);
       const southRole = await kit.role(person.accountId, south);
       const row = await giveTutor(south, far.id, southRole);
@@ -660,8 +660,8 @@ describe('classes and their Tutors in the database', () => {
     });
 
     it('leaves rows ended by the Academic Vice Principal or by an archive ended', async () => {
-      const ended = await insertClass(north, northYear, { name: 'Ended earlier', grade: 4 });
-      const archived = await insertClass(north, northYear, { name: 'Archived', grade: 3 });
+      const ended = await insertClass(north, northYear, { name: 'Ended earlier', grade: 8 });
+      const archived = await insertClass(north, northYear, { name: 'Archived', grade: 9 });
       const person = await tutor(north);
       const byHand = await giveTutor(north, ended.id, person.assignmentId);
       const byArchive = await giveTutor(north, archived.id, person.assignmentId);
@@ -692,7 +692,7 @@ describe('classes and their Tutors in the database', () => {
 
     // .claude/rules/database.md: a row back in service is checked again.
     it('checks the language again on a row its taking back returns', async () => {
-      const { id } = await insertClass(north, northYear, { name: 'Returned', grade: 2 });
+      const { id } = await insertClass(north, northYear, { name: 'Returned', grade: 6 });
       const person = await tutor(north, ['uz', 'ru']);
       const row = await giveTutor(north, id, person.assignmentId);
       // The role ends at 00:00 today: the row, begun at 10:00, is withdrawn,
@@ -723,7 +723,7 @@ describe('classes and their Tutors in the database', () => {
     });
 
     it('refuses a taking back over a Tutor given meanwhile', async () => {
-      const { id } = await insertClass(north, northYear, { name: 'Replaced', grade: 1 });
+      const { id } = await insertClass(north, northYear, { name: 'Replaced', grade: 5 });
       const first = await tutor(north);
       const second = await tutor(north);
       await giveTutor(north, id, first.assignmentId);

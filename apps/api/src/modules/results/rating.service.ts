@@ -34,6 +34,7 @@ import {
   type RatingState,
   type RatingSubjectList,
   type RatingSubjectQuery,
+  OWN_CLASS_ROLES,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -248,7 +249,7 @@ export const isManagement = (context: Context): boolean =>
 
 /** The Tutor's own classes, in small letters (rows in force at the request). */
 export const tutorClasses = (context: Context): Set<string> =>
-  new Set(permitting(context, ['tutor']).flatMap((assignment) => assignment.classIds));
+  new Set(permitting(context, OWN_CLASS_ROLES).flatMap((assignment) => assignment.classIds));
 
 /** Whether the reader may rank the journal in one subject on the reference date. */
 export async function mayRankJournal(

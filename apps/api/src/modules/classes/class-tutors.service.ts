@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
   classTutorKindSchema,
   instructionLanguageSchema,
+  isOwnClassRole,
+  OWN_CLASS_ROLES,
+  roleSchema,
   schoolDateOf,
   type ClassDetail,
   type ClassTutorEnd,
@@ -66,13 +69,15 @@ export class ClassTutors {
         )
         .select([
           'assignments.id',
+          'assignments.role',
           'assignments.valid_from',
           'assignments.valid_until',
           'staff.id as staff_id',
           'staff.first_name',
           'staff.last_name',
         ])
-        .where('assignments.role', '=', 'tutor')
+        // Task 9.4e: the Tutors and the Class teachers; the screen offers the role of the grade.
+        .where('assignments.role', 'in', OWN_CLASS_ROLES)
         .where('assignments.branch_id', '=', branchId)
         .where((builder) =>
           builder.or([
@@ -132,6 +137,7 @@ export class ClassTutors {
       return {
         candidates: assignments.map((row) => ({
           assignmentId: row.id,
+          role: row.role === 'class_teacher' ? ('class_teacher' as const) : ('tutor' as const),
           staffId: row.staff_id,
           name:
             row.first_name === null || row.last_name === null
@@ -227,9 +233,11 @@ export class ClassTutors {
     if (assignment === undefined) {
       throw notFound();
     }
-    if (assignment.role !== 'tutor') {
+    if (!isOwnClassRole(roleSchema.parse(assignment.role))) {
       throw new ApiException('tutor_not_tutor', 409);
     }
+    // Task 9.4e, decision 3: the role of the class's grade is the database's rule
+    // (class_tutors_fill, 0152), answered through CLASS_REFUSALS.
     const now = await transactionMoment(transaction);
     const zone = await zoneOf(transaction, branchId);
     const validFrom = await this.momentOf(transaction, give.from, now, zone);

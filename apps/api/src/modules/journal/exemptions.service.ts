@@ -27,6 +27,7 @@ import {
   type ExemptionVoid,
   type ExemptionsToday,
   type PlanFileType,
+  isOwnClassRole,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
@@ -397,7 +398,7 @@ export class Exemptions {
       const own = [
         ...new Set(
           access.permitting
-            .filter((one) => one.role === 'tutor')
+            .filter((one) => isOwnClassRole(one.role))
             .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
         ),
       ];

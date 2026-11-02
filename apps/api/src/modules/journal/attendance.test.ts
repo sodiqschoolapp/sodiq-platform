@@ -19,6 +19,7 @@ import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from './cells.js';
+import { OWN_CLASS_CASES, gradeOf, ownRoleOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -86,7 +87,10 @@ describe('attendance entry', () => {
     until?: string,
   ): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Ali', last_name: last })
@@ -119,8 +123,8 @@ describe('attendance entry', () => {
    * 12, 19 and 26 October at 08:00, owned by the scene's teacher; Valiyev left on
    * 18 October.
    */
-  async function scene(accounts: { teacher?: string; spare?: string } = {}) {
-    const s = await publishedScene(t, load, { graded: true, accounts });
+  async function scene(accounts: { teacher?: string; spare?: string } = {}, grade = 7) {
+    const s = await publishedScene(t, load, { graded: true, accounts, grade });
     const lessons = await lessonsOf(s.classId);
     const [first, second, third] = lessons;
     if (first === undefined || second === undefined || third === undefined) {
@@ -199,7 +203,7 @@ describe('attendance entry', () => {
   async function tutorOf(branch: string, classId: string): Promise<Browser> {
     const browser = await account();
     const assignment = await t.kit.giveRole(browser.account.id, {
-      role: 'tutor',
+      role: ownRoleOf(await gradeOf(t.database.migrator, classId)),
       branchId: branch,
       validFrom: new Date('2026-09-01T00:00:00+05:00'),
     });
@@ -1101,72 +1105,81 @@ describe('attendance entry', () => {
   });
 
   describe('the history of a cell, by role (permission review, must-fix 2)', () => {
-    it('answers every reader whose grid shows the cell, and refuses a Tutor of another class and a Head Teacher of another subject', async () => {
-      const owner = await account();
-      const s = await scene({ teacher: owner.account.id });
-      await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
-        await post(s.branch, `/api/journal/lessons/${s.first}/attendance`, {
-          saves: [{ studentId: s.ahmedov, mark: 3, version: null }],
+    it.each(OWN_CLASS_CASES)(
+      'answers every reader whose grid shows the cell, and refuses a %s of another class and a Head Teacher of another subject',
+      async (_who, grade) => {
+        const owner = await account();
+        const s = await scene({ teacher: owner.account.id }, grade);
+        await as(owner, [{ role: 'teacher', branchId: s.branch }], async ({ post }) => {
+          await post(s.branch, `/api/journal/lessons/${s.first}/attendance`, {
+            saves: [{ studentId: s.ahmedov, mark: 3, version: null }],
+          });
         });
-      });
-      const path = `/api/journal/lessons/${s.first}/students/${s.ahmedov}/history`;
-      const lines = (response: Response) => {
-        expect(response.status, JSON.stringify(response.body)).toBe(200);
-        return cellHistorySchema.parse(response.body).lines.map((line) => line.after);
-      };
-      for (const role of [
-        'principal',
-        'academic_vice_principal',
-        'spiritual_vice_principal',
-      ] as const) {
-        const browser = await account();
-        await as(browser, [{ role, branchId: s.branch }], async ({ get }) => {
-          expect(lines(await get(s.branch, path)), role).toEqual([3]);
+        const path = `/api/journal/lessons/${s.first}/students/${s.ahmedov}/history`;
+        const lines = (response: Response) => {
+          expect(response.status, JSON.stringify(response.body)).toBe(200);
+          return cellHistorySchema.parse(response.body).lines.map((line) => line.after);
+        };
+        for (const role of [
+          'principal',
+          'academic_vice_principal',
+          'spiritual_vice_principal',
+        ] as const) {
+          const browser = await account();
+          await as(browser, [{ role, branchId: s.branch }], async ({ get }) => {
+            expect(lines(await get(s.branch, path)), role).toEqual([3]);
+          });
+        }
+        const admin = await account();
+        await as(admin, [{ role: 'super_admin' }], async ({ get }) => {
+          expect(lines(await get(s.branch, path))).toEqual([3]);
         });
-      }
-      const admin = await account();
-      await as(admin, [{ role: 'super_admin' }], async ({ get }) => {
-        expect(lines(await get(s.branch, path))).toEqual([3]);
-      });
-      const head = await account();
-      await as(
-        head,
-        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
-        async ({ get }) => {
+        // At most 3 Super Admins (MAX_SUPER_ADMINS): the run of each own-class role ends its own.
+        await t.database.migrator
+          .updateTable('assignments')
+          .set((builder) => ({ valid_until: builder.ref('valid_from') }))
+          .where('account_id', '=', admin.account.id)
+          .execute();
+        const head = await account();
+        await as(
+          head,
+          [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+          async ({ get }) => {
+            expect(lines(await get(s.branch, path))).toEqual([3]);
+          },
+        );
+        // A Senior Head Teacher of the subject holds no assignment of the branch.
+        const senior = await account();
+        await as(
+          senior,
+          [{ role: 'senior_head_teacher', subjectIds: [s.subject] }],
+          async ({ get }) => {
+            expect(lines(await get(s.branch, path))).toEqual([3]);
+          },
+        );
+        const otherSubject = await load.classes.subject({ grades: [7] });
+        const otherHead = await account();
+        await as(
+          otherHead,
+          [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
+          async ({ get }) => {
+            const refused = await get(s.branch, path);
+            expect(refused.status).toBe(403);
+            expect(codeOf(refused)).toBe('journal_scope');
+          },
+        );
+        const ownTutor = await tutorOf(s.branch, s.classId);
+        await as(ownTutor, [], async ({ get }) => {
           expect(lines(await get(s.branch, path))).toEqual([3]);
-        },
-      );
-      // A Senior Head Teacher of the subject holds no assignment of the branch.
-      const senior = await account();
-      await as(
-        senior,
-        [{ role: 'senior_head_teacher', subjectIds: [s.subject] }],
-        async ({ get }) => {
-          expect(lines(await get(s.branch, path))).toEqual([3]);
-        },
-      );
-      const otherSubject = await load.classes.subject({ grades: [7] });
-      const otherHead = await account();
-      await as(
-        otherHead,
-        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [otherSubject] }],
-        async ({ get }) => {
+        });
+        const otherTutor = await tutorOf(s.branch, s.otherClass);
+        await as(otherTutor, [], async ({ get }) => {
           const refused = await get(s.branch, path);
           expect(refused.status).toBe(403);
           expect(codeOf(refused)).toBe('journal_scope');
-        },
-      );
-      const ownTutor = await tutorOf(s.branch, s.classId);
-      await as(ownTutor, [], async ({ get }) => {
-        expect(lines(await get(s.branch, path))).toEqual([3]);
-      });
-      const otherTutor = await tutorOf(s.branch, s.otherClass);
-      await as(otherTutor, [], async ({ get }) => {
-        const refused = await get(s.branch, path);
-        expect(refused.status).toBe(403);
-        expect(codeOf(refused)).toBe('journal_scope');
-      });
-    });
+        });
+      },
+    );
   });
 
   describe('a group that draws from two classes (spec review of the code, must-fix 7)', () => {

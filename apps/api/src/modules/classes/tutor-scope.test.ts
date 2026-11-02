@@ -14,6 +14,7 @@ import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/da
 import { MembersKit } from '../../testing/members-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { binary, fileOf } from '../../testing/xlsx-kit.js';
+import { OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
 
 // All names are invented. docs/spec/02-roles-and-access.md, the Tutor row:
 // "Own class or classes; student list of the branch ... Views the full
@@ -24,7 +25,8 @@ import { binary, fileOf } from '../../testing/xlsx-kit.js';
 // access on the end date. An acting Tutor can be set for a period"). Task
 // 3.1c, pull request #90, with the corrections of its review. The clock
 // stands at 23:55 on 10 October 2026 in Tashkent.
-describe('the class scope of a Tutor', () => {
+// Task 9.4e: once as the Tutor of classes of grade 7, once as the Class teacher of grade 1.
+describe.each(OWN_CLASS_CASES)('the class scope of a %s', (_who, grade) => {
   let t: DayTemplatesKit;
   let classes: ClassesKit;
   let members: MembersKit;
@@ -64,7 +66,7 @@ describe('the class scope of a Tutor', () => {
     const browser = await t.kit.completeSession(first, last);
     await classes.person(branch || t.north, ['uz'], { accountId: browser.account.id, first, last });
     const given = await t.kit.giveRole(browser.account.id, {
-      role: 'tutor',
+      role: ownRoleOf(grade),
       branchId: branch || t.north,
       validFrom: FROM,
     });
@@ -119,11 +121,11 @@ describe('the class scope of a Tutor', () => {
     members = new MembersKit(t.database.migrator, await classes.account());
     year = await classes.year(t.north);
     const southYear = await classes.year(t.south);
-    oxford = await classes.schoolClass(t.north, year, { name: 'Oxford' });
-    yale = await classes.schoolClass(t.north, year, { name: 'Yale' });
-    harvard = await classes.schoolClass(t.north, year, { name: 'Harvard' });
-    princeton = await classes.schoolClass(t.north, year, { name: 'Princeton' });
-    southClass = await classes.schoolClass(t.south, southYear, { name: 'Southern' });
+    oxford = await classes.schoolClass(t.north, year, { grade, name: 'Oxford' });
+    yale = await classes.schoolClass(t.north, year, { grade, name: 'Yale' });
+    harvard = await classes.schoolClass(t.north, year, { grade, name: 'Harvard' });
+    princeton = await classes.schoolClass(t.north, year, { grade, name: 'Princeton' });
+    southClass = await classes.schoolClass(t.south, southYear, { grade, name: 'Southern' });
 
     const first = await tutorOf('Gulnora', 'Tursunova');
     tutor = first.cookie;
@@ -146,9 +148,9 @@ describe('the class scope of a Tutor', () => {
     starting = fifth.cookie;
     await classes.tutorRow(t.north, princeton, fifth.assignment, { from: MIDNIGHT });
 
-    own = await members.student(t.north);
+    own = await members.student(t.north, { grade });
     await members.member({ branch: t.north, classId: oxford, studentId: own, from: '2026-09-01' });
-    planned = await members.student(t.north);
+    planned = await members.student(t.north, { grade });
     await members.member({
       branch: t.north,
       classId: yale,
@@ -162,7 +164,7 @@ describe('the class scope of a Tutor', () => {
       studentId: planned,
       from: '2026-10-20',
     });
-    former = await members.student(t.north);
+    former = await members.student(t.north, { grade });
     await members.member({
       branch: t.north,
       classId: oxford,
@@ -171,16 +173,16 @@ describe('the class scope of a Tutor', () => {
       ownUntil: '2026-10-01',
     });
     await members.member({ branch: t.north, classId: yale, studentId: former, from: '2026-10-01' });
-    other = await members.student(t.north);
+    other = await members.student(t.north, { grade });
     await members.member({ branch: t.north, classId: yale, studentId: other, from: '2026-09-01' });
     await members.member({
       branch: t.north,
       classId: harvard,
-      studentId: await members.student(t.north),
+      studentId: await members.student(t.north, { grade }),
       from: '2026-09-01',
     });
-    noClass = await members.student(t.north, { startsOn: '2026-10-20' });
-    southern = await members.student(t.south);
+    noClass = await members.student(t.north, { startsOn: '2026-10-20', grade });
+    southern = await members.student(t.south, { grade });
     await members.member({
       branch: t.south,
       classId: southClass,
@@ -384,6 +386,47 @@ describe('the class scope of a Tutor', () => {
       expect(await t.auditCount()).toBe(before);
     });
 
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of 1 London exports
+    // own class with every group the Tutor reads, and nothing of 7 Oxford.
+    it('writes the own class of a Class teacher, with Contact and the score, and counts the rest', async () => {
+      const london = await classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+      const browser = await t.kit.completeSession('Malika', 'Karimova');
+      await classes.person(t.north, ['uz'], {
+        accountId: browser.account.id,
+        first: 'Malika',
+        last: 'Karimova',
+      });
+      const given = await t.kit.giveRole(browser.account.id, {
+        role: 'class_teacher',
+        branchId: t.north,
+        validFrom: FROM,
+      });
+      await classes.tutorRow(t.north, london, given.id, { from: FROM });
+      const pupil = await members.student(t.north, { grade: 1 });
+      await members.member({
+        branch: t.north,
+        classId: london,
+        studentId: pupil,
+        from: '2026-09-01',
+      });
+      const response = await exportOf([pupil, own], browser.cookie, {
+        columns: ['uid', 'name', 'phone', 'diagnosticScore', 'address'],
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers['x-export-rows-left-out']).toBe('1');
+      const file = await fileOf(response);
+      expect(file.columns).toBe('uid,name,phone,diagnosticScore');
+      expect(file.sheet.rows.map((row) => row[0])).toEqual([await uidOf(pupil)]);
+      const [entry] = (await t.entries('student.export')).slice(-1);
+      expect(entry?.assignment_id).toBe(given.id);
+      // Her class only: a student of 7 Oxford is refused on the record.
+      refusedWith(
+        await t.get(`/api/people/students/${own}`, t.north, browser.cookie),
+        403,
+        'permission_denied',
+      );
+    });
+
     it('exports the whole branch for a Tutor who is also Principal, naming the Principal', async () => {
       const mixed = await tutorOf('Dildora', 'Rasulova');
       const principal = (
@@ -517,10 +560,10 @@ describe('the class scope of a Tutor', () => {
     it('holds no class of a closed year (decision 14)', async () => {
       const east = await t.newBranch();
       const eastYear = await classes.year(east);
-      const eastClass = await classes.schoolClass(east, eastYear, { name: 'Eastern' });
+      const eastClass = await classes.schoolClass(east, eastYear, { grade, name: 'Eastern' });
       const eastTutor = await tutorOf('Nodira', 'Yusupova', east);
       await classes.tutorRow(east, eastClass, eastTutor.assignment, { from: FROM });
-      const eastStudent = await members.student(east);
+      const eastStudent = await members.student(east, { grade });
       await members.member({
         branch: east,
         classId: eastClass,
@@ -558,18 +601,26 @@ describe('the class scope of a Tutor', () => {
     it('holds no archived class, no withdrawn row, and the rows of the branch of the request only', async () => {
       const both = await tutorOf('Lola', 'Karimova');
       const southAssignment = (
-        await t.kit.giveRole(both.accountId, { role: 'tutor', branchId: t.south, validFrom: FROM })
+        await t.kit.giveRole(both.accountId, {
+          role: ownRoleOf(grade),
+          branchId: t.south,
+          validFrom: FROM,
+        })
       ).id;
       await classes.tutorRow(t.south, southClass, southAssignment, { from: FROM });
-      const columbia = await classes.schoolClass(t.north, year, { name: 'Columbia' });
-      await classes.tutorRow(t.north, columbia, both.assignment, { from: FROM });
+      const columbia = await classes.schoolClass(t.north, year, { grade, name: 'Columbia' });
+      // Acting rows: a Class teacher holds one own class at a time (task 9.4e), the rows read the same.
+      await classes.tutorRow(t.north, columbia, both.assignment, { kind: 'acting', from: FROM });
       await t.database.migrator
         .updateTable('classes')
         .set({ archived_at: new Date('2026-10-01T09:00:00+05:00') })
         .where('id', '=', columbia)
         .execute();
-      const stanford = await classes.schoolClass(t.north, year, { name: 'Stanford' });
-      const withdrawn = await classes.tutorRow(t.north, stanford, both.assignment, { from: FROM });
+      const stanford = await classes.schoolClass(t.north, year, { grade, name: 'Stanford' });
+      const withdrawn = await classes.tutorRow(t.north, stanford, both.assignment, {
+        kind: 'acting',
+        from: FROM,
+      });
       await t.database.migrator
         .updateTable('class_tutors')
         .set({ valid_until: FROM, end_cause: 'ended' })

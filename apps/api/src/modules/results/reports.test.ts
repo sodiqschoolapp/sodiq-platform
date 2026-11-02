@@ -13,7 +13,7 @@ import ExcelJS from 'exceljs';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
@@ -30,6 +30,7 @@ import { publishedScene, type PublishedScene } from '../../testing/published-sce
 import { binary } from '../../testing/xlsx-kit.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES, endTestSuperAdmins, gradeOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -142,7 +143,10 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     rows: readonly Omit<MemberRow, 'branch' | 'studentId'>[],
   ): Promise<string> => {
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await kit.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await kit.student(branch, {
+      startsOn: '2026-09-01',
+      grade: rows[0] === undefined ? 7 : await gradeOf(t.database.migrator, rows[0].classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: name.first, last_name: name.last })
@@ -225,8 +229,12 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
    * - the 19th: Aziz and Bobur present, the others unmarked;
    * - the 26th: nothing entered.
    */
-  async function scene(accounts?: { readonly teacher?: string; readonly spare?: string }) {
+  async function scene(
+    accounts?: { readonly teacher?: string; readonly spare?: string },
+    grade = 7,
+  ) {
     const s = await publishedScene(t, load, {
+      grade,
       graded: true,
       secondSubject: true,
       ...(accounts === undefined ? {} : { accounts }),
@@ -284,6 +292,11 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
+  });
+
+  // Task 9.4e: the tests run per own-class role, and at most 3 accounts are Super Admin.
+  afterEach(async () => {
+    await endTestSuperAdmins(t.database.migrator, t.adminAssignment);
   });
 
   afterAll(async () => {
@@ -520,42 +533,45 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     });
   });
 
-  it('gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch', async () => {
-    const c = await scene();
-    const other = await scene();
-    const tutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    await as(tutor, c.s.branch, [], async ({ get }) => {
-      const report = attendanceOf(await get(`/api/results/reports/attendance?${RANGE}`));
-      expect(report.rows.map((one) => one.key.kind === 'class' && one.key.class.id)).toEqual([
-        c.s.classId,
-      ]);
-      expect(report.choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
-      const refused = await get(
-        `/api/results/reports/attendance?${RANGE}&classId=${c.s.otherClass}`,
+  it.each(OWN_CLASS_CASES)(
+    'gives the %s own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch',
+    async (_who, grade) => {
+      const c = await scene(undefined, grade);
+      const other = await scene(undefined, grade);
+      const tutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      await as(tutor, c.s.branch, [], async ({ get }) => {
+        const report = attendanceOf(await get(`/api/results/reports/attendance?${RANGE}`));
+        expect(report.rows.map((one) => one.key.kind === 'class' && one.key.class.id)).toEqual([
+          c.s.classId,
+        ]);
+        expect(report.choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
+        const refused = await get(
+          `/api/results/reports/attendance?${RANGE}&classId=${c.s.otherClass}`,
+        );
+        expect(refused.status).toBe(403);
+        expect(codeOf(refused)).toBe('permission_denied');
+      });
+      await as(
+        await account(),
+        c.s.branch,
+        [{ role: 'academic_vice_principal', branchId: c.s.branch }],
+        async ({ get }) => {
+          for (const query of [
+            `classId=${UNKNOWN}`,
+            `classId=${other.s.classId}`,
+            `subjectId=${UNKNOWN}`,
+            `teacherId=${UNKNOWN}`,
+            `teacherId=${other.s.teacher.staffId}`,
+          ]) {
+            const response = await get(`/api/results/reports/attendance?${RANGE}&${query}`);
+            expect(response.status, query).toBe(404);
+          }
+        },
       );
-      expect(refused.status).toBe(403);
-      expect(codeOf(refused)).toBe('permission_denied');
-    });
-    await as(
-      await account(),
-      c.s.branch,
-      [{ role: 'academic_vice_principal', branchId: c.s.branch }],
-      async ({ get }) => {
-        for (const query of [
-          `classId=${UNKNOWN}`,
-          `classId=${other.s.classId}`,
-          `subjectId=${UNKNOWN}`,
-          `teacherId=${UNKNOWN}`,
-          `teacherId=${other.s.teacher.staffId}`,
-        ]) {
-          const response = await get(`/api/results/reports/attendance?${RANGE}&${query}`);
-          expect(response.status, query).toBe(404);
-        }
-      },
-    );
-  });
+    },
+  );
 
   // Decision 1 and `class-scope.ts`: in a group that mixes classes the Tutor reads the own
   // students only, in the answer and in the file (code review 4).
@@ -627,58 +643,61 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
   });
 
-  it('groups the attendance by the Tutor in force and refuses a range of more than 92 days or outside one year', async () => {
-    const c = await scene();
-    const tutor = await account();
-    const staff = await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    // An acting Tutor of the first class from Monday 19 October: the lessons of the 19th and the
-    // 26th count under them (`tutorAt`: the acting Tutor while one is set).
-    const acting = await account();
-    const actingStaff = await load.classes.person(c.s.branch, ['uz'], {
-      accountId: acting.account.id,
-    });
-    await load.tutorOf(c.s.branch, c.s.classId, acting.account.id, {
-      kind: 'acting',
-      from: new Date('2026-10-19T00:00:00+05:00'),
-      until: null,
-    });
-    await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
-      { classId: c.s.otherClass, from: '2026-09-01' },
-    ]);
-    await as(
-      await account(),
-      c.s.branch,
-      [{ role: 'head_tutor', branchId: c.s.branch }],
-      async ({ get }) => {
-        const report = attendanceOf(
-          await get(`/api/results/reports/attendance?${RANGE}&groupBy=tutor`),
-        );
-        const keys = report.rows.map((one) => (one.key.kind === 'tutor' ? one.key.tutor : null));
-        expect(keys).toContainEqual({ id: staff.staffId, name: expect.any(String) as string });
-        expect(keys).toContainEqual({
-          id: actingStaff.staffId,
-          name: expect.any(String) as string,
-        });
-        const own = report.rows.find(
-          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === staff.staffId,
-        );
-        const covered = report.rows.find(
-          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === actingStaff.staffId,
-        );
-        // Six members on the 12th under the Tutor, twice six under the acting Tutor.
-        expect(own ? own.counts.expected + own.counts.exempt : 0).toBe(6);
-        expect(covered ? covered.counts.expected + covered.counts.exempt : 0).toBe(12);
-        // The other class has no Tutor: its cells under "no Tutor".
-        expect(keys).toContain(null);
-        for (const range of ['from=2026-09-01&to=2026-12-15', 'from=2027-05-20&to=2027-06-10']) {
-          const response = await get(`/api/results/reports/attendance?${range}`);
-          expect(response.status, range).toBe(409);
-          expect(codeOf(response)).toBe('discipline_range');
-        }
-      },
-    );
-  });
+  it.each(OWN_CLASS_CASES)(
+    'groups the attendance by the %s in force and refuses a range of more than 92 days or outside one year',
+    async (_who, grade) => {
+      const c = await scene(undefined, grade);
+      const tutor = await account();
+      const staff = await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      // An acting Tutor of the first class from Monday 19 October: the lessons of the 19th and the
+      // 26th count under them (`tutorAt`: the acting Tutor while one is set).
+      const acting = await account();
+      const actingStaff = await load.classes.person(c.s.branch, ['uz'], {
+        accountId: acting.account.id,
+      });
+      await load.tutorOf(c.s.branch, c.s.classId, acting.account.id, {
+        kind: 'acting',
+        from: new Date('2026-10-19T00:00:00+05:00'),
+        until: null,
+      });
+      await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
+        { classId: c.s.otherClass, from: '2026-09-01' },
+      ]);
+      await as(
+        await account(),
+        c.s.branch,
+        [{ role: 'head_tutor', branchId: c.s.branch }],
+        async ({ get }) => {
+          const report = attendanceOf(
+            await get(`/api/results/reports/attendance?${RANGE}&groupBy=tutor`),
+          );
+          const keys = report.rows.map((one) => (one.key.kind === 'tutor' ? one.key.tutor : null));
+          expect(keys).toContainEqual({ id: staff.staffId, name: expect.any(String) as string });
+          expect(keys).toContainEqual({
+            id: actingStaff.staffId,
+            name: expect.any(String) as string,
+          });
+          const own = report.rows.find(
+            (one) => one.key.kind === 'tutor' && one.key.tutor?.id === staff.staffId,
+          );
+          const covered = report.rows.find(
+            (one) => one.key.kind === 'tutor' && one.key.tutor?.id === actingStaff.staffId,
+          );
+          // Six members on the 12th under the Tutor, twice six under the acting Tutor.
+          expect(own ? own.counts.expected + own.counts.exempt : 0).toBe(6);
+          expect(covered ? covered.counts.expected + covered.counts.exempt : 0).toBe(12);
+          // The other class has no Tutor: its cells under "no Tutor".
+          expect(keys).toContain(null);
+          for (const range of ['from=2026-09-01&to=2026-12-15', 'from=2027-05-20&to=2027-06-10']) {
+            const response = await get(`/api/results/reports/attendance?${range}`);
+            expect(response.status, range).toBe(409);
+            expect(codeOf(response)).toBe('discipline_range');
+          }
+        },
+      );
+    },
+  );
 
   it('lists each student against each graded subject with the result and grade, attendance-only subjects left out, and the stored record of a closed quarter', async () => {
     const c = await scene();
@@ -821,73 +840,83 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
   });
 
-  it('opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor', async () => {
-    const c = await scene();
-    const elsewhere = await load.classes.subject({ grades: [7] });
-    const tutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    const branch = c.s.branch;
-    const table = (classId: string) =>
-      `/api/results/reports/results-table?quarterId=${c.q1}&classId=${classId}`;
-    const mastery = `/api/results/reports/subject-mastery?quarterId=${c.q1}&subjectId=${c.s.subject}`;
-    const columns = async (call: Call, classId: string) =>
-      resultsTableSchema.parse((await call.get(table(classId))).body).subjects.map((one) => one.id);
-    // Head Teacher of the subject: every class, the subject's column; of another subject: none.
-    await as(
-      await account(),
-      branch,
-      [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
-      async (call) => {
+  it.each(OWN_CLASS_CASES)(
+    'opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a %s, no mastery for the Head Tutor',
+    async (_who, grade) => {
+      const c = await scene(undefined, grade);
+      const elsewhere = await load.classes.subject({ grades: [grade] });
+      const tutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      const branch = c.s.branch;
+      const table = (classId: string) =>
+        `/api/results/reports/results-table?quarterId=${c.q1}&classId=${classId}`;
+      const mastery = `/api/results/reports/subject-mastery?quarterId=${c.q1}&subjectId=${c.s.subject}`;
+      const columns = async (call: Call, classId: string) =>
+        resultsTableSchema
+          .parse((await call.get(table(classId))).body)
+          .subjects.map((one) => one.id);
+      // Head Teacher of the subject: every class, the subject's column; of another subject: none.
+      await as(
+        await account(),
+        branch,
+        [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
+        async (call) => {
+          expect(await columns(call, c.s.classId)).toEqual([c.s.subject]);
+          expect((await call.get(mastery)).status).toBe(200);
+        },
+      );
+      await as(
+        await account(),
+        branch,
+        [{ role: 'head_teacher', branchId: branch, subjectIds: [elsewhere] }],
+        async (call) => {
+          expect(await columns(call, c.s.classId)).toEqual([]);
+          expect((await call.get(mastery)).status).toBe(403);
+          const choices = resultsReportChoicesSchema.parse(
+            (await call.get('/api/results/reports/choices')).body,
+          );
+          expect(choices.subjects).toEqual([]);
+        },
+      );
+      await as(
+        await account(),
+        branch,
+        [{ role: 'senior_head_teacher', subjectIds: [elsewhere] }],
+        async (call) => {
+          expect(await columns(call, c.s.classId)).toEqual([]);
+          expect((await call.get(mastery)).status).toBe(403);
+        },
+      );
+      await as(tutor, branch, [], async (call) => {
         expect(await columns(call, c.s.classId)).toEqual([c.s.subject]);
-        expect((await call.get(mastery)).status).toBe(200);
-      },
-    );
-    await as(
-      await account(),
-      branch,
-      [{ role: 'head_teacher', branchId: branch, subjectIds: [elsewhere] }],
-      async (call) => {
-        expect(await columns(call, c.s.classId)).toEqual([]);
-        expect((await call.get(mastery)).status).toBe(403);
+        expect((await call.get(table(c.s.otherClass))).status).toBe(403);
+        // Mastery of the class journal of the own class only.
+        const own = subjectMasterySchema.parse((await call.get(mastery)).body);
+        expect(own.choices.journals.map((one) => one.unit.id)).toEqual([c.s.classId]);
         const choices = resultsReportChoicesSchema.parse(
           (await call.get('/api/results/reports/choices')).body,
         );
-        expect(choices.subjects).toEqual([]);
-      },
-    );
-    await as(
-      await account(),
-      branch,
-      [{ role: 'senior_head_teacher', subjectIds: [elsewhere] }],
-      async (call) => {
-        expect(await columns(call, c.s.classId)).toEqual([]);
-        expect((await call.get(mastery)).status).toBe(403);
-      },
-    );
-    await as(tutor, branch, [], async (call) => {
-      expect(await columns(call, c.s.classId)).toEqual([c.s.subject]);
-      expect((await call.get(table(c.s.otherClass))).status).toBe(403);
-      // Mastery of the class journal of the own class only.
-      const own = subjectMasterySchema.parse((await call.get(mastery)).body);
-      expect(own.choices.journals.map((one) => one.unit.id)).toEqual([c.s.classId]);
-      const choices = resultsReportChoicesSchema.parse(
-        (await call.get('/api/results/reports/choices')).body,
-      );
-      expect(choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
-    });
-    await as(await account(), branch, [{ role: 'head_tutor', branchId: branch }], async (call) => {
-      expect(await columns(call, c.s.otherClass)).toEqual([c.s.subject]);
-      expect((await call.get(mastery)).status).toBe(403);
-    });
-    // The roles outside the area: the guard.
-    for (const role of ['teacher', 'spiritual_vice_principal'] as const) {
-      await as(await account(), branch, [{ role, branchId: branch }], async (call) => {
-        expect((await call.get(table(c.s.classId))).status, role).toBe(403);
-        expect((await call.get(mastery)).status, role).toBe(403);
+        expect(choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
       });
-    }
-  });
+      await as(
+        await account(),
+        branch,
+        [{ role: 'head_tutor', branchId: branch }],
+        async (call) => {
+          expect(await columns(call, c.s.otherClass)).toEqual([c.s.subject]);
+          expect((await call.get(mastery)).status).toBe(403);
+        },
+      );
+      // The roles outside the area: the guard.
+      for (const role of ['teacher', 'spiritual_vice_principal'] as const) {
+        await as(await account(), branch, [{ role, branchId: branch }], async (call) => {
+          expect((await call.get(table(c.s.classId))).status, role).toBe(403);
+          expect((await call.get(mastery)).status, role).toBe(403);
+        });
+      }
+    },
+  );
 
   it('answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery', async () => {
     const c = await scene();
@@ -1092,54 +1121,57 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     });
   });
 
-  it('refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing', async () => {
-    const c = await scene();
-    const elsewhere = await load.classes.subject({ grades: [7] });
-    const tutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    const branch = c.s.branch;
-    await as(tutor, branch, [], async ({ post }) => {
-      expect(
-        (
-          await post('/api/results/reports/attendance/export', {
-            from: '2026-10-12',
-            to: '2026-10-31',
-            classId: c.s.otherClass,
-          })
-        ).status,
-      ).toBe(403);
-      expect(
-        (
-          await post('/api/results/reports/export', {
-            kind: 'table',
-            quarterId: c.q1,
-            classId: c.s.otherClass,
-          })
-        ).status,
-      ).toBe(403);
-    });
-    for (const held of [
-      { role: 'head_teacher' as const, branchId: branch, subjectIds: [elsewhere] },
-      { role: 'senior_head_teacher' as const, subjectIds: [elsewhere] },
-    ]) {
-      await as(await account(), branch, [held], async ({ post }) => {
-        const response = await post('/api/results/reports/export', {
-          kind: 'mastery',
-          quarterId: c.q1,
-          subjectId: c.s.subject,
-        });
-        expect(response.status, held.role).toBe(403);
+  it.each(OWN_CLASS_CASES)(
+    'refuses an export outside the scope of the %s and both Head Teachers, logging nothing',
+    async (_who, grade) => {
+      const c = await scene(undefined, grade);
+      const elsewhere = await load.classes.subject({ grades: [grade] });
+      const tutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      const branch = c.s.branch;
+      await as(tutor, branch, [], async ({ post }) => {
+        expect(
+          (
+            await post('/api/results/reports/attendance/export', {
+              from: '2026-10-12',
+              to: '2026-10-31',
+              classId: c.s.otherClass,
+            })
+          ).status,
+        ).toBe(403);
+        expect(
+          (
+            await post('/api/results/reports/export', {
+              kind: 'table',
+              quarterId: c.q1,
+              classId: c.s.otherClass,
+            })
+          ).status,
+        ).toBe(403);
       });
-    }
-    const logged = await t.database.migrator
-      .selectFrom('audit_log')
-      .select('id')
-      .where('branch_id', '=', branch)
-      .where('action', 'in', ['attendance_report.export', 'results_report.export'])
-      .execute();
-    expect(logged).toEqual([]);
-  });
+      for (const held of [
+        { role: 'head_teacher' as const, branchId: branch, subjectIds: [elsewhere] },
+        { role: 'senior_head_teacher' as const, subjectIds: [elsewhere] },
+      ]) {
+        await as(await account(), branch, [held], async ({ post }) => {
+          const response = await post('/api/results/reports/export', {
+            kind: 'mastery',
+            quarterId: c.q1,
+            subjectId: c.s.subject,
+          });
+          expect(response.status, held.role).toBe(403);
+        });
+      }
+      const logged = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('branch_id', '=', branch)
+        .where('action', 'in', ['attendance_report.export', 'results_report.export'])
+        .execute();
+      expect(logged).toEqual([]);
+    },
+  );
 
   // .claude/rules/api.md (task 8.8): a second role that reads more widens nothing of the first, in
   // the answer and in the file (permission review, must-fixes 1 and 3).

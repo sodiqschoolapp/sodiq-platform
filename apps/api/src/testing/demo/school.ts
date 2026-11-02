@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { ownClassRoleFor } from '@sodiq/shared';
 import type { Database } from '../../database/database.js';
 import type { FixedClock } from '../fixed-clock.js';
 import { groupMemberValues } from '../members-kit.js';
@@ -707,12 +708,11 @@ export async function buildDemoSchool(input: {
       `${branch.name}: ${String(teachers.size)} teachers, ${String(planned.length)} rows of the load`,
     );
 
-    // A Tutor for each class of grades 5 to 11: a teacher of the branch who teaches it. A class of
-    // grades 0 to 4 takes a Class teacher, never a Tutor (the spec change of 1 November 2026,
-    // item 1); task 9.4e gives 0 London hers.
+    // A Tutor for each class of grades 5 to 11 and a Class teacher for each of grades 0 to 4 (the
+    // spec change of 1 November 2026, item 1; task 9.4e): a teacher of the branch who teaches it.
     const tutors = new Set<string>();
     for (const one of classes) {
-      if (one.grade <= 4) continue;
+      const role = ownClassRoleFor(one.grade);
       // A teacher of the class's own rows, one class each.
       const staffId = planned
         .filter((candidate) => candidate.classId === one.id)
@@ -726,7 +726,7 @@ export async function buildDemoSchool(input: {
       if (staffId === undefined) continue;
       tutors.add(staffId);
       await there.post(`/api/people/staff/${staffId}/roles`, {
-        role: 'tutor',
+        role,
         branchId: at.id,
         from: '2026-08-24',
       });
@@ -735,7 +735,7 @@ export async function buildDemoSchool(input: {
         .innerJoin('staff', 'staff.account_id', 'assignments.account_id')
         .select('assignments.id')
         .where('staff.id', '=', staffId)
-        .where('assignments.role', '=', 'tutor')
+        .where('assignments.role', '=', role)
         .where('assignments.branch_id', '=', at.id)
         .orderBy('assignments.id', 'desc')
         .executeTakeFirstOrThrow();

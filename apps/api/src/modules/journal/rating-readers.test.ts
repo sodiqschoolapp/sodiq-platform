@@ -14,6 +14,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { BRANCH_HEADER } from '@sodiq/shared';
 import { Audit } from '../audit/audit.service.js';
+import { OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -83,12 +84,12 @@ describe('the readers of the rating exam and comments', () => {
    * its journal with the rating exam of quarter 1 dated 5 October, a score of each
    * student, a rating comment of each, and a note on the lesson of 12 October.
    */
-  async function scene() {
+  async function scene(grade = 7) {
     const branch = await t.newBranch();
     const { year, quarters } = await cells.lessons.year(branch);
     const quarter = quarters[0] ?? '';
-    const oxford = await load.classes.schoolClass(branch, year, { grade: 7 });
-    const cambridge = await load.classes.schoolClass(branch, year, { grade: 7 });
+    const oxford = await load.classes.schoolClass(branch, year, { grade });
+    const cambridge = await load.classes.schoolClass(branch, year, { grade });
     const group = await load.classes.group(branch, year, cells.subject, [oxford, cambridge]);
     await t.database.migrator
       .insertInto('subject_quarter_weights')
@@ -118,7 +119,7 @@ describe('the readers of the rating exam and comments', () => {
     ).id;
     const members = new MembersKit(t.database.migrator, await load.classes.account());
     const placed = async (name: string, classId: string) => {
-      const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+      const id = await members.student(branch, { startsOn: '2026-09-01', grade });
       await t.database.migrator
         .updateTable('students')
         .set({ last_name: name })
@@ -248,34 +249,37 @@ describe('the readers of the rating exam and comments', () => {
     await t.close();
   });
 
-  it('gives the Tutor of one class of the group the rows of own class only, also in both histories', async () => {
-    const s = await scene();
-    const tutor = await account();
-    const assignment = await t.kit.giveRole(tutor.account.id, {
-      role: 'tutor',
-      branchId: s.branch,
-      validFrom: new Date('2026-09-01T00:00:00+05:00'),
-    });
-    await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.classes.tutorRow(s.branch, s.oxford, assignment.id);
-    await as(tutor, s.branch, [], async (calls) => {
-      const grid = journalGridSchema.parse(
-        (await calls.get(`/api/journal/journals/${s.journal}`)).body,
-      );
-      expect(grid.students.map((one) => one.id)).toEqual([s.nurova]);
-      // A group that mixes classes: no averages for the Tutor, the rating exam's neither (edge/journal).
-      expect(grid.bottom).toBeNull();
-      expect(grid.rating?.entries.map((one) => one.studentId)).toEqual([s.nurova]);
-      expect(grid.students[0]?.comments.map((one) => one.target).sort()).toEqual([
-        'note',
-        'rating',
-      ]);
-      expect((await calls.get(ratingHistory(s, s.nurova))).status).toBe(200);
-      expect(codeOf(await calls.get(ratingHistory(s, s.qosimov)))).toBe('journal_scope');
-      expect((await calls.get(ratingComment(s, s.nurova))).status).toBe(200);
-      expect(codeOf(await calls.get(ratingComment(s, s.qosimov)))).toBe('journal_scope');
-    });
-  });
+  it.each(OWN_CLASS_CASES)(
+    'gives the %s of one class of the group the rows of own class only, also in both histories',
+    async (_who, grade) => {
+      const s = await scene(grade);
+      const tutor = await account();
+      const assignment = await t.kit.giveRole(tutor.account.id, {
+        role: ownRoleOf(grade),
+        branchId: s.branch,
+        validFrom: new Date('2026-09-01T00:00:00+05:00'),
+      });
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.classes.tutorRow(s.branch, s.oxford, assignment.id);
+      await as(tutor, s.branch, [], async (calls) => {
+        const grid = journalGridSchema.parse(
+          (await calls.get(`/api/journal/journals/${s.journal}`)).body,
+        );
+        expect(grid.students.map((one) => one.id)).toEqual([s.nurova]);
+        // A group that mixes classes: no averages for the Tutor, the rating exam's neither (edge/journal).
+        expect(grid.bottom).toBeNull();
+        expect(grid.rating?.entries.map((one) => one.studentId)).toEqual([s.nurova]);
+        expect(grid.students[0]?.comments.map((one) => one.target).sort()).toEqual([
+          'note',
+          'rating',
+        ]);
+        expect((await calls.get(ratingHistory(s, s.nurova))).status).toBe(200);
+        expect(codeOf(await calls.get(ratingHistory(s, s.qosimov)))).toBe('journal_scope');
+        expect((await calls.get(ratingComment(s, s.nurova))).status).toBe(200);
+        expect(codeOf(await calls.get(ratingComment(s, s.qosimov)))).toBe('journal_scope');
+      });
+    },
+  );
 
   it('shows the readers of attendance no rating exam and no comment but on marks (decision 10)', async () => {
     const s = await scene();

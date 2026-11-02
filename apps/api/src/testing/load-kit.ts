@@ -1,3 +1,4 @@
+import { ownClassRoleFor } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Database } from '../database/database.js';
 import { ClassesKit } from './classes-kit.js';
@@ -202,7 +203,13 @@ export class LoadKit {
     accountId: string,
     input: { kind?: 'tutor' | 'acting'; from?: Date; until?: Date | null } = {},
   ): Promise<string> {
-    const assignment = await this.classes.role(accountId, branch, 'tutor');
+    // Task 9.4e: a class of grades 0–4 takes a Class teacher, of 5–11 a Tutor.
+    const { grade } = await this.migrator
+      .selectFrom('classes')
+      .select('grade')
+      .where('id', '=', classId)
+      .executeTakeFirstOrThrow();
+    const assignment = await this.classes.role(accountId, branch, ownClassRoleFor(grade));
     return this.classes.tutorRow(branch, classId, assignment, input);
   }
 

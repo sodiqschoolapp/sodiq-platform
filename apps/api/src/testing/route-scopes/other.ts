@@ -25,7 +25,7 @@ const TIMETABLE_OWN = 'src/modules/timetable/scope-refusals.test.ts';
 
 /** `02`, Tutor: "Views the full student list of the branch (view only)". */
 const TUTOR_STUDENT_LIST: ScopeLine = {
-  roles: ['tutor'],
+  roles: ['tutor', 'class_teacher'],
   scope: 'branch',
   rule: '02, Tutor: "Views the full student list of the branch (view only)"',
   refusedIn: [],
@@ -55,7 +55,7 @@ const TEACHER_TAUGHT = (...tests: string[]): ScopeLine => ({
 });
 
 const TUTOR_OWN_CLASS = (rule: string, ...tests: string[]): ScopeLine => ({
-  roles: ['tutor'],
+  roles: ['tutor', 'class_teacher'],
   scope: 'class',
   rule,
   refusedIn: tests,
@@ -100,7 +100,7 @@ const studentResultLines = (head: string[], teacher: ScopeLine): ScopeLine[] => 
 // correction 2): one subject to the subject heads (own subjects), the Teacher (own journal) and
 // the Tutor (own classes); a class across subjects to the Tutor (own classes); the classes of the
 // branch to management only.
-const RATING_BIG = `${RATING} > opens each list only to its readers, decided in the route, and refuses the roles outside the area`;
+const RATING_BIG = `${RATING} > opens each list only to its readers, decided in the route, and refuses the roles outside the area, with a %s`;
 const RATING_EXPORT = `${RESULTS_OWN} > refuses an export outside the scope of the Tutor, the Teacher and both Head Teachers, logging nothing`;
 const RATING_SENIOR = `${RESULTS_OWN} > refuses a Senior Head Teacher of another subject the subject list, and every Senior Head Teacher the class list`;
 const RATING_CHOICES_HEADS = `${RESULTS_OWN} > leaves the journals of another subject out of the choices of a Head Teacher and a Senior Head Teacher`;
@@ -112,7 +112,7 @@ const ratingLines = (tests: {
   teacher: string[];
 }): ScopeLine[] => [
   {
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'class',
     rule: `${RATING_RULE}: Tutor, own classes`,
     refusedIn: tests.tutor,
@@ -139,6 +139,8 @@ const ratingLines = (tests: {
 
 // The timetable views (task 5.9a, decisions 3 and 4; `06`, Views and outputs).
 const VIEWS_TUTOR = `${VIEWS} > gives the Tutor the school and own class only, no room`;
+// Task 9.4e: the same as a Class teacher of a class of grade 1.
+const VIEWS_CLASS_TEACHER = `${VIEWS} > gives a Class teacher the school and own class only, no room, and lists them as her choices`;
 const VIEWS_HEAD = `${VIEWS} > gives a Head Teacher the teachers of own subjects, in those subjects only`;
 const VIEWS_SENIOR = `${VIEWS} > gives a Senior Head Teacher the teachers of own subjects in every branch, nothing else`;
 const VIEWS_TEACHER = `${VIEWS} > gives a teacher their own timetable and nobody else’s`;
@@ -165,14 +167,14 @@ const headViewLines = (tutor: ScopeLine): ScopeLine[] => [
 // The reports of `08` over the journal (task 9.3b-2, decision 1, approved by the owner): the
 // readers table of `reports.service.ts`.
 const REPORTS = 'src/modules/results/reports.test.ts';
-const REPORT_TUTOR = `${REPORTS} > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
-const REPORT_READERS = `${REPORTS} > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a Tutor, no mastery for the Head Tutor`;
-const REPORT_EXPORT_SCOPE = `${REPORTS} > refuses an export outside the scope of the Tutor and both Head Teachers, logging nothing`;
+const REPORT_TUTOR = `${REPORTS} > gives the %s own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
+const REPORT_READERS = `${REPORTS} > opens the results table and subject mastery only to their readers: own-subject columns for a Head Teacher, own classes for a %s, no mastery for the Head Tutor`;
+const REPORT_EXPORT_SCOPE = `${REPORTS} > refuses an export outside the scope of the %s and both Head Teachers, logging nothing`;
 const REPORTS_RULE =
   '08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1)';
 const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
   {
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'class',
     rule: `${REPORTS_RULE}: Tutor, own classes; subject mastery of own class journals and groups wholly of own classes`,
     refusedIn: [tests.tutor],
@@ -194,7 +196,7 @@ const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
 export const OTHER_SCOPES: RouteScopes = {
   'GET /api/setup/current-period': [
     {
-      roles: ['tutor', 'senior_head_teacher', 'head_teacher', 'teacher'],
+      roles: ['tutor', 'class_teacher', 'senior_head_teacher', 'head_teacher', 'teacher'],
       scope: 'branch',
       rule: '12, Context: "The branch, academic year and quarter in use are always shown in the top bar" (every role)',
       refusedIn: [],
@@ -225,7 +227,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
   ],
   'GET /api/people/students/:id/photo': [
-    BASIC_OF_BRANCH(['tutor', 'head_teacher', 'senior_head_teacher']),
+    BASIC_OF_BRANCH(['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher']),
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
   ],
   // The show is for the Principal alone; every scoped role is refused it, in its scope too.
@@ -275,7 +277,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/people/students/:id/history': [
     TUTOR_OWN_CLASS(
       '04, Profile tabs (History); the Tutor reads own classes (task 3.3a, decision 9 as changed by correction 3)',
-      `${GROUP_TRANSFERS} > lets the Tutor of the class read it and refuses a Tutor of another class`,
+      `${GROUP_TRANSFERS} > lets the %s of the class read it and refuses one of another class`,
     ),
     {
       ...HEADS_OWN_CLASSES,
@@ -285,7 +287,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/people/students/:id/leaving-results': [
     TUTOR_OWN_CLASS(
       '02, Tutor: "the profiles of own class"; a student who left is of no class now',
-      `${LEAVING} > refuses the Tutor of the class alone, a student who left being of no class now, and answers a Tutor who also reads the record`,
+      `${LEAVING} > refuses the %s of the class alone, a student who left being of no class now, and answers one who also reads the record`,
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],
@@ -303,6 +305,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'edge/people-roles-accounts: "Search returns only records the person may open" (the Tutor: own class)',
       `${PEOPLE_SEARCH} > lists for the Tutor the students of own class, in force and planned, and no other`,
+      `${PEOPLE_SEARCH} > lists for a Class teacher the students of own class and no other`,
     ),
     HEADS_STUDENT_LIST,
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
@@ -312,7 +315,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/results/students/:id': [
     TUTOR_OWN_CLASS(
       RESULTS_RULE_TUTOR,
-      `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class`,
+      `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class %s every subject of the class`,
       ...RESULTS_TUTOR_TESTS,
     ),
     ...studentResultLines(RESULTS_HEAD_TESTS, TEACHER_TAUGHT(...RESULTS_HEAD_TESTS)).slice(1),
@@ -334,7 +337,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'own_lessons',
       rule: '02, Teacher: journals of own classes and groups (task 9.1, decision 4)',
       refusedIn: [
-        `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class Tutor every subject of the class`,
+        `${RESULTS} > answers a Teacher who teaches the student another subject only that subject, and the class %s every subject of the class`,
       ],
     },
   ),
@@ -374,11 +377,11 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- Early-warning list (task 9.4a, decisions 1 and 7) ------------------------------------
   'GET /api/results/early-warning': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '08, Early-warning list: the Tutor, the students of own classes on the reference date (task 9.4a, decision 1)',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
     {
@@ -386,7 +389,7 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'subjects',
       rule: '02, Scope: "For own subjects in own branch: ... the early-warning list"',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
     {
@@ -402,13 +405,13 @@ export const OTHER_SCOPES: RouteScopes = {
       scope: 'own_lessons',
       rule: '08, Early-warning list: the Teacher, own journals (task 9.4a, decision 1)',
       refusedIn: [
-        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal`,
+        `${WARNING} > shows each reader their own scope, the attendance reasons only to the Head Tutor and the Spiritual Vice Principal, with a %s`,
       ],
     },
   ],
   'POST /api/results/early-warning/handled': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: 'Task 9.4a: the Tutor marks the students of own classes handled (permission review, must-fix 1)',
       refusedIn: [
@@ -471,6 +474,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'edge/people-roles-accounts: "Search returns only records the person may open" (the Tutor: own class)',
       `${CLASS_SEARCH} > finds own class and no other, by name and by a Cyrillic look-alike spelling`,
+      `${CLASS_SEARCH} > finds for a Class teacher own class and the groups drawing from it, and no other`,
     ),
     HEADS_OWN_CLASSES,
   ],
@@ -480,6 +484,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes',
       `${CLASS_SEARCH} > finds the groups drawing from own class, and not one drawing from another class only`,
+      `${CLASS_SEARCH} > finds for a Class teacher own class and the groups drawing from it, and no other`,
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],
@@ -492,14 +497,17 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'GET /api/groups': groupLines(
     `${GROUPS} > lets the readers of 02 read every group, the Head Teachers own subjects, the Tutor own classes`,
+    `${GROUPS} > lets a Class teacher read the groups of own class only`,
   ),
   'GET /api/groups/:id': groupLines(
     `${GROUPS} > lets the readers of 02 read every group, the Head Teachers own subjects, the Tutor own classes`,
+    `${GROUPS} > lets a Class teacher read the groups of own class only`,
   ),
   'GET /api/groups/:id/members': [
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes, the own class’s members',
       `${GROUP_MEMBERS} > lets a Tutor read the members of own class only, with a count of the others`,
+      `${GROUP_MEMBERS} > lets a Class teacher read the members of own class only, with a count of the others`,
     ),
     {
       roles: ['head_teacher'],
@@ -537,10 +545,10 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- Timetable views ----------------------------------------------------------------------
   'GET /api/timetable/views/choices': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '02, Tutor: "Sees the school timetable and the timetable of own class" (5.9a decision 3)',
-      refusedIn: [`${VIEWS} > lists what each role may open`],
+      refusedIn: [`${VIEWS} > lists what each role may open`, VIEWS_CLASS_TEACHER],
     },
     {
       roles: ['head_teacher', 'senior_head_teacher'],
@@ -554,34 +562,40 @@ export const OTHER_SCOPES: RouteScopes = {
       roles: ['teacher'],
       scope: 'own_lessons',
       rule: VIEWS_RULE_TEACHER,
-      refusedIn: [`${VIEWS} > lists what each role may open`],
+      refusedIn: [`${VIEWS} > lists what each role may open`, VIEWS_CLASS_TEACHER],
     },
   ],
   'GET /api/timetable/views/branch': headViewLines({
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'branch',
     rule: '02, Tutor: "Sees the school timetable"',
     refusedIn: [],
   }),
   'GET /api/timetable/views/class': headViewLines(
-    TUTOR_OWN_CLASS('02, Tutor: "the timetable of own class" (5.9a decision 3)', VIEWS_TUTOR),
+    TUTOR_OWN_CLASS(
+      '02, Tutor: "the timetable of own class" (5.9a decision 3)',
+      VIEWS_TUTOR,
+      VIEWS_CLASS_TEACHER,
+    ),
   ),
   'GET /api/timetable/views/room': headViewLines(
     TUTOR_OWN_CLASS(
       '06, Views and outputs: the Tutor the school and own class, no room (5.9a decision 3)',
       VIEWS_TUTOR,
+      VIEWS_CLASS_TEACHER,
     ),
   ),
   'GET /api/timetable/views/teacher': headViewLines({
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'own_lessons',
     rule: '5.9a decision 3: the Tutor reads the own teacher view only',
-    refusedIn: [VIEWS_TUTOR],
+    refusedIn: [VIEWS_TUTOR, VIEWS_CLASS_TEACHER],
   }),
   'POST /api/timetable/views/export': [
     TUTOR_OWN_CLASS(
       '06, Views and outputs, with the 5.9a scope: the Tutor prints the school and own class',
       `${VIEWS_EXPORT} > lets the Tutor print the school and own class, nothing else`,
+      `${VIEWS_EXPORT} > lets a Class teacher print the school and own class, nothing else, writing nothing for a refusal`,
       `${VIEWS_EXPORT} > writes none for a refusal or a PDF that could not be made, and sends no file`,
     ),
     {
@@ -614,11 +628,11 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'GET /api/timetable/home': [
     {
-      roles: ['tutor', 'head_teacher', 'senior_head_teacher'],
+      roles: ['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher'],
       scope: 'own_lessons',
       rule: 'Task 5.9b: the caller’s own lessons and exams of the week; the query takes no field',
       refusedIn: [
-        `${TIMETABLE_OWN} > lists only the own lessons on the home page of a Tutor, a Head Teacher and a Senior Head Teacher`,
+        `${TIMETABLE_OWN} > lists only the own lessons on the home page of a Tutor, a Class teacher, a Head Teacher and a Senior Head Teacher`,
       ],
     },
     {
@@ -632,7 +646,7 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- The reports of `08` over the journal (task 9.3b-2, decision 1) ---------------------------
   'GET /api/results/reports/attendance': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
       refusedIn: [REPORT_TUTOR],
@@ -640,7 +654,7 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'POST /api/results/reports/attendance/export': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
       refusedIn: [REPORT_EXPORT_SCOPE],
@@ -661,11 +675,12 @@ export const OTHER_SCOPES: RouteScopes = {
   }),
 };
 
-function groupLines(test: string): ScopeLine[] {
+function groupLines(test: string, classTeacher?: string): ScopeLine[] {
   return [
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes',
       test,
+      ...(classTeacher === undefined ? [] : [classTeacher]),
     ),
     {
       roles: ['head_teacher', 'senior_head_teacher'],

@@ -21,7 +21,7 @@ const WARNING_CLASS = `${E} > cuts the list to one own class of a Tutor, refuses
 const SUMMARY = `src/modules/results/home-pages.test.ts > refuses the Academic Vice Principal and a Teacher (403), and answers 404 for another branch's or an unknown quarter`;
 
 const REP = 'src/modules/results/reports.test.ts';
-const REPORT_ATTENDANCE = `${REP} > gives the Tutor own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
+const REPORT_ATTENDANCE = `${REP} > gives the %s own classes only, refuses another class (403), and answers 404 for a class, subject or teacher unknown or of another branch`;
 const REPORT_IDS = `${REP} > answers 404 for a quarter, class or subject unknown or of another branch, and for an attendance-only subject in mastery`;
 const REPORT_EXPORT = `${REP} > answers 404 to an export naming an id unknown or of another branch, and logs nothing`;
 

@@ -10,7 +10,7 @@ import {
 import ExcelJS from 'exceljs';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import {
@@ -25,6 +25,7 @@ import { publishedScene, type PublishedScene } from '../../testing/published-sce
 import { binary } from '../../testing/xlsx-kit.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES, endTestSuperAdmins, gradeOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -139,7 +140,10 @@ describe('the rating (08, Rating)', () => {
     rows: readonly Omit<MemberRow, 'branch' | 'studentId'>[],
   ): Promise<string> => {
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await kit.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await kit.student(branch, {
+      startsOn: '2026-09-01',
+      grade: rows[0] === undefined ? 7 : await gradeOf(t.database.migrator, rows[0].classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: name.first, last_name: name.last })
@@ -263,8 +267,12 @@ describe('the rating (08, Rating)', () => {
    * - Malika: leaves the school with the last day 29 October, so she is a member on the 27th
    *   with a result at leaving (left out: edge/calculation, "A student left the school").
    */
-  async function scene(accounts?: { readonly teacher?: string; readonly spare?: string }) {
+  async function scene(
+    accounts?: { readonly teacher?: string; readonly spare?: string },
+    grade = 7,
+  ) {
     const s = await publishedScene(t, load, {
+      grade,
       graded: true,
       secondSubject: true,
       ...(accounts === undefined ? {} : { accounts }),
@@ -286,7 +294,7 @@ describe('the rating (08, Rating)', () => {
       { classId: s.classId, from: '2026-10-19' },
     ]);
     const kit = new MembersKit(t.database.migrator, await load.classes.account());
-    const malika = await kit.student(s.branch, { startsOn: '2026-09-01', grade: 7 });
+    const malika = await kit.student(s.branch, { startsOn: '2026-09-01', grade: s.grade });
     const leavingId = await kit.leaving(t.database.migrator, s.branch, malika, '2026-10-30');
     await kit.member({
       branch: s.branch,
@@ -336,6 +344,11 @@ describe('the rating (08, Rating)', () => {
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
+  });
+
+  // Task 9.4e: the tests run per own-class role, and at most 3 accounts are Super Admin.
+  afterEach(async () => {
+    await endTestSuperAdmins(t.database.migrator, t.adminAssignment);
   });
 
   afterAll(async () => {
@@ -731,235 +744,238 @@ describe('the rating (08, Rating)', () => {
     );
   });
 
-  it('opens each list only to its readers, decided in the route, and refuses the roles outside the area', async () => {
-    const owner = await account();
-    const spare = await account();
-    const c = await scene({ teacher: owner.account.id, spare: spare.account.id });
-    const elsewhere = await load.classes.subject({ grades: [7] });
-    const another = await load.classes.subject({ grades: [7] });
-    // A split of the first class for the subject, and a group across both classes.
-    const split = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [c.s.classId]);
-    const mixed = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [
-      c.s.classId,
-      c.s.otherClass,
-    ]);
-    const groupJournal = async (groupId: string) =>
-      (
-        await t.database.migrator
-          .insertInto('journals')
-          .values({
-            branch_id: c.s.branch,
-            academic_year_id: c.s.year,
-            class_id: null,
-            group_id: groupId,
-            subject_id: c.s.subject,
-            runs: '{}',
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow()
-      ).id;
-    const splitJournal = await groupJournal(split);
-    // Aziz in the split for the subject: the group path of the members on the reference date.
-    await new MembersKit(t.database.migrator, await load.classes.account()).groupMember({
-      branch: c.s.branch,
-      groupId: split,
-      subjectId: c.s.subject,
-      studentId: c.students.aziz,
-      from: '2026-09-01',
-    });
-    const mixedJournal = await groupJournal(mixed);
-    const tutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    const otherTutor = await account();
-    await load.classes.person(c.s.branch, ['uz'], { accountId: otherTutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.otherClass, otherTutor.account.id);
-
-    const subject = (journalId: string) =>
-      `/api/results/rating/subject?quarterId=${c.q1}&journalId=${journalId}`;
-    const classList = (classId: string) =>
-      `/api/results/rating/class?quarterId=${c.q1}&classId=${classId}`;
-    const classes = `/api/results/rating/classes?quarterId=${c.q1}`;
-    const branch = c.s.branch;
-    const cases: {
-      name: string;
-      held: Omit<Held, 'validFrom'>[];
-      browser?: Browser;
-      paths: Record<string, number>;
-    }[] = [
-      {
-        name: 'Super Admin',
-        held: [{ role: 'super_admin' }],
-        paths: { [subject(c.journal)]: 200, [classList(c.s.classId)]: 200, [classes]: 200 },
-      },
-      {
-        name: 'Principal',
-        held: [{ role: 'principal', branchId: branch }],
-        paths: { [subject(c.journal)]: 200, [classList(c.s.classId)]: 200, [classes]: 200 },
-      },
-      {
-        name: 'Academic Vice Principal',
-        held: [{ role: 'academic_vice_principal', branchId: branch }],
-        paths: { [subject(mixedJournal)]: 200, [classList(c.s.otherClass)]: 200, [classes]: 200 },
-      },
-      {
-        name: 'Head Teacher of the subject',
-        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
-        paths: {
-          [subject(c.journal)]: 200,
-          [subject(mixedJournal)]: 200,
-          [classList(c.s.classId)]: 403,
-          [classes]: 403,
-        },
-      },
-      {
-        name: 'Head Teacher of another subject',
-        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [elsewhere] }],
-        paths: { [subject(c.journal)]: 403 },
-      },
-      {
-        name: 'Senior Head Teacher of the subject',
-        held: [{ role: 'senior_head_teacher', subjectIds: [c.s.subject] }],
-        paths: { [subject(c.otherJournal)]: 200, [classes]: 403 },
-      },
-      {
-        name: 'Teacher who owns the journal',
-        held: [{ role: 'teacher', branchId: branch }],
-        browser: owner,
-        paths: {
-          [subject(c.journal)]: 200,
-          [subject(c.otherJournal)]: 403,
-          [classList(c.s.classId)]: 403,
-          [classes]: 403,
-        },
-      },
-      // .claude/rules/api.md (task 8.8): a second role that reads another subject widens nothing
-      // of the first (permission review, should-fix 2).
-      {
-        name: 'Teacher who owns the journal, also Head Teacher of another subject',
-        held: [{ role: 'head_teacher', branchId: branch, subjectIds: [another] }],
-        browser: owner,
-        paths: {
-          [subject(c.journal)]: 200,
-          [subject(c.otherJournal)]: 403,
-          [subject(mixedJournal)]: 403,
-        },
-      },
-      {
-        name: 'Teacher of no journal of the class',
-        held: [{ role: 'teacher', branchId: branch }],
-        browser: spare,
-        paths: { [subject(c.journal)]: 403 },
-      },
-      {
-        name: 'Tutor of the first class',
-        held: [],
-        browser: tutor,
-        paths: {
-          [subject(c.journal)]: 200,
-          [subject(splitJournal)]: 200,
-          [subject(mixedJournal)]: 403,
-          [subject(c.otherJournal)]: 403,
-          [classList(c.s.classId)]: 200,
-          [classList(c.s.otherClass)]: 403,
-          [classes]: 403,
-        },
-      },
-      {
-        name: 'Tutor of the other class',
-        held: [],
-        browser: otherTutor,
-        paths: { [subject(c.journal)]: 403, [classList(c.s.classId)]: 403 },
-      },
-      {
-        name: 'Head Tutor',
-        held: [{ role: 'head_tutor', branchId: branch }],
-        paths: { [classList(c.s.otherClass)]: 200, [subject(c.journal)]: 403, [classes]: 403 },
-      },
-      // `02`: attendance only; the guard refuses every route of the area.
-      {
-        name: 'Vice Principal for Spiritual and Moral Education',
-        held: [{ role: 'spiritual_vice_principal', branchId: branch }],
-        paths: {
-          '/api/results/rating/choices': 403,
-          [subject(c.journal)]: 403,
-          [classList(c.s.classId)]: 403,
-          [classes]: 403,
-        },
-      },
-      {
-        name: 'Nurse',
-        held: [{ role: 'nurse', branchId: branch }],
-        paths: { '/api/results/rating/choices': 403, [classes]: 403 },
-      },
-    ];
-    for (const one of cases) {
-      const browser = one.browser ?? (await account());
-      await as(browser, branch, one.held, async ({ get }) => {
-        for (const [path, status] of Object.entries(one.paths)) {
-          const response = await get(path);
-          expect(
-            response.status,
-            `${one.name} ${path} ${JSON.stringify(response.body).slice(0, 200)}`,
-          ).toBe(status);
-          if (status === 403)
-            expect(codeOf(response), `${one.name} ${path}`).toBe('permission_denied');
-        }
+  it.each(OWN_CLASS_CASES)(
+    'opens each list only to its readers, decided in the route, and refuses the roles outside the area, with a %s',
+    async (_who, grade) => {
+      const owner = await account();
+      const spare = await account();
+      const c = await scene({ teacher: owner.account.id, spare: spare.account.id }, grade);
+      const elsewhere = await load.classes.subject({ grades: [grade] });
+      const another = await load.classes.subject({ grades: [grade] });
+      // A split of the first class for the subject, and a group across both classes.
+      const split = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [c.s.classId]);
+      const mixed = await load.classes.group(c.s.branch, c.s.year, c.s.subject, [
+        c.s.classId,
+        c.s.otherClass,
+      ]);
+      const groupJournal = async (groupId: string) =>
+        (
+          await t.database.migrator
+            .insertInto('journals')
+            .values({
+              branch_id: c.s.branch,
+              academic_year_id: c.s.year,
+              class_id: null,
+              group_id: groupId,
+              subject_id: c.s.subject,
+              runs: '{}',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const splitJournal = await groupJournal(split);
+      // Aziz in the split for the subject: the group path of the members on the reference date.
+      await new MembersKit(t.database.migrator, await load.classes.account()).groupMember({
+        branch: c.s.branch,
+        groupId: split,
+        subjectId: c.s.subject,
+        studentId: c.students.aziz,
+        from: '2026-09-01',
       });
-    }
+      const mixedJournal = await groupJournal(mixed);
+      const tutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      const otherTutor = await account();
+      await load.classes.person(c.s.branch, ['uz'], { accountId: otherTutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.otherClass, otherTutor.account.id);
 
-    // The choices follow the same scope: the owner's journal only, no class, no list of classes.
-    await as(owner, branch, [], async ({ get }) => {
-      const choices = ratingChoicesSchema.parse((await get('/api/results/rating/choices')).body);
-      expect(choices.journals.map((one) => one.id)).toEqual([c.journal]);
-      expect(choices.classes).toEqual([]);
-      expect(choices.classesList).toBe(false);
-      expect(choices.quarters.map((one) => one.number)).toEqual([1]);
-    });
-    await as(
-      await account(),
-      branch,
-      [{ role: 'principal', branchId: branch }],
-      async ({ get }) => {
-        const list = ratingSubjectListSchema.parse((await get(subject(splitJournal))).body);
-        expect(list.rows.map((row) => [row.student.id, row.place, row.value])).toEqual([
-          [c.students.aziz, 1, 933],
-        ]);
-      },
-    );
-    // The export follows the same scope (permission review, should-fix 3).
-    await as(tutor, branch, [], async ({ post }) => {
-      expect(
-        (
-          await post('/api/results/rating/export', {
-            kind: 'class',
-            quarterId: c.q1,
-            classId: c.s.classId,
-          })
-        ).status,
-      ).toBe(200);
-      expect(
-        (
-          await post('/api/results/rating/export', {
-            kind: 'class',
-            quarterId: c.q1,
-            classId: c.s.otherClass,
-          })
-        ).status,
-      ).toBe(403);
-      expect(
-        (await post('/api/results/rating/export', { kind: 'classes', quarterId: c.q1 })).status,
-      ).toBe(403);
-    });
-    await as(tutor, branch, [], async ({ get }) => {
-      const choices = ratingChoicesSchema.parse((await get('/api/results/rating/choices')).body);
-      expect(choices.journals.map((one) => one.id).sort()).toEqual(
-        [c.journal, splitJournal].sort(),
+      const subject = (journalId: string) =>
+        `/api/results/rating/subject?quarterId=${c.q1}&journalId=${journalId}`;
+      const classList = (classId: string) =>
+        `/api/results/rating/class?quarterId=${c.q1}&classId=${classId}`;
+      const classes = `/api/results/rating/classes?quarterId=${c.q1}`;
+      const branch = c.s.branch;
+      const cases: {
+        name: string;
+        held: Omit<Held, 'validFrom'>[];
+        browser?: Browser;
+        paths: Record<string, number>;
+      }[] = [
+        {
+          name: 'Super Admin',
+          held: [{ role: 'super_admin' }],
+          paths: { [subject(c.journal)]: 200, [classList(c.s.classId)]: 200, [classes]: 200 },
+        },
+        {
+          name: 'Principal',
+          held: [{ role: 'principal', branchId: branch }],
+          paths: { [subject(c.journal)]: 200, [classList(c.s.classId)]: 200, [classes]: 200 },
+        },
+        {
+          name: 'Academic Vice Principal',
+          held: [{ role: 'academic_vice_principal', branchId: branch }],
+          paths: { [subject(mixedJournal)]: 200, [classList(c.s.otherClass)]: 200, [classes]: 200 },
+        },
+        {
+          name: 'Head Teacher of the subject',
+          held: [{ role: 'head_teacher', branchId: branch, subjectIds: [c.s.subject] }],
+          paths: {
+            [subject(c.journal)]: 200,
+            [subject(mixedJournal)]: 200,
+            [classList(c.s.classId)]: 403,
+            [classes]: 403,
+          },
+        },
+        {
+          name: 'Head Teacher of another subject',
+          held: [{ role: 'head_teacher', branchId: branch, subjectIds: [elsewhere] }],
+          paths: { [subject(c.journal)]: 403 },
+        },
+        {
+          name: 'Senior Head Teacher of the subject',
+          held: [{ role: 'senior_head_teacher', subjectIds: [c.s.subject] }],
+          paths: { [subject(c.otherJournal)]: 200, [classes]: 403 },
+        },
+        {
+          name: 'Teacher who owns the journal',
+          held: [{ role: 'teacher', branchId: branch }],
+          browser: owner,
+          paths: {
+            [subject(c.journal)]: 200,
+            [subject(c.otherJournal)]: 403,
+            [classList(c.s.classId)]: 403,
+            [classes]: 403,
+          },
+        },
+        // .claude/rules/api.md (task 8.8): a second role that reads another subject widens nothing
+        // of the first (permission review, should-fix 2).
+        {
+          name: 'Teacher who owns the journal, also Head Teacher of another subject',
+          held: [{ role: 'head_teacher', branchId: branch, subjectIds: [another] }],
+          browser: owner,
+          paths: {
+            [subject(c.journal)]: 200,
+            [subject(c.otherJournal)]: 403,
+            [subject(mixedJournal)]: 403,
+          },
+        },
+        {
+          name: 'Teacher of no journal of the class',
+          held: [{ role: 'teacher', branchId: branch }],
+          browser: spare,
+          paths: { [subject(c.journal)]: 403 },
+        },
+        {
+          name: 'Tutor of the first class',
+          held: [],
+          browser: tutor,
+          paths: {
+            [subject(c.journal)]: 200,
+            [subject(splitJournal)]: 200,
+            [subject(mixedJournal)]: 403,
+            [subject(c.otherJournal)]: 403,
+            [classList(c.s.classId)]: 200,
+            [classList(c.s.otherClass)]: 403,
+            [classes]: 403,
+          },
+        },
+        {
+          name: 'Tutor of the other class',
+          held: [],
+          browser: otherTutor,
+          paths: { [subject(c.journal)]: 403, [classList(c.s.classId)]: 403 },
+        },
+        {
+          name: 'Head Tutor',
+          held: [{ role: 'head_tutor', branchId: branch }],
+          paths: { [classList(c.s.otherClass)]: 200, [subject(c.journal)]: 403, [classes]: 403 },
+        },
+        // `02`: attendance only; the guard refuses every route of the area.
+        {
+          name: 'Vice Principal for Spiritual and Moral Education',
+          held: [{ role: 'spiritual_vice_principal', branchId: branch }],
+          paths: {
+            '/api/results/rating/choices': 403,
+            [subject(c.journal)]: 403,
+            [classList(c.s.classId)]: 403,
+            [classes]: 403,
+          },
+        },
+        {
+          name: 'Nurse',
+          held: [{ role: 'nurse', branchId: branch }],
+          paths: { '/api/results/rating/choices': 403, [classes]: 403 },
+        },
+      ];
+      for (const one of cases) {
+        const browser = one.browser ?? (await account());
+        await as(browser, branch, one.held, async ({ get }) => {
+          for (const [path, status] of Object.entries(one.paths)) {
+            const response = await get(path);
+            expect(
+              response.status,
+              `${one.name} ${path} ${JSON.stringify(response.body).slice(0, 200)}`,
+            ).toBe(status);
+            if (status === 403)
+              expect(codeOf(response), `${one.name} ${path}`).toBe('permission_denied');
+          }
+        });
+      }
+
+      // The choices follow the same scope: the owner's journal only, no class, no list of classes.
+      await as(owner, branch, [], async ({ get }) => {
+        const choices = ratingChoicesSchema.parse((await get('/api/results/rating/choices')).body);
+        expect(choices.journals.map((one) => one.id)).toEqual([c.journal]);
+        expect(choices.classes).toEqual([]);
+        expect(choices.classesList).toBe(false);
+        expect(choices.quarters.map((one) => one.number)).toEqual([1]);
+      });
+      await as(
+        await account(),
+        branch,
+        [{ role: 'principal', branchId: branch }],
+        async ({ get }) => {
+          const list = ratingSubjectListSchema.parse((await get(subject(splitJournal))).body);
+          expect(list.rows.map((row) => [row.student.id, row.place, row.value])).toEqual([
+            [c.students.aziz, 1, 933],
+          ]);
+        },
       );
-      expect(choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
-      expect(choices.classesList).toBe(false);
-    });
-  });
+      // The export follows the same scope (permission review, should-fix 3).
+      await as(tutor, branch, [], async ({ post }) => {
+        expect(
+          (
+            await post('/api/results/rating/export', {
+              kind: 'class',
+              quarterId: c.q1,
+              classId: c.s.classId,
+            })
+          ).status,
+        ).toBe(200);
+        expect(
+          (
+            await post('/api/results/rating/export', {
+              kind: 'class',
+              quarterId: c.q1,
+              classId: c.s.otherClass,
+            })
+          ).status,
+        ).toBe(403);
+        expect(
+          (await post('/api/results/rating/export', { kind: 'classes', quarterId: c.q1 })).status,
+        ).toBe(403);
+      });
+      await as(tutor, branch, [], async ({ get }) => {
+        const choices = ratingChoicesSchema.parse((await get('/api/results/rating/choices')).body);
+        expect(choices.journals.map((one) => one.id).sort()).toEqual(
+          [c.journal, splitJournal].sort(),
+        );
+        expect(choices.classes.map((one) => one.id)).toEqual([c.s.classId]);
+        expect(choices.classesList).toBe(false);
+      });
+    },
+  );
 
   it('answers 404 for a quarter, journal or class unknown or of another branch, and for an attendance-only journal', async () => {
     const c = await scene();

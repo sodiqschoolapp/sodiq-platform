@@ -12,6 +12,8 @@ import type { ExpectedAccess } from './route-harness.js';
  */
 export const SCOPED_ROLES: readonly Role[] = [
   'tutor',
+  // Task 9.4e: own class, as the Tutor.
+  'class_teacher',
   'teacher',
   'head_teacher',
   'senior_head_teacher',

@@ -3,6 +3,7 @@ import {
   classDisplayName,
   classNameKey,
   INSTRUCTION_LANGUAGES,
+  isOwnClassRole,
   PERMISSIONS,
   permits,
   type ClassCreate,
@@ -26,7 +27,7 @@ import { roomsQuery, yearsQuery } from '@/features/setup/setup-api';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ClassForm } from './class-form';
 import { ClassPanel } from './class-panel';
-import { tutorName } from './class-tutors';
+import { tutorName, tutorTexts } from './class-tutors';
 import { classesQuery, createClass, invalidateClasses } from './classes-api';
 
 /**
@@ -61,7 +62,7 @@ export function ClassesPage() {
       permits(PERMISSIONS, held.role, 'classes', 'view') &&
       (held.branchId === null || held.branchId === branchId),
   );
-  const ownClassesOnly = readers.length > 0 && readers.every((held) => held.role === 'tutor');
+  const ownClassesOnly = readers.length > 0 && readers.every((held) => isOwnClassRole(held.role));
   // The years and rooms of the forms: read only by those who change classes.
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const rooms = useQuery({ ...roomsQuery(branchId), enabled: branchId !== null && canEdit });
@@ -83,7 +84,7 @@ export function ClassesPage() {
       row.tutor === null ? (
         <span className="inline-flex items-center gap-1 whitespace-nowrap" data-no-tutor="">
           <WarningIcon aria-hidden className="size-4" />
-          {t('classes.noTutor')}
+          {t(`${tutorTexts(row.grade)}.noTutor`)}
         </span>
       ) : (
         tutorName(t, row.tutor)
@@ -118,7 +119,8 @@ export function ClassesPage() {
       },
       {
         key: 'tutor',
-        header: t('classes.tutor'),
+        // Task 9.4e: a class of grades 0–4 shows its Class teacher here.
+        header: t('classes.tutorOrClassTeacher'),
         cell: tutorCell,
         sortValue: (row) => (row.tutor === null ? null : tutorName(t, row.tutor)),
         searchText: (row) => (row.tutor === null ? '' : tutorName(t, row.tutor)),
@@ -191,10 +193,10 @@ export function ClassesPage() {
       },
       {
         key: 'tutor',
-        label: t('classes.tutor'),
+        label: t('classes.tutorOrClassTeacher'),
         options: [
-          { value: 'none', label: t('classes.noTutor') },
-          { value: 'some', label: t('classes.withTutor') },
+          { value: 'none', label: t('classes.noTutorOrClassTeacher') },
+          { value: 'some', label: t('classes.withTutorOrClassTeacher') },
         ],
         matches: (row, value) => (value === 'none') === (row.tutor === null),
       },
@@ -305,7 +307,7 @@ export function ClassesPage() {
                             [t('classes.language'), t(`people.staff.languages.${row.language}`)],
                             // Task 3.1b: "the student count of the class card".
                             [t('classes.students'), number.format(row.students)],
-                            [t('classes.tutor'), tutorCell(row)],
+                            [t(`${tutorTexts(row.grade)}.kinds.tutor`), tutorCell(row)],
                             [
                               t('classes.mainRoom'),
                               row.mainRoom === null

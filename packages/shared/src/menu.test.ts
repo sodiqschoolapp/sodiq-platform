@@ -61,6 +61,8 @@ const EXPECTED: Record<Role, MenuItem[]> = {
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   // Task 3.1c, decision 4 of pull request #90 (Look first): own classes.
   tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
+  // Task 9.4e: the Tutor's menu.
+  class_teacher: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   senior_head_teacher: [
     'home',
     'people',
@@ -93,7 +95,7 @@ const EXPECTED: Record<Role, MenuItem[]> = {
 const EVERYTHING = new Set<MenuItem>(MENU_ITEMS);
 
 describe('the menu per role', () => {
-  it('is the approved table for each of the 15 roles', () => {
+  it('is the approved table for each of the 16 roles', () => {
     for (const role of ROLES) {
       expect(MENU[role], role).toEqual(EXPECTED[role]);
     }

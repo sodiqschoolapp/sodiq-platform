@@ -51,3 +51,15 @@ export function gradeRanges(grades: Iterable<number>): string {
   }
   return runs.join(', ');
 }
+
+/**
+ * The grades of primary, 0 to 4 (the spec change of 1 November 2026; task
+ * 9.4e). A teacher's subject whose grades taught are all among them may come
+ * from any department (`04`, Academic; `primary_grades_only`, 0152).
+ */
+export const PRIMARY_GRADES: readonly number[] = [0, 1, 2, 3, 4];
+
+/** Whether every grade is a primary grade (an empty list is not). */
+export function primaryGradesOnly(grades: readonly number[]): boolean {
+  return grades.length > 0 && grades.every((grade) => PRIMARY_GRADES.includes(grade));
+}

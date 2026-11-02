@@ -139,11 +139,15 @@ describe('the limits inside the timetable routes', () => {
   // Task 5.9b, pull request #198: "the caller's own lessons and exams of the week, from every
   // branch ... Own only: the query takes no field". A Tutor of another class, a Head Teacher
   // and a Senior Head Teacher of the subject read their own lessons, not those they oversee.
-  it('lists only the own lessons on the home page of a Tutor, a Head Teacher and a Senior Head Teacher', async () => {
-    for (const role of ['tutor', 'head_teacher', 'senior_head_teacher'] as const) {
+  it('lists only the own lessons on the home page of a Tutor, a Class teacher, a Head Teacher and a Senior Head Teacher', async () => {
+    for (const role of ['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher'] as const) {
       const browser = await account();
-      const scene = await publishedScene(t, load, { accounts: { teacher: browser.account.id } });
-      if (role === 'tutor') {
+      // Task 9.4e: the Class teacher of a class of grade 1 (LoadKit.tutorOf gives the role of the grade).
+      const scene = await publishedScene(t, load, {
+        accounts: { teacher: browser.account.id },
+        ...(role === 'class_teacher' ? { grade: 1 } : {}),
+      });
+      if (role === 'tutor' || role === 'class_teacher') {
         await load.tutorOf(scene.branch, scene.otherClass, browser.account.id, {
           from: new Date('2026-09-01T00:00:00+05:00'),
         });

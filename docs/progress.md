@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 2 November 2026: task 9.4e The Class teacher (Sinf rahbari) of grades 0–4
+
+- **Role and rights**: `class_teacher`, the 16th role, has the Tutor's row in every area of the permission table (reading A, approved by the owner on #275); own class is read from the same `class_tutors` rows through `OWN_CLASS_ROLES` / `isOwnClassRole` (guard, class and group scope, journal, absences, rating, early warning, attendance today, timetable views, exports). Her teaching comes from a Teacher role she also holds. The Academic Vice Principal resets and locks Class teachers.
+- **Database** (0152): the role in the checks of `assignments` and `feedback_reports`; a class of grades 0–4 takes a Class teacher and one of 5–11 a Tutor; one own class at a time per account (`class_tutors_one_class`); a role end ends her rows; a grade edit across 4 ↔ 5 refused while a row of the other role holds; the department exception for subjects of grades 0–4 only (profile, other branches, department moves). No row changed.
+- **Web**: the Tutors part of a class of grades 0–4 reads "Class teacher" and offers its holders; one column "Tutor or Class teacher" in the lists and files; the staff and vacancy subject pickers offer subjects of grades 0–4 from any department; texts in three languages; the demo seed gives each class of grades 0–4 a Class teacher.
+
+- **Tests**: every scope line of the route lists that lets in a Class teacher names a test run as one: the Tutor scope tests run once per own-class role (`OWN_CLASS_CASES` of `testing/own-class-cases.ts`; `publishedScene` takes a grade), and the class and group searches, groups, group members, timetable views, prints and home have Class teacher tests of their own.
+
+Left out: rollover 4 → 5 (9.5b); rating exams in grades 0–4 (9.4f); a browser test of a grade 0 class with its Class teacher (the e2e seed has no class of grades 0–4; the web tests of the class page cover the part).
+
+The next sessions must know:
+
+- Own class is read with `OWN_CLASS_ROLES` or `isOwnClassRole`, never the Tutor role alone; `own-class-roles.test.ts` refuses it, and a table keyed by role that names `tutor` names `class_teacher` too.
+- A test that gives a class a Tutor uses grades 5–11; `LoadKit.tutorOf` gives the role of the class's grade. A new Tutor scope test runs with `it.each(OWN_CLASS_CASES)` or gets a Class teacher case, and the scope list names it for both roles.
+
 ## 2 November 2026: task 9.4d Grade 0
 
 - **Database** (0151): every grade check takes 0 to 11 (`classes`, `students`, `day_template_assignments` from and to, `calendar_entries`, `timetable_version_days`, `lesson_plan_masters`) and `subject_grades_valid` (the grades of a subject and of a teacher's subject); -1 and 12 stay refused. `calendar_entries_no_overlap` reads a whole-branch entry as grades 0 to 11, so a grade 0 entry beside a whole-branch one of its kind and date is refused (it refuses more, not less). No row changed.

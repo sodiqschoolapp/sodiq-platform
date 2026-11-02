@@ -16,6 +16,7 @@ import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
+import { OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
 import { publishedScene } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: with 7 edit days the Mondays 12 and 19 October are locked, the 26th is open. */
@@ -117,9 +118,14 @@ describe('the journal routes outside the scope of a role', () => {
   }
 
   /** A student of the class from 1 September. */
-  const student = async (branch: string, classId: string, last: string): Promise<string> => {
+  const student = async (
+    branch: string,
+    classId: string,
+    last: string,
+    grade = 7,
+  ): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, { startsOn: '2026-09-01', grade });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Ali', last_name: last })
@@ -133,10 +139,18 @@ describe('the journal routes outside the scope of a role', () => {
   const staffed = async (browser: Browser, branch: string) =>
     load.classes.person(branch, ['uz'], { accountId: browser.account.id });
 
-  /** A Tutor of the class: the role in the branch from 1 September, a staff record and a Tutor row. */
+  /**
+   * A Tutor of the class: the role in the branch from 1 September, a staff record and a Tutor
+   * row; the Class teacher for a class of grades 0–4 (task 9.4e).
+   */
   async function tutorOf(branch: string, classId: string): Promise<Browser> {
     const browser = await account();
-    const assignment = await give(browser, { role: 'tutor', branchId: branch });
+    const { grade } = await t.database.migrator
+      .selectFrom('classes')
+      .select('grade')
+      .where('id', '=', classId)
+      .executeTakeFirstOrThrow();
+    const assignment = await give(browser, { role: ownRoleOf(grade), branchId: branch });
     await staffed(browser, branch);
     await load.classes.tutorRow(branch, classId, assignment.id);
     return browser;
@@ -164,12 +178,13 @@ describe('the journal routes outside the scope of a role', () => {
    * no lesson of the journal. `first`, `second`, `third` are 12, 19 and 26 October (the first
    * two locked at MOMENT), `fourth` 9 November.
    */
-  async function scene() {
+  async function scene(grade = 7) {
     const owner = await account();
     const spare = await account();
     const s = await publishedScene(t, load, {
       graded: true,
       accounts: { teacher: owner.account.id, spare: spare.account.id },
+      grade,
     });
     await setEditDays(t.database.migrator, s.branch, 7);
     await t.database.migrator
@@ -226,7 +241,7 @@ describe('the journal routes outside the scope of a role', () => {
       fourth,
       journal: journal.id,
       q1: q1.id,
-      ahmedov: await student(s.branch, s.classId, 'Ahmedov'),
+      ahmedov: await student(s.branch, s.classId, 'Ahmedov', grade),
     };
   }
 
@@ -438,15 +453,18 @@ describe('the journal routes outside the scope of a role', () => {
       expect(await snapshot(s.branch)).toEqual(before);
     };
 
-    it('refuses the Tutor of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing', async () => {
-      const s = await scene();
-      const tutor = await tutorOf(s.branch, s.classId);
-      // The Tutor reads the journal of the own class whole: the refusal is of the entry only.
-      await as(tutor, s.branch, async (calls) => {
-        ok(await calls.get(`/api/journal/journals/${s.journal}`));
-      });
-      await refusedEverything(s, tutor, 'tutor');
-    });
+    it.each(OWN_CLASS_CASES)(
+      'refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const tutor = await tutorOf(s.branch, s.classId);
+        // The Tutor reads the journal of the own class whole: the refusal is of the entry only.
+        await as(tutor, s.branch, async (calls) => {
+          ok(await calls.get(`/api/journal/journals/${s.journal}`));
+        });
+        await refusedEverything(s, tutor, 'tutor');
+      },
+    );
 
     it('refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing', async () => {
       const s = await scene();
@@ -483,84 +501,90 @@ describe('the journal routes outside the scope of a role', () => {
   });
 
   describe('unlock requests', () => {
-    it('lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing', async () => {
-      const s = await scene();
-      const otherSubject = await load.classes.subject({ grades: [7] });
-      const subjectHead = await headOf(s.branch, [s.subject]);
-      const sent = await requested(s);
-      // The request is there to be read: the Head Teacher of the subject decides it.
-      await as(subjectHead, s.branch, async (calls) => {
-        const list = journalUnlocksSchema.parse(
-          ok(await calls.get('/api/journal/unlocks?view=deciding')),
-        );
-        expect(list.requests.find((one) => one.id === sent.id)?.canDecide).toBe(true);
-      });
-      const tutor = await tutorOf(s.branch, s.classId);
-      const head = await headOf(s.branch, [otherSubject]);
-      const senior = await seniorOf(s.branch, [otherSubject]);
-      const before = await snapshot(s.branch);
-      for (const [who, browser] of [
-        ['teacher', s.spare],
-        ['tutor', tutor],
-        ['head_teacher', head],
-        ['senior_head_teacher', senior],
-      ] as const) {
-        await as(browser, s.branch, async (calls) => {
-          for (const view of ['own', 'deciding'] as const) {
-            const list = journalUnlocksSchema.parse(
-              ok(await calls.get(`/api/journal/unlocks?view=${view}`)),
-            );
-            expect(
-              list.requests.map((one) => one.id),
-              `${who} ${view}`,
-            ).not.toContain(sent.id);
-          }
-          const branch = await calls.get('/api/journal/unlocks?view=branch');
-          expect(branch.status, who).toBe(403);
-          expect(codeOf(branch), who).toBe('journal_unlock_scope');
-          const withdrawn = await calls.post(`/api/journal/unlocks/${sent.id}/withdraw`, {
-            version: sent.version,
-          });
-          expect(withdrawn.status, who).toBe(403);
-          expect(codeOf(withdrawn), who).toBe('journal_unlock_scope');
-          if (who === 'head_teacher' || who === 'senior_head_teacher') {
-            const decided = await calls.post(`/api/journal/unlocks/${sent.id}/decide`, {
-              decision: 'approve',
-              days: 1,
+    it.each(OWN_CLASS_CASES)(
+      'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const otherSubject = await load.classes.subject({ grades: [7] });
+        const subjectHead = await headOf(s.branch, [s.subject]);
+        const sent = await requested(s);
+        // The request is there to be read: the Head Teacher of the subject decides it.
+        await as(subjectHead, s.branch, async (calls) => {
+          const list = journalUnlocksSchema.parse(
+            ok(await calls.get('/api/journal/unlocks?view=deciding')),
+          );
+          expect(list.requests.find((one) => one.id === sent.id)?.canDecide).toBe(true);
+        });
+        const tutor = await tutorOf(s.branch, s.classId);
+        const head = await headOf(s.branch, [otherSubject]);
+        const senior = await seniorOf(s.branch, [otherSubject]);
+        const before = await snapshot(s.branch);
+        for (const [who, browser] of [
+          ['teacher', s.spare],
+          ['tutor', tutor],
+          ['head_teacher', head],
+          ['senior_head_teacher', senior],
+        ] as const) {
+          await as(browser, s.branch, async (calls) => {
+            for (const view of ['own', 'deciding'] as const) {
+              const list = journalUnlocksSchema.parse(
+                ok(await calls.get(`/api/journal/unlocks?view=${view}`)),
+              );
+              expect(
+                list.requests.map((one) => one.id),
+                `${who} ${view}`,
+              ).not.toContain(sent.id);
+            }
+            const branch = await calls.get('/api/journal/unlocks?view=branch');
+            expect(branch.status, who).toBe(403);
+            expect(codeOf(branch), who).toBe('journal_unlock_scope');
+            const withdrawn = await calls.post(`/api/journal/unlocks/${sent.id}/withdraw`, {
               version: sent.version,
             });
-            expect(decided.status, who).toBe(403);
-            expect(codeOf(decided), who).toBe('journal_unlock_scope');
-          }
-        });
-      }
-      expect(await snapshot(s.branch)).toEqual(before);
-    });
+            expect(withdrawn.status, who).toBe(403);
+            expect(codeOf(withdrawn), who).toBe('journal_unlock_scope');
+            if (who === 'head_teacher' || who === 'senior_head_teacher') {
+              const decided = await calls.post(`/api/journal/unlocks/${sent.id}/decide`, {
+                decision: 'approve',
+                days: 1,
+                version: sent.version,
+              });
+              expect(decided.status, who).toBe(403);
+              expect(codeOf(decided), who).toBe('journal_unlock_scope');
+            }
+          });
+        }
+        expect(await snapshot(s.branch)).toEqual(before);
+      },
+    );
   });
 
   describe('the reads of a role', () => {
-    it("gives every role its own reminders only, never the lessons of the journal's teacher", async () => {
-      const s = await scene();
-      const ofJournal = new Set([s.first, s.second, s.third]);
-      const remindedOf = (browser: Browser) =>
-        as(browser, s.branch, async (calls) =>
-          remindersSchema
-            .parse(ok(await calls.get('/api/journal/reminders')))
-            .reminders.filter(
-              (one) => one.kind !== 'rating_missing' && ofJournal.has(one.lesson.id),
-            ),
-        );
-      // The owner is reminded of the lessons with no attendance.
-      expect((await remindedOf(s.owner)).length).toBeGreaterThan(0);
-      for (const [who, browser] of [
-        ['teacher', s.spare],
-        ['tutor', await tutorOf(s.branch, s.classId)],
-        ['head_teacher', await headOf(s.branch, [s.subject])],
-        ['senior_head_teacher', await seniorOf(s.branch, [s.subject])],
-      ] as const) {
-        expect(await remindedOf(browser), who).toEqual([]);
-      }
-    });
+    it.each(OWN_CLASS_CASES)(
+      "gives every role its own reminders only, never the lessons of the journal's teacher, with a %s",
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const ofJournal = new Set([s.first, s.second, s.third]);
+        const remindedOf = (browser: Browser) =>
+          as(browser, s.branch, async (calls) =>
+            remindersSchema
+              .parse(ok(await calls.get('/api/journal/reminders')))
+              .reminders.filter(
+                (one) => one.kind !== 'rating_missing' && ofJournal.has(one.lesson.id),
+              ),
+          );
+        // The owner is reminded of the lessons with no attendance.
+        expect((await remindedOf(s.owner)).length).toBeGreaterThan(0);
+        for (const [who, browser] of [
+          ['teacher', s.spare],
+          ['tutor', await tutorOf(s.branch, s.classId)],
+          ['head_teacher', await headOf(s.branch, [s.subject])],
+          ['senior_head_teacher', await seniorOf(s.branch, [s.subject])],
+        ] as const) {
+          expect(await remindedOf(browser), who).toEqual([]);
+        }
+      },
+    );
 
     it('refuses a Senior Head Teacher of another subject the history of a cell, of a rating entry and of a comment, and a teacher of another journal the history of a comment', async () => {
       const s = await scene();
@@ -589,31 +613,34 @@ describe('the journal routes outside the scope of a role', () => {
       });
     });
 
-    it('refuses the lesson card to a Tutor of another class and a Senior Head Teacher of another subject', async () => {
-      const s = await scene();
-      const card = `/api/journal/lessons/${s.third}/card`;
-      for (const browser of [
-        await tutorOf(s.branch, s.classId),
-        await seniorOf(s.branch, [s.subject]),
-      ]) {
-        await as(browser, s.branch, async (calls) => {
-          ok(await calls.get(card));
-        });
-      }
-      for (const [who, browser] of [
-        ['tutor', await tutorOf(s.branch, s.otherClass)],
-        [
-          'senior_head_teacher',
-          await seniorOf(s.branch, [await load.classes.subject({ grades: [7] })]),
-        ],
-      ] as const) {
-        await as(browser, s.branch, async (calls) => {
-          const refused = await calls.get(card);
-          expect(refused.status, who).toBe(403);
-          expect(codeOf(refused), who).toBe('journal_scope');
-        });
-      }
-    });
+    it.each(OWN_CLASS_CASES)(
+      'refuses the lesson card to a %s of another class and a Senior Head Teacher of another subject',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const card = `/api/journal/lessons/${s.third}/card`;
+        for (const browser of [
+          await tutorOf(s.branch, s.classId),
+          await seniorOf(s.branch, [s.subject]),
+        ]) {
+          await as(browser, s.branch, async (calls) => {
+            ok(await calls.get(card));
+          });
+        }
+        for (const [who, browser] of [
+          ['tutor', await tutorOf(s.branch, s.otherClass)],
+          [
+            'senior_head_teacher',
+            await seniorOf(s.branch, [await load.classes.subject({ grades: [7] })]),
+          ],
+        ] as const) {
+          await as(browser, s.branch, async (calls) => {
+            const refused = await calls.get(card);
+            expect(refused.status, who).toBe(403);
+            expect(codeOf(refused), who).toBe('journal_scope');
+          });
+        }
+      },
+    );
 
     it('shows a Head Teacher and a Senior Head Teacher of the subject none of the exemption cards of lessons they do not teach', async () => {
       const s = await scene();
@@ -656,46 +683,49 @@ describe('the journal routes outside the scope of a role', () => {
   });
 
   describe('the branch export', () => {
-    it('keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing', async () => {
-      const s = await scene();
-      const vice = await account();
-      await give(vice, { role: 'academic_vice_principal', branchId: s.branch });
-      const asked = journalExportRequestedSchema.parse(
-        await as(vice, s.branch, async (calls) => {
-          const answer = await calls.post('/api/journal/exports', {
-            format: 'xlsx',
-            quarterId: s.q1,
+    it.each(OWN_CLASS_CASES)(
+      'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing, with a %s',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const vice = await account();
+        await give(vice, { role: 'academic_vice_principal', branchId: s.branch });
+        const asked = journalExportRequestedSchema.parse(
+          await as(vice, s.branch, async (calls) => {
+            const answer = await calls.post('/api/journal/exports', {
+              format: 'xlsx',
+              quarterId: s.q1,
+            });
+            expect([200, 201, 202], JSON.stringify(answer.body)).toContain(answer.status);
+            return answer.body as unknown;
+          }),
+        ).export;
+        const readers = [
+          ['teacher', s.owner],
+          ['tutor', await tutorOf(s.branch, s.classId)],
+          ['head_teacher', await headOf(s.branch, [s.subject])],
+          ['senior_head_teacher', await seniorOf(s.branch, [s.subject])],
+        ] as const;
+        const before = await snapshot(s.branch);
+        for (const [who, browser] of readers) {
+          await as(browser, s.branch, async (calls) => {
+            const refused = await calls.post('/api/journal/exports', {
+              format: 'xlsx',
+              quarterId: s.q1,
+            });
+            expect(refused.status, who).toBe(403);
+            expect(codeOf(refused), who).toBe('journal_export_scope');
+            const list = journalExportListSchema.parse(ok(await calls.get('/api/journal/exports')));
+            expect(list.canExportBranch, who).toBe(false);
+            expect(
+              list.exports.map((one) => one.id),
+              who,
+            ).not.toContain(asked.id);
+            const file = await calls.get(`/api/journal/exports/${asked.id}/file`);
+            expect(file.status, who).toBe(404);
           });
-          expect([200, 201, 202], JSON.stringify(answer.body)).toContain(answer.status);
-          return answer.body as unknown;
-        }),
-      ).export;
-      const readers = [
-        ['teacher', s.owner],
-        ['tutor', await tutorOf(s.branch, s.classId)],
-        ['head_teacher', await headOf(s.branch, [s.subject])],
-        ['senior_head_teacher', await seniorOf(s.branch, [s.subject])],
-      ] as const;
-      const before = await snapshot(s.branch);
-      for (const [who, browser] of readers) {
-        await as(browser, s.branch, async (calls) => {
-          const refused = await calls.post('/api/journal/exports', {
-            format: 'xlsx',
-            quarterId: s.q1,
-          });
-          expect(refused.status, who).toBe(403);
-          expect(codeOf(refused), who).toBe('journal_export_scope');
-          const list = journalExportListSchema.parse(ok(await calls.get('/api/journal/exports')));
-          expect(list.canExportBranch, who).toBe(false);
-          expect(
-            list.exports.map((one) => one.id),
-            who,
-          ).not.toContain(asked.id);
-          const file = await calls.get(`/api/journal/exports/${asked.id}/file`);
-          expect(file.status, who).toBe(404);
-        });
-      }
-      expect(await snapshot(s.branch)).toEqual(before);
-    });
+        }
+        expect(await snapshot(s.branch)).toEqual(before);
+      },
+    );
   });
 });

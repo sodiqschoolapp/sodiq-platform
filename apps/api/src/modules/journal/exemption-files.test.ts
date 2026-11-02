@@ -20,6 +20,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
+import { OWN_CLASS_CASES, gradeOf, ownRoleOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -102,7 +103,10 @@ describe('the files of the reasons', () => {
 
   const student = async (branch: string, classId: string, last: string): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: 'Olim', last_name: last })
@@ -119,7 +123,7 @@ describe('the files of the reasons', () => {
   ): Promise<Browser & { assignmentId: string }> {
     const browser = await account();
     const assignment = await t.kit.giveRole(browser.account.id, {
-      role: 'tutor',
+      role: ownRoleOf(await gradeOf(t.database.migrator, classId)),
       branchId: branch,
       validFrom: new Date('2026-09-01T00:00:00+05:00'),
     });
@@ -128,11 +132,12 @@ describe('the files of the reasons', () => {
     return { ...browser, assignmentId: assignment.id };
   }
 
-  async function scene() {
+  async function scene(grade = 7) {
     const owner = await account();
     const s = await publishedScene(t, load, {
       graded: true,
       accounts: { teacher: owner.account.id },
+      grade,
     });
     const vice = await account();
     await t.kit.giveRole(vice.account.id, {
@@ -264,59 +269,74 @@ describe('the files of the reasons', () => {
       expect(await t.entries('absence_reason.file_remove', s.ahmedov)).toHaveLength(1);
     });
 
-    it('refuses a Tutor of another class, a Teacher and a Principal', async () => {
-      const s = await scene();
-      const tutor = await tutorOf(s.branch, s.classId);
-      await as(s.branch, tutor, [], async ({ put, upload }) => {
-        await put(`/api/journal/student-absences/${s.ahmedov}/2026-10-19`, {
-          category: 'illness',
-          note: '',
+    it.each(OWN_CLASS_CASES)(
+      'refuses a %s of another class, a Teacher and a Principal',
+      async (_who, grade) => {
+        const s = await scene(grade);
+        const tutor = await tutorOf(s.branch, s.classId);
+        await as(s.branch, tutor, [], async ({ put, upload }) => {
+          await put(`/api/journal/student-absences/${s.ahmedov}/2026-10-19`, {
+            category: 'illness',
+            note: '',
+          });
+          await upload(`${fileOf(s.ahmedov, '2026-10-19')}?name=a.pdf`, 'application/pdf', PDF);
         });
-        await upload(`${fileOf(s.ahmedov, '2026-10-19')}?name=a.pdf`, 'application/pdf', PDF);
-      });
-      const before = await reasonsOf(s.branch);
-      const fileEntries = async () =>
-        Promise.all(
-          ['absence_reason.file_add', 'absence_reason.file_remove', 'absence_reason.file_open'].map(
-            async (action) => (await t.entries(action, s.ahmedov)).length,
-          ),
+        const before = await reasonsOf(s.branch);
+        const fileEntries = async () =>
+          Promise.all(
+            [
+              'absence_reason.file_add',
+              'absence_reason.file_remove',
+              'absence_reason.file_open',
+            ].map(async (action) => (await t.entries(action, s.ahmedov)).length),
+          );
+        const entries = await fileEntries();
+        const otherTutor = await tutorOf(s.branch, s.otherClass);
+        await as(s.branch, otherTutor, [], async ({ get, del, upload }) => {
+          for (const refused of [
+            await get(fileOf(s.ahmedov, '2026-10-19')),
+            await del(fileOf(s.ahmedov, '2026-10-19')),
+            await upload(`${fileOf(s.ahmedov, '2026-10-19')}?name=b.pdf`, 'application/pdf', PDF),
+          ]) {
+            expect(refused.status).toBe(403);
+            expect(codeOf(refused)).toBe('absence_scope');
+          }
+        });
+        // The Tutor of another class who is a Teacher too: the Teacher role gives no reading of it.
+        await as(
+          s.branch,
+          otherTutor,
+          [{ role: 'teacher', branchId: s.branch }],
+          async ({ get }) => {
+            expect((await get(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(403);
+          },
         );
-      const entries = await fileEntries();
-      const otherTutor = await tutorOf(s.branch, s.otherClass);
-      await as(s.branch, otherTutor, [], async ({ get, del, upload }) => {
-        for (const refused of [
-          await get(fileOf(s.ahmedov, '2026-10-19')),
-          await del(fileOf(s.ahmedov, '2026-10-19')),
-          await upload(`${fileOf(s.ahmedov, '2026-10-19')}?name=b.pdf`, 'application/pdf', PDF),
-        ]) {
-          expect(refused.status).toBe(403);
-          expect(codeOf(refused)).toBe('absence_scope');
-        }
-      });
-      // The Tutor of another class who is a Teacher too: the Teacher role gives no reading of it.
-      await as(s.branch, otherTutor, [{ role: 'teacher', branchId: s.branch }], async ({ get }) => {
-        expect((await get(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(403);
-      });
-      // The Principal reads every class and writes none (decision 6).
-      const principal = await account();
-      await as(
-        s.branch,
-        principal,
-        [{ role: 'principal', branchId: s.branch }],
-        async ({ get, del, upload }) => {
-          expect(
-            (await upload(`${fileOf(s.ahmedov, '2026-10-19')}?name=c.pdf`, 'application/pdf', PDF))
-              .status,
-          ).toBe(403);
-          expect((await del(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(403);
-          expect((await get(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(200);
-        },
-      );
-      expect(await reasonsOf(s.branch)).toEqual(before);
-      // Only the Principal's opening was written.
-      const [added = 0, removed = 0, opened = 0] = entries;
-      expect(await fileEntries()).toEqual([added, removed, opened + 1]);
-    });
+        // The Principal reads every class and writes none (decision 6).
+        const principal = await account();
+        await as(
+          s.branch,
+          principal,
+          [{ role: 'principal', branchId: s.branch }],
+          async ({ get, del, upload }) => {
+            expect(
+              (
+                await upload(
+                  `${fileOf(s.ahmedov, '2026-10-19')}?name=c.pdf`,
+                  'application/pdf',
+                  PDF,
+                )
+              ).status,
+            ).toBe(403);
+            expect((await del(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(403);
+            expect((await get(fileOf(s.ahmedov, '2026-10-19'))).status).toBe(200);
+          },
+        );
+        expect(await reasonsOf(s.branch)).toEqual(before);
+        // Only the Principal's opening was written.
+        const [added = 0, removed = 0, opened = 0] = entries;
+        expect(await fileEntries()).toEqual([added, removed, opened + 1]);
+      },
+    );
 
     it('answers 404 for another branch’s student, an unknown student or date, a day with no reason or no category, and a file not there', async () => {
       const s = await scene();

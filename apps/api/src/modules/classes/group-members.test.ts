@@ -169,7 +169,7 @@ describe('group membership', () => {
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
       ...(role === 'senior_head_teacher' ? {} : { branchId: t.north }),
-      ...(role === 'tutor' ? { validFrom: FROM } : {}),
+      ...(role === 'tutor' || role === 'class_teacher' ? { validFrom: FROM } : {}),
       ...(subjectIds === undefined ? {} : { subjectIds }),
     });
     return { cookie: browser.cookie, assignment: given.id, accountId: browser.account.id };
@@ -589,6 +589,29 @@ describe('group membership', () => {
       for (const cookie of [t.vicePrincipal, t.admin]) {
         refusedWith(await get(`/api/groups/${southGroup}/members`, cookie), 404, 'not_found');
       }
+    });
+
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of a class of grade 1.
+    it('lets a Class teacher read the members of own class only, with a count of the others', async () => {
+      const given = await signedIn('Oysha', 'Rustamova', 'class_teacher');
+      await classes.person(t.north, ['uz'], { accountId: given.accountId });
+      const reading = await classes.subject({ grades: [1] });
+      const ownClass = await schoolClass(1);
+      const other = await schoolClass(1);
+      await classes.tutorRow(t.north, ownClass, given.assignment, { from: FROM });
+      const own = await pupil(ownClass, { grade: 1 });
+      const foreign = await pupil(other, { grade: 1 });
+      const across = await group([ownClass, other], { subject: reading });
+      placed(await place(across, [own, foreign], '2026-10-10'));
+      const tab = await membersOf(across, given.cookie);
+      expect(tab.members.map((member) => member.studentId)).toEqual([own.id]);
+      expect(tab.othersCount).toBe(1);
+      const notOwn = await group([other], { subject: reading });
+      refusedWith(
+        await get(`/api/groups/${notOwn}/members`, given.cookie),
+        403,
+        'permission_denied',
+      );
     });
 
     // Task 3.6a, owner's answer L147: groups on every row for every reader

@@ -407,6 +407,14 @@ export const ERROR_CODES = [
   'class_tutor_taken',
   /** The assignment chosen is not a Tutor role of the branch (task 3.1a, decision 8). */
   'tutor_not_tutor',
+  /** A class of grades 0–4 takes a Class teacher, not a Tutor (`edge/people-roles-accounts`; task 9.4e, decision 3). */
+  'class_needs_class_teacher',
+  /** A class of grades 5–11 takes a Tutor, not a Class teacher (task 9.4e, decision 3). */
+  'class_needs_tutor',
+  /** A Class teacher has one own class at a time; another class only as acting (`02`, Class teacher; task 9.4e, decision 4). */
+  'class_teacher_one_class',
+  /** A grade edit moves the class between grades 0–4 and 5–11 while its Tutor or Class teacher is in force or planned (task 9.4e, decision 5). */
+  'class_grade_tutor_role',
   /** The Tutor role of the person does not cover those dates: a class is held within the role (task 3.1a, decision 9). */
   'tutor_outside_role',
   /** A Tutor row begins and ends today or later (task 3.1a, decision 9). */

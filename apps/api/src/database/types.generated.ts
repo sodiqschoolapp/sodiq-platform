@@ -294,6 +294,7 @@ export interface ClassTutors {
   given_by: string;
   id: Generated<string>;
   kind: string;
+  own_class_account: string | null;
   own_until: Timestamp | null;
   valid_from: Timestamp;
   valid_until: Timestamp | null;

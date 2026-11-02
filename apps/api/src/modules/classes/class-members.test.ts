@@ -1432,7 +1432,7 @@ describe('class membership', () => {
         .parse(binary);
       const file = await fileOf(response);
       // The Super Admin of the kit reads Uzbek.
-      expect(file.sheet.headings).toEqual(['Sinf', 'Tyutor']);
+      expect(file.sheet.headings).toEqual(['Sinf', 'Tyutor yoki sinf rahbari']);
       expect(file.sheet.rows[0]).toEqual([`7 ${String(one.class?.name)}`, 'Olimova Zarina']);
     });
   });

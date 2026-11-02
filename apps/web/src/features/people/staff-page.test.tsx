@@ -248,6 +248,7 @@ describe('the staff page', () => {
       en.roles.spiritual_vice_principal,
       en.roles.head_tutor,
       en.roles.tutor,
+      en.roles.class_teacher,
       en.roles.senior_head_teacher,
       en.roles.head_teacher,
       en.roles.teacher,

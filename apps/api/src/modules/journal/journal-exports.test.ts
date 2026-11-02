@@ -27,6 +27,7 @@ import { saveCells } from './cells.js';
 import { journalSheet } from './journal-export.js';
 import { JournalExports } from './journal-exports.service.js';
 import { JournalGridReader } from './journal-grid.service.js';
+import { OWN_CLASS_CASES, gradeOf, ownRoleOf } from '../../testing/own-class-cases.js';
 
 const store = new MemoryPhotoStore();
 const pdf = new RecordingPdf();
@@ -131,7 +132,10 @@ describe('journal exports', () => {
     until?: string,
   ): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({
@@ -225,8 +229,8 @@ describe('journal exports', () => {
    * told apart by the paternal name; Oʻktamov, Shodiyev and Abdullayev, who left on the
    * 20th (the folded section).
    */
-  async function scene() {
-    const s = await publishedScene(t, load, { graded: true });
+  async function scene(grade = 7) {
+    const s = await publishedScene(t, load, { graded: true, grade });
     const [first, second, third] = await lessonsOf(s);
     if (first === undefined || second === undefined || third === undefined) {
       throw new Error('The scene has three lessons in the first quarter.');
@@ -641,49 +645,66 @@ describe('journal exports', () => {
       t.clock.set(START);
     });
 
-    it('follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused', async () => {
-      const x = await scene();
-      const elsewhere = await scene();
-      const body = { format: 'xlsx', quarterId: x.q1 };
-      const allowed = async (browser: Browser, branch: string, journal: string, quarter = x.q1) => {
-        await at(browser, MOMENT);
-        const answer = await exportOf(browser, branch, journal, { ...body, quarterId: quarter });
-        expect(answer.status, codeOf(answer)).toBe(200);
-      };
-      const refused = async (browser: Browser, branch: string, journal: string, quarter = x.q1) => {
-        await at(browser, MOMENT);
-        refusedFile(
-          await exportOf(browser, branch, journal, { ...body, quarterId: quarter }),
-          403,
-          'journal_scope',
-        );
-      };
-      // Head Teachers: of the journal's subject, and of another subject in the same branch.
-      const head = await account();
-      await give(head, [{ role: 'head_teacher', branchId: x.s.branch, subjectIds: [x.s.subject] }]);
-      await allowed(head, x.s.branch, x.journal);
-      const otherHead = await account();
-      await give(otherHead, [
-        { role: 'head_teacher', branchId: x.s.branch, subjectIds: [elsewhere.s.subject] },
-      ]);
-      await refused(otherHead, x.s.branch, x.journal);
-      // A Senior Head Teacher of the other scene's subject: let in there, refused here.
-      const senior = await account();
-      await give(senior, [{ role: 'senior_head_teacher', subjectIds: [elsewhere.s.subject] }]);
-      await allowed(senior, elsewhere.s.branch, elsewhere.journal, elsewhere.q1);
-      await refused(senior, x.s.branch, x.journal);
-      // Tutors: of the class, and of the other class of the branch.
-      const tutorOf = async (classId: string) => {
-        const browser = await account();
-        const [assignment] = await give(browser, [{ role: 'tutor', branchId: x.s.branch }]);
-        await load.classes.person(x.s.branch, ['uz'], { accountId: browser.account.id });
-        await load.classes.tutorRow(x.s.branch, classId, assignment ?? '');
-        return browser;
-      };
-      await allowed(await tutorOf(x.s.classId), x.s.branch, x.journal);
-      await refused(await tutorOf(x.s.otherClass), x.s.branch, x.journal);
-      t.clock.set(START);
-    });
+    it.each(OWN_CLASS_CASES)(
+      'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the %s of the class are let in; the same roles outside their scope are refused',
+      async (_who, grade) => {
+        const x = await scene(grade);
+        const elsewhere = await scene(grade);
+        const body = { format: 'xlsx', quarterId: x.q1 };
+        const allowed = async (
+          browser: Browser,
+          branch: string,
+          journal: string,
+          quarter = x.q1,
+        ) => {
+          await at(browser, MOMENT);
+          const answer = await exportOf(browser, branch, journal, { ...body, quarterId: quarter });
+          expect(answer.status, codeOf(answer)).toBe(200);
+        };
+        const refused = async (
+          browser: Browser,
+          branch: string,
+          journal: string,
+          quarter = x.q1,
+        ) => {
+          await at(browser, MOMENT);
+          refusedFile(
+            await exportOf(browser, branch, journal, { ...body, quarterId: quarter }),
+            403,
+            'journal_scope',
+          );
+        };
+        // Head Teachers: of the journal's subject, and of another subject in the same branch.
+        const head = await account();
+        await give(head, [
+          { role: 'head_teacher', branchId: x.s.branch, subjectIds: [x.s.subject] },
+        ]);
+        await allowed(head, x.s.branch, x.journal);
+        const otherHead = await account();
+        await give(otherHead, [
+          { role: 'head_teacher', branchId: x.s.branch, subjectIds: [elsewhere.s.subject] },
+        ]);
+        await refused(otherHead, x.s.branch, x.journal);
+        // A Senior Head Teacher of the other scene's subject: let in there, refused here.
+        const senior = await account();
+        await give(senior, [{ role: 'senior_head_teacher', subjectIds: [elsewhere.s.subject] }]);
+        await allowed(senior, elsewhere.s.branch, elsewhere.journal, elsewhere.q1);
+        await refused(senior, x.s.branch, x.journal);
+        // Tutors: of the class, and of the other class of the branch.
+        const tutorOf = async (classId: string) => {
+          const browser = await account();
+          const [assignment] = await give(browser, [
+            { role: ownRoleOf(grade), branchId: x.s.branch },
+          ]);
+          await load.classes.person(x.s.branch, ['uz'], { accountId: browser.account.id });
+          await load.classes.tutorRow(x.s.branch, classId, assignment ?? '');
+          return browser;
+        };
+        await allowed(await tutorOf(x.s.classId), x.s.branch, x.journal);
+        await refused(await tutorOf(x.s.otherClass), x.s.branch, x.journal);
+        t.clock.set(START);
+      },
+    );
 
     it('writes only the rows and averages the grid answers: a Tutor of a mixed group gets own rows and no bottom row', async () => {
       const principal = await account();

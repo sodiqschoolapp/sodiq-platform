@@ -66,6 +66,7 @@ export const STAFF_CATEGORY_ROLES = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',

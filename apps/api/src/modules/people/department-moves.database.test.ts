@@ -131,6 +131,53 @@ describe('department_move_loads in the database', () => {
     await database.destroy();
   });
 
+  // Task 9.4e, decision 1 (Look first): "They are refused while a teaching load would have a
+  // teacher outside the subject's department, except a row of a class or group of grades 0–4"
+  // (edge/people-roles-accounts, as changed on 1 November 2026).
+  describe('a row of grades 0–4', () => {
+    async function primaryRow(grades: readonly number[], unit: 'class' | 'group') {
+      const subject = await kit.classes.subject({ grades });
+      const classIds = [];
+      for (const grade of grades) {
+        classIds.push(await kit.classes.schoolClass(north, northYear, { grade, language: 'uz' }));
+      }
+      const { staffId } = await kit.teacher(north, { subjects: [{ subject, grades }] });
+      const version = await kit.version(north, northYear, { startsOn: STARTS_ON });
+      const group =
+        unit === 'group' ? await kit.classes.group(north, northYear, subject, classIds) : null;
+      const row = await kit.row({
+        branch_id: north,
+        version_id: version,
+        subject_id: subject,
+        teacher_id: staffId,
+        ...(group === null ? { class_id: classIds[0] } : { group_id: group }),
+      });
+      return { row, teacher: staffId, version };
+    }
+
+    it('does not count a class row of grade 1, nor a group of grades 3 and 4', async () => {
+      for (const [grades, unit] of [
+        [[1], 'class'],
+        [[3, 4], 'group'],
+      ] as const) {
+        const { teacher } = await primaryRow(grades, unit);
+        expect(await loads(north, { teacher, department: national })).toEqual([]);
+      }
+    });
+
+    it('still counts a class row of grade 5 and a group of grades 4 and 5', async () => {
+      for (const [grades, unit] of [
+        [[5], 'class'],
+        [[4, 5], 'group'],
+      ] as const) {
+        const { row, teacher, version } = await primaryRow(grades, unit);
+        expect(await loads(north, { teacher, department: national })).toEqual([
+          { row_id: row, version_id: version, branch_id: north, rows: 1 },
+        ]);
+      }
+    });
+  });
+
   describe('a teacher move', () => {
     it('counts a row whose subject stays in the old department, with its version', async () => {
       const { row, teacher, version } = await steamRow();

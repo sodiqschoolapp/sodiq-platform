@@ -17,6 +17,7 @@ import { publishedScene, type PublishedScene } from '../../testing/published-sce
 import { binary } from '../../testing/xlsx-kit.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
+import { OWN_CLASS_CASES } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -40,7 +41,8 @@ const refused = (response: Response, label: string) => {
 // on the server"; Scope: "For own subjects in own branch: journals, lesson plans, groups, the
 // early-warning list"). Each test reads a case inside the limit too, so that it fails if the
 // route's own check goes.
-describe('the limits inside the results routes', () => {
+// Task 9.4e: once with the Tutors of classes of grade 7, once with the Class teachers of grade 1.
+describe.each(OWN_CLASS_CASES)('the limits inside the results routes, with a %s', (_who, grade) => {
   let t: DayTemplatesKit;
   let load: LoadKit;
   let names = 0;
@@ -185,8 +187,12 @@ describe('the limits inside the results routes', () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
     owner = await account();
-    s = await publishedScene(t, load, { graded: true, accounts: { teacher: owner.account.id } });
-    elsewhere = await load.classes.subject({ grades: [7] });
+    s = await publishedScene(t, load, {
+      graded: true,
+      accounts: { teacher: owner.account.id },
+      grade,
+    });
+    elsewhere = await load.classes.subject({ grades: [grade] });
     ownTutor = await tutorOf(s.classId);
     otherTutor = await tutorOf(s.otherClass);
     headOwn = await holding({ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] });
@@ -198,7 +204,7 @@ describe('the limits inside the results routes', () => {
     seniorOwn = await holding({ role: 'senior_head_teacher', subjectIds: [s.subject] });
     seniorOther = await holding({ role: 'senior_head_teacher', subjectIds: [elsewhere] });
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    anvar = await members.student(s.branch, { startsOn: '2026-09-01', grade: 7 });
+    anvar = await members.student(s.branch, { startsOn: '2026-09-01', grade });
     await members.member({
       branch: s.branch,
       classId: s.classId,

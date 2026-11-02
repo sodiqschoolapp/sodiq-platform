@@ -35,6 +35,7 @@ import {
   type StaffStatusAnswer,
   type StaffStatusChange,
   type StaffTeaching,
+  primaryGradesOnly,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -1348,7 +1349,8 @@ export class Staff {
         .where('id', '=', row.subject_id)
         .forShare()
         .executeTakeFirstOrThrow();
-      if (subject.department_id !== academic?.department_id) {
+      // Task 9.4e, decision 1: a subject taught only in grades 0–4 may come from any department.
+      if (subject.department_id !== academic?.department_id && !primaryGradesOnly(row.grades)) {
         throw refused('subject_outside_department');
       }
       if (row.grades.some((grade) => !subject.grades.includes(grade))) {

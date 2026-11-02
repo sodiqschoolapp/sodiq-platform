@@ -48,13 +48,13 @@ describe('Ctrl+K over classes and groups', () => {
     subjectIds?: readonly string[],
   ): Promise<{ cookie: string; assignment: string }> {
     const browser = await t.kit.completeSession(first, last);
-    if (role === 'tutor') {
+    if (role === 'tutor' || role === 'class_teacher') {
       await classes.person(t.north, ['uz'], { accountId: browser.account.id, first, last });
     }
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
       ...(role === 'senior_head_teacher' ? {} : { branchId: t.north }),
-      ...(role === 'tutor' ? { validFrom: FROM } : {}),
+      ...(role === 'tutor' || role === 'class_teacher' ? { validFrom: FROM } : {}),
       ...(subjectIds === undefined ? {} : { subjectIds }),
     });
     return { cookie: browser.cookie, assignment: given.id };
@@ -198,6 +198,28 @@ describe('Ctrl+K over classes and groups', () => {
       expect(await groupIds('Cambridge', oxfordTutor)).toEqual([]);
       // By a Cyrillic look-alike spelling of the group's name.
       expect(await groupIds('Оxford Physics', oxfordTutor)).toEqual([oxfordGroup]);
+    });
+
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of 1 London finds
+    // her class and the groups drawing from it, and no other class or group.
+    it('finds for a Class teacher own class and the groups drawing from it, and no other', async () => {
+      const london = await classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+      const leeds = await classes.schoolClass(t.north, year, { grade: 1, name: 'Leeds' });
+      const reading = await classes.subject({ grades: [1] });
+      const londonGroup = await classes.group(t.north, year, reading, [london], {
+        name: 'London Reading',
+      });
+      const leedsGroup = await classes.group(t.north, year, reading, [leeds], {
+        name: 'Leeds Reading',
+      });
+      const given = await signedIn('Malika', 'Karimova', 'class_teacher');
+      await classes.tutorRow(t.north, london, given.assignment, { from: FROM });
+      expect(await classIds('London', given.cookie)).toEqual([london]);
+      expect(await classIds('Leeds', given.cookie)).toEqual([]);
+      expect(await classIds('1', given.cookie)).toEqual([london]);
+      expect(await groupIds('Reading', given.cookie)).toEqual([londonGroup]);
+      expect(await groupIds('Leeds', given.cookie)).toEqual([]);
+      expect(leedsGroup).not.toBe(londonGroup);
     });
 
     it('finds nothing without a class, and nothing by a row not yet begun or already ended', async () => {

@@ -74,7 +74,7 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     name: (texts) => texts.classes.name,
     year: (texts) => texts.classes.year,
     language: (texts) => texts.classes.language,
-    tutor: (texts) => texts.classes.tutor,
+    tutor: (texts) => texts.classes.tutorOrClassTeacher,
     mainRoom: (texts) => texts.classes.mainRoom,
     // Task 3.1b: the members today.
     students: (texts) => texts.classes.students,

@@ -90,7 +90,10 @@ test('an Academic Vice Principal creates a class and gives it a Tutor of its lan
   await zero.getByLabel(texts.maxSize, { exact: true }).fill('20');
   await zero.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(page.getByRole('complementary', { name: '0 London' })).toBeVisible();
-  await expect(page.getByRole('row').filter({ hasText: '0 London' })).toContainText(texts.noTutor);
+  // Task 9.4e: a class of grades 0–4 shows its Class teacher, here none yet.
+  await expect(page.getByRole('row').filter({ hasText: '0 London' })).toContainText(
+    texts.classTeacher.noTutor,
+  );
 });
 
 // Task 3.1b, pull request #89 (edge/students-classes-groups, "A student is

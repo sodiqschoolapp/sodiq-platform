@@ -308,7 +308,16 @@ export const en = {
       'This person tutors a class in that language. Give that class another Tutor first, then remove the language.',
     class_tutor_taken:
       'The class already has a Tutor of this kind at that time. End that one first, or choose a later date.',
-    tutor_not_tutor: 'This person does not hold the Tutor role in this branch. Choose a Tutor.',
+    tutor_not_tutor:
+      'This person does not hold the Tutor or Class teacher role in this branch. Choose a Tutor or a Class teacher.',
+    class_needs_class_teacher:
+      'A class of grades 0–4 has a Class teacher, not a Tutor. Choose a person with the Class teacher role.',
+    class_needs_tutor:
+      'A class of grades 5–11 has a Tutor, not a Class teacher. Choose a person with the Tutor role.',
+    class_teacher_one_class:
+      'This Class teacher already has an own class at that time. End that class first, or set them as acting Class teacher.',
+    class_grade_tutor_role:
+      'The new grade needs a Tutor in place of a Class teacher, or the other way round. End the Tutor or Class teacher of the class first.',
     tutor_outside_role:
       'The Tutor role of this person does not cover these dates. Choose dates within the role.',
     tutor_date_past: 'The date is in the past. Choose today or a later date.',
@@ -2062,7 +2071,7 @@ export const en = {
       class: 'Class',
       noClass: 'No class',
       groups: 'Groups',
-      tutor: 'Tutor',
+      tutor: 'Tutor or Class teacher',
       grade: 'Grade',
       status: 'Status',
       notStarted: 'Starts later',
@@ -3105,6 +3114,7 @@ export const en = {
     spiritual_vice_principal: 'Vice Principal for Spiritual and Moral Education',
     head_tutor: 'Head Tutor',
     tutor: 'Tutor',
+    class_teacher: 'Class teacher',
     senior_head_teacher: 'Senior Head Teacher',
     head_teacher: 'Head Teacher',
     teacher: 'Teacher',
@@ -3815,6 +3825,21 @@ export const en = {
     stateWithCause: '{{state}} · {{cause}}',
     period: '{{from}} – {{until}}',
     periodOpen: 'From {{from}}',
+    classTeacher: {
+      tutors: 'Class teacher',
+      noTutorRows: 'No Class teacher yet',
+      giveTutor: 'Give Class teacher',
+      setActing: 'Set acting Class teacher',
+      kinds: { tutor: 'Class teacher', acting: 'Acting Class teacher' },
+      noCandidates:
+        'First give a staff member the Class teacher role (the Super Admin gives roles): People → Staff → the staff member → Account and roles.',
+      endTutor: 'End Class teacher',
+      endTitle: 'End this Class teacher?',
+      noTutor: 'No Class teacher',
+    },
+    tutorOrClassTeacher: 'Tutor or Class teacher',
+    noTutorOrClassTeacher: 'No Tutor or Class teacher',
+    withTutorOrClassTeacher: 'With a Tutor or Class teacher',
     kinds: { tutor: 'Tutor', acting: 'Acting Tutor' },
     states: { planned: 'Planned', current: 'Current', ended: 'Ended' },
     noMembers: 'No students yet',
@@ -5211,7 +5236,7 @@ export const en = {
       takePublished: 'Take the published',
       pickNeeded: 'Choose the draft or the published version for every difference.',
       notThere: 'Not in this version',
-      tutor: "The class's Tutor",
+      tutor: "The class's Tutor or Class teacher",
       noRoom: 'No room',
       notPlaced: 'Not placed',
       noPins: 'None',
@@ -5393,6 +5418,10 @@ export const en = {
       noTutorTeacher:
         "{{subject}} is held by the class's Tutor, and the class has no Tutor on the start date: Classes → the class → Give Tutor.",
       tutorRowTeacher: "Teacher: {{name}}, the class's Tutor. It changes with the Tutor.",
+      noClassTeacherTeacher:
+        "{{subject}} is held by the class's Class teacher, and the class has no Class teacher on the start date: Classes → the class → Give Class teacher.",
+      classTeacherRowTeacher:
+        "Teacher: {{name}}, the class's Class teacher. It changes with the Class teacher.",
       whyStatus: '{{teacher}}: not active.',
       whyGrade: '{{teacher}}: does not teach grade {{grades}}.',
       whyLanguage: '{{teacher}}: does not teach in {{language}}.',
@@ -6732,7 +6761,7 @@ export const en = {
       attendance: {
         groupBy: 'Rows',
         byClass: 'By class',
-        byTutor: 'By tutor',
+        byTutor: 'By Tutor or Class teacher',
         grade: 'Grade',
         allGrades: 'All grades',
         class: 'Class',
@@ -6743,8 +6772,8 @@ export const en = {
         allTeachers: 'All teachers',
         period: 'Period',
         allPeriods: 'All periods',
-        tutor: 'Tutor',
-        noTutor: 'No Tutor',
+        tutor: 'Tutor or Class teacher',
+        noTutor: 'No Tutor or Class teacher',
         present: 'Present',
         late: 'Late',
         absent: 'Absent',

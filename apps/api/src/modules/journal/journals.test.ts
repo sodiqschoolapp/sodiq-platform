@@ -20,6 +20,7 @@ import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from './cells.js';
+import { OWN_CLASS_CASES, gradeOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -82,7 +83,10 @@ describe('the journal grid', () => {
     until?: string,
   ): Promise<string> => {
     const members = new MembersKit(t.database.migrator, await load.classes.account());
-    const id = await members.student(branch, { startsOn: '2026-09-01', grade: 7 });
+    const id = await members.student(branch, {
+      startsOn: '2026-09-01',
+      grade: await gradeOf(t.database.migrator, classId),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({ first_name: name.first, last_name: name.last })
@@ -165,8 +169,8 @@ describe('the journal grid', () => {
    * Bakirova away from 16 to 21 October. The lesson of the 26th is cancelled
    * after its marks were typed.
    */
-  async function gradedScene(accounts: { teacher?: string; spare?: string } = {}) {
-    const scene = await publishedScene(t, load, { graded: true, accounts });
+  async function gradedScene(accounts: { teacher?: string; spare?: string } = {}, grade = 7) {
+    const scene = await publishedScene(t, load, { graded: true, accounts, grade });
     const [first, second, third] = await lessonsOf(scene);
     if (first === undefined || second === undefined || third === undefined) {
       throw new Error('The scene has three lessons in the first quarter.');
@@ -791,24 +795,27 @@ describe('the journal grid', () => {
     });
   });
 
-  it("gives a Tutor the journals of own class whole and refuses another class's", async () => {
-    const s = await gradedScene();
-    const other = await journalOf(s.scene.otherClass);
-    const tutor = await account();
-    await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
-    await as(tutor, [], async (get) => {
-      const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
-      expect(grid.shape).toBe('whole');
-      expect(grid.bottom).not.toBeNull();
-      const refused = await get(s.scene.branch, `/api/journal/journals/${other}`);
-      expect(refused.status).toBe(403);
-      const list = journalListSchema.parse(
-        (await get(s.scene.branch, '/api/journal/journals')).body,
-      );
-      expect(list.journals.map((one) => one.id)).toEqual([s.journal]);
-    });
-  });
+  it.each(OWN_CLASS_CASES)(
+    "gives a %s the journals of own class whole and refuses another class's",
+    async (_who, grade) => {
+      const s = await gradedScene({}, grade);
+      const other = await journalOf(s.scene.otherClass);
+      const tutor = await account();
+      await load.classes.person(s.scene.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(s.scene.branch, s.scene.classId, tutor.account.id);
+      await as(tutor, [], async (get) => {
+        const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+        expect(grid.shape).toBe('whole');
+        expect(grid.bottom).not.toBeNull();
+        const refused = await get(s.scene.branch, `/api/journal/journals/${other}`);
+        expect(refused.status).toBe(403);
+        const list = journalListSchema.parse(
+          (await get(s.scene.branch, '/api/journal/journals')).body,
+        );
+        expect(list.journals.map((one) => one.id)).toEqual([s.journal]);
+      });
+    },
+  );
 
   it('answers 404 for an unknown journal and for one of another branch', async () => {
     const s = await gradedScene();

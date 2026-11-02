@@ -319,7 +319,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu shaxs shu tildagi sinfning tyutori. Avval oʻsha sinfga boshqa tyutor tayinlang, soʻng tilni olib tashlang.',
     class_tutor_taken:
       'Sinfda shu vaqtda bu turdagi tyutor allaqachon bor. Avval uning tyutorligini tugating yoki keyingi sanani tanlang.',
-    tutor_not_tutor: 'Bu shaxsda bu filialda tyutor roli yoʻq. Tyutorni tanlang.',
+    tutor_not_tutor:
+      'Bu shaxsda bu filialda tyutor yoki sinf rahbari roli yoʻq. Tyutor yoki sinf rahbarini tanlang.',
+    class_needs_class_teacher:
+      '0–4-sinflarda tyutor emas, sinf rahbari boʻladi. Sinf rahbari roli bor shaxsni tanlang.',
+    class_needs_tutor:
+      '5–11-sinflarda sinf rahbari emas, tyutor boʻladi. Tyutor roli bor shaxsni tanlang.',
+    class_teacher_one_class:
+      'Bu sinf rahbarining oʻsha vaqtda oʻz sinfi bor. Avval oʻsha sinfni tugating yoki uni vaqtinchalik sinf rahbari qilib tayinlang.',
+    class_grade_tutor_role:
+      'Yangi sinf darajasiga sinf rahbari oʻrniga tyutor yoki aksincha kerak. Avval sinfning tyutori yoki sinf rahbarini tugating.',
     tutor_outside_role:
       'Bu shaxsning tyutor roli bu sanalarni qamramaydi. Rol doirasidagi sanalarni tanlang.',
     tutor_date_past: 'Sana oʻtib ketgan. Bugungi yoki keyingi sanani tanlang.',
@@ -2096,7 +2105,7 @@ export const uz: Texts<'one' | 'other'> = {
       class: 'Sinf',
       noClass: 'Sinfsiz',
       groups: 'Guruhlar',
-      tutor: 'Tyutor',
+      tutor: 'Tyutor yoki sinf rahbari',
       grade: 'Sinf darajasi',
       status: 'Holat',
       notStarted: 'Keyinroq boshlaydi',
@@ -3148,6 +3157,7 @@ export const uz: Texts<'one' | 'other'> = {
     spiritual_vice_principal: 'Maʼnaviy-axloqiy tarbiya boʻyicha direktor oʻrinbosari',
     head_tutor: 'Bosh tyutor',
     tutor: 'Tyutor',
+    class_teacher: 'Sinf rahbari',
     senior_head_teacher: 'Katta fan rahbari',
     head_teacher: 'Fan rahbari',
     teacher: 'Oʻqituvchi',
@@ -3859,6 +3869,21 @@ export const uz: Texts<'one' | 'other'> = {
     stateWithCause: '{{state}} · {{cause}}',
     period: '{{from}} – {{until}}',
     periodOpen: '{{from}} dan',
+    classTeacher: {
+      tutors: 'Sinf rahbari',
+      noTutorRows: 'Hozircha sinf rahbari yoʻq',
+      giveTutor: 'Sinf rahbari tayinlash',
+      setActing: 'Vaqtinchalik sinf rahbari tayinlash',
+      kinds: { tutor: 'Sinf rahbari', acting: 'Vaqtinchalik sinf rahbari' },
+      noCandidates:
+        'Avval xodimga Sinf rahbari rolini bering (rollarni Super Admin beradi): Odamlar → Xodimlar → xodim → Hisob va rollar.',
+      endTutor: 'Sinf rahbarligini tugatish',
+      endTitle: 'Bu sinf rahbarligi tugatilsinmi?',
+      noTutor: 'Sinf rahbari yoʻq',
+    },
+    tutorOrClassTeacher: 'Tyutor yoki sinf rahbari',
+    noTutorOrClassTeacher: 'Tyutor yoki sinf rahbari yoʻq',
+    withTutorOrClassTeacher: 'Tyutori yoki sinf rahbari bor',
     kinds: { tutor: 'Tyutor', acting: 'Vaqtinchalik tyutor' },
     states: { planned: 'Rejalashtirilgan', current: 'Amalda', ended: 'Yakunlangan' },
     noMembers: 'Hali oʻquvchilar yoʻq',
@@ -5266,7 +5291,7 @@ export const uz: Texts<'one' | 'other'> = {
       takePublished: 'Eʼlon qilinganini olish',
       pickNeeded: 'Har bir farq uchun qoralamani yoki eʼlon qilingan versiyani tanlang.',
       notThere: 'Bu versiyada yoʻq',
-      tutor: 'Sinf tyutori',
+      tutor: 'Sinf tyutori yoki sinf rahbari',
       noRoom: 'Xonasiz',
       notPlaced: 'Joylashtirilmagan',
       noPins: 'Yoʻq',
@@ -5449,6 +5474,10 @@ export const uz: Texts<'one' | 'other'> = {
       noTutorTeacher:
         '{{subject}} ni sinf tyutori oladi, versiya boshlanadigan kuni esa sinfda tyutor yoʻq: Sinflar → sinf → Tyutor berish.',
       tutorRowTeacher: 'Oʻqituvchi: {{name}}, sinf tyutori. Tyutor almashganda almashadi.',
+      noClassTeacherTeacher:
+        '{{subject}} ni sinf rahbari oladi, versiya boshlanadigan kuni esa sinfda sinf rahbari yoʻq: Sinflar → sinf → Sinf rahbari tayinlash.',
+      classTeacherRowTeacher:
+        'Oʻqituvchi: {{name}}, sinf rahbari. Sinf rahbari almashganda almashadi.',
       whyStatus: '{{teacher}}: faol emas.',
       whyGrade: '{{teacher}}: {{grades}}-sinfni oʻqitmaydi.',
       whyLanguage: '{{teacher}}: {{language}} dars bermaydi.',
@@ -6792,7 +6821,7 @@ export const uz: Texts<'one' | 'other'> = {
       attendance: {
         groupBy: 'Qatorlar',
         byClass: 'Sinflar boʻyicha',
-        byTutor: 'Tyutorlar boʻyicha',
+        byTutor: 'Tyutor yoki sinf rahbari boʻyicha',
         grade: 'Parallel',
         allGrades: 'Barcha parallellar',
         class: 'Sinf',
@@ -6803,8 +6832,8 @@ export const uz: Texts<'one' | 'other'> = {
         allTeachers: 'Barcha oʻqituvchilar',
         period: 'Dars',
         allPeriods: 'Barcha darslar',
-        tutor: 'Tyutor',
-        noTutor: 'Tyutorsiz',
+        tutor: 'Tyutor yoki sinf rahbari',
+        noTutor: 'Tyutor yoki sinf rahbarisiz',
         present: 'Kelgan',
         late: 'Kechikkan',
         absent: 'Kelmagan',

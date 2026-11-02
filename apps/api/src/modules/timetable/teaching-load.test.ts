@@ -1293,6 +1293,34 @@ describe('draft versions and the teaching load', () => {
       expect(tutors.defaultTeacherId).toBe(person.staffId);
     });
 
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Tutor row of 1 London holds its
+    // Class teacher, without the subject in her profile; another teacher is refused.
+    it('writes the Class teacher of a class of grade 1 on its Tutor row', async () => {
+      const version = await draft();
+      const tutorSubject = await load.tutorSubject({ grades: [1] });
+      const classId = await load.classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+      const malika = await load.teacher(t.north);
+      await load.tutorOf(t.north, classId, malika.accountId);
+      const other = await load.teacher(t.north);
+      refusedWith(
+        await createRow(version.id, { classId, teacherId: other.staffId, subjectId: tutorSubject }),
+        422,
+        'load_tutor_row_teacher',
+      );
+      const row = rowOf(
+        await createRow(version.id, { classId, teacherId: null, subjectId: tutorSubject }),
+      );
+      expect(row.teacher.id).toBe(malika.staffId);
+      expect(row.problems).toEqual([]);
+      const role = await t.database.migrator
+        .selectFrom('class_tutors')
+        .innerJoin('assignments', 'assignments.id', 'class_tutors.assignment_id')
+        .select('assignments.role')
+        .where('class_tutors.class_id', '=', classId)
+        .executeTakeFirstOrThrow();
+      expect(role.role).toBe('class_teacher');
+    });
+
     it('writes the class Tutor on a Tutor row and accepts no teacher for it (done-when 3)', async () => {
       const version = await draft();
       const tutorSubject = await load.tutorSubject({ grades: [7] });

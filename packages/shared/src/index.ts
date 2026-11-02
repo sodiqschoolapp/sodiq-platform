@@ -304,11 +304,16 @@ export {
 } from './permissions.js';
 export { REQUEST_KEY_HEADER, requestKeySchema } from './request-keys.js';
 export {
+  isOwnClassRole,
+  LAST_CLASS_TEACHER_GRADE,
   MAX_SUPER_ADMINS,
+  OWN_CLASS_ROLES,
+  ownClassRoleFor,
   ROLES,
   roleSchema,
   SCHOOL_WIDE_ROLES,
   STRICT_SIGN_IN_ROLES,
+  type OwnClassRole,
   type Role,
 } from './roles.js';
 export { sampleRecordSchema, type SampleRecord } from './sample.js';
@@ -380,6 +385,8 @@ export {
 } from './setup.js';
 export {
   gradeRanges,
+  PRIMARY_GRADES,
+  primaryGradesOnly,
   schoolGradeQuerySchema,
   schoolGradeSchema,
   schoolGradeTextSchema,

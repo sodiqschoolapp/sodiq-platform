@@ -63,11 +63,11 @@ const GRID_SENIOR = at(
 );
 const GRID_TUTOR = at(
   GRID,
-  "gives a Tutor the journals of own class whole and refuses another class's",
+  "gives a %s the journals of own class whole and refuses another class's",
 );
 const WRITES_TUTOR = at(
   SCOPE,
-  'refuses the Tutor of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
+  'refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
 );
 const WRITES_TEACHER = at(
   SCOPE,
@@ -79,11 +79,11 @@ const UNLOCK_HEADS = at(
 );
 const UNLOCKS = at(
   SCOPE,
-  'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing',
+  'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s',
 );
 const REMINDERS = at(
   SCOPE,
-  "gives every role its own reminders only, never the lessons of the journal's teacher",
+  "gives every role its own reminders only, never the lessons of the journal's teacher, with a %s",
 );
 const HISTORIES = at(
   SCOPE,
@@ -91,7 +91,7 @@ const HISTORIES = at(
 );
 const CARD = at(
   SCOPE,
-  'refuses the lesson card to a Tutor of another class and a Senior Head Teacher of another subject',
+  'refuses the lesson card to a %s of another class and a Senior Head Teacher of another subject',
 );
 const CARDS_TODAY = at(
   SCOPE,
@@ -99,11 +99,11 @@ const CARDS_TODAY = at(
 );
 const BRANCH_EXPORTS = at(
   SCOPE,
-  'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing',
+  'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing, with a %s',
 );
 const READERS_TUTOR = at(
   READERS,
-  'gives the Tutor of one class of the group the rows of own class only, also in both histories',
+  'gives the %s of one class of the group the rows of own class only, also in both histories',
 );
 const READERS_HEAD = at(
   READERS,
@@ -115,12 +115,17 @@ const CELL_TEACHER = at(
 );
 const CELL_READERS = at(
   ATTENDANCE,
-  'answers every reader whose grid shows the cell, and refuses a Tutor of another class and a Head Teacher of another subject',
+  'answers every reader whose grid shows the cell, and refuses a %s of another class and a Head Teacher of another subject',
 );
 
 /** The same limits for the Tutor and the Teacher on a write of a lesson, its rating exam or its comments. */
 const entryLines: readonly ScopeLine[] = [
-  { roles: ['tutor'], scope: 'own_lessons', rule: TUTOR_ENTERS, refusedIn: [WRITES_TUTOR] },
+  {
+    roles: ['tutor', 'class_teacher'],
+    scope: 'own_lessons',
+    rule: TUTOR_ENTERS,
+    refusedIn: [WRITES_TUTOR],
+  },
   { roles: ['teacher'], scope: 'own_lessons', rule: TEACHER_ENTERS, refusedIn: [WRITES_TEACHER] },
 ];
 
@@ -134,7 +139,7 @@ const gridLines: readonly ScopeLine[] = [
     rule: SENIOR_READS,
     refusedIn: [GRID_SENIOR],
   },
-  { roles: ['tutor'], scope: 'class', rule: TUTOR_READS, refusedIn: [GRID_TUTOR] },
+  { roles: ['tutor', 'class_teacher'], scope: 'class', rule: TUTOR_READS, refusedIn: [GRID_TUTOR] },
 ];
 
 const unlockRequestLines: readonly ScopeLine[] = [
@@ -149,7 +154,7 @@ const unlockRequestLines: readonly ScopeLine[] = [
 
 const ownExportLines: readonly ScopeLine[] = [
   {
-    roles: ['tutor', 'teacher', 'head_teacher', 'senior_head_teacher'],
+    roles: ['tutor', 'class_teacher', 'teacher', 'head_teacher', 'senior_head_teacher'],
     scope: 'own_requests',
     rule: OWN_EXPORTS,
     refusedIn: [BRANCH_EXPORTS],
@@ -184,7 +189,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
   'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks': unlockRequestLines,
   'GET /api/journal/unlocks': [
     {
-      roles: ['tutor', 'teacher'],
+      roles: ['tutor', 'class_teacher', 'teacher'],
       scope: 'own_requests',
       rule: OWN_REQUESTS,
       refusedIn: [UNLOCKS],
@@ -206,7 +211,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
   ],
   'POST /api/journal/unlocks/:unlockId/withdraw': [
     {
-      roles: ['tutor', 'teacher', 'head_teacher', 'senior_head_teacher'],
+      roles: ['tutor', 'class_teacher', 'teacher', 'head_teacher', 'senior_head_teacher'],
       scope: 'own_requests',
       rule: '02, Own requests; task 8.4: only the person who sent a request withdraws it',
       refusedIn: [UNLOCKS],
@@ -222,7 +227,12 @@ export const JOURNAL_SCOPES: RouteScopes = {
       rule: SENIOR_READS,
       refusedIn: [HISTORIES],
     },
-    { roles: ['tutor'], scope: 'class', rule: TUTOR_READS, refusedIn: [READERS_TUTOR] },
+    {
+      roles: ['tutor', 'class_teacher'],
+      scope: 'class',
+      rule: TUTOR_READS,
+      refusedIn: [READERS_TUTOR],
+    },
   ],
   'GET /api/journal/comments/history': [
     { roles: ['teacher'], scope: 'own_lessons', rule: TEACHER_READS, refusedIn: [HISTORIES] },
@@ -233,7 +243,12 @@ export const JOURNAL_SCOPES: RouteScopes = {
       rule: SENIOR_READS,
       refusedIn: [HISTORIES],
     },
-    { roles: ['tutor'], scope: 'class', rule: TUTOR_READS, refusedIn: [READERS_TUTOR] },
+    {
+      roles: ['tutor', 'class_teacher'],
+      scope: 'class',
+      rule: TUTOR_READS,
+      refusedIn: [READERS_TUTOR],
+    },
   ],
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': [
     { roles: ['teacher'], scope: 'own_lessons', rule: TEACHER_READS, refusedIn: [CELL_TEACHER] },
@@ -244,7 +259,12 @@ export const JOURNAL_SCOPES: RouteScopes = {
       rule: SENIOR_READS,
       refusedIn: [HISTORIES],
     },
-    { roles: ['tutor'], scope: 'class', rule: TUTOR_READS, refusedIn: [CELL_READERS] },
+    {
+      roles: ['tutor', 'class_teacher'],
+      scope: 'class',
+      rule: TUTOR_READS,
+      refusedIn: [CELL_READERS],
+    },
   ],
   'GET /api/journal/lessons/:lessonId/card': [
     {
@@ -270,12 +290,12 @@ export const JOURNAL_SCOPES: RouteScopes = {
       ],
     },
     { roles: ['senior_head_teacher'], scope: 'subjects', rule: SENIOR_READS, refusedIn: [CARD] },
-    { roles: ['tutor'], scope: 'class', rule: TUTOR_READS, refusedIn: [CARD] },
+    { roles: ['tutor', 'class_teacher'], scope: 'class', rule: TUTOR_READS, refusedIn: [CARD] },
   ],
 
   'GET /api/journal/reminders': [
     {
-      roles: ['tutor', 'teacher', 'head_teacher', 'senior_head_teacher'],
+      roles: ['tutor', 'class_teacher', 'teacher', 'head_teacher', 'senior_head_teacher'],
       scope: 'own_lessons',
       rule: OWN_REMINDERS,
       refusedIn: [REMINDERS],
@@ -283,7 +303,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
   ],
   'GET /api/journal/attendance-today': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '08, Home pages by role, Tutor; 02, Tutor: "attendance per lesson and daily attendance in percent" of own class (task 9.4b)',
       refusedIn: [
@@ -351,25 +371,30 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           EXPORTS,
-          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused',
+          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the %s of the class are let in; the same roles outside their scope are refused',
         ),
       ],
     },
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: 'task 8.9: the export follows the scope of the grid (own class for a Tutor)',
       refusedIn: [
         at(
           EXPORTS,
-          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused',
+          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the %s of the class are let in; the same roles outside their scope are refused',
         ),
       ],
     },
   ],
   'POST /api/journal/exports': [
     { roles: ['teacher'], scope: 'own_lessons', rule: BRANCH_EXPORT, refusedIn: [BRANCH_EXPORTS] },
-    { roles: ['tutor'], scope: 'class', rule: BRANCH_EXPORT, refusedIn: [BRANCH_EXPORTS] },
+    {
+      roles: ['tutor', 'class_teacher'],
+      scope: 'class',
+      rule: BRANCH_EXPORT,
+      refusedIn: [BRANCH_EXPORTS],
+    },
     {
       roles: ['head_teacher', 'senior_head_teacher'],
       scope: 'subjects',
@@ -382,13 +407,13 @@ export const JOURNAL_SCOPES: RouteScopes = {
 
   'GET /api/journal/exemptions-today': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: EXEMPTION_CARDS,
       refusedIn: [
         at(
           EXEMPTIONS,
-          'shows the Tutor "exempt today" with the category and "back from exemption" the day after the end',
+          'shows the %s "exempt today" with the category and "back from exemption" the day after the end',
         ),
       ],
     },
@@ -413,52 +438,52 @@ export const JOURNAL_SCOPES: RouteScopes = {
 
   'GET /api/journal/student-absences': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
       refusedIn: [
         at(
           ABSENCES,
-          'lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a Tutor to own classes',
+          'lists the days with a 0 or 3 or a reason, marks a 0 after being at school, and limits a %s to own classes',
         ),
       ],
     },
   ],
   'PUT /api/journal/student-absences/:studentId/:date': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
       refusedIn: [
         at(
           ABSENCES,
-          'lets the Academic Vice Principal and the Super Admin write any class, and refuses a Tutor of another class and every other role',
+          'lets the Academic Vice Principal and the Super Admin write any class, and refuses a %s of another class and every other role',
         ),
       ],
     },
   ],
   'PUT /api/journal/student-absences/:studentId/:date/file': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   'DELETE /api/journal/student-absences/:studentId/:date/file': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   'GET /api/journal/student-absences/:studentId/:date/file': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: ABSENCE_REASONS,
-      refusedIn: [at(ABSENCE_FILES, 'refuses a Tutor of another class, a Teacher and a Principal')],
+      refusedIn: [at(ABSENCE_FILES, 'refuses a %s of another class, a Teacher and a Principal')],
     },
   ],
   // Task 9.3b-2: the items behind a count and the file of the counts, in the counts' scope.

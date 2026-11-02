@@ -23,6 +23,7 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
+import { offeredSubjects } from './offered-subjects';
 import { asFormSchema, isGradesField, subjectsFieldOf } from './form-schema';
 
 type Fields =
@@ -111,12 +112,12 @@ export function VacancyForm({
     save: onSave,
   });
   const department = form.bind('departmentId').value;
-  const offered = subjects.filter(
-    (subject) =>
-      (vacancy?.subjects.some((own) => own.subjectId === subject.id) ?? false) ||
-      // A planned move's department, which the server's rule reads (task 3.6b-3, correction 1).
-      (subject.archivedAt === null &&
-        (subject.departmentMove?.departmentId ?? subject.departmentId) === department),
+  // A planned move's department, which the server's rule reads (task 3.6b-3, correction 1);
+  // a subject of grades 0–4 from any department (task 9.4e).
+  const offered = offeredSubjects(
+    subjects,
+    department,
+    (vacancy?.subjects ?? []).map((own) => own.subjectId),
   );
   const chosen = listValues(form.bind('subjects').value);
   return (

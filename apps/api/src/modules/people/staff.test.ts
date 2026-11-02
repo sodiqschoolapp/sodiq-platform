@@ -502,6 +502,60 @@ describe('staff records', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    // Task 9.4e, decision 1 (Look first): Malika (invented), Class teacher of 1 London, teaches
+    // Mathematics, Native language and Reading of grade 1 from three departments (04, Academic).
+    it('takes subjects of grades 0–4 from other departments, and refuses one that reaches grade 5', async () => {
+      const subject = async (en: string, department: string, grades: number[]) =>
+        (
+          await t.database.migrator
+            .insertInto('subjects')
+            .values({
+              name_uz: en,
+              name_ru: en,
+              name_en: en,
+              department_id: department,
+              grades,
+              colour: 'green',
+              journal_type: 'graded',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const national = (
+        await t.database.migrator
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'National')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const native = await subject('Native language 9.4e', national, [0, 1, 2, 3, 4, 5]);
+      const reading = await subject('Reading 9.4e', languages, [0, 1, 2, 3, 4]);
+      const malika = await create({
+        divisions: [{ divisionId: academic, departmentId: steam, main: true }],
+      });
+      const primaryMaths = await subject('Mathematics 9.4e', steam, [0, 1, 2, 3, 4, 5]);
+      const response = await put(`/api/people/staff/${malika.id}/teaching`, t.north, {
+        subjects: [
+          { subjectId: primaryMaths, grades: [1] },
+          { subjectId: native, grades: [1] },
+          { subjectId: reading, grades: [1] },
+        ],
+        languages: ['uz'],
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(staffDetailSchema.parse(response.body).subjects).toHaveLength(3);
+      const before = await snapshot();
+      refusedWith(
+        await put(`/api/people/staff/${malika.id}/teaching`, t.north, {
+          subjects: [{ subjectId: native, grades: [1, 5] }],
+          languages: ['uz'],
+        }),
+        409,
+        'subject_outside_department',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
     it('refuses a subject of another department, a grade the subject lacks and an unknown subject', async () => {
       const created = await create({
         divisions: [{ divisionId: academic, departmentId: languages, main: true }],
@@ -945,6 +999,65 @@ describe('staff records', () => {
       release();
       await archive;
       refusedWith(await save, 409, 'division_archived');
+    });
+
+    // Task 9.4e, decision 1 (Look first): a move of a subject's department leaves in a teacher
+    // whose grades taught of it are all within 0–4, here and in another branch, and still
+    // names one with grade 5 (teachersOutside, staff_subject_in_use).
+    it('leaves in a teacher of grades 0–4 only when a subject moves department, and names one of grade 5', async () => {
+      const fields = {
+        names: { uz: 'Oʻqish (koʻchish)', ru: 'Чтение (перенос)', en: 'Reading moved' },
+        departmentId: steam,
+        grades: [1, 2, 5],
+        colour: 'green',
+        journalType: 'graded',
+        ratingExam: false,
+        groupSubject: false,
+        languageRule: true,
+        demanding: false,
+      };
+      const created = await t.post('/api/setup/subjects', t.north, {
+        ...fields,
+        daily: { attendance: 10, classwork: 50, homework: 40 },
+      });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      const subject = (created.body as { id: string }).id;
+      const teach = async (grades: number[]) => {
+        const teacher = await create();
+        const saved = await put(`/api/people/staff/${teacher.id}/teaching`, t.north, {
+          subjects: [{ subjectId: subject, grades }],
+          languages: ['uz'],
+        });
+        expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+        return teacher;
+      };
+      await teach([1, 2]);
+      const upper = await teach([2, 5]);
+      const move = (branch: string) =>
+        put(`/api/setup/subjects/${subject}`, branch, {
+          ...fields,
+          daily: null,
+          departmentId: languages,
+          departmentStartsOn: '2026-11-02',
+        });
+      const here = await move(t.north);
+      refusedWith(here, 409, 'subject_has_teachers');
+      expect(apiErrorSchema.parse(here.body).error.details).toEqual([
+        expect.objectContaining({ path: `staff.${upper.id}`, code: 'teaches' }),
+      ]);
+      const elsewhere = await move(t.south);
+      refusedWith(elsewhere, 409, 'subject_has_teachers');
+      expect(apiErrorSchema.parse(elsewhere.body).error.details).toEqual([
+        expect.objectContaining({ path: 'elsewhere', code: '1' }),
+      ]);
+      // Without the teacher of grade 5, the move passes: the one of grades 1 and 2 stays.
+      const cleared = await put(`/api/people/staff/${upper.id}/teaching`, t.north, {
+        subjects: [],
+        languages: ['uz'],
+      });
+      expect(cleared.status, JSON.stringify(cleared.body)).toBe(200);
+      const moved = await move(t.north);
+      expect(moved.status, JSON.stringify(moved.body)).toBe(200);
     });
 
     it('refuses a subject change that would leave a teacher outside it, naming those of the branch', async () => {

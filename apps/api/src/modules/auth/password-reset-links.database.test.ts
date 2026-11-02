@@ -390,6 +390,25 @@ describe('password reset links in the database', () => {
       expect(await address(account)).toBeNull();
     });
 
+    // Task 9.4e: the Academic Vice Principal also reaches Class teachers (edge/people-roles-
+    // accounts, who is an administrator, as changed on 1 November 2026); a Principal still not.
+    it('answer for a Class teacher whose email the Academic Vice Principal of the branch wrote', async () => {
+      const vice = await newAccount();
+      await role(vice, 'academic_vice_principal', north);
+      const classTeacher = await newAccount();
+      const classTeacherId = await personOf(classTeacher);
+      await role(classTeacher, 'class_teacher', north);
+      await role(classTeacher, 'teacher', north);
+      await emailWritten(classTeacherId, vice);
+      expect(await allowed(classTeacher)).toBe(true);
+      const principal = await newAccount();
+      const principalId = await personOf(principal);
+      await role(principal, 'class_teacher', north);
+      await role(principal, 'principal', north);
+      await emailWritten(principalId, vice);
+      expect(await allowed(principal)).toBe(false);
+    });
+
     // Code round 1 of the review of #66, finding 1, and decision 22: the
     // writer of the email must still reach the account through a branch of
     // its roles, and an email that no entry names opens nothing.

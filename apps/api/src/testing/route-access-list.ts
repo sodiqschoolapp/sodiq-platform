@@ -6,7 +6,7 @@ import type { ExpectedAccess } from './route-harness.js';
  * API address, a test checks what is allowed and what is refused." This is the
  * list for the application as it runs, written by hand: for each route, who
  * may call it. A new route fails here until it is added; the harness then
- * calls it as each of the 15 roles, as an account without a role and without
+ * calls it as each of the 16 roles, as an account without a role and without
  * sign-in, and compares.
  *
  * A route with a permission lists the roles the table gives its action. What
@@ -46,6 +46,7 @@ const STUDENT_VIEWERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',
@@ -71,6 +72,7 @@ const CLASS_VIEWERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
 ];
@@ -95,6 +97,7 @@ const HISTORY_READERS: readonly Role[] = [
   'principal',
   'academic_vice_principal',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
 ];
@@ -107,6 +110,7 @@ const VIEW_READERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',
@@ -117,6 +121,7 @@ const JOURNAL_WRITERS: readonly Role[] = [
   'super_admin',
   'academic_vice_principal',
   'tutor',
+  'class_teacher',
   'teacher',
 ];
 
@@ -128,10 +133,16 @@ const ABSENCE_READERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
 ];
 
 /** The writers of `absence_reasons` (task 6.3, decision 6). */
-const ABSENCE_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal', 'tutor'];
+const ABSENCE_WRITERS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'tutor',
+  'class_teacher',
+];
 
 /** The readers of `plans` (task 7.1a, decision 2). */
 const PLAN_READERS: readonly Role[] = [
@@ -162,6 +173,7 @@ const RATING_READERS: readonly Role[] = [
   'academic_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',
@@ -175,6 +187,7 @@ const ATTENDANCE_REPORT_READERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
 ];
 
 /** Task 9.3b-2, decision 1: the results table and subject mastery, view and export. */
@@ -186,6 +199,7 @@ const RESULTS_REPORT_READERS: readonly Role[] = [
   'head_teacher',
   'head_tutor',
   'tutor',
+  'class_teacher',
 ];
 
 /** Task 9.3b-2, decision 1: the timetable load report, management of the branch. */
@@ -203,6 +217,7 @@ const EARLY_WARNING_READERS: readonly Role[] = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',
@@ -239,6 +254,7 @@ const UNLOCK_READERS: readonly Role[] = [
   'head_teacher',
   'teacher',
   'tutor',
+  'class_teacher',
 ];
 
 /** Task 8.4, decision 5: who sends one (the person's own lesson or rating exam, in the route). */
@@ -249,6 +265,7 @@ const UNLOCK_SENDERS: readonly Role[] = [
   'head_teacher',
   'teacher',
   'tutor',
+  'class_teacher',
 ];
 
 /** Task 8.4, decision 5: who decides one (the routing in the route, access/request-routing.ts). */
@@ -521,7 +538,7 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/timetable/reports/load/export': { branch: 'request', roles: LOAD_REPORT_READERS },
   'POST /api/results/early-warning/handled': {
     branch: 'request',
-    roles: ['super_admin', 'tutor', 'teacher'],
+    roles: ['super_admin', 'tutor', 'class_teacher', 'teacher'],
   },
   // Task 2.4b-1, decision 2: `students` `archive`, and `student_graduates` for the Super Admin.
   'POST /api/people/students/:id/leaving': { branch: 'request', roles: STUDENT_EDITORS },
@@ -543,6 +560,7 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
       'academic_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
     ],
@@ -584,6 +602,7 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
     ],
   },
   'POST /api/people/students/:id/relatives': { branch: 'request', roles: STUDENT_EDITORS },
@@ -953,7 +972,7 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // Task 9.4b, decision 1: the attendance of classes on the home pages.
   'GET /api/journal/attendance-today': {
     branch: 'request',
-    roles: ['super_admin', 'spiritual_vice_principal', 'head_tutor', 'tutor'],
+    roles: ['super_admin', 'spiritual_vice_principal', 'head_tutor', 'tutor', 'class_teacher'],
   },
   'GET /api/journal/discipline': {
     branch: 'request',

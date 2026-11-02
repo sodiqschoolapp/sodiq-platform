@@ -727,6 +727,35 @@ describe('staff records in the database', () => {
       ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'staff_subject_department' });
     });
 
+    // Task 9.4e, decision 1 (Look first): "a teacher's subjects come from one department,
+    // except subjects taught only in grades 0–4, which may come from any department" (04).
+    it('take subjects of other departments whose grades taught are all within 0–4', async () => {
+      const national = (
+        await database.migrator
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'National')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const primaryMaths = await insertSubject(steam, [0, 1, 2, 3, 4, 5, 6]);
+      const nativeLanguage = await insertSubject(national, [0, 1, 2, 3, 4, 5]);
+      const reading = await insertSubject(languages, [0, 1, 2, 3, 4]);
+      await expect(
+        createPerson({
+          branch: north,
+          subjects: [
+            { subject: primaryMaths, grades: [1] },
+            { subject: nativeLanguage, grades: [1] },
+            { subject: reading, grades: [0, 1, 4] },
+          ],
+        }),
+      ).resolves.toEqual(expect.any(String));
+      // A row with grade 5 beside grade 4 still needs the department.
+      await expect(
+        createPerson({ branch: north, subjects: [{ subject: nativeLanguage, grades: [4, 5] }] }),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'staff_subject_department' });
+    });
+
     it('require a language once a record has a subject', async () => {
       await expect(
         createPerson({
