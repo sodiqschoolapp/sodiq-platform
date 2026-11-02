@@ -324,7 +324,11 @@ export const journalGridSchema = z.object({
     year: journalYearSchema,
     /** `edge/calculation`: attendance-only subjects have no weights, score, result or grade. */
     attendanceOnly: z.boolean(),
-    /** The subject has the rating exam in the quarter shown (task 8.2: the quarter's switches). */
+    /**
+     * The journal has the rating exam in the quarter shown (task 8.2: the quarter's switches; task
+     * 9.4f: a journal of grades 0–4 only while its quarter's state of "Rating exams in grades
+     * 0–4" is on).
+     */
     ratingExam: z.boolean(),
   }),
   /**

@@ -139,6 +139,15 @@ export const en = {
       'Only the Super Admin moves a subject to another department. Keep its department, or ask the Super Admin.',
     weights_shape_mismatch:
       'The rating exam switch of the subject has changed. Open the subject again and enter the distribution anew.',
+    rating_primary_refused:
+      'Rating exams in grades 0–4 cannot be turned off yet: a journal of grades 0–4 holds rating exam entries, or a group of grades 4 and 5 of a rating subject exists. Clear the entries or change the groups first.',
+    setting_unchanged: 'The setting already has this value in every open quarter.',
+    groups_rating_primary_span:
+      'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4. Ask the Super Admin to turn them on, or make the group of one of the grades.',
+    class_grade_rating_primary:
+      'The class cannot move into grades 0–4: its rating exam entries would be hidden, or a closed quarter would change. Clear the entries, or keep its grade.',
+    primary_weights_no_rating:
+      'This subject has no rating exam in this quarter, so it has no distribution without it.',
     reason_required: 'This change alters stored results. Give a reason for it.',
     quarter_one_not_set: 'Quarter 1 has no distribution to copy. Set quarter 1 first.',
     go_live_not_school_day:
@@ -726,7 +735,7 @@ export const en = {
       'A quarter that has started already holds scores of this subject. Make the change from the next quarter.',
     subject_switch_exams:
       'A rating exam in the timetable is linked to journals of this subject in that quarter. Make the change from the next quarter, or remove the link first.',
-    rating_exam_off: 'This subject has no rating exam in this quarter.',
+    rating_exam_off: 'This journal has no rating exam in this quarter.',
     rating_exam_scope:
       'You cannot do this on the rating exam. Scores are typed by the journal’s teacher; "exempt" and "not held" are set by the Academic Vice Principal.',
     rating_exam_linked: 'The date comes from the exam in the timetable. Change it there.',
@@ -1508,6 +1517,24 @@ export const en = {
       },
     },
     settings: {
+      school: {
+        title: 'School settings',
+        ratingExamsPrimary: 'Rating exams in grades 0–4',
+        on: 'On',
+        off: 'Off',
+        note: 'Acts on open quarters of every branch; a closed quarter keeps its results.',
+        differing: '{{branch}}, quarter {{number}}: {{state}} (reopened)',
+        turnOn: 'Turn on',
+        turnOff: 'Turn off',
+        applyEverywhere: 'Apply to every open quarter',
+        refused: 'It cannot be turned off yet.',
+        entries: 'Journals with rating exam entries',
+        entryLine: '{{branch}}, quarter {{number}}: {{unit}}, {{subject}}',
+        groups: 'Groups of grades 4 and 5',
+        groupLine: '{{branch}}: {{name}}, {{subject}}',
+        weightsMissing: 'Distribution without the rating exam not set',
+        weightsLine: '{{branch}}, quarter {{number}}: {{subject}}',
+      },
       title: 'Settings',
       none: 'No branch is chosen. Choose one in the top bar.',
       editDaysTitle: 'Edit days',
@@ -1589,6 +1616,11 @@ export const en = {
       switches: 'Switches',
       daily: 'Daily distribution',
       quarterly: 'Quarterly distribution',
+      primary: {
+        title: 'Grades 0–4 without the rating exam',
+        label: 'Quarter {{n}}, grades 0–4 without the rating exam',
+        needed: 'Needed: rating exams in grades 0–4 are off in this quarter.',
+      },
       changeWeights: 'Change distribution',
       changeWeightsOf: 'Change distribution: {{name}}',
       quarterlyMissing: 'Quarters not set',
@@ -3445,6 +3477,12 @@ export const en = {
       subject_daily_weights: {
         set: 'Daily distribution set',
       },
+      subject_quarter_primary_weights: {
+        set: 'Distribution without the rating exam set',
+      },
+      school_settings: {
+        rating_exams_primary: 'Rating exams in grades 0–4 changed',
+      },
       subject_quarter_weights: {
         set: 'Quarterly distribution set',
       },
@@ -5190,6 +5228,10 @@ export const en = {
         subject_daily_weights: '{{subject}} has no daily distribution in this branch.',
         subject_daily_weights_any:
           'A subject of the load has no daily distribution in this branch.',
+        subject_quarter_primary_weights:
+          '{{subject}} has no distribution without the rating exam for quarter {{quarter}}.',
+        subject_quarter_primary_weights_any:
+          'A subject of the load has no distribution without the rating exam for quarter {{quarter}}.',
         subject_quarter_weights: '{{subject}} has no distribution for quarter {{quarter}}.',
         subject_quarter_weights_any:
           'A subject of the load has no distribution for quarter {{quarter}}.',

@@ -2,6 +2,22 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 2 November 2026: task 9.4f Rating exams in grades 0–4
+
+- **Setting and states** (0153): `school_settings` holds "Rating exams in grades 0–4" (school-wide, one row); each quarter of each branch keeps its own state (`quarter_rating_states`), so a change acts on the quarters without a closing in force and a closed quarter keeps the state it closed with. A new quarter takes the school's value. Starting value: off, or on where an open quarter already had a journal of grades 0–4 of a rating subject (decision 3; off in every fresh database).
+- **The rule** in SQL only: `journal_primary` (every grade of the class or group within 0–4) and `journal_rating_on` (replaced: the subject's switch and, for a journal of grades 0–4, the quarter's state). `journalRows` asks it for each rating pair, so the grid, the closing checklist, the reminders, the unlocks, the exports, the comments and the exam link follow; `gridWeights` takes `withoutRating` and answers the distribution without the rating exam (`subject_quarter_primary_weights`, in the quarter's rounds), `null` while it is missing.
+- **Refusals in the database**: a turn-off of a quarter while a grade 0–4 journal holds an entry or a group of grades 4 and 5 of a rating subject exists; a state change of a closed quarter; a group of grades 4 and 5 of a rating subject while the setting is off (create, class added, restore) and the rating switch turned on while one exists; a class moved from 5–11 into 0–4 that would hide entries or change a closed quarter's column. Locks: the entry writers hold the state row `for share` first, the state change holds the setting row and the quarter, the group writers the setting row (held-transaction tests for each pair).
+- **Routes**: `GET /api/setup/school-settings` (`settings` view), the preview and the change (new area `school_settings`, Super Admin only, school-wide; reason always required, `setting_unchanged`, `rating_primary_refused` with the journals and groups), the distribution without the rating exam and its preview (`subjects` edit), the copy of quarter 1 takes it along, the publish check refuses a missing one (`subject_quarter_primary_weights`).
+- **Web**: a "School settings" section on the settings page (Super Admin turns, with the grade preview and the reason; refusals listed); the second row "Grades 0–4 without the rating exam" on the subject's quarterly distributions; texts in three languages. The monitoring branch types the distribution for a rating subject of grades 0–4.
+- **Tests that changed because the requirement changed** (**Look first**): `rating-readers.test.ts` and `scope-refusals.test.ts` run their Class teacher case (grade 1) with a rating subject; their scenes now turn the quarter's state on, since a grade 0–4 journal has the rating exam only then.
+
+Left out: rollover (9.5b, From line added); a browser test that opens a grade 1 journal with and without the column (the e2e seed has no rating journal of grades 0–4; the route tests read the grid both ways, the browser test turns the setting on and off).
+
+The next sessions must know:
+
+- Whether a journal has the rating exam is `JournalQuarterSwitches.ratingExam` (from `journal_rating_on`), never the subject's switch alone; `withoutRating` marks a journal that uses the distribution without the rating exam.
+- A test that needs a rating exam in a journal of grades 0–4 turns the quarter's state on (`quarter_rating_states`), or the database refuses the exam.
+
 ## 2 November 2026: task 9.4e The Class teacher (Sinf rahbari) of grades 0–4
 
 - **Role and rights**: `class_teacher`, the 16th role, has the Tutor's row in every area of the permission table (reading A, approved by the owner on #275); own class is read from the same `class_tutors` rows through `OWN_CLASS_ROLES` / `isOwnClassRole` (guard, class and group scope, journal, absences, rating, early warning, attendance today, timetable views, exports). Her teaching comes from a Teacher role she also holds. The Academic Vice Principal resets and locks Class teachers.

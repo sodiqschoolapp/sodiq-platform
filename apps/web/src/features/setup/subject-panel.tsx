@@ -1,6 +1,7 @@
 import {
   listName,
   gradeRanges,
+  PRIMARY_GRADES,
   type Subject,
   type SubjectQuarter,
   type SubjectRecord,
@@ -440,6 +441,47 @@ function QuarterWeights({
     onSuccess: refresh,
   });
 
+  // Task 9.4f: the distribution without the rating exam, which a journal of grades 0–4 uses
+  // while its quarter's state of "Rating exams in grades 0–4" is off.
+  const primaryBody = (weights: Weights) => ({
+    attendance: weights.attendance,
+    classwork: weights.classwork,
+    homework: weights.homework,
+  });
+  const setPrimary = useMutation({
+    mutationFn: ({
+      quarterId,
+      weights,
+      reason,
+    }: {
+      quarterId: string;
+      weights: Weights;
+      reason: string | undefined;
+    }) =>
+      answerOf(
+        api.PUT('/api/setup/subjects/{id}/quarter-weights/{quarterId}/primary', {
+          params: { header: branchHeader(), path: { id: subject.id, quarterId } },
+          body: { ...primaryBody(weights), ...(reason === undefined ? {} : { reason }) },
+        }),
+      ),
+    onSuccess: refresh,
+  });
+  const savePrimary = async (quarterId: string, weights: Weights): Promise<boolean> => {
+    const preview = gradeChangesSchema.parse(
+      await answerOf(
+        api.POST('/api/setup/subjects/{id}/quarter-weights/{quarterId}/primary/preview', {
+          params: { header: branchHeader(), path: { id: subject.id, quarterId } },
+          body: primaryBody(weights),
+        }),
+      ),
+    );
+    const reason = await reasons.ask(preview);
+    if (reason === null) return false;
+    await setPrimary.mutateAsync({ quarterId, weights, reason });
+    return true;
+  };
+  const primaryShown = subject.grades.some((grade) => PRIMARY_GRADES.includes(grade));
+
   /** Saves a quarter after its preview: `false` when the person went back. */
   const saveQuarter = async (quarterId: string, weights: Weights): Promise<boolean> => {
     const preview = gradeChangesSchema.parse(
@@ -582,6 +624,49 @@ function QuarterWeights({
                     />
                   )}
                 </>
+              )}
+              {row.ratingExam && primaryShown && (
+                <div className="grid gap-2 border-t pt-2" data-primary={row.number}>
+                  <p className="text-sm font-medium">{t('setup.subjects.primary.title')}</p>
+                  {canEdit && !frozen && panel.editing === `primary:${row.quarterId}` ? (
+                    <WeightsForm
+                      key={`primary-${row.quarterId}-${String(copies)}`}
+                      kind="daily"
+                      parts={THREE}
+                      weights={row.primary}
+                      label={t('setup.subjects.primary.label', { n: row.number })}
+                      onSave={async (weights) => {
+                        if (!(await savePrimary(row.quarterId, weights))) {
+                          throw new SaveCancelled();
+                        }
+                        panel.stop({ saved: true, key: `primary:${row.quarterId}` });
+                      }}
+                      onCancel={() => {
+                        panel.stop();
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <p className="text-sm">
+                        {row.primary === null
+                          ? t('setup.subjects.notSet')
+                          : weightsText(row.primary, i18n.language)}
+                      </p>
+                      {row.primary === null && row.primaryNeeded && (
+                        <p className="text-sm text-destructive">
+                          {t('setup.subjects.primary.needed')}
+                        </p>
+                      )}
+                      {canEdit && !frozen && (
+                        <ChangeWeights
+                          panel={panel}
+                          editKey={`primary:${row.quarterId}`}
+                          name={t('setup.subjects.primary.label', { n: row.number })}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               )}
               {/* Under the open form only: the read view says it already. */}
               {panel.editing === `weights:${row.quarterId}` &&
