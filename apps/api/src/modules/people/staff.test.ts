@@ -502,6 +502,60 @@ describe('staff records', () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    // Task 9.4e, decision 1 (Look first): Malika (invented), Class teacher of 1 London, teaches
+    // Mathematics, Native language and Reading of grade 1 from three departments (04, Academic).
+    it('takes subjects of grades 0–4 from other departments, and refuses one that reaches grade 5', async () => {
+      const subject = async (en: string, department: string, grades: number[]) =>
+        (
+          await t.database.migrator
+            .insertInto('subjects')
+            .values({
+              name_uz: en,
+              name_ru: en,
+              name_en: en,
+              department_id: department,
+              grades,
+              colour: 'green',
+              journal_type: 'graded',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      const national = (
+        await t.database.migrator
+          .selectFrom('departments')
+          .select('id')
+          .where('name_en', '=', 'National')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const native = await subject('Native language 9.4e', national, [0, 1, 2, 3, 4, 5]);
+      const reading = await subject('Reading 9.4e', languages, [0, 1, 2, 3, 4]);
+      const malika = await create({
+        divisions: [{ divisionId: academic, departmentId: steam, main: true }],
+      });
+      const primaryMaths = await subject('Mathematics 9.4e', steam, [0, 1, 2, 3, 4, 5]);
+      const response = await put(`/api/people/staff/${malika.id}/teaching`, t.north, {
+        subjects: [
+          { subjectId: primaryMaths, grades: [1] },
+          { subjectId: native, grades: [1] },
+          { subjectId: reading, grades: [1] },
+        ],
+        languages: ['uz'],
+      });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(staffDetailSchema.parse(response.body).subjects).toHaveLength(3);
+      const before = await snapshot();
+      refusedWith(
+        await put(`/api/people/staff/${malika.id}/teaching`, t.north, {
+          subjects: [{ subjectId: native, grades: [1, 5] }],
+          languages: ['uz'],
+        }),
+        409,
+        'subject_outside_department',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
     it('refuses a subject of another department, a grade the subject lacks and an unknown subject', async () => {
       const created = await create({
         divisions: [{ divisionId: academic, departmentId: languages, main: true }],

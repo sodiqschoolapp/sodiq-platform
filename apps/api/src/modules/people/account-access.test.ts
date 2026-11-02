@@ -703,7 +703,7 @@ describe('the sign-in access of an account', () => {
   // accounts only for Teachers, Tutors, Head Teachers and the Head Tutor of
   // his branch" (decision 3, Look first).
   describe('the Academic Vice Principal', () => {
-    it.each(['teacher', 'tutor', 'head_teacher', 'head_tutor'] as const)(
+    it.each(['teacher', 'tutor', 'class_teacher', 'head_teacher', 'head_tutor'] as const)(
       'locks, unlocks and resets a %s of the branch',
       async (role) => {
         const made = await withAccount([{ role, branchId: t.north }]);
