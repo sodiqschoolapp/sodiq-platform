@@ -1006,7 +1006,7 @@ describe('staff records', () => {
     // names one with grade 5 (teachersOutside, staff_subject_in_use).
     it('leaves in a teacher of grades 0–4 only when a subject moves department, and names one of grade 5', async () => {
       const fields = {
-        names: { uz: 'Oʻqish', ru: 'Чтение', en: 'Reading 9.4e' },
+        names: { uz: 'Oʻqish (koʻchish)', ru: 'Чтение (перенос)', en: 'Reading moved' },
         departmentId: steam,
         grades: [1, 2, 5],
         colour: 'green',
