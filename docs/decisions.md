@@ -357,6 +357,8 @@ Plan approved on pull request #275; the owner chose reading A of decision 2 (sto
 | The lists show one column, "Tutor or Class teacher"; the Tutors part of a class of grades 0–4 reads "Class teacher" and offers its holders only | `05`, Class (decision 6) |
 | The staff import still creates only Teachers and Tutors | Spec change, "Staying as written" (decision 7) |
 | The role-end mirror (`assignments_class_tutors_end`) fires for `class_teacher` too | Found by the spec-reviewer of the plan |
+| **Build decision.** The candidates route answers both roles with a `role` field and the Tutors part offers those of the class's grade; the database refuses any other give | One read for every class of the page; the rule stays the database's (correction 9: no service copy) |
+| **Look first** (tests changed). The Tutor scope tests run once as the Tutor of grade 7 and once as the Class teacher of grade 1 (`OWN_CLASS_CASES`), their titles in the scope list now carry `%s`; two rows of a Tutor fixture in `tutor-scope.test.ts` became acting rows, since a Class teacher holds one own class at a time; tests run twice end their own Super Admins (`endTestSuperAdmins`), as at most 3 may hold the role | Code reviews of the build: a Class teacher scope line named only Tutor tests |
 
 ## 29 October 2026: every speed target at three times the size (task 10.1b)
 
