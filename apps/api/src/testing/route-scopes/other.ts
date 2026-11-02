@@ -303,6 +303,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TUTOR_OWN_CLASS(
       'edge/people-roles-accounts: "Search returns only records the person may open" (the Tutor: own class)',
       `${PEOPLE_SEARCH} > lists for the Tutor the students of own class, in force and planned, and no other`,
+      `${PEOPLE_SEARCH} > lists for a Class teacher the students of own class and no other`,
     ),
     HEADS_STUDENT_LIST,
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
@@ -494,14 +495,17 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'GET /api/groups': groupLines(
     `${GROUPS} > lets the readers of 02 read every group, the Head Teachers own subjects, the Tutor own classes`,
+    `${GROUPS} > lets a Class teacher read the groups of own class only`,
   ),
   'GET /api/groups/:id': groupLines(
     `${GROUPS} > lets the readers of 02 read every group, the Head Teachers own subjects, the Tutor own classes`,
+    `${GROUPS} > lets a Class teacher read the groups of own class only`,
   ),
   'GET /api/groups/:id/members': [
     TUTOR_OWN_CLASS(
       'Task 3.2a, decision 11 (Look first): the groups that draw from own classes, the own class’s members',
       `${GROUP_MEMBERS} > lets a Tutor read the members of own class only, with a count of the others`,
+      `${GROUP_MEMBERS} > lets a Class teacher read the members of own class only, with a count of the others`,
     ),
     {
       roles: ['head_teacher'],

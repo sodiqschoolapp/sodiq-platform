@@ -124,7 +124,7 @@ describe('groups', () => {
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
       ...(role === 'senior_head_teacher' ? {} : { branchId: t.north }),
-      ...(role === 'tutor' ? { validFrom: FROM } : {}),
+      ...(role === 'tutor' || role === 'class_teacher' ? { validFrom: FROM } : {}),
       ...(subjectIds === undefined ? {} : { subjectIds }),
     });
     return { cookie: browser.cookie, accountId: browser.account.id, assignment: given.id };
@@ -412,6 +412,22 @@ describe('groups', () => {
       ).toEqual([]);
       refusedWith(await get('/api/groups', t.teacher), 403, 'permission_denied');
       refusedWith(await get(`/api/groups/${own.id}`, t.teacher), 403, 'permission_denied');
+    });
+
+    // Task 9.4e (edge/00-definitions, Tutor of a class): the Class teacher of a class of grade 4.
+    it('lets a Class teacher read the groups of own class only', async () => {
+      const given = await signedIn('Oysha', 'Rustamova', 'class_teacher');
+      await classes.person(t.north, ['uz'], { accountId: given.accountId });
+      const ownClass = await schoolClass({ grade: 4 });
+      await classes.tutorRow(t.north, ownClass, given.assignment, { from: FROM });
+      const own = await create([ownClass]);
+      const another = await create([await schoolClass({ grade: 4 })]);
+      const listed = groupListSchema.parse(
+        (await get('/api/groups', given.cookie).expect(200)).body,
+      );
+      expect(listed.groups.map((one) => one.id)).toEqual([own.id]);
+      detailOf(await get(`/api/groups/${own.id}`, given.cookie));
+      refusedWith(await get(`/api/groups/${another.id}`, given.cookie), 403, 'permission_denied');
     });
 
     it('lets the Senior Head Teacher read the groups of own subjects in another branch, in that branch', async () => {

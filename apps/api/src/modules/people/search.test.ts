@@ -29,6 +29,7 @@ describe('Ctrl+K over students and staff', () => {
   let cambridge: string;
   /** The Tutor of 7 Oxford, and readers of the branch who are not class-scoped. */
   let tutor: string;
+  let year: string;
   let headTeacher: string;
   let headTutor: string;
   let spiritual: string;
@@ -57,13 +58,13 @@ describe('Ctrl+K over students and staff', () => {
     role: string,
   ): Promise<{ cookie: string; assignment: string }> {
     const browser = await t.kit.completeSession(first, last);
-    if (role === 'tutor') {
+    if (role === 'tutor' || role === 'class_teacher') {
       await classes.person(t.north, ['uz'], { accountId: browser.account.id, first, last });
     }
     const given = await t.kit.giveRole(browser.account.id, {
       role: role as never,
       branchId: t.north,
-      ...(role === 'tutor' ? { validFrom: FROM } : {}),
+      ...(role === 'tutor' || role === 'class_teacher' ? { validFrom: FROM } : {}),
     });
     return { cookie: browser.cookie, assignment: given.id };
   }
@@ -72,12 +73,18 @@ describe('Ctrl+K over students and staff', () => {
   async function student(
     branch: string,
     names: { last: string; first: string; paternal?: string },
-    input: { startsOn?: string; document?: string; jshshir?: string; phone?: string } = {},
+    input: {
+      startsOn?: string;
+      document?: string;
+      jshshir?: string;
+      phone?: string;
+      grade?: number;
+    } = {},
   ): Promise<string> {
-    const id = await members.student(
-      branch,
-      input.startsOn === undefined ? {} : { startsOn: input.startsOn },
-    );
+    const id = await members.student(branch, {
+      ...(input.startsOn === undefined ? {} : { startsOn: input.startsOn }),
+      ...(input.grade === undefined ? {} : { grade: input.grade }),
+    });
     await t.database.migrator
       .updateTable('students')
       .set({
@@ -160,7 +167,7 @@ describe('Ctrl+K over students and staff', () => {
     t = await dayTemplatesKit();
     classes = new ClassesKit(t.database.migrator);
     members = new MembersKit(t.database.migrator, await classes.account());
-    const year = await classes.year(t.north);
+    year = await classes.year(t.north);
     const southYear = await classes.year(t.south);
     oxford = await classes.schoolClass(t.north, year, { name: 'Oxford' });
     cambridge = await classes.schoolClass(t.north, year, { name: 'Cambridge' });
@@ -294,6 +301,20 @@ describe('Ctrl+K over students and staff', () => {
       // The student list shows the Tutor every student of the branch; the
       // record opens only own class's (decision 7 of #90), and so does Ctrl+K.
       expect(await studentIds('Qodirova', tutor)).toEqual(sorted(own, planned));
+    });
+
+    // Task 9.4e (edge/00-definitions, Tutor of a class): a Class teacher of 1 London.
+    it('lists for a Class teacher the students of own class and no other', async () => {
+      const london = await classes.schoolClass(t.north, year, { grade: 1, name: 'London' });
+      const leeds = await classes.schoolClass(t.north, year, { grade: 1, name: 'Leeds' });
+      const mine = await student(t.north, { last: 'Yusupova', first: 'Oydin' }, { grade: 1 });
+      const theirs = await student(t.north, { last: 'Yusupova', first: 'Zarina' }, { grade: 1 });
+      await inClass(t.north, london, mine);
+      await inClass(t.north, leeds, theirs);
+      const given = await signedIn('Oysha', 'Rustamova', 'class_teacher');
+      await classes.tutorRow(t.north, london, given.assignment, { from: FROM });
+      expect(await studentIds('Yusupova', given.cookie)).toEqual([mine]);
+      expect((await studentIds('Yusupova')).sort()).toEqual(sorted(mine, theirs));
     });
 
     it('lists for the class-wide readers every student of the branch, of every status', async () => {
