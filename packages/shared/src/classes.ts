@@ -4,6 +4,7 @@ import { personNameSchema } from './accounts.js';
 import { instructionLanguageSchema } from './settings.js';
 import { roomStatusSchema } from './setup.js';
 import { GRADES, schoolGradeSchema } from './grades.js';
+import { OWN_CLASS_ROLES } from './roles.js';
 
 /**
  * Classes and their Tutors (docs/spec/05-classes-groups-subjects.md, Class;
@@ -287,6 +288,8 @@ export type ClassDetail = z.infer<typeof classDetailSchema>;
  * person, the languages they teach in and the classes they hold now or later.
  */
 export const tutorCandidateSchema = classTutorPersonSchema.extend({
+  /** The Tutor of grades 5–11 or the Class teacher of grades 0–4 (task 9.4e). */
+  role: z.enum(OWN_CLASS_ROLES),
   languages: z.array(instructionLanguageSchema),
   from: schoolDateSchema,
   until: schoolDateSchema.nullable(),

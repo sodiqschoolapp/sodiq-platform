@@ -5,9 +5,17 @@ import type { Access } from '../access/permission.guard.js';
 /**
  * The roles of an account the Academic Vice Principal may lock and reset
  * (edge cases, Who can act: "He may reset passwords and lock accounts only for
- * Teachers, Tutors, Head Teachers and the Head Tutor of his branch").
+ * Teachers, Tutors, Head Teachers and the Head Tutor of his branch"; since the
+ * spec change of 1 November 2026 also Class teachers, task 9.4e). The database
+ * keeps the same list in `password_reset_allowed` (0152).
  */
-export const VICE_REACHES: readonly Role[] = ['teacher', 'tutor', 'head_teacher', 'head_tutor'];
+export const VICE_REACHES: readonly Role[] = [
+  'teacher',
+  'tutor',
+  'class_teacher',
+  'head_teacher',
+  'head_tutor',
+];
 
 /**
  * The assignment that allows the caller to lock, unlock or reset the

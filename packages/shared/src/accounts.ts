@@ -33,6 +33,8 @@ export const GIVABLE_ROLES = [
   'spiritual_vice_principal',
   'head_tutor',
   'tutor',
+  // Task 9.4e: given by hand, as the import creates only Teachers and Tutors.
+  'class_teacher',
   'senior_head_teacher',
   'head_teacher',
   'teacher',

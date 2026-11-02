@@ -22,6 +22,7 @@ import {
   type EarlyWarningList,
   type EarlyWarningQuery,
   type EarlyWarningReasonKind,
+  OWN_CLASS_ROLES,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -692,7 +693,7 @@ class Scope {
 
   /** The class of each student on the reference date, for the Tutor's scope. */
   async load(studentIds: readonly string[]): Promise<void> {
-    if (permittingOf(this.context, ['tutor']).length === 0 || studentIds.length === 0) return;
+    if (permittingOf(this.context, OWN_CLASS_ROLES).length === 0 || studentIds.length === 0) return;
     const rows = await this.context.transaction
       .selectFrom('class_memberships')
       .select(['student_id', 'class_id'])
@@ -713,7 +714,7 @@ class Scope {
     const classId = this.classOf.get(studentId);
     return (
       classId !== undefined &&
-      permittingOf(this.context, ['tutor']).some((one) => one.classIds.includes(classId))
+      permittingOf(this.context, OWN_CLASS_ROLES).some((one) => one.classIds.includes(classId))
     );
   }
 
@@ -808,7 +809,7 @@ class Scope {
     const superAdmin = permittingOf(this.context, ['super_admin'])[0];
     if (superAdmin !== undefined) return superAdmin.id;
     const classId = this.classOf.get(studentId);
-    const tutor = permittingOf(this.context, ['tutor']).find(
+    const tutor = permittingOf(this.context, OWN_CLASS_ROLES).find(
       (one) => classId !== undefined && one.classIds.includes(classId),
     );
     if (tutor !== undefined) return tutor.id;
@@ -855,7 +856,7 @@ async function listIn(context: Context, query: EarlyWarningQuery): Promise<Early
       .where('branch_id', '=', context.branchId)
       .executeTakeFirst();
     if (found === undefined) throw notFound();
-    if (!permittingOf(context, ['tutor']).some((one) => one.classIds.includes(classId))) {
+    if (!permittingOf(context, OWN_CLASS_ROLES).some((one) => one.classIds.includes(classId))) {
       throw new ApiException('permission_denied', 403);
     }
   }

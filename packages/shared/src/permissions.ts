@@ -8,7 +8,7 @@ export const ACTIONS = ['view', 'create', 'edit', 'archive', 'export'] as const;
 
 export type Action = (typeof ACTIONS)[number];
 
-/** One area of the table: for each of the 15 roles, the actions it may take. */
+/** One area of the table: for each of the 16 roles, the actions it may take. */
 export type PermissionRows = Readonly<Record<Role, readonly Action[]>>;
 
 export type PermissionTable = Readonly<Record<string, PermissionRows>>;
@@ -28,13 +28,24 @@ export function freezeTable<Table extends PermissionTable>(table: Table): Table 
   return Object.freeze(table);
 }
 
-/** A row for each of the 15 roles: nothing, unless named. */
-function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
-  return Object.fromEntries(ROLES.map((role) => [role, named[role] ?? []])) as PermissionRows;
+/**
+ * A row for each of the 16 roles: nothing, unless named. The Class teacher
+ * (Sinf rahbari) takes the Tutor's row in every area and is never named on
+ * its own (task 9.4e, decision 2 of pull request #275, approved by the owner:
+ * `02`, Class teacher, "everything the Tutor sees and does for own class";
+ * her Teacher work comes from a Teacher assignment she also holds).
+ * `permissions.test.ts` pins that the two rows are the same in every area.
+ */
+function rows(
+  named: Partial<Record<Exclude<Role, 'class_teacher'>, readonly Action[]>>,
+): PermissionRows {
+  return Object.fromEntries(
+    ROLES.map((role) => [role, (role === 'class_teacher' ? named.tutor : named[role]) ?? []]),
+  ) as PermissionRows;
 }
 
 /**
- * The table of the application, fixed in code for the 15 roles. Each task adds
+ * The table of the application, fixed in code for the 16 roles. Each task adds
  * the rows of its area with its first route, and writes out an empty list for
  * a role that may do nothing there. The server guard reads it for every
  * request; the menus read the same table.

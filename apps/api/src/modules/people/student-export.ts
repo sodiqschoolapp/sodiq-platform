@@ -39,6 +39,8 @@ export const EXPORT_GROUPS_OF_ROLE: Readonly<Partial<Record<Role, readonly Stude
     senior_head_teacher: ['basic'],
     head_teacher: ['basic'],
     tutor: ['basic', 'contact', 'diagnostic'],
+    // Task 9.4e: the Class teacher exports own class as the Tutor does (edge/00-definitions, Tutor of a class).
+    class_teacher: ['basic', 'contact', 'diagnostic'],
   };
 
 const writes = (assignment: CurrentAssignment, group: StudentFieldGroup): boolean =>

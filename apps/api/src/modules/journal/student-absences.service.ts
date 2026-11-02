@@ -12,6 +12,8 @@ import {
   type StudentAbsenceDay,
   type StudentAbsences as StudentAbsencesAnswer,
   type StudentAbsencesQuery,
+  isOwnClassRole,
+  OWN_CLASS_ROLES,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -58,7 +60,7 @@ const lower = (id: string) => id.toLowerCase();
 const tutorClassesOf = (access: Access): Set<string> =>
   new Set(
     access.permitting
-      .filter((assignment) => assignment.role === 'tutor')
+      .filter((assignment) => isOwnClassRole(assignment.role))
       .flatMap((assignment) => assignment.classIds.map(lower)),
   );
 
@@ -389,7 +391,7 @@ export class StudentAbsences {
         },
       ]),
     );
-    const canEdit = isWholeWriter(access) || (ownClass && entersReasons(access, 'tutor'));
+    const canEdit = isWholeWriter(access) || (ownClass && entersReasons(access, OWN_CLASS_ROLES));
     return listed
       .flatMap((day) => {
         const student = studentOf.get(day.studentId);
@@ -719,7 +721,7 @@ export class StudentAbsences {
  * reads every class.
  */
 function readerOf(access: Access, ownClass: boolean) {
-  const tutor = ownClass ? access.permitting.find((one) => one.role === 'tutor') : undefined;
+  const tutor = ownClass ? access.permitting.find((one) => isOwnClassRole(one.role)) : undefined;
   return tutor ?? access.permitting.find((one) => WHOLE_READERS.includes(one.role));
 }
 
@@ -728,7 +730,7 @@ function writerOf(access: Access, ownClass: boolean) {
   return isWholeWriter(access)
     ? access.permitting.find((one) => WHOLE_WRITERS.includes(one.role))
     : ownClass
-      ? access.permitting.find((one) => one.role === 'tutor')
+      ? access.permitting.find((one) => isOwnClassRole(one.role))
       : undefined;
 }
 
@@ -742,10 +744,10 @@ function isWholeWriter(access: Access): boolean {
 }
 
 /** Whether a current assignment of the role writes reasons in the branch of the request. */
-function entersReasons(access: Access, role: Role): boolean {
+function entersReasons(access: Access, roles: readonly Role[]): boolean {
   return access.assignments.some(
     (assignment) =>
-      assignment.role === role &&
+      roles.includes(assignment.role) &&
       (assignment.branchId === null || assignment.branchId === access.branchId),
   );
 }

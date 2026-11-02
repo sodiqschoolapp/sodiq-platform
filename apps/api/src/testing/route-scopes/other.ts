@@ -25,7 +25,7 @@ const TIMETABLE_OWN = 'src/modules/timetable/scope-refusals.test.ts';
 
 /** `02`, Tutor: "Views the full student list of the branch (view only)". */
 const TUTOR_STUDENT_LIST: ScopeLine = {
-  roles: ['tutor'],
+  roles: ['tutor', 'class_teacher'],
   scope: 'branch',
   rule: '02, Tutor: "Views the full student list of the branch (view only)"',
   refusedIn: [],
@@ -55,7 +55,7 @@ const TEACHER_TAUGHT = (...tests: string[]): ScopeLine => ({
 });
 
 const TUTOR_OWN_CLASS = (rule: string, ...tests: string[]): ScopeLine => ({
-  roles: ['tutor'],
+  roles: ['tutor', 'class_teacher'],
   scope: 'class',
   rule,
   refusedIn: tests,
@@ -112,7 +112,7 @@ const ratingLines = (tests: {
   teacher: string[];
 }): ScopeLine[] => [
   {
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'class',
     rule: `${RATING_RULE}: Tutor, own classes`,
     refusedIn: tests.tutor,
@@ -172,7 +172,7 @@ const REPORTS_RULE =
   '08, Analytics in Release 1; reports.service.ts readers (task 9.3b-2, decision 1)';
 const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
   {
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'class',
     rule: `${REPORTS_RULE}: Tutor, own classes; subject mastery of own class journals and groups wholly of own classes`,
     refusedIn: [tests.tutor],
@@ -194,7 +194,7 @@ const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
 export const OTHER_SCOPES: RouteScopes = {
   'GET /api/setup/current-period': [
     {
-      roles: ['tutor', 'senior_head_teacher', 'head_teacher', 'teacher'],
+      roles: ['tutor', 'class_teacher', 'senior_head_teacher', 'head_teacher', 'teacher'],
       scope: 'branch',
       rule: '12, Context: "The branch, academic year and quarter in use are always shown in the top bar" (every role)',
       refusedIn: [],
@@ -225,7 +225,7 @@ export const OTHER_SCOPES: RouteScopes = {
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
   ],
   'GET /api/people/students/:id/photo': [
-    BASIC_OF_BRANCH(['tutor', 'head_teacher', 'senior_head_teacher']),
+    BASIC_OF_BRANCH(['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher']),
     TEACHER_TAUGHT(`${WHO} > refuses another student on the record, the photo and Ctrl+K`),
   ],
   // The show is for the Principal alone; every scoped role is refused it, in its scope too.
@@ -374,7 +374,7 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- Early-warning list (task 9.4a, decisions 1 and 7) ------------------------------------
   'GET /api/results/early-warning': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '08, Early-warning list: the Tutor, the students of own classes on the reference date (task 9.4a, decision 1)',
       refusedIn: [
@@ -408,7 +408,7 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'POST /api/results/early-warning/handled': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: 'Task 9.4a: the Tutor marks the students of own classes handled (permission review, must-fix 1)',
       refusedIn: [
@@ -537,7 +537,7 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- Timetable views ----------------------------------------------------------------------
   'GET /api/timetable/views/choices': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: '02, Tutor: "Sees the school timetable and the timetable of own class" (5.9a decision 3)',
       refusedIn: [`${VIEWS} > lists what each role may open`],
@@ -558,7 +558,7 @@ export const OTHER_SCOPES: RouteScopes = {
     },
   ],
   'GET /api/timetable/views/branch': headViewLines({
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'branch',
     rule: '02, Tutor: "Sees the school timetable"',
     refusedIn: [],
@@ -573,7 +573,7 @@ export const OTHER_SCOPES: RouteScopes = {
     ),
   ),
   'GET /api/timetable/views/teacher': headViewLines({
-    roles: ['tutor'],
+    roles: ['tutor', 'class_teacher'],
     scope: 'own_lessons',
     rule: '5.9a decision 3: the Tutor reads the own teacher view only',
     refusedIn: [VIEWS_TUTOR],
@@ -614,7 +614,7 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'GET /api/timetable/home': [
     {
-      roles: ['tutor', 'head_teacher', 'senior_head_teacher'],
+      roles: ['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher'],
       scope: 'own_lessons',
       rule: 'Task 5.9b: the caller’s own lessons and exams of the week; the query takes no field',
       refusedIn: [
@@ -632,7 +632,7 @@ export const OTHER_SCOPES: RouteScopes = {
   // --- The reports of `08` over the journal (task 9.3b-2, decision 1) ---------------------------
   'GET /api/results/reports/attendance': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
       refusedIn: [REPORT_TUTOR],
@@ -640,7 +640,7 @@ export const OTHER_SCOPES: RouteScopes = {
   ],
   'POST /api/results/reports/attendance/export': [
     {
-      roles: ['tutor'],
+      roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: `${REPORTS_RULE}: Tutor, the students of own classes`,
       refusedIn: [REPORT_EXPORT_SCOPE],

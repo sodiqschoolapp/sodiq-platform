@@ -1,11 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { ROLES, roleSchema, SCHOOL_WIDE_ROLES, STRICT_SIGN_IN_ROLES } from './roles.js';
+import {
+  isOwnClassRole,
+  OWN_CLASS_ROLES,
+  ownClassRoleFor,
+  ROLES,
+  roleSchema,
+  SCHOOL_WIDE_ROLES,
+  STRICT_SIGN_IN_ROLES,
+} from './roles.js';
 
-// docs/spec/02-roles-and-access.md: "There are 15 user types."
+// docs/spec/02-roles-and-access.md: "There are 16 user types." (the spec change of 1 November 2026)
 describe('the roles', () => {
-  it('are 15, each named once', () => {
-    expect(ROLES).toHaveLength(15);
-    expect(new Set(ROLES).size).toBe(15);
+  it('are 16, each named once', () => {
+    expect(ROLES).toHaveLength(16);
+    expect(new Set(ROLES).size).toBe(16);
+  });
+
+  // 02, Class teacher (Sinf rahbari); edge/00-definitions, Tutor of a class (task 9.4e).
+  it('hold own classes as the Tutor and the Class teacher only', () => {
+    expect([...OWN_CLASS_ROLES]).toEqual(['tutor', 'class_teacher']);
+    expect(ROLES.filter((role) => isOwnClassRole(role))).toEqual(['tutor', 'class_teacher']);
+  });
+
+  // edge/people-roles-accounts: a class of grades 0–4 takes a Class teacher, of 5–11 a Tutor.
+  it.each([
+    [0, 'class_teacher'],
+    [1, 'class_teacher'],
+    [4, 'class_teacher'],
+    [5, 'tutor'],
+    [11, 'tutor'],
+  ] as const)('give a class of grade %i the role %s', (grade, role) => {
+    expect(ownClassRoleFor(grade)).toBe(role);
   });
 
   it('are written in small letters and underscores, as the database stores them', () => {

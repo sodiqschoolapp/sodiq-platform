@@ -15,6 +15,7 @@ import {
   type VacancyRecord,
   type VacancyStatus,
   type VacancyStatusRow,
+  primaryGradesOnly,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -712,7 +713,8 @@ export class Vacancies {
         .where('id', '=', own.subjectId)
         .forShare()
         .executeTakeFirstOrThrow();
-      if (subject.department_id !== fields.departmentId) {
+      // Task 9.4e, decision 1: a subject taught only in grades 0–4 may come from any department.
+      if (subject.department_id !== fields.departmentId && !primaryGradesOnly(own.grades)) {
         throw refused('subject_outside_department');
       }
       if (own.grades.some((grade) => !subject.grades.includes(grade))) {

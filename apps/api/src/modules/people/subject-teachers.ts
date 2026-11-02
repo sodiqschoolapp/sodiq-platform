@@ -28,7 +28,11 @@ export async function teachersOutside(
       and sd.division_id = (select d.id from divisions d where d.built_in)
     where ss.subject_id = ${change.subjectId}
       and not staff_out_for_good(ss.staff_id, ${at})
-      and (not (ss.grades <@ ${grades}) or sd.department_id is distinct from ${change.departmentId}::uuid)
+      and (
+        not (ss.grades <@ ${grades})
+        -- Task 9.4e, decision 1: grades 0–4 only may come from any department.
+        or (sd.department_id is distinct from ${change.departmentId}::uuid and not primary_grades_only(ss.grades))
+      )
     order by ss.staff_id
   `.execute(transaction);
   const elsewhere = await sql<{ people: number }>`

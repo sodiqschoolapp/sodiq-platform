@@ -91,12 +91,15 @@ describe('class scope', () => {
     ]);
   });
 
-  it('fits a class for the class-wide roles and the Tutor of the class only', () => {
+  it('fits a class for the class-wide roles and the Tutor or Class teacher of the class only', () => {
     for (const role of ROLES) {
       const fits = inClassScope([held(role, [OXFORD])], [OXFORD]) !== undefined;
       // Task 3.6a (L48): a Teacher fits the classes the load in force gives.
       expect(fits, role).toBe(
-        CLASS_WIDE_ROLES.includes(role) || role === 'tutor' || role === 'teacher',
+        CLASS_WIDE_ROLES.includes(role) ||
+          role === 'tutor' ||
+          role === 'class_teacher' ||
+          role === 'teacher',
       );
       // Another class: the class-wide roles only.
       expect(inClassScope([held(role, [OXFORD])], [YALE]) !== undefined, role).toBe(
@@ -107,6 +110,14 @@ describe('class scope', () => {
         CLASS_WIDE_ROLES.includes(role),
       );
     }
+  });
+
+  // Task 9.4e: the Class teacher's own class is a list of the Tutor's kind.
+  it('gives a Class teacher her own class and no other', () => {
+    const classTeacher = held('class_teacher', [OXFORD]);
+    expect(inClassScope([classTeacher], [OXFORD])).toBe(classTeacher);
+    expect(inClassScope([classTeacher], [YALE])).toBeUndefined();
+    expect(classesInScope([classTeacher])).toEqual(new Set([OXFORD]));
   });
 
   it('gives a Tutor of two classes both, and compares ids in small letters', () => {

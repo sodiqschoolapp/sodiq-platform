@@ -1,4 +1,10 @@
-import { PERMISSIONS, schoolDateOf, type Role, type SchoolDate } from '@sodiq/shared';
+import {
+  PERMISSIONS,
+  schoolDateOf,
+  type Role,
+  type SchoolDate,
+  isOwnClassRole,
+} from '@sodiq/shared';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { permitting } from './permission-check.js';
@@ -87,7 +93,7 @@ function fits(
   if (CLASS_WIDE_ROLES.includes(assignment.role)) {
     return true;
   }
-  if (assignment.role === 'tutor') {
+  if (isOwnClassRole(assignment.role)) {
     return meets(assignment.classIds, classIds);
   }
   return (
@@ -135,7 +141,7 @@ export function classesInScope(
   }
   return new Set(
     assignments
-      .filter((assignment) => assignment.role === 'tutor')
+      .filter((assignment) => isOwnClassRole(assignment.role))
       .flatMap((assignment) => assignment.classIds),
   );
 }

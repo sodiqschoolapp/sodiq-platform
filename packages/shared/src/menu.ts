@@ -46,7 +46,7 @@ const HEAD_TEACHER: readonly MenuItem[] = [
 ];
 
 /**
- * The menu of each of the 15 roles, in the order it is shown (decided by the
+ * The menu of each of the 16 roles, in the order it is shown (decided by the
  * owner at the plan of task 0.8c, pull request #27, from `02`, `04`, `06`
  * "Views and outputs", `07`, `08`, `09` and the personal data rows of
  * `edge/people-roles-accounts`). It is display only: no route trusts it, and
@@ -62,6 +62,8 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   // Own classes (task 3.1c, decision 4 of pull request #90, Look first).
   tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
+  // The Tutor's menu (task 9.4e, decision 2 of pull request #275).
+  class_teacher: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   senior_head_teacher: HEAD_TEACHER,
   head_teacher: HEAD_TEACHER,
   teacher: ['home', 'timetable', 'journal', 'plans', 'results'],
@@ -134,6 +136,7 @@ export const HOME_KIND: Readonly<Record<Role, HomeKind>> = Object.freeze({
   spiritual_vice_principal: 'attendance_overview',
   head_tutor: 'attendance_overview',
   tutor: 'tutor',
+  class_teacher: 'tutor',
   senior_head_teacher: 'teaching',
   head_teacher: 'teaching',
   teacher: 'teaching',

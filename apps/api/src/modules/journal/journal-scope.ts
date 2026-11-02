@@ -1,3 +1,4 @@
+import { isOwnClassRole } from '@sodiq/shared';
 import type { JournalShape, Role } from '@sodiq/shared';
 import type { CurrentAssignment } from '../access/current-assignments.js';
 import type { Access } from '../access/permission.guard.js';
@@ -56,7 +57,7 @@ function readingOf(assignment: CurrentAssignment, key: JournalScopeKey): RoleRea
   if (SUBJECT_ROLES.includes(assignment.role)) {
     return assignment.subjectIds.includes(lower(key.subjectId)) ? { kind: 'whole' } : null;
   }
-  if (assignment.role === 'tutor') {
+  if (isOwnClassRole(assignment.role)) {
     if (key.classId !== null) {
       return assignment.classIds.includes(lower(key.classId)) ? { kind: 'whole' } : null;
     }

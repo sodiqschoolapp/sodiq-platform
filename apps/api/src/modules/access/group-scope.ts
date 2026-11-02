@@ -1,3 +1,4 @@
+import { isOwnClassRole } from '@sodiq/shared';
 import { CLASS_WIDE_ROLES } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { BRANCH_WIDE_ROLES } from './subject-scope.js';
@@ -25,7 +26,7 @@ function fits(assignment: CurrentAssignment, group: GroupScopeKey): boolean {
     return assignment.subjectIds.includes(group.subjectId.toLowerCase());
   }
   return (
-    assignment.role === 'tutor' &&
+    isOwnClassRole(assignment.role) &&
     group.classIds.some((classId) => assignment.classIds.includes(classId.toLowerCase()))
   );
 }

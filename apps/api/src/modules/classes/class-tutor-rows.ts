@@ -29,6 +29,11 @@ export const CLASS_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_tutors_one_acting: 'class_tutor_taken',
   class_tutors_language: 'tutor_language',
   class_tutors_not_tutor: 'tutor_not_tutor',
+  // Task 9.4e (0152): the role of the class's grade, and one own class of a Class teacher.
+  class_tutors_needs_class_teacher: 'class_needs_class_teacher',
+  class_tutors_needs_tutor: 'class_needs_tutor',
+  class_tutors_one_class: 'class_teacher_one_class',
+  classes_grade_tutor_role: 'class_grade_tutor_role',
   class_tutors_class_archived: 'class_archived',
   class_tutors_outside_role: 'tutor_outside_role',
   class_tutors_start_past: 'tutor_date_past',
@@ -46,6 +51,7 @@ export const CLASS_REFUSALS: Readonly<Record<string, ErrorCode>> = {
 export const ROLE_END_TUTOR_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_tutors_one_tutor: 'role_tutor_taken',
   class_tutors_one_acting: 'role_tutor_taken',
+  class_tutors_one_class: 'class_teacher_one_class',
   class_tutors_language: 'role_tutor_language',
 };
 

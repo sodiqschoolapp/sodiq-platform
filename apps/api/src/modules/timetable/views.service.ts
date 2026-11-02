@@ -30,6 +30,8 @@ import {
   type ViewKind,
   type ViewLesson,
   type ViewSpan,
+  isOwnClassRole,
+  OWN_CLASS_ROLES,
 } from '@sodiq/shared';
 import { dayOn, weekdayOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -814,12 +816,13 @@ async function todayOf(transaction: Transaction, branchId: string): Promise<stri
 async function scopeOf(transaction: Transaction, access: Access): Promise<Scope> {
   const roles = new Set(access.permitting.map((one) => one.role));
   const whole = WHOLE_BRANCH.some((role) => roles.has(role));
-  const school = whole || roles.has('head_tutor') || roles.has('tutor');
+  const school =
+    whole || roles.has('head_tutor') || OWN_CLASS_ROLES.some((role) => roles.has(role));
   let classes: 'all' | ReadonlySet<string>;
   if (whole || roles.has('head_tutor')) {
     classes = 'all';
   } else {
-    const tutors = access.permitting.filter((one: CurrentAssignment) => one.role === 'tutor');
+    const tutors = access.permitting.filter((one: CurrentAssignment) => isOwnClassRole(one.role));
     const found = await tutorClassesAt(
       transaction,
       tutors.map((one) => one.id),

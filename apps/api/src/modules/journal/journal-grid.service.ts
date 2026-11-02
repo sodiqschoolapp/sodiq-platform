@@ -32,6 +32,7 @@ import {
   type JournalShape,
   type JournalStudent,
   type Role,
+  isOwnClassRole,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -577,7 +578,7 @@ export class JournalGridReader {
     const allCategories = access.permitting.some((one) => CATEGORY_READERS.includes(one.role));
     const tutorClassIds = new Set(
       access.permitting
-        .filter((one) => one.role === 'tutor')
+        .filter((one) => isOwnClassRole(one.role))
         .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
     );
     const classesNow =

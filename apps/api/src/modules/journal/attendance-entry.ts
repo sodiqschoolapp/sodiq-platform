@@ -1,4 +1,11 @@
-import { PERMISSIONS, lessonStateOf, permits, schoolDateOf, type LessonState } from '@sodiq/shared';
+import {
+  PERMISSIONS,
+  lessonStateOf,
+  permits,
+  schoolDateOf,
+  type LessonState,
+  isOwnClassRole,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -51,7 +58,7 @@ export interface EntryLesson {
 export function entryAssignment(access: Access): string {
   return (
     access.permitting.find((assignment) => assignment.role === 'teacher')?.id ??
-    access.permitting.find((assignment) => assignment.role === 'tutor')?.id ??
+    access.permitting.find((assignment) => isOwnClassRole(assignment.role))?.id ??
     access.assignmentId
   );
 }

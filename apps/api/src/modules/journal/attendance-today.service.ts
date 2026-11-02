@@ -13,6 +13,7 @@ import {
   type AttendanceFigure,
   type AttendanceToday,
   type Role,
+  isOwnClassRole,
 } from '@sodiq/shared';
 import { mondayOf } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -97,7 +98,7 @@ export class AttendanceTodayService {
       const superAdmin = access.permitting.some((one) => one.role === 'super_admin');
       const own = new Set(
         access.permitting
-          .filter((one) => one.role === 'tutor')
+          .filter((one) => isOwnClassRole(one.role))
           .flatMap((one) => one.classIds.map((id) => id.toLowerCase())),
       );
       let classQuery = classesOn(transaction, branchId, date);

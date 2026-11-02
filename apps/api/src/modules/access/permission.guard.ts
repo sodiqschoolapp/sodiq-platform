@@ -11,6 +11,7 @@ import {
   freezeTable,
   type PermissionTable,
   type Role,
+  OWN_CLASS_ROLES,
 } from '@sodiq/shared';
 import type { Request } from 'express';
 import { Transactions } from '../../database/transactions.js';
@@ -189,15 +190,16 @@ export class PermissionGuard implements CanActivate {
     accountId: string,
     branchId: string,
   ): Promise<readonly CurrentAssignment[]> {
-    const ofBranch = (role: string) =>
+    const ofBranch = (roles: readonly string[]) =>
       assignments
         .filter(
           (assignment) =>
-            assignment.role === role && assignment.branchId?.toLowerCase() === branchId,
+            roles.includes(assignment.role) && assignment.branchId?.toLowerCase() === branchId,
         )
         .map((assignment) => assignment.id);
-    const tutors = ofBranch('tutor');
-    const teachers = ofBranch('teacher');
+    // Task 9.4e: the Tutor and the Class teacher hold own classes alike.
+    const tutors = ofBranch(OWN_CLASS_ROLES);
+    const teachers = ofBranch(['teacher']);
     if (tutors.length === 0 && teachers.length === 0) {
       return assignments;
     }

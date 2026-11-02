@@ -12,6 +12,7 @@ import {
   type GroupPlacementBoard,
   type GroupPlacementQuery,
   type SchoolDate,
+  isOwnClassRole,
 } from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -121,12 +122,12 @@ export class GroupMembers {
       }
       const wide =
         inGroupScope(
-          access.permitting.filter((assignment) => assignment.role !== 'tutor'),
+          access.permitting.filter((assignment) => !isOwnClassRole(assignment.role)),
           key,
         ) !== undefined;
       const own = new Set(
         access.permitting
-          .filter((assignment) => assignment.role === 'tutor')
+          .filter((assignment) => isOwnClassRole(assignment.role))
           .flatMap((assignment) => assignment.classIds),
       );
       return this.readMembers(transaction, branchId, row, (classId) =>

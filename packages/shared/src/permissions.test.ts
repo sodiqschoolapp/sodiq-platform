@@ -11,9 +11,19 @@ import {
 } from './permissions.js';
 import { ROLES, type Role } from './roles.js';
 
-/** A row for each of the 15 roles: nothing, unless named. */
+/**
+ * A row for each of the 16 roles: nothing, unless named. The Class teacher has
+ * the row written for the Tutor unless written out (task 9.4e, decision 2 of
+ * pull request #275; the test "gives the Class teacher the row of the Tutor"
+ * pins the table itself).
+ */
 function rows(named: Partial<Record<Role, readonly Action[]>>): PermissionRows {
-  return Object.fromEntries(ROLES.map((role) => [role, named[role] ?? []])) as PermissionRows;
+  return Object.fromEntries(
+    ROLES.map((role) => [
+      role,
+      (role === 'class_teacher' ? (named.class_teacher ?? named.tutor) : named[role]) ?? [],
+    ]),
+  ) as PermissionRows;
 }
 
 const SOUND: PermissionTable = {
@@ -28,6 +38,16 @@ const SOUND: PermissionTable = {
 // docs/spec/02-roles-and-access.md, Rules: "Permissions are a table: rows are
 // roles, columns are actions (view, create, edit, archive, export) per area."
 describe('the permission table', () => {
+  // Task 9.4e, decision 2 of pull request #275 (approved by the owner): the Class
+  // teacher has the Tutor's row in every area, so a later change of the Tutor's
+  // row that leaves her out fails here.
+  it('gives the Class teacher the row of the Tutor in every area', () => {
+    expect(Object.keys(PERMISSIONS).length).toBeGreaterThan(40);
+    for (const [area, table] of Object.entries(PERMISSIONS)) {
+      expect([area, table.class_teacher]).toEqual([area, table.tutor]);
+    }
+  });
+
   it('has the five actions of the spec', () => {
     expect(ACTIONS).toEqual(['view', 'create', 'edit', 'archive', 'export']);
   });
@@ -115,7 +135,14 @@ describe('a frozen permission table', () => {
   it('gives the student list to the roles of 02 and each group of fields to its readers', () => {
     const editors = ['super_admin', 'academic_vice_principal'];
     // The roles that view and export the list; the Spiritual VP views only.
-    const viewers = ['principal', 'head_tutor', 'tutor', 'senior_head_teacher', 'head_teacher'];
+    const viewers = [
+      'principal',
+      'head_tutor',
+      'tutor',
+      'class_teacher',
+      'senior_head_teacher',
+      'head_teacher',
+    ];
     const groups: Record<string, string[]> = {
       student_contact: [
         'super_admin',
@@ -126,6 +153,7 @@ describe('a frozen permission table', () => {
         // Task 3.1c, decision 2 of pull request #90 (Look first): the class
         // Tutor, for the students of own classes (the route decides the scope).
         'tutor',
+        'class_teacher',
       ],
       // Task 3.6a (L59, Look first): the Head Tutor reads every group.
       student_identity: ['super_admin', 'academic_vice_principal', 'head_tutor'],
@@ -138,6 +166,7 @@ describe('a frozen permission table', () => {
         'academic_vice_principal',
         'head_tutor',
         'tutor',
+        'class_teacher',
         'senior_head_teacher',
         'head_teacher',
       ],
@@ -180,6 +209,7 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
     ];
@@ -204,6 +234,7 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
     ];
@@ -286,6 +317,7 @@ describe('a frozen permission table', () => {
       'principal',
       'academic_vice_principal',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
     ];
@@ -380,6 +412,7 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
       'teacher',
@@ -399,7 +432,7 @@ describe('a frozen permission table', () => {
   });
 
   it('gives the journals to the nine roles of 07, Who can do what (task 6.2, decision 2), entry to four (task 6.3, correction 1) and the export to the nine (task 8.9, decision 1)', () => {
-    const writers = ['super_admin', 'academic_vice_principal', 'tutor', 'teacher'];
+    const writers = ['super_admin', 'academic_vice_principal', 'tutor', 'class_teacher', 'teacher'];
     const readers = [
       'super_admin',
       'principal',
@@ -407,6 +440,7 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
       'teacher',
@@ -430,8 +464,9 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
     ];
-    const writers = ['super_admin', 'academic_vice_principal', 'tutor'];
+    const writers = ['super_admin', 'academic_vice_principal', 'tutor', 'class_teacher'];
     for (const role of ROLES) {
       expect(PERMISSIONS.absence_reasons[role], role).toEqual(
         writers.includes(role) ? ['view', 'edit'] : readers.includes(role) ? ['view'] : [],
@@ -517,6 +552,7 @@ describe('a frozen permission table', () => {
       head_teacher: ['view', 'create', 'edit'],
       teacher: ['view', 'create'],
       tutor: ['view', 'create'],
+      class_teacher: ['view', 'create'],
     };
     const extensions: Record<string, readonly string[]> = {
       super_admin: ['view', 'create'],
@@ -558,6 +594,7 @@ describe('a frozen permission table', () => {
       'spiritual_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
     ];
     const results = [
       'super_admin',
@@ -567,6 +604,7 @@ describe('a frozen permission table', () => {
       'head_teacher',
       'head_tutor',
       'tutor',
+      'class_teacher',
     ];
     const load = ['super_admin', 'principal', 'academic_vice_principal'];
     for (const role of ROLES) {
@@ -600,6 +638,7 @@ describe('a frozen permission table', () => {
       'academic_vice_principal',
       'head_tutor',
       'tutor',
+      'class_teacher',
       'senior_head_teacher',
       'head_teacher',
       'teacher',
@@ -619,6 +658,7 @@ describe('a frozen permission table', () => {
       spiritual_vice_principal: ['view'],
       head_tutor: ['view'],
       tutor: ['view', 'edit'],
+      class_teacher: ['view', 'edit'],
       senior_head_teacher: ['view'],
       head_teacher: ['view'],
       teacher: ['view', 'edit'],
@@ -634,6 +674,7 @@ describe('a frozen permission table', () => {
       spiritual_vice_principal: ['view'],
       head_tutor: ['view'],
       tutor: ['view'],
+      class_teacher: ['view'],
     };
     for (const role of ROLES) {
       expect(PERMISSIONS.attendance_today[role], role).toEqual(rows[role] ?? []);
