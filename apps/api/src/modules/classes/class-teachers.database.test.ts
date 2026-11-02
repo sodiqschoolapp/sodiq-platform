@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { tutorClassesAt } from '../access/class-scope.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -233,6 +234,16 @@ describe('the Class teacher of a class of grades 0–4 in the database', () => {
     const row = await give(north, own, malika.assignmentId);
     await endRole(malika.assignmentId, DECEMBER);
     expect(await kit.tutorRowOf(row)).toMatchObject({ valid_until: DECEMBER, end_cause: 'role' });
+    // Her class scope (the permission guard's read) holds the class until the end, then none.
+    const scope = () =>
+      inBranch(north, (transaction) => tutorClassesAt(transaction, [malika.assignmentId]));
+    expect((await scope()).get(malika.assignmentId)).toEqual([own.toLowerCase()]);
+    clock.set('2026-12-02T10:00:00+05:00');
+    try {
+      expect((await scope()).get(malika.assignmentId)).toBeUndefined();
+    } finally {
+      clock.set(NOW);
+    }
     await endRole(malika.assignmentId, null);
     expect(await kit.tutorRowOf(row)).toMatchObject({ valid_until: null, end_cause: null });
   });

@@ -643,58 +643,61 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     );
   });
 
-  it('groups the attendance by the Tutor in force and refuses a range of more than 92 days or outside one year', async () => {
-    const c = await scene();
-    const tutor = await account();
-    const staff = await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
-    await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
-    // An acting Tutor of the first class from Monday 19 October: the lessons of the 19th and the
-    // 26th count under them (`tutorAt`: the acting Tutor while one is set).
-    const acting = await account();
-    const actingStaff = await load.classes.person(c.s.branch, ['uz'], {
-      accountId: acting.account.id,
-    });
-    await load.tutorOf(c.s.branch, c.s.classId, acting.account.id, {
-      kind: 'acting',
-      from: new Date('2026-10-19T00:00:00+05:00'),
-      until: null,
-    });
-    await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
-      { classId: c.s.otherClass, from: '2026-09-01' },
-    ]);
-    await as(
-      await account(),
-      c.s.branch,
-      [{ role: 'head_tutor', branchId: c.s.branch }],
-      async ({ get }) => {
-        const report = attendanceOf(
-          await get(`/api/results/reports/attendance?${RANGE}&groupBy=tutor`),
-        );
-        const keys = report.rows.map((one) => (one.key.kind === 'tutor' ? one.key.tutor : null));
-        expect(keys).toContainEqual({ id: staff.staffId, name: expect.any(String) as string });
-        expect(keys).toContainEqual({
-          id: actingStaff.staffId,
-          name: expect.any(String) as string,
-        });
-        const own = report.rows.find(
-          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === staff.staffId,
-        );
-        const covered = report.rows.find(
-          (one) => one.key.kind === 'tutor' && one.key.tutor?.id === actingStaff.staffId,
-        );
-        // Six members on the 12th under the Tutor, twice six under the acting Tutor.
-        expect(own ? own.counts.expected + own.counts.exempt : 0).toBe(6);
-        expect(covered ? covered.counts.expected + covered.counts.exempt : 0).toBe(12);
-        // The other class has no Tutor: its cells under "no Tutor".
-        expect(keys).toContain(null);
-        for (const range of ['from=2026-09-01&to=2026-12-15', 'from=2027-05-20&to=2027-06-10']) {
-          const response = await get(`/api/results/reports/attendance?${range}`);
-          expect(response.status, range).toBe(409);
-          expect(codeOf(response)).toBe('discipline_range');
-        }
-      },
-    );
-  });
+  it.each(OWN_CLASS_CASES)(
+    'groups the attendance by the %s in force and refuses a range of more than 92 days or outside one year',
+    async (_who, grade) => {
+      const c = await scene(undefined, grade);
+      const tutor = await account();
+      const staff = await load.classes.person(c.s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.tutorOf(c.s.branch, c.s.classId, tutor.account.id);
+      // An acting Tutor of the first class from Monday 19 October: the lessons of the 19th and the
+      // 26th count under them (`tutorAt`: the acting Tutor while one is set).
+      const acting = await account();
+      const actingStaff = await load.classes.person(c.s.branch, ['uz'], {
+        accountId: acting.account.id,
+      });
+      await load.tutorOf(c.s.branch, c.s.classId, acting.account.id, {
+        kind: 'acting',
+        from: new Date('2026-10-19T00:00:00+05:00'),
+        until: null,
+      });
+      await student(c.s.branch, { first: 'Hilola', last: 'Hamidova' }, [
+        { classId: c.s.otherClass, from: '2026-09-01' },
+      ]);
+      await as(
+        await account(),
+        c.s.branch,
+        [{ role: 'head_tutor', branchId: c.s.branch }],
+        async ({ get }) => {
+          const report = attendanceOf(
+            await get(`/api/results/reports/attendance?${RANGE}&groupBy=tutor`),
+          );
+          const keys = report.rows.map((one) => (one.key.kind === 'tutor' ? one.key.tutor : null));
+          expect(keys).toContainEqual({ id: staff.staffId, name: expect.any(String) as string });
+          expect(keys).toContainEqual({
+            id: actingStaff.staffId,
+            name: expect.any(String) as string,
+          });
+          const own = report.rows.find(
+            (one) => one.key.kind === 'tutor' && one.key.tutor?.id === staff.staffId,
+          );
+          const covered = report.rows.find(
+            (one) => one.key.kind === 'tutor' && one.key.tutor?.id === actingStaff.staffId,
+          );
+          // Six members on the 12th under the Tutor, twice six under the acting Tutor.
+          expect(own ? own.counts.expected + own.counts.exempt : 0).toBe(6);
+          expect(covered ? covered.counts.expected + covered.counts.exempt : 0).toBe(12);
+          // The other class has no Tutor: its cells under "no Tutor".
+          expect(keys).toContain(null);
+          for (const range of ['from=2026-09-01&to=2026-12-15', 'from=2027-05-20&to=2027-06-10']) {
+            const response = await get(`/api/results/reports/attendance?${range}`);
+            expect(response.status, range).toBe(409);
+            expect(codeOf(response)).toBe('discipline_range');
+          }
+        },
+      );
+    },
+  );
 
   it('lists each student against each graded subject with the result and grade, attendance-only subjects left out, and the stored record of a closed quarter', async () => {
     const c = await scene();

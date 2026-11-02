@@ -448,6 +448,31 @@ describe('the Tutors of a class', () => {
       await give(second, { assignmentId: malika.assignmentId, kind: 'acting' }).expect(201);
     });
 
+    it('ends her row with her role, and refuses taking the end back over her own class in another branch', async () => {
+      const own = await primaryClass();
+      const person = await classes.person(north, ['uz'], { further: [south] });
+      const here = await classes.role(person.accountId, north, 'class_teacher');
+      const there = await classes.role(person.accountId, south, 'class_teacher');
+      await give(own, { assignmentId: here }).expect(201);
+      const end = (from: string) =>
+        post(`/api/people/staff/${person.staffId}/roles/${here}/end`, { from }, admin);
+      await end('2026-11-02').expect(200);
+      expect(detailOf(await get(`/api/classes/${own}`).expect(200)).tutors[0]).toMatchObject({
+        until: '2026-11-02',
+        endCause: 'role',
+      });
+      // Her own class in South from the end of the North one.
+      const southern = await classes.schoolClass(south, southYear, {
+        grade: 2,
+        name: 'Southern Primary',
+      });
+      await give(southern, { assignmentId: there, from: '2026-11-02' }, admin, south).expect(201);
+      // Taking the North end back would give her two own classes at once.
+      const response = await end('2026-12-01');
+      expect(response.status, JSON.stringify(response.body)).toBe(409);
+      expect(errorCode(response)).toBe('class_teacher_one_class');
+    });
+
     it('refuses a grade edit that would leave the class with the wrong role', async () => {
       const held = await classes.schoolClass(north, northYear, { grade: 4, name: 'Leeds' });
       const malika = await classTeacher();
