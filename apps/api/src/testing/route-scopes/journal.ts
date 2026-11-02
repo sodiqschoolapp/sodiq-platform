@@ -63,7 +63,7 @@ const GRID_SENIOR = at(
 );
 const GRID_TUTOR = at(
   GRID,
-  "gives a Tutor the journals of own class whole and refuses another class's",
+  "gives a %s the journals of own class whole and refuses another class's",
 );
 const WRITES_TUTOR = at(
   SCOPE,
@@ -103,7 +103,7 @@ const BRANCH_EXPORTS = at(
 );
 const READERS_TUTOR = at(
   READERS,
-  'gives the Tutor of one class of the group the rows of own class only, also in both histories',
+  'gives the %s of one class of the group the rows of own class only, also in both histories',
 );
 const READERS_HEAD = at(
   READERS,
@@ -115,7 +115,7 @@ const CELL_TEACHER = at(
 );
 const CELL_READERS = at(
   ATTENDANCE,
-  'answers every reader whose grid shows the cell, and refuses a Tutor of another class and a Head Teacher of another subject',
+  'answers every reader whose grid shows the cell, and refuses a %s of another class and a Head Teacher of another subject',
 );
 
 /** The same limits for the Tutor and the Teacher on a write of a lesson, its rating exam or its comments. */
@@ -371,7 +371,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           EXPORTS,
-          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused',
+          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the %s of the class are let in; the same roles outside their scope are refused',
         ),
       ],
     },
@@ -382,7 +382,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
       refusedIn: [
         at(
           EXPORTS,
-          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the Tutor of the class are let in; the same roles outside their scope are refused',
+          'follows the scope of the grid: a Head Teacher of the subject, a Senior Head Teacher in another branch and the %s of the class are let in; the same roles outside their scope are refused',
         ),
       ],
     },

@@ -1,4 +1,5 @@
 import { ownClassRoleFor, type OwnClassRole } from '@sodiq/shared';
+import type { Database } from '../database/database.js';
 
 /**
  * Task 9.4e (`edge/00-definitions`, Tutor of a class: "Every rule that names
@@ -14,3 +15,13 @@ export const OWN_CLASS_CASES: readonly (readonly [string, number])[] = [
 
 /** The role that holds a class of the grade as its own (the Tutor or the Class teacher). */
 export const ownRoleOf = (grade: number): OwnClassRole => ownClassRoleFor(grade);
+
+/** The grade of a class, for a student written into it. */
+export async function gradeOf(migrator: Database, classId: string): Promise<number> {
+  const found = await migrator
+    .selectFrom('classes')
+    .select('grade')
+    .where('id', '=', classId)
+    .executeTakeFirstOrThrow();
+  return found.grade;
+}
