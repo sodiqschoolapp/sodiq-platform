@@ -4,6 +4,7 @@ import {
   gradeChangesSchema,
   dailyWeightsSchema,
   newSubjectRecordSchema,
+  primaryQuarterWeightsSchema,
   quarterWeightsSchema,
   setupIdParamsSchema,
   subjectExportSchema,
@@ -16,6 +17,7 @@ import {
   type CopyQuarterWeightsRecord,
   type GradeChanges,
   type DailyWeights,
+  type PrimaryQuarterWeights,
   type QuarterWeights,
   type SetupIdParams,
   type Subject,
@@ -191,5 +193,45 @@ export class SubjectsController {
       weights,
       requestId,
     );
+  }
+
+  /**
+   * Task 9.4f: the grades a change of the distribution without the rating exam would alter in each
+   * journal; changes nothing. The roles of its write (the owner's answer A on #276).
+   */
+  @Post('subjects/:id/quarter-weights/:quarterId/primary/preview')
+  @HttpCode(200)
+  @Requires('subjects', 'edit')
+  @Returns(gradeChangesSchema)
+  previewPrimaryWeights(
+    @CurrentAccess() access: Access,
+    @ValidParams(subjectQuarterParamsSchema) params: SubjectQuarterParams,
+    @ValidBody(primaryQuarterWeightsSchema) weights: PrimaryQuarterWeights,
+    @RequestId() requestId: string,
+  ): Promise<GradeChanges> {
+    return this.subjects.previewPrimaryWeights(
+      access,
+      params.id,
+      params.quarterId,
+      weights,
+      requestId,
+    );
+  }
+
+  /**
+   * Task 9.4f: one quarter's distribution without the rating exam of a rating subject, the row its
+   * journals of grades 0–4 use while the quarter's state of "Rating exams in grades 0–4" is off.
+   * The roles of the usual distribution (`subjects` edit; approved by the owner on #276).
+   */
+  @Put('subjects/:id/quarter-weights/:quarterId/primary')
+  @Requires('subjects', 'edit')
+  @Returns(subjectQuarterWeightsSchema)
+  setPrimaryWeights(
+    @CurrentAccess() access: Access,
+    @ValidParams(subjectQuarterParamsSchema) params: SubjectQuarterParams,
+    @ValidBody(primaryQuarterWeightsSchema) weights: PrimaryQuarterWeights,
+    @RequestId() requestId: string,
+  ): Promise<SubjectQuarterWeights> {
+    return this.subjects.setPrimaryWeights(access, params.id, params.quarterId, weights, requestId);
   }
 }

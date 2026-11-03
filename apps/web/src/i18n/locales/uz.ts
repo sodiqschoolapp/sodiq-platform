@@ -144,6 +144,15 @@ export const uz: Texts<'one' | 'other'> = {
       'Fanni boshqa kafedraga faqat Super administrator oʻtkazadi. Kafedrasini qoldiring yoki Super administratorga murojaat qiling.',
     weights_shape_mismatch:
       'Fanning reyting imtihoni belgisi oʻzgardi. Fanni qaytadan oching va taqsimotni yangidan kiriting.',
+    rating_primary_refused:
+      '0–4-sinflarda reyting imtihonlarini hozircha oʻchirib boʻlmaydi: 0–4-sinf jurnalida reyting imtihoni yozuvlari bor yoki reytingli fanning 4- va 5-sinf guruhi mavjud. Avval yozuvlarni tozalang yoki guruhlarni oʻzgartiring.',
+    setting_unchanged: 'Sozlama barcha ochiq choraklarda allaqachon shu qiymatda.',
+    groups_rating_primary_span:
+      'Reyting imtihoni boʻlgan fanning 4- va 5-sinf guruhi uchun 0–4-sinflarda reyting imtihonlari yoqilgan boʻlishi kerak. Super Admindan yoqishni soʻrang yoki guruhni bitta sinfdan tuzing.',
+    class_grade_rating_primary:
+      'Sinfni 0–4-sinflarga oʻtkazib boʻlmaydi: reyting imtihoni yozuvlari yashirinadi yoki yopilgan chorak oʻzgaradi. Yozuvlarni tozalang yoki sinf darajasini qoldiring.',
+    primary_weights_no_rating:
+      'Bu fanda shu chorakda reyting imtihoni yoʻq, shuning uchun usiz taqsimot ham yoʻq.',
     reason_required: 'Bu oʻzgarish natijalarni oʻzgartiradi. Sababini kiriting.',
     quarter_one_not_set: '1-chorakda nusxa olish uchun taqsimot yoʻq. Avval 1-chorakni belgilang.',
     go_live_not_school_day:
@@ -741,7 +750,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Boshlangan chorakda bu fan boʻyicha ballar bor. Oʻzgarishni keyingi chorakdan qiling.',
     subject_switch_exams:
       'Jadvaldagi reyting imtihoni oʻsha chorakda bu fan jurnallariga bogʻlangan. Oʻzgarishni keyingi chorakdan qiling yoki avval bogʻlanishni olib tashlang.',
-    rating_exam_off: 'Bu fanda shu chorakda reyting imtihoni yoʻq.',
+    rating_exam_off: 'Bu jurnalda shu chorakda reyting imtihoni yoʻq.',
     rating_exam_scope:
       'Reyting imtihonida buni qila olmaysiz. Ballarni jurnal oʻqituvchisi kiritadi; «ozod» va «oʻtkazilmadi»ni oʻquv ishlari boʻyicha direktor oʻrinbosari belgilaydi.',
     rating_exam_linked: 'Sana jadvaldagi imtihondan olinadi. Uni oʻsha yerda oʻzgartiring.',
@@ -1534,6 +1543,24 @@ export const uz: Texts<'one' | 'other'> = {
       },
     },
     settings: {
+      school: {
+        title: 'Maktab sozlamalari',
+        ratingExamsPrimary: '0–4-sinflarda reyting imtihonlari',
+        on: 'Yoqilgan',
+        off: 'Oʻchirilgan',
+        note: 'Barcha filiallarning ochiq choraklariga taʼsir qiladi; yopilgan chorak natijalarini saqlaydi.',
+        differing: '{{branch}}, {{number}}-chorak: {{state}} (qayta ochilgan)',
+        turnOn: 'Yoqish',
+        turnOff: 'Oʻchirish',
+        applyEverywhere: 'Barcha ochiq choraklarga qoʻllash',
+        refused: 'Hozircha oʻchirib boʻlmaydi.',
+        entries: 'Reyting imtihoni yozuvlari bor jurnallar',
+        entryLine: '{{branch}}, {{number}}-chorak: {{unit}}, {{subject}}',
+        groups: '4- va 5-sinf guruhlari',
+        groupLine: '{{branch}}: {{name}}, {{subject}}',
+        weightsMissing: 'Reyting imtihonisiz taqsimot kiritilmagan',
+        weightsLine: '{{branch}}, {{number}}-chorak: {{subject}}',
+      },
       title: 'Sozlamalar',
       none: 'Filial tanlanmagan. Uni yuqori paneldan tanlang.',
       editDaysTitle: 'Tahrir kunlari',
@@ -1616,6 +1643,11 @@ export const uz: Texts<'one' | 'other'> = {
       switches: 'Xususiyatlar',
       daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
+      primary: {
+        title: '0–4-sinflar, reyting imtihonisiz',
+        label: '{{n}}-chorak, 0–4-sinflar reyting imtihonisiz',
+        needed: 'Kerak: bu chorakda 0–4-sinflarda reyting imtihonlari oʻchirilgan.',
+      },
       changeWeights: 'Taqsimotni oʻzgartirish',
       changeWeightsOf: 'Taqsimotni oʻzgartirish: {{name}}',
       quarterlyMissing: 'Vaznsiz choraklar',
@@ -3487,6 +3519,12 @@ export const uz: Texts<'one' | 'other'> = {
       subject_daily_weights: {
         set: 'Kundalik taqsimot belgilandi',
       },
+      subject_quarter_primary_weights: {
+        set: 'Reyting imtihonisiz taqsimot belgilandi',
+      },
+      school_settings: {
+        rating_exams_primary: '0–4-sinflarda reyting imtihonlari oʻzgartirildi',
+      },
       subject_quarter_weights: {
         set: 'Choraklik taqsimot belgilandi',
       },
@@ -5246,6 +5284,10 @@ export const uz: Texts<'one' | 'other'> = {
         year_quarters: 'Oʻquv yilida sanasi belgilangan toʻrtta chorak yoʻq.',
         subject_daily_weights: '{{subject}} fanining bu filialda kunlik taqsimoti yoʻq.',
         subject_daily_weights_any: 'Yuklamadagi bir fanning bu filialda kunlik taqsimoti yoʻq.',
+        subject_quarter_primary_weights:
+          '{{subject}} fanining {{quarter}}-chorak uchun reyting imtihonisiz taqsimoti yoʻq.',
+        subject_quarter_primary_weights_any:
+          'Yuklamadagi fanning {{quarter}}-chorak uchun reyting imtihonisiz taqsimoti yoʻq.',
         subject_quarter_weights: '{{subject}} fanining {{quarter}}-chorak taqsimoti yoʻq.',
         subject_quarter_weights_any: 'Yuklamadagi bir fanning {{quarter}}-chorak taqsimoti yoʻq.',
       },

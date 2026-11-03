@@ -25,7 +25,8 @@ import {
  * (decision 1); a cancelled exam keeps them as history, and every reader of a
  * link reads `rating_exam and cancel_cause is null` (decision 6). A journal is
  * linked to at most one standing exam per quarter (decision 2): the exam save
- * and the quarter save check it, both holding the year row.
+ * and the quarter save check it, both holding the year row. Task 9.4f: a journal
+ * whose rating exam is off (grades 0–4, the quarter's state off) is not reached.
  */
 
 /** The journals of a rating exam by id, linked first. */
@@ -82,6 +83,13 @@ export async function ratingJournalsOf(
     from reached r
     group by r.journal_id
     having bool_or(r.student_id in (select student_id from sitting))
+      -- Task 9.4f: a journal without the rating exam in the quarter of the date (grades 0–4
+      -- while the quarter's state is off) has none to link.
+      and coalesce(journal_rating_on(r.journal_id, (
+        select q.id from quarters q
+        where q.branch_id = ${branchId} and q.academic_year_id = ${yearId}
+          and q.start_date <= ${date}::date and q.end_date >= ${date}::date
+      )), false)
     order by r.journal_id
   `.execute(transaction);
   return {

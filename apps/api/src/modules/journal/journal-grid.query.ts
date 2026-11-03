@@ -5,7 +5,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { switchKey, switchesOf } from '../setup/subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
+import { dailyWeightsFit, primaryWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 
 /**
  * The reads of the journal grid (task 6.2, pull request #210), each one
@@ -46,7 +46,18 @@ export interface JournalQuarterSwitches {
   readonly startDate: string | null;
   readonly endDate: string | null;
   readonly attendanceOnly: boolean;
+  /**
+   * The journal has the rating exam in the quarter (`journal_rating_on`, 0120 as task 9.4f
+   * replaced it: the subject's switch, and a journal of grades 0–4 only while the quarter's state
+   * of "Rating exams in grades 0–4" is on). Read from SQL, the one definition.
+   */
   readonly ratingExam: boolean;
+  /**
+   * Task 9.4f (decision 1, Look first): the subject has the rating exam in the quarter and this
+   * journal has none (grades 0–4, the quarter's state off), so it uses the subject's distribution
+   * without the rating exam (`gridWeights` with `withoutRating`).
+   */
+  readonly withoutRating: boolean;
 }
 
 /** The switches of the quarter that holds `date`; `undefined` for a date in no quarter. */
@@ -142,6 +153,30 @@ export async function journalRows(
     [...new Set(rows.map((row) => row.subject_id))].sort(),
     quarters.map((quarter) => quarter.id),
   );
+  // Task 9.4f: whether each journal has the rating exam, asked of SQL (`journal_rating_on`) only
+  // for the pairs whose subject has it in the quarter, so the rule is read where it is written.
+  const ratingPairs = rows.flatMap((row) =>
+    quarters
+      .filter((quarter) => quarter.academic_year_id === row.academic_year_id)
+      .filter((quarter) => {
+        const own = switches.get(switchKey(row.subject_id, quarter.id));
+        return own?.journal_type === 'graded' && own.rating_exam;
+      })
+      .map((quarter) => ({ journalId: row.id, quarterId: quarter.id })),
+  );
+  const ratingOn = new Set<string>();
+  if (ratingPairs.length > 0) {
+    const found = await sql<{ journal_id: string; quarter_id: string; on: boolean }>`
+      select p.journal_id, p.quarter_id, journal_rating_on(p.journal_id, p.quarter_id) as on
+      from unnest(
+        ${ratingPairs.map((pair) => pair.journalId)}::uuid[],
+        ${ratingPairs.map((pair) => pair.quarterId)}::uuid[]
+      ) as p(journal_id, quarter_id)
+    `.execute(transaction);
+    for (const one of found.rows) {
+      if (one.on) ratingOn.add(`${one.journal_id}|${one.quarter_id}`);
+    }
+  }
   const groupIds = rows.flatMap((row) => (row.group_id === null ? [] : [row.group_id]));
   const groupClasses =
     groupIds.length === 0
@@ -175,13 +210,16 @@ export async function journalRows(
         .filter((quarter) => quarter.academic_year_id === row.academic_year_id)
         .map((quarter) => {
           const own = switches.get(switchKey(row.subject_id, quarter.id));
+          const subjectRating = own?.journal_type === 'graded' && own.rating_exam;
+          const ratingExam = subjectRating && ratingOn.has(`${row.id}|${quarter.id}`);
           return {
             id: quarter.id,
             number: quarter.number,
             startDate: quarter.start_date,
             endDate: quarter.end_date,
             attendanceOnly: own?.journal_type !== 'graded',
-            ratingExam: own?.journal_type === 'graded' && own.rating_exam,
+            ratingExam,
+            withoutRating: subjectRating && !ratingExam,
           };
         }),
     };
@@ -525,13 +563,20 @@ export interface GridWeights {
   readonly skippedValue: number;
 }
 
+/**
+ * The weights of the subject in the quarter. `withoutRating` (task 9.4f): the journal is of
+ * grades 0–4 and has no rating exam in the quarter while its subject has
+ * (`JournalQuarterSwitches.withoutRating`), so the quarterly distribution is the subject's
+ * distribution without the rating exam, `null` while it is missing (decision 1, Look first).
+ */
 export async function gridWeights(
   transaction: Transaction,
   branchId: string,
   subjectId: string,
   quarterId: string,
+  withoutRating = false,
 ): Promise<GridWeights> {
-  const [daily, quarterly, quarter, subject, switches] = await Promise.all([
+  const [daily, quarterly, primary, quarter, subject, switches] = await Promise.all([
     transaction
       .selectFrom('subject_daily_weights')
       .select(['attendance', 'classwork', 'homework', 'weights_round'])
@@ -552,6 +597,15 @@ export async function gridWeights(
       .where('subject_id', '=', subjectId)
       .where('quarter_id', '=', quarterId)
       .executeTakeFirst(),
+    withoutRating
+      ? transaction
+          .selectFrom('subject_quarter_primary_weights')
+          .select(['attendance', 'classwork', 'homework', 'weights_round', 'rating_round'])
+          .where('branch_id', '=', branchId)
+          .where('subject_id', '=', subjectId)
+          .where('quarter_id', '=', quarterId)
+          .executeTakeFirst()
+      : Promise.resolve(undefined),
     transaction
       .selectFrom('quarters')
       .select(['late_value', 'skipped_value'])
@@ -569,19 +623,29 @@ export async function gridWeights(
   const own = switches.get(switchKey(subjectId, quarterId));
   const quarterlyFits =
     quarterly !== undefined && own !== undefined && quarterWeightsFit(own, quarterly);
+  const primaryFits = primary !== undefined && own !== undefined && primaryWeightsFit(own, primary);
   return {
     daily:
       daily !== undefined && dailyWeightsFit(subject, daily)
         ? { attendance: daily.attendance, classwork: daily.classwork, homework: daily.homework }
         : null,
-    quarterly: !quarterlyFits
-      ? null
-      : {
-          attendance: quarterly.attendance,
-          classwork: quarterly.classwork,
-          homework: quarterly.homework,
-          ratingExam: quarterly.rating_exam,
-        },
+    quarterly: withoutRating
+      ? !primaryFits
+        ? null
+        : {
+            attendance: primary.attendance,
+            classwork: primary.classwork,
+            homework: primary.homework,
+            ratingExam: null,
+          }
+      : !quarterlyFits
+        ? null
+        : {
+            attendance: quarterly.attendance,
+            classwork: quarterly.classwork,
+            homework: quarterly.homework,
+            ratingExam: quarterly.rating_exam,
+          },
     lateValue: quarter.late_value,
     skippedValue: quarter.skipped_value,
   };

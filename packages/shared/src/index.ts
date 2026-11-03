@@ -495,6 +495,7 @@ export {
   JOURNAL_TYPES,
   journalTypeSchema,
   newSubjectRecordSchema,
+  primaryQuarterWeightsSchema,
   quarterWeightsSchema,
   SUBJECT_COLOURS,
   SUBJECT_GRADES,
@@ -514,6 +515,7 @@ export {
   type CopyQuarterWeightsRecord,
   type DailyWeights,
   type JournalType,
+  type PrimaryQuarterWeights,
   type QuarterWeights,
   type Subject,
   type SubjectColour,
@@ -524,6 +526,19 @@ export {
   type SubjectQuarterWeightsQuery,
   type SubjectRecord,
 } from './subjects.js';
+export {
+  ratingEntryRefusalSchema,
+  ratingExamsPrimaryChangeSchema,
+  ratingExamsPrimaryPreviewSchema,
+  ratingGroupRefusalSchema,
+  ratingStateQuarterSchema,
+  ratingWeightsMissingSchema,
+  schoolSettingsSchema,
+  type RatingExamsPrimaryChange,
+  type RatingExamsPrimaryPreview,
+  type RatingStateQuarter,
+  type SchoolSettings,
+} from './school-settings.js';
 export {
   departmentChangeKind,
   type DepartmentChangeKind,

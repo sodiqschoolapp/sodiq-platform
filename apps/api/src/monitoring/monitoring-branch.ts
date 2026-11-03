@@ -1,3 +1,4 @@
+import { PRIMARY_GRADES } from '@sodiq/shared';
 import { addDays } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { transactionMoment, type Transactions } from '../database/transactions.js';
@@ -267,6 +268,15 @@ export async function buildMonitoringBranch(
           : { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
         at,
       );
+      // Task 9.4f: a rating subject of a class of grades 0–4 also needs its distribution without
+      // the rating exam, which the class uses while "Rating exams in grades 0–4" is off.
+      if (subject.ratingExam && PRIMARY_GRADES.includes(grade)) {
+        await api.put(
+          `/api/setup/subjects/${subject.id}/quarter-weights/${quarter.quarterId}/primary`,
+          { attendance: 20, classwork: 40, homework: 40 },
+          at,
+        );
+      }
     }
   }
 

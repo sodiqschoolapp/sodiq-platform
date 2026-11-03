@@ -44,7 +44,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { refusingConstraints } from '../setup/setup-refusals.js';
 import { switchKey, switchesOf } from '../setup/subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
+import { dailyWeightsFit, primaryWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
 import {
   carryResultOf,
@@ -1911,6 +1911,34 @@ export class TimetablePublish {
     const touched = dated.filter(
       (quarter) => quarter.end_date !== null && quarter.end_date >= startsOn,
     );
+    // Task 9.4f: the subjects of the load taught in a class or group of grades 0–4 (every grade of
+    // the unit within 0–4: `unit_primary`, the rule `journal_primary` reads), the distributions without the
+    // rating exam and the quarters whose state is off.
+    const primaryUnits = await sql<{ subject_id: string }>`
+      select distinct r.subject_id
+      from unnest(
+        ${rows.map((row) => row.subject_id)}::uuid[],
+        ${rows.map((row) => row.class_id)}::uuid[],
+        ${rows.map((row) => row.group_id)}::uuid[]
+      ) as r(subject_id, class_id, group_id)
+      where unit_primary(r.class_id, r.group_id)
+    `.execute(transaction);
+    const primarySubjects = new Set(primaryUnits.rows.map((row) => row.subject_id));
+    const [primary, offRows] = await Promise.all([
+      transaction
+        .selectFrom('subject_quarter_primary_weights')
+        .select(['subject_id', 'quarter_id', 'weights_round', 'rating_round'])
+        .where('branch_id', '=', version.branch_id)
+        .where('subject_id', 'in', subjectIds)
+        .execute(),
+      transaction
+        .selectFrom('quarter_rating_states')
+        .select('quarter_id')
+        .where('branch_id', '=', version.branch_id)
+        .where('rating_exams_primary', '=', false)
+        .execute(),
+    ]);
+    const offQuarters = new Set(offRows.map((row) => row.quarter_id));
     // Task 8.2 (From 2.1 and 5.5c): the journal type and the rating switch of
     // each touched quarter, with the rounds its distribution is compared with.
     const switches = await switchesOf(
@@ -1938,6 +1966,27 @@ export class TimetablePublish {
         if (!fits) {
           refusals.push({
             code: 'subject_quarter_weights',
+            subjectId: subject.id,
+            quarter: quarter.number,
+          });
+        }
+        // Task 9.4f (`edge/academic-year`, publishing without weights): a rating subject taught
+        // in a class or group of grades 0–4 of the load, in a quarter whose state of "Rating
+        // exams in grades 0–4" is off, needs its distribution without the rating exam there.
+        if (
+          own !== undefined &&
+          own.rating_exam &&
+          primarySubjects.has(subject.id) &&
+          offQuarters.has(quarter.id) &&
+          !primary.some(
+            (one) =>
+              one.subject_id === subject.id &&
+              one.quarter_id === quarter.id &&
+              primaryWeightsFit(own, one),
+          )
+        ) {
+          refusals.push({
+            code: 'subject_quarter_primary_weights',
             subjectId: subject.id,
             quarter: quarter.number,
           });

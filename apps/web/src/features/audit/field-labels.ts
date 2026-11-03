@@ -187,6 +187,9 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
   subject: SUBJECT,
   subject_daily_weights: SUBJECT,
   subject_quarter_weights: SUBJECT,
+  // Task 9.4f.
+  subject_quarter_primary_weights: SUBJECT,
+  school_settings: { ratingExamsPrimary: 'setup.settings.school.ratingExamsPrimary' },
   academic_year: YEAR,
   quarters: YEAR,
   calendar_entry: CALENDAR,

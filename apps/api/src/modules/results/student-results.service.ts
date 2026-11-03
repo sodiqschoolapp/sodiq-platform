@@ -588,7 +588,13 @@ async function subjectQuarter(
     reading,
     attendanceOnly: switches.attendanceOnly,
     ratingExam: switches.ratingExam,
-    weights: await gridWeights(context.transaction, context.branchId, subjectId, quarter.id),
+    weights: await gridWeights(
+      context.transaction,
+      context.branchId,
+      subjectId,
+      quarter.id,
+      switches.withoutRating,
+    ),
   };
 }
 

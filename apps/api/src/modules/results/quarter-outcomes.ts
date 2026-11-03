@@ -124,21 +124,36 @@ export async function quarterOutcomes(
     for (const journal of own)
       members.set(journal.id, await membersOf(transaction, journal, quarter));
     const studentIds = [...new Set([...members.values()].flat())];
-    const weights = await gridWeights(transaction, input.branchId, subjectId, quarter.id);
-    const found: ReadonlyMap<string, StudentSubjectQuarter> =
-      weights.quarterly === null
-        ? new Map()
-        : await subjectQuarterLessons(transaction, {
-            branchId: input.branchId,
-            timeZone: input.timeZone,
-            now: input.now,
-            academicYearId: quarter.academicYearId,
-            subjectId,
-            quarter,
-            studentIds,
-          });
+    // Task 9.4f: a journal of grades 0–4 without the rating exam uses the distribution without it
+    // (`withoutRating`); the subject's other journals use the usual one.
+    const weightsOf = new Map<boolean, GridWeights>();
+    for (const journal of own) {
+      const withoutRating = switchesIn(journal, quarter.id)?.withoutRating ?? false;
+      if (!weightsOf.has(withoutRating)) {
+        weightsOf.set(
+          withoutRating,
+          await gridWeights(transaction, input.branchId, subjectId, quarter.id, withoutRating),
+        );
+      }
+    }
+    const found: ReadonlyMap<string, StudentSubjectQuarter> = [...weightsOf.values()].every(
+      (one) => one.quarterly === null,
+    )
+      ? new Map()
+      : await subjectQuarterLessons(transaction, {
+          branchId: input.branchId,
+          timeZone: input.timeZone,
+          now: input.now,
+          academicYearId: quarter.academicYearId,
+          subjectId,
+          quarter,
+          studentIds,
+        });
     const decisions = await decisionsOf(transaction, quarter.id, subjectId, studentIds);
     for (const journal of own) {
+      const withoutRating = switchesIn(journal, quarter.id)?.withoutRating ?? false;
+      const weights = weightsOf.get(withoutRating);
+      if (weights === undefined) continue;
       const ratingShown =
         switchesIn(journal, quarter.id)?.ratingExam === true &&
         weights.quarterly !== null &&

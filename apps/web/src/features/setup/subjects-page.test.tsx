@@ -122,6 +122,8 @@ const quarter = (number: number, weights: SubjectQuarter['weights'] = null): Sub
   fits: weights !== null,
   graded: true,
   ratingExam: weights?.ratingExam != null,
+  primary: null,
+  primaryNeeded: false,
 });
 
 const RATED = { attendance: 10, classwork: 30, homework: 20, ratingExam: 40 };
@@ -564,6 +566,72 @@ describe('the subjects page', () => {
           (call) => call.route === `POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy`,
         )?.body,
       ).toEqual({ yearId: YEAR.id });
+    });
+  });
+
+  // Task 9.4f (`05`, Grading weights on a subject, Grades 0–4): a rating subject taught in a grade
+  // of 0 to 4 has a second row per quarter, without the rating exam, saved on its own route.
+  it('shows and saves the distribution without the rating exam of a rating subject of grades 0–4', async () => {
+    const primaryMaths: Subject = { ...MATHS, grades: [1, 5] };
+    const { calls } = await openList({
+      subjects: [primaryMaths, PHYSICS],
+      quarters: [
+        { ...quarter(1, RATED), primaryNeeded: true },
+        quarter(2, RATED),
+        quarter(3, RATED),
+        quarter(4, RATED),
+      ],
+      extra: {
+        // The owner's answer A on #276: its own preview of the grades that change, then the reason.
+        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary/preview`]: () =>
+          json({
+            reasonRequired: true,
+            quarters: [{ quarterId: uid(41), number: 1, journals: [] }],
+          }),
+      },
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const row = await waitFor(() => {
+      const found = panel.querySelector('[data-primary="1"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(within(row).getByText(subjectsText.primary.needed)).toBeDefined();
+    const name = subjectsText.primary.label.replace('{{n}}', '1');
+    const form = await changeWeights(panel, name);
+    expect(within(form).queryByLabelText(subjectsText.parts.ratingExam)).toBeNull();
+    type(within(form).getByLabelText(subjectsText.parts.attendance), '10');
+    type(within(form).getByLabelText(subjectsText.parts.classwork), '50');
+    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) =>
+            call.route ===
+            `POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary/preview`,
+        )?.body,
+      ).toEqual({ attendance: 10, classwork: 50, homework: 40 });
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    expect(dialog.getByText(en.results.change.noGrades)).toBeDefined();
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'Agreed by the department' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) =>
+            call.route === `PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary`,
+        )?.body,
+      ).toEqual({
+        attendance: 10,
+        classwork: 50,
+        homework: 40,
+        reason: 'Agreed by the department',
+      });
     });
   });
 

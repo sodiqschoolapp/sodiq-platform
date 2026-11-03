@@ -198,6 +198,13 @@ describe('the journal routes outside the scope of a role', () => {
       .where('subject_id', '=', s.subject)
       .where('branch_id', '=', s.branch)
       .execute();
+    // Task 9.4f: a journal of grades 0–4 has the rating exam only while its quarter's state of
+    // "Rating exams in grades 0–4" is on (`05`, Grades 0–4); the Class teacher's case has one.
+    await t.database.migrator
+      .updateTable('quarter_rating_states')
+      .set({ rating_exams_primary: true })
+      .where('branch_id', '=', s.branch)
+      .execute();
     for (const browser of [owner, spare])
       await give(browser, { role: 'teacher', branchId: s.branch });
     const lessons = (

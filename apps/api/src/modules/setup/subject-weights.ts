@@ -32,3 +32,16 @@ export const quarterWeightsFit = (
   stored.weights_round === subject.weights_round &&
   stored.rating_round === subject.rating_round &&
   (stored.rating_exam !== null) === subject.rating_exam;
+
+/**
+ * A stored distribution without the rating exam (task 9.4f, decision 7) that counts: the subject
+ * has the rating exam in the quarter, and the row is of the quarter's rounds.
+ */
+export const primaryWeightsFit = (
+  subject: SubjectRounds & { readonly journal_type?: string },
+  stored: { readonly weights_round: number; readonly rating_round: number },
+): boolean =>
+  subject.journal_type !== 'attendance_only' &&
+  subject.rating_exam &&
+  stored.weights_round === subject.weights_round &&
+  stored.rating_round === subject.rating_round;

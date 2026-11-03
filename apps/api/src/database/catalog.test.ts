@@ -14,6 +14,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   report_school_changes:
     'A write of a school-wide input of the prepared report totals (staff, subjects, absences and the rest of SCHOOL_INPUTS) concerns every branch at once, so it has no branch; a row holds a transaction id, a table name and a moment, nothing personal (task 10.1b, decision 10 of pull request #263, Look first).',
   branches: 'The branches themselves; the branch switcher shows their names.',
+  school_settings:
+    'One row of settings of the whole school ("Rating exams in grades 0–4", kept by the Super Admin, `05`); a row holds a boolean, nothing personal (task 9.4f, pull request #276).',
   travel_times:
     'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',
@@ -285,6 +287,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     'The trigger that archives a relative with no live link in any branch and restores it on a new one (04: "A relative with no linked students is archived"; task 2.5a, decisions 3, 10 and 14); the links of other branches decide it, and an archived relative is visible to no branch.',
   'subject_groups_elsewhere(uuid,smallint[],boolean)':
     'The number of active groups of a subject outside the branches of the transaction that a change of its grades or its archive would leave without the subject, a count only (task 3.2a, decisions 12 and 16 of pull request #91, Look first): the refusal names "a group of another branch" and a count.',
+  'subject_primary_span_groups(uuid)':
+    'The number of active groups of a subject in every branch that draw from grades 4 and 5, a count only (task 9.4f, the permission review of the code of pull request #276, Look first): turning the subject\'s rating exam on is refused while one exists and "Rating exams in grades 0–4" is off, whichever branch the edit is made in.',
   'subject_group_grades(uuid)':
     'The grades of the active groups of a subject in every branch with the number of those groups outside the branches of the transaction, grades and counts only (task 3.2a, decision 12 of pull request #91, Look first): a subject cannot lose a grade, nor be archived, while a group of another branch needs it.',
   'tutor_classes_of_language(uuid,text)':

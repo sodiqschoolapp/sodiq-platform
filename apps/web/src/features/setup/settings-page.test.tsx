@@ -80,6 +80,8 @@ const settingsApi = (role: Role, extra: Record<string, (body: unknown) => Respon
     'GET /api/auth/session': () => json(sessionAs(role)),
     'GET /api/setup/settings': () => json(SETTINGS),
     'GET /api/setup/attendance-values': () => json(VALUES),
+    'GET /api/setup/school-settings': () =>
+      json({ ratingExamsPrimary: false, differing: [], mayChange: role === 'super_admin' }),
     ...extra,
   });
 
@@ -87,6 +89,82 @@ const section = async (name: string) => within(await screen.findByRole('region',
 
 // Task 1.6; the owner's answers 19 to 24.
 describe('the settings page', () => {
+  // Task 9.4f: "Rating exams in grades 0–4", turned by the Super Admin with the preview and a
+  // reason; refused while journals hold entries, which the section lists.
+  it('lets the Super Admin turn on rating exams in grades 0–4 with a reason', async () => {
+    const calls = settingsApi('super_admin', {
+      'POST /api/setup/school-settings/rating-exams-primary/preview': () =>
+        json({ quarterCount: 4, branches: [], entries: [], groups: [], weightsMissing: [] }),
+      'PUT /api/setup/school-settings/rating-exams-primary': () =>
+        json({ ratingExamsPrimary: true, differing: [], mayChange: true }),
+    });
+    renderApp('/setup/settings');
+    const school = await section(en.setup.settings.school.title);
+    expect((await school.findByTestId('rating-exams-primary')).textContent).toBe(
+      en.setup.settings.school.off,
+    );
+    fireEvent.click(await school.findByRole('button', { name: en.setup.settings.school.turnOn }));
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'From this year' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === 'PUT /api/setup/school-settings/rating-exams-primary')
+          ?.body,
+      ).toEqual({ on: true, reason: 'From this year' });
+    });
+  });
+
+  it('lists the journals in the way of a turn-off and sends nothing', async () => {
+    const calls = settingsApi('super_admin', {
+      'GET /api/setup/school-settings': () =>
+        json({ ratingExamsPrimary: true, differing: [], mayChange: true }),
+      'POST /api/setup/school-settings/rating-exams-primary/preview': () =>
+        json({
+          quarterCount: 4,
+          branches: [],
+          entries: [
+            {
+              branchId: NORTH.id,
+              branchName: 'North',
+              quarterId: QUARTER_ID,
+              number: 1,
+              journalId: JOURNAL_ID,
+              unit: { kind: 'class', id: '0199b000-0000-7000-8000-000000000022', name: '1 London' },
+              subject: PREVIEW.quarters[0]?.journals[0]?.subject,
+            },
+          ],
+          groups: [],
+          weightsMissing: [],
+        }),
+    });
+    renderApp('/setup/settings');
+    const school = await section(en.setup.settings.school.title);
+    fireEvent.click(await school.findByRole('button', { name: en.setup.settings.school.turnOff }));
+    expect(
+      await school.findByText(
+        en.setup.settings.school.entryLine
+          .replace('{{branch}}', 'North')
+          .replace('{{number}}', '1')
+          .replace('{{unit}}', '1 London')
+          .replace('{{subject}}', 'Mathematics'),
+      ),
+    ).toBeDefined();
+    expect(
+      calls.some((call) => call.route === 'PUT /api/setup/school-settings/rating-exams-primary'),
+    ).toBe(false);
+  });
+
+  it('shows the Principal the setting without the switch', async () => {
+    settingsApi('principal');
+    renderApp('/setup/settings');
+    const school = await section(en.setup.settings.school.title);
+    expect(await school.findByTestId('rating-exams-primary')).toBeDefined();
+    expect(school.queryByRole('button', { name: en.setup.settings.school.turnOn })).toBeNull();
+  });
+
   it('lets the Academic Vice Principal change the edit days', async () => {
     const calls = settingsApi('academic_vice_principal', {
       'PUT /api/setup/settings/edit-days': () => json({ ...SETTINGS, editDays: 10 }),

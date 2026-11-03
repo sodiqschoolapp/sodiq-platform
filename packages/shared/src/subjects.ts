@@ -107,6 +107,27 @@ export const quarterWeightsSchema = z
 export type QuarterWeights = z.infer<typeof quarterWeightsSchema>;
 
 /**
+ * The quarterly distribution of a rating subject without the rating exam (task 9.4f; `05`,
+ * Grading weights on a subject: the row "beside its usual one" that a journal of grades 0–4 uses
+ * in a quarter whose state of "Rating exams in grades 0–4" is off): attendance, classwork and
+ * homework, totalling 100.
+ */
+export const primaryQuarterWeightsSchema = z
+  .strictObject({
+    attendance: weightSchema,
+    classwork: weightSchema,
+    homework: weightSchema,
+    /** Required for a change of a stored distribution in an open quarter (as task 9.1). */
+    reason: changeReasonSchema.optional(),
+  })
+  .refine(
+    (weights) => weights.attendance + weights.classwork + weights.homework === WEIGHTS_TOTAL,
+    { path: ['total'], message: TOTAL_MESSAGE },
+  );
+
+export type PrimaryQuarterWeights = z.infer<typeof primaryQuarterWeightsSchema>;
+
+/**
  * The grades of a subject: at least one, each once, from 0 to 11, in
  * ascending order. The form sends them in that order; a body in another order
  * is refused, so two bodies that mean the same cannot differ (as the working
@@ -290,6 +311,16 @@ export const subjectQuarterSchema = z.object({
   graded: z.boolean(),
   /** The subject has the rating exam in this quarter: the shape of its distribution (task 8.2). */
   ratingExam: z.boolean(),
+  /**
+   * Task 9.4f: the stored distribution without the rating exam (of a rating subject), or `null`
+   * when none is stored or it no longer fits the quarter's rounds.
+   */
+  primary: z.object({ attendance: z.int(), classwork: z.int(), homework: z.int() }).nullable(),
+  /**
+   * Task 9.4f: the quarter's state of "Rating exams in grades 0–4" is off and the subject has the
+   * rating exam and a grade of 0 to 4, so its journals of grades 0–4 use `primary`.
+   */
+  primaryNeeded: z.boolean(),
 });
 
 export type SubjectQuarter = z.infer<typeof subjectQuarterSchema>;
