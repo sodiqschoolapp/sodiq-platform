@@ -808,6 +808,9 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
     const oxford = await scene(7);
     const plain = await load.classes.subject({ grades: [1] });
     const vice = await viceOf(london.s.branch);
+    // A teacher of the branch of the request, so that the role decides the refusal, not the branch.
+    const teacher = await t.kit.completeSession('Sardor', 'Toshmatov');
+    await t.kit.giveRole(teacher.account.id, { role: 'teacher', branchId: london.s.branch });
     const before = { stored: await stored(), rows: await rowsOf() };
     // 20 · 40 · 40 in place of 10 · 50 · 40: (20 × 50 + 40 × 90) ÷ 60 = 76.7 in place of 83.3.
     const shown = gradeChangesSchema.parse(
@@ -856,16 +859,16 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
       t.post(`${path}/preview`, london.s.branch, { attendance: 20, classwork: 40, homework: 41 }),
     );
     expect(total.status).toBe(400);
-    // A teacher may not preview it; the Academic Vice Principal may.
-    const teacher = await at(() =>
+    // A teacher of the branch may not preview it; the Academic Vice Principal may.
+    const refusedTeacher = await at(() =>
       t.post(
         `${path}/preview`,
         london.s.branch,
         { attendance: 20, classwork: 40, homework: 40 },
-        t.teacher,
+        teacher.cookie,
       ),
     );
-    expect(teacher.status).toBe(403);
+    expect([refusedTeacher.status, codeOf(refusedTeacher)]).toEqual([403, 'permission_denied']);
     ok(
       await at(() =>
         t.post(
@@ -931,7 +934,9 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
     for (const quarter of later) {
       expect(
         entries
-          .filter((entry) => (entry.details as { quarterId?: string } | null)?.quarterId === quarter)
+          .filter(
+            (entry) => (entry.details as { quarterId?: string } | null)?.quarterId === quarter,
+          )
           .map((entry) => entry.new_value),
         quarter,
       ).toContainEqual({ weights: { attendance: 30, classwork: 40, homework: 30 } });
@@ -996,6 +1001,10 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
       old_value: { ratingExamsPrimary: true },
       new_value: { ratingExamsPrimary: true },
     });
+    // The entry names the one quarter it changed: the reopened one, from off.
+    expect((entry?.details as { quarters?: unknown }).quarters).toEqual([
+      { branchId: london.s.branch, quarterId: q1, number: 1, from: false },
+    ]);
     // Now nothing differs: the same value again is refused.
     const again = await change({ on: true, reason: 'Again' });
     expect([again.status, codeOf(again)]).toEqual([409, 'setting_unchanged']);
