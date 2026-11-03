@@ -420,6 +420,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects',
       'POST /api/setup/subjects/:id/archive',
       'POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview',
+      'POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview',
       'POST /api/setup/subjects/:id/quarter-weights/copy',
       'POST /api/setup/subjects/:id/quarter-weights/copy/preview',
       'POST /api/setup/subjects/:id/restore',

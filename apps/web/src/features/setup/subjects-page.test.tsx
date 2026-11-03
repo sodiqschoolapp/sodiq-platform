@@ -581,6 +581,14 @@ describe('the subjects page', () => {
         quarter(3, RATED),
         quarter(4, RATED),
       ],
+      extra: {
+        // The owner's answer A on #276: its own preview of the grades that change, then the reason.
+        [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary/preview`]: () =>
+          json({
+            reasonRequired: true,
+            quarters: [{ quarterId: uid(41), number: 1, journals: [] }],
+          }),
+      },
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
@@ -601,9 +609,29 @@ describe('the subjects page', () => {
       expect(
         calls.find(
           (call) =>
-            call.route === `PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary`,
+            call.route ===
+            `POST /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary/preview`,
         )?.body,
       ).toEqual({ attendance: 10, classwork: 50, homework: 40 });
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: en.results.change.title }));
+    expect(dialog.getByText(en.results.change.noGrades)).toBeDefined();
+    fireEvent.change(dialog.getByLabelText(en.results.change.reason), {
+      target: { value: 'Agreed by the department' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: en.results.change.save }));
+    await waitFor(() => {
+      expect(
+        calls.find(
+          (call) =>
+            call.route === `PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}/primary`,
+        )?.body,
+      ).toEqual({
+        attendance: 10,
+        classwork: 50,
+        homework: 40,
+        reason: 'Agreed by the department',
+      });
     });
   });
 

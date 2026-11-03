@@ -382,6 +382,7 @@ describe('OpenAPI document', () => {
         '/api/setup/subjects/{id}/quarter-weights/{quarterId}',
         '/api/setup/subjects/{id}/quarter-weights/{quarterId}/preview',
         '/api/setup/subjects/{id}/quarter-weights/{quarterId}/primary',
+        '/api/setup/subjects/{id}/quarter-weights/{quarterId}/primary/preview',
         '/api/setup/subjects/{id}/restore',
         '/api/setup/travel-times',
         '/api/timetable/absences',

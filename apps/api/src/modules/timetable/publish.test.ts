@@ -1001,6 +1001,85 @@ describe('publish', () => {
       expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
     });
 
+    // The review of #276, finding 2 (`edge/academic-year`, publishing without weights: "a class or
+    // group of grades 0–4"): a group of grades 0–4 needs the distribution too.
+    it('refuses a rating subject taught in a group of grade 1 without its distribution without the rating exam while the state is off', async () => {
+      const s = await scene();
+      const reading = await load.classes.subject({ grades: [1], journalType: 'graded' });
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', reading)
+        .execute();
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({
+          branch_id: s.branch,
+          subject_id: reading,
+          attendance: 20,
+          classwork: 40,
+          homework: 40,
+        })
+        .execute();
+      const quarters = await quarterIds(s.year);
+      for (const quarter of quarters) {
+        await t.database.migrator
+          .insertInto('subject_quarter_weights')
+          .values({
+            branch_id: s.branch,
+            subject_id: reading,
+            quarter_id: quarter,
+            attendance: 20,
+            classwork: 30,
+            homework: 30,
+            rating_exam: 20,
+          })
+          .execute();
+      }
+      const first = await load.classes.schoolClass(s.branch, s.year, {
+        grade: 1,
+        room: await load.classes.room(s.branch),
+      });
+      const group = await load.classes.group(s.branch, s.year, reading, [first]);
+      const teacher = (
+        await load.teacher(s.branch, { subjects: [{ subject: reading, grades: [1] }] })
+      ).staffId;
+      await hours(s.branch, teacher);
+      const version = await draft(s.branch, s.year);
+      const rowId = await load.row({
+        branch_id: s.branch,
+        version_id: version,
+        group_id: group,
+        subject_id: reading,
+        teacher_id: teacher,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, version, rowId, 2);
+      await confirmTemplates(s.branch, version);
+      expect(blockedBy(await publish(s.branch, version, MONDAY))).toEqual(
+        [1, 2, 3, 4].map((quarter) => ({
+          code: 'subject_quarter_primary_weights',
+          path: `subjects.${reading}.quarters.${String(quarter)}`,
+        })),
+      );
+      await t.database.migrator
+        .insertInto('subject_quarter_primary_weights')
+        .values(
+          quarters.map((quarter) => ({
+            branch_id: s.branch,
+            subject_id: reading,
+            quarter_id: quarter,
+            attendance: 10,
+            classwork: 50,
+            homework: 40,
+            weights_round: 1,
+            rating_round: 1,
+          })),
+        )
+        .execute();
+      expect(checkOf(await check(s.branch, version, MONDAY)).refusals).toEqual([]);
+    });
+
     it('counts only the distributions of the current round', async () => {
       const s = await scene({ journalType: 'graded' });
       await weigh(s.branch, s.subject, await quarterIds(s.year));

@@ -276,4 +276,8 @@ export const SETUP_IDS: RouteIds = {
     school('path:id', 'subject', SUBJECTS, [WEIGHT_WRITES]),
     branch('path:quarterId', 'quarter', PATH, [WEIGHT_WRITES]),
   ],
+  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview': [
+    school('path:id', 'subject', SUBJECTS, [WEIGHT_PREVIEWS]),
+    branch('path:quarterId', 'quarter', PATH, [WEIGHT_PREVIEWS]),
+  ],
 };

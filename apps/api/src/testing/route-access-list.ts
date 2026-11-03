@@ -451,6 +451,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },
+  // Its preview, writing nothing: the roles of the write (the owner's answer A on #276).
+  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview': {
+    branch: 'request',
+    roles: SUBJECT_WRITERS,
+  },
   'GET /api/people/staff': { branch: 'request', roles: STAFF_VIEWERS },
   'POST /api/people/staff/export': { branch: 'request', roles: EXPORTERS },
   'GET /api/people/staff/:id': { branch: 'request', roles: STAFF_VIEWERS },

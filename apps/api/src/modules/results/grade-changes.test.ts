@@ -463,6 +463,16 @@ describe('the preview and the reason of a change of weights or values', () => {
       ],
       [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/preview`, CHANGED],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/preview`, CHANGED],
+      // Task 9.4f: the preview of the distribution without the rating exam (answer A on #276).
+      [
+        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}/primary/preview`,
+        PRIMARY,
+      ],
+      [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/primary/preview`, PRIMARY],
+      [
+        `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/primary/preview`,
+        PRIMARY,
+      ],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: other.s.year }],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: UNKNOWN }],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/copy/preview`, { yearId: x.s.year }],

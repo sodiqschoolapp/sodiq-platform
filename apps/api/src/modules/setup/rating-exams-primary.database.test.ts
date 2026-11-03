@@ -5,6 +5,7 @@ import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { LessonsKit } from '../../testing/lessons-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { ratingJournalsOf } from '../timetable/exam-rating.js';
 
 /** Thursday 15 October 2026, 10:00 in Tashkent: quarter 1 has started. */
 const NOW = '2026-10-15T10:00:00+05:00';
@@ -838,6 +839,34 @@ describe('rating exams in grades 0–4 in the database', () => {
         .execute();
       expect(southStates).toEqual([]);
     });
+  });
+
+  // The review of #276, finding 5: a timetable rating exam links no journal whose rating exam is
+  // off (grades 0–4 while the quarter's state is off), and links it once the state is on.
+  it('links a timetable rating exam to no journal of grades 0–4 while the quarter’s state is off', async () => {
+    const b = await fresh();
+    await setting(false, quartersOf(b));
+    const id = await subject([1, 7]);
+    const first = await journalOf(b, id, 1);
+    const seventh = await journalOf(b, id, 7);
+    const reached = () =>
+      inBranch(b, (transaction) =>
+        ratingJournalsOf(transaction, {
+          branchId: b,
+          yearId: years.get(b)?.year ?? '',
+          subjectId: id,
+          date: '2026-10-12',
+          classIds: [first.classId, seventh.classId],
+          groupIds: [],
+        }),
+      );
+    expect(await reached()).toEqual({ linked: [seventh.journal], notLinked: [] });
+    await setting(true, [quarterOf(b, 1)]);
+    expect(await reached()).toEqual({
+      linked: [first.journal, seventh.journal].sort(),
+      notLinked: [],
+    });
+    await setting(false, [quarterOf(b, 1)]);
   });
 
   it('puts the branch behind for the prepared totals when a state changes', async () => {

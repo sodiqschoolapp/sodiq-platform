@@ -466,17 +466,21 @@ function QuarterWeights({
       ),
     onSuccess: refresh,
   });
-  // Its preview of the grades that change waits for the owner (a route of its own): a change of
-  // a stored one is refused `reason_required`, and the reason is asked then.
+  /**
+   * Saves it after its preview of the grades that change (`edge/calculation`, week 7; the
+   * owner's answer A on #276), as a quarter's usual one: `false` when the person went back.
+   */
   const savePrimary = async (quarterId: string, weights: Weights): Promise<boolean> => {
-    try {
-      await setPrimary.mutateAsync({ quarterId, weights, reason: undefined });
-      return true;
-    } catch (error) {
-      if (!(error instanceof ApiFailure && error.code === 'reason_required')) throw error;
-    }
-    const reason = await reasons.ask({ reasonRequired: true, quarters: [] });
-    if (reason === null || reason === undefined) return false;
+    const preview = gradeChangesSchema.parse(
+      await answerOf(
+        api.POST('/api/setup/subjects/{id}/quarter-weights/{quarterId}/primary/preview', {
+          params: { header: branchHeader(), path: { id: subject.id, quarterId } },
+          body: primaryBody(weights),
+        }),
+      ),
+    );
+    const reason = await reasons.ask(preview);
+    if (reason === null) return false;
     await setPrimary.mutateAsync({ quarterId, weights, reason });
     return true;
   };

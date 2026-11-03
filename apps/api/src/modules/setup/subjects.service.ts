@@ -824,9 +824,7 @@ export class Subjects {
    * the rating exam of a rating subject, the row its journals of grades 0–4 use while the quarter's
    * state of "Rating exams in grades 0–4" is off. Refused for a subject without the rating exam in
    * the quarter, an attendance-only or archived subject, a closed quarter or year; a change of a
-   * stored one needs a reason, as 9.1 asks of the usual one. Its preview of the grades that change
-   * needs a route of its own, which waits for the owner (stop-list item 5; spec review of the code,
-   * must-fix 1).
+   * stored one needs a reason, as 9.1 asks of the usual one.
    */
   setPrimaryWeights(
     access: Access,
@@ -836,6 +834,23 @@ export class Subjects {
     requestId: string,
   ): Promise<SubjectQuarterWeights> {
     return this.writePrimaryWeights(access, id, quarterId, weights, requestId, false);
+  }
+
+  /**
+   * Task 9.4f (`edge/calculation`, week 7: "Before saving, the system shows how many grades will
+   * change in each journal"; the owner's answer A on #276): the write of the distribution without
+   * the rating exam, rolled back, with the grades it alters. Refuses what it refuses.
+   */
+  previewPrimaryWeights(
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: PrimaryQuarterWeights,
+    requestId: string,
+  ): Promise<GradeChanges> {
+    return previewOf(() =>
+      this.writePrimaryWeights(access, id, quarterId, weights, requestId, true),
+    );
   }
 
   private writePrimaryWeights(

@@ -1,8 +1,10 @@
 import {
   closingChecklistSchema,
+  gradeChangesSchema,
   journalGridSchema,
   ratingExamsPrimaryPreviewSchema,
   schoolSettingsSchema,
+  subjectListSchema,
   subjectQuarterWeightsSchema,
   type ClosingChecklist,
   type JournalGrid,
@@ -11,10 +13,11 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
-import { closeQuarter } from '../../testing/closing-kit.js';
+import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
+import { prepareBranch } from '../../testing/prepared-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
@@ -786,6 +789,229 @@ describe('the school setting "Rating exams in grades 0–4"', () => {
     );
     const [entry] = (await t.entries('subject_quarter_primary_weights.set', mathematics)).slice(-1);
     expect(entry?.new_value).toEqual({ weights: { attendance: 30, classwork: 40, homework: 30 } });
+  });
+
+  // The owner's answer A on #276 (`edge/calculation`, week 7): the distribution without the rating
+  // exam has a preview of its own, under the roles of its write, that writes nothing.
+  it('previews the grades a change of the distribution without the rating exam alters, writes nothing, and refuses what its write refuses', async () => {
+    const london = await scene(1);
+    const quarter = london.quarters[0] ?? '';
+    const path = `/api/setup/subjects/${mathematics}/quarter-weights/${quarter}/primary`;
+    const stored = () =>
+      t.database.migrator
+        .selectFrom('subject_quarter_primary_weights')
+        .selectAll()
+        .where('branch_id', '=', london.s.branch)
+        .orderBy('quarter_id')
+        .execute();
+    // Everything the test reads later is made first, so that nothing is written after `before`.
+    const oxford = await scene(7);
+    const plain = await load.classes.subject({ grades: [1] });
+    const vice = await viceOf(london.s.branch);
+    const before = { stored: await stored(), rows: await rowsOf() };
+    // 20 · 40 · 40 in place of 10 · 50 · 40: (20 × 50 + 40 × 90) ÷ 60 = 76.7 in place of 83.3.
+    const shown = gradeChangesSchema.parse(
+      ok(
+        await at(() =>
+          t.post(`${path}/preview`, london.s.branch, {
+            attendance: 20,
+            classwork: 40,
+            homework: 40,
+          }),
+        ),
+      ),
+    );
+    expect(shown.reasonRequired).toBe(true);
+    expect(shown.quarters).toEqual([
+      expect.objectContaining({
+        quarterId: quarter,
+        number: 1,
+        journals: [expect.objectContaining({ journalId: london.journal, results: 1 })],
+      }),
+    ]);
+    expect({ stored: await stored(), rows: await rowsOf() }).toEqual(before);
+    // The 7 Oxford journal of the same subject uses its usual distribution: nothing changes there.
+    const seventh = gradeChangesSchema.parse(
+      ok(
+        await at(() =>
+          t.post(
+            `/api/setup/subjects/${mathematics}/quarter-weights/${oxford.quarters[0] ?? ''}/primary/preview`,
+            oxford.s.branch,
+            { attendance: 20, classwork: 40, homework: 40 },
+          ),
+        ),
+      ),
+    );
+    expect(seventh.quarters.flatMap((one) => one.journals)).toEqual([]);
+    // What the write refuses, the preview refuses: a subject without the rating exam.
+    const refused = await at(() =>
+      t.post(
+        `/api/setup/subjects/${plain}/quarter-weights/${quarter}/primary/preview`,
+        london.s.branch,
+        { attendance: 20, classwork: 40, homework: 40 },
+      ),
+    );
+    expect([refused.status, codeOf(refused)]).toEqual([409, 'primary_weights_no_rating']);
+    const total = await at(() =>
+      t.post(`${path}/preview`, london.s.branch, { attendance: 20, classwork: 40, homework: 41 }),
+    );
+    expect(total.status).toBe(400);
+    // A teacher may not preview it; the Academic Vice Principal may.
+    const teacher = await at(() =>
+      t.post(
+        `${path}/preview`,
+        london.s.branch,
+        { attendance: 20, classwork: 40, homework: 40 },
+        t.teacher,
+      ),
+    );
+    expect(teacher.status).toBe(403);
+    ok(
+      await at(() =>
+        t.post(
+          `${path}/preview`,
+          london.s.branch,
+          { attendance: 20, classwork: 40, homework: 40 },
+          vice,
+        ),
+      ),
+    );
+    expect({ stored: await stored(), rows: await rowsOf() }).toEqual(before);
+  });
+
+  // The review of #276, finding 3: the copy of quarter 1 carries its distribution without the
+  // rating exam; finding 4: the list's marker counts a missing one.
+  it('copies quarter 1’s distribution without the rating exam with the copy, and counts a missing one in the list', async () => {
+    const london = await scene(1);
+    const [q1, ...later] = london.quarters;
+    const missingOf = async () => {
+      const listed = subjectListSchema.parse(
+        ok(await at(() => t.get('/api/setup/subjects', london.s.branch))),
+      );
+      const own = listed.subjects.find((one) => one.id === mathematics);
+      return [own?.quarterWeightsMissing, own?.quarterCount];
+    };
+    expect(await missingOf()).toEqual([0, 4]);
+    await t.database.migrator
+      .deleteFrom('subject_quarter_primary_weights')
+      .where('branch_id', '=', london.s.branch)
+      .where('quarter_id', 'in', later)
+      .execute();
+    // Quarters 2 to 4 have their usual distribution but none without the rating exam.
+    expect(await missingOf()).toEqual([3, 4]);
+    ok(
+      await at(() =>
+        t.put(
+          `/api/setup/subjects/${mathematics}/quarter-weights/${q1 ?? ''}/primary`,
+          london.s.branch,
+          { attendance: 30, classwork: 40, homework: 30, reason: 'Agreed by the department' },
+        ),
+      ),
+    );
+    ok(
+      await at(() =>
+        t.post(`/api/setup/subjects/${mathematics}/quarter-weights/copy`, london.s.branch, {
+          yearId: london.s.year,
+          reason: 'One distribution for the year',
+        }),
+      ),
+    );
+    const copied = await t.database.migrator
+      .selectFrom('subject_quarter_primary_weights')
+      .select(['quarter_id', 'attendance', 'classwork', 'homework'])
+      .where('branch_id', '=', london.s.branch)
+      .where('subject_id', '=', mathematics)
+      .execute();
+    expect(
+      new Map(copied.map((one) => [one.quarter_id, [one.attendance, one.classwork, one.homework]])),
+    ).toEqual(new Map(london.quarters.map((one) => [one, [30, 40, 30]])));
+    expect(await missingOf()).toEqual([0, 4]);
+    // Each copied quarter has its audit entry.
+    const entries = await t.entries('subject_quarter_primary_weights.set', mathematics);
+    for (const quarter of later) {
+      expect(
+        entries
+          .filter((entry) => (entry.details as { quarterId?: string } | null)?.quarterId === quarter)
+          .map((entry) => entry.new_value),
+        quarter,
+      ).toContainEqual({ weights: { attendance: 30, classwork: 40, homework: 30 } });
+    }
+    // With the state on, the journals of grades 0–4 use the usual one: nothing is missing.
+    await t.database.migrator
+      .deleteFrom('subject_quarter_primary_weights')
+      .where('branch_id', '=', london.s.branch)
+      .where('quarter_id', '=', later[0] ?? '')
+      .execute();
+    expect(await missingOf()).toEqual([1, 4]);
+    ok(await change({ on: true, reason: 'Turned on' }));
+    expect(await missingOf()).toEqual([0, 4]);
+    ok(await change({ on: false, reason: 'Turned off' }));
+  });
+
+  // The review of #276, finding 1 (decision 12, second half): the value in force is accepted where
+  // a reopened quarter differs from it, and sets that quarter.
+  it('sets a reopened quarter that differs when the value in force is sent again', async () => {
+    const london = await scene(1);
+    const [q1, q2] = london.quarters;
+    await closeQuarter(t.database, {
+      branchId: london.s.branch,
+      quarterId: q1 ?? '',
+      accountId: await load.classes.account(),
+    });
+    ok(await change({ on: true, reason: 'Turned on' }));
+    expect(await stateOf(q1 ?? '')).toBe(false);
+    await reopenQuarter(t.database, {
+      branchId: london.s.branch,
+      quarterId: q1 ?? '',
+      journalId: null,
+      accountId: await load.classes.account(),
+      at: '2026-10-27T09:00:00+05:00',
+    });
+    const read = schoolSettingsSchema.parse(ok(await at(() => t.get(SETTING, london.s.branch))));
+    expect(read.ratingExamsPrimary).toBe(true);
+    expect(read.differing).toEqual([
+      expect.objectContaining({
+        branchId: london.s.branch,
+        quarterId: q1,
+        number: 1,
+        ratingExamsPrimary: false,
+      }),
+    ]);
+    const done = schoolSettingsSchema.parse(
+      ok(await change({ on: true, reason: 'The reopened quarter follows the setting' })),
+    );
+    expect(done.differing).toEqual([]);
+    expect(await stateOf(q1 ?? '')).toBe(true);
+    expect(await stateOf(q2 ?? '')).toBe(true);
+    const [entry] = (
+      await t.database.migrator
+        .selectFrom('audit_log_school')
+        .select(['old_value', 'new_value', 'details'])
+        .where('action', '=', 'school_settings.rating_exams_primary')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .execute()
+    ).slice(-1);
+    expect(entry).toMatchObject({
+      old_value: { ratingExamsPrimary: true },
+      new_value: { ratingExamsPrimary: true },
+    });
+    // Now nothing differs: the same value again is refused.
+    const again = await change({ on: true, reason: 'Again' });
+    expect([again.status, codeOf(again)]).toEqual([409, 'setting_unchanged']);
+    ok(await change({ on: false, reason: 'Turned off' }));
+  });
+
+  // The review of #276, finding 6: a change through the route puts the prepared report units of
+  // the branch behind, so the totals are prepared again.
+  it('puts the prepared report units of the branch behind when the setting changes through the route', async () => {
+    const london = await scene(1);
+    expect(await prepareBranch(t, london.s.branch)).toBeGreaterThan(0);
+    expect(await prepareBranch(t, london.s.branch)).toBe(0);
+    ok(await change({ on: true, reason: 'Turned on' }));
+    expect(await prepareBranch(t, london.s.branch)).toBeGreaterThan(0);
+    ok(await change({ on: false, reason: 'Turned off' }));
+    expect(await prepareBranch(t, london.s.branch)).toBeGreaterThan(0);
   });
 
   it('lets the Principal and the Academic Vice Principal read the setting, and refuses them the change', async () => {
