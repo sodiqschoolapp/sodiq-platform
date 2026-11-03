@@ -1,4 +1,9 @@
 import {
+  staffImportConfirmResultSchema,
+  staffImportPreviewSchema,
+  type StaffImportConfirmResult,
+  type StaffImportDecisions,
+  type StaffImportPreview,
   actingTeacherCheckSchema,
   actingTeacherSchema,
   type ActingTeacherBody,
@@ -660,6 +665,59 @@ export const confirmImport = async (
   studentImportConfirmResultSchema.parse(
     await answerOf(
       api.POST('/api/people/students/imports/{id}/confirm', {
+        params: { header: branchHeader(), path: { id } },
+        body: decisions,
+      }),
+    ),
+  );
+
+/**
+ * The staff import (task 9.4h): the system's template, the upload of a filled
+ * one, its preview with the decisions so far, and the confirm, whose answer
+ * holds the first passwords once (kept in no cache by its caller).
+ */
+export const downloadStaffImportTemplate = async (language: Language): Promise<void> => {
+  const answer = await api.GET('/api/people/staff/import-template', {
+    params: { header: branchHeader(), query: { language } },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(answer));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(answer.response.headers.get('Content-Disposition'), 'staff-import.xlsx'));
+};
+
+export const uploadStaffImport = async (file: File): Promise<StaffImportPreview> =>
+  staffImportPreviewSchema.parse(
+    await answerOf(
+      api.PUT('/api/people/staff/imports', {
+        params: { header: branchHeader() },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as Blob,
+        headers: { 'Content-Type': STUDENT_IMPORT_TYPES[0] ?? '' },
+      }),
+    ),
+  );
+
+export const previewStaffImport = async (
+  id: string,
+  decisions: StaffImportDecisions,
+): Promise<StaffImportPreview> =>
+  staffImportPreviewSchema.parse(
+    await answerOf(
+      api.POST('/api/people/staff/imports/{id}/preview', {
+        params: { header: branchHeader(), path: { id } },
+        body: decisions,
+      }),
+    ),
+  );
+
+export const confirmStaffImport = async (
+  id: string,
+  decisions: StaffImportDecisions,
+): Promise<StaffImportConfirmResult> =>
+  staffImportConfirmResultSchema.parse(
+    await answerOf(
+      api.POST('/api/people/staff/imports/{id}/confirm', {
         params: { header: branchHeader(), path: { id } },
         body: decisions,
       }),

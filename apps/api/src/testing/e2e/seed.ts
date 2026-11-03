@@ -12,8 +12,9 @@ import { insertBranch, setEditDays } from '../branch-filter-sql.js';
 import { LessonsKit } from '../lessons-kit.js';
 import { LoadKit } from '../load-kit.js';
 import { linkRelative } from '../relatives-kit.js';
+import { filledStaffTemplate, staffRow } from '../staff-import-kit.js';
 import { filledTemplate, studentRow } from '../student-import-kit.js';
-import { STUDENT_IMPORT_FILE } from './import-file.js';
+import { STAFF_IMPORT_FILE, STUDENT_IMPORT_FILE } from './import-file.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
 
@@ -800,6 +801,37 @@ try {
     ]),
   );
   seeded.importVice = { login: importVice.login, password: importVice.firstPassword };
+
+  // The filled staff template of the staff import step (task 9.4h): two invented teachers of
+  // STEAM admitted today, without subjects. The seed holds no fourth Super Admin, so the step
+  // runs at the end of the years test, in its branch.
+  writeFileSync(
+    STAFF_IMPORT_FILE,
+    await filledStaffTemplate([
+      staffRow({
+        lastName: 'Qodirov',
+        firstName: 'Anvar',
+        phone: '+998935550201',
+        jshshir: '',
+        subject1: '',
+        languages: '',
+        admissionDate: dotted,
+        contractDate: dotted,
+      }),
+      staffRow({
+        lastName: 'Qodirova',
+        firstName: 'Mohira',
+        sex: 'Female',
+        phone: '+998935550202',
+        jshshir: '',
+        subject1: '',
+        languages: '',
+        admissionDate: dotted,
+        contractDate: dotted,
+        role: 'Tutor',
+      }),
+    ]),
+  );
 
   // The Academic Vice Principal of the leaving test (task 2.4b-1), in a branch
   // of its own with the same planned year around today.

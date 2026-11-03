@@ -15,6 +15,7 @@ import { codeNow } from './totp';
 import { moveSubjectDepartment } from './department-move';
 import { mergeRecords } from './merges';
 import { forceDeleteAndRestore } from './timetable-forced-delete';
+import { importStaff } from './staff-import';
 
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
@@ -736,7 +737,7 @@ async function linkOwnRecord(page: Page): Promise<void> {
 test('the Super Admin adds a year, dates its quarters, sets the go-live date and starts the year; the top bar shows it', async ({
   page,
 }) => {
-  test.setTimeout(210_000);
+  test.setTimeout(240_000);
   await signInAsSuperAdmin(page, 'years');
   await page
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
@@ -810,6 +811,8 @@ test('the Super Admin adds a year, dates its quarters, sets the go-live date and
     linkOwnRecord(page));
   await test.step('moves a subject to another department once the load row listed is gone', () =>
     moveSubjectDepartment(page));
+  await test.step('imports two teachers from the staff template and gets their slips', () =>
+    importStaff(page));
 });
 
 // docs/spec/03-school-setup.md, Slot types and day templates: "A day template

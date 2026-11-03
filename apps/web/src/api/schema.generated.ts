@@ -104131,6 +104131,7 @@ export interface operations {
                             /** Format: date-time */
                             validUntil: string;
                         }[];
+                        issuedOn: string;
                     } | {
                         /** @enum {string} */
                         outcome: "not_clean";

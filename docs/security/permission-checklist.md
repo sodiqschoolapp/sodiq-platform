@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 487, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 462.
+- Routes of the application: 491, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 466.
 - Routes with a limit inside the route: 153.
-- Routes that take an id: 386, with 821 ids (branch 727, school 76, own 2, none 16).
+- Routes that take an id: 388, with 823 ids (branch 729, school 76, own 2, none 16).
 - Areas of the permission table: 57.
 
 ## Routes without a role
@@ -883,6 +883,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/people/staff/:id/status` | `path:id` | staff | branch | `src/modules/people/staff.test.ts > answers 404 for a record of another branch and for an unknown one, and changes nothing` |
 | `POST /api/people/staff/check` | `body:staffRecordId` | staff | branch | `src/modules/people/other-branch-ids.test.ts > answers 404 to the check of an edit of a staff member of another branch only or an unknown one` |
 | `POST /api/people/staff/export` | `body:ids` | staff | branch | `src/modules/people/exports.test.ts > answers 404 for a person of another branch, an unknown id and a vacancy, also to the Super Admin` |
+| `POST /api/people/staff/imports/:id/confirm` | `path:id` | staff import | branch | `src/modules/people/staff-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
+| `POST /api/people/staff/imports/:id/preview` | `path:id` | staff import | branch | `src/modules/people/staff-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
 | `POST /api/people/students` | `body:relatives[]<kind=existing>.relativeId` | relative | none | 04, Close relatives, and edge/close-relatives: the holder of a phone found by the phone match, in any branch; checked against the phone sent (relative_phone_changed), never read for the request |
 | `POST /api/people/students` | `body:relatives[]<kind=new_owner>.previousId` | relative | none | 04, Close relatives, and edge/close-relatives: the holder of a phone found by the phone match, in any branch; checked against the phone sent (relative_phone_changed), never read for the request |
 | `POST /api/people/students` | `body:classId` | class | branch | `src/modules/classes/class-members.test.ts > answers 404 for a class of another branch or unknown, creating nothing`<br>`src/modules/classes/class-groups.test.ts > answers 404 to the create with a class of another branch or unknown, changing nothing` |

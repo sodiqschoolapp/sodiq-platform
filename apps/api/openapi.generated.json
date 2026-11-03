@@ -551157,13 +551157,17 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "issuedOn": {
+                          "type": "string"
                         }
                       },
                       "required": [
                         "outcome",
                         "created",
                         "staff",
-                        "slips"
+                        "slips",
+                        "issuedOn"
                       ],
                       "additionalProperties": false
                     },

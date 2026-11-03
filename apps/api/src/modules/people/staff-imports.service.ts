@@ -325,6 +325,7 @@ export class StaffImports {
             login: row.login,
           })),
           slips: result.saved.flatMap((row) => (row.slip === null ? [] : [row.slip])),
+          issuedOn: await this.staff.todayIn(transaction, branchId),
         };
       });
     } catch (error) {

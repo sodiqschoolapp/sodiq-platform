@@ -420,6 +420,8 @@ export const staffImportConfirmResultSchema = z.discriminatedUnion('outcome', [
       }),
     ),
     slips: z.array(firstPasswordSlipSchema),
+    /** The day of issue printed on the slips: today in the branch. */
+    issuedOn: z.string(),
   }),
   z.object({ outcome: z.literal('not_clean'), preview: staffImportPreviewSchema }),
 ]);
