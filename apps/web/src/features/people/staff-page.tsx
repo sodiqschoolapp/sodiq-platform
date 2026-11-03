@@ -13,7 +13,7 @@ import {
   type StaffRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -27,7 +27,7 @@ import { type Column, type Filter, type ListSearch } from '@/components/list/lis
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { ErrorState } from '@/components/states';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
@@ -327,15 +327,21 @@ export function StaffPage() {
   };
 
   const addButton = canCreate && newRecord.value === null && (
-    <Button
-      id={newRecord.buttonId}
-      disabled={divisions.data === undefined}
-      onClick={() => {
-        newRecord.start(true);
-      }}
-    >
-      {t('people.staff.add')}
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      {/* Task 9.4h: the import from the system's template, for the Super Admin, who creates staff. */}
+      <Link to="/people/staff/import" className={buttonVariants({ variant: 'secondary' })}>
+        {t('people.staffImport.open')}
+      </Link>
+      <Button
+        id={newRecord.buttonId}
+        disabled={divisions.data === undefined}
+        onClick={() => {
+          newRecord.start(true);
+        }}
+      >
+        {t('people.staff.add')}
+      </Button>
+    </div>
   );
   const pending = divisions.data === undefined || subjects.data === undefined;
   const failed = divisions.isError ? divisions : subjects.isError ? subjects : null;

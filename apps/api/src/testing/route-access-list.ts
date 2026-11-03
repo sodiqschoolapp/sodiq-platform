@@ -461,6 +461,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/staff/:id': { branch: 'request', roles: STAFF_VIEWERS },
   'POST /api/people/staff/check': { branch: 'request', roles: ['super_admin'] },
   'POST /api/people/staff': { branch: 'request', roles: ['super_admin'] },
+  // Task 9.4h: the staff import, the Super Admin only (approved with the spec change).
+  'GET /api/people/staff/import-template': { branch: 'request', roles: ['super_admin'] },
+  'PUT /api/people/staff/imports': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/imports/:id/preview': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/people/staff/imports/:id/confirm': { branch: 'request', roles: ['super_admin'] },
   'PUT /api/people/staff/:id': { branch: 'request', roles: STAFF_EDITORS },
   'PUT /api/people/staff/:id/teaching': { branch: 'request', roles: STAFF_EDITORS },
   'PUT /api/people/staff/:id/branches': { branch: 'request', roles: STAFF_EDITORS },

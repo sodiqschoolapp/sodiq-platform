@@ -1,5 +1,15 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  staffImportConfirmResultSchema,
+  staffImportDecisionsSchema,
+  staffImportParamsSchema,
+  staffImportPreviewSchema,
+  staffImportTemplateQuerySchema,
+  type StaffImportConfirmResult,
+  type StaffImportDecisions,
+  type StaffImportParams,
+  type StaffImportPreview,
+  type StaffImportTemplateQuery,
   staffBranchesSchema,
   staffCheckResultSchema,
   staffCheckSchema,
@@ -26,10 +36,19 @@ import {
   type StaffTeaching,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import { STAFF_IMPORT_ROUTE, type UploadedFile } from '../../http/file-routes.js';
+import {
+  Returns,
+  ReturnsFile,
+  ValidBody,
+  ValidFile,
+  ValidParams,
+  ValidQuery,
+} from '../../http/schemas.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { StaffImports } from './staff-imports.service.js';
 import { Staff } from './staff.service.js';
 
 /**
@@ -42,7 +61,10 @@ import { Staff } from './staff.service.js';
  */
 @Controller('people')
 export class StaffController {
-  constructor(private readonly staff: Staff) {}
+  constructor(
+    private readonly staff: Staff,
+    private readonly imports: StaffImports,
+  ) {}
 
   @Get('staff')
   @Requires('staff', 'view')
@@ -64,6 +86,63 @@ export class StaffController {
     @RequestId() requestId: string,
   ): Promise<XlsxFile> {
     return this.staff.export(access, request, requestId);
+  }
+
+  /**
+   * The system's template of the staff import (task 9.4h; `04`, Teacher and
+   * staff record: the import), for the Super Admin only: the route asks
+   * `staff` create and the service the Super Admin assignment, which also
+   * allows the accounts and roles (approved with the spec change). The import
+   * routes come before `staff/:id`, which would take them otherwise.
+   */
+  @Get('staff/import-template')
+  @Requires('staff', 'create')
+  @ReturnsFile()
+  importTemplate(
+    @CurrentAccess() access: Access,
+    @ValidQuery(staffImportTemplateQuerySchema) query: StaffImportTemplateQuery,
+  ): Promise<XlsxFile> {
+    return this.imports.template(access, query.language);
+  }
+
+  /** The upload of a filled template: the rows are kept and the preview answered (task 9.4h). */
+  @Put('staff/imports')
+  @Requires('staff', 'create')
+  @Returns(staffImportPreviewSchema)
+  importUpload(
+    @CurrentAccess() access: Access,
+    @ValidFile(STAFF_IMPORT_ROUTE) file: UploadedFile | null,
+    @RequestId() requestId: string,
+  ): Promise<StaffImportPreview> {
+    return this.imports.upload(access, file, requestId);
+  }
+
+  /** The preview of a kept upload with the decisions so far; nothing is saved (task 9.4h). */
+  @Post('staff/imports/:id/preview')
+  @HttpCode(200)
+  @Requires('staff', 'create')
+  @Returns(staffImportPreviewSchema)
+  importPreview(
+    @CurrentAccess() access: Access,
+    @ValidParams(staffImportParamsSchema) params: StaffImportParams,
+    @ValidBody(staffImportDecisionsSchema) decisions: StaffImportDecisions,
+    @RequestId() requestId: string,
+  ): Promise<StaffImportPreview> {
+    return this.imports.preview(access, params.id, decisions, requestId);
+  }
+
+  /** Saves every row of a kept upload, or nothing; answers the first-password slips once (task 9.4h). */
+  @Post('staff/imports/:id/confirm')
+  @HttpCode(200)
+  @Requires('staff', 'create')
+  @Returns(staffImportConfirmResultSchema)
+  importConfirm(
+    @CurrentAccess() access: Access,
+    @ValidParams(staffImportParamsSchema) params: StaffImportParams,
+    @ValidBody(staffImportDecisionsSchema) decisions: StaffImportDecisions,
+    @RequestId() requestId: string,
+  ): Promise<StaffImportConfirmResult> {
+    return this.imports.confirm(access, params.id, decisions, requestId);
   }
 
   @Get('staff/:id')

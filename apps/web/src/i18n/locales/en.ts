@@ -2098,6 +2098,53 @@ export const en = {
     neverUsedLink: 'Accounts never used',
     studentsLink: 'Students',
     parentsLink: 'Parents',
+    staffImport: {
+      open: 'Import from Excel',
+      title: 'Staff import',
+      saved_one: '{{count}} staff record saved.',
+      saved_other: '{{count}} staff records saved.',
+      toList: 'Open the staff list',
+      confirm_one: 'Save {{count}} person',
+      confirm_other: 'Save all {{count}} people',
+      role: 'Role',
+      noRole: 'No role',
+      warningHere:
+        'A staff record with this name and date of birth exists: {{names}}. Tick if this is another person.',
+      warningElsewhere:
+        'A staff record of another branch has this name and date of birth. Tick if this is another person.',
+      warningRows:
+        'Rows {{rows}} have this name and date of birth. Tick if these are different people.',
+      samePerson:
+        'The phone is the main phone of the relative {{name}}: marked as the same person.',
+      samePersonElsewhere: 'The phone is a relative’s main phone: marked as the same person.',
+      holderHere: 'It belongs to {{name}}.',
+      holderElsewhere:
+        'It belongs to a staff record of another branch. If this person worked at the school before, re-hire them by hand on that record, which keeps the staff ID and the login.',
+      holderLeft:
+        'It belongs to {{name}}, who has left: re-hire this person by hand on their record, which keeps the staff ID and the login.',
+      slipsTitle_one: 'First-password slip ({{count}})',
+      slipsTitle_other: 'First-password slips ({{count}})',
+      slipsOnce:
+        'The passwords are shown only now and are stored nowhere. Print the slips before you leave this page; a lost slip is replaced by a password reset.',
+      print: 'Print the slips',
+      problems: {
+        required: 'fill this in.',
+        invalid: 'this value is not accepted.',
+        date_invalid: 'write a real date as dd.mm.yyyy.',
+        phone_invalid: 'this is not a phone number.',
+        value_unknown: 'choose a value from the list.',
+        name_unknown: 'no such name in the school’s lists.',
+        name_ambiguous: 'two records have this name; write the name in another language.',
+        department_not_of_division: 'this department is not in the division of the row.',
+        grades_invalid:
+          'write the subject and its grades as “Mathematics: 5, 6, 7” or “Mathematics: 5-7”.',
+        subject_twice: 'this subject is in another column of the row.',
+        import_role_not_allowed: 'an import gives only Teacher or Tutor; give other roles by hand.',
+        duplicate_in_file: 'the same value is on rows {{rows}}.',
+        import_no_login:
+          'no login can be made from this name; create this person by hand and type the login.',
+      },
+    },
     import: {
       open: 'Import from Excel',
       title: 'Student import',
@@ -3569,6 +3616,10 @@ export const en = {
         journal_substitute: 'Substitute for a journal of the vacancy',
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
+      },
+      staff_import: {
+        upload: 'Staff import file uploaded',
+        confirm: 'Staff import confirmed',
       },
       student_import: {
         upload: 'Student import file uploaded',

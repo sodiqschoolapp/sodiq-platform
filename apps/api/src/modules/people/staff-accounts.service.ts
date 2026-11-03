@@ -40,7 +40,7 @@ import {
 import { Audit } from '../audit/audit.service.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { sendTutorChanges, tutorChanges } from '../timetable/tutor-changes.js';
-import { Accounts, LoginTakenError } from '../auth/accounts.service.js';
+import { Accounts, LoginTakenError, type PreparedFirstPassword } from '../auth/accounts.service.js';
 import { appointedSubjects } from '../access/appointment-subjects.js';
 import { actorsOf } from './actors.js';
 import { ROLE_END_TUTOR_REFUSALS } from '../classes/class-tutor-rows.js';
@@ -156,51 +156,97 @@ export class StaffAccounts {
       await readingBranches(this.transactions, access),
       async (transaction) => {
         const person = await findPerson(transaction, id, branchId, true);
-        if (person.accountId !== null) {
-          throw refused('account_exists');
-        }
-        await this.refuseLeft(transaction, id);
-        let created;
-        try {
-          created = await this.accounts.create(transaction, {
-            firstName: person.firstName,
-            lastName: person.lastName,
-            login,
-            createdBy: access.accountId,
-            actingAssignmentId: superAdmin,
-            personId: id,
-            requestId,
-          });
-        } catch (error) {
-          if (error instanceof LoginTakenError) {
-            throw new ApiException('login_taken', 409, undefined, [
-              { path: 'login', code: 'taken', message: 'The login is given to another account.' },
-            ]);
-          }
-          throw error;
-        }
-        await transaction
-          .updateTable('staff')
-          .set({ account_id: created.id })
-          .where('id', '=', id)
-          .execute();
-        const account = await transaction
-          .selectFrom('accounts')
-          .select('password_expires_at')
-          .where('id', '=', created.id)
-          .executeTakeFirstOrThrow();
-        if (account.password_expires_at === null) {
-          throw new Error('A first password always has an end.');
-        }
-        return {
-          firstName: person.firstName,
-          lastName: person.lastName,
-          login: created.login,
-          password: created.firstPassword,
-          validUntil: account.password_expires_at.toISOString(),
-        };
+        return this.createIn(transaction, access, superAdmin, person, login, requestId);
       },
     );
+  }
+
+  /**
+   * The body of `create` on a given transaction, for a person found and
+   * locked (task 9.4h: the staff import runs it for each row with a role).
+   * `firstPassword` is one made before the transaction (plan decision 5).
+   */
+  async createIn(
+    transaction: Transaction,
+    access: Access,
+    superAdmin: string,
+    person: Person,
+    login: string,
+    requestId: string,
+    firstPassword?: PreparedFirstPassword,
+  ): Promise<FirstPasswordSlip> {
+    const id = person.id;
+    if (person.accountId !== null) {
+      throw refused('account_exists');
+    }
+    await this.refuseLeft(transaction, id);
+    let created;
+    try {
+      created = await this.accounts.create(transaction, {
+        firstName: person.firstName,
+        lastName: person.lastName,
+        login,
+        createdBy: access.accountId,
+        actingAssignmentId: superAdmin,
+        personId: id,
+        requestId,
+        ...(firstPassword === undefined ? {} : { firstPassword }),
+      });
+    } catch (error) {
+      if (error instanceof LoginTakenError) {
+        throw new ApiException('login_taken', 409, undefined, [
+          { path: 'login', code: 'taken', message: 'The login is given to another account.' },
+        ]);
+      }
+      throw error;
+    }
+    await transaction
+      .updateTable('staff')
+      .set({ account_id: created.id })
+      .where('id', '=', id)
+      .execute();
+    const account = await transaction
+      .selectFrom('accounts')
+      .select('password_expires_at')
+      .where('id', '=', created.id)
+      .executeTakeFirstOrThrow();
+    if (account.password_expires_at === null) {
+      throw new Error('A first password always has an end.');
+    }
+    return {
+      firstName: person.firstName,
+      lastName: person.lastName,
+      login: created.login,
+      password: created.firstPassword,
+      validUntil: account.password_expires_at.toISOString(),
+    };
+  }
+
+  /**
+   * The give of a role on a given transaction with the refusals of `give`
+   * (task 9.4h: the staff import gives Teacher or Tutor to each account it
+   * makes). The person is found and locked by the caller.
+   */
+  async giveIn(
+    transaction: Transaction,
+    access: Access,
+    superAdmin: string,
+    person: Person,
+    accountId: string,
+    give: RoleGive,
+    requestId: string,
+  ): Promise<string> {
+    return this.refusing(() =>
+      this.giveTo(transaction, access, superAdmin, person, accountId, give, requestId),
+    );
+  }
+
+  /** The first free login for a person on a given transaction (task 9.4h). */
+  suggestIn(
+    transaction: Transaction,
+    person: { firstName: string; lastName: string; fatherName: string | null },
+  ): Promise<string | null> {
+    return this.accounts.suggest(transaction, person);
   }
 
   /**

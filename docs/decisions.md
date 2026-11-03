@@ -342,6 +342,29 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 3 November 2026: the staff import (task 9.4h)
+
+Plan approved on pull request #279 with its corrections. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Same name and date of birth on two rows is the duplicate warning to confirm; the same phone or JSHSHIR on two rows is an error on both. Proposed `/spec-change` of the staff import row of `edge/people-roles-accounts`: "Duplicates inside the file (the same phone or JSHSHIR) are errors; the same name and date of birth on two rows gives the warning of the duplicate check." | The re-hire row warns on name and birth date; the import row says duplicates are errors (decision 4, as 9.4g) |
+| **Look first.** The upload is a declared exception of the JSON-only rule (`STAFF_IMPORT_ROUTE`), raw-body `PUT`, xlsx only, 5 MB | The spec change requires an upload of the school's file (decision 1) |
+| **Look first.** The rows of an upload are kept in `staff_imports.rows` under the branch filter, read only through these routes by the Super Admin; nothing is deleted | The confirm checks the rows the preview showed; "the same file again" needs the hash (decision 2) |
+| **Look first.** The first passwords are answered once by the confirm and printed from the screen, never stored or logged; a lost slip is replaced by a password reset | `edge/people-roles-accounts`: "printed once on per-person slips and not stored" (decision 3) |
+| **Look first.** The first passwords and their hashes are made before the confirm's transaction and passed to `Accounts.create`; the preview passes a placeholder hash no password matches and is always rolled back | Argon2id for up to 1000 rows inside the transaction would hold the staff-number counter and the phone locks for minutes (decision 5) |
+| The role is given in the branch of the request from the later of the admission date and today | The hand give refuses a past date (decision 6) |
+| The file holds the personal fields of the record, the main division and department, up to 8 "subject: grades" columns, the languages, the admission date, the contract type and date, and the role; weekly and daily lessons, further divisions and branches, availability and a Tutor's own subjects are left to the hand screens | The spec change's list; Tutor subjects come with the class (decisions 7, 9) |
+| Division, department and subject are found by any of their three names, ignoring case, spacing and look-alike letters; an ambiguous name is a problem | `edge/students-classes-groups`, the import row (decision 8) |
+| A phone that is a relative's main phone marks the records as the same person, as by hand, and is no problem | Build plan 9.4h (decision 10) |
+| A phone or JSHSHIR held by another staff record is refused; the holder is named when linked to the branch, "another branch" otherwise, and a holder who left is re-hired by hand on their record | `edge/people-roles-accounts`, the re-hire row (review correction 1) |
+| "One audit entry per record" is read as the hand entries of each record (`staff.create` with the import's id, `staff.teaching`, `account.create`, `assignment.give`), plus `staff_import.upload` and `staff_import.confirm` | A record imported reads in the log like one made by hand (decision 13) |
+| A name that gives no login is the row problem `import_no_login`; the import creates persons only, never a vacancy; staff IDs are taken in the order of the rows | Decisions 12, 14, 15 |
+| **Build decision.** The browser step runs at the end of the years test: the seed holds no fourth Super Admin (`MAX_SUPER_ADMINS`) | As the own staff record step of 2.7d |
+| **Build decision.** The one-department refusal (`subject_outside_department`) is shown on the department column, not a subject column | The trigger names no subject; the department is the cell that decides (the plan said the subject columns) |
+| **Build decision.** A repeated confirm is refused before any hash, and the first passwords are hashed two at a time | Argon2id shares the thread pool with every request, sign-ins included (spec review of the code, 9) |
+| **Build decision.** A phone or JSHSHIR of a record of another branch is told without a name, with the hint to re-hire by hand when the person worked here before; whether that record has left is not read | Telling a person-wide status across branches would need a new SECURITY DEFINER function, which is the owner's (`.claude/rules/database.md`) |
+
 ## 3 November 2026: the student import (task 9.4g)
 
 Plan approved on pull request #278 with its corrections. Flagged on issue #42.

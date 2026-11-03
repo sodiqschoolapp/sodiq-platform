@@ -1745,6 +1745,18 @@ export interface StaffIdCounters {
   year: number;
 }
 
+export interface StaffImports {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+}
+
 export interface StaffLanguages {
   language: string;
   staff_id: string;
@@ -2333,6 +2345,7 @@ export interface DB {
   staff_branches: StaffBranches;
   staff_divisions: StaffDivisions;
   staff_id_counters: StaffIdCounters;
+  staff_imports: StaffImports;
   staff_languages: StaffLanguages;
   staff_status_moments: StaffStatusMoments;
   staff_status_role_ends: StaffStatusRoleEnds;

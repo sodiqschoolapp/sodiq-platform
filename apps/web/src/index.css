@@ -321,6 +321,17 @@
   body[data-printing='slip'] > [data-slip-sheet] {
     display: block !important;
   }
+  /* The slips of a staff import, four to an A4 page (task 9.4h): each a quarter
+     of the page, never split, and a new page after every fourth. */
+  [data-slip-sheet][data-four] > [data-slip] {
+    height: 68mm;
+    overflow: hidden;
+    break-inside: avoid;
+    margin-bottom: 4mm;
+  }
+  [data-slip-sheet][data-four] > [data-slip]:nth-child(4n) {
+    break-after: page;
+  }
   /* The personal data report prints alone (task 2.6b), from its copy beside
      the page; the letterhead sits in the header group of its table, which
      the browser repeats at the top of each printed page (decision 9). */

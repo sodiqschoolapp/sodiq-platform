@@ -2131,6 +2131,53 @@ export const uz: Texts<'one' | 'other'> = {
     neverUsedLink: 'Ishlatilmagan hisoblar',
     studentsLink: 'Oʻquvchilar',
     parentsLink: 'Ota-onalar',
+    staffImport: {
+      open: 'Exceldan import',
+      title: 'Xodimlar importi',
+      saved_one: '{{count}} ta xodim kartasi saqlandi.',
+      saved_other: '{{count}} ta xodim kartasi saqlandi.',
+      toList: 'Xodimlar roʻyxatini ochish',
+      confirm_one: '{{count}} kishini saqlash',
+      confirm_other: 'Barcha {{count}} kishini saqlash',
+      role: 'Rol',
+      noRole: 'Rolsiz',
+      warningHere:
+        'Shu ism va tugʻilgan sanali xodim kartasi bor: {{names}}. Bu boshqa odam boʻlsa, belgilang.',
+      warningElsewhere:
+        'Boshqa filialda shu ism va tugʻilgan sanali xodim bor. Bu boshqa odam boʻlsa, belgilang.',
+      warningRows:
+        '{{rows}}-qatorlarda ham shu ism va tugʻilgan sana. Bular boshqa-boshqa odamlar boʻlsa, belgilang.',
+      samePerson: 'Telefon {{name}} qarindoshining asosiy telefoni: bitta odam deb belgilandi.',
+      samePersonElsewhere: 'Telefon qarindoshning asosiy telefoni: bitta odam deb belgilandi.',
+      holderHere: 'U {{name}}ga tegishli.',
+      holderElsewhere:
+        'U boshqa filial xodimiga tegishli. Bu odam ilgari maktabda ishlagan boʻlsa, uni oʻsha kartada qoʻlda qayta ishga oling: xodim ID va login saqlanadi.',
+      holderLeft:
+        'U ishdan ketgan {{name}}ga tegishli: bu odamni oʻz kartasida qoʻlda qayta ishga oling, xodim ID va login saqlanadi.',
+      slipsTitle_one: 'Birinchi parol varaqasi ({{count}})',
+      slipsTitle_other: 'Birinchi parol varaqalari ({{count}})',
+      slipsOnce:
+        'Parollar faqat hozir koʻrsatiladi va hech qayerda saqlanmaydi. Sahifadan chiqishdan oldin varaqalarni chop eting; yoʻqolgan varaqa oʻrniga parol tiklanadi.',
+      print: 'Varaqalarni chop etish',
+      problems: {
+        required: 'toʻldiring.',
+        invalid: 'bu qiymat qabul qilinmaydi.',
+        date_invalid: 'haqiqiy sanani kk.oo.yyyy koʻrinishida yozing.',
+        phone_invalid: 'bu telefon raqami emas.',
+        value_unknown: 'roʻyxatdan qiymat tanlang.',
+        name_unknown: 'maktab roʻyxatlarida bunday nom yoʻq.',
+        name_ambiguous: 'bu nom ikki yozuvda bor; nomni boshqa tilda yozing.',
+        department_not_of_division: 'bu kafedra qatordagi boʻlimga tegishli emas.',
+        grades_invalid:
+          'fan va sinflarni «Matematika: 5, 6, 7» yoki «Matematika: 5-7» kabi yozing.',
+        subject_twice: 'bu fan qatorning boshqa ustunida ham bor.',
+        import_role_not_allowed:
+          'import faqat Oʻqituvchi yoki Tyutor rolini beradi; boshqa rollar qoʻlda beriladi.',
+        duplicate_in_file: 'shu qiymat {{rows}}-qatorlarda ham bor.',
+        import_no_login:
+          'bu ismdan login tuzib boʻlmaydi; xodimni qoʻlda yarating va loginni yozing.',
+      },
+    },
     import: {
       open: 'Exceldan import',
       title: 'Oʻquvchilar importi',
@@ -3610,6 +3657,10 @@ export const uz: Texts<'one' | 'other'> = {
         journal_substitute: 'Vakansiya jurnali boʻyicha oʻrinbosar',
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
+      },
+      staff_import: {
+        upload: 'Xodimlar importi fayli yuklandi',
+        confirm: 'Xodimlar importi tasdiqlandi',
       },
       student_import: {
         upload: 'Oʻquvchilar importi fayli yuklandi',

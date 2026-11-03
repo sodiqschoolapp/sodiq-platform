@@ -295,7 +295,7 @@ export class Staff {
   }
 
   /** Today in the time zone of a branch. */
-  private async todayIn(transaction: Transaction, branchId: string): Promise<SchoolDate> {
+  async todayIn(transaction: Transaction, branchId: string): Promise<SchoolDate> {
     const branch = await transaction
       .selectFrom('branches')
       .select('time_zone')
@@ -462,7 +462,7 @@ export class Staff {
    * when it is linked live in the branch of the request; otherwise only
    * whether one exists, by `relative_by_phone` of 0036 (archived included).
    */
-  private async relativeOfPhone(
+  async relativeOfPhone(
     transaction: Transaction,
     access: Access,
     phone: string,
@@ -543,66 +543,87 @@ export class Staff {
    * link and read back after it (owner's answer 2).
    */
   create(access: Access, typed: StaffRecord, requestId: string): Promise<StaffDetail> {
-    const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        let record = typed;
-        moveStartsOn(false, record.departmentStartsOn);
-        await this.checkDivisions(transaction, record.divisions);
-        // The phone's lock before any read of it (task 3.6b-1): a refusal of
-        // a taken phone, the relative's email, and the mark's entries.
-        await lockPhones(transaction, [record.phone]);
-        await this.refusePhoneTaken(transaction, record.phone, null);
-        // A relative's main phone makes the new staff member the same person;
-        // the relative's email is taken when none is typed, the names are
-        // typed (decision 6, Look first).
-        const relative =
-          record.phone === null
-            ? undefined
-            : (await this.relativeOfPhone(transaction, access, record.phone)).here;
-        if (record.email === null && relative !== undefined && relative.email !== null) {
-          record = { ...record, email: relative.email };
-        }
-        const year = Number(record.admissionDate.slice(0, 4));
-        const staffId = staffIdOf(year, await takeStaffNumber(transaction, year));
-        const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
-        const id = found.rows[0]?.id;
-        if (id === undefined) {
-          throw new Error('No id for the new staff record.');
-        }
-        await transaction
-          .insertInto('staff')
-          .values({ id, kind: 'person', staff_id: staffId, ...columnsOf(record) })
-          .execute();
-        await transaction
-          .insertInto('staff_branches')
-          .values({ staff_id: id, branch_id: branchId, is_main: true })
-          .execute();
-        await this.writeDivisions(transaction, id, [], record.divisions);
-        await transaction
-          .insertInto('staff_statuses')
-          .values({ staff_id: id, status: 'active', valid_from: record.admissionDate })
-          .execute();
-        // A new record held no mark before its insert.
-        const marks = changesBetween(
-          { byRelative: new Map() },
-          await marksOf(transaction, { staffIds: [id] }),
-        );
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          personId: id,
-          action: 'staff.create',
-          record: { type: 'staff', id },
-          newValue: { staffId, ...fieldsOf(this.rowOf(record), sortDivisions(record.divisions)) },
-          ...(marks.length === 0 ? {} : { details: staffMarkDetail(marks, id) }),
-          requestId,
-        });
-        await recordMarkChanges(transaction, this.audit, access, marks, 'staff_created', requestId);
+        const id = await this.createIn(transaction, access, typed, requestId);
         return this.readDetail(transaction, access, id);
       }),
     );
+  }
+
+  /**
+   * The body of `create` on a given transaction, without its refusal
+   * wrapper (task 9.4h: the staff import runs it for each row in a savepoint,
+   * with `refusing` around it, and names the import in the entry). Answers
+   * the id of the new record.
+   */
+  async createIn(
+    transaction: Transaction,
+    access: Access,
+    typed: StaffRecord,
+    requestId: string,
+    importId?: string,
+  ): Promise<string> {
+    const branchId = branchOf(access);
+    let record = typed;
+    moveStartsOn(false, record.departmentStartsOn);
+    await this.checkDivisions(transaction, record.divisions);
+    // The phone's lock before any read of it (task 3.6b-1): a refusal of
+    // a taken phone, the relative's email, and the mark's entries.
+    await lockPhones(transaction, [record.phone]);
+    await this.refusePhoneTaken(transaction, record.phone, null);
+    // A relative's main phone makes the new staff member the same person;
+    // the relative's email is taken when none is typed, the names are
+    // typed (decision 6, Look first).
+    const relative =
+      record.phone === null
+        ? undefined
+        : (await this.relativeOfPhone(transaction, access, record.phone)).here;
+    if (record.email === null && relative !== undefined && relative.email !== null) {
+      record = { ...record, email: relative.email };
+    }
+    const year = Number(record.admissionDate.slice(0, 4));
+    const staffId = staffIdOf(year, await takeStaffNumber(transaction, year));
+    const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+    const id = found.rows[0]?.id;
+    if (id === undefined) {
+      throw new Error('No id for the new staff record.');
+    }
+    await transaction
+      .insertInto('staff')
+      .values({ id, kind: 'person', staff_id: staffId, ...columnsOf(record) })
+      .execute();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: id, branch_id: branchId, is_main: true })
+      .execute();
+    await this.writeDivisions(transaction, id, [], record.divisions);
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: id, status: 'active', valid_from: record.admissionDate })
+      .execute();
+    // A new record held no mark before its insert.
+    const marks = changesBetween(
+      { byRelative: new Map() },
+      await marksOf(transaction, { staffIds: [id] }),
+    );
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      personId: id,
+      action: 'staff.create',
+      record: { type: 'staff', id },
+      newValue: {
+        staffId,
+        ...fieldsOf(this.rowOf(record), sortDivisions(record.divisions)),
+        ...(importId === undefined ? {} : { importId }),
+      },
+      ...(marks.length === 0 ? {} : { details: staffMarkDetail(marks, id) }),
+      requestId,
+    });
+    await recordMarkChanges(transaction, this.audit, access, marks, 'staff_created', requestId);
+    return id;
   }
 
   /**
@@ -805,89 +826,100 @@ export class Staff {
     teaching: StaffTeaching,
     requestId: string,
   ): Promise<StaffDetail> {
-    const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        await this.lockPerson(transaction, id);
-        const before = await this.teachingOf(transaction, id);
-        const after = {
-          subjects: [...teaching.subjects].sort((a, b) => a.subjectId.localeCompare(b.subjectId)),
-          languages: [...teaching.languages].sort(),
-        };
-        const changes = changesOf({ ...before }, { ...after });
-        if (changes === null) {
-          return this.readDetail(transaction, access, id);
-        }
-        const added = after.subjects.filter(
-          (subject) => !before.subjects.some((old) => old.subjectId === subject.subjectId),
-        );
-        // FOR SHARE: a subject edit at the same moment locks the subject FOR
-        // UPDATE and then asks who teaches it (`refuseTeachersOutside`).
-        for (const subject of after.subjects) {
-          const found = await transaction
-            .selectFrom('subjects')
-            .select(['archived_at'])
-            .where('id', '=', subject.subjectId)
-            .forShare()
-            .executeTakeFirst();
-          if (found === undefined) {
-            throw notFound();
-          }
-          if (found.archived_at !== null && added.includes(subject)) {
-            throw refused('subject_archived');
-          }
-        }
-        for (const old of before.subjects) {
-          const kept = after.subjects.find((subject) => subject.subjectId === old.subjectId);
-          if (kept === undefined) {
-            await transaction
-              .deleteFrom('staff_subjects')
-              .where('staff_id', '=', id)
-              .where('subject_id', '=', old.subjectId)
-              .execute();
-          } else if (JSON.stringify(kept.grades) !== JSON.stringify(old.grades)) {
-            await transaction
-              .updateTable('staff_subjects')
-              .set({ grades: kept.grades })
-              .where('staff_id', '=', id)
-              .where('subject_id', '=', old.subjectId)
-              .execute();
-          }
-        }
-        for (const subject of added) {
-          await transaction
-            .insertInto('staff_subjects')
-            .values({ staff_id: id, subject_id: subject.subjectId, grades: subject.grades })
-            .execute();
-        }
-        for (const language of after.languages.filter((l) => !before.languages.includes(l))) {
-          await transaction
-            .insertInto('staff_languages')
-            .values({ staff_id: id, language })
-            .execute();
-        }
-        for (const language of before.languages.filter((l) => !after.languages.includes(l))) {
-          await transaction
-            .deleteFrom('staff_languages')
-            .where('staff_id', '=', id)
-            .where('language', '=', language)
-            .execute();
-          await refuseTutorLanguageHeld(transaction, id, language);
-        }
-        await this.audit.record(transaction, {
-          branchId,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          personId: id,
-          action: 'staff.teaching',
-          record: { type: 'staff', id },
-          oldValue: changes.oldValue,
-          newValue: changes.newValue,
-          requestId,
-        });
+        await this.teachingIn(transaction, access, id, teaching, requestId);
         return this.readDetail(transaction, access, id);
       }),
     );
+  }
+
+  /**
+   * The body of `teaching` on a given transaction (task 9.4h: the staff
+   * import sets the subjects and languages of each new record with it).
+   */
+  async teachingIn(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    teaching: StaffTeaching,
+    requestId: string,
+  ): Promise<void> {
+    const branchId = branchOf(access);
+    await this.lockPerson(transaction, id);
+    const before = await this.teachingOf(transaction, id);
+    const after = {
+      subjects: [...teaching.subjects].sort((a, b) => a.subjectId.localeCompare(b.subjectId)),
+      languages: [...teaching.languages].sort(),
+    };
+    const changes = changesOf({ ...before }, { ...after });
+    if (changes === null) {
+      return;
+    }
+    const added = after.subjects.filter(
+      (subject) => !before.subjects.some((old) => old.subjectId === subject.subjectId),
+    );
+    // FOR SHARE: a subject edit at the same moment locks the subject FOR
+    // UPDATE and then asks who teaches it (`refuseTeachersOutside`).
+    for (const subject of after.subjects) {
+      const found = await transaction
+        .selectFrom('subjects')
+        .select(['archived_at'])
+        .where('id', '=', subject.subjectId)
+        .forShare()
+        .executeTakeFirst();
+      if (found === undefined) {
+        throw notFound();
+      }
+      if (found.archived_at !== null && added.includes(subject)) {
+        throw refused('subject_archived');
+      }
+    }
+    for (const old of before.subjects) {
+      const kept = after.subjects.find((subject) => subject.subjectId === old.subjectId);
+      if (kept === undefined) {
+        await transaction
+          .deleteFrom('staff_subjects')
+          .where('staff_id', '=', id)
+          .where('subject_id', '=', old.subjectId)
+          .execute();
+      } else if (JSON.stringify(kept.grades) !== JSON.stringify(old.grades)) {
+        await transaction
+          .updateTable('staff_subjects')
+          .set({ grades: kept.grades })
+          .where('staff_id', '=', id)
+          .where('subject_id', '=', old.subjectId)
+          .execute();
+      }
+    }
+    for (const subject of added) {
+      await transaction
+        .insertInto('staff_subjects')
+        .values({ staff_id: id, subject_id: subject.subjectId, grades: subject.grades })
+        .execute();
+    }
+    for (const language of after.languages.filter((l) => !before.languages.includes(l))) {
+      await transaction.insertInto('staff_languages').values({ staff_id: id, language }).execute();
+    }
+    for (const language of before.languages.filter((l) => !after.languages.includes(l))) {
+      await transaction
+        .deleteFrom('staff_languages')
+        .where('staff_id', '=', id)
+        .where('language', '=', language)
+        .execute();
+      await refuseTutorLanguageHeld(transaction, id, language);
+    }
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      personId: id,
+      action: 'staff.teaching',
+      record: { type: 'staff', id },
+      oldValue: changes.oldValue,
+      newValue: changes.newValue,
+      requestId,
+    });
   }
 
   /**
@@ -1219,7 +1251,8 @@ export class Staff {
 
   // ---------------------------------------------------------------------------
 
-  private refusing<T>(work: () => Promise<T>): Promise<T> {
+  /** The database's refusals of a staff change as coded ones (also used by the staff import, task 9.4h). */
+  refusing<T>(work: () => Promise<T>): Promise<T> {
     return refusingDuplicates(() => refusingConstraints(work, STAFF_REFUSALS), STAFF_UNIQUE_FIELDS);
   }
 

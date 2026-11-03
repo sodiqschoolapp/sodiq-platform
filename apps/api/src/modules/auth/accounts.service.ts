@@ -33,6 +33,25 @@ export class LoginTakenError extends Error {
   }
 }
 
+/** A first password with the text to store for it. */
+export interface PreparedFirstPassword {
+  password: string;
+  hash: string;
+}
+
+/** A random first password and its Argon2id hash. */
+export async function prepareFirstPassword(): Promise<PreparedFirstPassword> {
+  const password = randomFirstPassword();
+  return { password, hash: await hashPassword(password) };
+}
+
+/**
+ * The stored text of an account the staff import's preview makes and always
+ * rolls back (task 9.4h, plan decision 5): it has the form the column checks
+ * (`$argon2id$...`) and no password matches it, since it is not a PHC text.
+ */
+export const PREVIEW_PASSWORD_HASH = '$argon2id$preview-no-password';
+
 export interface NewAccount {
   /** Used for the login only; an account stores no name. */
   firstName: string;
@@ -50,6 +69,13 @@ export interface NewAccount {
   requestId?: string;
   /** For the audit entry: the assignment that allowed the administrator to act (task 2.3a). */
   actingAssignmentId?: string;
+  /**
+   * The first password and its hash, made before the caller's transaction
+   * (`prepareFirstPassword`; task 9.4h, plan decision 5, Look first): the
+   * staff import makes up to 1000 accounts in one transaction and must not
+   * hash while it holds its locks. Left out, the password is made here.
+   */
+  firstPassword?: PreparedFirstPassword;
   /** For the audit entry: the staff record of the person (task 2.3a). */
   personId?: string;
 }
@@ -80,8 +106,8 @@ export class Accounts {
    */
   async create(transaction: Transaction, account: NewAccount): Promise<CreatedAccount> {
     const base = account.login ?? loginBase(account.firstName, account.lastName);
-    const firstPassword = randomFirstPassword();
-    const passwordHash = await hashPassword(firstPassword);
+    const { password: firstPassword, hash: passwordHash } =
+      account.firstPassword ?? (await prepareFirstPassword());
     const now = this.clock.now();
 
     // The unique constraint is the guard. When somebody else takes the login

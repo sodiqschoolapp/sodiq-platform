@@ -32,23 +32,41 @@ const PRINTING = 'slip';
  * 2.6b); until the branch is read it is not drawn, and a failure to read it
  * says so with a retry (never the device's time zone in its place).
  */
-export function FirstPasswordSlipCard({ slip, issued }: { slip: Slip; issued: string }) {
+export function FirstPasswordSlipCard({
+  slip,
+  issued,
+  compact = false,
+}: {
+  slip: Slip;
+  issued: string;
+  /** Four slips on an A4 page (task 9.4h): the same parts, tighter. */
+  compact?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const branch = useQuery(branchQuery(branchId));
   const address = window.location.origin;
   return (
-    <article data-slip="" className="grid gap-4 border-b-2 border-dashed border-foreground/40 pb-6">
+    <article
+      data-slip=""
+      className={
+        compact
+          ? 'grid gap-2 border-b-2 border-dashed border-foreground/40 pb-3 text-xs'
+          : 'grid gap-4 border-b-2 border-dashed border-foreground/40 pb-6'
+      }
+    >
       <Letterhead />
-      <h2 className="text-xl font-semibold">
+      <h2 className={compact ? 'text-base font-semibold' : 'text-xl font-semibold'}>
         {slip.firstName} {slip.lastName}
       </h2>
-      <ol className="grid list-decimal gap-1 pl-5 text-sm">
+      <ol className={`grid list-decimal gap-1 pl-5 ${compact ? 'text-xs' : 'text-sm'}`}>
         <li>{t('people.account.slipStepOpen', { address })}</li>
         <li>{t('people.account.slipStepSignIn')}</li>
         <li>{t('people.account.slipStepChange')}</li>
       </ol>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg border-2 border-current p-4 text-sm">
+      <dl
+        className={`grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg border-2 border-current ${compact ? 'p-2 text-xs' : 'p-4 text-sm'}`}
+      >
         <dt>{t('people.account.login')}</dt>
         <dd className="font-mono text-base font-semibold">{slip.login}</dd>
         <dt>{t('people.account.password')}</dt>
