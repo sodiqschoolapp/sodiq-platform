@@ -106,6 +106,8 @@ describe('the student import', () => {
         'student_relatives',
         'class_memberships',
         'group_memberships',
+        'notifications',
+        'student_imports',
         'audit_log',
       ].map(
         async (table) =>
@@ -331,10 +333,10 @@ describe('the student import', () => {
         expect(codesAt(refused.preview, 8)).toEqual(['className:class_unknown']);
       }
       const after = await rowsOf();
-      // The upload's own entry is the only change.
-      expect(after.map((rows, index) => (index === 10 ? rows.length - 1 : rows))).toEqual(
-        before.map((rows, index) => (index === 10 ? rows.length : rows)),
-      );
+      // The upload's row and its entry are the only changes.
+      expect(after.slice(0, 11)).toEqual(before.slice(0, 11));
+      expect((after[11] ?? []).length).toBe((before[11] ?? []).length + 1);
+      expect((after[12] ?? []).length).toBe((before[12] ?? []).length + 1);
       // "Link to the existing person, whose stored name is kept" clears that row.
       const linked = studentImportPreviewSchema.parse(
         (
@@ -375,8 +377,9 @@ describe('the student import', () => {
       expect(refused.outcome).toBe('not_clean');
       const after = await rowsOf();
       // Only the two uploads' entries were added.
-      expect(after.slice(0, 10)).toEqual(before.slice(0, 10));
-      expect((after[10] ?? []).length).toBe((before[10] ?? []).length + 2);
+      expect(after.slice(0, 11)).toEqual(before.slice(0, 11));
+      expect((after[11] ?? []).length).toBe((before[11] ?? []).length + 2);
+      expect((after[12] ?? []).length).toBe((before[12] ?? []).length + 2);
       refusedWith(await confirm(first.importId), 409, 'import_already_confirmed');
     });
   });
@@ -411,7 +414,7 @@ describe('the student import', () => {
       if (refused.outcome === 'not_clean') {
         expect(codesAt(refused.preview, 4)).toEqual(['contractNumber:student_value_taken']);
       }
-      expect((await rowsOf()).slice(0, 10)).toEqual(before.slice(0, 10));
+      expect((await rowsOf()).slice(0, 11)).toEqual(before.slice(0, 11));
       expect(await studentOf(rows[0]?.uid)).toBeUndefined();
     });
 
@@ -545,47 +548,231 @@ describe('the student import', () => {
   });
 
   describe('decisions', () => {
-    it('refuses a link to an unknown relative or one that does not hold the phone, and a decision on a row or position not offered, changing nothing', async () => {
+    /** A relative the system holds under `fullName` with `phone`, saved through an import. */
+    async function heldRelative(fullName: string, phone: number, branch = '', cookie = '') {
+      const inBranch = branch || t.north;
+      const target =
+        inBranch === t.north ? await newClass() : await newClass(25, t.south, southYear);
+      const sent = await upload(
+        await filledTemplate([
+          studentRow(target.name, { relative1FullName: fullName, relative1Phone: phone }),
+        ]),
+        cookie || t.vicePrincipal,
+        inBranch,
+      );
+      const id = studentImportPreviewSchema.parse(sent.body).importId;
+      expect(
+        studentImportConfirmResultSchema.parse(
+          (await confirm(id, {}, cookie || t.vicePrincipal, inBranch)).body,
+        ).outcome,
+      ).toBe('saved');
+      return (
+        await t.database.migrator
+          .selectFrom('relatives')
+          .select('id')
+          .where('phone', '=', `+${String(phone)}`)
+          .executeTakeFirstOrThrow()
+      ).id;
+    }
+
+    it('refuses a link on a row or position not offered (422), and a link to an unknown person or one that does not hold the phone (the hand path), changing nothing', async () => {
+      const holder = await heldRelative('Kamola Usmonova', 998951112001);
+      const elsewhere = await heldRelative('Zilola Ortiqova', 998951112002);
       const target = await newClass();
-      const other = await uploaded([studentRow(target.name)]);
-      expect((await confirmed(other.importId)).outcome).toBe('saved');
-      const otherRelative = await t.database.migrator
-        .selectFrom('relatives')
-        .select('id')
-        .orderBy('id', 'desc')
-        .executeTakeFirstOrThrow();
-      const answer = await uploaded([studentRow(target.name)]);
-      const before = await rowsOf();
-      for (const relativeId of [UNKNOWN, otherRelative.id]) {
+      const answer = await uploaded([
+        studentRow(target.name),
+        studentRow(target.name, {
+          relative1FullName: 'Kamola Yusupova',
+          relative1Phone: 998951112001,
+        }),
+      ]);
+      expect(rowAt(answer, 4).held.map((one) => one.holder.id)).toEqual([holder]);
+      const before = [await rowsOf(), await importRows()];
+      // Row 3's phone is held by nobody, row 4 has no relative 2, row 9 is not in the file.
+      for (const link of [
+        { rowNumber: 3, position: 1, relativeId: holder },
+        { rowNumber: 4, position: 2, relativeId: holder },
+        { rowNumber: 9, position: 1, relativeId: holder },
+      ]) {
+        refusedWith(
+          await preview(answer.importId, { relativeLinks: [link] }),
+          422,
+          'import_decision_unknown',
+        );
+        refusedWith(
+          await confirm(answer.importId, { relativeLinks: [link] }),
+          422,
+          'import_decision_unknown',
+        );
+      }
+      // Row 4 offers its holder; another id is refused by the hand path's own check.
+      for (const relativeId of [UNKNOWN, elsewhere]) {
         const result = await confirmed(answer.importId, {
-          relativeLinks: [{ rowNumber: 3, position: 1, relativeId }],
+          relativeLinks: [{ rowNumber: 4, position: 1, relativeId }],
         });
         expect(result.outcome).toBe('not_clean');
         if (result.outcome === 'not_clean') {
-          expect(codesAt(result.preview, 3)).toEqual(['relative1Phone:relative_phone_changed']);
+          expect(codesAt(result.preview, 4)).toEqual(['relative1Phone:relative_phone_changed']);
         }
       }
-      refusedWith(
-        await confirm(answer.importId, {
-          relativeLinks: [{ rowNumber: 3, position: 2, relativeId: otherRelative.id }],
-        }),
-        422,
-        'import_decision_unknown',
-      );
-      refusedWith(
-        await confirm(answer.importId, {
-          relativeLinks: [{ rowNumber: 9, position: 1, relativeId: otherRelative.id }],
-        }),
-        422,
-        'import_decision_unknown',
-      );
       refusedWith(
         await preview(answer.importId, { confirmedWarnings: [9] }),
         422,
         'import_decision_unknown',
       );
       refusedWith(await preview(answer.importId, { other: true }), 400, 'validation_failed');
-      expect(await rowsOf()).toEqual(before);
+      expect([await rowsOf(), await importRows()]).toEqual(before);
+    });
+
+    it('one phone held in the system and in the file under two names: linking both rows to the holder clears both, and saves one person with both links', async () => {
+      const holder = await heldRelative('Munisa Xolmatova', 998951112003);
+      const target = await newClass();
+      const answer = await uploaded([
+        studentRow(target.name, {
+          relative1FullName: 'Munisa Xolmatova',
+          relative1Phone: 998951112003,
+        }),
+        studentRow(target.name, {
+          relative1FullName: 'Munisa Karimova',
+          relative1Phone: 998951112003,
+        }),
+        studentRow(target.name, {
+          relative1FullName: 'Munira Karimova',
+          relative1Phone: 998951112003,
+        }),
+      ]);
+      // The same name links without a question; the other two wait for the choice.
+      expect(codesAt(answer, 3)).toEqual([]);
+      expect(rowAt(answer, 3).linked).toEqual([1]);
+      for (const rowNumber of [4, 5]) {
+        expect(codesAt(answer, rowNumber).sort()).toEqual(
+          ['relative1Phone:phone_held', 'relative1Phone:phone_two_names_in_file'].sort(),
+        );
+      }
+      const decisions = {
+        relativeLinks: [4, 5].map((rowNumber) => ({ rowNumber, position: 1, relativeId: holder })),
+      };
+      const decided = studentImportPreviewSchema.parse(
+        (await preview(answer.importId, decisions)).body,
+      );
+      expect(decided.clean).toBe(true);
+      expect((await confirmed(answer.importId, decisions)).outcome).toBe('saved');
+      const links = await t.database.migrator
+        .selectFrom('student_relatives')
+        .select('student_id')
+        .where('relative_id', '=', holder)
+        .execute();
+      expect(links).toHaveLength(4);
+      const stored = await t.database.migrator
+        .selectFrom('relatives')
+        .select(['id', 'full_name'])
+        .where('phone', '=', '+998951112003')
+        .execute();
+      // The stored name is kept.
+      expect(stored).toEqual([{ id: holder, full_name: 'Munisa Xolmatova' }]);
+    });
+
+    it('siblings of the file with one new relative are not shown as linked to a person the system holds', async () => {
+      const target = await newClass();
+      const answer = await uploaded([
+        studentRow(target.name, {
+          relative1FullName: 'Sevinch Aliyeva',
+          relative1Phone: 998951112004,
+        }),
+        studentRow(target.name, {
+          relative1FullName: 'Sevinch Aliyeva',
+          relative1Phone: 998951112004,
+        }),
+      ]);
+      expect(answer.clean).toBe(true);
+      expect(answer.rows.map((row) => [row.rowNumber, row.linked, row.held])).toEqual([
+        [3, [], []],
+        [4, [], []],
+      ]);
+    });
+  });
+
+  describe('a relative of another branch', () => {
+    it('is refused like an unknown id when it does not hold the phone of the row, on the preview and the confirm, changing nothing; and linked, as by hand, when it holds it under another name', async () => {
+      const southPhone = 998951119999;
+      const southClass = await newClass(25, t.south, southYear);
+      const inSouth = await upload(
+        await filledTemplate([
+          studentRow(southClass.name, {
+            relative1FullName: 'Feruza Tursunova',
+            relative1Phone: southPhone,
+          }),
+        ]),
+        t.admin,
+        t.south,
+      );
+      const southImport = studentImportPreviewSchema.parse(inSouth.body).importId;
+      expect(
+        studentImportConfirmResultSchema.parse(
+          (await confirm(southImport, {}, t.admin, t.south)).body,
+        ).outcome,
+      ).toBe('saved');
+      const southRelative = await t.database.migrator
+        .selectFrom('relatives')
+        .select('id')
+        .where('phone', '=', '+998951119999')
+        .executeTakeFirstOrThrow();
+      // A phone of the north held under another name, whose row is offered its own holder.
+      const northTarget = await newClass();
+      const northHeld = await uploaded([
+        studentRow(northTarget.name, {
+          relative1FullName: 'Oydin Rasulova',
+          relative1Phone: 998951112005,
+        }),
+      ]);
+      expect((await confirmed(northHeld.importId)).outcome).toBe('saved');
+      const target = await newClass();
+      const answer = await uploaded([
+        studentRow(target.name, {
+          relative1FullName: 'Oydin Qosimova',
+          relative1Phone: 998951112005,
+        }),
+        studentRow(target.name, {
+          relative1FullName: 'Feruza Tursunboyeva',
+          relative1Phone: southPhone,
+        }),
+      ]);
+      const before = [await rowsOf(), await importRows()];
+      const wrong = {
+        relativeLinks: [{ rowNumber: 3, position: 1, relativeId: southRelative.id }],
+      };
+      const previewed = studentImportPreviewSchema.parse(
+        (await preview(answer.importId, wrong)).body,
+      );
+      expect(codesAt(previewed, 3)).toEqual(['relative1Phone:relative_phone_changed']);
+      const refused = await confirmed(answer.importId, wrong);
+      expect(refused.outcome).toBe('not_clean');
+      if (refused.outcome === 'not_clean') {
+        expect(codesAt(refused.preview, 3)).toEqual(['relative1Phone:relative_phone_changed']);
+      }
+      expect([await rowsOf(), await importRows()]).toEqual(before);
+      // The phone match shows the holder of another branch with its id, as by hand (decision 3 of 2.5a).
+      expect(rowAt(answer, 4).held).toEqual([
+        {
+          position: 1,
+          holder: { id: southRelative.id, fullName: 'Feruza Tursunova', students: 1 },
+          linked: false,
+        },
+      ]);
+      const northHolder = rowAt(answer, 3).held[0]?.holder.id ?? '';
+      const saved = await confirmed(answer.importId, {
+        relativeLinks: [
+          { rowNumber: 3, position: 1, relativeId: northHolder },
+          { rowNumber: 4, position: 1, relativeId: southRelative.id },
+        ],
+      });
+      expect(saved.outcome).toBe('saved');
+      const links = await t.database.migrator
+        .selectFrom('student_relatives')
+        .select('branch_id')
+        .where('relative_id', '=', southRelative.id)
+        .execute();
+      expect(links.map((link) => link.branch_id).sort()).toEqual([t.north, t.south].sort());
     });
   });
 
@@ -635,6 +822,7 @@ describe('the student import', () => {
         refusedWith(await preview(id), 404, 'not_found');
         refusedWith(await confirm(id), 404, 'not_found');
         // Also to the Super Admin, in the north.
+        refusedWith(await preview(id, {}, t.admin), 404, 'not_found');
         refusedWith(await confirm(id, {}, t.admin), 404, 'not_found');
       }
       expect([await rowsOf(), await importRows()]).toEqual(before);
@@ -738,6 +926,25 @@ describe('the student import', () => {
           : errorCode(response),
       );
       expect(outcomes.sort()).toEqual(['import_already_done', 'saved']);
+    });
+  });
+
+  describe('the day of an earlier import', () => {
+    it('is the day in the time zone of the branch: a confirm at 00:05 in Tashkent is of that day', async () => {
+      // Last in the file: the clock moves forward for this test only.
+      const before = t.clock.now();
+      try {
+        // 19:05 on 10 October in UTC, ten minutes after the clock of the file (sessions stay alive).
+        t.clock.set('2026-10-11T00:05:00+05:00');
+        const target = await newClass();
+        const bytes = await filledTemplate([studentRow(target.name)]);
+        const first = studentImportPreviewSchema.parse((await upload(bytes)).body);
+        expect((await confirmed(first.importId)).outcome).toBe('saved');
+        const again = studentImportPreviewSchema.parse((await upload(bytes)).body);
+        expect(again.alreadyImportedOn).toBe('2026-10-11');
+      } finally {
+        t.clock.set(before);
+      }
     });
   });
 });

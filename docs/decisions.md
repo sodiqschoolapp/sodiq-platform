@@ -359,6 +359,10 @@ Plan approved on pull request #278 with its corrections. Flagged on issue #42.
 | **Build decision.** A confirm that finds a row not clean answers 200 with `outcome: not_clean` and the new preview (nothing saved), in place of a 422 carrying the preview | The preview is a typed answer of its own; the error shape carries field details only |
 | **Build decision.** Two confirms of one file take an advisory lock on (branch, file hash) before they look for an earlier import, so the second answers `import_already_done`; the unique index of 0154 stays the last guard, with a database test and no mapping | A second confirm otherwise meets the UIDs of the first before the index and answers its rows as taken |
 | **Build decision.** A row whose relative phone waits for a decision is not saved in the run and shows `phone_held` | The save would refuse the phone as taken and hide the choice |
+| **Build decision.** A deadlock or serialization failure on the preview or the confirm answers `import_changed` (409, nothing saved, try again), a code of its own in place of the plan's `request_conflict` | The text can say what happened to the import; found by the spec review of the code (finding 5) |
+| **Build decision.** A link decision is taken only for a row and position whose phone the preview offered (a holder under another name, not a relative an earlier row of the file created); any other is `import_decision_unknown` (422); an offered position with another id is refused by the hand path (`relative_phone_changed`) | The plan's two refusals, as the spec review of the code read them (finding 2) |
+| A phone under two names inside the file is decided for a row once its relative is linked to the person the system holds (by the same name, or by the choice); the in-file problem then leaves that row | `edge`, the relative phone row; the spec review of the code (finding 1) |
+| The day of an earlier import is the day in the time zone of the branch | CLAUDE.md, Conventions; the spec review of the code (finding 3) |
 
 ## 2 November 2026: the Class teacher of grades 0–4 (task 9.4e)
 

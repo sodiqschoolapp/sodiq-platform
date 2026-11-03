@@ -68,6 +68,7 @@ class RolledBack extends Error {
 
 interface ImportRecord {
   id: string;
+  branchId: string;
   rows: StudentImportRow[];
   fileSha256: string;
   confirmedAt: string | null;
@@ -156,13 +157,16 @@ export class StudentImports {
   ): Promise<StudentImportPreview> {
     try {
       await this.transactions.run(access.branchIds, async (transaction) => {
-        const record = await this.readImport(transaction, id, false);
+        const record = await this.readImport(transaction, branchOf(access), id, false);
         const result = await this.run(transaction, access, record, decisions, requestId);
         throw new RolledBack(result.preview);
       });
     } catch (error) {
       if (error instanceof RolledBack) {
         return error.preview;
+      }
+      if (conflicted(error)) {
+        throw new ApiException('import_changed', 409);
       }
       throw error;
     }
@@ -184,7 +188,7 @@ export class StudentImports {
     const branchId = branchOf(access);
     try {
       return await this.transactions.run(access.branchIds, async (transaction) => {
-        const record = await this.readImport(transaction, id, true);
+        const record = await this.readImport(transaction, branchId, id, true);
         if (record.confirmedAt !== null) {
           throw new ApiException('import_already_confirmed', 409);
         }
@@ -229,8 +233,7 @@ export class StudentImports {
       if (error instanceof RolledBack) {
         return { outcome: 'not_clean', preview: error.preview };
       }
-      const failure = error as { code?: unknown; constraint?: unknown };
-      if (failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE) {
+      if (conflicted(error)) {
         throw new ApiException('import_changed', 409);
       }
       throw error;
@@ -240,13 +243,17 @@ export class StudentImports {
   /** The import of the branch of the request; another branch's or an unknown one is not found. */
   private async readImport(
     transaction: Transaction,
+    branchId: string,
     id: string,
     lock: boolean,
   ): Promise<ImportRecord> {
     let query = transaction
       .selectFrom('student_imports')
-      .select(['id', 'rows', 'file_sha256', 'confirmed_at'])
-      .where('id', '=', id);
+      .select(['id', 'branch_id', 'rows', 'file_sha256', 'confirmed_at'])
+      .where('id', '=', id)
+      // The row filter holds the branch of the request already; said here too, so a later join of
+      // another branch to the transaction never finds that branch's import (permission review, 3).
+      .where('branch_id', '=', branchId);
     if (lock) {
       query = query.forUpdate();
     }
@@ -257,6 +264,7 @@ export class StudentImports {
     return {
       id: row.id,
       rows: studentImportRowsSchema.parse(row.rows),
+      branchId: row.branch_id,
       fileSha256: row.file_sha256,
       confirmedAt: row.confirmed_at === null ? null : String(row.confirmed_at),
     };
@@ -266,9 +274,16 @@ export class StudentImports {
   private async importedOn(transaction: Transaction, record: ImportRecord): Promise<string | null> {
     const found = await transaction
       .selectFrom('student_imports')
-      .select(sql<string>`to_char(confirmed_at, 'YYYY-MM-DD')`.as('day'))
-      .where('file_sha256', '=', record.fileSha256)
-      .where('confirmed_at', 'is not', null)
+      .innerJoin('branches', 'branches.id', 'student_imports.branch_id')
+      // The day in the time zone of the branch (CLAUDE.md: "The branch time zone is a setting").
+      .select(
+        sql<string>`to_char(student_imports.confirmed_at at time zone branches.time_zone, 'YYYY-MM-DD')`.as(
+          'day',
+        ),
+      )
+      .where('student_imports.branch_id', '=', record.branchId)
+      .where('student_imports.file_sha256', '=', record.fileSha256)
+      .where('student_imports.confirmed_at', 'is not', null)
       .executeTakeFirst();
     return found?.day ?? null;
   }
@@ -305,6 +320,7 @@ export class StudentImports {
     const deferred = await deferredConstraints(transaction);
     const previewRows: StudentImportPreviewRow[] = [];
     const studentIds: string[] = [];
+    const written = new Set<string>();
     let clean = true;
     for (const row of parsed) {
       const problems: StudentImportProblem[] = [
@@ -344,7 +360,20 @@ export class StudentImports {
               branchId,
               studentIds,
             );
-      const { links, held, linked } = await this.linksOf(transaction, row, decisions);
+      const { links, held, linked } = await this.linksOf(transaction, row, decisions, written);
+      // One phone under two names in the file is decided when this row's relative is linked to
+      // the person the system holds: by the same name, or by the choice (`edge`, the relative
+      // phone row: "until someone decides: link to the existing person").
+      const decidedPositions = new Set([
+        ...linked,
+        ...held.filter((one) => one.linked).map((one) => one.position),
+      ]);
+      const kept = problems.filter(
+        (problem) =>
+          problem.code !== 'phone_two_names_in_file' ||
+          !decidedPositions.has(Number(/^relative(\d)Phone$/.exec(problem.column ?? '')?.[1])),
+      );
+      problems.splice(0, problems.length, ...kept);
       // A phone held under another name waits for a decision: link, or a corrected file.
       for (const one of held.filter((entry) => !entry.linked)) {
         problems.push({
@@ -364,6 +393,12 @@ export class StudentImports {
         );
         if (typeof saved === 'string') {
           studentIds.push(saved);
+          // The relatives this row created; one it linked was in the system already.
+          for (const link of links) {
+            if (link.kind === 'new' && link.relative.phone !== null) {
+              written.add(link.relative.phone);
+            }
+          }
         } else {
           problems.push(saved);
         }
@@ -471,6 +506,8 @@ export class StudentImports {
     transaction: Transaction,
     row: ParsedRow,
     decisions: StudentImportDecisions,
+    /** The phones of relatives this run created above: siblings of the file, not people the system holds. */
+    written: ReadonlySet<string>,
   ): Promise<{
     links: RelativeLinkInput[];
     held: StudentImportPreviewRow['held'];
@@ -491,13 +528,22 @@ export class StudentImports {
       const holder = await this.relatives.holderOf(transaction, relative.phone);
       const sameName =
         holder !== null && relativeNameKey(holder.fullName) === relativeNameKey(relative.fullName);
-      if (holder !== null && !sameName) {
+      // A relative an earlier row of the file created: a sibling's, linked without a question when
+      // the name is the same; another name is the in-file problem already. Never offered as a
+      // person the system holds (spec review of the code, note 7).
+      const ofThisFile = written.has(relative.phone);
+      const offered = holder !== null && !sameName && !ofThisFile;
+      if (decided !== undefined && !offered) {
+        // Only a holder the preview offered for this row and position may be chosen (plan).
+        throw new ApiException('import_decision_unknown', 422);
+      }
+      if (offered) {
         held.push({ position: relative.position, holder, linked: decided !== undefined });
       }
-      if (holder !== null && sameName && holder.id !== null) {
+      if (holder !== null && sameName && holder.id !== null && !ofThisFile) {
         linked.push(relative.position);
       }
-      const relativeId = decided?.relativeId ?? (sameName ? holder?.id : null);
+      const relativeId = decided?.relativeId ?? (sameName ? holder.id : null);
       links.push(
         relativeId === null || relativeId === undefined
           ? link
@@ -581,6 +627,15 @@ export class StudentImports {
       };
     }
   }
+}
+
+/**
+ * A deadlock or a serialization failure against a change made at the same moment, on the
+ * preview or the confirm, is `import_changed`: nothing was saved, try again.
+ */
+function conflicted(error: unknown): boolean {
+  const failure = error as { code?: unknown };
+  return failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE;
 }
 
 /** The constraints of the application's schema that are deferred until the commit unless set otherwise. */

@@ -785,8 +785,18 @@ try {
   writeFileSync(
     STUDENT_IMPORT_FILE,
     await filledTemplate([
-      studentRow('Seeded', { uid: 'IMPORT-E2E-1', lastName: 'Rahimova', firstName: 'Laylo', startsOn: dotted }),
-      studentRow('Seeded', { uid: 'IMPORT-E2E-2', lastName: 'Rahimov', firstName: 'Jahongir', startsOn: dotted }),
+      studentRow('Seeded', {
+        uid: 'IMPORT-E2E-1',
+        lastName: 'Rahimova',
+        firstName: 'Laylo',
+        startsOn: dotted,
+      }),
+      studentRow('Seeded', {
+        uid: 'IMPORT-E2E-2',
+        lastName: 'Rahimov',
+        firstName: 'Jahongir',
+        startsOn: dotted,
+      }),
     ]),
   );
   seeded.importVice = { login: importVice.login, password: importVice.firstPassword };
