@@ -361,6 +361,9 @@ Plan approved on pull request #279 with its corrections. Flagged on issue #42.
 | "One audit entry per record" is read as the hand entries of each record (`staff.create` with the import's id, `staff.teaching`, `account.create`, `assignment.give`), plus `staff_import.upload` and `staff_import.confirm` | A record imported reads in the log like one made by hand (decision 13) |
 | A name that gives no login is the row problem `import_no_login`; the import creates persons only, never a vacancy; staff IDs are taken in the order of the rows | Decisions 12, 14, 15 |
 | **Build decision.** The browser step runs at the end of the years test: the seed holds no fourth Super Admin (`MAX_SUPER_ADMINS`) | As the own staff record step of 2.7d |
+| **Build decision.** The one-department refusal (`subject_outside_department`) is shown on the department column, not a subject column | The trigger names no subject; the department is the cell that decides (the plan said the subject columns) |
+| **Build decision.** A repeated confirm is refused before any hash, and the first passwords are hashed two at a time | Argon2id shares the thread pool with every request, sign-ins included (spec review of the code, 9) |
+| **Build decision.** A phone or JSHSHIR of a record of another branch is told without a name, with the hint to re-hire by hand when the person worked here before; whether that record has left is not read | Telling a person-wide status across branches would need a new SECURITY DEFINER function, which is the owner's (`.claude/rules/database.md`) |
 
 ## 3 November 2026: the student import (task 9.4g)
 
