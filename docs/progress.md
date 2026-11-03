@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 3 November 2026: task 9.4h Staff import
+
+- **Table** (0155): `staff_imports` keeps each upload (the rows as read, the SHA-256 of the file, who and when) under the branch filter, as `student_imports`; one confirmed import of one file per branch.
+- **Reading and save** (`staff-import-read.ts`, `staff-imports.service.ts`): the template's lists in three languages or as codes; division, department and subjects ("Mathematics: 5-7", up to 8) by any of their three names; the role Teacher, Tutor or none, any other role `import_role_not_allowed`. Each row runs the hand steps in a savepoint (`Staff.createIn`, `Staff.teachingIn`, `StaffAccounts.createIn` and `giveIn`, split out of the hand routes) with `set constraints all immediate` at its end, so the one-department trigger refuses as by hand. The confirm makes the first passwords and their hashes before its transaction (`Accounts.create` takes them); the preview uses a placeholder hash and is always rolled back.
+- **Routes** (`staff` create plus the Super Admin assignment): template, `PUT /api/people/staff/imports` (a declared file route), preview, confirm; the confirm answers the records and the slips once. **Web**: "Import from Excel" on the staff list opens `/people/staff/import`: the rows with their problems, the warning to confirm, then the slips four to an A4 page with Print; texts in three languages. The browser step runs at the end of the years test (no fourth Super Admin can be seeded).
+
+Left out: availability, weekly and daily lessons, further divisions and branches (by hand, as the spec says); editing a row on the screen (the file is corrected and uploaded again).
+
+The next sessions must know:
+
+- `Staff.createIn`, `Staff.teachingIn`, `StaffAccounts.createIn`, `giveIn` and `suggestIn` run the hand steps on a given transaction; `Accounts.create` takes a prepared first password (`prepareFirstPassword`).
+- A Tutor's own subjects are not in the file; they come with the Tutor assignment of a class.
+
 ## 3 November 2026: task 9.4g Student import
 
 - **Table** (0154): `student_imports` keeps each upload (the rows as read, the SHA-256 of the file, who and when) under the branch filter; a confirm sets its confirm pair; a unique index allows one confirmed import of one file per branch.
