@@ -133,7 +133,7 @@ describe('reading an upload', () => {
     expect(cellText({ text: 'ona@example.com', hyperlink: 'mailto:ona@example.com' })).toBe(
       'ona@example.com',
     );
-    expect(cellText({ formula: 'A1', result: 'Oxford' } as ExcelJS.CellValue)).toBe('Oxford');
+    expect(cellText({ formula: 'A1', result: 'Oxford' })).toBe('Oxford');
     expect(cellText('   ')).toBeUndefined();
   });
 
@@ -174,22 +174,18 @@ describe('one row', () => {
       classId: null,
     });
     expect(parsed.className).toBe('Oxford');
-    expect(parsed.relatives.map((relative) => relative.link)).toEqual([
-      expect.objectContaining({
-        kind: 'new',
-        relationship: 'mother',
-        mainContact: true,
-        portalAccess: true,
-        receivesNotices: true,
-        relative: expect.objectContaining({ phone: expect.stringMatching(/^\+99893/) }),
-      }),
-      expect.objectContaining({
-        relationship: 'father',
-        mainContact: false,
-        // No phone of their own, as by hand.
-        relative: expect.objectContaining({ phone: null, workplace: 'Zavod' }),
-      }),
-    ]);
+    const [mother, father] = parsed.relatives.map((relative) => relative.link);
+    expect(mother).toMatchObject({
+      kind: 'new',
+      relationship: 'mother',
+      mainContact: true,
+      portalAccess: true,
+      receivesNotices: true,
+    });
+    expect(mother?.relative.phone).toMatch(/^\+99893/);
+    // No phone of their own, as by hand.
+    expect(father).toMatchObject({ relationship: 'father', mainContact: false });
+    expect(father?.relative).toMatchObject({ phone: null, workplace: 'Zavod' });
   });
 
   it('a relative without a phone may be the main contact, as by hand', async () => {

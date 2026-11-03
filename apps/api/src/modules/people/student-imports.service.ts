@@ -12,6 +12,7 @@ import {
   type StudentImportDecisions,
   type StudentImportPreview,
   type StudentImportPreviewRow,
+  type StudentImportColumn,
   type StudentImportProblem,
   type StudentImportRow,
 } from '@sodiq/shared';
@@ -40,7 +41,6 @@ import {
 } from './student-import-template.js';
 import { Students } from './students.service.js';
 
-const UNIQUE_VIOLATION = '23505';
 const DEADLOCK = '40P01';
 const SERIALIZATION_FAILURE = '40001';
 
@@ -51,9 +51,19 @@ function branchOf(access: Access): string {
   return access.branchId;
 }
 
+/** The column of a refusal of the create that names no field: the class for a full class or group. */
+const CODE_COLUMNS: Partial<Record<string, StudentImportColumn>> = {
+  class_full: 'className',
+  group_full: 'className',
+  student_needs_class: 'className',
+  student_needs_group: 'className',
+};
+
 /** The result of a run that is rolled back: thrown out of the transaction, caught outside. */
-class RolledBack {
-  constructor(readonly preview: StudentImportPreview) {}
+class RolledBack extends Error {
+  constructor(readonly preview: StudentImportPreview) {
+    super('The run is rolled back.');
+  }
 }
 
 interface ImportRecord {
@@ -178,6 +188,11 @@ export class StudentImports {
         if (record.confirmedAt !== null) {
           throw new ApiException('import_already_confirmed', 409);
         }
+        // Two imports of one file confirmed at the same moment: the second waits here for the
+        // first to end and then finds it (the unique index of 0154 stays the last guard).
+        await sql`select pg_advisory_xact_lock(hashtextextended(${`student_import:${branchId}:${record.fileSha256}`}, 0))`.execute(
+          transaction,
+        );
         if ((await this.importedOn(transaction, record)) !== null) {
           throw new ApiException('import_already_done', 409);
         }
@@ -215,13 +230,6 @@ export class StudentImports {
         return { outcome: 'not_clean', preview: error.preview };
       }
       const failure = error as { code?: unknown; constraint?: unknown };
-      if (
-        failure.code === UNIQUE_VIOLATION &&
-        failure.constraint === 'student_imports_file_once_idx'
-      ) {
-        // Two imports of one file confirmed at the same moment: the second meets the index.
-        throw new ApiException('import_already_done', 409);
-      }
       if (failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE) {
         throw new ApiException('import_changed', 409);
       }
@@ -337,6 +345,13 @@ export class StudentImports {
               studentIds,
             );
       const { links, held, linked } = await this.linksOf(transaction, row, decisions);
+      // A phone held under another name waits for a decision: link, or a corrected file.
+      for (const one of held.filter((entry) => !entry.linked)) {
+        problems.push({
+          column: `relative${String(one.position)}Phone` as StudentImportColumn,
+          code: 'phone_held',
+        });
+      }
       if (problems.length === 0 && row.input !== null) {
         const input: StudentCreate = { ...row.input, classId, relatives: links };
         const saved = await this.saveRow(
@@ -354,9 +369,7 @@ export class StudentImports {
         }
       }
       const rowClean =
-        problems.length === 0 &&
-        (warning === null || warning.confirmed) &&
-        held.every((one) => one.linked);
+        problems.length === 0 && (warning === null || warning.confirmed);
       clean &&= rowClean;
       previewRows.push({
         rowNumber: row.rowNumber,
@@ -557,7 +570,10 @@ export class StudentImports {
         throw error;
       }
       const detail = error.details?.[0];
-      const column = detail === undefined ? null : columnOfPath(detail.path.split('.'));
+      const column =
+        (detail === undefined ? null : columnOfPath(detail.path.split('.'))) ??
+        CODE_COLUMNS[error.code] ??
+        null;
       return {
         column,
         code: error.code,
@@ -568,11 +584,12 @@ export class StudentImports {
   }
 }
 
-/** The constraints that are deferred until the commit unless set otherwise. */
+/** The constraints of the application's schema that are deferred until the commit unless set otherwise. */
 async function deferredConstraints(transaction: Transaction): Promise<string[]> {
   const found = await sql<{ name: string }>`
-    select distinct conname as name from pg_constraint
-    where condeferrable and condeferred
+    select distinct c.conname as name from pg_constraint c
+    join pg_namespace n on n.oid = c.connamespace
+    where n.nspname = 'public' and c.condeferrable and c.condeferred
     order by 1
   `.execute(transaction);
   return found.rows.map((row) => row.name);

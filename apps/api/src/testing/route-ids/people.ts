@@ -31,6 +31,7 @@ const VACANCY_SUBJECT = `${AV} > answer 404 for an unknown department or subject
 const CREATE_CLASS = `src/modules/classes/class-members.test.ts > answers 404 for a class of another branch or unknown, creating nothing`;
 const CREATE_CLASS_GROUPS = `src/modules/classes/class-groups.test.ts > answers 404 to the create with a class of another branch or unknown, changing nothing`;
 const STUDENT_EXPORT = `src/modules/people/student-exports.test.ts > answers 404 for a student of another branch and an unknown id, with nothing logged`;
+const IMPORT = `src/modules/people/student-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing`;
 const S = 'src/modules/people/students.test.ts';
 const STUDENT_CHECK = `${S} > answers 404 for a record of another branch or an unknown one in the body`;
 const STUDENT = `${S} > answers 404 for a student of another branch or an unknown id on every record route`;
@@ -199,6 +200,14 @@ export const PEOPLE_IDS: RouteIds = {
     none('body:relatives[]<kind=existing>.relativeId', 'relative', PHONE_HOLDER),
     none('body:relatives[]<kind=new_owner>.previousId', 'relative', PHONE_HOLDER),
     branch('body:classId', 'class', BODY, [CREATE_CLASS, CREATE_CLASS_GROUPS]),
+  ],
+  'POST /api/people/students/imports/:id/preview': [
+    branch('path:id', 'student import', PATH, [IMPORT]),
+    none('body:relativeLinks[].relativeId', 'relative', PHONE_HOLDER),
+  ],
+  'POST /api/people/students/imports/:id/confirm': [
+    branch('path:id', 'student import', PATH, [IMPORT]),
+    none('body:relativeLinks[].relativeId', 'relative', PHONE_HOLDER),
   ],
   'POST /api/people/students/export': [branch('body:ids', 'student', BODY, [STUDENT_EXPORT])],
   'POST /api/people/students/check': [branch('body:studentId', 'student', BODY, [STUDENT_CHECK])],

@@ -30,10 +30,18 @@ import {
   type PersonalDataReport,
   type RelativePhoneMatchResult,
   studentHistorySchema,
+  STUDENT_IMPORT_TYPES,
+  studentImportConfirmResultSchema,
+  studentImportPreviewSchema,
+  type Language,
+  type StudentImportConfirmResult,
+  type StudentImportDecisions,
+  type StudentImportPreview,
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
 import { answerOf, ApiFailure } from '@/api/failure';
+import { fileNameOf, save } from '@/components/list/use-export';
 import { divisionsKey } from '@/features/setup/setup-api';
 
 export const PEOPLE_KEY = ['people'] as const;
@@ -605,3 +613,55 @@ export async function producePersonalDataReport(
         : await answerOf(api.POST('/api/people/relatives/{id}/report', params));
   return personalDataReportSchema.parse(answer);
 }
+
+/**
+ * The student import (task 9.4g): the system's template, the upload of a
+ * filled one, its preview with the decisions so far, and the confirm.
+ */
+export const downloadImportTemplate = async (language: Language): Promise<void> => {
+  const answer = await api.GET('/api/people/students/import-template', {
+    params: { header: branchHeader(), query: { language } },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(answer));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(answer.response.headers.get('Content-Disposition'), 'student-import.xlsx'));
+};
+
+export const uploadImport = async (file: File): Promise<StudentImportPreview> =>
+  studentImportPreviewSchema.parse(
+    await answerOf(
+      api.PUT('/api/people/students/imports', {
+        params: { header: branchHeader() },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as Blob,
+        headers: { 'Content-Type': STUDENT_IMPORT_TYPES[0] ?? '' },
+      }),
+    ),
+  );
+
+export const previewImport = async (
+  id: string,
+  decisions: StudentImportDecisions,
+): Promise<StudentImportPreview> =>
+  studentImportPreviewSchema.parse(
+    await answerOf(
+      api.POST('/api/people/students/imports/{id}/preview', {
+        params: { header: branchHeader(), path: { id } },
+        body: decisions,
+      }),
+    ),
+  );
+
+export const confirmImport = async (
+  id: string,
+  decisions: StudentImportDecisions,
+): Promise<StudentImportConfirmResult> =>
+  studentImportConfirmResultSchema.parse(
+    await answerOf(
+      api.POST('/api/people/students/imports/{id}/confirm', {
+        params: { header: branchHeader(), path: { id } },
+        body: decisions,
+      }),
+    ),
+  );

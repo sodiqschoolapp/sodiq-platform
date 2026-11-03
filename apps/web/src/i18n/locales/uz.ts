@@ -1023,6 +1023,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu kafedrada ishdan ketmagan xodimlar yoki ochiq vakansiyalar bor. Avval ularni boshqa kafedraga oʻtkazing yoki vakansiyalarni yoping.',
     photo_invalid: 'JPEG yoki PNG formatidagi, 5 MB gacha boʻlgan surat tanlang.',
     photo_too_large: 'Surat 5 MB dan katta. Kichikroq surat tanlang.',
+    import_file_too_large: 'Fayl 5 MB dan katta. Uni kichikroq fayllarga boʻling.',
+    import_not_template: 'Bu tizim shabloni emas. Shablonni yuklab oling, toʻldiring va yuklang.',
+    import_empty: 'Faylda qatorlar yoʻq. Shablonni uchinchi qatordan toʻldiring.',
+    import_too_many_rows: 'Faylda 1000 dan ortiq qator bor. Uni kichikroq fayllarga boʻling.',
+    import_already_confirmed: 'Bu import allaqachon saqlangan. Oʻquvchilar roʻyxatini oching.',
+    import_already_done:
+      'Bu fayl filialga allaqachon import qilingan. Qayta hech narsa yaratilmadi.',
+    import_decision_unknown: 'Qatorlar oʻzgardi. Faylni qayta yuklang.',
+    import_changed:
+      'Shu paytda kimdir oʻquvchilar yoki qarindoshlarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
     reset_link_invalid:
@@ -2121,6 +2131,54 @@ export const uz: Texts<'one' | 'other'> = {
     neverUsedLink: 'Ishlatilmagan hisoblar',
     studentsLink: 'Oʻquvchilar',
     parentsLink: 'Ota-onalar',
+    import: {
+      open: 'Exceldan import',
+      title: 'Oʻquvchilar importi',
+      template: 'Shablonni yuklab olish',
+      upload: 'Toʻldirilgan faylni yuklash',
+      reading: 'Fayl oʻqilmoqda…',
+      saved_one: '{{count}} ta oʻquvchi saqlandi.',
+      saved_other: '{{count}} ta oʻquvchi saqlandi.',
+      toList: 'Oʻquvchilar roʻyxatini ochish',
+      preview: 'Fayl qatorlari',
+      counts_one: '{{count}} ta qator, xatoli: {{problems}}.',
+      counts_other: '{{count}} ta qator, xatoli: {{problems}}.',
+      alreadyImported:
+        'Bu fayl {{date}} kuni import qilingan. Qayta tasdiqlash hech narsa yaratmaydi.',
+      emptyFile: 'Faylda qatorlar yoʻq.',
+      confirm_one: '{{count}} ta oʻquvchini saqlash',
+      confirm_other: 'Barcha {{count}} ta oʻquvchini saqlash',
+      notClean:
+        'Har bir qator toʻgʻri boʻlmaguncha hech narsa saqlanmaydi. Faylni tuzatib qayta yuklang yoki qatorlardagi savollarni hal qiling.',
+      row: 'Qator',
+      name: 'Familiya va ism',
+      problemsColumn: 'Xatolar',
+      rowClean: 'Tayyor',
+      decisions: 'Hal qilish',
+      warningHere:
+        'Shu ism va tugʻilgan sanali oʻquvchi bor: {{uids}}. Bu boshqa oʻquvchi boʻlsa, belgilang.',
+      warningElsewhere:
+        'Boshqa filial oʻquvchisining ismi va tugʻilgan sanasi shunday. Bu boshqa oʻquvchi boʻlsa, belgilang.',
+      warningRows:
+        '{{rows}}-qatorlarda ham shu ism va tugʻilgan sana. Bular boshqa-boshqa oʻquvchilar boʻlsa, belgilang.',
+      linkTo:
+        '{{position}}-qarindosh: bu telefon egasi {{name}} bilan bogʻlash (saqlangan ism qoladi)',
+      heldElsewhere: 'bu qiymat boshqa filial oʻquvchisida bor.',
+      problems: {
+        required: 'toʻldiring.',
+        invalid: 'bu qiymat qabul qilinmaydi.',
+        date_invalid: 'haqiqiy sanani kk.oo.yyyy shaklida yozing.',
+        phone_invalid: 'bu telefon raqami emas.',
+        value_unknown: 'roʻyxatdan qiymat tanlang.',
+        class_unknown: 'filialda boshlanish sanasi yili uchun bunday sinf yoʻq.',
+        needs_class: 'bugun yoki undan oldin boshlaydigan oʻquvchiga sinf kerak.',
+        needs_relative: 'kamida bitta qarindosh qoʻshing.',
+        duplicate_in_file: 'xuddi shu qiymat {{rows}}-qatorlarda ham bor.',
+        phone_two_names_in_file:
+          'bu telefon {{rows}}-qatorlarda boshqa ism bilan. Telefonni yoki ismni tuzating.',
+        phone_held: 'bu telefon boshqa odamda. Oʻsha odam bilan bogʻlang yoki telefonni tuzating.',
+      },
+    },
     students: {
       title: 'Oʻquvchilar',
       caption: 'Filial oʻquvchilari',

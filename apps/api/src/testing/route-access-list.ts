@@ -473,6 +473,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/students': { branch: 'request', roles: STUDENT_VIEWERS },
   'POST /api/people/students/check': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/students': { branch: 'request', roles: STUDENT_EDITORS },
+  // Task 9.4g: the student import, under `students` create (approved with the spec change).
+  'GET /api/people/students/import-template': { branch: 'request', roles: STUDENT_EDITORS },
+  'PUT /api/people/students/imports': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/imports/:id/preview': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/students/imports/:id/confirm': { branch: 'request', roles: STUDENT_EDITORS },
   'GET /api/people/students/:id': { branch: 'request', roles: STUDENT_VIEWERS },
   'PUT /api/people/students/:id': { branch: 'request', roles: STUDENT_EDITORS },
   'PUT /api/people/students/:id/uid': { branch: 'request', roles: STUDENT_EDITORS },

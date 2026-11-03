@@ -47,6 +47,7 @@ import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-en
 import { PeoplePage } from '@/features/people/people-page';
 import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
 import { StaffPage } from '@/features/people/staff-page';
+import { StudentImportPage } from '@/features/people/student-import-page';
 import { StudentsPage } from '@/features/people/students-page';
 import { ParentsPage } from '@/features/people/parents-page';
 import { VacanciesPage } from '@/features/people/vacancies-page';
@@ -605,6 +606,14 @@ const studentsRoute = createRoute({
   component: guarded('students', StudentsPage),
 });
 
+/** The student import from the system's template (task 9.4g). */
+const studentImportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/students/import',
+  validateSearch: listSearch,
+  component: guarded('students', StudentImportPage),
+});
+
 /** The relatives of the students of the branch, the Parents (task 2.5a). */
 const parentsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -812,6 +821,7 @@ const routeTree = rootRoute.addChildren([
     peopleRoute,
     staffRoute,
     studentsRoute,
+    studentImportRoute,
     parentsRoute,
     vacanciesRoute,
     headTeachersRoute,
