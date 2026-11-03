@@ -82,4 +82,4 @@ Not chosen: AWS (about $550 to $650 a month for the same setup, and more to oper
 
 ## Moving from myss.uz
 
-Nothing is moved from myss.uz at the start, and no import is built for now. Imports are added feature by feature, in the formats the school will give.
+Nothing is moved from myss.uz at the start. Students and staff are imported from the system's Excel template (`04`); other imports are added feature by feature, in the formats the school will give.
