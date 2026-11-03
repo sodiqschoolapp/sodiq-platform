@@ -1002,6 +1002,17 @@ export const en = {
       'Staff members who have not left, or open vacancies, are in this department. Move them to another department or close the vacancies first.',
     photo_invalid: 'Choose a JPEG or PNG photo, up to 5 MB.',
     photo_too_large: 'The photo is larger than 5 MB. Choose a smaller one.',
+    import_file_too_large: 'The file is larger than 5 MB. Split it into smaller files.',
+    import_not_template:
+      'This is not the system template. Download the template, fill it in and upload it.',
+    import_empty: 'The file holds no rows. Fill in the template from its third row.',
+    import_too_many_rows: 'The file holds more than 1000 rows. Split it into smaller files.',
+    import_already_confirmed: 'This import was already saved. Open the student list.',
+    import_already_done:
+      'This file was already imported into the branch. Nothing was created again.',
+    import_decision_unknown: 'The rows changed. Upload the file again.',
+    import_changed:
+      'Someone changed students or relatives at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
     reset_link_invalid:
@@ -2087,6 +2098,54 @@ export const en = {
     neverUsedLink: 'Accounts never used',
     studentsLink: 'Students',
     parentsLink: 'Parents',
+    import: {
+      open: 'Import from Excel',
+      title: 'Student import',
+      template: 'Download the template',
+      upload: 'Upload the filled file',
+      reading: 'Reading the file…',
+      saved_one: '{{count}} student saved.',
+      saved_other: '{{count}} students saved.',
+      toList: 'Open the student list',
+      preview: 'Rows of the file',
+      counts_one: '{{count}} row, {{problems}} with problems.',
+      counts_other: '{{count}} rows, {{problems}} with problems.',
+      alreadyImported:
+        'This file was already imported on {{date}}. Confirming it again creates nothing.',
+      emptyFile: 'The file holds no rows.',
+      confirm_one: 'Save {{count}} student',
+      confirm_other: 'Save all {{count}} students',
+      notClean:
+        'Nothing is saved until every row is clean. Correct the file and upload it again, or decide the questions in the rows.',
+      row: 'Row',
+      name: 'Surname and name',
+      problemsColumn: 'Problems',
+      rowClean: 'Ready',
+      decisions: 'To decide',
+      warningHere:
+        'A student with this name and date of birth exists: {{uids}}. Tick if this is another student.',
+      warningElsewhere:
+        'A student of another branch has this name and date of birth. Tick if this is another student.',
+      warningRows:
+        'Rows {{rows}} have this name and date of birth. Tick if these are different students.',
+      linkTo:
+        'Relative {{position}}: link to {{name}}, the person who has this phone (the stored name is kept)',
+      heldElsewhere: 'a student of another branch has this value.',
+      problems: {
+        required: 'fill this in.',
+        invalid: 'this value is not accepted.',
+        date_invalid: 'write a real date as dd.mm.yyyy.',
+        phone_invalid: 'this is not a phone number.',
+        value_unknown: 'choose a value from the list.',
+        class_unknown: 'no such class in the branch for the year of the start date.',
+        needs_class: 'a student who starts today or earlier needs a class.',
+        needs_relative: 'add at least one relative.',
+        duplicate_in_file: 'the same value is on rows {{rows}}.',
+        phone_two_names_in_file:
+          'this phone is under another name on rows {{rows}}. Correct the phone or the name.',
+        phone_held: 'another person has this phone. Link to that person, or correct the phone.',
+      },
+    },
     students: {
       title: 'Students',
       caption: 'Students of the branch',
@@ -3510,6 +3569,10 @@ export const en = {
         journal_substitute: 'Substitute for a journal of the vacancy',
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
+      },
+      student_import: {
+        upload: 'Student import file uploaded',
+        confirm: 'Student import confirmed',
       },
       student: {
         create: 'Student record created',

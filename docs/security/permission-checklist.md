@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 483, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 458.
+- Routes of the application: 487, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 462.
 - Routes with a limit inside the route: 153.
-- Routes that take an id: 384, with 817 ids (branch 725, school 76, own 2, none 14).
+- Routes that take an id: 386, with 821 ids (branch 727, school 76, own 2, none 16).
 - Areas of the permission table: 57.
 
 ## Routes without a role
@@ -911,6 +911,10 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/people/students/:id/return/cancel` | `path:id` | student | branch | `src/modules/people/student-statuses.test.ts > answers 404 for a student of another branch or an unknown id on every route` |
 | `POST /api/people/students/check` | `body:studentId` | student | branch | `src/modules/people/students.test.ts > answers 404 for a record of another branch or an unknown one in the body` |
 | `POST /api/people/students/export` | `body:ids` | student | branch | `src/modules/people/student-exports.test.ts > answers 404 for a student of another branch and an unknown id, with nothing logged` |
+| `POST /api/people/students/imports/:id/confirm` | `path:id` | student import | branch | `src/modules/people/student-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
+| `POST /api/people/students/imports/:id/confirm` | `body:relativeLinks[].relativeId` | relative | none | 04, Close relatives, and edge/close-relatives: the holder of a phone found by the phone match, in any branch; checked against the phone sent (relative_phone_changed), never read for the request |
+| `POST /api/people/students/imports/:id/preview` | `path:id` | student import | branch | `src/modules/people/student-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
+| `POST /api/people/students/imports/:id/preview` | `body:relativeLinks[].relativeId` | relative | none | 04, Close relatives, and edge/close-relatives: the holder of a phone found by the phone match, in any branch; checked against the phone sent (relative_phone_changed), never read for the request |
 | `POST /api/people/vacancies` | `body:departmentId` | department | school | 03: "Division: one list for the whole school"; departments are of a division |
 | `POST /api/people/vacancies` | `body:subjects[].subjectId` | subject | school | `src/modules/people/availability-vacancies.test.ts > answer 404 for an unknown department or subject in the body, changing nothing` |
 | `POST /api/people/vacancies/:id/close` | `path:id` | vacancy | branch | `src/modules/people/availability-vacancies.test.ts > answer 404 for a vacancy of another branch, an unknown id and a person, changing nothing` |

@@ -116,7 +116,8 @@ export type AccountKey =
   | 'transfersTeacher'
   | 'transfersVice'
   | 'whoHeadTutor'
-  | 'whoHeadTeacher';
+  | 'whoHeadTeacher'
+  | 'importVice';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

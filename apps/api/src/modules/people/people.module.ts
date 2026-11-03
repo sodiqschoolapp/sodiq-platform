@@ -29,6 +29,7 @@ import { StaffController } from './staff.controller.js';
 import { StaffSearch } from './staff-search.js';
 import { Staff } from './staff.service.js';
 import { StudentExports } from './student-exports.service.js';
+import { StudentImports } from './student-imports.service.js';
 import { StudentPhotosController } from './student-photos.controller.js';
 import { StudentPhotos } from './student-photos.service.js';
 import { RelativeSearch } from './relative-search.js';
@@ -97,6 +98,7 @@ import { Vacancies } from './vacancies.service.js';
     StudentMoves,
     StudentHistories,
     StudentExports,
+    StudentImports,
     StudentPhotos,
     RelativeWrites,
     Relatives,

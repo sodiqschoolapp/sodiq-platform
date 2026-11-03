@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import { createDatabase } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
@@ -11,6 +12,8 @@ import { insertBranch, setEditDays } from '../branch-filter-sql.js';
 import { LessonsKit } from '../lessons-kit.js';
 import { LoadKit } from '../load-kit.js';
 import { linkRelative } from '../relatives-kit.js';
+import { filledTemplate, studentRow } from '../student-import-kit.js';
+import { STUDENT_IMPORT_FILE } from './import-file.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
 
@@ -742,6 +745,61 @@ try {
       .execute();
   });
   seeded.students = { login: studentsVice.login, password: studentsVice.firstPassword };
+
+  // The Academic Vice Principal of the import test (task 9.4g), in a branch of its own with a
+  // year around today and the class "7 Seeded" (below), and the filled template of two invented
+  // students the test uploads, written where the test reads it (`STUDENT_IMPORT_FILE`).
+  const importBranch = await insertBranch(migrator, 'Import browser test branch');
+  classBranches.push(importBranch);
+  const importVice = await create('Gulnoza', 'Saidova');
+  await transactions.run([importBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: importVice.id,
+      role: 'academic_vice_principal',
+      branchId: importBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: importBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: importBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+  const dotted = startDate.split('-').reverse().join('.');
+  writeFileSync(
+    STUDENT_IMPORT_FILE,
+    await filledTemplate([
+      studentRow('Seeded', {
+        uid: 'IMPORT-E2E-1',
+        lastName: 'Rahimova',
+        firstName: 'Laylo',
+        startsOn: dotted,
+      }),
+      studentRow('Seeded', {
+        uid: 'IMPORT-E2E-2',
+        lastName: 'Rahimov',
+        firstName: 'Jahongir',
+        startsOn: dotted,
+      }),
+    ]),
+  );
+  seeded.importVice = { login: importVice.login, password: importVice.firstPassword };
 
   // The Academic Vice Principal of the leaving test (task 2.4b-1), in a branch
   // of its own with the same planned year around today.

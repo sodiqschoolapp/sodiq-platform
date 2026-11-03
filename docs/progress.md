@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 3 November 2026: task 9.4g Student import
+
+- **Table** (0154): `student_imports` keeps each upload (the rows as read, the SHA-256 of the file, who and when) under the branch filter; a confirm sets its confirm pair; a unique index allows one confirmed import of one file per branch.
+- **Reading** (`student-import-read.ts`): only the system's template (sheet "Students", a hidden first row of column keys); dates as real date cells or `dd.mm.yyyy`; phones from text or a number cell (9.989E+11) through the shared phone schemas; the lists (sex, document, region, scholarship, relationship) in any of the three languages or as codes; every field then through `studentCreateSchema` itself. Across the rows: the same UID, JSHSHIR, document or contract number (both rows), one relative phone under two names (both rows), the same name and date of birth (a warning to confirm, twins pass); siblings with one relative (same phone and name) share one record.
+- **Save** (`student-imports.service.ts`): the preview and the confirm run the hand create (`Students.createIn`, split out of `create`) row by row, each in a savepoint, with the hand route's refusal wrappers and the deferred checks run at the end of each row; the preview is always rolled back, the confirm commits only when every row is clean. The duplicate warning is the hand form's check, run per row. A relative phone held under the same name links to that person; under another name it waits for "link" (the `existing` link always carries the row's phone) or a corrected file. Two confirms of one file wait on an advisory lock and the second finds it imported.
+- **Routes** (`students` create): `GET /api/people/students/import-template`, `PUT /api/people/students/imports` (a new declared file route, xlsx, 5 MB), `POST .../imports/:id/preview` and `.../confirm` with the decisions; audit `student_import.upload` and `student_import.confirm` (hash and counts, no row data) and one `student.create` per student with the import's id.
+- **Web**: "Import from Excel" on the student list (roles that create students) opens `/people/students/import`: template, upload, the rows with their problems in words under the template's headings, the warning and link choices, "Save all"; texts in three languages. A browser test imports two students.
+
+Left out: editing a row on the screen (the file is corrected and uploaded again); "different person, the number has a new owner" in the import (done by hand on the student afterwards).
+
+The next sessions must know:
+
+- The staff import (9.4h) can follow the same shape: a kept upload, the hand create run per row in savepoints with `set constraints all immediate` at the end of each row, the preview rolled back.
+- `Students.createIn` is the body of the hand create on a given transaction; the hand route keeps its wrappers outside.
+
 ## 2 November 2026: task 9.4f Rating exams in grades 0–4
 
 - **Setting and states** (0153): `school_settings` holds "Rating exams in grades 0–4" (school-wide, one row); each quarter of each branch keeps its own state (`quarter_rating_states`), so a change acts on the quarters without a closing in force and a closed quarter keeps the state it closed with. A new quarter takes the school's value. Starting value: off, or on where an open quarter already had a journal of grades 0–4 of a rating subject (decision 3; off in every fresh database).

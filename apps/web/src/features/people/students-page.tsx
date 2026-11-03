@@ -19,7 +19,7 @@ import {
   GRADES,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -41,7 +41,7 @@ import { useExport } from '@/components/list/use-export';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useMayView, useView } from '@/features/access/use-view';
 import { classesQuery } from '@/features/classes/classes-api';
 import { asFormSchema } from './form-schema';
@@ -568,14 +568,20 @@ export function StudentsPage() {
   };
 
   const addButton = canCreate && newRecord.value === null && (
-    <Button
-      id={newRecord.buttonId}
-      onClick={() => {
-        newRecord.start({ kind: 'student' });
-      }}
-    >
-      {t('people.students.add')}
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      {/* Task 9.4g: the import from the system's template, for the roles that create a student. */}
+      <Link to="/people/students/import" className={buttonVariants({ variant: 'secondary' })}>
+        {t('people.import.open')}
+      </Link>
+      <Button
+        id={newRecord.buttonId}
+        onClick={() => {
+          newRecord.start({ kind: 'student' });
+        }}
+      >
+        {t('people.students.add')}
+      </Button>
+    </div>
   );
 
   /** "Put into a class" of the ticked students (task 3.1b), in the side panel of the list. */

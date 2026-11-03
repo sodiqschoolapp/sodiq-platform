@@ -12,6 +12,16 @@ import {
   studentParamsSchema,
   studentRecordSchema,
   studentUidCorrectionSchema,
+  studentImportConfirmResultSchema,
+  studentImportDecisionsSchema,
+  studentImportParamsSchema,
+  studentImportPreviewSchema,
+  studentImportTemplateQuerySchema,
+  type StudentImportConfirmResult,
+  type StudentImportDecisions,
+  type StudentImportParams,
+  type StudentImportPreview,
+  type StudentImportTemplateQuery,
   type StudentCheck,
   type StudentCheckResult,
   type StudentCreate,
@@ -25,12 +35,21 @@ import {
   type StudentRecord,
   type StudentUidCorrection,
 } from '@sodiq/shared';
+import { STUDENT_IMPORT_ROUTE, type UploadedFile } from '../../http/file-routes.js';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsFile, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import {
+  Returns,
+  ReturnsFile,
+  ValidBody,
+  ValidFile,
+  ValidParams,
+  ValidQuery,
+} from '../../http/schemas.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { StudentExports } from './student-exports.service.js';
+import { StudentImports } from './student-imports.service.js';
 import { Students } from './students.service.js';
 
 /**
@@ -45,6 +64,7 @@ export class StudentsController {
   constructor(
     private readonly students: Students,
     private readonly exports: StudentExports,
+    private readonly imports: StudentImports,
   ) {}
 
   /** `consent=missing`: the active students without consent, for the Financial readers (answer 23). */
@@ -83,6 +103,60 @@ export class StudentsController {
     @RequestId() requestId: string,
   ): Promise<XlsxFile> {
     return this.exports.export(access, request, requestId);
+  }
+
+  /**
+   * The system's template of the student import (task 9.4g; `04`, Student
+   * record: Excel import), for the roles that create a student by hand. The
+   * import routes come before `students/:id`, which would take them otherwise.
+   */
+  @Get('students/import-template')
+  @Requires('students', 'create')
+  @ReturnsFile()
+  importTemplate(
+    @ValidQuery(studentImportTemplateQuerySchema) query: StudentImportTemplateQuery,
+  ): Promise<XlsxFile> {
+    return this.imports.template(query.language);
+  }
+
+  /** The upload of a filled template: the rows are kept and the preview answered (task 9.4g). */
+  @Put('students/imports')
+  @Requires('students', 'create')
+  @Returns(studentImportPreviewSchema)
+  importUpload(
+    @CurrentAccess() access: Access,
+    @ValidFile(STUDENT_IMPORT_ROUTE) file: UploadedFile | null,
+    @RequestId() requestId: string,
+  ): Promise<StudentImportPreview> {
+    return this.imports.upload(access, file, requestId);
+  }
+
+  /** The preview of a kept upload with the decisions so far; nothing is saved (task 9.4g). */
+  @Post('students/imports/:id/preview')
+  @HttpCode(200)
+  @Requires('students', 'create')
+  @Returns(studentImportPreviewSchema)
+  importPreview(
+    @CurrentAccess() access: Access,
+    @ValidParams(studentImportParamsSchema) params: StudentImportParams,
+    @ValidBody(studentImportDecisionsSchema) decisions: StudentImportDecisions,
+    @RequestId() requestId: string,
+  ): Promise<StudentImportPreview> {
+    return this.imports.preview(access, params.id, decisions, requestId);
+  }
+
+  /** Saves every row of a kept upload, or nothing (task 9.4g). */
+  @Post('students/imports/:id/confirm')
+  @HttpCode(200)
+  @Requires('students', 'create')
+  @Returns(studentImportConfirmResultSchema)
+  importConfirm(
+    @CurrentAccess() access: Access,
+    @ValidParams(studentImportParamsSchema) params: StudentImportParams,
+    @ValidBody(studentImportDecisionsSchema) decisions: StudentImportDecisions,
+    @RequestId() requestId: string,
+  ): Promise<StudentImportConfirmResult> {
+    return this.imports.confirm(access, params.id, decisions, requestId);
   }
 
   @Post('students/check')

@@ -126,6 +126,9 @@ export const AUDIT_ACTION_GROUPS = {
     'vacancy.acting_end',
     'vacancy.delete',
     'student.create',
+    // Task 9.4g: the upload of a filled template and its confirm.
+    'student_import.upload',
+    'student_import.confirm',
     'student.edit',
     'student.uid_corrected',
     'student.photo',
