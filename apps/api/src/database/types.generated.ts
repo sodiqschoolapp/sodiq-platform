@@ -1828,6 +1828,18 @@ export interface StudentContracts {
   student_id: string;
 }
 
+export interface StudentImports {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+}
+
 export interface StudentMerges {
   assignment_id: string | null;
   branch_id: string;
@@ -2330,6 +2342,7 @@ export interface DB {
   student_accounts: StudentAccounts;
   student_branch_moves: StudentBranchMoves;
   student_contracts: StudentContracts;
+  student_imports: StudentImports;
   student_merges: StudentMerges;
   student_moves: StudentMoves;
   student_relatives: StudentRelatives;

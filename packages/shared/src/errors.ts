@@ -281,6 +281,22 @@ export const ERROR_CODES = [
   'photo_invalid',
   /** The photo is larger than 5 MB (answer 2; task 2.2c-2). */
   'photo_too_large',
+  /** The import file is larger than 5 MB (task 9.4g, plan decision 10). */
+  'import_file_too_large',
+  /** The file is not the system's template of the import (edge/students-classes-groups: "Only the system's template is accepted"; task 9.4g). */
+  'import_not_template',
+  /** The import file holds no row of data (task 9.4g). */
+  'import_empty',
+  /** The import file holds more than 1000 rows (task 9.4g, plan decision 10). */
+  'import_too_many_rows',
+  /** This import was confirmed already (task 9.4g). */
+  'import_already_confirmed',
+  /** The same file was already imported into the branch: nothing is created again (edge: "Uploading the same file again creates nothing"; task 9.4g). */
+  'import_already_done',
+  /** A decision names a row, a relative position or a person the preview did not offer (task 9.4g). */
+  'import_decision_unknown',
+  /** A change made at the same moment met the import; nothing was saved, try again (task 9.4g). */
+  'import_changed',
   /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */

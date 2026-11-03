@@ -3682,6 +3682,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         delete: 'Вакансия удалена',
         export: 'Вакансии выгружены',
       },
+      student_import: {
+        upload: 'Загружен файл импорта учеников',
+        confirm: 'Импорт учеников подтверждён',
+      },
       student: {
         create: 'Запись ученика создана',
         edit: 'Запись ученика изменена',

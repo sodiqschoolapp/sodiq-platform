@@ -3553,6 +3553,10 @@ export const uz: Texts<'one' | 'other'> = {
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },
+      student_import: {
+        upload: 'Oʻquvchilar importi fayli yuklandi',
+        confirm: 'Oʻquvchilar importi tasdiqlandi',
+      },
       student: {
         create: 'Oʻquvchi yozuvi yaratildi',
         edit: 'Oʻquvchi yozuvi oʻzgartirildi',

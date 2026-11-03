@@ -5,6 +5,8 @@ import {
   PHOTO_TYPES,
   PLAN_FILE_MAX_BYTES,
   PLAN_FILE_TYPES,
+  STUDENT_IMPORT_MAX_BYTES,
+  STUDENT_IMPORT_TYPES,
   type ErrorCode,
 } from '@sodiq/shared';
 import type { NextFunction, Request, Response } from 'express';
@@ -102,6 +104,18 @@ export const ABSENCE_REASON_FILE_ROUTE: FileRoute = {
   tooLarge: 'exemption_file_too_large',
 };
 
+/**
+ * The upload of a filled template of the student import (task 9.4g, pull
+ * request #278, decision 1, Look first): an Excel workbook of at most 5 MB.
+ */
+export const STUDENT_IMPORT_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/people/students/imports',
+  types: STUDENT_IMPORT_TYPES,
+  maxBytes: STUDENT_IMPORT_MAX_BYTES,
+  tooLarge: 'import_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -109,6 +123,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   PLAN_FILE_ROUTE,
   EXEMPTION_FILE_ROUTE,
   ABSENCE_REASON_FILE_ROUTE,
+  STUDENT_IMPORT_ROUTE,
 ];
 
 /**

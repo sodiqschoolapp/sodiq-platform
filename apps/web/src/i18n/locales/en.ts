@@ -3511,6 +3511,10 @@ export const en = {
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
       },
+      student_import: {
+        upload: 'Student import file uploaded',
+        confirm: 'Student import confirmed',
+      },
       student: {
         create: 'Student record created',
         edit: 'Student record changed',
