@@ -2150,10 +2150,11 @@ export const uz: Texts<'one' | 'other'> = {
       samePerson: 'Telefon {{name}} qarindoshining asosiy telefoni: bitta odam deb belgilandi.',
       samePersonElsewhere: 'Telefon qarindoshning asosiy telefoni: bitta odam deb belgilandi.',
       holderHere: 'U {{name}}ga tegishli.',
-      holderElsewhere: 'U boshqa filial xodimiga tegishli.',
+      holderElsewhere:
+        'U boshqa filial xodimiga tegishli. Bu odam ilgari maktabda ishlagan boʻlsa, uni oʻsha kartada qoʻlda qayta ishga oling: xodim ID va login saqlanadi.',
       holderLeft:
         'U ishdan ketgan {{name}}ga tegishli: bu odamni oʻz kartasida qoʻlda qayta ishga oling, xodim ID va login saqlanadi.',
-      slipsTitle_one: 'Birinchi parol varaqasi',
+      slipsTitle_one: 'Birinchi parol varaqasi ({{count}})',
       slipsTitle_other: 'Birinchi parol varaqalari ({{count}})',
       slipsOnce:
         'Parollar faqat hozir koʻrsatiladi va hech qayerda saqlanmaydi. Sahifadan chiqishdan oldin varaqalarni chop eting; yoʻqolgan varaqa oʻrniga parol tiklanadi.',

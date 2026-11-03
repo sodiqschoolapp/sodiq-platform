@@ -46,6 +46,9 @@ import {
 } from './staff-import-template.js';
 import { Staff, superAdminOf } from './staff.service.js';
 
+/** First passwords hashed at the same time before a confirm: fewer than the thread pool's four. */
+const HASH_BATCH = 2;
+
 const DEADLOCK = '40P01';
 const SERIALIZATION_FAILURE = '40001';
 
@@ -251,22 +254,34 @@ export class StaffImports {
   ): Promise<StaffImportConfirmResult> {
     const superAdmin = actingAs(access);
     const branchId = branchOf(access);
-    // The rows as kept, read first (404 before anything else) to know which rows get an account.
-    const kept = await this.transactions.run(access.branchIds, (transaction) =>
-      this.readImport(transaction, branchId, id, false),
-    );
-    const passwords = new Map<number, PreparedFirstPassword>();
+    // The rows as kept, read first (404 before anything else), with the refusals a repeated
+    // confirm gets, so that it makes no hash; the transaction below checks both again.
+    const kept = await this.transactions.run(access.branchIds, async (transaction) => {
+      const record = await this.readImport(transaction, branchId, id, false);
+      if (record.confirmedAt !== null) {
+        throw new ApiException('import_already_confirmed', 409);
+      }
+      if ((await this.importedOn(transaction, record)) !== null) {
+        throw new ApiException('import_already_done', 409);
+      }
+      return record;
+    });
     const withRole = kept.rows
       .map((row) => parseStaffImportRow(row, NO_LISTS))
       .filter((row) => row.role !== null)
       .map((row) => row.rowNumber);
-    const prepared = await Promise.all(withRole.map(() => prepareFirstPassword()));
-    withRole.forEach((number, index) => {
-      const one = prepared[index];
-      if (one !== undefined) {
-        passwords.set(number, one);
-      }
-    });
+    const passwords = new Map<number, PreparedFirstPassword>();
+    // A few at a time: Argon2id runs on the thread pool every request shares (sign-ins too).
+    for (let start = 0; start < withRole.length; start += HASH_BATCH) {
+      const batch = withRole.slice(start, start + HASH_BATCH);
+      const prepared = await Promise.all(batch.map(() => prepareFirstPassword()));
+      batch.forEach((number, index) => {
+        const one = prepared[index];
+        if (one !== undefined) {
+          passwords.set(number, one);
+        }
+      });
+    }
     try {
       return await this.transactions.run(access.branchIds, async (transaction) => {
         const record = await this.readImport(transaction, branchId, id, true);

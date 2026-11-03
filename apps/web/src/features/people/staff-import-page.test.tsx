@@ -167,7 +167,14 @@ describe('the staff import page', () => {
               login: 'b.rahimov',
             },
           ],
-          slips: [SLIP],
+          slips: [
+            SLIP,
+            ...[2, 3, 4, 5].map((n) => ({
+              ...SLIP,
+              login: `b.rahimov${String(n)}`,
+              password: `invented-pw-${String(n)}`,
+            })),
+          ],
           issuedOn: '2026-10-10',
         }),
     });
@@ -192,7 +199,8 @@ describe('the staff import page', () => {
     // On the page, and in the sheet that prints four to an A4 page.
     expect(screen.getAllByText('kQ7-invented-pw').length).toBeGreaterThan(0);
     const sheet = document.querySelector('[data-slip-sheet][data-four]');
-    expect(sheet?.querySelectorAll('[data-slip]')).toHaveLength(1);
+    // Five slips: the print rule of index.css puts a page break after every fourth.
+    expect(sheet?.querySelectorAll('[data-slip]')).toHaveLength(5);
     expect(screen.getByRole('button', { name: en.people.staffImport.print })).toBeDefined();
     // The password is held by the page only: no query or mutation cache keeps it.
     await waitFor(() => {

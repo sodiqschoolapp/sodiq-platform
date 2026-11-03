@@ -2118,10 +2118,11 @@ export const en = {
         'The phone is the main phone of the relative {{name}}: marked as the same person.',
       samePersonElsewhere: 'The phone is a relative’s main phone: marked as the same person.',
       holderHere: 'It belongs to {{name}}.',
-      holderElsewhere: 'It belongs to a staff record of another branch.',
+      holderElsewhere:
+        'It belongs to a staff record of another branch. If this person worked at the school before, re-hire them by hand on that record, which keeps the staff ID and the login.',
       holderLeft:
         'It belongs to {{name}}, who has left: re-hire this person by hand on their record, which keeps the staff ID and the login.',
-      slipsTitle_one: 'First-password slip',
+      slipsTitle_one: 'First-password slip ({{count}})',
       slipsTitle_other: 'First-password slips ({{count}})',
       slipsOnce:
         'The passwords are shown only now and are stored nowhere. Print the slips before you leave this page; a lost slip is replaced by a password reset.',

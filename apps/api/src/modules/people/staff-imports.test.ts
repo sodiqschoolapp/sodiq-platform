@@ -10,8 +10,11 @@ import {
 import ExcelJS from 'exceljs';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { ShippingLogger } from '../../monitoring/monitoring.service.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import {
@@ -21,6 +24,7 @@ import {
 } from '../../testing/staff-import-kit.js';
 import { PREVIEW_PASSWORD_HASH } from '../auth/accounts.service.js';
 import { verifyPassword } from '../auth/password-hash.js';
+import { UploadedFile } from '../../http/file-routes.js';
 import { StaffImports } from './staff-imports.service.js';
 import { staffIdOf } from './staff-numbers.js';
 import type { Access } from '../access/permission.guard.js';
@@ -114,13 +118,7 @@ describe('the staff import', () => {
     );
 
   const jobsOf = async () =>
-    (
-      await sql`select count(*)::int as n from pgboss.job`
-        .execute(t.database.migrator)
-        .catch(() => ({
-          rows: [{ n: 0 }],
-        }))
-    ).rows;
+    (await sql`select count(*)::int as n from pgboss.job`.execute(t.database.migrator)).rows;
 
   const staffByPhone = (phone: number) =>
     t.database.migrator
@@ -200,6 +198,93 @@ describe('the staff import', () => {
     });
   }
 
+  /** A staff person linked to the south only, written by the migrator. */
+  async function southMember(values: {
+    phone: string;
+    jshshir?: string;
+    firstName?: string;
+    lastName?: string;
+    birthDate?: string;
+  }) {
+    count += 1;
+    return t.database.migrator.transaction().execute(async (transaction) => {
+      const row = await transaction
+        .insertInto('staff')
+        .values({
+          kind: 'person',
+          staff_id: staffIdOf(2025, 9800 + count),
+          first_name: values.firstName ?? 'Sanjar',
+          last_name: values.lastName ?? 'Janubiy',
+          sex: 'male',
+          birth_date: values.birthDate ?? '1980-01-01',
+          phone: values.phone,
+          jshshir: values.jshshir ?? null,
+          admission_date: '2025-09-01',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('staff_branches')
+        .values({ staff_id: row.id, branch_id: t.south, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_divisions')
+        .values({ staff_id: row.id, division_id: academic, department_id: steam, is_main: true })
+        .execute();
+      await transaction
+        .insertInto('staff_statuses')
+        .values({ staff_id: row.id, status: 'active', valid_from: '2025-09-01' })
+        .execute();
+      return row.id;
+    });
+  }
+
+  /** A student of a branch with one relative of the phone given (the relative is linked there only). */
+  async function studentWithRelative(branch: string, phone: string, n: number) {
+    const student = await t.postStudent(
+      branch,
+      {
+        uid: String(2690100 + n),
+        firstName: 'Madina',
+        lastName: 'Ota-onaliyeva',
+        paternalName: '',
+        sex: 'female',
+        birthDate: '2013-04-04',
+        grade: 8,
+        startsOn: '2026-09-02',
+        documentType: null,
+        documentNumber: '',
+        jshshir: '',
+        phone: '',
+        email: '',
+        address: '',
+        region: null,
+        previousSchool: '',
+        diagnosticScore: null,
+        scholarship: { type: 'none', coverage: null, amount: null },
+        consentSignedOn: null,
+        contract: { number: `SI-2026/${String(100 + n)}`, signedOn: '2026-08-20' },
+        relatives: [
+          {
+            kind: 'new',
+            relative: {
+              fullName: 'Rustam Otaev',
+              phone,
+              workplace: null,
+              email: 'r.otaev@example.uz',
+            },
+            relationship: 'father',
+            mainContact: true,
+            portalAccess: true,
+            receivesNotices: true,
+          },
+        ],
+      },
+      t.admin,
+    );
+    expect(student.status, JSON.stringify(student.body)).toBe(201);
+  }
+
   beforeAll(async () => {
     t = await dayTemplatesKit();
     academic = (
@@ -212,6 +297,7 @@ describe('the staff import', () => {
     steam = await departmentId('STEAM');
     // A year of the north, so that a student joins the kit's class (the same-person case).
     await new ClassesKit(t.database.migrator).year(t.north);
+    await new ClassesKit(t.database.migrator).year(t.south);
     await subject(
       'Mathematics',
       'STEAM',
@@ -250,8 +336,30 @@ describe('the staff import', () => {
       const answer = await uploaded(rows);
       expect(answer.clean, JSON.stringify(answer.rows)).toBe(true);
       expect(answer.rows.every((row) => row.login !== null)).toBe(true);
-      const result = await saved(answer.importId);
+      // The process's logger, as main.ts sets it, catches every line the confirm writes.
+      const lines: string[] = [];
+      vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+      Logger.overrideLogger(new ShippingLogger());
+      ShippingLogger.sink = (_level, text) => {
+        lines.push(text);
+      };
+      let result: Awaited<ReturnType<typeof saved>>;
+      try {
+        result = await saved(answer.importId);
+      } finally {
+        ShippingLogger.sink = undefined;
+        vi.restoreAllMocks();
+      }
       expect(result.created).toBe(20);
+      // No password is in a log line or in the audit log (`edge/people-roles-accounts`: "not stored").
+      const audit = JSON.stringify(
+        (await sql`select * from audit_log`.execute(t.database.migrator)).rows,
+      );
+      for (const one of result.slips) {
+        expect(lines.join('\n')).not.toContain(one.password);
+        expect(audit).not.toContain(one.password);
+      }
       expect(result.slips).toHaveLength(20);
       // Staff IDs in the order of the rows, from the counter of 2026.
       const numbers = result.staff.map((one) => Number(one.staffId.slice(4)));
@@ -278,6 +386,10 @@ describe('the staff import', () => {
         .where('login', '=', slip?.login ?? '')
         .executeTakeFirstOrThrow();
       expect(await verifyPassword(account.password_hash, slip?.password ?? '')).toBe(true);
+      // It signs in through the route and asks the change first.
+      const signedIn = await t.kit.signIn(slip?.login ?? '', slip?.password ?? '');
+      expect(signedIn.status).toBe(200);
+      expect((signedIn.body as { mustChangePassword: boolean }).mustChangePassword).toBe(true);
       expect(account.must_change_password).toBe(true);
       expect(account.password_expires_at?.toISOString()).toBe(slip?.validUntil);
       // The grade 1 teacher has the three subjects.
@@ -426,40 +538,59 @@ describe('the staff import', () => {
       expect(await rowsOf()).toEqual(before);
     });
 
+    it('tells a left record that holds the phone, to be re-hired by hand, and saves nothing', async () => {
+      const left = await staffMember({ phone: '+998941234577', left: true });
+      const answer = await uploaded([staffRow({ phone: '+998941234577' })]);
+      expect(rowAt(answer, 3).problems).toEqual([
+        expect.objectContaining({
+          column: 'phone',
+          code: 'staff_phone_taken',
+          recordId: left,
+          left: true,
+        }),
+      ]);
+      expect(answer.clean).toBe(false);
+    });
+
     it('tells a phone of a staff record of another branch without naming it', async () => {
-      const other = await t.database.migrator.transaction().execute(async (transaction) => {
-        const row = await transaction
-          .insertInto('staff')
-          .values({
-            kind: 'person',
-            staff_id: staffIdOf(2025, 9900),
-            first_name: 'Sanjar',
-            last_name: 'Janubiy',
-            sex: 'male',
-            birth_date: '1980-01-01',
-            phone: '+998941239900',
-            admission_date: '2025-09-01',
-          })
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        await transaction
-          .insertInto('staff_branches')
-          .values({ staff_id: row.id, branch_id: t.south, is_main: true })
-          .execute();
-        await transaction
-          .insertInto('staff_divisions')
-          .values({ staff_id: row.id, division_id: academic, department_id: steam, is_main: true })
-          .execute();
-        await transaction
-          .insertInto('staff_statuses')
-          .values({ staff_id: row.id, status: 'active', valid_from: '2025-09-01' })
-          .execute();
-        return row.id;
-      });
+      const other = await southMember({ phone: '+998941239900' });
       const answer = await uploaded([staffRow({ phone: '+998941239900' })]);
       const problem = rowAt(answer, 3).problems[0];
       expect(problem).toEqual({ column: 'phone', code: 'staff_phone_taken', elsewhere: true });
       expect(JSON.stringify(answer)).not.toContain(other);
+    });
+
+    it('tells a JSHSHIR, a name and date of birth and a relative of another branch without naming them', async () => {
+      const jshshirHolder = await southMember({
+        phone: '+998941239901',
+        jshshir: '30909800000001',
+      });
+      const namesake = await southMember({
+        phone: '+998941239902',
+        firstName: 'Temur',
+        lastName: 'Janubov',
+        birthDate: '1981-02-03',
+      });
+      await studentWithRelative(t.south, '+998933330099', 1);
+      const answer = await uploaded([
+        staffRow({ jshshir: '30909800000001' }),
+        staffRow({ firstName: 'Temur', lastName: 'Janubov', birthDate: '03.02.1981' }),
+        staffRow({ phone: '+998933330099', email: '' }),
+      ]);
+      expect(rowAt(answer, 3).problems).toEqual([
+        { column: 'jshshir', code: 'already_exists', elsewhere: true },
+      ]);
+      expect(rowAt(answer, 4).warning).toEqual({
+        records: [],
+        elsewhere: true,
+        rows: [],
+        confirmed: false,
+      });
+      expect(rowAt(answer, 5).samePerson).toEqual({ fullName: null });
+      const text = JSON.stringify(answer);
+      for (const hidden of [jshshirHolder, namesake, 'Rustam Otaev', 'Janubiy']) {
+        expect(text).not.toContain(hidden);
+      }
     });
 
     it("marks a staff record whose phone is a relative's main phone as the same person", async () => {
@@ -617,6 +748,12 @@ describe('the staff import', () => {
         'permission_denied',
       );
       refusedWith(await confirm(answer.importId, {}, t.vicePrincipal), 403, 'permission_denied');
+      refusedWith(await preview(answer.importId, {}, t.vicePrincipal), 403, 'permission_denied');
+      refusedWith(
+        await t.get('/api/people/staff/import-template?language=en', t.north, t.vicePrincipal),
+        403,
+        'permission_denied',
+      );
       expect(await rowsOf()).toEqual(before);
     });
   });
@@ -654,6 +791,12 @@ describe('the staff import', () => {
         () => imports.preview(access, answer.importId, { confirmedWarnings: [] }, 'r1'),
         () => imports.confirm(access, answer.importId, { confirmedWarnings: [] }, 'r2'),
         () => imports.template(access, 'en'),
+        async () =>
+          imports.upload(
+            access,
+            new UploadedFile(await filledStaffTemplate([staffRow()]), XLSX),
+            'r3',
+          ),
       ]) {
         await expect(run()).rejects.toMatchObject({ code: 'permission_denied' });
       }
@@ -661,21 +804,98 @@ describe('the staff import', () => {
     });
   });
 
-  describe('two at the same moment', () => {
-    it('saves one of two confirms of one import, and one of two imports of the same file', async () => {
-      const answer = await uploaded([staffRow()]);
-      const [a, b] = await Promise.all([confirm(answer.importId), confirm(answer.importId)]);
-      const statuses = [a.status, b.status].sort();
-      expect(statuses).toEqual([200, 409]);
-      const loser = a.status === 409 ? a : b;
-      expect(errorCode(loser)).toBe('import_already_confirmed');
+  describe('two confirms at the same moment', () => {
+    /** Runs a transaction of the application that holds `lock` until released. */
+    async function holding(lock: (transaction: Transaction) => Promise<void>) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.app.get(Transactions).run([t.north], async (transaction) => {
+        await lock(transaction);
+        ready();
+        await released;
+      });
+      await isReady;
+      return { release, done };
+    }
 
+    /** Waits until `count` sessions of this test database wait for a lock. */
+    async function waiting(count: number) {
+      for (let attempt = 0; attempt < 400; attempt += 1) {
+        const found = await sql<{ waiting: number }>`
+          select count(distinct l.pid)::int as waiting
+          from pg_locks l join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database() and not l.granted
+        `.execute(t.database.migrator);
+        if ((found.rows[0]?.waiting ?? 0) >= count) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error(`${String(count)} requests never waited.`);
+    }
+
+    const started = (work: () => PromiseLike<Response>) =>
+      new Promise<Response>((resolve, reject) => {
+        work().then(resolve, reject);
+      });
+
+    const outcomeOf = (response: Response) =>
+      response.status === 200
+        ? staffImportConfirmResultSchema.parse(response.body).outcome
+        : errorCode(response);
+
+    it('of one import: the first saves, the second waits on the import row and is refused as confirmed', async () => {
+      const answer = await uploaded([staffRow()]);
+      const held = await holding(async (transaction) => {
+        await transaction
+          .selectFrom('staff_imports')
+          .select('id')
+          .where('id', '=', answer.importId)
+          .forUpdate()
+          .execute();
+      });
+      const one = started(() => confirm(answer.importId));
+      await waiting(1);
+      const two = started(() => confirm(answer.importId));
+      await waiting(2);
+      held.release();
+      await held.done;
+      expect(outcomeOf(await one)).toBe('saved');
+      expect(outcomeOf(await two)).toBe('import_already_confirmed');
+    });
+
+    it('of two uploads of one file: the second waits on the file lock and finds it imported', async () => {
       const bytes = await filledStaffTemplate([staffRow()]);
-      const one = staffImportPreviewSchema.parse((await upload(bytes)).body);
-      const two = staffImportPreviewSchema.parse((await upload(bytes)).body);
-      const [c, d] = await Promise.all([confirm(one.importId), confirm(two.importId)]);
-      expect([c.status, d.status].sort()).toEqual([200, 409]);
-      expect(errorCode(c.status === 409 ? c : d)).toBe('import_already_done');
+      const first = staffImportPreviewSchema.parse((await upload(bytes)).body);
+      const second = staffImportPreviewSchema.parse((await upload(bytes)).body);
+      const hash = (
+        await t.database.migrator
+          .selectFrom('staff_imports')
+          .select('file_sha256')
+          .where('id', '=', first.importId)
+          .executeTakeFirstOrThrow()
+      ).file_sha256;
+      // The lock both confirms take before they look for an earlier import of the file; they
+      // meet on no row (two import rows) and no index before it.
+      const held = await holding(async (transaction) => {
+        await sql`select pg_advisory_xact_lock(hashtextextended(${`staff_import:${t.north}:${hash}`}, 0))`.execute(
+          transaction,
+        );
+      });
+      const one = started(() => confirm(first.importId));
+      await waiting(1);
+      const two = started(() => confirm(second.importId));
+      await waiting(2);
+      held.release();
+      await held.done;
+      expect(outcomeOf(await one)).toBe('saved');
+      expect(outcomeOf(await two)).toBe('import_already_done');
     });
   });
 
@@ -708,6 +928,23 @@ describe('the staff import', () => {
       expect(values).toContain('Mathematics');
       expect(values).toContain('Tutor');
       expect(values).not.toContain('Super Admin');
+    });
+  });
+
+  describe('the day of an earlier import', () => {
+    it('is the day in the time zone of the branch: a confirm at 00:05 in Tashkent is of that day', async () => {
+      // Last in the file: the clock moves forward for this test only.
+      const before = t.clock.now();
+      try {
+        t.clock.set('2026-10-11T00:05:00+05:00');
+        const bytes = await filledStaffTemplate([staffRow()]);
+        const first = staffImportPreviewSchema.parse((await upload(bytes)).body);
+        await saved(first.importId);
+        const again = staffImportPreviewSchema.parse((await upload(bytes)).body);
+        expect(again.alreadyImportedOn).toBe('2026-10-11');
+      } finally {
+        t.clock.set(before);
+      }
     });
   });
 });
