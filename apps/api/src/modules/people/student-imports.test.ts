@@ -210,7 +210,11 @@ describe('the student import', () => {
         relative2Phone: `+998 95 111 00 02`,
       };
       const answer = await uploaded(rows);
-      expect(answer.rows.filter((row) => row.problems.length > 0).map((row) => [row.rowNumber, row.problems])).toEqual([]);
+      expect(
+        answer.rows
+          .filter((row) => row.problems.length > 0)
+          .map((row) => [row.rowNumber, row.problems]),
+      ).toEqual([]);
       expect(answer.clean).toBe(true);
       expect(answer.alreadyImportedOn).toBeNull();
       // The preview saved nothing.
@@ -506,7 +510,12 @@ describe('the student import', () => {
           .execute();
         await transaction
           .insertInto('staff_divisions')
-          .values({ staff_id: row.id, division_id: academic.id, department_id: steam.id, is_main: true })
+          .values({
+            staff_id: row.id,
+            division_id: academic.id,
+            department_id: steam.id,
+            is_main: true,
+          })
           .execute();
         await transaction
           .insertInto('staff_statuses')
@@ -516,7 +525,10 @@ describe('the student import', () => {
       });
       const target = await newClass();
       const answer = await uploaded([
-        studentRow(target.name, { relative1FullName: 'Rustam Nazarov', relative1Phone: staffPhone }),
+        studentRow(target.name, {
+          relative1FullName: 'Rustam Nazarov',
+          relative1Phone: staffPhone,
+        }),
       ]);
       expect(answer.clean).toBe(true);
       expect((await confirmed(answer.importId)).outcome).toBe('saved');

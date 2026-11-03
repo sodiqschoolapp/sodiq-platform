@@ -368,8 +368,7 @@ export class StudentImports {
           problems.push(saved);
         }
       }
-      const rowClean =
-        problems.length === 0 && (warning === null || warning.confirmed);
+      const rowClean = problems.length === 0 && (warning === null || warning.confirmed);
       clean &&= rowClean;
       previewRows.push({
         rowNumber: row.rowNumber,

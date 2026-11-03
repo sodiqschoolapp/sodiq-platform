@@ -342,6 +342,24 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 3 November 2026: the student import (task 9.4g)
+
+Plan approved on pull request #278 with its corrections. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The upload is a declared exception of the JSON-only rule (`STUDENT_IMPORT_ROUTE` in `FILE_ROUTES`): a raw-body `PUT`, the xlsx type only, 5 MB; never multipart | The spec change requires an upload of the school's file (decision 1) |
+| **Look first.** The rows of an upload are kept in `student_imports.rows` under the branch filter, read only through the import routes by the roles that create students; nothing is deleted | The confirm checks the rows the preview showed; "the same file again" needs the hash (decision 2) |
+| **Look first.** Duplicates inside the file are the same UID, JSHSHIR, document or contract number (both rows); the same name and date of birth is the duplicate warning to confirm. Proposed `/spec-change` of the import row of `edge/students-classes-groups`: "Duplicates inside the file (the same UID, JSHSHIR, document number or contract number) are errors; the same name and date of birth on two rows gives the warning of the duplicate check, so twins pass." | A reading where two lines of the spec meet (decision 3 of the review) |
+| The preview and the confirm run the hand create row by row in savepoints; the deferred checks run at the end of each row (`set constraints all immediate`, then the deferred ones deferred again), so the preview finds what a commit would refuse | "Each check of the hand-made create" by construction; the room of a class counts the rows above |
+| A relative phone held under the same name (`spellingKey`) links without a question; under another name the row waits for "link to the existing person" or a corrected file; "new owner" is not offered in the import | `04`, Adding a relative; `edge`, the relative phone row |
+| Any relative may have no phone ("no phone of their own"), as by hand; links take the form's defaults (portal access and notices on); the first relative given is the main contact | Spec-reviewer finding 1; `edge/close-relatives` |
+| The class may be empty only for a start after today; the class is found by grade and `classNameKey` among the branch's classes of the year of the start date | Task 3.1b, decision 2; `edge`, look-alike letters |
+| The template holds no data and is not logged; at most 1000 rows; the photo is not in the file, the consent date is | Decisions 9 to 11 |
+| **Build decision.** A confirm that finds a row not clean answers 200 with `outcome: not_clean` and the new preview (nothing saved), in place of a 422 carrying the preview | The preview is a typed answer of its own; the error shape carries field details only |
+| **Build decision.** Two confirms of one file take an advisory lock on (branch, file hash) before they look for an earlier import, so the second answers `import_already_done`; the unique index of 0154 stays the last guard, with a database test and no mapping | A second confirm otherwise meets the UIDs of the first before the index and answers its rows as taken |
+| **Build decision.** A row whose relative phone waits for a decision is not saved in the run and shows `phone_held` | The save would refuse the phone as taken and hide the choice |
+
 ## 2 November 2026: the Class teacher of grades 0–4 (task 9.4e)
 
 Plan approved on pull request #275; the owner chose reading A of decision 2 (stop-list item 5, permissions). Flagged on issue #42.
