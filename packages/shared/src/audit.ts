@@ -109,6 +109,9 @@ export const AUDIT_ACTION_GROUPS = {
   ],
   people: [
     'staff.create',
+    // Task 9.4h: the upload of a filled staff template and its confirm.
+    'staff_import.upload',
+    'staff_import.confirm',
     'staff.edit',
     'staff.teaching',
     'staff.branches',

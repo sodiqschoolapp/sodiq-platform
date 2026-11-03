@@ -116,6 +116,19 @@ export const STUDENT_IMPORT_ROUTE: FileRoute = {
   tooLarge: 'import_file_too_large',
 };
 
+/**
+ * The upload of a filled template of the staff import (task 9.4h, pull
+ * request #279, decision 1, Look first): an Excel workbook of at most 5 MB,
+ * as the student import.
+ */
+export const STAFF_IMPORT_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/people/staff/imports',
+  types: STUDENT_IMPORT_TYPES,
+  maxBytes: STUDENT_IMPORT_MAX_BYTES,
+  tooLarge: 'import_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -124,6 +137,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   EXEMPTION_FILE_ROUTE,
   ABSENCE_REASON_FILE_ROUTE,
   STUDENT_IMPORT_ROUTE,
+  STAFF_IMPORT_ROUTE,
 ];
 
 /**

@@ -3611,6 +3611,10 @@ export const uz: Texts<'one' | 'other'> = {
         delete: 'Boʻsh oʻrin oʻchirildi',
         export: 'Boʻsh oʻrinlar eksport qilindi',
       },
+      staff_import: {
+        upload: 'Xodimlar importi fayli yuklandi',
+        confirm: 'Xodimlar importi tasdiqlandi',
+      },
       student_import: {
         upload: 'Oʻquvchilar importi fayli yuklandi',
         confirm: 'Oʻquvchilar importi tasdiqlandi',

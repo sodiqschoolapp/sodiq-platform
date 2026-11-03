@@ -3570,6 +3570,10 @@ export const en = {
         delete: 'Vacancy deleted',
         export: 'Vacancies exported',
       },
+      staff_import: {
+        upload: 'Staff import file uploaded',
+        confirm: 'Staff import confirmed',
+      },
       student_import: {
         upload: 'Student import file uploaded',
         confirm: 'Student import confirmed',

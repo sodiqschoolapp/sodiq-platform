@@ -3745,6 +3745,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         delete: 'Вакансия удалена',
         export: 'Вакансии выгружены',
       },
+      staff_import: {
+        upload: 'Загружен файл импорта сотрудников',
+        confirm: 'Импорт сотрудников подтверждён',
+      },
       student_import: {
         upload: 'Загружен файл импорта учеников',
         confirm: 'Импорт учеников подтверждён',
