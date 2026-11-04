@@ -147,6 +147,10 @@ export const uz: Texts<'one' | 'other'> = {
     rating_primary_refused:
       '0–4-sinflarda reyting imtihonlarini hozircha oʻchirib boʻlmaydi: 0–4-sinf jurnalida reyting imtihoni yozuvlari bor yoki reytingli fanning 4- va 5-sinf guruhi mavjud. Avval yozuvlarni tozalang yoki guruhlarni oʻzgartiring.',
     setting_unchanged: 'Sozlama barcha ochiq choraklarda allaqachon shu qiymatda.',
+    demo_clock_off: 'Demo vaqtni faqat test muhitida surish mumkin.',
+    demo_clock_backwards:
+      "Demo vaqt faqat oldinga yuradi. Ko'rsatilgan demo vaqtdan keyingi, bir necha soniyadan keyingi paytni tanlang.",
+    demo_clock_too_far: "Demo vaqtni ko'pi bilan 400 kunga surish mumkin. Yaqinroq paytni tanlang.",
     groups_rating_primary_span:
       'Reyting imtihoni boʻlgan fanning 4- va 5-sinf guruhi uchun 0–4-sinflarda reyting imtihonlari yoqilgan boʻlishi kerak. Super Admindan yoqishni soʻrang yoki guruhni bitta sinfdan tuzing.',
     class_grade_rating_primary:
@@ -3629,6 +3633,9 @@ export const uz: Texts<'one' | 'other'> = {
       },
       school_settings: {
         rating_exams_primary: '0–4-sinflarda reyting imtihonlari oʻzgartirildi',
+      },
+      demo_clock: {
+        jump: 'Demo vaqt oldinga surildi',
       },
       subject_quarter_weights: {
         set: 'Choraklik taqsimot belgilandi',

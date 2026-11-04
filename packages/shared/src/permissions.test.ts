@@ -721,6 +721,14 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the Super Admin alone the demo time of the test environment (task 10.5, the owner on 4 November 2026)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.demo_clock[role], role).toEqual(
+        role === 'super_admin' ? ['view', 'edit'] : [],
+      );
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'absence_reasons',
@@ -737,6 +745,7 @@ describe('a frozen permission table', () => {
       'classes',
       'current_period',
       'day_templates',
+      'demo_clock',
       'divisions',
       'early_warning',
       'exemptions',

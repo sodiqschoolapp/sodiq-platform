@@ -8,6 +8,8 @@ import { Branches } from './branches.service.js';
 import { BuildingsController } from './buildings.controller.js';
 import { CalendarController } from './calendar.controller.js';
 import { Calendar } from './calendar.service.js';
+import { DemoClockController } from './demo-clock.controller.js';
+import { DemoClockService } from './demo-clock.service.js';
 import { DayTemplatesController } from './day-templates.controller.js';
 import { DayTemplates } from './day-templates.service.js';
 import { Buildings } from './buildings.service.js';
@@ -35,7 +37,8 @@ import { PlansModule } from '../plans/plans.module.js';
  * years, quarters and the go-live date (task 1.3); slot types and day
  * templates (task 1.5); the calendar (task 1.4); the settings, travel time
  * and the setup checklist (task 1.6); subjects and their weights (task 2.1);
- * the forced delete of a building, floor or room (task 5.8c).
+ * the forced delete of a building, floor or room (task 5.8c); the demo time of the test
+ * environment (task 10.5).
  */
 @Module({
   imports: [TimetableModule, PlansModule, NotificationsModule],
@@ -50,6 +53,7 @@ import { PlansModule } from '../plans/plans.module.js';
     CalendarController,
     SettingsController,
     SchoolSettingsController,
+    DemoClockController,
     TravelTimesController,
     SubjectsController,
   ],
@@ -66,6 +70,7 @@ import { PlansModule } from '../plans/plans.module.js';
     Calendar,
     Settings,
     SchoolSettingsService,
+    DemoClockService,
     TravelTimes,
     Subjects,
   ],

@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { MAIL_TEXTS, RESET_LINK_VALID_MS, isLanguage } from '@sodiq/shared';
+import { MAIL_TEXTS, RESET_LINK_VALID_MS, isLanguage, type Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -43,6 +44,9 @@ export class PasswordResetMailer {
     @Inject(CONFIG) private readonly config: AppConfig,
     @Inject(MAILER) private readonly mailer: Mailer,
     private readonly audit: Audit,
+    // Task 10.5 (decision 2): the link's moments by real time; the address in force by the
+    // transaction's moment.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
   ) {}
 
   async send(transaction: Transaction, data: PasswordResetMail): Promise<void> {
@@ -55,7 +59,7 @@ export class PasswordResetMailer {
     if (link === undefined || link.sent_at !== null || link.closed_at !== null) {
       return;
     }
-    const now = await transactionMoment(transaction);
+    const now = this.clock.now();
     if (now.getTime() - link.requested_at.getTime() > RESET_LINK_VALID_MS) {
       return;
     }
@@ -69,7 +73,7 @@ export class PasswordResetMailer {
       return;
     }
     const address = await sql<{ email: string | null }>`
-      select password_reset_address(${link.account_id}::uuid, ${now}::timestamptz) as email
+      select password_reset_address(${link.account_id}::uuid, ${await transactionMoment(transaction)}::timestamptz) as email
     `.execute(transaction);
     const to = address.rows[0]?.email ?? null;
     if (to === null) {

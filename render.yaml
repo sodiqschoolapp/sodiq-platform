@@ -42,6 +42,10 @@ services:
       # pull request #66): the public address of this test service, not a secret.
       - key: WEB_ORIGIN
         value: https://app-test.sodiqschool.uz
+      # The demo clock (task 10.5): the Super Admin may move "now" forward here, and only
+      # here. render.production.yaml never names it; the API refuses it outside `test`.
+      - key: DEMO_CLOCK
+        value: '1'
       # Entered in the dashboard at creation, the same values as the worker's.
       - key: DATABASE_URL
         sync: false
@@ -78,6 +82,9 @@ services:
       # The worker writes the mails, so it needs the address of the links too (task 2.3c-2).
       - key: WEB_ORIGIN
         value: https://app-test.sodiqschool.uz
+      # The worker follows the demo clock too (task 10.5): the daily work of the demo date.
+      - key: DEMO_CLOCK
+        value: '1'
       - key: DATABASE_URL
         sync: false
       - key: SECOND_STEP_KEY

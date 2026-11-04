@@ -22,5 +22,10 @@ process.env.WEB_ORIGIN = process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5174';
 // connections for up to 20 s a minute on CI's small runners, and the browser tests stalled
 // (30 October 2026). The reads calculate the totals from source instead.
 process.env.JOBS_UNSCHEDULED = 'results.prepare_totals';
+// The demo clock (task 10.5): with no jump it shows real time, so the other specs see no change;
+// demo-clock.spec.ts, which runs last, jumps. An environment the clock may run in (correction 3
+// of the plan review), whatever the shell says.
+process.env.DEMO_CLOCK = '1';
+process.env.SENTRY_ENVIRONMENT = 'test';
 await import('../../main.js');
 await import('../../worker.js');

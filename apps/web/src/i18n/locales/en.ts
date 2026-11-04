@@ -142,6 +142,10 @@ export const en = {
     rating_primary_refused:
       'Rating exams in grades 0–4 cannot be turned off yet: a journal of grades 0–4 holds rating exam entries, or a group of grades 4 and 5 of a rating subject exists. Clear the entries or change the groups first.',
     setting_unchanged: 'The setting already has this value in every open quarter.',
+    demo_clock_off: 'The demo time can be moved on the test environment only.',
+    demo_clock_backwards:
+      'Demo time only moves forward. Choose a moment after the demo time shown, a few seconds from now.',
+    demo_clock_too_far: 'A jump of the demo time is at most 400 days. Choose a nearer moment.',
     groups_rating_primary_span:
       'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4. Ask the Super Admin to turn them on, or make the group of one of the grades.',
     class_grade_rating_primary:
@@ -3588,6 +3592,9 @@ export const en = {
       },
       school_settings: {
         rating_exams_primary: 'Rating exams in grades 0–4 changed',
+      },
+      demo_clock: {
+        jump: 'Demo time moved forward',
       },
       subject_quarter_weights: {
         set: 'Quarterly distribution set',

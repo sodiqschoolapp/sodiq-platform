@@ -34,6 +34,74 @@ describe('loadConfig', () => {
       // Task 10.2a: nothing pushed without the Grafana variables.
       monitoring: { grafana: undefined, instance: 'local' },
       unscheduledJobs: [],
+      // Task 10.5: off unless DEMO_CLOCK=1.
+      demoClock: false,
+    });
+  });
+
+  // Task 10.5: the demo clock runs on the test environment only (`13`, Hosting).
+  describe('the demo clock', () => {
+    it('is off by default and when 0 or empty', () => {
+      expect(loadConfig(VALID).demoClock).toBe(false);
+      expect(loadConfig({ ...VALID, DEMO_CLOCK: '0' }).demoClock).toBe(false);
+      expect(loadConfig({ ...VALID, DEMO_CLOCK: '' }).demoClock).toBe(false);
+    });
+
+    it.each(['test', 'development'])('runs with SENTRY_ENVIRONMENT=%s', (environment) => {
+      expect(
+        loadConfig({ ...VALID, DEMO_CLOCK: '1', SENTRY_ENVIRONMENT: environment }).demoClock,
+      ).toBe(true);
+    });
+
+    it('runs on a laptop, whose environment is development by default', () => {
+      expect(loadConfig({ ...VALID, DEMO_CLOCK: '1' }).demoClock).toBe(true);
+    });
+
+    it('runs on the test environment as render.yaml sets it', () => {
+      expect(
+        loadConfig({
+          ...VALID,
+          DEMO_CLOCK: '1',
+          SENTRY_ENVIRONMENT: 'test',
+          WEB_ORIGIN: 'https://app-test.sodiqschool.uz',
+          TRUST_PROXY: '1',
+          WEB_FILES: 'apps/web/dist',
+        }).demoClock,
+      ).toBe(true);
+    });
+
+    it.each(['production', 'staging', 'Test'])(
+      'refuses to start with SENTRY_ENVIRONMENT=%s',
+      (environment) => {
+        expect(problemOf({ ...VALID, DEMO_CLOCK: '1', SENTRY_ENVIRONMENT: environment })).toContain(
+          'DEMO_CLOCK must be 0 or 1, and 1 only on the test environment',
+        );
+      },
+    );
+
+    it('refuses to start behind the production address, whatever the environment says', () => {
+      expect(
+        problemOf({
+          ...VALID,
+          DEMO_CLOCK: '1',
+          SENTRY_ENVIRONMENT: 'test',
+          WEB_ORIGIN: 'https://app.sodiqschool.uz',
+        }),
+      ).toContain('DEMO_CLOCK must be 0 or 1');
+    });
+
+    it('refuses a value other than 0 or 1', () => {
+      expect(problemOf({ ...VALID, DEMO_CLOCK: 'yes' })).toContain('DEMO_CLOCK must be 0 or 1');
+    });
+
+    it('leaves production as it is with the flag off', () => {
+      expect(
+        loadConfig({
+          ...VALID,
+          SENTRY_ENVIRONMENT: 'production',
+          WEB_ORIGIN: 'https://app.sodiqschool.uz',
+        }).demoClock,
+      ).toBe(false);
     });
   });
 

@@ -9,8 +9,8 @@ import {
   type SessionResponse,
 } from '@sodiq/shared';
 import { sql, type RawBuilder } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
-import { Transactions, type Transaction } from '../../database/transactions.js';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
+import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import {
   branchChoices,
@@ -195,7 +195,11 @@ export class Sessions {
     private readonly audit: Audit,
     private readonly throttle: SignInThrottle,
     private readonly secondSteps: SecondStepRule,
-    @Inject(CLOCK) private readonly clock: Clock,
+    // Task 10.5 (decision 1, Look first): the timing of sessions, trust and one-time passwords
+    // follows real time, so that a jump of the demo clock signs nobody out. The roles and the
+    // staff status in force follow the transaction's moment (`transactionMoment`), the demo
+    // clock. Without the demo clock both are one clock.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
   ) {}
 
   /**
@@ -265,8 +269,8 @@ export class Sessions {
     // password matched, as a locked account is (correction 3 of the review of
     // pull request #53), and the attempt goes into the sign-in history.
     if (
-      await this.transactions.run([], (transaction) =>
-        staffAccountBlocked(transaction, account.id, now),
+      await this.transactions.run([], async (transaction) =>
+        staffAccountBlocked(transaction, account.id, await transactionMoment(transaction)),
       )
     ) {
       await this.recordInactiveSignIn(account.id, origin.requestId);
@@ -296,7 +300,11 @@ export class Sessions {
       if (current.locked_at !== null) {
         return 'locked' as const;
       }
-      const assignments = await currentAssignments(transaction, account.id, now);
+      const assignments = await currentAssignments(
+        transaction,
+        account.id,
+        await transactionMoment(transaction),
+      );
       const secondStep = await this.secondSteps.stateOf(
         transaction,
         account.id,
@@ -425,7 +433,11 @@ export class Sessions {
       if (owner === undefined) {
         return undefined;
       }
-      const assignments = await currentAssignments(transaction, owner.account_id, now);
+      const assignments = await currentAssignments(
+        transaction,
+        owner.account_id,
+        await transactionMoment(transaction),
+      );
       const roles = rolesOf(assignments);
       const limit = idleLimitMs(roles);
       const use = () =>
@@ -474,7 +486,13 @@ export class Sessions {
       }
       // An inactive or left staff member is refused on every request from the
       // date of the status, read from the stored rows (task 2.2a).
-      if (await staffAccountBlocked(transaction, used.account_id, now)) {
+      if (
+        await staffAccountBlocked(
+          transaction,
+          used.account_id,
+          await transactionMoment(transaction),
+        )
+      ) {
         return undefined;
       }
       return {
@@ -537,11 +555,19 @@ export class Sessions {
       for (const row of await query.execute()) {
         if (
           row.locked_at !== null ||
-          (await staffAccountBlocked(transaction, row.account_id, now))
+          (await staffAccountBlocked(
+            transaction,
+            row.account_id,
+            await transactionMoment(transaction),
+          ))
         ) {
           continue;
         }
-        const assignments = await currentAssignments(transaction, row.account_id, now);
+        const assignments = await currentAssignments(
+          transaction,
+          row.account_id,
+          await transactionMoment(transaction),
+        );
         const roles = rolesOf(assignments);
         if (endByTime(row, now, idleLimitMs(roles)) !== undefined) {
           continue;
@@ -958,7 +984,11 @@ export class Sessions {
    */
   async writeEndsByTime(transaction: Transaction, accountId: string): Promise<void> {
     const now = this.clock.now();
-    const limit = idleLimitMs(rolesOf(await currentAssignments(transaction, accountId, now)));
+    const limit = idleLimitMs(
+      rolesOf(
+        await currentAssignments(transaction, accountId, await transactionMoment(transaction)),
+      ),
+    );
     const open = await transaction
       .selectFrom('sessions')
       .select(['id', 'created_at', 'last_used_at', 'trusted_from', 'trust_ended_at'])

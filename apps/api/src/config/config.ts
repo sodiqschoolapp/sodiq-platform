@@ -99,7 +99,20 @@ const environmentSchema = z.object({
   GRAFANA_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
   // Set by Render on each instance of a service: which server a number came from.
   RENDER_INSTANCE_ID: z.preprocess(emptyAsUnset, z.string().max(100).optional()),
+  // The demo clock (task 10.5): `1` on the test environment only (render.yaml), so that the
+  // Super Admin can move the platform's "now" forward for the role tutorials. Refused at start
+  // anywhere else (`DEMO_CLOCK_ENVIRONMENTS`, `PRODUCTION_WEB_ORIGIN`).
+  DEMO_CLOCK: z.preprocess(emptyAsUnset, z.enum(['0', '1']).default('0')),
 });
+
+/**
+ * Task 10.5: the error-report environments in which the demo clock may run. The test
+ * environment on Render says `test`; a laptop and the browser tests say `development`.
+ */
+export const DEMO_CLOCK_ENVIRONMENTS: readonly string[] = ['test', 'development'];
+
+/** The address of production (render.production.yaml): the demo clock never runs behind it. */
+export const PRODUCTION_WEB_ORIGIN = 'https://app.sodiqschool.uz';
 
 const R2_VARIABLES = [
   'R2_ACCOUNT_ID',
@@ -155,6 +168,8 @@ const PROBLEM: Record<VariableName, string> = {
     'GRAFANA_LOGS_USER must be the number of the logs user, set with the four other GRAFANA variables',
   GRAFANA_TOKEN: 'GRAFANA_TOKEN must be set with the four other GRAFANA variables',
   RENDER_INSTANCE_ID: 'RENDER_INSTANCE_ID must be the name of an instance',
+  DEMO_CLOCK:
+    'DEMO_CLOCK must be 0 or 1, and 1 only on the test environment (SENTRY_ENVIRONMENT test or development, never the production address)',
 };
 
 export interface AppConfig {
@@ -178,6 +193,8 @@ export interface AppConfig {
   unscheduledJobs: readonly string[];
   /** Where the numbers and the logs go (task 10.2a), or nowhere. */
   monitoring: MonitoringConfig;
+  /** Task 10.5: whether the demo clock runs (the test environment only). */
+  demoClock: boolean;
 }
 
 export interface MonitoringConfig {
@@ -260,6 +277,13 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   if (data.JOBS_UNSCHEDULED !== undefined && onServer) {
     wrong.push('JOBS_UNSCHEDULED');
   }
+  if (
+    data.DEMO_CLOCK === '1' &&
+    (!DEMO_CLOCK_ENVIRONMENTS.includes(data.SENTRY_ENVIRONMENT) ||
+      new URL(data.WEB_ORIGIN).origin === PRODUCTION_WEB_ORIGIN)
+  ) {
+    wrong.push('DEMO_CLOCK');
+  }
   if (wrong.length > 0) {
     const problems = wrong.map((name) => PROBLEM[name]);
     throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
@@ -300,6 +324,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
           : undefined,
       instance: data.RENDER_INSTANCE_ID ?? 'local',
     },
+    demoClock: data.DEMO_CLOCK === '1',
   };
 }
 

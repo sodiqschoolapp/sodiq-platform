@@ -18,6 +18,8 @@ import {
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
+import { CONFIG } from '../../config/config.module.js';
+import type { AppConfig } from '../../config/config.js';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -95,6 +97,7 @@ export class AcademicYears {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly quarterLessons: QuarterLessons,
     private readonly planFollow: PlanFollow,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
   /** Every year of the branch of the transaction, newest first, each with its quarters in number order. */
@@ -645,8 +648,13 @@ export class AcademicYears {
       if (branch === undefined) {
         throw notFound();
       }
-      const today = schoolDateOf(this.clock.now(), branch.time_zone);
-      return periodOn(today, await this.yearsIn(transaction));
+      const now = this.clock.now();
+      const today = schoolDateOf(now, branch.time_zone);
+      return {
+        ...periodOn(today, await this.yearsIn(transaction)),
+        // Task 10.5 (decision 9): the demo time for the top bar, none where the clock is real.
+        demoNow: this.config.demoClock ? now.toISOString() : null,
+      };
     });
   }
 }
