@@ -399,7 +399,7 @@ export const currentPeriodSchema = z.object({
   next: quarterSchema.nullable(),
   /**
    * Task 10.5: the demo time of the test environment, the moment the server's clock shows, for
-   * the top bar; `null` where the demo clock is off (production, decision 9).
+   * the top bar; `null` where the demo clock is off (production, decision 9) or has not moved yet.
    */
   demoNow: z.iso.datetime({ offset: true }).nullable(),
 });

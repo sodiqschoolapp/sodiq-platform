@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { SetupChecklist } from './setup-checklist';
-import { currentPeriodQuery } from './setup-api';
+import { demoClockQuery } from './demo-clock-page';
 import { PANEL } from '@/components/ui/control';
 
 interface SetupLink {
@@ -28,9 +28,12 @@ interface SetupLink {
  */
 export function SetupPage() {
   const { t } = useTranslation();
-  const { role, branchId } = useView();
-  // Task 10.5: the demo clock runs where the period carries a demo time (the test environment).
-  const demoClockOn = useQuery(currentPeriodQuery(branchId)).data?.demoNow != null;
+  const { role } = useView();
+  // Task 10.5: the Demo time page for the Super Admin, where the demo clock runs (the test
+  // environment): only a role that may read it asks.
+  const mayMoveTime = role !== null && permits(PERMISSIONS, role, 'demo_clock', 'edit');
+  const demoClockOn =
+    useQuery({ ...demoClockQuery(), enabled: mayMoveTime }).data?.enabled === true;
   const all: SetupLink[] = [
     {
       // The Branches list is the Super Admin's (task 2.7c-3, decision 2).

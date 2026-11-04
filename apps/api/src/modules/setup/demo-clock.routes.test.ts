@@ -97,7 +97,8 @@ describe('the demo clock on the test environment', () => {
     const period = currentPeriodSchema.parse(
       ok(await kit.get('/api/setup/current-period', teacher).set(BRANCH_HEADER, branch)),
     );
-    expect(period.demoNow).toBe('2026-11-04T05:00:00.000Z');
+    // Real time until the first jump: the top bar shows no demo time.
+    expect(period.demoNow).toBeNull();
     expect(period.today).toBe('2026-11-04');
   });
 

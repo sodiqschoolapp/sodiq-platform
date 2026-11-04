@@ -98,6 +98,12 @@ export class DemoClock implements Clock, OnModuleInit, OnModuleDestroy {
     return demoMomentOf(this.real.now(), this.row);
   }
 
+  /** Whether demo time is ahead of real time now: from the first jump that took effect. */
+  moved(): boolean {
+    const real = this.real.now();
+    return demoMomentOf(real, this.row).getTime() > real.getTime();
+  }
+
   /** Correction 2: the first read before the API listens and before the worker takes jobs. */
   async onModuleInit(): Promise<void> {
     if (!this.config.demoClock) return;

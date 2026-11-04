@@ -11,6 +11,7 @@ import {
   languageChooser,
   signIn,
 } from './steps';
+import { keepSecondStep } from './second-steps';
 import { codeNow } from './totp';
 import { moveSubjectDepartment } from './department-move';
 import { mergeRecords } from './merges';
@@ -33,6 +34,8 @@ async function signInAsSuperAdmin(
   await expect(heading(page, en.setUp.title)).toBeVisible();
   await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
   const key = await page.locator('dd').innerText();
+  // Task 10.5: the demo clock test signs in to this account again after every other spec.
+  keepSecondStep(account.login, key);
   await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
   await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
   await page.getByRole('checkbox', { name: en.setUp.saved }).check();
