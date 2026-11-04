@@ -1,4 +1,4 @@
-<title>Demo Branch Recording Kit</title>
+<title>Tutorial Recording Guide</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Golos+Text:wght@400;500;600;700&display=swap">
 <style>
@@ -66,18 +66,26 @@ a { color: var(--cam) }
 .links { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .93rem }
 @media (prefers-reduced-motion: reduce) { .fill { transition: none } }
 @media (max-width: 520px) { h1 { font-size: 1.7rem } .step { padding: 12px } }
+
+section[id] { scroll-margin-top: 72px }
+.how { display: grid; gap: 10px }
+.how table td:first-child { white-space: nowrap; font-weight: 600 }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: .9rem }
+.toc a { text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink) }
+.ses { display: grid; gap: 4px; border-top: 3px solid var(--accent); padding-top: 14px }
+.snum { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent) }
+.when { color: var(--muted); font-size: .95rem; font-weight: 500 }
+.decks { display: grid; gap: 4px; padding: 8px 10px; background: var(--cam-bg); border-radius: 8px }
+.deck { font-size: .92rem }
+.deck a { font-weight: 600; color: var(--cam) }
+.sl { font-variant-numeric: tabular-nums; font-weight: 600 }
+.dn { color: var(--muted); font-weight: 400 }
 </style>
 
 <main>
 <header class="top">
-  <h1>Demo Branch Recording Kit</h1>
-  <p class="lede">Everything to build "Istirohat demo" on the test site and record every feature: the five kit files, the build in order, and the props you add by hand while filming. Tick each step as you go; the ticks stay in this browser.</p>
-  <div class="links">
-    <a href="https://claude.ai/artifact/QKMf388eTYYyjQdvwLg7Qb">Recording plan</a>
-    <a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP">Super Admin deck</a>
-    <a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2">Academic Vice Principal deck</a>
-    <a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ">Teacher deck</a>
-  </div>
+  <h1>Tutorial Recording Guide</h1>
+  <p class="lede">The only page you follow. Go down it from top to bottom: ten sessions, each with its day and its browser. Every step names the deck and the slides to film while you do it. Tick each step as you go; the ticks stay in this browser.</p>
 </header>
 
 <div class="bar" role="status">
@@ -87,146 +95,317 @@ a { color: var(--cam) }
 </div>
 
 <section>
+  <h2>How it fits together</h2>
+  <div class="panel how tw">
+    <table>
+      <tr><th>What</th><th>What it is for</th></tr>
+      <tr><td>This page</td><td><b>What to do, and in which order.</b> Follow it.</td></tr>
+      <tr><td>The role decks</td><td><b>What to show and say.</b> When a step names “Teacher deck slides 9–10”, open those slides: their <i>Steps</i> are the clicks, <i>Show on camera</i> is the shot, the speaker notes are the narration. Film each slide as its own take.</td></tr>
+      <tr><td>Recording plan</td><td><b>Why.</b> Read once in Session 0, then only to look something up.</td></tr>
+      <tr><td>The five Excel files</td><td>Used in Sessions 2 and 3, in the steps that name them.</td></tr>
+    </table>
+  </div>
+  <nav class="toc" aria-label="Sessions"><a href="#s0">0 · Get ready</a><a href="#s1">1 · Rehearsal</a><a href="#s2">2 · Super Admin</a><a href="#s3">3 · AVP part 1 · Prepare the year</a><a href="#s4">4 · AVP part 2 · The timetable</a><a href="#s5">5 · The first school day</a><a href="#s6">6 · The days that need time</a><a href="#s7">7 · AVP part 3 · Journals, plans and the quarter</a><a href="#s8">8 · the roles that look</a><a href="#s9">9 · Cut into clips</a><a href="#decks">Every deck</a></nav>
+</section>
+
+<section id="s0">
+  <div class="ses"><span class="snum">Session 0</span><h2>Get ready</h2><p class="when">Any day · about an hour · off camera</p><p class="lede">Nothing is recorded yet.</p></div>
+  <ol class="steps"><li class="step" data-id="p1"><label><input type="checkbox" id="c-p1"><span class="box"></span></label>
+  <div class="head"><span class="num">0.1</span><h3>Read the Recording plan once</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/QKMf388eTYYyjQdvwLg7Qb" target="_blank" rel="noopener">Recording plan</a> <span class="sl">slides 1–25</span></p></div><p>It explains why the demo branch looks the way it does. You do not follow it step by step: this page is the order. Remember slide 4: features that are not built yet never go on camera.</p></div></li>
+<li class="step" data-id="a1"><label><input type="checkbox" id="c-a1"><span class="box"></span></label>
+  <div class="head"><span class="num">0.2</span><h3>Reset the test site with the demo school</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p class="path">GitHub → Actions → <b>Demo data on the test environment</b> → Run workflow on <code>main</code></p>
+      <ul><li>Wait first until the latest <code>deploy-test</code> on main is green.</li><li>Type a demo password (10+ characters) and <code>REPLACE</code>. It wipes the whole test database, about 10 minutes.</li><li>Keep the run’s <b>Summary</b>: it lists every seeded login (the Super Admin, the Demo Yunusobod AVP, the Senior Head Teacher, the 0 London Class teacher).</li></ul></div></li>
+<li class="step" data-id="a2"><label><input type="checkbox" id="c-a2"><span class="box"></span></label>
+  <div class="head"><span class="num">0.3</span><h3>One phone with an authenticator app</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>The Super Admin and the Academic Vice Principal must set up the second step at their first sign-in. Use one phone with two entries.</p></div></li>
+<li class="step" data-id="a3"><label><input type="checkbox" id="c-a3"><span class="box"></span></label>
+  <div class="head"><span class="num">0.4</span><h3>Browsers ready</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>Chrome profiles “SA”, “AVP”, “Tutor”; Firefox for the Teacher; Edge for the Head Teacher; a private window for read-only roles and the Class teacher. After each first password change, sign in again with <b>Trust this device</b> so nobody is signed out mid-take.</p><p>Keep this page and the deck of the session open on a second screen, a tablet or the phone.</p></div></li>
+<li class="step" data-id="p2"><label><input type="checkbox" id="c-p2"><span class="box"></span></label>
+  <div class="head"><span class="num">0.5</span><h3>Choose the two recording weeks</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p><b>Week 0</b>: a Thursday and a Friday (Sessions 2–4). <b>Week 1</b>: the following Monday to Friday (Sessions 5–6). Both inside a quarter: quarter 2 runs 9 November–26 December 2026; avoid 8 December, the day off you add in step 3.4.</p></div></li></ol>
+</section>
+
+<section id="s1">
+  <div class="ses"><span class="snum">Session 1</span><h2>Rehearsal</h2><p class="when">A few days before Week 0 · off camera</p><p class="lede">A dry run, so the real takes go smoothly.</p></div>
+  <ol class="steps"><li class="step" data-id="r1"><label><input type="checkbox" id="c-r1"><span class="box"></span></label>
+  <div class="head"><span class="num">1.1</span><h3>Do Sessions 2, 3 and 4 without recording</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>Follow them exactly as written, decks open. Write down every place where the screen differs from this page or a deck, and send the list to Claude: the page and the decks get fixed before the real take.</p></div></li>
+<li class="step" data-id="r2"><label><input type="checkbox" id="c-r2"><span class="box"></span></label>
+  <div class="head"><span class="num">1.2</span><h3>Wipe the rehearsal</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>Run step 0.2 again (the demo workflow): it deletes the rehearsal branch. Then press <b>Clear ticks</b> at the top of this page and start the real take at Session 2.</p></div></li></ol>
+</section>
+
+<section id="s2">
+  <div class="ses"><span class="snum">Session 2</span><h2>Video: Super Admin</h2><p class="when">Week 0, Thursday morning · Chrome “SA” (step 2.9 in Chrome “AVP”)</p><p class="lede">Open the Super Admin deck. Show its slides 1–2 first (title and “The role in one slide”).</p></div>
+  <ol class="steps"><li class="step" data-id="s2a"><label><input type="checkbox" id="c-s2a"><span class="box"></span></label>
+  <div class="head"><span class="num">2.1</span><h3>Sign-in and the screen</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 4–9</span></p></div><p>Sign in with the Super Admin login from the demo run’s <b>Summary</b>. Film slides 4–9 as the deck says. Slide 3 needs a fresh slip: it is filmed in step 2.8.</p></div></li>
+<li class="step" data-id="b1"><label><input type="checkbox" id="c-b1"><span class="box"></span></label>
+  <div class="head"><span class="num">2.2</span><h3>Create the branch</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 11–12</span></p></div><p class="path">School setup → Branches → <b>New branch</b></p><ul><li>Name <b>Istirohat demo</b>, working weekdays Monday–Friday, time zone Asia/Tashkent.</li><li>Open it from the Branches list to switch to it.</li><li>School setup → <b>Travel time</b>: 20 minutes to Demo Yunusobod.</li></ul></div></li>
+<li class="step" data-id="b2"><label><input type="checkbox" id="c-b2"><span class="box"></span></label>
+  <div class="head"><span class="num">2.3</span><h3>Building, floors, rooms</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 13–14</span></p></div><p class="path">Buildings and floors → <b>Add building</b> “Asosiy bino” → <b>Add floor</b> 1, 2, 4 · Rooms → <b>Add room</b></p><ul><li>All 12 rooms: sheet <b>2 Rooms</b>. Sport zal 1 and 2: type Sports hall, <b>Shared</b>, 2 lessons at once, capacity 60.</li><li>On camera: room 208, Sport zal 2, then the <b>By floor</b> view.</li></ul><p>Slide 14: add a spare room, delete it for good, then restore it.</p></div></li>
+<li class="step" data-id="b3"><label><input type="checkbox" id="c-b3"><span class="box"></span></label>
+  <div class="head"><span class="num">2.4</span><h3>Departments</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 15</span></p></div><p>The departments already exist: STEAM, Xorijiy tillar, Milliy fanlar, Tabiiy fanlar, Umumiy fanlar, Tyutorlar. On camera, add a test department, rename it, then archive it.</p></div></li>
+<li class="step" data-id="b4"><label><input type="checkbox" id="c-b4"><span class="box"></span></label>
+  <div class="head"><span class="num">2.5</span><h3>Academic year</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 16</span></p></div><p class="path">Academic years → <b>Add year</b> → <b>Change quarters</b> → <b>Start year</b></p><ul><li>Year 02.09.2026 – 25.05.2027.</li><li>Quarters: 02.09–31.10.2026 · 09.11–26.12.2026 · 11.01–20.03.2027 · 30.03–25.05.2027.</li><li>Using the compressed year from the Recording plan (option B)? Use one-week quarters instead.</li></ul></div></li>
+<li class="step" data-id="s2b"><label><input type="checkbox" id="c-s2b"><span class="box"></span></label>
+  <div class="head"><span class="num">2.6</span><h3>School-wide settings</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 17</span></p></div><p>As slide 17 shows.</p></div></li>
+<li class="step" data-id="b5"><label><input type="checkbox" id="c-b5"><span class="box"></span></label>
+  <div class="head"><span class="num">2.7</span><h3>Subjects</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><p class="path">School setup → Subjects → <b>Add subject</b></p><ul><li>Create the 24 rows marked <b>Create</b> on sheet <b>1 Subjects</b>: names in three languages, department, grades. Kelajak soati and Uy vazifasi go in <b>Tyutorlar</b>. School Counseling: journal type <b>Attendance only</b>.</li><li>Turn on <b>Group subject</b> for Matematika, Ingliz tili, Jismoniy tarbiya (already there) and Arab tili.</li><li>The import files name subjects exactly as on the sheet, so type the names exactly.</li></ul><p>No deck slide: film one subject as an extra clip.</p></div></li>
+<li class="step" data-id="b7"><label><input type="checkbox" id="c-b7"><span class="box"></span></label>
+  <div class="head"><span class="num">2.8</span><h3>Office staff, by hand</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 20–21</span></p><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 3</span> <span class="dn">· with Rustam’s slip</span></p></div><p class="path">People → Staff → <b>Add person</b> → <b>Create account</b> → <b>Print</b> the slip → <b>Give a role</b> (branch Istirohat demo, from today)</p><ul><li>Fayzullayeva Nodira → Academic Vice Principal (main division Rahbariyat). On camera.</li><li>Yoʻldoshev Rustam → Principal; Valiyeva Shoira → Vice Principal for Spiritual and Moral Education (Rahbariyat).</li><li>Tojiboyev Ulugʻbek → Head Tutor (Oʻquv boʻlimi, department Tyutorlar).</li><li>Phones: +998 97 190 00 01 to 04.</li></ul><p>Then, in a private window, sign in with Rustam’s slip: that is slide 3 of the Super Admin deck (every first sign-in looks the same).</p></div></li>
+<li class="step" data-id="b8"><label><input type="checkbox" id="c-b8"><span class="box"></span></label>
+  <div class="head"><span class="num">2.9</span><h3>Second step for the AVP</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 4–5</span> <span class="dn">· the opening of AVP video part 1</span></p></div><p>In the AVP browser: sign in with Nodira’s slip, choose a password, set up the second step with the phone, save the recovery codes. This is the AVP video’s opening.</p></div></li>
+<li class="step" data-id="b9"><label><input type="checkbox" id="c-b9"><span class="box"></span></label>
+  <div class="head"><span class="num">2.10</span><h3>Staff import</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 19</span></p></div><p class="path">People → Staff → <b>Import from Excel</b> → <b>Upload the filled file</b></p><ul><li>Upload <span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span>. The preview refuses 4 rows: Alimov Bobur (role Super administrator), Raximova Laylo and Sharipov Ilhom (the same phone), Haydarova Gulnoza (subject “Matematka” misspelt). Nothing is saved.</li><li>Upload <span class="file">2 Xodimlar importi - toza.xlsx</span> → <b>Save all 52 people</b> → <b>Print the slips</b>.</li><li>Keep the slips: every teacher’s first password is on them, valid 7 days.</li></ul></div></li>
+<li class="step" data-id="b10"><label><input type="checkbox" id="c-b10"><span class="box"></span></label>
+  <div class="head"><span class="num">2.11</span><h3>Roles the import cannot give</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 21–22</span></p></div><ul><li>Ergasheva Madina → <b>Head Teacher</b>, subjects Ingliz tili, Rus tili, Arab tili, Ona tili va adabiyot. On camera.</li><li>Nurmatova Kamola and Ibragimova Ozoda → <b>Class teacher</b>.</li><li>For the password-reset scene: put a real mailbox in Rahimov Aziz’s email field.</li></ul></div></li>
+<li class="step" data-id="b6"><label><input type="checkbox" id="c-b6"><span class="box"></span></label>
+  <div class="head"><span class="num">2.12</span><h3>“Rating exams in grades 0–4”</h3><span class="tag offc">Later</span></div>
+  <div class="body"><p>Leave it off. It is turned on in step 5.7, while the Class teacher films.</p></div></li>
+<li class="step" data-id="s2c"><label><input type="checkbox" id="c-s2c"><span class="box"></span></label>
+  <div class="head"><span class="num">2.13</span><h3>The rest of the Super Admin deck</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slides 23–25, 29–30</span></p></div><ul><li>Slide 23: lock and unlock Ahmedov Javlon; reset a teacher’s password; the email reset for Rahimov Aziz.</li><li>Slide 24: add a spare test teacher by hand (no lessons) and plan “Left” for Friday of Week 1. Never use a teacher who has lessons.</li><li>Slides 25, 29, 30 as the deck says.</li></ul></div></li></ol>
+</section>
+
+<section id="s3">
+  <div class="ses"><span class="snum">Session 3</span><h2>Video: AVP part 1 · Prepare the year</h2><p class="when">Week 0, Thursday afternoon · Chrome “AVP” (step 3.10 in Chrome “SA”)</p><p class="lede">Open the AVP deck. Show its slides 1–3 first; slide 3 explains the three AVP videos.</p></div>
+  <ol class="steps"><li class="step" data-id="s3a"><label><input type="checkbox" id="c-s3a"><span class="box"></span></label>
+  <div class="head"><span class="num">3.1</span><h3>Sign-in and the screen</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 6–9</span></p></div><p>The AVP signed in at step 2.9. Film slides 6–9 now.</p></div></li>
+<li class="step" data-id="s3b"><label><input type="checkbox" id="c-s3b"><span class="box"></span></label>
+  <div class="head"><span class="num">3.2</span><h3>Quarters</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 11</span></p></div><p>The Super Admin dated them in step 2.5. The AVP opens Quarters and shows them; the AVP may change a date too.</p></div></li>
+<li class="step" data-id="b11"><label><input type="checkbox" id="c-b11"><span class="box"></span></label>
+  <div class="head"><span class="num">3.3</span><h3>Slot types, day templates, where they apply</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 12–13</span></p></div><p class="path">School setup → Slot types · Day templates · Where templates apply</p><ul><li>Slot types: Lesson 40, Break 15, Lunch 40 (Break), Juma 125 (Break).</li><li>Four templates from sheet <b>3 Day templates</b>: Asosiy 5-8 (whole branch), Boshlangʻich 1-4 (grades 1–4), Yuqori 9-11 (grades 9–11), Juma 5-11 (Friday, grades 5–11).</li><li>If the platform refuses two breaks in a row, use one 70-minute break around lunch.</li></ul></div></li>
+<li class="step" data-id="b12"><label><input type="checkbox" id="c-b12"><span class="box"></span></label>
+  <div class="head"><span class="num">3.4</span><h3>Calendar</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 14</span> <span class="dn">· first half</span></p></div><p>Day off “Konstitutsiya kuni” on 08.12.2026. The working Saturday and the shortened day come after publishing (step 4.7): a working Saturday and a shortened day, each with its preview.</p></div></li>
+<li class="step" data-id="b13"><label><input type="checkbox" id="c-b13"><span class="box"></span></label>
+  <div class="head"><span class="num">3.5</span><h3>Settings and weights</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 15–16</span></p></div><ul><li>Settings: <b>Edit days 1</b>, so a lesson locks on the second night and Session 6 can show locks without waiting a week. Leave the early-warning defaults.</li><li>Subjects → each graded subject: daily distribution (for example Attendance 20, Classwork 40, Homework 40) → quarterly distribution → <b>Copy quarter 1 to the other quarters</b>. Film one subject.</li></ul></div></li>
+<li class="step" data-id="b14"><label><input type="checkbox" id="c-b14"><span class="box"></span></label>
+  <div class="head"><span class="num">3.6</span><h3>Vacancies</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 17</span> <span class="dn">· vacancies</span></p></div><p class="path">People → Vacancies → <b>Add vacancy</b></p><ul><li>“Arab tili oʻqituvchisi”: Xorijiy tillar, subject Arab tili.</li><li>“AP Iqtisodiyot oʻqituvchisi”: Umumiy fanlar, subject AP Iqtisodiyot.</li></ul></div></li>
+<li class="step" data-id="b15"><label><input type="checkbox" id="c-b15"><span class="box"></span></label>
+  <div class="head"><span class="num">3.7</span><h3>Working hours</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 17</span> <span class="dn">· availability: Rahimov Aziz</span></p></div><p class="path">People → Staff → a person → Availability → <b>Change from a date</b></p><p>All 52 people on sheet <b>8 Working hours</b>: 09:00–16:05 Monday to Friday, Tutors included. The builder will not publish while anyone with lessons has no hours. Film one; do the rest off camera.</p></div></li>
+<li class="step" data-id="b16"><label><input type="checkbox" id="c-b16"><span class="box"></span></label>
+  <div class="head"><span class="num">3.8</span><h3>Classes, Tutors and Class teachers</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 22</span></p></div><p class="path">Classes and subjects → Classes → <b>New class</b> → the class → <b>Give Tutor</b> / <b>Give Class teacher</b> (from today)</p><ul><li>The eight classes from sheet <b>4 Classes and Tutors</b>. 3 Indigo is entered as a Russian-language class.</li><li>On camera: 3 Genius asks for a Class teacher, 5 Melbourne for a Tutor.</li></ul><p>Also plan <b>Komilov Sanjar</b> as acting Tutor of 5 Melbourne for Thursday and Friday of Week 1 (step 6.5 films the result).</p></div></li>
+<li class="step" data-id="b17"><label><input type="checkbox" id="c-b17"><span class="box"></span></label>
+  <div class="head"><span class="num">3.9</span><h3>Student import</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 18</span></p></div><p class="path">People → Students → <b>Import from Excel</b></p><ul><li>Upload <span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span>. Refused rows: IS26020 (no contract number), IS26040 (class “Melborne”), IS26060 and IS26061 (one phone under two names). Plus the warning that IS26901 has the same name and birth date as IS26039.</li><li>Upload <span class="file">4 Oʻquvchilar importi - toza.xlsx</span> → tick the warning → <b>Save all 130 students</b>.</li><li>IS26902 starts on 01.12.2026 with no class. If you import on or after that day, change her start date in the file first.</li></ul></div></li>
+<li class="step" data-id="b18"><label><input type="checkbox" id="c-b18"><span class="box"></span></label>
+  <div class="head"><span class="num">3.10</span><h3>Merge the duplicate</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 27</span></p></div><p>In the SA browser: the student IS26901 → <b>Merge with another record</b> → UID <b>IS26039</b> → <b>Show the merge</b> → reason → <b>Merge</b>. Do this before the groups, so the duplicate never needs groups.</p></div></li>
+<li class="step" data-id="s3c"><label><input type="checkbox" id="c-s3c"><span class="box"></span></label>
+  <div class="head"><span class="num">3.11</span><h3>A student, the family, a leaving</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 19–21</span></p></div><ul><li>Slide 19: open a student record.</li><li>Slide 20: the prop “one phone, two families” (a 5 Tokyo student, another family’s mother’s phone, a new name → “A different person: the number has a new owner”).</li><li>Slide 21: schedule a 5 Tokyo student to leave on Friday of Week 1.</li></ul></div></li>
+<li class="step" data-id="s3d"><label><input type="checkbox" id="c-s3d"><span class="box"></span></label>
+  <div class="head"><span class="num">3.12</span><h3>Students with no class</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 23</span></p></div><p>Home tile “Students with no class”: everyone imported is placed. IS26902 comes later (step 6.9).</p></div></li>
+<li class="step" data-id="b19"><label><input type="checkbox" id="c-b19"><span class="box"></span></label>
+  <div class="head"><span class="num">3.13</span><h3>Groups and group placement</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 24</span></p></div><ul><li>Classes → Groups → <b>New group</b>: the 22 groups on sheet <b>5 Groups</b>. The Ingliz 3-x groups ask “Mix Uzbek and Russian classes?”; the 5D6D groups show “Lesson slots of both grades”.</li><li><b>Place students</b> → Group placement: members from sheet <b>6 Group members</b> (date: today). Every student must be in one group of each grouped subject, or publish stops with “Students not placed”.</li><li>On camera: grade 5 Matematika groups and the PE Boys/Girls split.</li></ul></div></li>
+<li class="step" data-id="s3e"><label><input type="checkbox" id="c-s3e"><span class="box"></span></label>
+  <div class="head"><span class="num">3.14</span><h3>Scheduled moves</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 25</span></p></div><p>Both from <b>Wednesday of Week 1</b>:</p><ul><li>a class move: a 5 Melbourne student to 5 Tokyo (same grade-5 groups, same PE group, so nothing else changes);</li><li>a group move: a student from Matematika 5B to 5A (Aziz’s group, so his journal shows the newcomer).</li></ul></div></li>
+<li class="step" data-id="s3f"><label><input type="checkbox" id="c-s3f"><span class="box"></span></label>
+  <div class="head"><span class="num">3.15</span><h3>Move a student to another branch</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 26</span></p></div><p>Release one 5 London student to Demo Yunusobod from Monday of Week 1. In a private window, sign in as the Demo Yunusobod AVP (login on the Summary) and accept.</p></div></li></ol>
+</section>
+
+<section id="s4">
+  <div class="ses"><span class="snum">Session 4</span><h2>Video: AVP part 2 · The timetable</h2><p class="when">Week 0, Friday · Chrome “AVP” (Chrome “SA” for “Take over”)</p><p class="lede">Same AVP deck, slides 27–38, then the changes for Week 1.</p></div>
+  <ol class="steps"><li class="step" data-id="b20"><label><input type="checkbox" id="c-b20"><span class="box"></span></label>
+  <div class="head"><span class="num">4.1</span><h3>Teaching load</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 28</span></p></div><p class="path">Timetable → Teaching load → <b>New draft</b> (Empty, start next Monday) → <b>Add row</b></p><ul><li>All rows from sheet <b>7 Teaching load</b>. Group rows of one subject become one Block by themselves; Kelajak soati and Uy vazifasi fill their own teacher.</li><li>On camera: grade 5. Then <b>Weekly totals</b>.</li></ul><p>Prop: Ahmedov Javlon, “Lessons per week by contract” 4 → Weekly totals “Over by 2”.</p></div></li>
+<li class="step" data-id="b21"><label><input type="checkbox" id="c-b21"><span class="box"></span></label>
+  <div class="head"><span class="num">4.2</span><h3>Builder steps and the board</h3><span class="tag mixed">Mixed</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 29–31</span></p></div><p class="path">Timetable → Draft builder → steps 1–5 → step 7 the board</p><ul><li>Place every lesson where the sheets <b>T &lt;class&gt;</b> show it, doubles with <b>Double</b>.</li><li>On camera: grade 5, then each special moment: the 5D+6D group, Moliya with the capacity warning, grade 3 Arab tili, the 11th-grade lunch.</li></ul><p>Slide 31: “Take over” needs the Super Admin open on the same draft. Then the practice draft: mark the 3 Genius Arab tili split “Mixed block”, show the board, delete the draft.</p></div></li>
+<li class="step" data-id="b22"><label><input type="checkbox" id="c-b22"><span class="box"></span></label>
+  <div class="head"><span class="num">4.3</span><h3>Publish</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 32</span></p></div><p>Step 8 <b>Review and publish</b> → start next Monday → read the impact → <b>Publish</b>.</p></div></li>
+<li class="step" data-id="s4a"><label><input type="checkbox" id="c-s4a"><span class="box"></span></label>
+  <div class="head"><span class="num">4.4</span><h3>Versions</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 33</span></p></div><p>Copy version 1 into a draft for next month; leave it unpublished.</p></div></li>
+<li class="step" data-id="s4b"><label><input type="checkbox" id="c-s4b"><span class="box"></span></label>
+  <div class="head"><span class="num">4.5</span><h3>Timetable views and print</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 38</span></p></div><p>As slide 38 shows.</p></div></li>
+<li class="step" data-id="s4c"><label><input type="checkbox" id="c-s4c"><span class="box"></span></label>
+  <div class="head"><span class="num">4.6</span><h3>Changes for Week 1</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 34–37</span></p></div><p>Every date here is in Week 1, never its Monday (Monday stays a normal day for Session 5):</p><ul><li>Slide 34: Tuesday, move Tarix to lesson 7; Friday, cancel lessons 6–7 for a school event.</li><li>Slide 35: a grade-5 Matematika exam on Thursday.</li><li>Slide 36: Hamidova Feruza ill on Thursday and Friday; choose substitutes.</li><li>Slide 37: close room 209 on Wednesday.</li></ul></div></li>
+<li class="step" data-id="s4d"><label><input type="checkbox" id="c-s4d"><span class="box"></span></label>
+  <div class="head"><span class="num">4.7</span><h3>Calendar after publishing</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 14</span> <span class="dn">· second half</span></p></div><p>A working Saturday and a shortened day, each with its preview. Choose dates after Week 1.</p></div></li>
+<li class="step" data-id="b23"><label><input type="checkbox" id="c-b23"><span class="box"></span></label>
+  <div class="head"><span class="num">4.8</span><h3>Exemptions</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 44</span></p></div><p class="path">Journal → Exemptions → <b>New exemption</b>: Kind Full, Chosen subjects Moliya</p><p>The 20 students marked “Does not take Moliya” on sheet <b>6 Group members</b>, in one batch → <b>Check</b> → <b>Save</b>.</p><p>Also excuse one 5 Melbourne girl from PE for Monday to Friday of Week 1.</p></div></li>
+<li class="step" data-id="s4e"><label><input type="checkbox" id="c-s4e"><span class="box"></span></label>
+  <div class="head"><span class="num">4.9</span><h3>Plan window</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 47</span></p></div><p>Open the plan window for quarter 2, ending on <b>Wednesday of Week 1</b>.</p></div></li>
+<li class="step" data-id="s4f"><label><input type="checkbox" id="c-s4f"><span class="box"></span></label>
+  <div class="head"><span class="num">4.10</span><h3>Rating exam on for Matematika</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>Subjects → Matematika → Rating exam on from this quarter. The Teacher enters scores in step 5.7.</p></div></li></ol>
+</section>
+
+<section id="s5">
+  <div class="ses"><span class="snum">Session 5</span><h2>The first school day</h2><p class="when">Week 1, Monday · every browser</p><p class="lede">The timetable is live today. Several decks at once: each step says which.</p></div>
+  <ol class="steps"><li class="step" data-id="s5a"><label><input type="checkbox" id="c-s5a"><span class="box"></span></label>
+  <div class="head"><span class="num">5.1</span><h3>Before 09:00: first sign-ins with the slips</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slides 3–7</span></p><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slides 4–8</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slides 4–8</span></p><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slides 4–8</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slides 3–7</span> <span class="dn">· slide 3: any fresh slip, the screen is the same</span></p></div><ul><li>Firefox: Rahimov Aziz (Teacher).</li><li>Chrome “Tutor”: Rashidova Umida.</li><li>Edge private window: Nurmatova Kamola (Class teacher).</li><li>Edge: Ergasheva Madina (Head Teacher).</li><li>Firefox private window: the seeded Senior Head Teacher (Summary).</li><li>Off camera: Rasulova Shahnoza (Ingliz 5B) and Qosimova Zarina (PE girls 5AB); you need them on Wednesday and Thursday.</li></ul></div></li>
+<li class="step" data-id="s5b"><label><input type="checkbox" id="c-s5b"><span class="box"></span></label>
+  <div class="head"><span class="num">5.2</span><h3>Home pages before the bell</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slides 9–10</span></p><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slides 10–11</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slides 10–11</span></p><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slides 3, 10</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slides 8, 10</span></p></div><p>Each role’s home and own timetable. The Senior Head Teacher switches branches.</p></div></li>
+<li class="step" data-id="s5c"><label><input type="checkbox" id="c-s5c"><span class="box"></span></label>
+  <div class="head"><span class="num">5.3</span><h3>09:00 Lesson 1: attendance</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 11</span></p><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slide 10</span> <span class="dn">· “Absent now”</span></p></div><p>Aziz takes attendance in Matematika 5A, lesson mode; two 5 Melbourne students absent. Film one phone-width shot. Then Umida’s home shows “Absent now”.</p></div></li>
+<li class="step" data-id="s5d"><label><input type="checkbox" id="c-s5d"><span class="box"></span></label>
+  <div class="head"><span class="num">5.4</span><h3>During the day: the Teacher</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slides 12, 14, 16, 20–22</span></p></div><p>Classwork, homework and numbers; comments; the lesson card; print and export; fill a week of Matematika group A in the plan; share, copy, masters.</p></div></li>
+<li class="step" data-id="s5e"><label><input type="checkbox" id="c-s5e"><span class="box"></span></label>
+  <div class="head"><span class="num">5.5</span><h3>During the day: Tutor and Class teacher</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slides 13–15</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slides 13–15, 17</span></p></div><p>Absence reasons: “A parent phoned” → Illness for one of this morning’s absent students. The class in the journals; the students. Kamola switches to Teacher for her own class. (Kelajak soati and the Homework slot are on Tuesday: step 6.1.)</p></div></li>
+<li class="step" data-id="s5f"><label><input type="checkbox" id="c-s5f"><span class="box"></span></label>
+  <div class="head"><span class="num">5.6</span><h3>During the day: Head Teacher and Senior Head Teacher</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slides 14–18</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slides 14–18</span></p></div><p>Journals, plans, master plans, students and groups, timetables of their subjects. Prop: Madina schedules a group move Ingliz 5B → 5A.</p></div></li>
+<li class="step" data-id="s5g"><label><input type="checkbox" id="c-s5g"><span class="box"></span></label>
+  <div class="head"><span class="num">5.7</span><h3>Rating exams</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 15</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slide 18</span></p></div><p>Aziz enters rating scores in Matematika. Then “Rating exams in grades 0–4”: Kamola opens the 3 Genius Matematika journal, the Super Admin turns the setting on, the journal gains the Rating column (before and after).</p></div></li>
+<li class="step" data-id="s5h"><label><input type="checkbox" id="c-s5h"><span class="box"></span></label>
+  <div class="head"><span class="num">5.8</span><h3>During the day: the AVP</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 40–41, 45</span></p></div><p>The AVP home page, reading any journal, student absences.</p></div></li>
+<li class="step" data-id="s5i"><label><input type="checkbox" id="c-s5i"><span class="box"></span></label>
+  <div class="head"><span class="num">5.9</span><h3>After 16:05</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 17</span></p></div><p>Lesson statuses: Complete and Not started. The home page reminders.</p></div></li></ol>
+</section>
+
+<section id="s6">
+  <div class="ses"><span class="snum">Session 6</span><h2>The days that need time</h2><p class="when">Week 1, Tuesday to Friday, and 1 December</p><p class="lede">Edit days is 1, so locks come quickly. Each step says its day.</p></div>
+  <ol class="steps"><li class="step" data-id="s6a"><label><input type="checkbox" id="c-s6a"><span class="box"></span></label>
+  <div class="head"><span class="num">6.1</span><h3>Tuesday: Tutor lessons and the first exemption</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slide 12</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slide 12</span></p><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 19</span> <span class="dn">· exempt part</span></p></div><ul><li>Umida: Kelajak soati of 5 Melbourne, from the home page; take its attendance.</li><li>Kamola: the Homework slot of 3 Genius.</li><li>Zarina (lesson 7, PE girls): “Exempt today” for the girl from step 4.8.</li></ul></div></li>
+<li class="step" data-id="s6b"><label><input type="checkbox" id="c-s6b"><span class="box"></span></label>
+  <div class="head"><span class="num">6.2</span><h3>Wednesday: Monday is locked</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slides 18–19</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slides 11–12</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 25</span> <span class="dn">· after the date</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 42, 46</span></p></div><ul><li>Aziz asks to unlock a Monday cell; the Senior Head Teacher approves for 1 day; Aziz enters it: “Entered after the edit period”.</li><li>The AVP: corrects a wrong number (Aziz’s bell shows old and new); the discipline report and the branch export.</li><li>The scheduled moves happened: History “Moved from … to …”; the newcomer in Aziz’s 5A journal.</li></ul></div></li>
+<li class="step" data-id="s6c"><label><input type="checkbox" id="c-s6c"><span class="box"></span></label>
+  <div class="head"><span class="num">6.3</span><h3>Thursday: Tuesday is locked, the plan window has closed</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slides 11–13, 20</span></p><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 23</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slide 13</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 48</span></p></div><ul><li>Shahnoza asks to unlock her Tuesday Ingliz 5B cell; Madina approves.</li><li>Aziz and Shahnoza each send a plan edit request; the Senior Head Teacher approves Aziz’s, Madina Shahnoza’s, the AVP shows the list and parallel classes.</li><li>Then the Super Admin changes Madina’s subjects as the Head Teacher deck shows, and gives them back.</li></ul></div></li>
+<li class="step" data-id="s6d"><label><input type="checkbox" id="c-s6d"><span class="box"></span></label>
+  <div class="head"><span class="num">6.4</span><h3>Thursday: the day changes</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 12</span> <span class="dn">· homework checked</span></p><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 13</span></p></div><ul><li>Lesson 1: Aziz checks the homework given on Monday.</li><li>Feruza is ill: her substitute and Feruza open one cell in two browsers: the “two people on one cell” dialog.</li><li>The grade-5 exam is on the timetables.</li></ul></div></li>
+<li class="step" data-id="s6e"><label><input type="checkbox" id="c-s6e"><span class="box"></span></label>
+  <div class="head"><span class="num">6.5</span><h3>Thursday: the acting Tutor</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slide 17</span></p></div><p>Sanjar’s home now shows 5 Melbourne too; Umida’s bell: “tutor_changed”.</p></div></li>
+<li class="step" data-id="s6f"><label><input type="checkbox" id="c-s6f"><span class="box"></span></label>
+  <div class="head"><span class="num">6.6</span><h3>Friday: results after a week</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 24</span></p><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slide 16</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slide 16</span></p><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slide 19</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slide 19</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 51</span> <span class="dn">· demo branch part</span></p></div><p>Results and rating of each role, “Provisional: the quarter is open”. The AVP’s results page here; early warnings need more history (Session 7).</p></div></li>
+<li class="step" data-id="s6g"><label><input type="checkbox" id="c-s6g"><span class="box"></span></label>
+  <div class="head"><span class="num">6.7</span><h3>Friday: the scheduled leavings</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 21</span> <span class="dn">· after the date</span></p><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 24</span> <span class="dn">· after the date</span></p></div><p>The 5 Tokyo student’s “Leaves the school” and the spare teacher’s “Left” happen today: show both in History and the staff list.</p></div></li>
+<li class="step" data-id="s6h"><label><input type="checkbox" id="c-s6h"><span class="box"></span></label>
+  <div class="head"><span class="num">6.8</span><h3>Any morning: the nightly check</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 33</span></p></div><p>Usually nothing to show: say that a clean night shows no line.</p></div></li>
+<li class="step" data-id="s6i"><label><input type="checkbox" id="c-s6i"><span class="box"></span></label>
+  <div class="head"><span class="num">6.9</span><h3>1 December 2026: IS26902 starts</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 23</span> <span class="dn">· second time</span></p></div><p>“Students with no class” shows her → put her into 5 London and into its groups (Matematika, Ingliz, PE 5D6D).</p></div></li></ol>
+</section>
+
+<section id="s7">
+  <div class="ses"><span class="snum">Session 7</span><h2>Video: AVP part 3 · Journals, plans and the quarter</h2><p class="when">Any day, even now · private window as the Demo Yunusobod AVP</p><p class="lede">Filmed in the seeded Demo Yunusobod: it has two months of history, and its quarter 1 ended on 31 October. A reset (step 0.2) never undoes a video already recorded.</p></div>
+  <ol class="steps"><li class="step" data-id="s7a"><label><input type="checkbox" id="c-s7a"><span class="box"></span></label>
+  <div class="head"><span class="num">7.1</span><h3>Journals and requests with history</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 43</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 44–45, 48</span> <span class="dn">· better takes with history</span></p></div><p>The seeded unlock request “I was ill that day…”; the ended PE exemption; absences in a row; master plans.</p></div></li>
+<li class="step" data-id="s7b"><label><input type="checkbox" id="c-s7b"><span class="box"></span></label>
+  <div class="head"><span class="num">7.2</span><h3>Close quarter 1</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slides 49–50</span></p></div><p>Closing checklist of quarter 1, decide the flags, close, reopen for a day, close again: “Quarter closed: read only”, files “Final”.</p></div></li>
+<li class="step" data-id="s7c"><label><input type="checkbox" id="c-s7c"><span class="box"></span></label>
+  <div class="head"><span class="num">7.3</span><h3>Results, rating, early warning, reports</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 51</span></p></div><p>With a full quarter behind them.</p></div></li></ol>
+</section>
+
+<section id="s8">
+  <div class="ses"><span class="snum">Session 8</span><h2>Videos: the roles that look</h2><p class="when">A school day after Week 1, from 10:00 · Firefox private window, one role after another</p><p class="lede">Principal, Spiritual VP, Head Tutor, and the last Senior Head Teacher slide. There is a week of data to look at by now.</p></div>
+  <ol class="steps"><li class="step" data-id="s8a"><label><input type="checkbox" id="c-s8a"><span class="box"></span></label>
+  <div class="head"><span class="num">8.1</span><h3>Principal</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/LpSgFnxs1Ejj7y1sfsqZn2" target="_blank" rel="noopener">Principal deck</a> <span class="sl">slides 3–16</span></p></div><p>First sign-in with Rustam’s slip already happened in step 2.8; sign in again. Slides that name Demo Yunusobod: the seed has no Principal there, so show the demo branch and say a full quarter looks the same.</p></div></li>
+<li class="step" data-id="s8b"><label><input type="checkbox" id="c-s8b"><span class="box"></span></label>
+  <div class="head"><span class="num">8.2</span><h3>Spiritual and Moral VP</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/XF5fQSz32SPRt8sYbc3qN8" target="_blank" rel="noopener">Spiritual and Moral VP deck</a> <span class="sl">slides 3–12</span></p></div><p>Valiyeva Shoira. The home page at 10:00: one class “below”.</p></div></li>
+<li class="step" data-id="s8c"><label><input type="checkbox" id="c-s8c"><span class="box"></span></label>
+  <div class="head"><span class="num">8.3</span><h3>Head Tutor</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/Jh7xkBKqhxWENAX9eCW5VH" target="_blank" rel="noopener">Head Tutor deck</a> <span class="sl">slides 3–12</span></p></div><p>Tojiboyev Ulugʻbek. The home page at 10:00. Attendance by Tutor: Week 1 of the demo branch.</p></div></li>
+<li class="step" data-id="s8d"><label><input type="checkbox" id="c-s8d"><span class="box"></span></label>
+  <div class="head"><span class="num">8.4</span><h3>Senior Head Teacher: Head Teachers of my subjects</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slide 20</span></p></div><p>As slide 20 shows.</p></div></li>
+<li class="step" data-id="s8e"><label><input type="checkbox" id="c-s8e"><span class="box"></span></label>
+  <div class="head"><span class="num">8.5</span><h3>Send feedback, once per role</h3><span class="tag cam">On camera</span></div>
+  <div class="body"><div class="decks"><p class="deck"><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a> <span class="sl">slide 34</span></p><p class="deck"><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a> <span class="sl">slide 52</span></p><p class="deck"><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a> <span class="sl">slide 25</span></p><p class="deck"><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a> <span class="sl">slide 18</span></p><p class="deck"><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a> <span class="sl">slide 19</span></p><p class="deck"><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a> <span class="sl">slide 21</span></p><p class="deck"><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a> <span class="sl">slide 21</span></p><p class="deck"><a href="https://claude.ai/artifact/LpSgFnxs1Ejj7y1sfsqZn2" target="_blank" rel="noopener">Principal deck</a> <span class="sl">slide 17</span></p><p class="deck"><a href="https://claude.ai/artifact/XF5fQSz32SPRt8sYbc3qN8" target="_blank" rel="noopener">Spiritual and Moral VP deck</a> <span class="sl">slide 13</span></p><p class="deck"><a href="https://claude.ai/artifact/Jh7xkBKqhxWENAX9eCW5VH" target="_blank" rel="noopener">Head Tutor deck</a> <span class="sl">slide 13</span></p></div><p>Each role sends one test report at the end of its video (at most 20 in 24 hours per person).</p></div></li></ol>
+</section>
+
+<section id="s9">
+  <div class="ses"><span class="snum">Session 9</span><h2>Cut into clips</h2><p class="when">After recording</p></div>
+  <ol class="steps"><li class="step" data-id="s9a"><label><input type="checkbox" id="c-s9a"><span class="box"></span></label>
+  <div class="head"><span class="num">9.1</span><h3>One clip per slide</h3><span class="tag offc">Off camera</span></div>
+  <div class="body"><p>Every take was filmed against one deck slide. Name each clip after its slide title and put the role’s clips in the deck’s order. The deck’s dividers are the chapters.</p></div></li></ol>
+</section>
+
+<section id="decks">
+  <h2>Where each deck is filmed</h2>
+  <p class="lede">The same plan the other way round: each deck and the sessions its slides are filmed in. Every feature slide of every deck is on this page.</p>
+  <div class="panel tw"><table><tr><th>Deck</th><th>Sessions and slides</th></tr>
+<tr><td><a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP" target="_blank" rel="noopener">Super Admin deck</a></td><td><a href="#s2">Session 2</a>: 4–9, 11–12, 13–14, 15, 16, 17, 20–21, 3, 19, 21–22, 23–25, 29–30<br><a href="#s3">Session 3</a>: 27<br><a href="#s6">Session 6</a>: 24, 33<br><a href="#s8">Session 8</a>: 34<br><span class="dn">Slide 28 not yet: Restore a graduate: graduation comes with Close the year, not built</span><br><span class="dn">Slide 32 not yet: Decide the AVP’s own requests: the AVP has no lessons in this branch; ask Claude before filming it</span></td></tr>
+<tr><td><a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2" target="_blank" rel="noopener">AVP deck</a></td><td><a href="#s2">Session 2</a>: 4–5<br><a href="#s3">Session 3</a>: 6–9, 11, 12–13, 14, 15–16, 17, 17, 22, 18, 19–21, 23, 24, 25, 26<br><a href="#s4">Session 4</a>: 28, 29–31, 32, 33, 38, 34–37, 14, 44, 47<br><a href="#s5">Session 5</a>: 40–41, 45<br><a href="#s6">Session 6</a>: 25, 42, 46, 48, 51, 21, 23<br><a href="#s7">Session 7</a>: 43, 44–45, 48, 49–50, 51<br><a href="#s8">Session 8</a>: 52</td></tr>
+<tr><td><a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ" target="_blank" rel="noopener">Teacher deck</a></td><td><a href="#s5">Session 5</a>: 3–7, 9–10, 11, 12, 14, 16, 20–22, 15, 17<br><a href="#s6">Session 6</a>: 19, 18–19, 23, 12, 13, 24<br><a href="#s8">Session 8</a>: 25</td></tr>
+<tr><td><a href="https://claude.ai/artifact/WB6TWkLz8j2Wm26Vx9ETAV" target="_blank" rel="noopener">Tutor deck</a></td><td><a href="#s5">Session 5</a>: 4–8, 10–11, 10, 13–15<br><a href="#s6">Session 6</a>: 12, 17, 16<br><a href="#s8">Session 8</a>: 18</td></tr>
+<tr><td><a href="https://claude.ai/artifact/Vim8fuNim8d1QyKGr9WGsL" target="_blank" rel="noopener">Class teacher deck</a></td><td><a href="#s5">Session 5</a>: 4–8, 10–11, 13–15, 17, 18<br><a href="#s6">Session 6</a>: 12, 16<br><a href="#s8">Session 8</a>: 19</td></tr>
+<tr><td><a href="https://claude.ai/artifact/E1iTC3DoPPPMcANJ5vZDAD" target="_blank" rel="noopener">Head Teacher deck</a></td><td><a href="#s5">Session 5</a>: 4–8, 3, 10, 14–18<br><a href="#s6">Session 6</a>: 11–13, 20, 19<br><a href="#s8">Session 8</a>: 21</td></tr>
+<tr><td><a href="https://claude.ai/artifact/Neo8vLLMWCB4TpVGTXFkBK" target="_blank" rel="noopener">Senior Head Teacher deck</a></td><td><a href="#s5">Session 5</a>: 3–7, 8, 10, 14–18<br><a href="#s6">Session 6</a>: 11–12, 13, 19<br><a href="#s8">Session 8</a>: 20, 21</td></tr>
+<tr><td><a href="https://claude.ai/artifact/LpSgFnxs1Ejj7y1sfsqZn2" target="_blank" rel="noopener">Principal deck</a></td><td><a href="#s8">Session 8</a>: 3–16, 17</td></tr>
+<tr><td><a href="https://claude.ai/artifact/XF5fQSz32SPRt8sYbc3qN8" target="_blank" rel="noopener">Spiritual and Moral VP deck</a></td><td><a href="#s8">Session 8</a>: 3–12, 13</td></tr>
+<tr><td><a href="https://claude.ai/artifact/Jh7xkBKqhxWENAX9eCW5VH" target="_blank" rel="noopener">Head Tutor deck</a></td><td><a href="#s8">Session 8</a>: 3–12, 13</td></tr>
+  </table></div>
+</section>
+
+<section>
   <h2>The five files</h2>
   <div class="panel tw">
     <table>
       <tr><th>File</th><th>Used in</th><th>What it is</th></tr>
-      <tr><td><span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span></td><td>Step 9</td><td>Staff import with 3 planted mistakes (4 rows refused). Shows how the import refuses.</td></tr>
-      <tr><td><span class="file">2 Xodimlar importi - toza.xlsx</span></td><td>Step 9</td><td>The same 52 teachers and Tutors, clean.</td></tr>
-      <tr><td><span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span></td><td>Step 17</td><td>Student import with 3 planted mistakes (4 rows refused) and one duplicate warning.</td></tr>
-      <tr><td><span class="file">4 Oʻquvchilar importi - toza.xlsx</span></td><td>Step 17</td><td>The same 130 students, clean, still with the duplicate warning to tick.</td></tr>
-      <tr><td><span class="file">5 Demo filial maʼlumotlari.xlsx</span></td><td>Whole build</td><td>The cheat sheet: subjects, rooms, day templates, classes, groups and members, teaching load, one timetable sheet per class, working hours, and the list of planted props.</td></tr>
+      <tr><td><span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span></td><td>Step 2.10</td><td>Staff import with 3 planted mistakes (4 rows refused).</td></tr>
+      <tr><td><span class="file">2 Xodimlar importi - toza.xlsx</span></td><td>Step 2.10</td><td>The same 52 teachers and Tutors, clean.</td></tr>
+      <tr><td><span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span></td><td>Step 3.9</td><td>Student import with 3 planted mistakes (4 rows refused) and one duplicate warning.</td></tr>
+      <tr><td><span class="file">4 Oʻquvchilar importi - toza.xlsx</span></td><td>Step 3.9</td><td>The same 130 students, clean, still with the duplicate warning to tick.</td></tr>
+      <tr><td><span class="file">5 Demo filial maʼlumotlari.xlsx</span></td><td>Sessions 2–4</td><td>The cheat sheet: subjects, rooms, day templates, classes, groups and members, teaching load, a timetable sheet per class, working hours, planted props.</td></tr>
     </table>
   </div>
-  <p class="good">The four import files are filled in the platform’s own templates and were read back through the platform’s own import reader: the clean files give zero problems, and the mistake files fail exactly on the planted rows.</p>
-</section>
-
-<section>
-  <h2>Before the build</h2>
-  <ol class="steps">
-    <li class="step" data-id="a1"><label><input type="checkbox" id="c-a1"><span class="box"></span></label>
-      <div class="head"><span class="num">A1</span><h3>Reset the test site with the demo school</h3><span class="tag offc">Off camera</span></div>
-      <div class="body"><p class="path">GitHub → Actions → <b>Demo data on the test environment</b> → Run workflow on <code>main</code></p>
-      <ul><li>Wait first until the latest <code>deploy-test</code> on main is green.</li><li>Type a demo password (10+ characters) and <code>REPLACE</code>. It wipes the whole test database, about 10 minutes.</li><li>Keep the run’s <b>Summary</b>: it lists every seeded login (the Super Admin, the Demo Yunusobod AVP, the Senior Head Teacher, the 0 London Class teacher).</li></ul></div></li>
-    <li class="step" data-id="a2"><label><input type="checkbox" id="c-a2"><span class="box"></span></label>
-      <div class="head"><span class="num">A2</span><h3>One phone with an authenticator app</h3><span class="tag offc">Off camera</span></div>
-      <div class="body"><p>The Super Admin and the Academic Vice Principal must set up the second step at their first sign-in. Use one phone with two entries.</p></div></li>
-    <li class="step" data-id="a3"><label><input type="checkbox" id="c-a3"><span class="box"></span></label>
-      <div class="head"><span class="num">A3</span><h3>Browsers ready</h3><span class="tag offc">Off camera</span></div>
-      <div class="body"><p>Chrome profiles “SA”, “AVP”, “Tutor”; Firefox for the Teacher; Edge for the Head Teacher; a private window for read-only roles and the Class teacher. After each first password change, sign in again with <b>Trust this device</b> so nobody is signed out mid-take.</p></div></li>
-  </ol>
-</section>
-
-<section>
-  <h2>Build the branch</h2>
-  <p class="lede">Do the whole build once as a rehearsal, then run step A1 again to wipe it, then repeat it for the real recording. Steps marked “On camera” belong to a video; “Mixed” means film one example and do the rest off camera.</p>
-
-  <div class="who"><h3>Super Admin</h3><p>Chrome profile “SA” · the seeded Super Admin login</p></div>
-  <ol class="steps">
-    <li class="step" data-id="b1"><label><input type="checkbox" id="c-b1"><span class="box"></span></label>
-      <div class="head"><span class="num">1</span><h3>Create the branch</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">School setup → Branches → <b>New branch</b></p><ul><li>Name <b>Istirohat demo</b>, working weekdays Monday–Friday, time zone Asia/Tashkent.</li><li>Open it from the Branches list to switch to it.</li><li>School setup → <b>Travel time</b>: 20 minutes to Demo Yunusobod.</li></ul></div></li>
-    <li class="step" data-id="b2"><label><input type="checkbox" id="c-b2"><span class="box"></span></label>
-      <div class="head"><span class="num">2</span><h3>Building, floors, rooms</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">Buildings and floors → <b>Add building</b> “Asosiy bino” → <b>Add floor</b> 1, 2, 4 · Rooms → <b>Add room</b></p><ul><li>All 12 rooms: sheet <b>2 Rooms</b>. Sport zal 1 and 2: type Sports hall, <b>Shared</b>, 2 lessons at once, capacity 60.</li><li>On camera: room 208, Sport zal 2, then the <b>By floor</b> view.</li></ul></div></li>
-    <li class="step" data-id="b3"><label><input type="checkbox" id="c-b3"><span class="box"></span></label>
-      <div class="head"><span class="num">3</span><h3>Departments</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p>The departments already exist: STEAM, Xorijiy tillar, Milliy fanlar, Tabiiy fanlar, Umumiy fanlar, Tyutorlar. On camera, add a test department, rename it, then archive it.</p></div></li>
-    <li class="step" data-id="b4"><label><input type="checkbox" id="c-b4"><span class="box"></span></label>
-      <div class="head"><span class="num">4</span><h3>Academic year</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">Academic years → <b>Add year</b> → <b>Change quarters</b> → <b>Start year</b></p><ul><li>Year 02.09.2026 – 25.05.2027.</li><li>Quarters: 02.09–31.10.2026 · 09.11–26.12.2026 · 11.01–20.03.2027 · 30.03–25.05.2027.</li><li>Using the compressed year from the Recording plan (option B)? Use one-week quarters instead.</li></ul></div></li>
-    <li class="step" data-id="b5"><label><input type="checkbox" id="c-b5"><span class="box"></span></label>
-      <div class="head"><span class="num">5</span><h3>Subjects</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">School setup → Subjects → <b>Add subject</b></p><ul><li>Create the 24 rows marked <b>Create</b> on sheet <b>1 Subjects</b>: names in three languages, department, grades. Kelajak soati and Uy vazifasi go in <b>Tyutorlar</b>. School Counseling: journal type <b>Attendance only</b>.</li><li>Turn on <b>Group subject</b> for Matematika, Ingliz tili, Jismoniy tarbiya (already there) and Arab tili.</li><li>The import files name subjects exactly as on the sheet, so type the names exactly.</li></ul></div></li>
-    <li class="step" data-id="b6"><label><input type="checkbox" id="c-b6"><span class="box"></span></label>
-      <div class="head"><span class="num">6</span><h3>“Rating exams in grades 0–4”</h3><span class="tag offc">Later</span></div>
-      <div class="body"><p>Leave it off for now. It is filmed later, in the Class teacher video, before and after.</p></div></li>
-    <li class="step" data-id="b7"><label><input type="checkbox" id="c-b7"><span class="box"></span></label>
-      <div class="head"><span class="num">7</span><h3>Office staff, by hand</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">People → Staff → <b>Add person</b> → <b>Create account</b> → <b>Print</b> the slip → <b>Give a role</b> (branch Istirohat demo, from today)</p><ul><li>Fayzullayeva Nodira → Academic Vice Principal (main division Rahbariyat). On camera.</li><li>Yoʻldoshev Rustam → Principal; Valiyeva Shoira → Vice Principal for Spiritual and Moral Education (Rahbariyat).</li><li>Tojiboyev Ulugʻbek → Head Tutor (Oʻquv boʻlimi, department Tyutorlar).</li><li>Phones: +998 97 190 00 01 to 04.</li></ul></div></li>
-    <li class="step" data-id="b8"><label><input type="checkbox" id="c-b8"><span class="box"></span></label>
-      <div class="head"><span class="num">8</span><h3>Second step for the AVP</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p>In the AVP browser: sign in with Nodira’s slip, choose a password, set up the second step with the phone, save the recovery codes. This is the AVP video’s opening.</p></div></li>
-    <li class="step" data-id="b9"><label><input type="checkbox" id="c-b9"><span class="box"></span></label>
-      <div class="head"><span class="num">9</span><h3>Staff import</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">People → Staff → <b>Import from Excel</b> → <b>Upload the filled file</b></p><ul><li>Upload <span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span>. The preview refuses 4 rows: Alimov Bobur (role Super administrator), Raximova Laylo and Sharipov Ilhom (the same phone), Haydarova Gulnoza (subject “Matematka” misspelt). Nothing is saved.</li><li>Upload <span class="file">2 Xodimlar importi - toza.xlsx</span> → <b>Save all 52 people</b> → <b>Print the slips</b>.</li><li>Keep the slips: every teacher’s first password is on them, valid 7 days.</li></ul></div></li>
-    <li class="step" data-id="b10"><label><input type="checkbox" id="c-b10"><span class="box"></span></label>
-      <div class="head"><span class="num">10</span><h3>Roles the import cannot give</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><ul><li>Ergasheva Madina → <b>Head Teacher</b>, subjects Ingliz tili, Rus tili, Arab tili, Ona tili va adabiyot. On camera.</li><li>Nurmatova Kamola and Ibragimova Ozoda → <b>Class teacher</b>.</li><li>For the password-reset scene: put a real mailbox in Rahimov Aziz’s email field.</li></ul></div></li>
-  </ol>
-
-  <div class="who"><h3>Academic Vice Principal</h3><p>Chrome profile “AVP” · Nodira Fayzullayeva</p></div>
-  <ol class="steps">
-    <li class="step" data-id="b11"><label><input type="checkbox" id="c-b11"><span class="box"></span></label>
-      <div class="head"><span class="num">11</span><h3>Slot types, day templates, where they apply</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">School setup → Slot types · Day templates · Where templates apply</p><ul><li>Slot types: Lesson 40, Break 15, Lunch 40 (Break), Juma 125 (Break).</li><li>Four templates from sheet <b>3 Day templates</b>: Asosiy 5-8 (whole branch), Boshlangʻich 1-4 (grades 1–4), Yuqori 9-11 (grades 9–11), Juma 5-11 (Friday, grades 5–11).</li><li>If the platform refuses two breaks in a row, use one 70-minute break around lunch.</li></ul></div></li>
-    <li class="step" data-id="b12"><label><input type="checkbox" id="c-b12"><span class="box"></span></label>
-      <div class="head"><span class="num">12</span><h3>Calendar</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p>Day off “Konstitutsiya kuni” on 08.12.2026. More calendar scenes come after publishing: a working Saturday and a shortened day, each with its preview.</p></div></li>
-    <li class="step" data-id="b13"><label><input type="checkbox" id="c-b13"><span class="box"></span></label>
-      <div class="head"><span class="num">13</span><h3>Settings and weights</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><ul><li>Settings: <b>Edit days</b> 7 (1 if you use the compressed year). Leave the early-warning defaults.</li><li>Subjects → each graded subject: daily distribution (for example Attendance 20, Classwork 40, Homework 40) → quarterly distribution → <b>Copy quarter 1 to the other quarters</b>. Film one subject.</li></ul></div></li>
-    <li class="step" data-id="b14"><label><input type="checkbox" id="c-b14"><span class="box"></span></label>
-      <div class="head"><span class="num">14</span><h3>Vacancies</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">People → Vacancies → <b>Add vacancy</b></p><ul><li>“Arab tili oʻqituvchisi”: Xorijiy tillar, subject Arab tili.</li><li>“AP Iqtisodiyot oʻqituvchisi”: Umumiy fanlar, subject AP Iqtisodiyot.</li></ul></div></li>
-    <li class="step" data-id="b15"><label><input type="checkbox" id="c-b15"><span class="box"></span></label>
-      <div class="head"><span class="num">15</span><h3>Working hours</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">People → Staff → a person → Availability → <b>Change from a date</b></p><p>All 52 people on sheet <b>8 Working hours</b>: 09:00–16:05 Monday to Friday, Tutors included. The builder will not publish while anyone with lessons has no hours. Film one; do the rest off camera.</p></div></li>
-    <li class="step" data-id="b16"><label><input type="checkbox" id="c-b16"><span class="box"></span></label>
-      <div class="head"><span class="num">16</span><h3>Classes, Tutors and Class teachers</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">Classes and subjects → Classes → <b>New class</b> → the class → <b>Give Tutor</b> / <b>Give Class teacher</b> (from today)</p><ul><li>The eight classes from sheet <b>4 Classes and Tutors</b>. 3 Indigo is entered as a Russian-language class.</li><li>On camera: 3 Genius asks for a Class teacher, 5 Melbourne for a Tutor.</li></ul></div></li>
-    <li class="step" data-id="b17"><label><input type="checkbox" id="c-b17"><span class="box"></span></label>
-      <div class="head"><span class="num">17</span><h3>Student import</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">People → Students → <b>Import from Excel</b></p><ul><li>Upload <span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span>. Refused rows: IS26020 (no contract number), IS26040 (class “Melborne”), IS26060 and IS26061 (one phone under two names). Plus the warning that IS26901 has the same name and birth date as IS26039.</li><li>Upload <span class="file">4 Oʻquvchilar importi - toza.xlsx</span> → tick the warning → <b>Save all 130 students</b>.</li><li>IS26902 starts on 01.12.2026 with no class. If you import on or after that day, change her start date in the file first.</li></ul></div></li>
-    <li class="step" data-id="b18"><label><input type="checkbox" id="c-b18"><span class="box"></span></label>
-      <div class="head"><span class="num">18</span><h3>Merge the duplicate</h3><span class="tag cam">On camera · Super Admin</span></div>
-      <div class="body"><p>In the SA browser: the student IS26901 → <b>Merge with another record</b> → UID <b>IS26039</b> → <b>Show the merge</b> → reason → <b>Merge</b>. Do this before the groups, so the duplicate never needs groups.</p></div></li>
-    <li class="step" data-id="b19"><label><input type="checkbox" id="c-b19"><span class="box"></span></label>
-      <div class="head"><span class="num">19</span><h3>Groups and group placement</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><ul><li>Classes → Groups → <b>New group</b>: the 22 groups on sheet <b>5 Groups</b>. The Ingliz 3-x groups ask “Mix Uzbek and Russian classes?”; the 5D6D groups show “Lesson slots of both grades”.</li><li><b>Place students</b> → Group placement: members from sheet <b>6 Group members</b> (date: today). Every student must be in one group of each grouped subject, or publish stops with “Students not placed”.</li><li>On camera: grade 5 Matematika groups and the PE Boys/Girls split.</li></ul></div></li>
-    <li class="step" data-id="b20"><label><input type="checkbox" id="c-b20"><span class="box"></span></label>
-      <div class="head"><span class="num">20</span><h3>Teaching load</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">Timetable → Teaching load → <b>New draft</b> (Empty, start next Monday) → <b>Add row</b></p><ul><li>All rows from sheet <b>7 Teaching load</b>. Group rows of one subject become one Block by themselves; Kelajak soati and Uy vazifasi fill their own teacher.</li><li>On camera: grade 5. Then <b>Weekly totals</b>.</li></ul></div></li>
-    <li class="step" data-id="b21"><label><input type="checkbox" id="c-b21"><span class="box"></span></label>
-      <div class="head"><span class="num">21</span><h3>Builder steps and the board</h3><span class="tag mixed">Mixed</span></div>
-      <div class="body"><p class="path">Timetable → Draft builder → steps 1–5 → step 7 the board</p><ul><li>Place every lesson where the sheets <b>T &lt;class&gt;</b> show it, doubles with <b>Double</b>.</li><li>On camera: grade 5, then each special moment: the 5D+6D group, Moliya with the capacity warning, grade 3 Arab tili, the 11th-grade lunch.</li></ul></div></li>
-    <li class="step" data-id="b22"><label><input type="checkbox" id="c-b22"><span class="box"></span></label>
-      <div class="head"><span class="num">22</span><h3>Publish</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p>Step 8 <b>Review and publish</b> → start next Monday → read the impact → <b>Publish</b>.</p></div></li>
-    <li class="step" data-id="b23"><label><input type="checkbox" id="c-b23"><span class="box"></span></label>
-      <div class="head"><span class="num">23</span><h3>Moliya exemptions</h3><span class="tag cam">On camera</span></div>
-      <div class="body"><p class="path">Journal → Exemptions → <b>New exemption</b>: Kind Full, Chosen subjects Moliya</p><p>The 20 students marked “Does not take Moliya” on sheet <b>6 Group members</b>, in one batch → <b>Check</b> → <b>Save</b>.</p></div></li>
-  </ol>
-</section>
-
-<section>
-  <h2>Props you add by hand while filming</h2>
-  <div class="panel tw">
-    <table>
-      <tr><th>Prop</th><th>How</th><th>Video</th></tr>
-      <tr><td>One phone, two families</td><td>Add a relative to a 5 Tokyo student with another family’s mother’s phone and a new name → “Who is …?” → “A different person: the number has a new owner”</td><td>AVP</td></tr>
-      <tr><td>Over the contract</td><td>Ahmedov Javlon: “Lessons per week by contract” 4 (he teaches 6) → weekly totals “Over by 2”</td><td>AVP</td></tr>
-      <tr><td>Teacher absence</td><td>Hamidova Feruza ill for two days → substitutes from the absence</td><td>AVP</td></tr>
-      <tr><td>Scheduled changes</td><td>A student leaving next Friday; a class move; a group move (Head Teacher: Ingliz 5B → 5A)</td><td>AVP, Head Teacher</td></tr>
-      <tr><td>Branch move</td><td>Release a student to Demo Yunusobod; accept as the Yunusobod AVP from the Summary</td><td>AVP</td></tr>
-      <tr><td>Starts later</td><td>IS26902 (01.12.2026): after her date, “Students with no class” → put her into 5 London</td><td>AVP</td></tr>
-      <tr><td>Accounts</td><td>Lock and unlock a teacher; reset a password; the email reset for Rahimov Aziz</td><td>Super Admin</td></tr>
-      <tr><td>Room, exam, mixed block</td><td>Close room 209 for a day; a grade-5 Matematika exam; a practice draft with a “Mixed block”, then delete it</td><td>AVP</td></tr>
-      <tr><td>Rating exam</td><td>Matematika: Rating exam on from a quarter; grade 3 also needs “Rating exams in grades 0–4” (Super Admin)</td><td>Teacher, Class teacher</td></tr>
-    </table>
-  </div>
-  <p class="note">Already planted in the files, nothing to do: siblings (IS26003 in 3 Genius and IS26052 in 5 Tokyo share both parents), a teacher who is a parent (IS26085 in 6 Imperial, whose father is Otabek Normatov), eight students with no consent date, two scholarships per class. Sheet <b>9 Planted props</b> lists each one.</p>
+  <p class="note">Already planted in the files, nothing to do: siblings (IS26003 in 3 Genius and IS26052 in 5 Tokyo share both parents), a teacher who is a parent (IS26085 in 6 Imperial, father Otabek Normatov), eight students with no consent date, two scholarships per class. Sheet <b>9 Planted props</b> lists each one.</p>
 </section>
 
 <section>
   <h2>Things to know</h2>
   <div class="panel">
     <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
-      <li>Every person and phone is invented. Phones are +998 97 1xx for staff and +998 93/94 for parents, away from the demo seed’s numbers.</li>
-      <li>The files were checked with the platform’s own reader. Checks that need the live database (the one-department rule, class placement, phones already held) run when you press Save; they should pass, and the preview names any row that does not.</li>
+      <li>Everything happens on the test site. Every person and phone is invented.</li>
+      <li>Cross-branch scenes and anything that needs months of history are filmed in the seeded Demo Yunusobod and Demo Chilonzor (Session 7, and the steps that say so).</li>
       <li>6 Imperial: its real grade-6 Matematika and English blocks are not built, so they are whole-class rows. Say so on camera.</li>
-      <li>3 Indigo is entered as a Russian-language class because its sheet has Oʻzbek tili. If it is not, set its language to Uzbek; nothing else changes.</li>
-      <li>After the rehearsal, run step A1 again: it wipes the branch and you start the real take from step 1.</li>
+      <li>3 Indigo is entered as a Russian-language class. If it is not, set its language to Uzbek; nothing else changes.</li>
+      <li>If a demo clock is built later, Session 6 shrinks to one sitting; nothing else on this page changes.</li>
     </ul>
   </div>
 </section>
