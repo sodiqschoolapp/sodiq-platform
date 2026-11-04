@@ -61,7 +61,7 @@ export default {
   title: 'Head Teacher tutorial',
   footer: 'Sodiq platform tutorials · Head Teacher',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Head Teacher', title: 'Head Teacher', sub: 'Oversees a list of subjects in one branch: their journals, plans, groups and requests. Also teaches.', meta: `Demo: Madina Ergasheva, Ingliz tili, Rus tili, Arab tili, Ona tili, "${BRANCH}" · Edge` },
+    { kind: 'cover', kicker: 'Tutorial · Head Teacher', title: 'Head Teacher', sub: 'Oversees a list of subjects in one branch: their journals, plans, groups and requests. Also teaches.', meta: `Demo: Madina Ergasheva, Ingliz tili, Rus tili, Arab tili, Ona tili, "${BRANCH}" · Chrome “Head Teacher”` },
     K('The role in one slide', [
       { title: 'For own subjects, own branch', body: ['Reads journals and lesson plans', 'Approves unlock and plan edit requests', 'Keeps master plans', 'Moves students between groups', 'Sees the timetables of the subjects’ teachers'] },
       { title: 'Also', body: ['The full student list; exports its Basic fields', 'Works as a Teacher: see the Teacher video', 'One Head Teacher per subject per branch'] },

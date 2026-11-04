@@ -5,7 +5,7 @@ export default {
   title: 'Class teacher tutorial',
   footer: 'Sodiq platform tutorials · Class teacher',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Class teacher', title: 'Class teacher (Sinf rahbari, grades 0–4)', sub: 'Takes the Tutor’s place in a class of grades 0–4, and teaches its subjects like any teacher.', meta: 'Demo: Kamola Nurmatova, Class teacher of 3 Genius, Istirohat demo · Edge private window' },
+    { kind: 'cover', kicker: 'Tutorial · Class teacher', title: 'Class teacher (Sinf rahbari, grades 0–4)', sub: 'Takes the Tutor’s place in a class of grades 0–4, and teaches its subjects like any teacher.', meta: 'Demo: Kamola Nurmatova, Class teacher of 3 Genius, Istirohat demo · Chrome “Class teacher”' },
     K('The role in one slide', [
       { title: 'Like a Tutor, for one class', body: ['Everything the Tutor sees and does, for the own class of grades 0–4', 'Holds its Ma’naviyat soati and Homework slot lessons', 'Records absence reasons'] },
       { title: 'Also a Teacher', body: ['Teaches subjects of the own class (Mathematics, native language, reading…) through the teaching load', 'Keeps those journals and plans: see the Teacher video', 'Subjects of grades 0–4 may come from several departments'] },

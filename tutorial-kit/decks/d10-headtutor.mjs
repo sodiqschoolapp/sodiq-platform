@@ -5,7 +5,7 @@ export default {
   title: 'Head Tutor tutorial',
   footer: 'Sodiq platform tutorials · Head Tutor',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Head Tutor', title: 'Head Tutor', sub: 'Oversees every class, its Tutor or Class teacher, and attendance. Reads every field of every student of the branch.', meta: `Demo: Ulugʻbek Tojiboyev, "${BRANCH}" · Firefox private window` },
+    { kind: 'cover', kicker: 'Tutorial · Head Tutor', title: 'Head Tutor', sub: 'Oversees every class, its Tutor or Class teacher, and attendance. Reads every field of every student of the branch.', meta: `Demo: Ulugʻbek Tojiboyev, "${BRANCH}" · Chrome “Head Tutor”` },
     K('The role in one slide', [
       { title: 'Sees', body: ['All classes with their Tutors and Class teachers', 'Attendance by class and by Tutor', 'The school timetable and every class’s', 'Every field of every student, the financial group included'] },
       { title: 'Does', body: ['Exports the student list with every field group', 'Reads the discipline of Tutor lessons', 'Rating "Of a class" for every class'] },

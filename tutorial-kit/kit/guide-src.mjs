@@ -91,7 +91,7 @@ const SESSIONS = [
   {
     n: 2,
     title: 'Video: Super Admin',
-    when: 'Week 0, Thursday morning · Chrome “SA” (step 2.9 in Chrome “AVP”)',
+    when: 'Week 0, Thursday morning · Chrome profile “SA” (step 2.9 in “AVP”, step 2.8 in “Principal”)',
     lede: 'Open the Super Admin deck. Show its slides 1–2 first (title and “The role in one slide”).',
     steps: [
       st(
@@ -123,7 +123,7 @@ const SESSIONS = [
         'Office staff, by hand',
         'mixed',
         K.b7 +
-          `<p>Then, in a private window, sign in with Rustam’s slip: that is slide 3 of the Super Admin deck (every first sign-in looks the same).</p>`,
+          `<p>Then, in the Chrome profile “Principal”, sign in with Rustam’s slip: that is slide 3 of the Super Admin deck (every first sign-in looks the same).</p>`,
         [
           ['sa', '20–21'],
           ['sa', '3', 'with Rustam’s slip'],
@@ -152,7 +152,7 @@ const SESSIONS = [
   {
     n: 3,
     title: 'Video: AVP part 1 · Prepare the year',
-    when: 'Week 0, Thursday afternoon · Chrome “AVP” (step 3.10 in Chrome “SA”)',
+    when: 'Week 0, Thursday afternoon · Chrome profile “AVP” (step 3.10 in “SA”, step 3.13 in “Yunusobod AVP”)',
     lede: 'Open the AVP deck. Show its slides 1–3 first; slide 3 explains the three AVP videos.',
     steps: [
       st(
@@ -228,7 +228,7 @@ const SESSIONS = [
         's3f',
         'Move a student to another branch',
         'cam',
-        `<p>Release one 5 London student to Demo Yunusobod from Monday of Week 1. In a private window, sign in as the Demo Yunusobod AVP (login on the Summary) and accept.</p>`,
+        `<p>Release one 5 London student to Demo Yunusobod from Monday of Week 1. In the Chrome profile “Yunusobod AVP”, sign in as the Demo Yunusobod AVP (login on the Summary) and accept.</p>`,
         [['avp', '26']],
       ),
     ],
@@ -236,7 +236,7 @@ const SESSIONS = [
   {
     n: 4,
     title: 'Video: AVP part 2 · The timetable',
-    when: 'Week 0, Friday · Chrome “AVP” (Chrome “SA” for “Take over”)',
+    when: 'Week 0, Friday · Chrome profile “AVP” (“SA” for “Take over”)',
     lede: 'Same AVP deck, slides 27–38, then the changes for Week 1.',
     steps: [
       st(
@@ -303,14 +303,14 @@ const SESSIONS = [
   {
     n: 5,
     title: 'The first school day',
-    when: 'Week 1, Monday · every browser',
+    when: 'Week 1, Monday · every role’s Chrome profile',
     lede: 'The timetable is live today. Several decks at once: each step says which.',
     steps: [
       st(
         's5a',
         'Before 09:00: first sign-ins with the slips',
         'cam',
-        `<ul><li>Firefox: Rahimov Aziz (Teacher).</li><li>Chrome “Tutor”: Rashidova Umida.</li><li>Edge private window: Nurmatova Kamola (Class teacher).</li><li>Edge: Ergasheva Madina (Head Teacher).</li><li>Firefox private window: the seeded Senior Head Teacher (Summary).</li><li>Off camera: Rasulova Shahnoza (Ingliz 5B) and Qosimova Zarina (PE girls 5AB); you need them on Wednesday and Thursday.</li></ul>`,
+        `<ul><li>“Teacher”: Rahimov Aziz.</li><li>“Tutor”: Rashidova Umida.</li><li>“Class teacher”: Nurmatova Kamola.</li><li>“Head Teacher”: Ergasheva Madina.</li><li>“Senior HT”: the seeded Senior Head Teacher (Summary).</li><li>Off camera: Rasulova Shahnoza (Ingliz 5B) in “Spare 1” and Qosimova Zarina (PE girls 5AB) in “Spare 2”; you need them on Tuesday to Thursday.</li></ul>`,
         [
           ['t', '3–7'],
           ['tu', '4–8'],
@@ -440,7 +440,7 @@ const SESSIONS = [
         's6d',
         'Thursday: the day changes',
         'cam',
-        `<ul><li>Lesson 1: Aziz checks the homework given on Monday.</li><li>Feruza is ill: her substitute and Feruza open one cell in two browsers: the “two people on one cell” dialog.</li><li>The grade-5 exam is on the timetables.</li></ul>`,
+        `<ul><li>Lesson 1: Aziz checks the homework given on Monday.</li><li>Feruza is ill: her substitute (“Spare 1”) and Feruza (“Spare 2”) open one cell: the “two people on one cell” dialog.</li><li>The grade-5 exam is on the timetables.</li></ul>`,
         [
           ['t', '12', 'homework checked'],
           ['t', '13'],
@@ -496,7 +496,7 @@ const SESSIONS = [
   {
     n: 7,
     title: 'Video: AVP part 3 · Journals, plans and the quarter',
-    when: 'Any day, even now · private window as the Demo Yunusobod AVP',
+    when: 'Any day, even now · Chrome profile “Yunusobod AVP”',
     lede: 'Filmed in the seeded Demo Yunusobod: it has two months of history, and its quarter 1 ended on 31 October. A reset (step 0.2) never undoes a video already recorded.',
     steps: [
       st(
@@ -528,7 +528,7 @@ const SESSIONS = [
   {
     n: 8,
     title: 'Videos: the roles that look',
-    when: 'A school day after Week 1, from 10:00 · Firefox private window, one role after another',
+    when: 'A school day after Week 1, from 10:00 · Chrome profiles “Principal”, “Spiritual VP”, “Head Tutor”, “Senior HT”',
     lede: 'Principal, Spiritual VP, Head Tutor, and the last Senior Head Teacher slide. There is a week of data to look at by now.',
     steps: [
       st(
@@ -683,7 +683,7 @@ section[id] { scroll-margin-top: 72px }
 <main>
 <header class="top">
   <h1>Tutorial Recording Guide</h1>
-  <p class="lede">The only page you follow. Go down it from top to bottom: ten sessions, each with its day and its browser. Every step names the deck and the slides to film while you do it. Tick each step as you go; the ticks stay in this browser.</p>
+  <p class="lede">The only page you follow. Go down it from top to bottom: ten sessions, each with its day and its Chrome profiles. Every step names the deck and the slides to film while you do it. Tick each step as you go; the ticks stay in this browser.</p>
 </header>
 
 <div class="bar" role="status">

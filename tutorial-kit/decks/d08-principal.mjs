@@ -4,7 +4,7 @@ export default {
   title: 'Principal tutorial',
   footer: 'Sodiq platform tutorials · Principal',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Principal', title: 'Principal', sub: 'Sees everything in the branch: timetables, every journal, lists, results and analytics. Changes nothing.', meta: `Demo: Rustam Yoʻldoshev, "${BRANCH}" (and Demo Yunusobod for two months of data) · Firefox private window` },
+    { kind: 'cover', kicker: 'Tutorial · Principal', title: 'Principal', sub: 'Sees everything in the branch: timetables, every journal, lists, results and analytics. Changes nothing.', meta: `Demo: Rustam Yoʻldoshev, "${BRANCH}" (and Demo Yunusobod for two months of data) · Chrome “Principal”` },
     K('The role in one slide', [
       { title: 'Sees', body: ['School setup, people, classes, timetable, journals, plans, results', 'The audit log of the branch', 'Requests and their state'] },
       { title: 'Exports', body: ['Lists (staff without phone; students without identity documents)', 'Journals and the branch export', 'Reports and rating as Excel'] },

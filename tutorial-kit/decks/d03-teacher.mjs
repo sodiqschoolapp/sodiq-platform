@@ -93,7 +93,7 @@ export default {
   title: 'Teacher tutorial',
   footer: 'Sodiq platform tutorials · Teacher',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Teacher', title: 'Teacher', sub: 'Your timetable, your journals and your lesson plans. Every teacher, Head Teacher and Class teacher needs this video.', meta: `Demo: Aziz Rahimov, Matematika 5 Melbourne, "${BRANCH}" · Firefox` },
+    { kind: 'cover', kicker: 'Tutorial · Teacher', title: 'Teacher', sub: 'Your timetable, your journals and your lesson plans. Every teacher, Head Teacher and Class teacher needs this video.', meta: `Demo: Aziz Rahimov, Matematika 5 Melbourne, "${BRANCH}" · Chrome “Teacher”` },
     K('The role in one slide', [
       { title: 'Sees', body: ['Own timetable (all branches)', 'The students you teach, Basic fields only', 'Own journals, and a lesson you substitute'] },
       { title: 'Does', body: ['Attendance, works, numbers, comments, rating exam', 'Lesson plans and requests to edit them', 'Unlock requests for locked lessons', 'Marks early warnings handled'] },

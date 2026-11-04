@@ -11,7 +11,7 @@ export default {
   title: 'Spiritual and Moral VP tutorial',
   footer: 'Sodiq platform tutorials · Vice Principal for Spiritual and Moral Education',
   slides: [
-    { kind: 'cover', kicker: 'Tutorial · Vice Principal', title: 'Vice Principal for Spiritual and Moral Education', sub: 'Watches attendance across the branch and knows every student and their family contacts. Views only.', meta: `Demo: Shoira Valiyeva, "${BRANCH}" (and Demo Yunusobod for history) · Firefox private window` },
+    { kind: 'cover', kicker: 'Tutorial · Vice Principal', title: 'Vice Principal for Spiritual and Moral Education', sub: 'Watches attendance across the branch and knows every student and their family contacts. Views only.', meta: `Demo: Shoira Valiyeva, "${BRANCH}" (and Demo Yunusobod for history) · Chrome “Spiritual VP”` },
     K('The role in one slide', [
       { title: 'Sees', body: ['Attendance of every class, and attendance analytics', 'The student list (last column: attendance %, never the average)', 'A student’s Overview (Basic and Contact), Attendance, Timetable, Relatives'] },
       { title: 'Also', body: ['Timetables of the branch', 'Journals: attendance only', 'Early warning: attendance reasons only'] },
