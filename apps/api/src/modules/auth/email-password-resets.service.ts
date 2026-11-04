@@ -7,7 +7,7 @@ import {
   type Clock,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Jobs } from '../../jobs/jobs.service.js';
@@ -45,7 +45,10 @@ export async function resetAllowed(transaction: Transaction, accountId: string):
 @Injectable()
 export class EmailPasswordResets {
   constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
+    // Task 10.5 (decision 2, Look first): a link's moments are written and compared by real
+    // time, so a jump of the demo clock neither expires nor stretches one; who may get a link
+    // (`resetAllowed`: the staff status and roles in force) follows the transaction's moment.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
     private readonly transactions: Transactions,
     private readonly audit: Audit,
     private readonly jobs: Jobs,
@@ -78,7 +81,7 @@ export class EmailPasswordResets {
       if (!(await resetAllowed(transaction, account.id))) {
         return;
       }
-      const now = await transactionMoment(transaction);
+      const now = this.clock.now();
       const newest = await transaction
         .selectFrom('password_reset_links')
         .select(['requested_at', 'valid_until', 'used_at', 'closed_at'])
@@ -138,7 +141,7 @@ export class EmailPasswordResets {
     const passwordHash = await hashPassword(newPassword);
 
     await this.transactions.run([], async (transaction) => {
-      const now = await transactionMoment(transaction);
+      const now = this.clock.now();
       // The account first, then the link, in statements of their own: the
       // order of the request, a lock, a reset and a password change, which
       // lock the account and then close the links (must-fix 1 of the spec

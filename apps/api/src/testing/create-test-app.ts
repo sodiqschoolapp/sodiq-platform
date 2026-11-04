@@ -5,6 +5,12 @@ import type { Clock, PermissionTable } from '@sodiq/shared';
 import { AppModule } from '../app.module.js';
 import { initApp } from '../app.setup.js';
 import { CLOCK } from '../clock/clock.module.js';
+import {
+  DEMO_CLOCK_DEFAULT_TIMING,
+  DEMO_CLOCK_TIMING,
+  SYSTEM_CLOCK,
+  type DemoClockTiming,
+} from '../clock/demo-clock.js';
 import { CONFIG } from '../config/config.module.js';
 import { loadConfig, type AppConfig } from '../config/config.js';
 import { databaseUrl, loadLocalEnvFile } from '../database/config.js';
@@ -20,6 +26,7 @@ import { PHOTO_STORE, type PhotoStore } from '../modules/people/photo-store.js';
 import type { Fetch } from '../monitoring/grafana.js';
 import { MONITORING_FETCH } from '../monitoring/monitoring.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
+import { FixedClock } from './fixed-clock.js';
 import { withDatabaseName } from './test-database.js';
 
 /** Does not exist, so a test that forgot to pass a database fails instead of using `sodiq_dev`. */
@@ -37,6 +44,12 @@ export interface TestAppOptions {
   jobsPollingIntervalSeconds?: number;
   /** Usually a `FixedClock`. Without it the application reads the system clock. */
   clock?: Clock;
+  /**
+   * Task 10.5: the application with the demo clock on (`DEMO_CLOCK=1`), over `real` as the
+   * server's clock (usually a `FixedClock`). `CLOCK` is then the `DemoClock`, so `clock` is
+   * left out. `timing` defaults to a jump that the test waits for by moving `real`.
+   */
+  demoClock?: { real: Clock; timing?: Partial<DemoClockTiming> };
   /** Settings of a server (`trustProxy`, `webFiles`) over those of the environment. */
   config?: Partial<AppConfig>;
   /** Controllers that exist only in tests, for example `SampleController`. */
@@ -92,8 +105,32 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.clock !== undefined) {
     builder.overrideProvider(CLOCK).useValue(options.clock);
   }
-  if (options.config !== undefined) {
-    builder.overrideProvider(CONFIG).useValue({ ...loadConfig(process.env), ...options.config });
+  const demo = options.demoClock;
+  if (demo !== undefined) {
+    if (options.clock !== undefined) {
+      throw new Error('A test app with the demo clock takes its real clock in demoClock.real.');
+    }
+    builder.overrideProvider(SYSTEM_CLOCK).useValue(demo.real);
+    const real = demo.real;
+    const timing: DemoClockTiming = {
+      ...DEMO_CLOCK_DEFAULT_TIMING,
+      // No reads on a timer: the test reads the row by the jump itself, or by `refresh`.
+      refreshMs: 3_600_000,
+      // The wait for a jump to take effect moves the test's real clock instead.
+      wait: (milliseconds) => {
+        if (real instanceof FixedClock && milliseconds > 0) real.advance(milliseconds);
+        return Promise.resolve();
+      },
+      ...demo.timing,
+    };
+    builder.overrideProvider(DEMO_CLOCK_TIMING).useValue(timing);
+  }
+  if (options.config !== undefined || demo !== undefined) {
+    builder.overrideProvider(CONFIG).useValue({
+      ...loadConfig(process.env),
+      ...options.config,
+      ...(demo === undefined ? {} : { demoClock: true }),
+    });
   }
   builder.overrideProvider(MAILER).useValue(options.mailer ?? new RecordingMailer());
   if (options.pdfRenderer !== undefined) {

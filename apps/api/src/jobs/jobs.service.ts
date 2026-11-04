@@ -10,6 +10,12 @@ export interface NewJob<Data> {
   /** The branches the handler will work for; `[]` for work on school-wide tables only. */
   branchIds: readonly string[];
   data: Data;
+  /**
+   * The real moment before which the worker does not take the job (pg-boss's `startAfter`,
+   * compared with the database's own `now()`). Task 10.5 (decision 4, Look first): the tick
+   * after a jump of the demo clock waits until the jump has taken effect. Left out: at once.
+   */
+  startAfter?: Date;
 }
 
 /**
@@ -64,7 +70,10 @@ export class Jobs {
       );
     }
     const boss = await this.queue.ready();
-    const id = await boss.send(definition.name, envelope, { db: fromKysely(transaction) });
+    const id = await boss.send(definition.name, envelope, {
+      db: fromKysely(transaction),
+      ...(job.startAfter === undefined ? {} : { startAfter: job.startAfter }),
+    });
     if (id === null) {
       throw new Error(`The job "${definition.name}" was not accepted by the queue.`);
     }

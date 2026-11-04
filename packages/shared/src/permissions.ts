@@ -371,6 +371,16 @@ export const PERMISSIONS = freezeTable({
   school_settings: rows({
     super_admin: ['view', 'edit'],
   }),
+  /**
+   * `demo_clock` (task 10.5, pull request #280): the demo time of the test environment, read
+   * and moved forward by the Super Admin alone. A new area for new routes, approved by the owner
+   * in chat on 4 November 2026 (stop-list item 5); no role is widened. The routes answer
+   * `demo_clock_off` wherever `DEMO_CLOCK` is not 1, which is everywhere but the test
+   * environment.
+   */
+  demo_clock: rows({
+    super_admin: ['view', 'edit'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

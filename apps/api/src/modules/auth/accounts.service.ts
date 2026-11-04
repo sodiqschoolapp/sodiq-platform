@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { DEFAULT_LANGUAGE, LOGIN_MAX_LENGTH, type Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
@@ -95,7 +95,8 @@ export interface CreatedAccount {
 @Injectable()
 export class Accounts {
   constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
+    // Task 10.5 (decision 1): real time, never the demo clock; one clock without it.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
     private readonly audit: Audit,
   ) {}
 

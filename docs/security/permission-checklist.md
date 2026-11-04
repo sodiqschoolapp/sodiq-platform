@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 491, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 466.
+- Routes of the application: 493, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 468.
 - Routes with a limit inside the route: 153.
 - Routes that take an id: 388, with 823 ids (branch 729, school 76, own 2, none 16).
-- Areas of the permission table: 57.
+- Areas of the permission table: 58.
 
 ## Routes without a role
 
@@ -1519,6 +1519,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | super_admin | yes | yes | yes | yes |  |
 | principal | yes |  |  |  |  |
 | academic_vice_principal | yes | yes | yes | yes |  |
+
+### `demo_clock`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  | yes |  |  |
 
 ### `divisions`
 

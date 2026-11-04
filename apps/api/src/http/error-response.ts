@@ -150,6 +150,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   rating_primary_refused:
     'Rating exams in grades 0–4 cannot be turned off while a journal of grades 0–4 holds a rating exam entry or a group of grades 4 and 5 of a rating subject exists.',
   setting_unchanged: 'The setting already has this value in every open quarter.',
+  demo_clock_off: 'The demo clock runs on the test environment only.',
+  demo_clock_backwards: 'The demo time only moves forward.',
+  demo_clock_too_far: 'A jump of the demo time is at most 400 days.',
+  demo_clock_pending:
+    'The last jump of the demo time takes effect in a few seconds; try again then.',
   groups_rating_primary_span:
     'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4.',
   class_grade_rating_primary:

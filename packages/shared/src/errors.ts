@@ -230,6 +230,14 @@ export const ERROR_CODES = [
   'rating_primary_refused',
   /** Task 9.4f (decision 12): the setting already has this value in every open quarter. */
   'setting_unchanged',
+  /** Task 10.5: the demo clock runs on the test environment only (`DEMO_CLOCK=1`). */
+  'demo_clock_off',
+  /** Task 10.5 (decision 5): a jump goes forward only, past the demo time when it takes effect. */
+  'demo_clock_backwards',
+  /** Task 10.5 (decision 7): a jump is at most 400 days. */
+  'demo_clock_too_far',
+  /** Task 10.5: the last jump takes effect in a few seconds; a new one waits for it. */
+  'demo_clock_pending',
   /** Task 9.4f: a group of grades 4 and 5 of a rating subject while "Rating exams in grades 0–4" is off (`05`, Group). */
   'groups_rating_primary_span',
   /** Task 9.4f (decision 6): a class moved into grades 0–4 would hide rating exam entries or change a closed quarter's rating column. */

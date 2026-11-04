@@ -1,10 +1,12 @@
 import { PERMISSIONS, permits, type Action } from '@sodiq/shared';
+import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { SetupChecklist } from './setup-checklist';
+import { demoClockQuery } from './demo-clock-page';
 import { PANEL } from '@/components/ui/control';
 
 interface SetupLink {
@@ -27,6 +29,11 @@ interface SetupLink {
 export function SetupPage() {
   const { t } = useTranslation();
   const { role } = useView();
+  // Task 10.5: the Demo time page for the Super Admin, where the demo clock runs (the test
+  // environment): only a role that may read it asks.
+  const mayMoveTime = role !== null && permits(PERMISSIONS, role, 'demo_clock', 'edit');
+  const demoClockOn =
+    useQuery({ ...demoClockQuery(), enabled: mayMoveTime }).data?.enabled === true;
   const all: SetupLink[] = [
     {
       // The Branches list is the Super Admin's (task 2.7c-3, decision 2).
@@ -96,6 +103,17 @@ export function SetupPage() {
       title: t('setup.settingsLink'),
       area: 'settings',
     },
+    ...(demoClockOn
+      ? [
+          {
+            key: 'demoClock',
+            to: '/setup/demo-clock',
+            title: t('setup.demoClockLink'),
+            area: 'demo_clock',
+            action: 'edit',
+          } satisfies SetupLink,
+        ]
+      : []),
     {
       key: 'travelTimes',
       to: '/setup/travel-times',

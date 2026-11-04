@@ -15,6 +15,7 @@ import { exportDiscipline } from '@/features/results/reports-api';
 import { nameOf } from '@/features/setup/setup-api';
 import { DisciplineItemsDialog } from './discipline-items-dialog';
 import { disciplineQuery } from './journal-api';
+import { appNow } from '@/lib/app-now';
 
 export type DisciplineSearch = ListSearch & { from?: string; to?: string; department?: string };
 
@@ -30,9 +31,9 @@ export function disciplineSearch(search: Record<string, unknown>): DisciplineSea
   return result;
 }
 
-/** A date of the browser's calendar `days` from today (or from the Monday of this week). */
+/** A date of the browser's calendar `days` from today (or from the Monday of this week), in demo time on the test environment (task 10.5). */
 const localDate = (days: number, fromMonday = false): string => {
-  const at = new Date();
+  const at = appNow();
   if (fromMonday) at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
   at.setDate(at.getDate() + days);
   return `${String(at.getFullYear())}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;

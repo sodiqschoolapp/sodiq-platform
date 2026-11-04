@@ -141,3 +141,20 @@ describe('the production Blueprint', () => {
     expect(blueprint).not.toMatch(/name: sodiq-(api|worker)\n/);
   });
 });
+
+// Task 10.5: the demo clock runs on the test environment only (`13`, Hosting; the owner,
+// 4 November 2026). The API and the worker refuse it at start anywhere else (config.test.ts).
+describe('the demo clock in the Blueprints', () => {
+  it('is on for the test API and the test worker', () => {
+    for (const name of ['sodiq-test-api', 'sodiq-test-worker']) {
+      const service = serviceOf(blueprint, name);
+      expect(service, name).toContain("- key: DEMO_CLOCK\n        value: '1'\n");
+      // An environment in which config.ts lets it run.
+      expect(service, name).toContain('- key: SENTRY_ENVIRONMENT\n        value: test\n');
+    }
+  });
+
+  it('is never named by production', () => {
+    expect(production).not.toContain('DEMO_CLOCK');
+  });
+});

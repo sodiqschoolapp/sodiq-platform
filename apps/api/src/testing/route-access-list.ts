@@ -419,6 +419,9 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin'],
   },
   'PUT /api/setup/school-settings/rating-exams-primary': { branch: 'none', roles: ['super_admin'] },
+  // Task 10.5: the demo time of the test environment, the Super Admin alone, school-wide.
+  'GET /api/setup/demo-clock': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/setup/demo-clock/jumps': { branch: 'none', roles: ['super_admin'] },
   'GET /api/setup/travel-times': { branch: 'request', roles: SETUP_VIEWERS },
   'PUT /api/setup/travel-times': { branch: 'request', roles: ['super_admin'] },
   'GET /api/setup/subjects': { branch: 'request', roles: SUBJECT_VIEWERS },

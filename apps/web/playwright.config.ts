@@ -23,7 +23,25 @@ export default defineConfig({
     // and no trace (30 October 2026).
     actionTimeout: 30_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    // Task 10.5 (correction 3 of the plan review): the demo clock moves the time of the whole
+    // database `sodiq_e2e`, so its test is the teardown of a first step that every other spec
+    // depends on. Playwright runs a teardown after all of them, in each part with `--shard`,
+    // and still divides the specs between the parts (a project that depended on `chromium`
+    // put every spec in part 1).
+    { name: 'run', testMatch: /run\.setup\.ts$/, teardown: 'demo-clock' },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /demo-clock\.spec\.ts$/,
+      dependencies: ['run'],
+    },
+    {
+      name: 'demo-clock',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /demo-clock\.spec\.ts$/,
+    },
+  ],
   // Never an existing server: every run has its own database `sodiq_e2e`,
   // built again from the migrations by the API of the tests
   // (apps/api/src/testing/e2e). `sodiq_dev` is not touched. `pnpm test:e2e`

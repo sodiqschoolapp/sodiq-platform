@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
+  Clock,
   AccessActions,
   AccountAccess as AccountAccessAnswer,
   ErrorCode,
@@ -7,6 +8,7 @@ import type {
   NeverUsedList,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -80,6 +82,7 @@ export class AccountAccess {
     private readonly locks: AccountLocks,
     private readonly resets: PasswordResets,
     private readonly twoStep: TwoStep,
+    @Inject(REAL_CLOCK) private readonly realClock: Clock,
   ) {}
 
   /** The section "Sign-in access" of a record of the branch of the request. */
@@ -193,6 +196,7 @@ export class AccountAccess {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const now = await transactionMoment(transaction);
+      const realNow = this.realClock.now();
       const rows = await transaction
         .selectFrom('staff')
         .innerJoin('staff_branches', 'staff_branches.staff_id', 'staff.id')
@@ -231,7 +235,8 @@ export class AccountAccess {
             login: row.login,
             createdAt: row.created_at.toISOString(),
             passwordValidUntil: row.password_expires_at?.toISOString() ?? null,
-            expired: row.password_expires_at !== null && row.password_expires_at <= now,
+            // Task 10.5 (decision 2): a one-time password runs out by real time.
+            expired: row.password_expires_at !== null && row.password_expires_at <= realNow,
             locked: row.locked_at !== null,
           })),
       };

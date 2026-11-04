@@ -9,7 +9,7 @@ import {
   type Role,
 } from '@sodiq/shared';
 import request, { type Response, type Test } from 'supertest';
-import { CLOCK } from '../clock/clock.module.js';
+import { REAL_CLOCK } from '../clock/clock.module.js';
 import { Transactions, type Transaction } from '../database/transactions.js';
 import { DEVICE_COOKIE } from '../http/device-cookie.js';
 import { SESSION_COOKIE } from '../http/session-cookie.js';
@@ -231,7 +231,8 @@ export function signInKit(app: INestApplication, options: SignInKitOptions = {})
 
   /** The code the authenticator app shows now, or so many 30-second steps from now. */
   function codeOf(secret: Buffer, stepsFromNow = 0): string {
-    return totpCode(secret, totpStep(app.get<Clock>(CLOCK).now()) + stepsFromNow);
+    // Real time (task 10.5): the authenticator app does not follow the demo clock.
+    return totpCode(secret, totpStep(app.get<Clock>(REAL_CLOCK).now()) + stepsFromNow);
   }
 
   /** The second step of a sign-in. */

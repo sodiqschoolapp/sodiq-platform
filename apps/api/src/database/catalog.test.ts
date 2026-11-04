@@ -16,6 +16,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   branches: 'The branches themselves; the branch switcher shows their names.',
   school_settings:
     'One row of settings of the whole school ("Rating exams in grades 0–4", kept by the Super Admin, `05`); a row holds a boolean, nothing personal (task 9.4f, pull request #276).',
+  demo_clock:
+    'One setting of the test environment, the demo clock (task 10.5, pull request #280; approved by the owner on 4 November 2026): every process of the school reads the same offset, so it has no branch; a row holds an offset, moments and the id of the account that moved it.',
   travel_times:
     'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',

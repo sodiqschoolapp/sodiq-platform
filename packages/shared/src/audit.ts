@@ -106,6 +106,8 @@ export const AUDIT_ACTION_GROUPS = {
     'subject_quarter_weights.set',
     'subject_quarter_primary_weights.set',
     'school_settings.rating_exams_primary',
+    // Task 10.5: a jump of the demo clock of the test environment.
+    'demo_clock.jump',
   ],
   people: [
     'staff.create',

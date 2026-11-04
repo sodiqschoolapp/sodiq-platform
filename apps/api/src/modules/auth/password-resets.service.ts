@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Clock } from '@sodiq/shared';
-import { CLOCK } from '../../clock/clock.module.js';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { FIRST_PASSWORD_VALID_MS, randomFirstPassword } from './accounts.service.js';
@@ -101,7 +101,8 @@ export interface ResetPassword {
 @Injectable()
 export class PasswordResets {
   constructor(
-    @Inject(CLOCK) private readonly clock: Clock,
+    // Task 10.5 (decision 1): real time, never the demo clock; one clock without it.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
     private readonly audit: Audit,
     private readonly throttle: SignInThrottle,
     private readonly sessions: Sessions,

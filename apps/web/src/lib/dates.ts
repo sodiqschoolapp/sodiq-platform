@@ -178,3 +178,43 @@ export function formatMoment(language: string, iso: string): string {
 export function formatMomentIn(language: string, iso: string, timeZone: string): string {
   return momentText(language, iso, { timeZone });
 }
+
+/**
+ * A stored moment with its weekday and time, in the time zone given or the device's (task 10.5,
+ * the demo time of the top bar): "Wednesday, 18 Nov 2026, 07:05".
+ */
+export function weekdayMomentText(
+  language: string,
+  iso: string,
+  options: MomentOptions = {},
+): string {
+  const parts = partsOf(new Date(iso), options.timeZone);
+  // 1 is Monday: the weekday of the date as the time zone has it.
+  const day = (((new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay() + 6) % 7) +
+    1) as Weekday;
+  return `${weekdayName(language, day)}, ${momentText(language, iso, options)}`;
+}
+
+/**
+ * The moment at which the clock of `timeZone` shows `date` (`YYYY-MM-DD`) at `time` (`HH:MM`),
+ * as ISO text in UTC (task 10.5: a chosen demo time is typed in branch time).
+ */
+export function momentAt(date: string, time: string, timeZone: string): string {
+  const [year = 1970, month = 1, day = 1] = date.split('-').map(Number);
+  const [hour = 0, minute = 0] = time.split(':').map(Number);
+  const wanted = Date.UTC(year, month - 1, day, hour, minute);
+  // The zone's offset at a first guess, then at the moment it gives (a change of offset between).
+  let moment = wanted;
+  for (let round = 0; round < 2; round += 1) {
+    const shown = partsOf(new Date(moment), timeZone);
+    const shownAt = Date.UTC(
+      shown.year,
+      shown.month - 1,
+      shown.day,
+      Number(shown.hour),
+      Number(shown.minute),
+    );
+    moment += wanted - shownAt;
+  }
+  return new Date(moment).toISOString();
+}

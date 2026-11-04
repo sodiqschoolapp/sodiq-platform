@@ -142,6 +142,12 @@ export const en = {
     rating_primary_refused:
       'Rating exams in grades 0–4 cannot be turned off yet: a journal of grades 0–4 holds rating exam entries, or a group of grades 4 and 5 of a rating subject exists. Clear the entries or change the groups first.',
     setting_unchanged: 'The setting already has this value in every open quarter.',
+    demo_clock_off: 'The demo time can be moved on the test environment only.',
+    demo_clock_backwards:
+      'Demo time only moves forward. Choose a moment after the demo time shown, a few seconds from now.',
+    demo_clock_too_far: 'A jump of the demo time is at most 400 days. Choose a nearer moment.',
+    demo_clock_pending:
+      'The last move of the demo time takes effect in a few seconds. Try again then.',
     groups_rating_primary_span:
       'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4. Ask the Super Admin to turn them on, or make the group of one of the grades.',
     class_grade_rating_primary:
@@ -1298,6 +1304,27 @@ export const en = {
     calendarLink: 'Calendar',
     settingsLink: 'Settings',
     travelTimesLink: 'Travel time',
+    demoClockLink: 'Demo time',
+    // Task 10.5: the demo time of the test environment.
+    demoClock: {
+      title: 'Demo time',
+      nowTitle: 'Now',
+      demo: 'Demo time',
+      real: 'Real time',
+      intro:
+        'Every rule of the platform follows demo time: lesson locks, edit days, plan windows, scheduled moves and roles, closing and the reminders. Sign-in keeps real time, so nobody is signed out. Demo time only moves forward; the demo data workflow brings back real time.',
+      moveTitle: 'Move forward',
+      quick: { hour: '+1 hour', tomorrow: 'Tomorrow, 07:05', monday: 'Next Monday, 09:05' },
+      date: 'Date',
+      time: 'Time (branch time)',
+      moveChosen: 'Move to this time',
+      confirmTitle: 'Move demo time to {{moment}}?',
+      confirmText:
+        'This cannot be undone: demo time only moves forward. Every signed-in person sees the new time within a few seconds, and the daily work of the new date runs.',
+      confirmAction: 'Move demo time',
+      offTitle: 'Demo time is off',
+      offText: 'Demo time can be moved on the test environment only.',
+    },
     subjectsLink: 'Subjects',
     forcedDeletesLink: 'Deleted for good',
     branches: {
@@ -3091,6 +3118,8 @@ export const en = {
     },
   },
   period: {
+    // Task 10.5: the demo time of the test environment, beside the period.
+    demoTime: 'Demo time: {{moment}}',
     failed: 'Year and quarter not loaded',
     label: 'Academic year and quarter',
     noYear: 'No academic year',
@@ -3588,6 +3617,9 @@ export const en = {
       },
       school_settings: {
         rating_exams_primary: 'Rating exams in grades 0–4 changed',
+      },
+      demo_clock: {
+        jump: 'Demo time moved forward',
       },
       subject_quarter_weights: {
         set: 'Quarterly distribution set',

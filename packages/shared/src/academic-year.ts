@@ -397,9 +397,17 @@ export const currentPeriodSchema = z.object({
   state: z.enum(PERIOD_STATES),
   quarter: quarterSchema.nullable(),
   next: quarterSchema.nullable(),
+  /**
+   * Task 10.5: the demo time of the test environment, the moment the server's clock shows, for
+   * the top bar; `null` where the demo clock is off (production, decision 9) or has not moved yet.
+   */
+  demoNow: z.iso.datetime({ offset: true }).nullable(),
 });
 
 export type CurrentPeriod = z.infer<typeof currentPeriodSchema>;
+
+/** What `periodOn` works out: the period without the demo time. */
+export type PeriodOn = Omit<CurrentPeriod, 'demoNow'>;
 
 /** The parts of a year `periodOn` reads. */
 export interface PeriodYear {
@@ -416,7 +424,7 @@ export interface PeriodYear {
  * branch has none, the earliest planned year that has not ended (the top bar
  * labels it planned); else none.
  */
-export function periodOn(today: SchoolDate, years: readonly PeriodYear[]): CurrentPeriod {
+export function periodOn(today: SchoolDate, years: readonly PeriodYear[]): PeriodOn {
   const year =
     years.find((one) => one.status === 'current') ??
     [...years]

@@ -150,6 +150,17 @@ On a laptop, `DEMO_PASSWORD=<password> pnpm demo:seed` fills the local `sodiq_de
 
 **When the run fails.** Before the step "Suspend the test API and worker", nothing on the test environment has changed: read the failed step and start again. A failure in "Replace the test database with the demo" can leave the test database empty: start the workflow again, or in the Neon console restore the project `sodiq-test` to a moment before the run. The services are resumed in either case.
 
+
+## Demo time (task 10.5)
+
+Asked for by the owner on 4 November 2026: the role tutorials show what needs days to pass (lesson locks, edit days, plan windows, scheduled moves and roles, closing, the reminders) without waiting those days. On the test environment only, the Super Admin moves the platform's "now" forward.
+
+- **Where it runs.** `DEMO_CLOCK=1` is set in `render.yaml` on `sodiq-test-api` and `sodiq-test-worker`, and nowhere else. The API and the worker refuse to start with it unless `SENTRY_ENVIRONMENT` is `test` or `development`, and always when `WEB_ORIGIN` is `https://app.sodiqschool.uz`. `render.production.yaml` never names it. After the merge of task 10.5, press **Sync** on the test Blueprint in Render once, so that the variable reaches the two test services.
+- **How to move it.** Sign in as a Super Admin, School setup, **Demo time**: +1 hour, tomorrow 07:05, next Monday 09:05 (branch time), or a chosen date and time. The page asks first. A jump takes effect 5 seconds after it is saved, at the same moment in both API servers and the worker; the answer comes after that, and the page reads everything again. From then on the top bar of every signed-in person shows "Demo time: …". The daily work of the new date (02:00, 03:00 and 07:00 kinds) runs a few seconds later; days jumped over are not replayed.
+- **What does not move.** Sign-in keeps real time: nobody is signed out, trusted devices stay trusted, authenticator codes keep working, first passwords and reset links run out by real time.
+- **Make jumps between takes.** A save that is running at the moment of the switch keeps the time it started with.
+- **The only way back is the demo data workflow** above, which replaces the test database and restarts the services. Time only moves forward, by at most 400 days per jump. A missing row of `demo_clock` means real time.
+
 ## Production (task 10.4)
 
 Production runs at `https://app.sodiqschool.uz` (owner's answers 14 to 20, `docs/decisions.md`, Decided ahead for Phase 10). It differs from the test environment in four ways:

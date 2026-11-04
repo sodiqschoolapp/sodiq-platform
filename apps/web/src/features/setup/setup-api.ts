@@ -15,6 +15,7 @@ import {
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
+import { keepDemoNow } from '@/lib/app-now';
 import { answerOf } from '@/api/failure';
 
 /**
@@ -143,12 +144,16 @@ export const periodKey = (branchId?: string | null) =>
 export const currentPeriodQuery = (branchId: string | null) =>
   queryOptions({
     queryKey: periodKey(branchId),
-    queryFn: async () =>
-      currentPeriodSchema.parse(
+    queryFn: async () => {
+      const period = currentPeriodSchema.parse(
         await answerOf(
           api.GET('/api/setup/current-period', { params: { header: branchHeader() } }),
         ),
-      ),
+      );
+      // Task 10.5: the dates a page fills in by itself follow the demo time.
+      keepDemoNow(period.demoNow);
+      return period;
+    },
     enabled: branchId !== null,
   });
 

@@ -88,6 +88,7 @@ export {
   type AcademicYearRecord,
   type AcademicYearStatus,
   type CurrentPeriod,
+  type PeriodOn,
   type GoLiveRecord,
   type PeriodState,
   type PeriodYear,
@@ -539,6 +540,13 @@ export {
   type RatingStateQuarter,
   type SchoolSettings,
 } from './school-settings.js';
+export {
+  DEMO_CLOCK_MAX_JUMP_DAYS,
+  demoClockJumpSchema,
+  demoClockSchema,
+  type DemoClockJump,
+  type DemoClockState,
+} from './demo-clock.js';
 export {
   departmentChangeKind,
   type DepartmentChangeKind,

@@ -9,6 +9,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -338,6 +340,15 @@ export interface DayTemplateVersions {
   start_minutes: number;
   valid_from: string;
   valid_until: string | null;
+}
+
+export interface DemoClock {
+  changed_at: Timestamp;
+  changed_by: string;
+  effective_at: Timestamp;
+  id: Generated<boolean>;
+  offset_ms: Int8;
+  previous_offset_ms: Int8;
 }
 
 export interface Departments {
@@ -2235,6 +2246,7 @@ export interface DB {
   day_template_slots: DayTemplateSlots;
   day_template_versions: DayTemplateVersions;
   day_templates: DayTemplates;
+  demo_clock: DemoClock;
   departments: Departments;
   divisions: Divisions;
   early_warning_handled: EarlyWarningHandled;

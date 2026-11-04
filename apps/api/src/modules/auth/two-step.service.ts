@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Clock } from '@sodiq/shared';
-import { CLOCK } from '../../clock/clock.module.js';
+import { REAL_CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { rolesOf } from '../access/current-assignments.js';
@@ -133,7 +133,8 @@ export class TwoStep {
     private readonly rule: SecondStepRule,
     private readonly secrets: SecondStepSecrets,
     private readonly sessions: Sessions,
-    @Inject(CLOCK) private readonly clock: Clock,
+    // Task 10.5 (decision 1): real time, never the demo clock; one clock without it.
+    @Inject(REAL_CLOCK) private readonly clock: Clock,
   ) {}
 
   /** The second step of the own account, for the profile. */

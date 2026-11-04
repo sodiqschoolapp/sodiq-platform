@@ -27,5 +27,10 @@ process.env.WEB_ORIGIN = process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5174';
 // pages.spec.ts stalled right after 09:30, 11:30 and 12:00 on 4 November 2026. No browser test
 // waits for a daily job; a tick that a change enqueues itself still runs.
 process.env.JOBS_UNSCHEDULED = 'results.prepare_totals,schedule.tick';
+// The demo clock (task 10.5): with no jump it shows real time, so the other specs see no change;
+// demo-clock.spec.ts, which runs last, jumps. An environment the clock may run in (correction 3
+// of the plan review), whatever the shell says.
+process.env.DEMO_CLOCK = '1';
+process.env.SENTRY_ENVIRONMENT = 'test';
 await import('../../main.js');
 await import('../../worker.js');

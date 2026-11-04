@@ -13,11 +13,14 @@ const YEAR = {
 
 const q = (number: number, startDate: string, endDate: string) => ({ number, startDate, endDate });
 
-async function topBarWith(period: CurrentPeriod, language: 'en' | 'ru' = 'en'): Promise<string> {
+async function topBarWith(
+  period: Omit<CurrentPeriod, 'demoNow'> & { demoNow?: string | null },
+  language: 'en' | 'ru' = 'en',
+): Promise<string> {
   const texts = language === 'ru' ? ru : en;
   fakeApi({
     'GET /api/auth/session': () => json({ ...sessionOf(), language }),
-    'GET /api/setup/current-period': () => json(period),
+    'GET /api/setup/current-period': () => json({ demoNow: null, ...period }),
   });
   renderApp('/', language);
   const label = await screen.findByLabelText(texts.period.label);
@@ -124,5 +127,32 @@ describe('the top bar', () => {
     renderApp('/');
 
     expect((await screen.findByLabelText(en.period.label)).textContent).toBe(en.period.failed);
+  });
+
+  // Task 10.5 (decision 9): on the test environment every signed-in person sees the demo time.
+  it('shows the demo time beside the period on the test environment, and none elsewhere', async () => {
+    await topBarWith({
+      today: '2026-11-18',
+      year: YEAR,
+      state: 'in_quarter',
+      quarter: q(2, '2026-11-10', '2026-12-27'),
+      next: null,
+      demoNow: '2026-11-18T02:05:00.000Z',
+    });
+    // In the branch's time zone; here the device's, as no branch record is answered.
+    expect((await screen.findByText(/^Demo time:/)).textContent).toMatch(
+      /^Demo time: Wednesday, 18 Nov 2026, \d\d:05$/,
+    );
+  });
+
+  it('shows no demo time where the demo clock is off', async () => {
+    await topBarWith({
+      today: '2026-11-18',
+      year: YEAR,
+      state: 'in_quarter',
+      quarter: q(2, '2026-11-10', '2026-12-27'),
+      next: null,
+    });
+    expect(screen.queryByText(/^Demo time:/)).toBeNull();
   });
 });
