@@ -62,7 +62,7 @@ const script = `// Adds the teaching load of "Istirohat demo" (sheet 7 of the ki
 // Paste on app-test.sodiqschool.uz, Timetable → Teaching load, signed in as the AVP, with the draft open.
 (async () => {
   const ROWS = ${JSON.stringify(rows)};
-  const norm = (s) => String(s ?? '').toLowerCase().replace(/[ʻʼ'‘’\`]/g, '').replace(/\\s+/g, ' ').trim();
+  const norm = (s) => String(s ?? '').toLowerCase().replace(/[ʻʼ'‘’\`]/g, '').replace(/[-‐–—]/g, '').replace(/\\s+/g, ' ').trim();
   let branch = null;
   const call = async (method, url, body) => {
     const headers = { 'X-App-Version': '1' };
