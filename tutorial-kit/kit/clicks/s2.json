@@ -1,0 +1,270 @@
+{
+ "s2a": {
+  "clicks": [
+   "— Slide 4 —",
+   "Chrome profile **SA**: open the test site; on the sign-in page choose **English** in **Language**.",
+   "Type the Super Admin login from the demo run’s Summary in **Login** and the demo password in **Password**; switch on **Trust this device**; click **Sign in**.",
+   "On **Set up the second step**, click **Start**.",
+   "Scan the QR picture with the phone’s authenticator app (or type the **Key** by hand).",
+   "Type the 6-digit code from the phone in **Code from the app**; click **Confirm**.",
+   "On **Recovery codes**, write the 10 codes down, tick **I have saved the codes**, click **Continue**.",
+   "— Slide 5 —",
+   "At the foot of the left menu, click your name (the **Account** button), then **Account**; scroll to **Trusted devices** (this browser is listed) and **Sessions**.",
+   "Optional, only if a second SA session is open: click **Sign out everywhere**, then **Sign out everywhere** in the dialog.",
+   "— Slide 6 —",
+   "Click the sign-out icon next to your name at the foot of the menu.",
+   "On the sign-in page click **Forgot your password?**, type the SA login in **Login**, click **Send link**: the neutral answer shows. Click **Back to sign-in**.",
+   "Sign in again: **Login**, **Password**, **Trust this device** on, **Sign in**; on **Second step** type the phone’s code in **Code**, click **Continue**.",
+   "— Slide 7 —",
+   "Click your name at the foot of the menu, then **Account**: show **Photo**, **Language**, **Password**, **Sessions**, **Sign-in history**, **Trusted devices**, **Second step at sign-in** (“Your role requires the second step. It cannot be turned off.”).",
+   "In **Language** choose **Oʻzbekcha**, then **English** again.",
+   "Click your name at the foot of the menu; under **Theme** click **Dark**; then open it again and click **As the device**.",
+   "— Slide 8 —",
+   "Press **Ctrl+K**, type two letters of a name (for example `Mi`), press Esc.",
+   "Click the **Notifications** bell, open a notice, click **Mark all as read**.",
+   "Show the **Branch** dropdown in the top bar and the year and quarter beside it.",
+   "— Slide 9 —",
+   "In the left menu, click **Home**: tiles **Students**, **Staff**, **Attendance today**, the table **Results by grade**, and the banner “Fewer than two Super Admins are active…”.",
+   "In the **Branch** dropdown choose **Demo Chilonzor**, then **Demo Yunusobod**: the tiles change."
+  ],
+  "check": "Home of the Super Admin in Demo Yunusobod: the three tiles, Results by grade, the “Fewer than two Super Admins” banner; your name and “Super Admin” at the foot of the menu.",
+  "unsure": [
+   "The seeded Super Admin (Mirzayev Sardor) signs in with the demo password, not a slip: there is no “Choose a new password” step here, the first screen after Sign in is “Set up the second step”.",
+   "Slide 7: the Photo section says “No staff record yet: create yours under People, Staff and choose Link to my account.” until slide 25 (step 2.13) links a record; Add photo is not possible before that.",
+   "Slide 9: the banner “No active Academic Vice Principal in: …” cannot show yet (the seeded branches have an AVP); film it at the end of step 2.2, once Istirohat demo exists.",
+   "Slide 5: “Sign out everywhere” only shows something with a second SA session open; with none, just show the section."
+  ]
+ },
+ "b1": {
+  "clicks": [
+   "— Slide 12 —",
+   "Chrome profile **SA**. In the left menu, click **School setup**, then **Branches**.",
+   "Click **New branch** (top right); the side panel **New branch** opens.",
+   "Type `Istirohat demo` in **Name** (and, if you like, `Toshkent, Mirzo Ulugʻbek tumani` in **Address**).",
+   "Leave **Working weekdays** as they are: **Monday** to **Friday** ticked, Saturday and Sunday not.",
+   "Click **Save**: the app opens the **Branch** page of the new branch and the **Branch** dropdown in the top bar now shows **Istirohat demo**.",
+   "— Slide 11 —",
+   "In the left menu, click **School setup**: the **Setup checklist** at the top shows each item **Done** or **Missing** for the new branch.",
+   "— Slide 12 (travel time) —",
+   "In the list below the checklist, click **Travel time**.",
+   "In the box **Demo Yunusobod**, type `20` in **Minutes**; click **Save**. The box shows “20 minutes”.",
+   "In the left menu, click **Home**: the banner “No active Academic Vice Principal in: Istirohat demo” (slide 9, before Nodira is appointed)."
+  ],
+  "check": "Branch dropdown shows Istirohat demo; Setup checklist mostly Missing; Travel time: Demo Yunusobod “20 minutes” (Demo Chilonzor “Not set”).",
+  "unsure": [
+   "There is no Time zone field: a new branch gets Asia/Tashkent by itself and the Super Admin’s Branch page does not show it (only the read-only view of the Principal and AVP lists “Time zone”). The guide and slide 12 name a time zone choice that does not exist.",
+   "No need to “open it from the Branches list to switch”: Save opens the new branch and switches to it. Clicking its row in Branches also switches.",
+   "Go-live date (slide 12) sits on the Branch page and needs an academic year first (“Add a planned or current academic year first.”); the guide does not set it.",
+   "Which checklist items read Done on the new branch (Branch and working weekdays, Departments are school-wide) was not run; the rest should read Missing."
+  ]
+ },
+ "b2": {
+  "clicks": [
+   "— Slide 13 —",
+   "In the left menu, click **School setup**, then **Buildings and floors**.",
+   "Click **Add building**; type `Asosiy bino` in **Name**; click **Save**.",
+   "Click **Asosiy bino** in the list; in its side panel click **Add floor**, type `1` in **Name or number**, click **Save**. Repeat for `2` and `4`.",
+   "In the left menu, click **School setup**, then **Rooms**. Click **Add room**.",
+   "On camera, room 208: type `208` in **Name or number**; choose **Asosiy bino** in **Building**, **2** in **Floor**, **Classroom** in **Type**; type `30` in **Capacity**; leave **Status** at **In use**; click **Save**.",
+   "Sport zal 2: **Add room** → `Sport zal 2`, **Asosiy bino**, Floor **1**, Type **Sports hall**, Capacity `60`; tick **Shared: holds several lessons at the same time**; type `2` in **Lessons at the same time**; click **Save**.",
+   "Off camera, the other 10 rooms the same way from sheet **2 Rooms** of “5 Demo filial maʼlumotlari.xlsx” (105, 102, 212, 204, 207, 209, 407, 408 Classroom 30; Sport zal 1 like Sport zal 2; Oshxona: Type **Hall**, Capacity `200`, Floor 1).",
+   "In **View** above the list, click **By floor**, then **List** again.",
+   "— Slide 14 —",
+   "Click **Add room**: `Zaxira xona`, **Asosiy bino**, Floor **1**, **Classroom**, Capacity `30`, **Save**.",
+   "Click **Zaxira xona** in the list; in its panel click **Delete for good**; type `Added by mistake` in **Reason**; click **Delete for good**.",
+   "In the left menu, click **School setup**, then **Deleted for good**: the row “Room: Zaxira xona”, State **Can be restored**. Click the row, then **Restore** in its panel."
+  ],
+  "check": "12 rooms in the list (plus Zaxira xona back after the restore; archive it or leave it, no lesson uses it); Sport zal 1 and 2 show “2 lessons at once”; Deleted for good shows the room as Restored.",
+  "unsure": [
+   "The spare room name `Zaxira xona` is invented here; the guide does not name one. After the restore it stays in the room list: set its Status to Closed (Edit) if it should not appear in pickers.",
+   "Floors are named by typing `1`, `2`, `4` in “Name or number”; the room form then lists them by that name."
+  ]
+ },
+ "b3": {
+  "clicks": [
+   "— Slide 15 —",
+   "In the left menu, click **School setup**, then **Divisions and departments**.",
+   "Click **Academic** in the list: its side panel shows the six departments **STEAM**, **Foreign languages**, **National**, **Natural sciences**, **General**, **Tutors** and the note “Built in…”.",
+   "In the panel click **Add department**; type `Sinov kafedrasi` in **Name in Uzbek**, `Тестовая кафедра` in **Name in Russian**, `Test department` in **Name in English**; click **Save**.",
+   "In the row **Test department** click **Rename**; change **Name in English** to `Trial department`; click **Save**.",
+   "In the row **Trial department** click **Archive**; in the dialog “Archive department Trial department?” click **Archive**."
+  ],
+  "check": "The Academic panel lists Trial department with status Archived; the six real departments stay Active.",
+  "unsure": [
+   "In the English screen the departments show their English names: Xorijiy tillar = Foreign languages, Milliy fanlar = National, Tabiiy fanlar = Natural sciences, Umumiy fanlar = General, Tyutorlar = Tutors (STEAM is the same).",
+   "Test department names are invented here. An archived department stays in the list (Restore is possible); it is never removed."
+  ]
+ },
+ "b4": {
+  "clicks": [
+   "— Slide 16 —",
+   "In the left menu, click **School setup**, then **Academic years**.",
+   "Click **Add year**; type `02.09.2026` in **Start** and `25.05.2027` in **End**; click **Save**. The row **2026–2027** shows **Planned**, “0 of 4 dated”.",
+   "Click **2026–2027**; in its panel click **Change quarters**.",
+   "Type **Quarter 1: start** `02.09.2026`, **Quarter 1: end** `31.10.2026`.",
+   "Type **Quarter 2: start** `09.11.2026`, **Quarter 2: end** `26.12.2026`.",
+   "Type **Quarter 3: start** `11.01.2027`, **Quarter 3: end** `20.03.2027`.",
+   "Type **Quarter 4: start** `30.03.2027`, **Quarter 4: end** `25.05.2027`; click **Save**. The row shows “4 of 4 dated”.",
+   "In the same panel click **Start year**; in the dialog “Start the year 2026–2027?” click **Start year**.",
+   "Option B (compressed year): type four one-week quarters instead, inside the year’s dates."
+  ],
+  "check": "Academic years: 2026–2027 Current, 4 of 4 dated; the top bar shows “2026–2027 · Quarter 2” (or “Vacation, quarter 2 starts on …” before 09.11.2026).",
+  "unsure": [
+   "Date boxes are Chrome’s own date field: the app takes the date in the order the box shows (dd.mm.yyyy in an Uzbek, Russian or English (UK) Chrome; mm/dd/yyyy in English (US)). The guide’s dd.mm.yyyy values are the dates to enter.",
+   "Not run: whether Start year accepts a year whose quarter 1 is already over; nothing in the code found refuses it (no lessons exist yet)."
+  ]
+ },
+ "s2b": {
+  "clicks": [
+   "— Slide 17 —",
+   "In the left menu, click **School setup**, then **Settings**.",
+   "Scroll to the box **School settings**: “Rating exams in grades 0–4: Off”.",
+   "Click **Turn on**: the dialog **This change alters results** asks for a **Reason**.",
+   "Click **Back** (do not save: step 2.12 leaves it off until step 5.7)."
+  ],
+  "check": "School settings still reads “Rating exams in grades 0–4: Off”.",
+  "unsure": [
+   "Slide 17 says to turn it on with a reason and show the refusal “It cannot be turned off yet.”; step 2.12 says leave it off until 5.7. These clicks stop at the dialog. The refusal only appears once grade 0–4 journals hold rating exam entries, so it cannot be filmed now.",
+   "“Apply to every open quarter” only appears when a quarter differs from the school’s value; it will not show here."
+  ]
+ },
+ "b5": {
+  "clicks": [
+   "In the left menu, click **School setup**, then **Subjects**.",
+   "Filmed clip, Arab tili: click **Add subject**.",
+   "Type `Arab tili` in **Name in Uzbek**, `Арабский язык` in **Name in Russian**, `Arabic` in **Name in English**.",
+   "Choose **Foreign languages** in **Department**.",
+   "In **Grades** tick **Grade 1** to **Grade 11**.",
+   "Leave **Colour**, **Journal type** (**Graded**) and **Rating exam** (off); tick **Group subject**.",
+   "Under **Daily distribution** type `20` in **Attendance**, `40` in **Classwork**, `40` in **Homework**; click **Save**.",
+   "Off camera, the other 23 rows marked “Create” on sheet **1 Subjects** the same way (Uzbek, Russian, English names exactly as on the sheet; department in English: Foreign languages, National, Natural sciences, General, STEAM, Tutors; daily 20/40/40). **Kelajak soati** and **Uy vazifasi**: Department **Tutors**. **School Counseling**: **Journal type** **Attendance only** (no distribution is asked).",
+   "Mathematics (Matematika): click **Mathematics** in the list, click **Edit**, tick **Group subject**, type the daily distribution `20` / `40` / `40`, click **Save**. Same for **Physical education** (Jismoniy tarbiya). **English** (Ingliz tili) already has Group subject."
+  ],
+  "check": "The list holds the 24 new subjects; Arabic, English, Mathematics, Physical education show Group subject Yes; School counselling shows Attendance only.",
+  "unsure": [
+   "The guide does not mention it, but a new graded subject cannot be saved without its Daily distribution (Attendance + Classwork + Homework = 100). The seeded subjects have no distribution in the new branch either, so Edit on Mathematics asks for it too. 20/40/40 is the example of step 3.5.",
+   "The list, the panels and the Department picker show names in the screen language: in English the seeded subjects read Mathematics, English, Physical education; the new ones read as their “Name in English”. The import (step 2.10) matches the Uzbek names, so type those exactly.",
+   "Rating exam is left off for every subject (the guide does not say); colours are left at the default Blue.",
+   "The guide says “Turn on Group subject for … Ingliz tili (already there)”: in the seed only English already has it; Mathematics and Physical education must be ticked here."
+  ]
+ },
+ "b7": {
+  "clicks": [
+   "— Slide 20 —",
+   "Check the **Branch** dropdown shows **Istirohat demo**. In the left menu, click **People**, then **Staff**; click **Add person**.",
+   "Type `Nodira` in **First name**, `Fayzullayeva` in **Surname**; choose **Female** in **Sex**; type `14.03.1982` in **Date of birth**.",
+   "Type `+998 97 190 00 01` in **Phone**; type `15.08.2026` in **Admission date**.",
+   "Choose **Management** in **Main division** (leave **Department** at **No department**); click **Save**. Her side panel opens.",
+   "— Slide 21 —",
+   "In the panel, under **Account and roles**, click **Create account**; keep the suggested **Login**; click **Save**.",
+   "The **First password** slip opens: click **Print**, print it, then click **Close**.",
+   "Click **Give a role**; choose **Academic Vice Principal** in **New role**; leave **Branch** at **Istirohat demo** and **From** at today; click **Save**. The role row reads “in force”.",
+   "Off camera, the same for the other three: **Rustam Yoʻldoshev** (Male, `+998 97 190 00 02`, Management) → **Principal**; **Shoira Valiyeva** (Female, `+998 97 190 00 03`, Management) → **Vice Principal for Spiritual and Moral Education**; **Ulugʻbek Tojiboyev** (Male, `+998 97 190 00 04`, Main division **Academic**, Department **Tutors**) → **Head Tutor**. Print each slip.",
+   "— Slide 3 (Super Admin deck) —",
+   "Chrome profile **Principal**: open the test site; choose **English** in **Language**; type a wrong password with Rustam’s login, click **Sign in**: “The login or the password is wrong. Check both and try again.”",
+   "Type Rustam’s **Login** and the **Password** from his slip; click **Sign in**.",
+   "On **Choose a new password**: type the slip password in **One-time password**, a new password (10+ characters) in **New password** and **New password again**; click **Change password**.",
+   "Click the sign-out icon at the foot of the menu, then sign in again with the new password and **Trust this device** on."
+  ],
+  "check": "Staff list of Istirohat demo holds the four office staff, each with an account and a role in force; the Principal profile is on Rustam’s Home.",
+  "unsure": [
+   "Dates of birth are not in kit-data: 14.03.1982 (Nodira), 21.06.1975 (Rustam), 08.11.1979 (Shoira), 27.02.1986 (Ulugʻbek) are invented here.",
+   "The guide lists the phones “+998 97 190 00 01 to 04” without saying who gets which; this follows the guide’s order (Nodira 01, Rustam 02, Shoira 03, Ulugʻbek 04).",
+   "Logins are suggested by the server (likely n.fayzullayeva, r.yoldoshev …); not run, so not quoted.",
+   "Slide 20’s “Type a parent’s phone: Also a parent” cannot be shown now: no parents exist in the branch before the student import (step 3.9).",
+   "Date boxes are Chrome’s own date field: the app takes the date in the order the box shows (dd.mm.yyyy in an Uzbek, Russian or English (UK) Chrome; mm/dd/yyyy in English (US)). The guide’s dd.mm.yyyy values are the dates to enter."
+  ]
+ },
+ "b8": {
+  "clicks": [
+   "— AVP deck, slide 4 —",
+   "Chrome profile **AVP**: open the test site; choose **English** in **Language**.",
+   "Type Nodira’s **Login** and **Password** from her slip; click **Sign in**.",
+   "On **Choose a new password**: the slip password in **One-time password**, a new password in **New password** and **New password again**; click **Change password**.",
+   "— AVP deck, slide 5 —",
+   "On **Set up the second step**, click **Start**; scan the QR picture with the phone (second entry in the app).",
+   "Type the 6-digit code in **Code from the app**; click **Confirm**.",
+   "Write the 10 **Recovery codes** down, tick **I have saved the codes**, click **Continue**: Nodira’s Home opens.",
+   "Click the sign-out icon at the foot of the menu; sign in again with the new password and **Trust this device** on; on **Second step** type the code in **Code**, click **Continue**."
+  ],
+  "check": "AVP profile on Home, “Fayzullayeva Nodira”/“Nodira Fayzullayeva” and “Academic Vice Principal” at the foot of the menu; the SA’s Home no longer shows the “No active Academic Vice Principal” banner for Istirohat demo.",
+  "unsure": [
+   "Not run in a browser: that the forced password change leads straight to “Set up the second step” for the AVP (the browser test does this for a seeded strict account; the code path is the same)."
+  ]
+ },
+ "b9": {
+  "clicks": [
+   "— Slide 19 —",
+   "Chrome profile **SA**, Branch **Istirohat demo**. In the left menu, click **People**, then **Staff**; click **Import from Excel**.",
+   "Optional on camera: click **Download the template** (“Staff import.xlsx”).",
+   "Click **Upload the filled file** and choose `1 Xodimlar importi - xatolar bilan.xlsx`.",
+   "Under **Rows of the file**: “52 rows, 4 with problems.” Show the **Problems** of Alimov Bobur (an import gives only Teacher or Tutor), Raximova Laylo and Sharipov Ilhom (the same value is on rows …), Haydarova Gulnoza (no such name in the school’s lists). The save button is greyed: “Nothing is saved until every row is clean.”",
+   "Click **Upload the filled file** again and choose `2 Xodimlar importi - toza.xlsx`: “52 rows, 0 with problems.”",
+   "Click **Save all 52 people**: “52 staff records saved.”",
+   "Under **First-password slips (52)** click **Print the slips** and print (four slips per A4 page).",
+   "Click **Open the staff list**."
+  ],
+  "check": "The staff list of Istirohat demo holds 56 people (52 imported + 4 office staff); the slips are printed.",
+  "unsure": [
+   "Haydarova’s planted mistake is the subject cell “Matematka qoʻshimcha: 11” (the guide says “Matematka”).",
+   "Exact problem wording per row is “<column>: <text>”; texts quoted are the English values of the problem codes, not seen on screen.",
+   "The slips are shown only on this page: print before leaving it."
+  ]
+ },
+ "b10": {
+  "clicks": [
+   "— Slide 21 —",
+   "In the left menu, click **People**, then **Staff**; click **Ergasheva Madina**.",
+   "In her panel, under **Account and roles**, click **Give a role**; choose **Head Teacher** in **New role**.",
+   "Under **Subjects** tick **Arabic**, **English**, **Native language and literature**, **Russian**; leave **Branch** and **From**; click **Save**.",
+   "Off camera: **Nurmatova Kamola** → **Give a role** → **Class teacher** → **Save**; the same for **Ibragimova Ozoda**.",
+   "Off camera: **Rahimov Aziz** → **Edit** → type your own test mailbox in **Email** → **Save**.",
+   "— Slide 22 —",
+   "In the left menu, click **People**, then **Head Teachers**: Madina with her four subjects, State in force; the seeded Senior Head Teacher too."
+  ],
+  "check": "Madina’s roles: Teacher and Head Teacher (Arabic, English, Native language and literature, Russian), in force; Kamola and Ozoda hold Class teacher.",
+  "unsure": [
+   "The subjects list of the Head Teacher form is in the screen language and sorted: Arab tili = Arabic, Ingliz tili = English, Ona tili va adabiyot = Native language and literature, Rus tili = Russian.",
+   "Not checked: whether the seeded Senior Head Teacher shows in this branch’s Head Teachers list.",
+   "Email reset needs mail sending on the test server (deck slide 6 note); not checked."
+  ]
+ },
+ "b6": {
+  "clicks": [
+   "Nothing to change. To check: in the left menu, click **School setup**, then **Settings**; in **School settings** it reads “Rating exams in grades 0–4: Off”."
+  ],
+  "check": "Rating exams in grades 0–4: Off.",
+  "unsure": []
+ },
+ "s2c": {
+  "clicks": [
+   "— Slide 23 —",
+   "Chrome profile **SA**. In the left menu, click **People**, then **Staff**; click **Ahmedov Javlon**.",
+   "In his panel, under **Sign-in access**, click **Lock now**; type `Test of the lock` in **Reason**; click **Lock now**.",
+   "Click **Unlock**, then **Unlock** in the dialog.",
+   "Click **Reset password**, then **Reset password** in the dialog; the **Password reset** slip opens: click **Print**, then **Close**.",
+   "In the left menu, click **People**, then **Accounts never used**: Password “Valid until …”.",
+   "Email reset: Chrome profile **Teacher**: on the sign-in page click **Forgot your password?**; type Aziz’s login in **Login**; click **Send link**.",
+   "Open the email in your mailbox, open the link; on **Choose a new password** type a new password in **New password** and **New password again**; click **Save the new password**; sign in with it.",
+   "— Slide 24 —",
+   "Profile **SA**: **People** → **Staff** → **Add person**: `Davron` / `Yusupov`, **Male**, Date of birth `10.10.1990`, Phone `+998 97 190 00 06`, Admission date today, Main division **Academic**, Department **STEAM**; click **Save**.",
+   "In his panel click **Change status**; choose **Left** in **New status**; type the Friday of Week 1 in **From**; click **Save**; in the dialog click **Set status**. The Status section reads “Planned: Left from …”.",
+   "— Slide 25 —",
+   "**Add person** for yourself: `Sardor` / `Mirzayev`, **Male**, a date of birth, Phone `+998 97 190 00 05`, Admission date today, Main division **Management**; click **Save**.",
+   "In the panel, under **Account and roles**, click **Link to my account**; in the dialog click **Link to my account**. The foot of the menu now shows your name.",
+   "— Slide 29 —",
+   "In the left menu, click **Audit log**; choose **Accounts and roles** in **Kind**: click the “Role given” entry for Nodira Fayzullayeva; show **Before** / **After**.",
+   "Choose **Exports** in **Kind**; in **Log** choose **All branches**.",
+   "— Slide 30 —",
+   "In the left menu, click **People**, then **Staff**; click **Rahimov Aziz**; click **Personal data report**; click **Print**."
+  ],
+  "check": "Ahmedov Javlon unlocked with a reset password; Aziz signed in with his own password; Yusupov Davron shows “Planned: Left from …”; the menu shows Sardor Mirzayev; the audit log lists the role given to Nodira and the report as an export.",
+  "unsure": [
+   "Resetting Ahmedov Javlon’s password replaces his import slip: the reset slip works 24 hours only. If he must sign in in a later session, reset him again then (or reset a teacher nobody films).",
+   "The email reset works only if the test server sends mail and the mailbox from step 2.11 is in Aziz’s Email; Aziz’s login is on his import slip (likely `a.rahimov`, not run).",
+   "Spare teacher Yusupov Davron, his date of birth and the phones +998 97 190 00 05/06 are invented here (the guide names none). Friday of Week 1: for example 13.11.2026 if Week 1 is 9–13 November.",
+   "Slide 25: the SA’s own record name comes from the demo Summary (the seed names the Super Admin Mirzayev Sardor); use the name the Summary shows.",
+   "Slide 30 shows a student in the deck; no student exists in Istirohat demo before step 3.9, so this uses a staff record (the staff panel has the same Personal data report link). For a student, switch the Branch to Demo Yunusobod."
+  ]
+ }
+}

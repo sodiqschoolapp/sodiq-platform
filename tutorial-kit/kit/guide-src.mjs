@@ -38,7 +38,10 @@ const clicksHtml = (c) => {
   return (
     (c.before ? `<p class="before">${inline(c.before)}</p>` : '') +
     `<ol class="clicks">${items.join('')}</ol>` +
-    (c.check ? `<p class="check"><b>You should see:</b> ${inline(c.check)}</p>` : '')
+    (c.check ? `<p class="check"><b>You should see:</b> ${inline(c.check)}</p>` : '') +
+    (c.unsure?.length
+      ? `<details class="about"><summary>Check during the rehearsal (${c.unsure.length})</summary><ul>${c.unsure.map((u) => `<li>${inline(u)}</li>`).join('')}</ul></details>`
+      : '')
   );
 };
 
