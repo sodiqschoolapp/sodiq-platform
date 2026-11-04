@@ -342,6 +342,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 4 November 2026: the demo clock of the test environment (task 10.5)
+
+Plan approved on pull request #280 with its corrections. Flagged on issue #42.
+
+Approved by the owner in chat on 4 November 2026 and put on record here (correction 4 of the plan review): the task itself; the permission area `demo_clock`, the Super Admin alone, view and edit (stop-list item 5); the school-wide table `demo_clock` (`.claude/rules/database.md`).
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The timing of sign-in follows real time (`REAL_CLOCK`): sessions, trusted devices, the second step and its replay, the throttle, first and reset passwords and their "expired" mark, the email reset link. Roles and assignments in force, staff status and account locks follow the demo clock (the transaction's moment). On production both are one clock | A jump must not sign the recording browsers out or break authenticator codes, while a scheduled role starts on its demo date (decision 1) |
+| **Look first.** `account-access.service.ts` and `email-password-resets.service.ts` compare one-time passwords and links with real time instead of `transactionMoment`; who may get a link (`password_reset_allowed`) and the address in force stay on the transaction's moment | Each moment is written and compared by one clock (decision 2) |
+| **Look first.** A test-environment tool outside the spec, turned on only by `DEMO_CLOCK=1` in `render.yaml`; the API and the worker refuse to start with it unless `SENTRY_ENVIRONMENT` is `test` or `development`, and always behind `https://app.sodiqschool.uz`. No `/spec-change` | `13` names a test environment with invented data; the demo seed and the Monitoring branch are the precedent (decision 3) |
+| **Look first.** `Jobs.enqueue` takes an optional `startAfter`; the jump writes `schedule.tick` in its transaction to start 2 seconds after the jump takes effect | The tick must read the new date; no existing caller changes (decision 4) |
+| Forward only; the demo data workflow is the only way back | Rows written at a later demo moment would sit in the future (decision 5) |
+| Days jumped over are not replayed | `scheduled_runs` keeps each day's work once per branch date (decision 6) |
+| At most 400 days per jump | A school year and room; a typo cannot throw the environment a decade ahead (decision 7) |
+| A transaction that spans the switch keeps its `app.now` | A jump takes effect 5 seconds after it is written and is made between takes (decision 8) |
+| The top bar's demo time rides on `current_period` | Every role reads it already; no new area (decision 9) |
+| The moment comes from the row alone: `previous_offset_ms` before `effective_at`, `offset_ms` from it | Every process changes time at the same moment, also one that missed a refresh (correction 1) |
+| The first read of the row comes before the API listens and before the worker takes jobs; a failed first read refuses the start, a failed later one keeps the last row | No request after a restart sees real time (correction 2) |
+| **Build decision.** `current_period` answers `demoNow` only once demo time is ahead of real time; the Setup page shows its "Demo time" link from `GET /api/setup/demo-clock` (`enabled`), asked only by a role with `demo_clock` edit | The browser tests' server runs with the flag on and no jump; a banner on every page of every other spec would have changed them |
+| **Build decision.** The server's clock under the demo clock is the token `SYSTEM_CLOCK`; `REAL_CLOCK` is it when the flag is on and `CLOCK` when off | The plan's "DemoClock over REAL_CLOCK, REAL_CLOCK useExisting CLOCK" is a cycle in Nest; this is the same wiring without it |
+| **Build decision.** The browser test is the teardown of a first step (`run.setup.ts`) every other spec depends on, and runs in each part of CI | A project that depended on `chromium` put every spec in part 1 of 3 (correction 3) |
+| **Build decision.** The browser test signs in to the seed's `superAdmin` again with the second-step key `setup.spec.ts` kept in the run's output folder (`e2e/second-steps.ts`) | The school allows three Super Admins and the seed holds three, all signed in by `setup.spec.ts` |
+| **Build decision.** The browser's own dates (`appNow` in `lib/app-now.ts`) take the demo offset from the period's answer, instead of a hook | `localDate` of the two pages is a plain function used outside components |
+| **Build decision.** A re-hire's first password is valid 7 days from the later of real now and 00:00 of the re-hire date (a demo date) | One-time passwords are on real time; on the test environment a re-hire dated in demo time can be valid longer, which harms nothing |
+
 ## 3 November 2026: the staff import (task 9.4h)
 
 Plan approved on pull request #279 with its corrections. Flagged on issue #42.

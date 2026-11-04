@@ -34,6 +34,10 @@ const addDays = (date: string, days: number): string =>
 const weekdayOf = (date: string): number =>
   ((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7) + 1;
 
+/** The demo time when a move made now would take effect, from the answer read at `readAt`. */
+const demoAtEffectOf = (demoNow: string, readAt: number): number =>
+  Date.parse(demoNow) + (Date.now() - readAt) + LEAD_MS;
+
 const QUICK_KEYS = ['hour', 'tomorrow', 'monday'] as const;
 
 /**
@@ -128,9 +132,6 @@ export function DemoClockPage() {
     );
   }
   const shown: DemoClockState = state.data;
-  // The demo time when a move made now would take effect, at the click.
-  const demoAtEffect = () =>
-    Date.parse(shown.demoNow) + (Date.now() - state.dataUpdatedAt) + LEAD_MS;
   const chosen = date !== '' && time !== '' ? momentAt(date, time, timeZone) : null;
 
   return (
@@ -162,7 +163,10 @@ export function DemoClockPage() {
                 variant="secondary"
                 disabled={move.isPending}
                 onClick={() => {
-                  const quick = quickMoves(demoAtEffect(), timeZone).find((one) => one.key === key);
+                  const quick = quickMoves(
+                    demoAtEffectOf(shown.demoNow, state.dataUpdatedAt),
+                    timeZone,
+                  ).find((one) => one.key === key);
                   if (quick !== undefined) move.mutate(quick.to);
                 }}
               >

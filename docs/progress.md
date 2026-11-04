@@ -2,6 +2,23 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 4 November 2026: task 10.5 Demo clock on the test environment
+
+- **Table** (0156): `demo_clock`, one school-wide row: `offset_ms`, `previous_offset_ms`, `effective_at`, `changed_at`, `changed_by`; no delete for the application; a trigger refuses any offset that goes back, for every user. A missing row is real time.
+- **Clocks** (`apps/api/src/clock`): `CLOCK` is the `DemoClock` when `DEMO_CLOCK=1` (real time plus the row's offset, the previous one before `effective_at`), read before the process serves and every 2 seconds; `REAL_CLOCK` is the server's clock then, and the same clock as `CLOCK` when the flag is off (production and every existing test). Sessions, trust, the second step, the throttle, one-time passwords and reset links read `REAL_CLOCK`; roles in force and staff status read the transaction's moment.
+- **Config**: `DEMO_CLOCK` (0 or 1); the API and the worker refuse to start with 1 outside `test` or `development` and behind the production address. `render.yaml` sets it on the two test services.
+- **Routes** (area `demo_clock`, the Super Admin alone, approved by the owner): `GET /api/setup/demo-clock` and `POST /api/setup/demo-clock/jumps` (`demo_clock_off`, `demo_clock_backwards`, `demo_clock_too_far`); a jump writes the row, the audit entry `demo_clock.jump` and a `schedule.tick` with `startAfter` in one transaction, takes effect 5 seconds later and answers then. `current_period` answers `demoNow` once demo time is ahead.
+- **Web**: School setup → Demo time (the link where the clock runs); the top bar's "Demo time: …"; `appNow` for the dates two pages fill in by themselves. Texts in three languages.
+- **Browser test**: `demo-clock.spec.ts` is the teardown of `run.setup.ts`, so it runs after every other spec in each part of CI, and signs in to the seed's `superAdmin` again with the key `setup.spec.ts` keeps.
+
+Left out: a way back to real time (decision 5); replaying skipped days (decision 6); the date pickers of other screens keep pre-filling the browser's date.
+
+The next sessions must know:
+
+- A new sign-in or session timing reads `REAL_CLOCK`; a business rule reads `CLOCK` or `transactionMoment` as before.
+- After the merge the owner presses **Sync** on the test Blueprint in Render (`docs/deploy.md`, Demo time).
+- A browser test that needs a Super Admin after `setup.spec.ts` reads the key with `keptSecondStep`.
+
 ## 3 November 2026: task 9.4h Staff import
 
 - **Table** (0155): `staff_imports` keeps each upload (the rows as read, the SHA-256 of the file, who and when) under the branch filter, as `student_imports`; one confirmed import of one file per branch.
