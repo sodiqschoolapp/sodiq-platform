@@ -1,10 +1,12 @@
 import { PERMISSIONS, permits, type Action } from '@sodiq/shared';
+import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
 import { useView } from '@/features/access/use-view';
 import { SetupChecklist } from './setup-checklist';
+import { currentPeriodQuery } from './setup-api';
 import { PANEL } from '@/components/ui/control';
 
 interface SetupLink {
@@ -26,7 +28,9 @@ interface SetupLink {
  */
 export function SetupPage() {
   const { t } = useTranslation();
-  const { role } = useView();
+  const { role, branchId } = useView();
+  // Task 10.5: the demo clock runs where the period carries a demo time (the test environment).
+  const demoClockOn = useQuery(currentPeriodQuery(branchId)).data?.demoNow != null;
   const all: SetupLink[] = [
     {
       // The Branches list is the Super Admin's (task 2.7c-3, decision 2).
@@ -96,6 +100,17 @@ export function SetupPage() {
       title: t('setup.settingsLink'),
       area: 'settings',
     },
+    ...(demoClockOn
+      ? [
+          {
+            key: 'demoClock',
+            to: '/setup/demo-clock',
+            title: t('setup.demoClockLink'),
+            area: 'demo_clock',
+            action: 'edit',
+          } satisfies SetupLink,
+        ]
+      : []),
     {
       key: 'travelTimes',
       to: '/setup/travel-times',

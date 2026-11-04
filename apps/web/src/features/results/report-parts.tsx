@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DownloadIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useMayView } from '@/features/access/use-view';
+import { appNow } from '@/lib/app-now';
 
 /**
  * The parts the report pages of `08` share (task 9.3b-2): the Excel button, shown only to a
@@ -35,9 +36,9 @@ export const wholeOf = (value: unknown, min: number, max: number): number | unde
 export const gradeOf = (value: unknown): number | undefined =>
   wholeOf(value, FIRST_GRADE, LAST_GRADE);
 
-/** A date of the browser's calendar `days` from today (or from the Monday of this week). */
+/** A date of the browser's calendar `days` from today (or from the Monday of this week), in demo time on the test environment (task 10.5). */
 export const localDate = (days: number, fromMonday = false): string => {
-  const at = new Date();
+  const at = appNow();
   if (fromMonday) at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
   at.setDate(at.getDate() + days);
   return `${String(at.getFullYear())}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;

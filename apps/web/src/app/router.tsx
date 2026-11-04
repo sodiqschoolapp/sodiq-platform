@@ -57,6 +57,7 @@ import { SlotTypesPage } from '@/features/setup/slot-types-page';
 import { CalendarPage } from '@/features/setup/calendar-page';
 import { SettingsPage } from '@/features/setup/settings-page';
 import { TravelTimesPage } from '@/features/setup/travel-times-page';
+import { DemoClockPage } from '@/features/setup/demo-clock-page';
 import { DayTemplatesPage } from '@/features/setup/day-templates-page';
 import { TemplateSettingsPage } from '@/features/setup/template-settings-page';
 import { RoomsPage, roomsSearch } from '@/features/setup/rooms-page';
@@ -741,6 +742,13 @@ const settingsRoute = createRoute({
   component: guarded('settings', SettingsPage),
 });
 
+// Task 10.5: the demo time of the test environment, the Super Admin's.
+const demoClockRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/demo-clock',
+  component: guarded('demo_clock', DemoClockPage),
+});
+
 const travelTimesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/setup/travel-times',
@@ -788,6 +796,7 @@ const routeTree = rootRoute.addChildren([
     dayTemplatesRoute,
     templateSettingsRoute,
     settingsRoute,
+    demoClockRoute,
     travelTimesRoute,
     subjectsRoute,
     classesRoute,

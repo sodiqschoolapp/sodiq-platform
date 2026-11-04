@@ -1329,6 +1329,27 @@ export const uz: Texts<'one' | 'other'> = {
     calendarLink: 'Taqvim',
     settingsLink: 'Sozlamalar',
     travelTimesLink: 'Yoʻl vaqti',
+    demoClockLink: 'Demo vaqt',
+    // Task 10.5: the demo time of the test environment.
+    demoClock: {
+      title: 'Demo vaqt',
+      nowTitle: 'Hozir',
+      demo: 'Demo vaqt',
+      real: 'Haqiqiy vaqt',
+      intro:
+        "Platformaning barcha qoidalari demo vaqtga amal qiladi: darslarning qulflanishi, tahrir kunlari, reja oynalari, rejalashtirilgan o'tkazishlar va rollar, yopish va eslatmalar. Tizimga kirish haqiqiy vaqt bo'yicha qoladi, shuning uchun hech kim tizimdan chiqarilmaydi. Demo vaqt faqat oldinga yuradi; haqiqiy vaqtni demo ma'lumotlar jarayoni qaytaradi.",
+      moveTitle: 'Oldinga surish',
+      quick: { hour: '+1 soat', tomorrow: 'Ertaga, 07:05', monday: 'Keyingi dushanba, 09:05' },
+      date: 'Sana',
+      time: 'Vaqt (filial vaqti)',
+      moveChosen: 'Shu vaqtga surish',
+      confirmTitle: 'Demo vaqt {{moment}} ga surilsinmi?',
+      confirmText:
+        "Buni bekor qilib bo'lmaydi: demo vaqt faqat oldinga yuradi. Tizimga kirgan har bir kishi yangi vaqtni bir necha soniyada ko'radi va yangi sananing kundalik ishi ishga tushadi.",
+      confirmAction: 'Demo vaqtni surish',
+      offTitle: 'Demo vaqt o‘chiq',
+      offText: 'Demo vaqtni faqat test muhitida surish mumkin.',
+    },
     subjectsLink: 'Fanlar',
     forcedDeletesLink: 'Butunlay oʻchirilganlar',
     branches: {
@@ -3136,6 +3157,8 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   period: {
+    // Task 10.5: the demo time of the test environment, beside the period.
+    demoTime: 'Demo vaqt: {{moment}}',
     failed: 'Yil va chorak yuklanmadi',
     label: 'Oʻquv yili va chorak',
     noYear: 'Oʻquv yili yoʻq',

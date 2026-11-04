@@ -42,6 +42,8 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   { titleKey: 'setup.calendar.title', to: '/setup/calendar' },
   { titleKey: 'setup.settings.title', to: '/setup/settings' },
   { titleKey: 'setup.travelTimes.title', to: '/setup/travel-times' },
+  // Task 10.5: the demo time of the test environment, the Super Admin's.
+  { titleKey: 'setup.demoClock.title', to: '/setup/demo-clock', area: 'demo_clock' },
   { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
   // Task 5.8b: the Super Admin's deleted lessons.
   { titleKey: 'forcedDeletes.title', to: '/forced-deletes', area: 'forced_deletes' },
