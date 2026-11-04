@@ -153,6 +153,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   demo_clock_off: 'The demo clock runs on the test environment only.',
   demo_clock_backwards: 'The demo time only moves forward.',
   demo_clock_too_far: 'A jump of the demo time is at most 400 days.',
+  demo_clock_pending:
+    'The last jump of the demo time takes effect in a few seconds; try again then.',
   groups_rating_primary_span:
     'A group of grades 4 and 5 of a subject with the rating exam needs rating exams in grades 0–4.',
   class_grade_rating_primary:

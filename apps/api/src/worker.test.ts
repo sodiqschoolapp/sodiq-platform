@@ -6,6 +6,7 @@ import type { Clock } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CLOCK } from './clock/clock.module.js';
 import { SYSTEM_CLOCK } from './clock/demo-clock.js';
+import { createDatabase } from './database/database.js';
 import { DATABASE } from './database/database.module.js';
 import { Transactions } from './database/transactions.js';
 import { JOB_DEFINITIONS } from './jobs/job-list.js';
@@ -80,9 +81,10 @@ describe('the worker entry point', () => {
   // (config.ts), and on the test environment reads its row before it takes a job (correction 2).
   describe('with the demo clock', () => {
     const start = (real?: Clock) => {
+      // A connection of its own: closing the context closes it, not the outer worker's.
       const builder = Test.createTestingModule({ imports: [WorkerModule] })
         .overrideProvider(DATABASE)
-        .useValue(database.app);
+        .useValue(createDatabase(database.appUrl));
       if (real !== undefined) builder.overrideProvider(SYSTEM_CLOCK).useValue(real);
       return builder.compile().then((moduleRef) => moduleRef.init());
     };

@@ -97,7 +97,7 @@ describe('DemoClock', () => {
 
     expect(table.reads).toBe(1);
     expect(clock.now().toISOString()).toBe('2026-11-05T10:00:00.000Z');
-    clock.onModuleDestroy();
+    await clock.onModuleDestroy();
   });
 
   it('refuses the start when the first read fails, so no request sees real time', async () => {
@@ -119,7 +119,7 @@ describe('DemoClock', () => {
     await expect(clock.refresh()).rejects.toThrow('connection lost');
 
     expect(clock.now().toISOString()).toBe('2026-11-05T10:00:00.000Z');
-    clock.onModuleDestroy();
+    await clock.onModuleDestroy();
   });
 
   it('reads nothing and shows real time where DEMO_CLOCK is off', async () => {
@@ -147,7 +147,7 @@ describe('DemoClock', () => {
       await vi.advanceTimersByTimeAsync(HOUR);
       expect(table.reads).toBe(2);
 
-      clock.onModuleDestroy();
+      await clock.onModuleDestroy();
       await vi.advanceTimersByTimeAsync(3 * HOUR);
       expect(table.reads).toBe(2);
     } finally {
@@ -191,7 +191,7 @@ describe('DemoClock', () => {
     expect(seenBoth.now().toISOString()).toBe('2026-11-04T10:00:05.999Z');
     real.set('2026-11-04T10:00:06Z');
     expect(seenBoth.now().toISOString()).toBe('2026-11-06T10:00:06.000Z');
-    seenBoth.onModuleDestroy();
-    missedOne.onModuleDestroy();
+    await seenBoth.onModuleDestroy();
+    await missedOne.onModuleDestroy();
   });
 });

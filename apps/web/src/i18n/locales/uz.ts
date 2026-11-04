@@ -149,8 +149,10 @@ export const uz: Texts<'one' | 'other'> = {
     setting_unchanged: 'Sozlama barcha ochiq choraklarda allaqachon shu qiymatda.',
     demo_clock_off: 'Demo vaqtni faqat test muhitida surish mumkin.',
     demo_clock_backwards:
-      "Demo vaqt faqat oldinga yuradi. Ko'rsatilgan demo vaqtdan keyingi, bir necha soniyadan keyingi paytni tanlang.",
-    demo_clock_too_far: "Demo vaqtni ko'pi bilan 400 kunga surish mumkin. Yaqinroq paytni tanlang.",
+      'Demo vaqt faqat oldinga yuradi. Koʻrsatilgan demo vaqtdan keyingi, bir necha soniyadan keyingi paytni tanlang.',
+    demo_clock_too_far: 'Demo vaqtni koʻpi bilan 400 kunga surish mumkin. Yaqinroq paytni tanlang.',
+    demo_clock_pending:
+      'Demo vaqtning oxirgi surilishi bir necha soniyada kuchga kiradi. Shunda qayta urinib koʻring.',
     groups_rating_primary_span:
       'Reyting imtihoni boʻlgan fanning 4- va 5-sinf guruhi uchun 0–4-sinflarda reyting imtihonlari yoqilgan boʻlishi kerak. Super Admindan yoqishni soʻrang yoki guruhni bitta sinfdan tuzing.',
     class_grade_rating_primary:
@@ -1337,7 +1339,7 @@ export const uz: Texts<'one' | 'other'> = {
       demo: 'Demo vaqt',
       real: 'Haqiqiy vaqt',
       intro:
-        "Platformaning barcha qoidalari demo vaqtga amal qiladi: darslarning qulflanishi, tahrir kunlari, reja oynalari, rejalashtirilgan o'tkazishlar va rollar, yopish va eslatmalar. Tizimga kirish haqiqiy vaqt bo'yicha qoladi, shuning uchun hech kim tizimdan chiqarilmaydi. Demo vaqt faqat oldinga yuradi; haqiqiy vaqtni demo ma'lumotlar jarayoni qaytaradi.",
+        'Platformaning barcha qoidalari demo vaqtga amal qiladi: darslarning qulflanishi, tahrir kunlari, reja oynalari, rejalashtirilgan oʻtkazishlar va rollar, yopish va eslatmalar. Tizimga kirish haqiqiy vaqt boʻyicha qoladi, shuning uchun hech kim tizimdan chiqarilmaydi. Demo vaqt faqat oldinga yuradi; haqiqiy vaqtni demo maʼlumotlar jarayoni qaytaradi.',
       moveTitle: 'Oldinga surish',
       quick: { hour: '+1 soat', tomorrow: 'Ertaga, 07:05', monday: 'Keyingi dushanba, 09:05' },
       date: 'Sana',
@@ -1345,9 +1347,9 @@ export const uz: Texts<'one' | 'other'> = {
       moveChosen: 'Shu vaqtga surish',
       confirmTitle: 'Demo vaqt {{moment}} ga surilsinmi?',
       confirmText:
-        "Buni bekor qilib bo'lmaydi: demo vaqt faqat oldinga yuradi. Tizimga kirgan har bir kishi yangi vaqtni bir necha soniyada ko'radi va yangi sananing kundalik ishi ishga tushadi.",
+        'Buni bekor qilib boʻlmaydi: demo vaqt faqat oldinga yuradi. Tizimga kirgan har bir kishi yangi vaqtni bir necha soniyada koʻradi va yangi sananing kundalik ishi ishga tushadi.',
       confirmAction: 'Demo vaqtni surish',
-      offTitle: 'Demo vaqt o‘chiq',
+      offTitle: 'Demo vaqt oʻchiq',
       offText: 'Demo vaqtni faqat test muhitida surish mumkin.',
     },
     subjectsLink: 'Fanlar',

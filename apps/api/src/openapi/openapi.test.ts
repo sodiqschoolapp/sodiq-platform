@@ -348,6 +348,8 @@ describe('OpenAPI document', () => {
         '/api/setup/day-templates/{id}/archive',
         '/api/setup/day-templates/{id}/restore',
         '/api/setup/day-templates/{id}/versions',
+        '/api/setup/demo-clock',
+        '/api/setup/demo-clock/jumps',
         '/api/setup/departments/{id}',
         '/api/setup/departments/{id}/archive',
         '/api/setup/departments/{id}/restore',

@@ -85,8 +85,9 @@ export class DemoClockService {
   /**
    * Moves demo time to `jump.to` (a demo moment) at the real moment the jump takes effect.
    * Refused when the clock is off (`demo_clock_off`), when `to` is not after the demo time at
-   * that moment (`demo_clock_backwards`, also the second of two jumps at once, which waits for
-   * the row lock of the first), and beyond 400 days (`demo_clock_too_far`).
+   * that moment (`demo_clock_backwards`), beyond 400 days (`demo_clock_too_far`), and while the
+   * last jump has not taken effect yet (`demo_clock_pending`, also the second of two jumps at
+   * once, which waits for the row lock of the first).
    */
   async jump(access: Access, jump: DemoClockJump, requestId: string): Promise<DemoClockState> {
     if (!this.config.demoClock) {
@@ -115,6 +116,11 @@ export class DemoClockService {
         throw new Error('The demo clock row is missing after it was made.');
       }
       const real = this.realClock.now();
+      // A jump that has not taken effect yet is not jumped over (spec review of the code, must-fix
+      // 1): a process that read it would switch to it and then back when the next row came.
+      if (real.getTime() < row.effectiveAt.getTime()) {
+        throw new ApiException('demo_clock_pending', 409);
+      }
       const takesEffect = new Date(real.getTime() + this.timing.leadMs);
       // The demo moment at `takesEffect` without this jump: the newest offset by then.
       const demoThen = takesEffect.getTime() + row.offsetMs;

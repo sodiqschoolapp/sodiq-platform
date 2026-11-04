@@ -236,6 +236,8 @@ export const ERROR_CODES = [
   'demo_clock_backwards',
   /** Task 10.5 (decision 7): a jump is at most 400 days. */
   'demo_clock_too_far',
+  /** Task 10.5: the last jump takes effect in a few seconds; a new one waits for it. */
+  'demo_clock_pending',
   /** Task 9.4f: a group of grades 4 and 5 of a rating subject while "Rating exams in grades 0–4" is off (`05`, Group). */
   'groups_rating_primary_span',
   /** Task 9.4f (decision 6): a class moved into grades 0–4 would hide rating exam entries or change a closed quarter's rating column. */

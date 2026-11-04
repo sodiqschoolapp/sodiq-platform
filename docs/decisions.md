@@ -366,6 +366,8 @@ Approved by the owner in chat on 4 November 2026 and put on record here (correct
 | **Build decision.** The browser test is the teardown of a first step (`run.setup.ts`) every other spec depends on, and runs in each part of CI | A project that depended on `chromium` put every spec in part 1 of 3 (correction 3) |
 | **Build decision.** The browser test signs in to the seed's `superAdmin` again with the second-step key `setup.spec.ts` kept in the run's output folder (`e2e/second-steps.ts`) | The school allows three Super Admins and the seed holds three, all signed in by `setup.spec.ts` |
 | **Build decision.** The browser's own dates (`appNow` in `lib/app-now.ts`) take the demo offset from the period's answer, instead of a hook | `localDate` of the two pages is a plain function used outside components |
+| **Build decision.** A jump is refused (`demo_clock_pending`) while the last one has not taken effect | A second jump 3 to 5 seconds after a first made a process that had read the first switch to it and back (spec review of the code, must-fix 1) |
+| **Build decision.** An account lock writes the end of the sessions and the close of the reset links with the transaction's moment (demo time), as before | Nothing compares those two moments; the lock itself is a business change on demo time (spec review of the code, should-fix 4) |
 | **Build decision.** A re-hire's first password is valid 7 days from the later of real now and 00:00 of the re-hire date (a demo date) | One-time passwords are on real time; on the test environment a re-hire dated in demo time can be valid longer, which harms nothing |
 
 ## 3 November 2026: the staff import (task 9.4h)

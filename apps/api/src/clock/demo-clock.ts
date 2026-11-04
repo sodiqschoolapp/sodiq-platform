@@ -119,9 +119,11 @@ export class DemoClock implements Clock, OnModuleInit, OnModuleDestroy {
     this.timer.unref();
   }
 
-  onModuleDestroy(): void {
+  /** Stops the timer and waits for a read in flight, before the database closes. */
+  async onModuleDestroy(): Promise<void> {
     if (this.timer !== undefined) clearInterval(this.timer);
     this.timer = undefined;
+    await this.reading?.catch(() => undefined);
   }
 
   /** Reads the row now. Two calls at once share one read. */

@@ -207,16 +207,40 @@ describe('the demo clock on the test environment', () => {
     expect(response.status).toBe(400);
   });
 
-  it('lets one of two jumps at once through, and refuses the other as backwards', async () => {
+  it('lets one of two jumps at once through, and refuses the other', async () => {
     const to = '2026-11-09T09:05:00+05:00';
     const answers = await Promise.all([jump(to), jump(to)]);
 
     expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
-    expect(
-      answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer)),
-    ).toEqual(['demo_clock_backwards']);
+    // Refused after the first's lock: still taking effect, or, once it has, backwards.
+    const [refused] = answers.filter((answer) => answer.status === 409);
+    expect(refused === undefined ? null : errorCode(refused)).toMatch(
+      /^demo_clock_(pending|backwards)$/,
+    );
     expect(await jumps()).toHaveLength(3);
     expect(await ticks()).toHaveLength(3);
+  });
+
+  // Spec review of the code, must-fix 1: a jump 4 seconds after another, before it took effect,
+  // would make a process that read the first switch to it and back. It is refused.
+  it('refuses a jump while the last one has not taken effect', async () => {
+    const before = await database.migrator
+      .selectFrom('demo_clock')
+      .selectAll()
+      .executeTakeFirstOrThrow();
+    const realBefore = real.now();
+    // The last jump takes effect 4 seconds from now.
+    real.set(new Date(before.effective_at.getTime() - 4_000));
+    try {
+      const response = await jump('2026-12-01T09:05:00+05:00');
+      expect(response.status).toBe(409);
+      expect(errorCode(response)).toBe('demo_clock_pending');
+      expect(
+        await database.migrator.selectFrom('demo_clock').selectAll().executeTakeFirstOrThrow(),
+      ).toEqual(before);
+    } finally {
+      real.set(realBefore);
+    }
   });
 
   it('keeps the offset in force before a jump takes effect as its previous offset', async () => {
@@ -232,6 +256,7 @@ describe('the demo clock on the test environment', () => {
   });
 
   it('refuses every other role and a caller without a session', async () => {
+    const before = { jumps: (await jumps()).length, ticks: (await ticks()).length };
     for (const [path, call] of [
       [READ, (cookie?: string) => kit.get(READ, cookie)],
       [JUMP, (cookie?: string) => kit.post(JUMP, cookie).send({ to: '2027-01-01T00:00:00Z' })],
@@ -239,6 +264,8 @@ describe('the demo clock on the test environment', () => {
       expect((await call(teacher).set(BRANCH_HEADER, branch)).status, path).toBe(403);
       expect((await call()).status, path).toBe(401);
     }
+    // A refused jump leaves nothing behind.
+    expect({ jumps: (await jumps()).length, ticks: (await ticks()).length }).toEqual(before);
   });
 });
 

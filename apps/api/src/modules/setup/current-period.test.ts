@@ -102,6 +102,8 @@ describe('the year and quarter of the top bar', () => {
       state: 'no_year',
       quarter: null,
       next: null,
+      // Task 10.5: no demo time where the demo clock is off.
+      demoNow: null,
     });
   });
 
