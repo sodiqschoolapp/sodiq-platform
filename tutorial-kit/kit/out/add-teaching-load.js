@@ -16,9 +16,11 @@
   };
   const list = (answer, key) => (Array.isArray(answer) ? answer : answer[key]);
 
-  const branches = list(await call('GET', '/api/setup/branches'), 'branches');
-  const b = branches.find((x) => /istirohat/i.test(x.name));
-  if (!b) throw new Error('No branch named Istirohat demo among: ' + branches.map((x) => x.name).join(', '));
+  // The branch: the one this tab chose in the switcher, else Istirohat demo among the account's branches.
+  const session = await call('GET', '/api/auth/session');
+  const mine = session.branches ?? [];
+  const b = mine.find((x) => /istirohat/i.test(x.name)) ?? mine.find((x) => x.id === sessionStorage.getItem('sodiq.branch'));
+  if (!b) throw new Error('This account has no branch named Istirohat demo. Its branches: ' + mine.map((x) => x.name).join(', '));
   branch = b.id;
 
   const versions = list(await call('GET', '/api/timetable/versions'), 'versions');
