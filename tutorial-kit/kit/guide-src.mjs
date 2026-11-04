@@ -185,7 +185,7 @@ const SESSIONS = [
   {
     n: 3,
     title: 'Video: AVP part 1 · Prepare the year',
-    when: 'Week 0, Thursday afternoon · Chrome profile “AVP” (step 3.10 in “SA”, step 3.13 in “Yunusobod AVP”)',
+    when: 'Week 0, Thursday afternoon · Chrome profile “AVP” (step 3.10 in “SA”, step 3.15 in “Yunusobod AVP”)',
     lede: 'Open the AVP deck. Show its slides 1–3 first; slide 3 explains the three AVP videos.',
     steps: [
       st(
