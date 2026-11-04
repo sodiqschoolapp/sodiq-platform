@@ -21,7 +21,12 @@ process.env.WEB_ORIGIN = process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5174';
 // No prepared totals every minute (task 9.3b-1): in this one process they took the API's
 // connections for up to 20 s a minute on CI's small runners, and the browser tests stalled
 // (30 October 2026). The reads calculate the totals from source instead.
-process.env.JOBS_UNSCHEDULED = 'results.prepare_totals';
+// No daily tick every 15 minutes either (task 9.2c): on a fresh database every branch's hours
+// have come by day, so the first tick sends the whole day's work of each of the seed's branches
+// (the nightly check of every result among them) into this same process, and the page walk of
+// pages.spec.ts stalled right after 09:30, 11:30 and 12:00 on 4 November 2026. No browser test
+// waits for a daily job; a tick that a change enqueues itself still runs.
+process.env.JOBS_UNSCHEDULED = 'results.prepare_totals,schedule.tick';
 // The demo clock (task 10.5): with no jump it shows real time, so the other specs see no change;
 // demo-clock.spec.ts, which runs last, jumps. An environment the clock may run in (correction 3
 // of the plan review), whatever the shell says.
