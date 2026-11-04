@@ -1,305 +1,306 @@
 {
-  "s3a": {
-    "clicks": [
-      "— Slide 6 —",
-      "Switch to the Chrome profile **Spare 1** and open the test site. Type Nodira’s login in **Login** and the password she chose in step 2.9 in **Password**. Leave **Trust this device** off and click **Sign in**.",
-      "On **Second step**, type the 6-digit code from the phone app in **Code** and click **Continue**.",
-      "Switch to the Chrome profile **AVP**. Click the avatar at the foot of the left menu, then **Account**.",
-      "In the **Sessions** section, click **Sign out everywhere**. In the dialog **Sign out everywhere?**, click **Sign out everywhere**.",
-      "Switch to **Spare 1** and click **Home** in the left menu. The sign-in page says \"Your session has ended. Sign in again.\" Leave Spare 1 on that page.",
-      "Back in **AVP**, click the sign-out icon at the foot of the left menu (**Sign out**).",
-      "On **Sign in**, type Nodira’s **Login** and **Password** and tick **Trust this device**. Film its note \"You stay signed in here for 7 days…\", then click **Sign in**.",
-      "On **Second step**, type the code in **Code** and click **Continue**.",
-      "— Slide 7 —",
-      "In **Spare 1**, which is still on the sign-in page, click **Forgot your password?**. Type Nodira’s login in **Login** and click **Send link**. Film the neutral answer \"If this login has an email address on record…\", then click **Back to sign-in**.",
-      "— Slide 8 —",
-      "In **AVP**, click the avatar, then **Account**. Scroll slowly past **Photo**, **Language**, **Password**, **Sessions**, **Sign-in history** (today’s events), **Trusted devices** (this browser, with **Trusted until**) and **Second step at sign-in**.",
-      "In **Language**, choose `Oʻzbekcha`, then choose `English` again.",
-      "Click the avatar and, under **Theme**, click **Dark**. Two seconds later, click the avatar again and choose **As the device**.",
-      "— Slide 9 —",
-      "Press **Ctrl+K** and type `Ra`. Rahimov Aziz, Rasulova Shahnoza and others appear under **Staff**. Press Esc.",
-      "In the top bar, click the **Notifications** bell. Open a notice if there is one, then click **Mark all as read**.",
-      "Press F12, then Ctrl+Shift+M, and set the width to `390`. The tab bar at the bottom ends with **More**: click **More**. Close DevTools."
-    ],
-    "check": "AVP is signed in on a trusted browser (**Account** → **Trusted devices** lists it), in English and with the device theme. Spare 1 is signed out.",
-    "unsure": [
-      "The order differs from the deck on purpose. **Sign out everywhere** also stops trusting this browser (\"This device is no longer trusted…\"), so it is filmed before the trusted sign-in.",
-      "**Sign out everywhere** needs a second signed-in browser. I used Spare 1, so Nodira’s phone code is needed twice.",
-      "A new AVP may have no notifications yet. If so, show the empty bell and skip **Mark all as read**.",
-      "I did not check the exact width at which the tab bar replaces the side menu. 390 px is a phone width."
-    ]
-  },
-  "s3b": {
-    "clicks": [
-      "In the left menu, click **School setup**, then **Academic years**.",
-      "Click the year `2026–2027` in the list. The side panel opens.",
-      "In the **Quarters** section, show the table: Quarter 1 02.09.2026–31.10.2026, Quarter 2 09.11.2026–26.12.2026, Quarter 3 11.01.2027–20.03.2027 and Quarter 4 30.03.2027–25.05.2027, with **Months**.",
-      "Click **Change quarters**. The fields **Quarter 1: start** to **Quarter 4: end** open.",
-      "Point at one field, for example **Quarter 3: end** (20.03.2027), then click **Cancel** so the demo dates stay as planned."
-    ],
-    "check": "The year panel still shows the four dated quarters, unchanged.",
-    "unsure": [
-      "The AVP may edit quarters (permission `quarters`: view and edit). If you change a date on camera, change it back the same way.",
-      "The preview \"What the new quarter dates change\" only matters once a timetable is published (after step 4.3).",
-      "I did not check whether quarter 1, which is already over, can still be edited. Use quarter 3 or 4 if you show a change."
-    ]
-  },
-  "b11": {
-    "clicks": [
-      "— Slide 12 —",
-      "In the left menu, click **School setup**, then **Slot types**.",
-      "Click **Add slot type**. Type `Lesson 40` in **Name**, choose **Lesson** in **Kind** and type `40` in **Length**. Click **Save**.",
-      "Click **Add slot type** three more times: `Break 15`, **Break**, `15`; then `Lunch 40`, **Break**, `40`; then `Juma 125`, **Break**, `125`. Click **Save** each time.",
-      "Click **School setup**, then **Day templates**, then **Add day template**.",
-      "Type `Asosiy 5-8` in **Name** and `09:00` in **Start time**.",
-      "In the slot list (**Choose what to add to Slots in order**), choose `Lesson 40 · Lesson` and click **Add**.",
-      "Keep adding in this order: Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lunch 40, Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lesson 40. That makes 15 slots, as on sheet **3 Day templates**.",
-      "Check the times the list works out (Lunch 40 12:40–13:20, last lesson 15:25–16:05) and click **Save**.",
-      "Add the other three templates the same way from sheet **3 Day templates**: `Boshlangʻich 1-4` (Lunch 40 after lesson 3, 11:45–12:25), `Yuqori 9-11` (Lunch 40 after lesson 5, 13:35–14:15) and `Juma 5-11` (four lessons with Break 15 between them, then Juma 125 from 12:25 to 14:30, then Lesson 40, Break 15, Lesson 40).",
-      "— Slide 13 —",
-      "Click **School setup**, then **Where templates apply**.",
-      "In the form **Set a template from a date**, choose `The whole branch (default)` in **Applies to** and `Asosiy 5-8` in **Day template**. Leave **From** at tomorrow and click **Save**.",
-      "In the dialog **The templates after this change**, which marks the changed cells, click **Save the change**.",
-      "Again: **Applies to** `A range of grades`, **From grade** `1`, **To grade** `4`, **Day template** `Boshlangʻich 1-4`. Click **Save**, then **Save the change**.",
-      "Again: **Applies to** `A range of grades`, **From grade** `9`, **To grade** `11`, **Day template** `Yuqori 9-11`. Click **Save**, then **Save the change**.",
-      "Again: **Applies to** `A weekday and a range of grades`, **Weekday** `Friday`, **From grade** `5`, **To grade** `11`, **Day template** `Juma 5-11`. Click **Save**, then **Save the change**.",
-      "Scroll to **Templates by weekday and grade**. If it shows \"No template\", set its **Date** to tomorrow or later. Film all four templates in the table."
-    ],
-    "check": "There are 4 slot types and 4 day templates. **Settings by level** lists 4 rows. For tomorrow the table shows Boshlangʻich 1-4 for grades 1–4, Asosiy 5-8 for grades 0 and 5–8, Yuqori 9-11 for grades 9–11, and Juma 5-11 on Friday for grades 5–11.",
-    "unsure": [
-      "The code has no rule against two breaks in a row. packages/shared day-templates only asks for 1–20 slots with at least one lesson. The 70-minute fallback should not be needed.",
-      "The deck calls the slot type \"Lunch\"; sheet 3 and the guide say `Lunch 40`. I used `Lunch 40`.",
-      "A template setting starts tomorrow at the earliest, so the table for today may still be empty."
-    ]
-  },
-  "b12": {
-    "clicks": [
-      "In the left menu, click **School setup**, then **Calendar**.",
-      "Click **Add entry**.",
-      "Leave **Kind** at **Day off**. Type `Konstitutsiya kuni` in **Name**, and `08.12.2026` in both **First date** and **Last date**. Leave **For** at **Whole branch**.",
-      "Click **Save**. The dialog **What this save changes** lists 08.12.2026 for every grade, before and after (\"No lessons: day off\").",
-      "Click **Save** in the dialog.",
-      "In **Check a date**, type `08.12.2026` in **Date**. Every grade shows \"No lessons: day off (Konstitutsiya kuni)\"."
-    ],
-    "check": "The calendar lists Konstitutsiya kuni, 08.12.2026, Whole branch.",
-    "unsure": [
-      "Slide 14 shows \"Mustaqillik kuni\" (1 September), which is in the past and can no longer be entered. Konstitutsiya kuni (a Tuesday in quarter 2) is right.",
-      "The working Saturday and the shortened day stay in step 4.7, as the guide says."
-    ]
-  },
-  "b13": {
-    "clicks": [
-      "— Slide 16 —",
-      "In the left menu, click **School setup**, then **Settings**.",
-      "In the **Edit days** form, type `1` in **Days a lesson stays open** and click **Save** (\"Saved.\").",
-      "Leave **Lessons of a class per day**, **Early-warning list** and **Attendance values** as they are.",
-      "— Slide 15 —",
-      "Click **School setup**, then **Subjects**, then `Mathematics` (Matematika) in the list.",
-      "In the side panel, find **Daily distribution**. If it shows values, click **Change distribution** under it. If it says \"Not set\", click **Edit** at the foot of the panel: the subject form then asks for the daily parts.",
-      "Type `20` in **Attendance**, `40` in **Classwork** and `40` in **Homework** (\"Total 100 of 100.\"). Click **Save**.",
-      "In **Quarterly distribution**, under **Quarter 1**, click **Change distribution**. Type `20`, `40` and `40`, then click **Save**.",
-      "Click **Copy quarter 1 to the other quarters**. In the dialog, click **Copy quarter 1 to the other quarters**. Quarters 2–4 now show the same parts.",
-      "Off camera, do the same for every graded subject on sheet **1 Subjects**: all of them except School Counseling, which is Attendance only."
-    ],
-    "check": "Settings shows 1 under **Edit days**. Mathematics shows a daily distribution of 20/40/40 and quarters 1–4 set.",
-    "unsure": [
-      "The daily distribution is stored per branch. A subject the Super Admin created or edited in this branch in step 2.7 already has one, so use **Change distribution**. For the other subjects that were already there, the section says \"Not set\" with no button, and **Edit** is the way in.",
-      "Step 4.10 turns on the rating exam for Mathematics from quarter 2. After that, quarters 2–4 say \"The rating exam switch changed: set this quarter again\" and need a 4-part distribution with **Rating exam**. Plan to set them again in step 4.10.",
-      "The code does not refuse a distribution for quarter 1, which is already over. **Copy** needs quarter 1 to be set."
-    ]
-  },
-  "b14": {
-    "clicks": [
-      "In the left menu, click **People**, then **Vacancies**, then **Add vacancy**.",
-      "Type `Arab tili oʻqituvchisi` in **Name** and choose `Foreign languages` in **Department**.",
-      "Under **Subjects**, tick `Arabic`. Under **Grades of Arabic**, which then appears, tick **Grade 3**.",
-      "Under **Languages of instruction**, tick **Uzbek** and **Russian**. Click **Save**.",
-      "Click **Add vacancy** again. Type `AP Iqtisodiyot oʻqituvchisi` in **Name**, choose `General` in **Department**, tick `AP Economics` in **Subjects**, **Grade 11** in **Grades of AP Economics** and **Uzbek** in **Languages of instruction**. Click **Save**."
-    ],
-    "check": "Vacancies lists both, with status Open.",
-    "unsure": [
-      "The English screen shows English names: Xorijiy tillar is \"Foreign languages\", Umumiy fanlar is \"General\", Arab tili is \"Arabic\" and AP Iqtisodiyot is \"AP Economics\".",
-      "The form requires grades for each subject and at least one language, and the guide names neither. I took them from the lessons: grade 3 (groups Arab 3 Genius 2 and Arab 3 Indigo 2; 3 Indigo is Russian) and grade 11 (11 Princeton).",
-      "I left **Lessons per week by contract** and **Most lessons per day** empty."
-    ]
-  },
-  "b15": {
-    "clicks": [
-      "In the left menu, click **People**, then **Staff**, then `Rahimov Aziz`.",
-      "In the side panel, scroll to **Availability** and click **Change from a date**.",
-      "Leave **From** as offered (today).",
-      "Type `09:00–16:05` in **Monday**, **Tuesday**, **Wednesday**, **Thursday** and **Friday**. A plain hyphen works too. Click **Save**.",
-      "Off camera, do the same for every person on sheet **8 Working hours**: 52 people, Tutors included.",
-      "Off camera, give both vacancies the same hours too: **People** → **Vacancies** → the vacancy → **Availability** → **Change from a date**."
-    ],
-    "check": "Rahimov Aziz’s **Availability** shows a row from today with 09:00–16:05 on Monday to Friday.",
-    "unsure": [
-      "Vacancies have their own **Availability** section. The builder’s readiness check counts every teacher or vacancy with lessons, so the two vacancies probably need hours too. They are not on sheet 8.",
-      "A second change while one is in force starts tomorrow at the earliest. Enter each person once."
-    ]
-  },
-  "b16": {
-    "clicks": [
-      "In the left menu, click **Classes and subjects**. It opens **Classes**. Click **New class**.",
-      "Choose `2026–2027` in **Academic year** if the field is there, and `Grade 3` in **Grade**. Type `Genius` in **Name**, choose `Uzbek` in **Language of instruction** and `105` in **Main classroom**, and type `30` in **Max. students**. Click **Save**. The panel of 3 Genius opens.",
-      "In the panel, click **Give Class teacher**. Choose `Nurmatova Kamola` in **Person** and leave **From** at today. The preview says \"No dated lessons change.\" Click **Save**.",
-      "Off camera, create the other classes from sheet **4 Classes and Tutors**. Make 3 Indigo with **Language of instruction** `Russian`, room `212`, and Class teacher Ibragimova Ozoda. Also make 5 Tokyo (209), 5 London (204), 6 Imperial (207), 11 Princeton (407) and 11 Yale (408). Grades 5–11 use **Give Tutor** with the Tutor on the sheet.",
-      "On camera, create 5 Melbourne the same way: `Grade 5`, `Melbourne`, `Uzbek`, `208`, `30`. Click **Save**.",
-      "In its panel, click **Give Tutor**, choose `Rashidova Umida` in **Person** and click **Save**.",
-      "In the same panel, click **Set acting Tutor**. Choose `Komilov Sanjar` in **Person** (offered as \"Komilov Sanjar · 5 Tokyo\"), set **From** to Thursday of Week 1 and **Until** to Saturday of Week 1. Click **Save**."
-    ],
-    "check": "There are 8 classes. 3 Genius shows Class teacher Nurmatova Kamola. 5 Melbourne shows Tutor Rashidova Umida and a planned Acting Tutor, Komilov Sanjar.",
-    "unsure": [
-      "**Until** is the first day without the class (packages/shared classes.ts). For Thursday and Friday, Until must be Saturday (or Monday of Week 2). Friday would end it after Thursday.",
-      "Make 5 Tokyo before the acting Tutor, so that Komilov Sanjar already holds a class. The person list shows the classes a person holds.",
-      "A grade 0–4 class shows **Give Class teacher**; grades 5–11 show **Give Tutor**."
-    ]
-  },
-  "b17": {
-    "clicks": [
-      "In the left menu, click **People**, then **Students**, then **Import from Excel**.",
-      "Click **Upload the filled file** and choose `3 Oʻquvchilar importi - xatolar bilan.xlsx`.",
-      "**Rows of the file** says \"130 rows, 4 with problems.\", and the problem rows come first: row 22 IS26020 (contract number: \"fill this in.\"), row 42 IS26040 (\"no such class in the branch for the year of the start date.\"), and rows 62 IS26060 and 63 IS26061 (\"this phone is under another name on rows …\").",
-      "Show row 131, IS26901. Under **To decide** it says \"Rows 41 have this name and date of birth. Tick if these are different students.\" Do not tick it here.",
-      "Show the note \"Nothing is saved until every row is clean…\" where the save button would be.",
-      "Click **Upload the filled file** again and choose `4 Oʻquvchilar importi - toza.xlsx`. It says \"130 rows, 0 with problems.\"",
-      "On row 131 (IS26901), tick the box under **To decide**.",
-      "Click **Save all 130 students**. The page says \"130 students saved.\" Click **Open the student list**."
-    ],
-    "check": "The Students list holds 130 students. IS26902 Yoʻldosheva Samira has no class and shows \"Starts later\".",
-    "unsure": [
-      "The row numbers are Excel rows (data starts on row 3). I checked them by reading both files with the platform’s own reader.",
-      "IS26040’s wrong class is found by the server when it previews the file, not in the file itself.",
-      "Slide 18 also shows \"Relative N: link to …\". It will not appear: no phone in these files is held yet by a relative in the system."
-    ]
-  },
-  "b18": {
-    "clicks": [
-      "Switch to the Chrome profile **SA**.",
-      "In the top bar, choose `Istirohat demo` in **Branch**.",
-      "In the left menu, click **People**, then **Students**. Type `IS26901` in **Search** and click `Shodiyev Elbek`.",
-      "At the foot of the panel, click **Merge with another record**.",
-      "Type `IS26039` in **UID of the other record** and click **Show the merge**.",
-      "Read the preview. **Stays** should be \"Shodiyev Elbek · UID IS26039 · Istirohat demo\", and **Merged into it and removed** the record with UID IS26901. **Values that differ** shows the two contract numbers.",
-      "Type `Entered twice in the import` in **Reason** and click **Save**.",
-      "In the dialog **Merge these two records?**, click **Merge**.",
-      "Search `IS26039`. One Shodiyev Elbek in 5 Melbourne remains, with **Also UID** IS26901."
-    ],
-    "check": "Only one Shodiyev Elbek is left (5 Melbourne). Its record lists **Also UID** IS26901, and History has \"Merged with the record of UID …\".",
-    "unsure": [
-      "LOOK FIRST: the platform decides which record stays: the UID held first. Both records come from the same import, which has one moment, so the tie goes to the internal id order (apps/api student-merges.ts, keptOf). It can be IS26901 that stays. If **Stays** shows IS26901, every later line naming IS26039 then means IS26901. To be sure IS26039 stays, delete row 131 from file 4 before step 3.9, then add IS26901 by hand after the import (**Add student**, then \"This student may already exist\", then **Save anyway**).",
-      "The form button is **Save**; **Merge** is the button of the dialog that follows (the deck says \"Reason → Merge\")."
-    ]
-  },
-  "s3c": {
-    "clicks": [
-      "— Slide 19 —",
-      "In the left menu, click **People**, then **Students**.",
-      "Click **Filters** and show **Grade**, **Class** (its list ends with **No class**) and **Consent** (**Active, no consent**). Choose `5 Tokyo` in **Class**: 16 rows.",
-      "Click `Valiyeva Mohinur` on the row of UID `IS26052`. Another Valiyeva Mohinur is in 11 Yale, so check the UID.",
-      "In the side panel, film **Overview**: UID IS26052, Grade 5, class 5 Tokyo, groups Matematika 5B, Ingliz 5C and Jismoniy 5AB Qizlar, Tutor Komilov Sanjar.",
-      "Click the tabs **Relatives**, **Contract and scholarship** and **History** in turn. Point at **Correct the UID** and **Add photo** without using them.",
-      "— Slide 20 —",
-      "Back on **Relatives**, film the two parents: Valiyeva Umida Laziz qizi (Mother, Main contact, +998 93 200 06 33) and Valiyev Gʻayrat Komil oʻgʻli (Father). They are also the parents of her brother IS26003 Valiyev Kamron in 3 Genius.",
-      "Click the **Parents** tab of People and type `Valiyeva Umida` in **Search**. One row shows, with **Students** Valiyev Kamron and Valiyeva Mohinur.",
-      "Type `+998 93 202 55 31` in **Search**. One row shows: Shodiyeva Lobar Ulugʻbek qizi, mother of IS26121 Shodiyev Bekzod (11 Yale). This is the number the next relative brings.",
-      "Click the **Students** tab. Type `IS26057` in **Search** and click `Jalolov Bekzod` (5 Tokyo).",
-      "In the side panel, click the **Relatives** tab, then **Add a relative**.",
-      "Select all the text in **Main phone**, type `+998 93 202 55 31` and press Tab.",
-      "A field **Who is Shodiyeva Lobar Ulugʻbek qizi?** appears, set to **The same person: link them**, with the line \"Found: Shodiyeva Lobar Ulugʻbek qizi, linked to 1 student…\". Choose **A different person: the number has a new owner**.",
-      "Tick **The new phone of Shodiyeva Lobar Ulugʻbek qizi is unknown: no valid phone**.",
-      "Type `Jalolova Saodat Hamid qizi` in **Surname, name, patronymic**.",
-      "Choose **Grandmother** in **Relationship**. Leave **Main contact** unticked, and **Portal access** and **Receives notices** ticked.",
-      "Click **Save**. The tab now lists three relatives, among them Jalolova Saodat Hamid qizi, Grandmother, +998 93 202 55 31.",
-      "In the left menu, click **Home**. The tile **Parents with no valid phone** shows 1. Click its **Open the list**: Shodiyeva Lobar Ulugʻbek qizi, \"No valid phone\".",
-      "— Slide 21 —",
-      "In the left menu, click **People**, then **Students**. Type `IS26063` in **Search** and click `Valiyev Elbek` (5 Tokyo).",
-      "At the foot of the panel, click the red **Leave school** button.",
-      "Set **Last day at school** to Friday of Week 1 and type `Family moves to Samarqand` in **Reason**. Click **Save**.",
-      "In the dialog **Record that this student leaves?**, click **Leave school**.",
-      "On **Overview**, **Status** shows \"Leaves the school (last day …)\", and the panel now offers **Cancel the leaving**. Do not click it."
-    ],
-    "check": "IS26057 Jalolov Bekzod has three relatives, the new one being Jalolova Saodat Hamid qizi with +998 93 202 55 31. Home shows 1 parent with no valid phone (Shodiyeva Lobar Ulugʻbek qizi). IS26063 Valiyev Elbek is still Active, with a leaving planned for Friday of Week 1.",
-    "unsure": [
-      "The guide named nobody, so I chose: IS26052 for the record walk, IS26057 Jalolov Bekzod as the 5 Tokyo student, the phone of Shodiyeva Lobar Ulugʻbek qizi (mother of IS26121 Shodiyev Bekzod, 11 Yale), the invented grandmother Jalolova Saodat Hamid qizi, and IS26063 Valiyev Elbek as the leaver. Step 6.x (\"The 5 Tokyo student’s Leaves the school…\") must use IS26063. He is in Aziz Rahimov’s Matematika 5A, so after Friday that journal shows him as \"Left or moved\".",
-      "Ticking \"no valid phone\" makes the Home tile show 1 (slide 20). To give her a new number instead, leave the box unticked and fill **New phone of Shodiyeva Lobar Ulugʻbek qizi**.",
-      "Slide 20’s \"Give two siblings the same mother\" was already done by the import: IS26003 and IS26052 share both parents. It is shown here, not done.",
-      "**Results** and **Attendance** tabs appear only when the server has data for the student, so they may be missing before step 4.3.",
-      "Searching Parents by phone needs the right to see phones. The AVP has it (the e2e and parents-page use `searchesPhone`), but I did not try it on the test site.",
-      "If Week 1 is 9–13 November 2026 (quarter 2 starts on Monday 09.11.2026), Friday of Week 1 is 13.11.2026."
-    ]
-  },
-  "s3d": {
-    "clicks": [
-      "In the left menu, click **Home**.",
-      "Find the tile **Students with no class**. It shows 1.",
-      "Click its **Open the list**. The Students list with **No class** shows one row: IS26902 Yoʻldosheva Samira, \"Starts later\" (from 01.12.2026).",
-      "Say on camera that every other imported student already has the class named in the file. She is placed in 5 London on her first day (step 6.9)."
-    ],
-    "check": "The tile shows 1, and the list holds only IS26902 Yoʻldosheva Samira.",
-    "unsure": [
-      "The guide and slide 23 expect the tile to reach 0. The code also counts an active student before her start date (apps/api students.service.ts noClass; e2e people.spec.ts counts \"the one who starts later\"), so it shows 1 until IS26902 is placed."
-    ]
-  },
-  "b19": {
-    "clicks": [
-      "In the left menu, click **Classes and subjects**, then the **Groups** link, then **New group**.",
-      "Choose `Mathematics` in **Subject**. Under **Classes**, tick `5 Melbourne`, `5 Tokyo` and `5 London`. Type `Matematika 5A` in **Name** and `20` in **Max. students**. Click **Save**. The panel shows Kind \"Group across classes\".",
-      "Create `Matematika 5B` and `Matematika 5C` the same way.",
-      "On camera: click **New group**, choose `Physical education` in **Subject**, tick `5 Melbourne` and `5 Tokyo`, type `Jismoniy 5AB Bolalar` in **Name** and `20` in **Max. students**, and click **Save**. Create `Jismoniy 5AB Qizlar` the same way.",
-      "Off camera, create the other 17 groups from sheet **5 Groups**. The subjects show English names: English is Ingliz tili, Arabic is Arab tili, Finance is Moliya. For Ingliz 3-1, 3-2 and 3-3, tick 3 Genius and 3 Indigo, choose `Uzbek` in **Language of instruction**, click **Save**, and in **Mix Uzbek and Russian classes?** click **Save the group**. For Jismoniy 5D6D, ticking 5 London and 6 Imperial shows **Lesson slots of both grades**. The Arab groups take one class each. Moliya 11AB gets `35` in **Max. students**.",
-      "On the **Groups** page, click **Place students**. The page **Group placement** opens.",
-      "Choose `Mathematics` in **Subject** and `Grade 5` in **Grades**, and leave **Date** at today. The list shows the 48 grade-5 students.",
-      "Tick the 16 students of Matematika 5A from sheet **6 Group members**: every third UID, IS26033, IS26036, IS26039 … IS26078. Click **Put into Matematika 5A**, then **Put into Matematika 5A** in the dialog.",
-      "Do the same with **Put into Matematika 5B** (IS26034, IS26037 … IS26079) and **Put into Matematika 5C** (IS26035, IS26038 … IS26080) until it says \"Everyone is placed\".",
-      "Choose `Physical education` in **Subject**, with **Grades** `Grade 5`. Tick the boys of 5 Melbourne and 5 Tokyo (odd UIDs IS26033 to IS26063) and click **Put into Jismoniy 5AB Bolalar**, then **Put into Jismoniy 5AB Bolalar** in the dialog. Do the same for the girls (even UIDs IS26034 to IS26064) with **Put into Jismoniy 5AB Qizlar**.",
-      "Off camera, place the rest of sheet **6 Group members** the same way: English grades 5 and 3, Physical education grades 3 and 11, Arabic grade 3, Finance grade 11, and PE 5D6D with **Grades** `Grades 5 and 6`. Go on until each subject and grade says \"Everyone is placed\"."
-    ],
-    "check": "Groups lists 22 groups. Group placement says \"Everyone is placed\" for Mathematics, English, Physical education, Arabic and Finance in every grade they have. Matematika 5A has 16 students.",
-    "unsure": [
-      "Sheet 5 gives no **Max. students**. I used 20, and 35 for Moliya 11AB, which holds all 32 students of 11 Princeton and 11 Yale (the most allowed is 60).",
-      "Teacher and room from sheet 5 are not typed here. The teacher comes with the teaching load (step 4.1).",
-      "The language of the Ingliz 3-x groups is not on the sheets; I chose Uzbek.",
-      "The guide says \"Classes → Groups → New group\" and \"Place students → Group placement\". On screen it is **Classes and subjects**, then the **Groups** link, then **Place students** (page title \"Group placement\").",
-      "With **Grades** `Grade 5`, the PE list also shows the 5 London students. They can only go into the 5D6D groups, under **Grades** `Grades 5 and 6`.",
-      "The UID patterns come from the kit data (boys have odd UIDs, girls even ones). If the merge kept IS26901 (see 3.10), that UID shows in place of IS26039."
-    ]
-  },
-  "s3e": {
-    "clicks": [
-      "In the left menu, click **People**, then **Students**. Type `IS26037` in **Search** and click `Jalolov Yahyo` (5 Melbourne).",
-      "At the foot of the panel, click **Move to another class**.",
-      "Choose `5 Tokyo` in **New class** and set **First day there** to Wednesday of Week 1. Click **Save**.",
-      "The panel shows \"Moves to 5 Tokyo on …\" and the buttons **Change the move to 5 Tokyo** and **Cancel the move to 5 Tokyo**. Do not click them.",
-      "Type `IS26055` in **Search** and click `Sobirov Shohjahon` (5 Tokyo).",
-      "At the foot of the panel, click **Move to another group**.",
-      "Choose `Matematika 5B` in **Group** and `Matematika 5A` in **New group**, and set **First day there** to Wednesday of Week 1. Click **Save**.",
-      "The panel shows \"Moves to Matematika 5A on …\". Click the **History** tab: \"Moves from group Matematika 5B to group Matematika 5A\", Scheduled."
-    ],
-    "check": "IS26037 has a class move to 5 Tokyo planned, and IS26055 a group move to Matematika 5A, both from Wednesday of Week 1.",
-    "unsure": [
-      "I chose IS26037 Jalolov Yahyo: Matematika 5B, Ingliz 5C and Jismoniy 5AB Bolalar, and each of these groups also draws from 5 Tokyo. I also chose IS26055 Sobirov Shohjahon (5 Tokyo, Matematika 5B, moving to 5A, Aziz Rahimov’s group).",
-      "Slide 25 shows an English B → A move; the guide’s Matematika move is used instead.",
-      "**First day there** offers tomorrow by default; only the AVP or Super Admin may date a move in the past."
-    ]
-  },
-  "s3f": {
-    "clicks": [
-      "In the profile **AVP**: click **People**, then **Students**. Type `IS26077` in **Search** and click `Jalolov Ibrohim` (5 London).",
-      "At the foot of the panel, click **Move to another branch**.",
-      "Choose `Demo Yunusobod` in **Branch**. Set **First day there** to today, so the other branch can accept on camera now (see the first note). Click **Save**.",
-      "The panel shows \"Released to Demo Yunusobod from …\" and offers **Cancel the release**.",
-      "Switch to the Chrome profile **Yunusobod AVP** and sign in as the Demo Yunusobod AVP (login and password from the demo run’s Summary; set up or enter the second step if asked).",
-      "In the left menu, click **People**, then **Students**. The box **Released to this branch: 1 student** shows \"Jalolov Ibrohim · UID IS26077 · grade 5 · from Istirohat demo, first day …\".",
-      "Click **Accept**. Choose `5 Oxford` in **Class** (its free seats show). Leave every group subject at **Place automatically** and click **Save**.",
-      "In the dialog **Accept this student?**, click **Accept**. The page says \"Jalolov Ibrohim is in 5 Oxford now.\""
-    ],
-    "check": "In Demo Yunusobod, IS26077 Jalolov Ibrohim is in 5 Oxford. In Istirohat demo he is gone from 5 London from today, and his History shows the move.",
-    "unsure": [
-      "LOOK FIRST: **Accept** stays disabled until the first day (\"Can be accepted from …\"; the server allows it when today ≥ first day). With the guide’s Monday of Week 1, the second browser on Thursday can only show the waiting release, and the accept is filmed on Monday of Week 1. Releasing from today is allowed (the browser test does it) and lets both halves be filmed now.",
-      "The demo seed gives Demo Yunusobod two grade-5 classes: 5 Oxford and 5 Cambridge.",
-      "I chose IS26077 Jalolov Ibrohim (5 London; Matematika 5C, Ingliz 5A, Jismoniy 5D6D Bolalar). A release is refused while the student has a planned move, so do not use IS26037 or IS26055 (step 3.14).",
-      "The session header says \"step 3.13 in Yunusobod AVP\"; it should say step 3.15."
-    ]
-  }
+ "s3a": {
+  "clicks": [
+   "— Slide 6 —",
+   "Switch to the Chrome profile **Spare 1** and open the test site. Type Nodira’s login in **Login** and the password she chose in step 2.9 in **Password**. Leave **Trust this device** off and click **Sign in**.",
+   "On **Second step**, type the 6-digit code from the phone app in **Code** and click **Continue**.",
+   "Switch to the Chrome profile **AVP**. Click the avatar at the foot of the left menu, then **Account**.",
+   "In the **Sessions** section, click **Sign out everywhere**. In the dialog **Sign out everywhere?**, click **Sign out everywhere**.",
+   "Switch to **Spare 1** and click **Home** in the left menu. The sign-in page says \"Your session has ended. Sign in again.\" Leave Spare 1 on that page.",
+   "Back in **AVP**, click the sign-out icon at the foot of the left menu (**Sign out**).",
+   "On **Sign in**, type Nodira’s **Login** and **Password** and tick **Trust this device**. Film its note \"You stay signed in here for 7 days…\", then click **Sign in**.",
+   "On **Second step**, type the code in **Code** and click **Continue**.",
+   "— Slide 7 —",
+   "In **Spare 1**, which is still on the sign-in page, click **Forgot your password?**. Type Nodira’s login in **Login** and click **Send link**. Film the neutral answer \"If this login has an email address on record…\", then click **Back to sign-in**.",
+   "— Slide 8 —",
+   "In **AVP**, click the avatar, then **Account**. Scroll slowly past **Photo**, **Language**, **Password**, **Sessions**, **Sign-in history** (today’s events), **Trusted devices** (this browser, with **Trusted until**) and **Second step at sign-in**.",
+   "In **Language**, choose `Oʻzbekcha`, then choose `English` again.",
+   "Click the avatar and, under **Theme**, click **Dark**. Two seconds later, click the avatar again and choose **As the device**.",
+   "— Slide 9 —",
+   "Press **Ctrl+K** and type `Ra`. Rahimov Aziz, Rasulova Shahnoza and others appear under **Staff**. Press Esc.",
+   "In the top bar, click the **Notifications** bell. Open a notice if there is one, then click **Mark all as read**.",
+   "Press F12, then Ctrl+Shift+M, and set the width to `390`. The tab bar at the bottom ends with **More**: click **More**. Close DevTools."
+  ],
+  "check": "AVP is signed in on a trusted browser (**Account** → **Trusted devices** lists it), in English and with the device theme. Spare 1 is signed out.",
+  "unsure": [
+   "The order differs from the deck on purpose. **Sign out everywhere** also stops trusting this browser (\"This device is no longer trusted…\"), so it is filmed before the trusted sign-in.",
+   "**Sign out everywhere** needs a second signed-in browser. I used Spare 1, so Nodira’s phone code is needed twice.",
+   "A new AVP may have no notifications yet. If so, show the empty bell and skip **Mark all as read**.",
+   "I did not check the exact width at which the tab bar replaces the side menu. 390 px is a phone width."
+  ]
+ },
+ "s3b": {
+  "clicks": [
+   "In the left menu, click **School setup**, then **Academic years**.",
+   "Click the year `2026–2027` in the list. The side panel opens.",
+   "In the **Quarters** section, show the table: Quarter 1 02.09.2026–31.10.2026, Quarter 2 09.11.2026–26.12.2026, Quarter 3 11.01.2027–20.03.2027 and Quarter 4 30.03.2027–25.05.2027, with **Months**.",
+   "Click **Change quarters**. The fields **Quarter 1: start** to **Quarter 4: end** open.",
+   "Point at one field, for example **Quarter 3: end** (20.03.2027), then click **Cancel** so the demo dates stay as planned."
+  ],
+  "check": "The year panel still shows the four dated quarters, unchanged.",
+  "unsure": [
+   "The AVP may edit quarters (permission `quarters`: view and edit). If you change a date on camera, change it back the same way.",
+   "The preview \"What the new quarter dates change\" only matters once a timetable is published (after step 4.3).",
+   "I did not check whether quarter 1, which is already over, can still be edited. Use quarter 3 or 4 if you show a change."
+  ]
+ },
+ "b11": {
+  "clicks": [
+   "— Slide 12 —",
+   "In the left menu, click **School setup**, then **Slot types**.",
+   "Click **Add slot type**. Type `Lesson 40` in **Name**, choose **Lesson** in **Kind** and type `40` in **Length**. Click **Save**.",
+   "Click **Add slot type** three more times: `Break 15`, **Break**, `15`; then `Lunch 40`, **Break**, `40`; then `Juma 125`, **Break**, `125`. Click **Save** each time.",
+   "Click **School setup**, then **Day templates**, then **Add day template**.",
+   "Type `Asosiy 5-8` in **Name** and `09:00` in **Start time**.",
+   "In the slot list (**Choose what to add to Slots in order**), choose `Lesson 40 · Lesson` and click **Add**.",
+   "Keep adding in this order: Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lunch 40, Break 15, Lesson 40, Break 15, Lesson 40, Break 15, Lesson 40. That makes 15 slots, as on sheet **3 Day templates**.",
+   "Check the times the list works out (Lunch 40 12:40–13:20, last lesson 15:25–16:05) and click **Save**.",
+   "Add the other three templates the same way from sheet **3 Day templates**: `Boshlangʻich 1-4` (Lunch 40 after lesson 3, 11:45–12:25), `Yuqori 9-11` (Lunch 40 after lesson 5, 13:35–14:15) and `Juma 5-11` (four lessons with Break 15 between them, then Juma 125 from 12:25 to 14:30, then Lesson 40, Break 15, Lesson 40).",
+   "— Slide 13 —",
+   "Click **School setup**, then **Where templates apply**.",
+   "In the form **Set a template from a date**, choose `The whole branch (default)` in **Applies to** and `Asosiy 5-8` in **Day template**. Leave **From** at tomorrow and click **Save**.",
+   "In the dialog **The templates after this change**, which marks the changed cells, click **Save the change**.",
+   "Again: **Applies to** `A range of grades`, **From grade** `1`, **To grade** `4`, **Day template** `Boshlangʻich 1-4`. Click **Save**, then **Save the change**.",
+   "Again: **Applies to** `A range of grades`, **From grade** `9`, **To grade** `11`, **Day template** `Yuqori 9-11`. Click **Save**, then **Save the change**.",
+   "Again: **Applies to** `A weekday and a range of grades`, **Weekday** `Friday`, **From grade** `5`, **To grade** `11`, **Day template** `Juma 5-11`. Click **Save**, then **Save the change**.",
+   "Scroll to **Templates by weekday and grade**. If it shows \"No template\", set its **Date** to tomorrow or later. Film all four templates in the table."
+  ],
+  "check": "There are 4 slot types and 4 day templates. **Settings by level** lists 4 rows. For tomorrow the table shows Boshlangʻich 1-4 for grades 1–4, Asosiy 5-8 for grades 0 and 5–8, Yuqori 9-11 for grades 9–11, and Juma 5-11 on Friday for grades 5–11.",
+  "unsure": [
+   "The code has no rule against two breaks in a row. packages/shared day-templates only asks for 1–20 slots with at least one lesson. The 70-minute fallback should not be needed.",
+   "The deck calls the slot type \"Lunch\"; sheet 3 and the guide say `Lunch 40`. I used `Lunch 40`.",
+   "A template setting starts tomorrow at the earliest, so the table for today may still be empty."
+  ]
+ },
+ "b12": {
+  "clicks": [
+   "In the left menu, click **School setup**, then **Calendar**.",
+   "Click **Add entry**.",
+   "Leave **Kind** at **Day off**. Type `Konstitutsiya kuni` in **Name**, and `08.12.2026` in both **First date** and **Last date**. Leave **For** at **Whole branch**.",
+   "Click **Save**. The dialog **What this save changes** lists 08.12.2026 for every grade, before and after (\"No lessons: day off\").",
+   "Click **Save** in the dialog.",
+   "In **Check a date**, type `08.12.2026` in **Date**. Every grade shows \"No lessons: day off (Konstitutsiya kuni)\"."
+  ],
+  "check": "The calendar lists Konstitutsiya kuni, 08.12.2026, Whole branch.",
+  "unsure": [
+   "Slide 14 shows \"Mustaqillik kuni\" (1 September), which is in the past and can no longer be entered. Konstitutsiya kuni (a Tuesday in quarter 2) is right.",
+   "The working Saturday and the shortened day stay in step 4.7, as the guide says."
+  ]
+ },
+ "b13": {
+  "clicks": [
+   "— Slide 16 —",
+   "In the left menu, click **School setup**, then **Settings**.",
+   "In the **Edit days** form, type `1` in **Days a lesson stays open** and click **Save** (\"Saved.\").",
+   "Leave **Lessons of a class per day**, **Early-warning list** and **Attendance values** as they are.",
+   "— Slide 15 —",
+   "Click **School setup**, then **Subjects**, then `Mathematics` (Matematika) in the list.",
+   "In the side panel, find **Daily distribution**. If it shows values, click **Change distribution** under it. If it says \"Not set\", click **Edit** at the foot of the panel: the subject form then asks for the daily parts.",
+   "Type `20` in **Attendance**, `40` in **Classwork** and `40` in **Homework** (\"Total 100 of 100.\"). Click **Save**.",
+   "In **Quarterly distribution**, under **Quarter 1**, click **Change distribution**. Type `20`, `40` and `40`, then click **Save**.",
+   "Click **Copy quarter 1 to the other quarters**. In the dialog, click **Copy quarter 1 to the other quarters**. Quarters 2–4 now show the same parts.",
+   "Off camera, do the same for every graded subject on sheet **1 Subjects**: all of them except School Counseling, which is Attendance only.",
+   "Faster for the other subjects (off camera, once the teaching load exists): paste `fill-weights.js` (kit) into the **Console** of the **AVP** window (`F12`). It fills every missing daily distribution (20 / 40 / 40) and quarter distribution of the subjects in the teaching load, and changes nothing already set."
+  ],
+  "check": "Settings shows 1 under **Edit days**. Mathematics shows a daily distribution of 20/40/40 and quarters 1–4 set.",
+  "unsure": [
+   "The daily distribution is stored per branch. A subject the Super Admin created or edited in this branch in step 2.7 already has one, so use **Change distribution**. For the other subjects that were already there, the section says \"Not set\" with no button, and **Edit** is the way in.",
+   "Step 4.10 turns on the rating exam for Mathematics from quarter 2. After that, quarters 2–4 say \"The rating exam switch changed: set this quarter again\" and need a 4-part distribution with **Rating exam**. Plan to set them again in step 4.10.",
+   "The code does not refuse a distribution for quarter 1, which is already over. **Copy** needs quarter 1 to be set."
+  ]
+ },
+ "b14": {
+  "clicks": [
+   "In the left menu, click **People**, then **Vacancies**, then **Add vacancy**.",
+   "Type `Arab tili oʻqituvchisi` in **Name** and choose `Foreign languages` in **Department**.",
+   "Under **Subjects**, tick `Arabic`. Under **Grades of Arabic**, which then appears, tick **Grade 3**.",
+   "Under **Languages of instruction**, tick **Uzbek** and **Russian**. Click **Save**.",
+   "Click **Add vacancy** again. Type `AP Iqtisodiyot oʻqituvchisi` in **Name**, choose `General` in **Department**, tick `AP Economics` in **Subjects**, **Grade 11** in **Grades of AP Economics** and **Uzbek** in **Languages of instruction**. Click **Save**."
+  ],
+  "check": "Vacancies lists both, with status Open.",
+  "unsure": [
+   "The English screen shows English names: Xorijiy tillar is \"Foreign languages\", Umumiy fanlar is \"General\", Arab tili is \"Arabic\" and AP Iqtisodiyot is \"AP Economics\".",
+   "The form requires grades for each subject and at least one language, and the guide names neither. I took them from the lessons: grade 3 (groups Arab 3 Genius 2 and Arab 3 Indigo 2; 3 Indigo is Russian) and grade 11 (11 Princeton).",
+   "I left **Lessons per week by contract** and **Most lessons per day** empty."
+  ]
+ },
+ "b15": {
+  "clicks": [
+   "In the left menu, click **People**, then **Staff**, then `Rahimov Aziz`.",
+   "In the side panel, scroll to **Availability** and click **Change from a date**.",
+   "Leave **From** as offered (today).",
+   "Type `09:00–16:05` in **Monday**, **Tuesday**, **Wednesday**, **Thursday** and **Friday**. A plain hyphen works too. Click **Save**.",
+   "Off camera, do the same for every person on sheet **8 Working hours**: 52 people, Tutors included.",
+   "Off camera, give both vacancies the same hours too: **People** → **Vacancies** → the vacancy → **Availability** → **Change from a date**."
+  ],
+  "check": "Rahimov Aziz’s **Availability** shows a row from today with 09:00–16:05 on Monday to Friday.",
+  "unsure": [
+   "Vacancies have their own **Availability** section. The builder’s readiness check counts every teacher or vacancy with lessons, so the two vacancies probably need hours too. They are not on sheet 8.",
+   "A second change while one is in force starts tomorrow at the earliest. Enter each person once."
+  ]
+ },
+ "b16": {
+  "clicks": [
+   "In the left menu, click **Classes and subjects**. It opens **Classes**. Click **New class**.",
+   "Choose `2026–2027` in **Academic year** if the field is there, and `Grade 3` in **Grade**. Type `Genius` in **Name**, choose `Uzbek` in **Language of instruction** and `105` in **Main classroom**, and type `30` in **Max. students**. Click **Save**. The panel of 3 Genius opens.",
+   "In the panel, click **Give Class teacher**. Choose `Nurmatova Kamola` in **Person** and leave **From** at today. The preview says \"No dated lessons change.\" Click **Save**.",
+   "Off camera, create the other classes from sheet **4 Classes and Tutors**. Make 3 Indigo with **Language of instruction** `Russian`, room `212`, and Class teacher Ibragimova Ozoda. Also make 5 Tokyo (209), 5 London (204), 6 Imperial (207), 11 Princeton (407) and 11 Yale (408). Grades 5–11 use **Give Tutor** with the Tutor on the sheet.",
+   "On camera, create 5 Melbourne the same way: `Grade 5`, `Melbourne`, `Uzbek`, `208`, `30`. Click **Save**.",
+   "In its panel, click **Give Tutor**, choose `Rashidova Umida` in **Person** and click **Save**.",
+   "In the same panel, click **Set acting Tutor**. Choose `Komilov Sanjar` in **Person** (offered as \"Komilov Sanjar · 5 Tokyo\"), set **From** to Thursday of Week 1 and **Until** to Saturday of Week 1. Click **Save**."
+  ],
+  "check": "There are 8 classes. 3 Genius shows Class teacher Nurmatova Kamola. 5 Melbourne shows Tutor Rashidova Umida and a planned Acting Tutor, Komilov Sanjar.",
+  "unsure": [
+   "**Until** is the first day without the class (packages/shared classes.ts). For Thursday and Friday, Until must be Saturday (or Monday of Week 2). Friday would end it after Thursday.",
+   "Make 5 Tokyo before the acting Tutor, so that Komilov Sanjar already holds a class. The person list shows the classes a person holds.",
+   "A grade 0–4 class shows **Give Class teacher**; grades 5–11 show **Give Tutor**."
+  ]
+ },
+ "b17": {
+  "clicks": [
+   "In the left menu, click **People**, then **Students**, then **Import from Excel**.",
+   "Click **Upload the filled file** and choose `3 Oʻquvchilar importi - xatolar bilan.xlsx`.",
+   "**Rows of the file** says \"130 rows, 4 with problems.\", and the problem rows come first: row 22 IS26020 (contract number: \"fill this in.\"), row 42 IS26040 (\"no such class in the branch for the year of the start date.\"), and rows 62 IS26060 and 63 IS26061 (\"this phone is under another name on rows …\").",
+   "Show row 131, IS26901. Under **To decide** it says \"Rows 41 have this name and date of birth. Tick if these are different students.\" Do not tick it here.",
+   "Show the note \"Nothing is saved until every row is clean…\" where the save button would be.",
+   "Click **Upload the filled file** again and choose `4 Oʻquvchilar importi - toza.xlsx`. It says \"130 rows, 0 with problems.\"",
+   "On row 131 (IS26901), tick the box under **To decide**.",
+   "Click **Save all 130 students**. The page says \"130 students saved.\" Click **Open the student list**."
+  ],
+  "check": "The Students list holds 130 students. IS26902 Yoʻldosheva Samira has no class and shows \"Starts later\".",
+  "unsure": [
+   "The row numbers are Excel rows (data starts on row 3). I checked them by reading both files with the platform’s own reader.",
+   "IS26040’s wrong class is found by the server when it previews the file, not in the file itself.",
+   "Slide 18 also shows \"Relative N: link to …\". It will not appear: no phone in these files is held yet by a relative in the system."
+  ]
+ },
+ "b18": {
+  "clicks": [
+   "Switch to the Chrome profile **SA**.",
+   "In the top bar, choose `Istirohat demo` in **Branch**.",
+   "In the left menu, click **People**, then **Students**. Type `IS26901` in **Search** and click `Shodiyev Elbek`.",
+   "At the foot of the panel, click **Merge with another record**.",
+   "Type `IS26039` in **UID of the other record** and click **Show the merge**.",
+   "Read the preview. **Stays** should be \"Shodiyev Elbek · UID IS26039 · Istirohat demo\", and **Merged into it and removed** the record with UID IS26901. **Values that differ** shows the two contract numbers.",
+   "Type `Entered twice in the import` in **Reason** and click **Save**.",
+   "In the dialog **Merge these two records?**, click **Merge**.",
+   "Search `IS26039`. One Shodiyev Elbek in 5 Melbourne remains, with **Also UID** IS26901."
+  ],
+  "check": "Only one Shodiyev Elbek is left (5 Melbourne). Its record lists **Also UID** IS26901, and History has \"Merged with the record of UID …\".",
+  "unsure": [
+   "LOOK FIRST: the platform decides which record stays: the UID held first. Both records come from the same import, which has one moment, so the tie goes to the internal id order (apps/api student-merges.ts, keptOf). It can be IS26901 that stays. If **Stays** shows IS26901, every later line naming IS26039 then means IS26901. To be sure IS26039 stays, delete row 131 from file 4 before step 3.9, then add IS26901 by hand after the import (**Add student**, then \"This student may already exist\", then **Save anyway**).",
+   "The form button is **Save**; **Merge** is the button of the dialog that follows (the deck says \"Reason → Merge\")."
+  ]
+ },
+ "s3c": {
+  "clicks": [
+   "— Slide 19 —",
+   "In the left menu, click **People**, then **Students**.",
+   "Click **Filters** and show **Grade**, **Class** (its list ends with **No class**) and **Consent** (**Active, no consent**). Choose `5 Tokyo` in **Class**: 16 rows.",
+   "Click `Valiyeva Mohinur` on the row of UID `IS26052`. Another Valiyeva Mohinur is in 11 Yale, so check the UID.",
+   "In the side panel, film **Overview**: UID IS26052, Grade 5, class 5 Tokyo, groups Matematika 5B, Ingliz 5C and Jismoniy 5AB Qizlar, Tutor Komilov Sanjar.",
+   "Click the tabs **Relatives**, **Contract and scholarship** and **History** in turn. Point at **Correct the UID** and **Add photo** without using them.",
+   "— Slide 20 —",
+   "Back on **Relatives**, film the two parents: Valiyeva Umida Laziz qizi (Mother, Main contact, +998 93 200 06 33) and Valiyev Gʻayrat Komil oʻgʻli (Father). They are also the parents of her brother IS26003 Valiyev Kamron in 3 Genius.",
+   "Click the **Parents** tab of People and type `Valiyeva Umida` in **Search**. One row shows, with **Students** Valiyev Kamron and Valiyeva Mohinur.",
+   "Type `+998 93 202 55 31` in **Search**. One row shows: Shodiyeva Lobar Ulugʻbek qizi, mother of IS26121 Shodiyev Bekzod (11 Yale). This is the number the next relative brings.",
+   "Click the **Students** tab. Type `IS26057` in **Search** and click `Jalolov Bekzod` (5 Tokyo).",
+   "In the side panel, click the **Relatives** tab, then **Add a relative**.",
+   "Select all the text in **Main phone**, type `+998 93 202 55 31` and press Tab.",
+   "A field **Who is Shodiyeva Lobar Ulugʻbek qizi?** appears, set to **The same person: link them**, with the line \"Found: Shodiyeva Lobar Ulugʻbek qizi, linked to 1 student…\". Choose **A different person: the number has a new owner**.",
+   "Tick **The new phone of Shodiyeva Lobar Ulugʻbek qizi is unknown: no valid phone**.",
+   "Type `Jalolova Saodat Hamid qizi` in **Surname, name, patronymic**.",
+   "Choose **Grandmother** in **Relationship**. Leave **Main contact** unticked, and **Portal access** and **Receives notices** ticked.",
+   "Click **Save**. The tab now lists three relatives, among them Jalolova Saodat Hamid qizi, Grandmother, +998 93 202 55 31.",
+   "In the left menu, click **Home**. The tile **Parents with no valid phone** shows 1. Click its **Open the list**: Shodiyeva Lobar Ulugʻbek qizi, \"No valid phone\".",
+   "— Slide 21 —",
+   "In the left menu, click **People**, then **Students**. Type `IS26063` in **Search** and click `Valiyev Elbek` (5 Tokyo).",
+   "At the foot of the panel, click the red **Leave school** button.",
+   "Set **Last day at school** to Friday of Week 1 and type `Family moves to Samarqand` in **Reason**. Click **Save**.",
+   "In the dialog **Record that this student leaves?**, click **Leave school**.",
+   "On **Overview**, **Status** shows \"Leaves the school (last day …)\", and the panel now offers **Cancel the leaving**. Do not click it."
+  ],
+  "check": "IS26057 Jalolov Bekzod has three relatives, the new one being Jalolova Saodat Hamid qizi with +998 93 202 55 31. Home shows 1 parent with no valid phone (Shodiyeva Lobar Ulugʻbek qizi). IS26063 Valiyev Elbek is still Active, with a leaving planned for Friday of Week 1.",
+  "unsure": [
+   "The guide named nobody, so I chose: IS26052 for the record walk, IS26057 Jalolov Bekzod as the 5 Tokyo student, the phone of Shodiyeva Lobar Ulugʻbek qizi (mother of IS26121 Shodiyev Bekzod, 11 Yale), the invented grandmother Jalolova Saodat Hamid qizi, and IS26063 Valiyev Elbek as the leaver. Step 6.x (\"The 5 Tokyo student’s Leaves the school…\") must use IS26063. He is in Aziz Rahimov’s Matematika 5A, so after Friday that journal shows him as \"Left or moved\".",
+   "Ticking \"no valid phone\" makes the Home tile show 1 (slide 20). To give her a new number instead, leave the box unticked and fill **New phone of Shodiyeva Lobar Ulugʻbek qizi**.",
+   "Slide 20’s \"Give two siblings the same mother\" was already done by the import: IS26003 and IS26052 share both parents. It is shown here, not done.",
+   "**Results** and **Attendance** tabs appear only when the server has data for the student, so they may be missing before step 4.3.",
+   "Searching Parents by phone needs the right to see phones. The AVP has it (the e2e and parents-page use `searchesPhone`), but I did not try it on the test site.",
+   "If Week 1 is 9–13 November 2026 (quarter 2 starts on Monday 09.11.2026), Friday of Week 1 is 13.11.2026."
+  ]
+ },
+ "s3d": {
+  "clicks": [
+   "In the left menu, click **Home**.",
+   "Find the tile **Students with no class**. It shows 1.",
+   "Click its **Open the list**. The Students list with **No class** shows one row: IS26902 Yoʻldosheva Samira, \"Starts later\" (from 01.12.2026).",
+   "Say on camera that every other imported student already has the class named in the file. She is placed in 5 London on her first day (step 6.9)."
+  ],
+  "check": "The tile shows 1, and the list holds only IS26902 Yoʻldosheva Samira.",
+  "unsure": [
+   "The guide and slide 23 expect the tile to reach 0. The code also counts an active student before her start date (apps/api students.service.ts noClass; e2e people.spec.ts counts \"the one who starts later\"), so it shows 1 until IS26902 is placed."
+  ]
+ },
+ "b19": {
+  "clicks": [
+   "In the left menu, click **Classes and subjects**, then the **Groups** link, then **New group**.",
+   "Choose `Mathematics` in **Subject**. Under **Classes**, tick `5 Melbourne`, `5 Tokyo` and `5 London`. Type `Matematika 5A` in **Name** and `20` in **Max. students**. Click **Save**. The panel shows Kind \"Group across classes\".",
+   "Create `Matematika 5B` and `Matematika 5C` the same way.",
+   "On camera: click **New group**, choose `Physical education` in **Subject**, tick `5 Melbourne` and `5 Tokyo`, type `Jismoniy 5AB Bolalar` in **Name** and `20` in **Max. students**, and click **Save**. Create `Jismoniy 5AB Qizlar` the same way.",
+   "Off camera, create the other 17 groups from sheet **5 Groups**. The subjects show English names: English is Ingliz tili, Arabic is Arab tili, Finance is Moliya. For Ingliz 3-1, 3-2 and 3-3, tick 3 Genius and 3 Indigo, choose `Uzbek` in **Language of instruction**, click **Save**, and in **Mix Uzbek and Russian classes?** click **Save the group**. For Jismoniy 5D6D, ticking 5 London and 6 Imperial shows **Lesson slots of both grades**. The Arab groups take one class each. Moliya 11AB gets `35` in **Max. students**.",
+   "On the **Groups** page, click **Place students**. The page **Group placement** opens.",
+   "Choose `Mathematics` in **Subject** and `Grade 5` in **Grades**, and leave **Date** at today. The list shows the 48 grade-5 students.",
+   "Tick the 16 students of Matematika 5A from sheet **6 Group members**: every third UID, IS26033, IS26036, IS26039 … IS26078. Click **Put into Matematika 5A**, then **Put into Matematika 5A** in the dialog.",
+   "Do the same with **Put into Matematika 5B** (IS26034, IS26037 … IS26079) and **Put into Matematika 5C** (IS26035, IS26038 … IS26080) until it says \"Everyone is placed\".",
+   "Choose `Physical education` in **Subject**, with **Grades** `Grade 5`. Tick the boys of 5 Melbourne and 5 Tokyo (odd UIDs IS26033 to IS26063) and click **Put into Jismoniy 5AB Bolalar**, then **Put into Jismoniy 5AB Bolalar** in the dialog. Do the same for the girls (even UIDs IS26034 to IS26064) with **Put into Jismoniy 5AB Qizlar**.",
+   "Off camera, place the rest of sheet **6 Group members** the same way: English grades 5 and 3, Physical education grades 3 and 11, Arabic grade 3, Finance grade 11, and PE 5D6D with **Grades** `Grades 5 and 6`. Go on until each subject and grade says \"Everyone is placed\"."
+  ],
+  "check": "Groups lists 22 groups. Group placement says \"Everyone is placed\" for Mathematics, English, Physical education, Arabic and Finance in every grade they have. Matematika 5A has 16 students.",
+  "unsure": [
+   "Sheet 5 gives no **Max. students**. I used 20, and 35 for Moliya 11AB, which holds all 32 students of 11 Princeton and 11 Yale (the most allowed is 60).",
+   "Teacher and room from sheet 5 are not typed here. The teacher comes with the teaching load (step 4.1).",
+   "The language of the Ingliz 3-x groups is not on the sheets; I chose Uzbek.",
+   "The guide says \"Classes → Groups → New group\" and \"Place students → Group placement\". On screen it is **Classes and subjects**, then the **Groups** link, then **Place students** (page title \"Group placement\").",
+   "With **Grades** `Grade 5`, the PE list also shows the 5 London students. They can only go into the 5D6D groups, under **Grades** `Grades 5 and 6`.",
+   "The UID patterns come from the kit data (boys have odd UIDs, girls even ones). If the merge kept IS26901 (see 3.10), that UID shows in place of IS26039."
+  ]
+ },
+ "s3e": {
+  "clicks": [
+   "In the left menu, click **People**, then **Students**. Type `IS26037` in **Search** and click `Jalolov Yahyo` (5 Melbourne).",
+   "At the foot of the panel, click **Move to another class**.",
+   "Choose `5 Tokyo` in **New class** and set **First day there** to Wednesday of Week 1. Click **Save**.",
+   "The panel shows \"Moves to 5 Tokyo on …\" and the buttons **Change the move to 5 Tokyo** and **Cancel the move to 5 Tokyo**. Do not click them.",
+   "Type `IS26055` in **Search** and click `Sobirov Shohjahon` (5 Tokyo).",
+   "At the foot of the panel, click **Move to another group**.",
+   "Choose `Matematika 5B` in **Group** and `Matematika 5A` in **New group**, and set **First day there** to Wednesday of Week 1. Click **Save**.",
+   "The panel shows \"Moves to Matematika 5A on …\". Click the **History** tab: \"Moves from group Matematika 5B to group Matematika 5A\", Scheduled."
+  ],
+  "check": "IS26037 has a class move to 5 Tokyo planned, and IS26055 a group move to Matematika 5A, both from Wednesday of Week 1.",
+  "unsure": [
+   "I chose IS26037 Jalolov Yahyo: Matematika 5B, Ingliz 5C and Jismoniy 5AB Bolalar, and each of these groups also draws from 5 Tokyo. I also chose IS26055 Sobirov Shohjahon (5 Tokyo, Matematika 5B, moving to 5A, Aziz Rahimov’s group).",
+   "Slide 25 shows an English B → A move; the guide’s Matematika move is used instead.",
+   "**First day there** offers tomorrow by default; only the AVP or Super Admin may date a move in the past."
+  ]
+ },
+ "s3f": {
+  "clicks": [
+   "In the profile **AVP**: click **People**, then **Students**. Type `IS26077` in **Search** and click `Jalolov Ibrohim` (5 London).",
+   "At the foot of the panel, click **Move to another branch**.",
+   "Choose `Demo Yunusobod` in **Branch**. Set **First day there** to today, so the other branch can accept on camera now (see the first note). Click **Save**.",
+   "The panel shows \"Released to Demo Yunusobod from …\" and offers **Cancel the release**.",
+   "Switch to the Chrome profile **Yunusobod AVP** and sign in as the Demo Yunusobod AVP (login and password from the demo run’s Summary; set up or enter the second step if asked).",
+   "In the left menu, click **People**, then **Students**. The box **Released to this branch: 1 student** shows \"Jalolov Ibrohim · UID IS26077 · grade 5 · from Istirohat demo, first day …\".",
+   "Click **Accept**. Choose `5 Oxford` in **Class** (its free seats show). Leave every group subject at **Place automatically** and click **Save**.",
+   "In the dialog **Accept this student?**, click **Accept**. The page says \"Jalolov Ibrohim is in 5 Oxford now.\""
+  ],
+  "check": "In Demo Yunusobod, IS26077 Jalolov Ibrohim is in 5 Oxford. In Istirohat demo he is gone from 5 London from today, and his History shows the move.",
+  "unsure": [
+   "LOOK FIRST: **Accept** stays disabled until the first day (\"Can be accepted from …\"; the server allows it when today ≥ first day). With the guide’s Monday of Week 1, the second browser on Thursday can only show the waiting release, and the accept is filmed on Monday of Week 1. Releasing from today is allowed (the browser test does it) and lets both halves be filmed now.",
+   "The demo seed gives Demo Yunusobod two grade-5 classes: 5 Oxford and 5 Cambridge.",
+   "I chose IS26077 Jalolov Ibrohim (5 London; Matematika 5C, Ingliz 5A, Jismoniy 5D6D Bolalar). A release is refused while the student has a planned move, so do not use IS26037 or IS26055 (step 3.14).",
+   "The session header says \"step 3.13 in Yunusobod AVP\"; it should say step 3.15."
+  ]
+ }
 }
