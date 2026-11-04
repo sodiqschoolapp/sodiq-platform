@@ -1,204 +1,206 @@
 {
-  "b20": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 28 —",
-      "Left menu: click **Timetable**, then the link **Teaching load**.",
-      "Click **New draft** (top right).",
-      "In the form **New draft** leave **Academic year** as it is and leave **Start date** on next Monday (the Monday of Week 1; the shortcut under it reads **Quarter 2: …**).",
-      "**Start from**: choose `Empty`.",
-      "Click **Save**. The **Version** field now reads `Version 1, <year>: Draft`.",
-      "Click **Add row** (top right). The side panel **New row** opens.",
-      "**Class or group**: `Matematika 5A` · **Subject**: `Mathematics` · **Teacher**: `Rahimov Aziz` · **Lessons per week**: `6` · **Room**: `208` · tick **Double lessons allowed** · click **Save**.",
-      "**Add row** again: `Matematika 5B` · `Mathematics` · `Qodirov Bahodir` · `6` · `209` · **Double lessons allowed** ticked · **Save**. Then `Matematika 5C` · `Mathematics` · `Qurbonov Sherzod` · `6` · `204` · double · **Save**. Point at the **Block** column: the three groups show as one block by themselves.",
-      "Same way, the other grade-5 groups (all double, 6 a week for English, 4 for PE): `Ingliz 5A` · `English` · `Ergasheva Madina` · `208`; `Ingliz 5B` · `Rasulova Shahnoza` · `209`; `Ingliz 5C` · `Aminova Nigora` · `204`; `Jismoniy 5AB Bolalar` · `Physical education` · `Xolmatov Sardor` · `4` · `Sport zal 2`; `Jismoniy 5AB Qizlar` · `Qosimova Zarina` · `4` · `Sport zal 2` (Boys + Girls become one Block).",
-      "**Add row**: **Class or group** `5 Melbourne` · **Subject** `Future hour`. Instead of a Teacher field the form says “Teacher: Rashidova Umida, the class's Tutor. It changes with the Tutor.” **Lessons per week** `1` · **Room** `No special room` · **Save**.",
-      "The other 5 Melbourne rows, each **Add row** → `5 Melbourne` → subject → teacher → lessons → **Room** `No special room` → **Save**: `Arabic` Saidova Nilufar `2`; `Informatics` Sobirova Lola `1`; `Native language and literature` Hamidova Feruza `4` (tick **Double lessons allowed**); `Project-based learning` Karimova Malika `1`; `Robotics` Karimov Jasur `2`; `Russian` Tursunova Gulnora `1`; `Science` Aliyev Bekzod `2`; `Upbringing` Normatov Otabek `1`; `History` Nazarova Dilfuza `2`; `Art` Mirzayeva Dilnoza `1`. 5 Melbourne now has 34 lessons.",
-      "Off camera: every other row of sheet `7 Teaching load` (112 rows in all), one **Add row** each. Room empty on the sheet = `No special room`; “(fills itself: …)” = pick only class and subject (Future hour / Homework); “Vacancy: Arab tili” = **Teacher** `Arab tili oʻqituvchisi (vacancy)`; the 11 Princeton AP Economics row = `AP Iqtisodiyot oʻqituvchisi (vacancy)`.",
-      "Prop: left menu **People** → **Staff** → click `Ahmedov Javlon` → in the **Record** section click **Edit** → **Lessons per week by contract**: `4` → **Save**.",
-      "Back to **Timetable** → **Teaching load**, scroll down to **Weekly totals** → **Teachers**: the row `Ahmedov Javlon`."
-    ],
-    "check": "Teaching load lists 112 rows, the Block column groups Matematika 5A/5B/5C, Ingliz 5A/5B/5C and each Boys+Girls PE pair; Weekly totals → Classes shows 5 Melbourne `34` lessons against its lesson slots; Weekly totals → Teachers shows Ahmedov Javlon with Total `6` and “Over by 2”, Contract load `4`.",
-    "unsure": [
-      "The English UI shows subjects by their English names (Matematika = Mathematics, Kelajak soati = Future hour, Ona tili va adabiyot = Native language and literature, Tarbiya = Upbringing, PBL = Project-based learning, AP Matematika = AP Math …); the sheet uses Uzbek names.",
-      "Group rows of one subject do NOT create each other: each group is its own **Add row** (one row per group); the platform only joins them in the **Block** column.",
-      "The Teacher field may be pre-filled with the group's teacher; check it matches the sheet before Save.",
-      "The Ahmedov contract field is on the staff record (People → Staff), not on the teaching load page; the guide does not say where."
-    ]
-  },
-  "b21": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 29 —",
-      "Left menu **Timetable** → **Draft builder**. The **Version** field shows `Version 1, …: Draft`.",
-      "Step **1. Period and day templates**: check the table has no “cells have no day template” line, then click **Confirm the templates** → the mark reads **Confirmed**.",
-      "Click **2. Teaching load**: it reads “112 rows in the teaching load.” and lists no **Rows with a problem**.",
-      "Click **3. Teachers**: no teacher shows **No hours set**. Click **4. Rooms**: “Every room need is met.”",
-      "Click **5. Rules**. Leave the **Weights of the preferences** as they are. Under **Pin a lesson**: **Lesson** `5 Melbourne, Future hour` · **Day** `Tuesday` · **Slot** the option ending in `13:35–14:15` · click **Save**.",
-      "Click **Confirm the rules** → **Confirmed**. The top line reads “Ready for generation”; **6. Generate** shows “Not yet available”.",
-      "— Slide 30 — Click **7. Edit in the grid**. **View**: `By class` · **Class**: `5 Melbourne`.",
-      "In the Monday cell `09:00–09:40` click **Add a lesson**. In the form “Lesson for Monday, 09:00–09:40”: **Lesson** `Mathematics, Matematika 5A: 0 of 6 lessons placed` · leave **Room** on `The room of its row` · tick **Double lesson** · click **Save**. Monday 09:00 and 09:55 now hold Matematika 5A (208), 5B (209) and 5C (204) at once.",
-      "Show the drag: in the side panel **To place** tick **Double lesson** on the Mathematics entry, press on the entry and drag it over Monday `09:00–09:40`: the cell shows **Blocked** and “Blocked by: …” with the rule (for example “A teacher cannot be in two lessons at the same time.”); drop it on Thursday `09:00–09:40` instead (Free).",
-      "Place the PE block the same way: **Add a lesson** on Tuesday `14:30–15:10` → `Physical education, Jismoniy 5AB Bolalar…` → **Double lesson** → **Save**: Boys and Girls both in Sport zal 2.",
-      "Off camera: the rest of 5 Melbourne, 5 Tokyo and 5 London exactly as sheets `T 5 Melbourne`, `T 5 Tokyo`, `T 5 London` show (a “(double)” cell = tick **Double lesson** and place on its first time).",
-      "Special moments: **Class** `5 London` → Monday `10:50–11:30` **Add a lesson** → `Physical education, Jismoniy 5D6D Bolalar…` → **Double lesson** → **Save** (the 5D+6D block, also on the 6 Imperial board). **Class** `11 Princeton` → Tuesday `11:45–12:25` → `Finance, Moliya 11AB…` → **Double lesson** → **Save**; the **Conflicts** panel shows a **Warning** “32 students, room for 30.” **Class** `3 Genius` → Monday `13:35–14:15` → `Arabic, Arab 3 Genius 1…` → **Save**: both halves (105 and 102) at once. On the 11 Princeton board point out there is no cell at `13:35–14:15`: the 11th-grade lunch.",
-      "Off camera: the other classes from their `T <class>` sheets until **To place** reads “Every lesson of the load is placed.”",
-      "— Slide 31 — Chrome profile **SA**: **Timetable** → **Draft builder** → **7. Edit in the grid**. The banner reads “Fayzullayeva Nodira is editing this draft (last active …). You can take over after 5 minutes without activity.” Do not touch the AVP window for 5 minutes, then click **Take over** in SA. Close the SA tab.",
-      "Back in **AVP**: after 5 more minutes click **Take over** on the AVP banner to get the draft back.",
-      "Practice draft (AVP): **Timetable** → **Teaching load** → **New draft** → **Start from** `Copy of version 1` → click the shortcut **Quarter 3: …** → **Save** (Version 2, Draft).",
-      "Click the row `Arab 3 Genius 1` → side panel → **Edit** → tick **Mixed block (the halves meet in different slots)** → **Save**. Same for `Arab 3 Genius 2`.",
-      "**Draft builder** → **Version** `Version 2` → **7. Edit in the grid** → **Class** `3 Genius`: show the Arabic tiles and the **To place** entries of the halves with **Paired with** (`The whole split`). Leave this draft as it is."
-    ],
-    "check": "Version 1: steps 1 to 5 show Ready/Confirmed, step 7 shows the eight boards matching the T sheets with “Every lesson of the load is placed.” and only warnings (Moliya capacity) in Conflicts; Version 2 exists as a practice draft.",
-    "unsure": [
-      "Placing in code: three ways, all equal: **Add a lesson** in an empty cell (form with **Lesson**, **Room**, **Double lesson**, **Save**), drag a **To place** entry onto a cell, or **Place** on the entry and choose the slot from a list. There is no button called “Double”: the double is the checkbox **Double lesson** (on the entry or in the form). “Double” is only the mark on a placed tile.",
-      "Board rows are labelled “Slot n” by position in the day template, breaks included (lesson 5 of grade 5 is slot 11), so the clicks name the cell by day and time.",
-      "Practice draft: the platform has NO way to delete a draft (no delete route or button), so “delete the draft” cannot be done; it stays as Version 2 (later out of date). Alternative: skip it and show Mixed block on the 4.4 draft instead.",
-      "“Pair its halves on the board” needs a second mixed split of another subject in the same class; 3 Genius has none, so **Paired with** offers only “The whole split”.",
-      "The pin slot number depends on the templates (`11. 13:35–14:15` if b11 used Break 15 + Lunch 40 + Break 15); choose by time.",
-      "Edit-lock banner name: the lock holder's name as stored (expected “Fayzullayeva Nodira”)."
-    ]
-  },
-  "b22": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 32 —",
-      "**Timetable** → **Draft builder** → **Version** `Version 1` → click **8. Review and publish**.",
-      "**Start date**: click **Usual start: <Monday of Week 1>** (the same date is also offered as **Quarter start: …**).",
-      "Read the check: “Nothing stops the publish.” and the warnings list (expected: the Moliya room capacity).",
-      "Read **What the publish changes**: “No version is published before this one: every lesson is new.”, the lesson counts, **Teachers affected** (each “notified”; the vacancies “vacancy, not notified”), **Classes affected**, **Rooms affected**, **Lessons per week under each vacancy**.",
-      "Click **Publish**.",
-      "In the dialog “Publish version 1?” (“It becomes the timetable of the branch from … and can no longer be edited.”) click **Publish**."
-    ],
-    "check": "“Published, valid from <Monday of Week 1>.”; step 8 of the nav reads **Published**; the grid of Version 1 is read only. The practice draft (Version 2) now shows “Draft, out of date”.",
-    "unsure": [
-      "If a “Transition week” tick or “One-day changes” decisions appear (they should not for a first version), tick/choose before Publish."
-    ]
-  },
-  "s4a": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 33 —",
-      "**Timetable** → **Version history**.",
-      "In the table click **Version 1** (Published). The side panel **Version 1** opens.",
-      "In **Compare**, open **Compare with** to show the list (Version 2 practice draft).",
-      "Under **Restore** click **Restore as a new draft**.",
-      "**Start date**: the first Monday of next month (for example `07.12.2026`). **Start from** already shows `Copy of version 1`.",
-      "Click **Save**. The draft builder opens on the board of the new draft.",
-      "Do not publish it."
-    ],
-    "check": "The builder's **Version** field reads `Version 3, …: Draft` (Version 2 if no practice draft was made) with the board copied from Version 1; Version history lists it with **Copied from** `Version 1`.",
-    "unsure": [
-      "The deck also says “change a calendar day; bring the draft up to date”: after step 4.7 this draft may read “Draft, out of date”; **What changed** → **Bring up to date** is not in the guide text.",
-      "Next month in the guide is relative; 08.12.2026 is the day off from step 3.4, which this draft simply skips."
-    ]
-  },
-  "s4b": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 38 —",
-      "**Timetable** → **Timetable views**.",
-      "**View**: click `Class`.",
-      "**Class**: `5 Melbourne`.",
-      "**Date**: the Monday of Week 1.",
-      "**Period**: click `Week`. The line reads “Version 1, valid from …”.",
-      "Click **Print**: the PDF opens in a new tab; print it.",
-      "Hold the print beside the paper sheet `T 5 Melbourne`.",
-      "Click **Excel** to show the download; switch **View** to `Teacher` (`Rahimov Aziz`) and `Room` (`208`) for a moment."
-    ],
-    "check": "The 5 Melbourne week matches T 5 Melbourne cell for cell (Monday 09:00–10:35 Mathematics, Matematika 5A, 208, Rahimov Aziz …).",
-    "unsure": [
-      "Print opens the PDF in a new browser tab (allow pop-ups); the **PDF** button sits beside it.",
-      "Filmed before 4.6, the week shows no Changed/Exam/Cancelled marks yet; to show them, film this after 4.6 with Week 1."
-    ]
-  },
-  "s4c": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 34 —",
-      "**Timetable** → **Day changes**. **Date**: Wednesday of Week 1 · **Class**: `11 Princeton`.",
-      "On the row `10:50–11:30 · AP History · Rahmonov Timur · 407` click **Move**.",
-      "Dialog “Move AP History at 10:50”: leave **New date**; **Lesson slot** `Lesson 7, 15:25–16:05`; **Room** `Keep its room`; **Reason** `Oʻqituvchi ertalab seminarda` ; click **Move the lesson** → “The lesson was moved for this day.” (with a free-period warning).",
-      "**Date**: Friday of Week 1 → click **Bulk cancel**.",
-      "Tick **Every class of the branch**; under **Lesson slots** tick `Lesson 6` and `Lesson 7`; click **Check**.",
-      "Read **Lessons to cancel**; **Reason** `Maktab tadbiri: kuz konserti`; click **Cancel lessons** → “… lessons were cancelled.”",
-      "— Slide 35 — **Timetable** → **Exams** → **Date**: Thursday of Week 1 → **New exam**.",
-      "**Title** `5-sinf matematika nazorat ishi` · **Subject** `Mathematics`. **Room 1**: **Room** `208`, **Classes** tick `5 Melbourne`, **Invigilators** tick `Rahimov Aziz`. **Add a room** → **Room 2**: `209`, `5 Tokyo`, `Qodirov Bahodir`. **Add a room** → **Room 3**: `204`, `5 London`, `Qurbonov Sherzod`.",
-      "**From lesson** `Lesson 1, 09:00–09:40` · **To lesson** `Lesson 2, 09:55–10:35` · click **Check** → **Lessons cancelled for the exam** lists the Matematika 5A/5B/5C lessons → click **Save the exam** → “The exam is saved and its lessons are cancelled.”",
-      "— Slide 36 — **Timetable** → **Absences** → **Add an absence**: **Person** `Hamidova Feruza` · **First day** Thursday of Week 1 · **Last day** Friday of Week 1 · **Reason** `Kasal` · **Save**.",
-      "Click `Hamidova Feruza` in the list. In **Lessons of this branch**, on the 5 Melbourne row (Friday 09:00) click **Substitute for the whole absence** → **Substitute** `Nazarova Dilfuza · same department …` → **Reason** `Hamidova kasal` → **Save the substitution** (if the ticks show, tick “I have checked these and save the substitution” and save again) → **Close**. Same for the 3 Indigo row (Thursday 09:00) with `Nazarova Dilfuza` (language tick).",
-      "On the 5 London row (Thursday 14:30) **Substitute for the whole absence** → `Usmonov Alisher` → reason → **Save the substitution** → **Close**.",
-      "— Slide 37 — **Timetable** → **Room closures** → **Close a room**: **Room** `209` · **First day** and **Last day** Wednesday of Week 1 · **Reason** `Taʼmirlash` · **Save**.",
-      "Left menu **Home**: the tile **Lessons that need a room** shows “209, closed for a period” → click **Open the closure** → panel `209`: five 5 Tokyo lessons “Needs a room”.",
-      "Click **Move all to another room** → **Room for the period** `Sport zal 1` → **Save** → “No lesson of the room falls in the closure.”"
-    ],
-    "check": "Day changes: Wednesday 11 Princeton AP History at 15:25 “changed”; Friday afternoon lessons “Cancelled: Maktab tadbiri…”; Thursday grade 5 shows the exam and Matematika “Cancelled for an exam”; Hamidova's 5 lessons show substitutes and the Home tile “Lessons that need a teacher” is gone; 209 closure listed, Home tile “Lessons that need a room” gone.",
-    "unsure": [
-      "Guide/deck “Tuesday, move Tarix to lesson 7” cannot work with the demo data: the only Tuesday Tarix (5 London, Nazarova Dilfuza) already is lesson 7 (15:25), and every grade 5/6 day is full. 11 Princeton on Wednesday has lessons 6–7 free, so its AP History (lesson 3) moves to lesson 7 instead.",
-      "Friday has only 6 lessons for grades 5–11 (Juma template), 7 for grade 3: “Lesson 6 + 7” cancels grade 3 at 14:30–16:05, but grades 5–11 only their 15:25 lesson plus the other half of any double at 14:30 (6 Imperial keeps its 14:30 Robotics). For the same clock times everywhere, do two bulk cancels: grade 3 classes lessons 6–7, grades 5–11 lessons 5–6.",
-      "Exam: deck says “lessons 3–4”; lessons 1–2 is where all three grade-5 Matematika groups sit on Thursday. “Rating exam of the quarter” only shows once 4.10 is done; leave it.",
-      "Substitutes: Nazarova is busy Thursday 14:30 (5 Tokyo History), so Usmonov (teaches the subject) takes 5 London. 3 Indigo is Russian-language: Nazarova gets “cannot teach in the class's language” and needs the tick.",
-      "209: no classroom is free all Wednesday; only Sport zal 1, Sport zal 2 and Oshxona are. Or change rooms one by one on Day changes (**Change room** shows “Rooms free at that time”).",
-      "Every reason text is invented; reasons are free text."
-    ]
-  },
-  "s4d": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 14 (second half) —",
-      "Left menu **School setup** → **Calendar** → **Add entry**.",
-      "Form **New calendar entry**: **Kind** `Special day` · **Name** `Ishchi shanba` · **First date** and **Last date** Saturday of Week 2 · **For** `Whole branch` · **Day template** `Asosiy 5-8` · **Lessons of** `Monday` · **Exam week** `Not an exam week` · click **Save**.",
-      "The dialog **What this save changes** opens: read the grade rows (Before “No lessons: not a working weekday” → After “lessons of Monday”) and **The published timetable** (“… lessons are created”, teachers told).",
-      "Click **Save** in the dialog.",
-      "**Add entry** again: **Kind** `Special day` · **Name** `Qisqartirilgan kun` · **First date** and **Last date** Wednesday of Week 2 · **For** `Whole branch` · **Day template** `Juma 5-11` · **Lessons of** `Its own weekday` · **Exam week** `Not an exam week` · **Save**.",
-      "In **What this save changes** read “… lessons are created cancelled: not in the day's template” and the shortened days list (“Lessons kept: …”); leave the default choice; click **Save**.",
-      "Optional: **Check a date** → **Date** Saturday of Week 2 → each grade shows “lessons of Monday”."
-    ],
-    "check": "The Calendar list (filter **When**: Today and later) shows Konstitutsiya kuni, Ishchi shanba and Qisqartirilgan kun; Timetable views for Saturday of Week 2 show Monday's lessons, Wednesday of Week 2 shows six lessons.",
-    "unsure": [
-      "No shortened day template exists (step 3.3 made only four); `Juma 5-11` (six lessons) is used to shorten the day. A dedicated short template would need School setup → Day templates first.",
-      "Working hours (sheet 8) are Monday–Friday, so the Saturday preview likely says “… lessons will need a teacher” and those lessons appear in “Lessons that need a teacher” on Home pages later. Either add Saturday hours or press **Cancel** in the preview after filming it.",
-      "A Special day needs one Day template for all grades chosen; lessons are matched by their number in the day, so `Asosiy 5-8` gives grades 3 and 11 grade-5 times on that Saturday.",
-      "The 4.4 draft may turn “Draft, out of date” after these saves."
-    ]
-  },
-  "b23": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 44 —",
-      "Left menu **Journal** → link **Exemptions** (top right) → **New exemption**.",
-      "**Class** `11 Princeton`. Under **Students** tick the 10 marked “Does not take Moliya” on sheet `6 Group members`: Bahromova Kamila, Jalolov Kamron, Shodiyev Yahyo, Fayziyev Elbek, Nazarova Mohinur, Sobirova Kamila, Bahromov Ahmad, Rahmatov Ibrohim, Eshonqulov Shohjahon, Fayziyeva Mohinur.",
-      "**Kind** `Full` · **Subjects** `Chosen subjects` · **Subjects exempted** tick `Finance` · **First day** Monday of Week 1 · **Reason** `Other` · **Detail** `Moliya tanlanmagan` · click **Check** → click **Save** → “The exemptions are saved.” → **Close**.",
-      "**New exemption** again: **Class** `11 Yale`, tick Fayziyeva Shirin, Nazarov Ahmad, Sobirov Ibrohim, Jalolov Shohjahon, Rahmatova Odina, Eshonqulova Shirin, Fayziyev Kamron, Valiyev Yahyo, Bahromov Elbek, Jalolova Odina; same fields → **Check** → **Save** → **Close**.",
-      "**New exemption**: **Class** `5 Melbourne` · tick `Valiyeva Kamila` · **Kind** `Temporary` · **Subjects** `Chosen subjects` · tick `Physical education` · **First day** Monday of Week 1 · **Last day** Friday of Week 1 · **Reason** `Illness` · **Detail** `Shifokor maʼlumotnomasi` · **Check** → **Save** → **Close**."
-    ],
-    "check": "The Exemptions list shows 20 Full Finance exemptions (state Coming) and Valiyeva Kamila, Temporary, Physical education, Monday–Friday of Week 1.",
-    "unsure": [
-      "“In one batch” is not possible: the form takes one **Class** and its students, so the 20 Moliya students go in two batches of 10 (11 Princeton, 11 Yale).",
-      "A Full exemption has only a **First day** (it runs to the year's end); Monday of Week 1 chosen so Moliya's first lesson (Tuesday) is covered.",
-      "Valiyeva Kamila (IS26034) is a suggested girl; avoid the 5 Melbourne student moved in 3.14."
-    ]
-  },
-  "s4e": {
-    "clicks": [
-      "Chrome profile **AVP**. — Slide 47 —",
-      "Left menu **Lesson plans** → link **Plan windows** (top right).",
-      "In the card **Quarter 2**, form “Window of quarter 2”: leave **First day** (the quarter's first day, Monday of Week 1).",
-      "**Last day**: Wednesday of Week 1.",
-      "Click **Save**.",
-      "Dialog “Open the window?” (“… lessons will be held before the window ends without a plan.”): click **Save window**."
-    ],
-    "check": "The Quarter 2 card reads “opens <Monday of Week 1>, ends <Wednesday of Week 1>” (or “open until …” once it starts).",
-    "unsure": [
-      "The form's button is **Save**; **Save window** is the confirmation's button. The confirmation appears only when lessons fall before the end without a plan (expected here)."
-    ]
-  },
-  "s4f": {
-    "clicks": [
-      "Chrome profile **AVP**.",
-      "Left menu **School setup** → **Subjects** → click `Mathematics`.",
-      "In the side panel click **Edit**, tick **Rating exam**.",
-      "**Takes effect from**: `Quarter 2` → **Save**.",
-      "Under **Quarterly distribution**, Quarter 2 reads “The rating exam switch changed: set this quarter again.” → **Change distribution** → **Attendance** `10` · **Classwork** `30` · **Homework** `30` · **Rating exam** `30` → **Save** (if “This change alters results” opens: **Reason** `Reyting imtihoni yoqildi` → **Save the change**).",
-      "Do the same for Quarter 3 and Quarter 4.",
-      "Under each quarter's **Grades 0–4 without the rating exam** (“Needed: …”): **Change distribution** → `20` · `40` · `40` → **Save**."
-    ],
-    "check": "Mathematics panel: **Rating exam** Yes from Quarter 2; Quarters 2–4 show the four-part distribution and a grades 0–4 distribution; no “set this quarter again” line left.",
-    "unsure": [
-      "The guide says only “Rating exam on from this quarter”; in code the switch needs **Takes effect from** and voids the quarterly distributions from that quarter, which must be set again (and the grades 0–4 one too), else later publishes are refused for Mathematics. Values here are invented.",
-      "If done before 4.6, the exam form offers **Rating exam of the quarter**; the guide order (last) means it is not offered there."
-    ]
-  }
+ "b20": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 28 —",
+   "Left menu: click **Timetable**, then the link **Teaching load**.",
+   "Click **New draft** (top right).",
+   "In the form **New draft** leave **Academic year** as it is and leave **Start date** on next Monday (the Monday of Week 1; the shortcut under it reads **Quarter 2: …**).",
+   "**Start from**: choose `Empty`.",
+   "Click **Save**. The **Version** field now reads `Version 1, <year>: Draft`.",
+   "Click **Add row** (top right). The side panel **New row** opens.",
+   "**Class or group**: `Matematika 5A` · **Subject**: `Mathematics` · **Teacher**: `Rahimov Aziz` · **Lessons per week**: `6` · **Room**: `208` · tick **Double lessons allowed** · click **Save**.",
+   "Before the next row, film the **Problems** column: Matematika 5A shows “30 students not placed”. They are the students of groups 5B and 5C, which have no row yet; the warning is expected.",
+   "**Add row** again: `Matematika 5B` · `Mathematics` · `Qodirov Bahodir` · `6` · `209` · **Double lessons allowed** ticked · **Save**. Then `Matematika 5C` · `Mathematics` · `Qurbonov Sherzod` · `6` · `204` · double · **Save**. Point at the **Block** column: the three groups show as one block by themselves.",
+   "Look at **Problems** again: with all three Matematika groups in, “students not placed” is gone. The same happens for each grouped subject (English, PE, Arabic, Finance) until all its groups have rows.",
+   "Same way, the other grade-5 groups (all double, 6 a week for English, 4 for PE): `Ingliz 5A` · `English` · `Ergasheva Madina` · `208`; `Ingliz 5B` · `Rasulova Shahnoza` · `209`; `Ingliz 5C` · `Aminova Nigora` · `204`; `Jismoniy 5AB Bolalar` · `Physical education` · `Xolmatov Sardor` · `4` · `Sport zal 2`; `Jismoniy 5AB Qizlar` · `Qosimova Zarina` · `4` · `Sport zal 2` (Boys + Girls become one Block).",
+   "**Add row**: **Class or group** `5 Melbourne` · **Subject** `Future hour`. Instead of a Teacher field the form says “Teacher: Rashidova Umida, the class's Tutor. It changes with the Tutor.” **Lessons per week** `1` · **Room** `No special room` · **Save**.",
+   "The other 5 Melbourne rows, each **Add row** → `5 Melbourne` → subject → teacher → lessons → **Room** `No special room` → **Save**: `Arabic` Saidova Nilufar `2`; `Informatics` Sobirova Lola `1`; `Native language and literature` Hamidova Feruza `4` (tick **Double lessons allowed**); `Project-based learning` Karimova Malika `1`; `Robotics` Karimov Jasur `2`; `Russian` Tursunova Gulnora `1`; `Science` Aliyev Bekzod `2`; `Upbringing` Normatov Otabek `1`; `History` Nazarova Dilfuza `2`; `Art` Mirzayeva Dilnoza `1`. 5 Melbourne now has 34 lessons.",
+   "Off camera: every other row of sheet `7 Teaching load` (112 rows in all), one **Add row** each. Room empty on the sheet = `No special room`; “(fills itself: …)” = pick only class and subject (Future hour / Homework); “Vacancy: Arab tili” = **Teacher** `Arab tili oʻqituvchisi (vacancy)`; the 11 Princeton AP Economics row = `AP Iqtisodiyot oʻqituvchisi (vacancy)`.",
+   "Prop: left menu **People** → **Staff** → click `Ahmedov Javlon` → in the **Record** section click **Edit** → **Lessons per week by contract**: `4` → **Save**.",
+   "Back to **Timetable** → **Teaching load**, scroll down to **Weekly totals** → **Teachers**: the row `Ahmedov Javlon`."
+  ],
+  "check": "Teaching load lists 112 rows, the Block column groups Matematika 5A/5B/5C, Ingliz 5A/5B/5C and each Boys+Girls PE pair; Weekly totals → Classes shows 5 Melbourne `34` lessons against its lesson slots; Weekly totals → Teachers shows Ahmedov Javlon with Total `6` and “Over by 2”, Contract load `4`.",
+  "unsure": [
+   "The English UI shows subjects by their English names (Matematika = Mathematics, Kelajak soati = Future hour, Ona tili va adabiyot = Native language and literature, Tarbiya = Upbringing, PBL = Project-based learning, AP Matematika = AP Math …); the sheet uses Uzbek names.",
+   "Group rows of one subject do NOT create each other: each group is its own **Add row** (one row per group); the platform only joins them in the **Block** column.",
+   "The Teacher field may be pre-filled with the group's teacher; check it matches the sheet before Save.",
+   "The Ahmedov contract field is on the staff record (People → Staff), not on the teaching load page; the guide does not say where."
+  ]
+ },
+ "b21": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 29 —",
+   "Left menu **Timetable** → **Draft builder**. The **Version** field shows `Version 1, …: Draft`.",
+   "Step **1. Period and day templates**: check the table has no “cells have no day template” line, then click **Confirm the templates** → the mark reads **Confirmed**.",
+   "Click **2. Teaching load**: it reads “112 rows in the teaching load.” and lists no **Rows with a problem**.",
+   "Click **3. Teachers**: no teacher shows **No hours set**. Click **4. Rooms**: “Every room need is met.”",
+   "Click **5. Rules**. Leave the **Weights of the preferences** as they are. Under **Pin a lesson**: **Lesson** `5 Melbourne, Future hour` · **Day** `Tuesday` · **Slot** the option ending in `13:35–14:15` · click **Save**.",
+   "Click **Confirm the rules** → **Confirmed**. The top line reads “Ready for generation”; **6. Generate** shows “Not yet available”.",
+   "— Slide 30 — Click **7. Edit in the grid**. **View**: `By class` · **Class**: `5 Melbourne`.",
+   "In the Monday cell `09:00–09:40` click **Add a lesson**. In the form “Lesson for Monday, 09:00–09:40”: **Lesson** `Mathematics, Matematika 5A: 0 of 6 lessons placed` · leave **Room** on `The room of its row` · tick **Double lesson** · click **Save**. Monday 09:00 and 09:55 now hold Matematika 5A (208), 5B (209) and 5C (204) at once.",
+   "Show the drag: in the side panel **To place** tick **Double lesson** on the Mathematics entry, press on the entry and drag it over Monday `09:00–09:40`: the cell shows **Blocked** and “Blocked by: …” with the rule (for example “A teacher cannot be in two lessons at the same time.”); drop it on Thursday `09:00–09:40` instead (Free).",
+   "Place the PE block the same way: **Add a lesson** on Tuesday `14:30–15:10` → `Physical education, Jismoniy 5AB Bolalar…` → **Double lesson** → **Save**: Boys and Girls both in Sport zal 2.",
+   "Off camera: the rest of 5 Melbourne, 5 Tokyo and 5 London exactly as sheets `T 5 Melbourne`, `T 5 Tokyo`, `T 5 London` show (a “(double)” cell = tick **Double lesson** and place on its first time).",
+   "Special moments: **Class** `5 London` → Monday `10:50–11:30` **Add a lesson** → `Physical education, Jismoniy 5D6D Bolalar…` → **Double lesson** → **Save** (the 5D+6D block, also on the 6 Imperial board). **Class** `11 Princeton` → Tuesday `11:45–12:25` → `Finance, Moliya 11AB…` → **Double lesson** → **Save**; the **Conflicts** panel shows a **Warning** “32 students, room for 30.” **Class** `3 Genius` → Monday `13:35–14:15` → `Arabic, Arab 3 Genius 1…` → **Save**: both halves (105 and 102) at once. On the 11 Princeton board point out there is no cell at `13:35–14:15`: the 11th-grade lunch.",
+   "Off camera: the other classes from their `T <class>` sheets until **To place** reads “Every lesson of the load is placed.”",
+   "— Slide 31 — Chrome profile **SA**: **Timetable** → **Draft builder** → **7. Edit in the grid**. The banner reads “Fayzullayeva Nodira is editing this draft (last active …). You can take over after 5 minutes without activity.” Do not touch the AVP window for 5 minutes, then click **Take over** in SA. Close the SA tab.",
+   "Back in **AVP**: after 5 more minutes click **Take over** on the AVP banner to get the draft back.",
+   "Practice draft (AVP): **Timetable** → **Teaching load** → **New draft** → **Start from** `Copy of version 1` → click the shortcut **Quarter 3: …** → **Save** (Version 2, Draft).",
+   "Click the row `Arab 3 Genius 1` → side panel → **Edit** → tick **Mixed block (the halves meet in different slots)** → **Save**. Same for `Arab 3 Genius 2`.",
+   "**Draft builder** → **Version** `Version 2` → **7. Edit in the grid** → **Class** `3 Genius`: show the Arabic tiles and the **To place** entries of the halves with **Paired with** (`The whole split`). Leave this draft as it is."
+  ],
+  "check": "Version 1: steps 1 to 5 show Ready/Confirmed, step 7 shows the eight boards matching the T sheets with “Every lesson of the load is placed.” and only warnings (Moliya capacity) in Conflicts; Version 2 exists as a practice draft.",
+  "unsure": [
+   "Placing in code: three ways, all equal: **Add a lesson** in an empty cell (form with **Lesson**, **Room**, **Double lesson**, **Save**), drag a **To place** entry onto a cell, or **Place** on the entry and choose the slot from a list. There is no button called “Double”: the double is the checkbox **Double lesson** (on the entry or in the form). “Double” is only the mark on a placed tile.",
+   "Board rows are labelled “Slot n” by position in the day template, breaks included (lesson 5 of grade 5 is slot 11), so the clicks name the cell by day and time.",
+   "Practice draft: the platform has NO way to delete a draft (no delete route or button), so “delete the draft” cannot be done; it stays as Version 2 (later out of date). Alternative: skip it and show Mixed block on the 4.4 draft instead.",
+   "“Pair its halves on the board” needs a second mixed split of another subject in the same class; 3 Genius has none, so **Paired with** offers only “The whole split”.",
+   "The pin slot number depends on the templates (`11. 13:35–14:15` if b11 used Break 15 + Lunch 40 + Break 15); choose by time.",
+   "Edit-lock banner name: the lock holder's name as stored (expected “Fayzullayeva Nodira”)."
+  ]
+ },
+ "b22": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 32 —",
+   "**Timetable** → **Draft builder** → **Version** `Version 1` → click **8. Review and publish**.",
+   "**Start date**: click **Usual start: <Monday of Week 1>** (the same date is also offered as **Quarter start: …**).",
+   "Read the check: “Nothing stops the publish.” and the warnings list (expected: the Moliya room capacity).",
+   "Read **What the publish changes**: “No version is published before this one: every lesson is new.”, the lesson counts, **Teachers affected** (each “notified”; the vacancies “vacancy, not notified”), **Classes affected**, **Rooms affected**, **Lessons per week under each vacancy**.",
+   "Click **Publish**.",
+   "In the dialog “Publish version 1?” (“It becomes the timetable of the branch from … and can no longer be edited.”) click **Publish**."
+  ],
+  "check": "“Published, valid from <Monday of Week 1>.”; step 8 of the nav reads **Published**; the grid of Version 1 is read only. The practice draft (Version 2) now shows “Draft, out of date”.",
+  "unsure": [
+   "If a “Transition week” tick or “One-day changes” decisions appear (they should not for a first version), tick/choose before Publish."
+  ]
+ },
+ "s4a": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 33 —",
+   "**Timetable** → **Version history**.",
+   "In the table click **Version 1** (Published). The side panel **Version 1** opens.",
+   "In **Compare**, open **Compare with** to show the list (Version 2 practice draft).",
+   "Under **Restore** click **Restore as a new draft**.",
+   "**Start date**: the first Monday of next month (for example `07.12.2026`). **Start from** already shows `Copy of version 1`.",
+   "Click **Save**. The draft builder opens on the board of the new draft.",
+   "Do not publish it."
+  ],
+  "check": "The builder's **Version** field reads `Version 3, …: Draft` (Version 2 if no practice draft was made) with the board copied from Version 1; Version history lists it with **Copied from** `Version 1`.",
+  "unsure": [
+   "The deck also says “change a calendar day; bring the draft up to date”: after step 4.7 this draft may read “Draft, out of date”; **What changed** → **Bring up to date** is not in the guide text.",
+   "Next month in the guide is relative; 08.12.2026 is the day off from step 3.4, which this draft simply skips."
+  ]
+ },
+ "s4b": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 38 —",
+   "**Timetable** → **Timetable views**.",
+   "**View**: click `Class`.",
+   "**Class**: `5 Melbourne`.",
+   "**Date**: the Monday of Week 1.",
+   "**Period**: click `Week`. The line reads “Version 1, valid from …”.",
+   "Click **Print**: the PDF opens in a new tab; print it.",
+   "Hold the print beside the paper sheet `T 5 Melbourne`.",
+   "Click **Excel** to show the download; switch **View** to `Teacher` (`Rahimov Aziz`) and `Room` (`208`) for a moment."
+  ],
+  "check": "The 5 Melbourne week matches T 5 Melbourne cell for cell (Monday 09:00–10:35 Mathematics, Matematika 5A, 208, Rahimov Aziz …).",
+  "unsure": [
+   "Print opens the PDF in a new browser tab (allow pop-ups); the **PDF** button sits beside it.",
+   "Filmed before 4.6, the week shows no Changed/Exam/Cancelled marks yet; to show them, film this after 4.6 with Week 1."
+  ]
+ },
+ "s4c": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 34 —",
+   "**Timetable** → **Day changes**. **Date**: Wednesday of Week 1 · **Class**: `11 Princeton`.",
+   "On the row `10:50–11:30 · AP History · Rahmonov Timur · 407` click **Move**.",
+   "Dialog “Move AP History at 10:50”: leave **New date**; **Lesson slot** `Lesson 7, 15:25–16:05`; **Room** `Keep its room`; **Reason** `Oʻqituvchi ertalab seminarda` ; click **Move the lesson** → “The lesson was moved for this day.” (with a free-period warning).",
+   "**Date**: Friday of Week 1 → click **Bulk cancel**.",
+   "Tick **Every class of the branch**; under **Lesson slots** tick `Lesson 6` and `Lesson 7`; click **Check**.",
+   "Read **Lessons to cancel**; **Reason** `Maktab tadbiri: kuz konserti`; click **Cancel lessons** → “… lessons were cancelled.”",
+   "— Slide 35 — **Timetable** → **Exams** → **Date**: Thursday of Week 1 → **New exam**.",
+   "**Title** `5-sinf matematika nazorat ishi` · **Subject** `Mathematics`. **Room 1**: **Room** `208`, **Classes** tick `5 Melbourne`, **Invigilators** tick `Rahimov Aziz`. **Add a room** → **Room 2**: `209`, `5 Tokyo`, `Qodirov Bahodir`. **Add a room** → **Room 3**: `204`, `5 London`, `Qurbonov Sherzod`.",
+   "**From lesson** `Lesson 1, 09:00–09:40` · **To lesson** `Lesson 2, 09:55–10:35` · click **Check** → **Lessons cancelled for the exam** lists the Matematika 5A/5B/5C lessons → click **Save the exam** → “The exam is saved and its lessons are cancelled.”",
+   "— Slide 36 — **Timetable** → **Absences** → **Add an absence**: **Person** `Hamidova Feruza` · **First day** Thursday of Week 1 · **Last day** Friday of Week 1 · **Reason** `Kasal` · **Save**.",
+   "Click `Hamidova Feruza` in the list. In **Lessons of this branch**, on the 5 Melbourne row (Friday 09:00) click **Substitute for the whole absence** → **Substitute** `Nazarova Dilfuza · same department …` → **Reason** `Hamidova kasal` → **Save the substitution** (if the ticks show, tick “I have checked these and save the substitution” and save again) → **Close**. Same for the 3 Indigo row (Thursday 09:00) with `Nazarova Dilfuza` (language tick).",
+   "On the 5 London row (Thursday 14:30) **Substitute for the whole absence** → `Usmonov Alisher` → reason → **Save the substitution** → **Close**.",
+   "— Slide 37 — **Timetable** → **Room closures** → **Close a room**: **Room** `209` · **First day** and **Last day** Wednesday of Week 1 · **Reason** `Taʼmirlash` · **Save**.",
+   "Left menu **Home**: the tile **Lessons that need a room** shows “209, closed for a period” → click **Open the closure** → panel `209`: five 5 Tokyo lessons “Needs a room”.",
+   "Click **Move all to another room** → **Room for the period** `Sport zal 1` → **Save** → “No lesson of the room falls in the closure.”"
+  ],
+  "check": "Day changes: Wednesday 11 Princeton AP History at 15:25 “changed”; Friday afternoon lessons “Cancelled: Maktab tadbiri…”; Thursday grade 5 shows the exam and Matematika “Cancelled for an exam”; Hamidova's 5 lessons show substitutes and the Home tile “Lessons that need a teacher” is gone; 209 closure listed, Home tile “Lessons that need a room” gone.",
+  "unsure": [
+   "Guide/deck “Tuesday, move Tarix to lesson 7” cannot work with the demo data: the only Tuesday Tarix (5 London, Nazarova Dilfuza) already is lesson 7 (15:25), and every grade 5/6 day is full. 11 Princeton on Wednesday has lessons 6–7 free, so its AP History (lesson 3) moves to lesson 7 instead.",
+   "Friday has only 6 lessons for grades 5–11 (Juma template), 7 for grade 3: “Lesson 6 + 7” cancels grade 3 at 14:30–16:05, but grades 5–11 only their 15:25 lesson plus the other half of any double at 14:30 (6 Imperial keeps its 14:30 Robotics). For the same clock times everywhere, do two bulk cancels: grade 3 classes lessons 6–7, grades 5–11 lessons 5–6.",
+   "Exam: deck says “lessons 3–4”; lessons 1–2 is where all three grade-5 Matematika groups sit on Thursday. “Rating exam of the quarter” only shows once 4.10 is done; leave it.",
+   "Substitutes: Nazarova is busy Thursday 14:30 (5 Tokyo History), so Usmonov (teaches the subject) takes 5 London. 3 Indigo is Russian-language: Nazarova gets “cannot teach in the class's language” and needs the tick.",
+   "209: no classroom is free all Wednesday; only Sport zal 1, Sport zal 2 and Oshxona are. Or change rooms one by one on Day changes (**Change room** shows “Rooms free at that time”).",
+   "Every reason text is invented; reasons are free text."
+  ]
+ },
+ "s4d": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 14 (second half) —",
+   "Left menu **School setup** → **Calendar** → **Add entry**.",
+   "Form **New calendar entry**: **Kind** `Special day` · **Name** `Ishchi shanba` · **First date** and **Last date** Saturday of Week 2 · **For** `Whole branch` · **Day template** `Asosiy 5-8` · **Lessons of** `Monday` · **Exam week** `Not an exam week` · click **Save**.",
+   "The dialog **What this save changes** opens: read the grade rows (Before “No lessons: not a working weekday” → After “lessons of Monday”) and **The published timetable** (“… lessons are created”, teachers told).",
+   "Click **Save** in the dialog.",
+   "**Add entry** again: **Kind** `Special day` · **Name** `Qisqartirilgan kun` · **First date** and **Last date** Wednesday of Week 2 · **For** `Whole branch` · **Day template** `Juma 5-11` · **Lessons of** `Its own weekday` · **Exam week** `Not an exam week` · **Save**.",
+   "In **What this save changes** read “… lessons are created cancelled: not in the day's template” and the shortened days list (“Lessons kept: …”); leave the default choice; click **Save**.",
+   "Optional: **Check a date** → **Date** Saturday of Week 2 → each grade shows “lessons of Monday”."
+  ],
+  "check": "The Calendar list (filter **When**: Today and later) shows Konstitutsiya kuni, Ishchi shanba and Qisqartirilgan kun; Timetable views for Saturday of Week 2 show Monday's lessons, Wednesday of Week 2 shows six lessons.",
+  "unsure": [
+   "No shortened day template exists (step 3.3 made only four); `Juma 5-11` (six lessons) is used to shorten the day. A dedicated short template would need School setup → Day templates first.",
+   "Working hours (sheet 8) are Monday–Friday, so the Saturday preview likely says “… lessons will need a teacher” and those lessons appear in “Lessons that need a teacher” on Home pages later. Either add Saturday hours or press **Cancel** in the preview after filming it.",
+   "A Special day needs one Day template for all grades chosen; lessons are matched by their number in the day, so `Asosiy 5-8` gives grades 3 and 11 grade-5 times on that Saturday.",
+   "The 4.4 draft may turn “Draft, out of date” after these saves."
+  ]
+ },
+ "b23": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 44 —",
+   "Left menu **Journal** → link **Exemptions** (top right) → **New exemption**.",
+   "**Class** `11 Princeton`. Under **Students** tick the 10 marked “Does not take Moliya” on sheet `6 Group members`: Bahromova Kamila, Jalolov Kamron, Shodiyev Yahyo, Fayziyev Elbek, Nazarova Mohinur, Sobirova Kamila, Bahromov Ahmad, Rahmatov Ibrohim, Eshonqulov Shohjahon, Fayziyeva Mohinur.",
+   "**Kind** `Full` · **Subjects** `Chosen subjects` · **Subjects exempted** tick `Finance` · **First day** Monday of Week 1 · **Reason** `Other` · **Detail** `Moliya tanlanmagan` · click **Check** → click **Save** → “The exemptions are saved.” → **Close**.",
+   "**New exemption** again: **Class** `11 Yale`, tick Fayziyeva Shirin, Nazarov Ahmad, Sobirov Ibrohim, Jalolov Shohjahon, Rahmatova Odina, Eshonqulova Shirin, Fayziyev Kamron, Valiyev Yahyo, Bahromov Elbek, Jalolova Odina; same fields → **Check** → **Save** → **Close**.",
+   "**New exemption**: **Class** `5 Melbourne` · tick `Valiyeva Kamila` · **Kind** `Temporary` · **Subjects** `Chosen subjects` · tick `Physical education` · **First day** Monday of Week 1 · **Last day** Friday of Week 1 · **Reason** `Illness` · **Detail** `Shifokor maʼlumotnomasi` · **Check** → **Save** → **Close**."
+  ],
+  "check": "The Exemptions list shows 20 Full Finance exemptions (state Coming) and Valiyeva Kamila, Temporary, Physical education, Monday–Friday of Week 1.",
+  "unsure": [
+   "“In one batch” is not possible: the form takes one **Class** and its students, so the 20 Moliya students go in two batches of 10 (11 Princeton, 11 Yale).",
+   "A Full exemption has only a **First day** (it runs to the year's end); Monday of Week 1 chosen so Moliya's first lesson (Tuesday) is covered.",
+   "Valiyeva Kamila (IS26034) is a suggested girl; avoid the 5 Melbourne student moved in 3.14."
+  ]
+ },
+ "s4e": {
+  "clicks": [
+   "Chrome profile **AVP**. — Slide 47 —",
+   "Left menu **Lesson plans** → link **Plan windows** (top right).",
+   "In the card **Quarter 2**, form “Window of quarter 2”: leave **First day** (the quarter's first day, Monday of Week 1).",
+   "**Last day**: Wednesday of Week 1.",
+   "Click **Save**.",
+   "Dialog “Open the window?” (“… lessons will be held before the window ends without a plan.”): click **Save window**."
+  ],
+  "check": "The Quarter 2 card reads “opens <Monday of Week 1>, ends <Wednesday of Week 1>” (or “open until …” once it starts).",
+  "unsure": [
+   "The form's button is **Save**; **Save window** is the confirmation's button. The confirmation appears only when lessons fall before the end without a plan (expected here)."
+  ]
+ },
+ "s4f": {
+  "clicks": [
+   "Chrome profile **AVP**.",
+   "Left menu **School setup** → **Subjects** → click `Mathematics`.",
+   "In the side panel click **Edit**, tick **Rating exam**.",
+   "**Takes effect from**: `Quarter 2` → **Save**.",
+   "Under **Quarterly distribution**, Quarter 2 reads “The rating exam switch changed: set this quarter again.” → **Change distribution** → **Attendance** `10` · **Classwork** `30` · **Homework** `30` · **Rating exam** `30` → **Save** (if “This change alters results” opens: **Reason** `Reyting imtihoni yoqildi` → **Save the change**).",
+   "Do the same for Quarter 3 and Quarter 4.",
+   "Under each quarter's **Grades 0–4 without the rating exam** (“Needed: …”): **Change distribution** → `20` · `40` · `40` → **Save**."
+  ],
+  "check": "Mathematics panel: **Rating exam** Yes from Quarter 2; Quarters 2–4 show the four-part distribution and a grades 0–4 distribution; no “set this quarter again” line left.",
+  "unsure": [
+   "The guide says only “Rating exam on from this quarter”; in code the switch needs **Takes effect from** and voids the quarterly distributions from that quarter, which must be set again (and the grades 0–4 one too), else later publishes are refused for Mathematics. Values here are invented.",
+   "If done before 4.6, the exam form offers **Rating exam of the quarter**; the guide order (last) means it is not offered there."
+  ]
+ }
 }
