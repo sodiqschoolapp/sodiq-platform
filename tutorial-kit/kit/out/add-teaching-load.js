@@ -69,7 +69,8 @@
     let teacherId = null;
     if (!t.tutorRow) {
       const found = row.teacher.vacancy
-        ? t.teachers.find((x) => x.kind === 'vacancy' && norm(x.name).includes(norm(row.teacher.vacancy)))
+        ? (t.teachers.find((x) => x.kind === 'vacancy' && norm(x.name).includes(norm(row.teacher.vacancy))) ??
+          (t.teachers.filter((x) => x.kind === 'vacancy').length === 1 ? t.teachers.find((x) => x.kind === 'vacancy') : undefined))
         : (t.teachers.find((x) => x.kind === 'person' && norm(x.name).startsWith(norm(row.teacher.person))) ??
           t.teachers.find((x) => x.kind === 'person' && norm(row.teacher.person).split(' ').every((w) => norm(x.name).includes(w))));
       if (!found) {
