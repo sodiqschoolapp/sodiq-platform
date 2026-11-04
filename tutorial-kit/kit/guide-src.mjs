@@ -11,6 +11,36 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 const css = fs.readFileSync(path.join(here, 'guide.css'), 'utf8');
 const js = fs.readFileSync(path.join(here, 'guide.js'), 'utf8');
 const K = JSON.parse(fs.readFileSync(path.join(here, 'guide-steps.json'), 'utf8'));
+// Exact clicks per step (clicks/*.json): { id: { clicks: [...], check, before } }, written from
+// the web app's own English texts and browser tests. A step with clicks shows them as a numbered
+// list; its older summary moves under "What this step is for".
+const CLICKS = Object.assign(
+  {},
+  ...fs
+    .readdirSync(path.join(here, 'clicks'))
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => JSON.parse(fs.readFileSync(path.join(here, 'clicks', f), 'utf8'))),
+);
+const inline = (t) =>
+  String(t)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+const clicksHtml = (c) => {
+  const items = [];
+  let n = 0;
+  for (const line of c.clicks) {
+    const divider = /^[—–-]{1,2}\s*(.+?)\s*[—–-]{1,2}$/.exec(line.trim());
+    if (divider) items.push(`<li class="part">${inline(divider[1])}</li>`);
+    else items.push(`<li><span class="n">${++n}</span><span>${inline(line)}</span></li>`);
+  }
+  return (
+    (c.before ? `<p class="before">${inline(c.before)}</p>` : '') +
+    `<ol class="clicks">${items.join('')}</ol>` +
+    (c.check ? `<p class="check"><b>You should see:</b> ${inline(c.check)}</p>` : '')
+  );
+};
 
 const DECKS = {
   plan: ['Recording plan', 'QKMf388eTYYyjQdvwLg7Qb', 'd00-plan.mjs'],
@@ -603,6 +633,7 @@ const NOT_FILMABLE = {
   },
 };
 
+if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify(SESSIONS.map((x) => ({ n: x.n, title: x.title, when: x.when, steps: x.steps.map((t, i) => ({ num: `${x.n}.${i + 1}`, id: t.id, title: t.title, decks: t.decks, body: t.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() })) })), null, 1)); process.exit(0); }
 // ---- checks: every feature slide is filmed somewhere ----
 const expand = (s) =>
   s.split(',').flatMap((p) => {
@@ -640,7 +671,7 @@ const stepHtml = (ses, step, i) => {
   const [cls, label] = TAG[step.tag];
   return `<li class="step" data-id="${step.id}"><label><input type="checkbox" id="c-${step.id}"><span class="box"></span></label>
   <div class="head"><span class="num">${ses.n}.${i + 1}</span><h3>${step.title}</h3><span class="tag ${cls}">${label}</span></div>
-  <div class="body">${step.decks.length ? `<div class="decks">${step.decks.map(chip).join('')}</div>` : ''}${step.body}</div></li>`;
+  <div class="body">${step.decks.length ? `<div class="decks">${step.decks.map(chip).join('')}</div>` : ''}${CLICKS[step.id] ? `${clicksHtml(CLICKS[step.id])}<details class="about"><summary>What this step is for</summary>${step.body}</details>` : step.body}</div></li>`;
 };
 const sessionHtml = (ses) => `<section id="s${ses.n}">
   <div class="ses"><span class="snum">Session ${ses.n}</span><h2>${ses.title}</h2><p class="when">${ses.when}</p>${ses.lede ? `<p class="lede">${ses.lede}</p>` : ''}</div>
@@ -678,6 +709,16 @@ section[id] { scroll-margin-top: 72px }
 .deck a { font-weight: 600; color: var(--cam) }
 .sl { font-variant-numeric: tabular-nums; font-weight: 600 }
 .dn { color: var(--muted); font-weight: 400 }
+.clicks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px }
+.clicks li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: baseline }
+.clicks .n { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 50%; width: 22px; height: 22px; display: inline-grid; place-items: center; font-size: .78rem }
+.clicks li.part { display: block; margin-top: 6px; font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted) }
+.clicks code { white-space: normal }
+.before { font-size: .92rem; color: var(--muted) }
+.check { background: var(--ok-bg); color: var(--ok); border-radius: 8px; padding: 8px 12px; font-size: .92rem }
+details.about { font-size: .9rem; color: var(--muted) }
+details.about summary { cursor: pointer; font-weight: 600 }
+details.about > *:not(summary) { margin-top: 6px }
 </style>
 
 <main>

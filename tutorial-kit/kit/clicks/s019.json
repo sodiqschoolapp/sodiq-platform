@@ -1,0 +1,81 @@
+{
+  "p1": {
+    "clicks": [
+      "Open the **Recording plan** link above.",
+      "Read slides 1–4 (where everything happens; what is not built yet: never film those).",
+      "Skim slides 5–14 (the demo branch, its classes, bell times and groups).",
+      "Read slides 15–17 (who signs in where; practical rules) and slides 20–23 (how time passes)."
+    ],
+    "check": "You know which features are not built, and which Chrome profile belongs to whom."
+  },
+  "a1": {
+    "before": "Done in GitHub, not on the test site. It wipes the whole test database (about 10 minutes).",
+    "clicks": [
+      "Open `github.com/sodiqschoolapp/sodiq-platform` and click the **Actions** tab.",
+      "In the left list, click **CI**, and check that the newest run on `main` has a green **deploy-test**. If one is still running, wait for it.",
+      "In the left list, click **Demo data on the test environment**.",
+      "On the right, click **Run workflow**; leave **Branch: main**.",
+      "In **The password of every demo account (10 characters or more)**, type a password you will remember (every seeded account uses it).",
+      "In **Type REPLACE to erase the test database and load the demo**, type `REPLACE`.",
+      "Click the green **Run workflow** button.",
+      "Wait until the run shows a green tick (about 10 minutes), then open it and scroll to its **Summary**.",
+      "Copy the table of logins from the Summary into a note: the Super Admin, the Demo Yunusobod AVP, the Senior Head Teacher and the 0 London Class teacher."
+    ],
+    "check": "The run is green and you have the seeded logins; the test site shows Demo Yunusobod and Demo Chilonzor."
+  },
+  "a2": {
+    "clicks": [
+      "On your phone, install an authenticator app (Google Authenticator or Microsoft Authenticator).",
+      "Keep it at hand: the seeded Super Admin (step 2.1), Nodira the AVP (step 2.9) and the Demo Yunusobod AVP (step 3.15) each add one entry at their first sign-in by scanning the code the platform shows.",
+      "Name the entries `Sodiq SA`, `Sodiq AVP` and `Sodiq Yunusobod AVP` in the app, so you pick the right code on camera.",
+      "Save each set of recovery codes the platform shows in your note."
+    ],
+    "check": "The app is installed; it gets its three entries during Sessions 2 and 3."
+  },
+  "a3": {
+    "before": "One Chrome profile per person on camera. In Chrome, the profile picture is at the top right of the window.",
+    "clicks": [
+      "Click the profile picture at the top right of Chrome, then **Add** (or **Add Chrome profile**).",
+      "Click **Continue without an account**.",
+      "Type the profile name, for example `SA`, pick a colour, and click **Done**.",
+      "Repeat for `AVP`, `Teacher`, `Tutor`, `Class teacher`, `Head Teacher`, `Senior HT`, `Principal`, `Spiritual VP`, `Head Tutor`, `Yunusobod AVP`, `Spare 1`, `Spare 2` (for the rehearsal, `SA`, `AVP`, `Principal` and `Yunusobod AVP` are enough).",
+      "In each profile, open `chrome://password-manager/settings` and turn off **Offer to save passwords**.",
+      "In each profile, press `Ctrl+Shift+B` to hide the bookmarks bar, and stay signed out of Google (no sync).",
+      "In each profile, open the test site and bookmark nothing; keep this guide open in another window."
+    ],
+    "check": "Each person has their own Chrome window with its name and colour in the corner."
+  },
+  "p2": {
+    "clicks": [
+      "In your calendar, mark **Week 0**: a Thursday and the Friday after it (Sessions 2–4).",
+      "Mark **Week 1**: the next Monday to Friday (Sessions 5–6).",
+      "Check that both weeks fall in quarter 2 (9 November–26 December 2026) and not on 8 December."
+    ],
+    "check": "Two weeks booked inside quarter 2."
+  },
+  "r1": {
+    "clicks": [
+      "Do every step of Sessions 2, 3 and 4 below in order, without recording.",
+      "Keep a note open; whenever the screen shows a different button, word or answer than this page or a deck, write down the step number and what you saw (a screenshot helps).",
+      "Send the note to Claude when you finish."
+    ],
+    "check": "The whole build worked once, and you have a list of differences."
+  },
+  "r2": {
+    "clicks": [
+      "Run step 0.2 again (the demo workflow with `REPLACE`): it deletes the rehearsal branch.",
+      "On this page, click **Clear ticks** at the top.",
+      "Start the real take at step 2.1."
+    ],
+    "check": "The test site again shows only the seeded branches; no ticks on this page."
+  },
+  "s9a": {
+    "clicks": [
+      "Open the deck of the role whose takes you are cutting.",
+      "For each slide in the deck's order, find its take and cut it to a clip.",
+      "Name each clip `<role> <slide number> <slide title>`, for example `Teacher 11 Take attendance`.",
+      "Group the clips by the deck's dividers (the chapter slides)."
+    ],
+    "check": "One clip per slide, in deck order, for every role."
+  }
+}
