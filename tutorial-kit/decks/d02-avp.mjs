@@ -1,0 +1,251 @@
+import { F, T, D, K, S, BRANCH, signIn, shell, feedback } from './common.mjs';
+
+export default {
+  title: 'Academic Vice Principal tutorial',
+  footer: 'Sodiq platform tutorials · Academic Vice Principal',
+  slides: [
+    { kind: 'cover', kicker: 'Tutorial · Academic Vice Principal', title: 'Academic Vice Principal', sub: 'Runs the academic life of one branch: the calendar, students, classes, the timetable, the journals, lesson plans and the quarter close.', meta: `Three videos · Demo account Nodira Fayzullayeva, "${BRANCH}" · Chrome profile "AVP"` },
+    K('The role in one slide', [
+      { title: 'Builds and changes', body: ['Quarters, slot types, day templates, calendar, subjects and weights, settings', 'Students, parents, classes, Tutors, groups and placements, moves', 'Teaching load, draft timetable, publish, one-day changes, exams, absences, substitutions', 'Vacancies, availability'] },
+      { title: 'Oversees and decides', body: ['Every journal: corrections with a reason, exemptions, orphan lessons, support view', 'Unlock and plan requests; extends the edit period', 'Plan windows, extensions, master plans where no Head Teacher', 'Closing checklist, close and reopen the quarter'] },
+      { title: 'Limits', body: ['Own branch only', 'Does not create branches, rooms, years, accounts or roles (Super Admin)', 'Does not enter marks: corrects them, with a reason', 'Own requests go to the Super Admin', 'Second step required; idle sign-out after 15 minutes'], tone: 'warn' },
+    ]),
+    T('Three videos', ['Video', 'Covers', 'Needs first'], [
+      ['Part 1: Prepare the year', 'Quarters, slots, templates, calendar, subjects, settings, students, parents, classes, Tutors, groups', 'Super Admin video done'],
+      ['Part 2: The timetable', 'Teaching load, builder, board, publish, day changes, exams, absences, substitutions, versions, views', 'Part 1'],
+      ['Part 3: Journals, plans, quarter', 'Home page, journals, corrections, requests, exemptions, plans, closing, results, reports', 'A few school days of entries (time machine)'],
+    ], { size: 26 }),
+    ...signIn('Academic Vice Principal', true),
+    shell('Academic Vice Principal', 'Home, School setup, People, Classes and subjects, Timetable, Journal, Results, Lesson plans, Audit log'),
+
+    D('Part 1', 'Prepare the year', 'School setup, people, classes and groups.'),
+    F('Quarters', {
+      what: 'Four dated quarters. Months are worked out from the dates.',
+      steps: ['School setup → **Academic years** → **Change quarters** → Quarter 1–4 start and end'],
+      show: ['Date the four quarters of the demo year'],
+      time: ['Only future lessons change quarter; a closed quarter keeps its dates', 'After publishing: preview "What the new quarter dates change" lists what blocks and what moves'],
+    }),
+    F('Slot types and the day templates', {
+      what: 'Lessons and breaks with lengths; a template puts them in order from a start time. Times are never typed.',
+      steps: ['**Slot types** → **Add slot type**: Lesson 40 (Lesson, 40), Break 15 (Break, 15), Lunch (Break, 40), Juma (Break, 125)', '**Day templates** → **Add day template** → Start time 09:00 → **Slots in order**', 'Later changes: **New length from a date**, **New slots or start time from a date**'],
+      show: ['Four templates: grades 5–8 (lunch 12:40), grades 1–4 (lunch 11:45), grades 9–11 (lunch 13:35), Friday 5–11 (Juma 12:25–14:30)', 'Each shows its own times from 09:00 by itself'],
+      time: 'Length and template changes act from tomorrow at the earliest; a lesson number the published timetable uses cannot disappear.',
+    }),
+    F('Where templates apply', {
+      what: 'Which template a day uses, from a date: whole branch, a grade range, a weekday, or both.',
+      steps: ['**Where templates apply** → **Set a template from a date** → Applies to → Day template → From', 'Table "Templates by weekday and grade" (Grade 0–11 × weekdays)', '**End from a date** (the default is only replaced, never ended)'],
+      show: ['Grades 5–8 as **The whole branch (default)**', 'Grades 1–4 and grades 9–11 as **A range of grades**', 'Friday template as **A weekday and a range of grades**: Friday, 5–11', 'The table "Templates by weekday and grade" shows all four'],
+    }),
+    F('Calendar', {
+      what: 'Days off, special days (shortened days, working Saturdays) and exam weeks.',
+      steps: ['**Calendar** → **Add entry**: Name, Kind (Day off / Special day), First and Last date, For (Whole branch / Some grades), Day template, **Lessons of**, **Exam week**', '**Check a date**: what each grade has that day', 'Save → preview "What this save changes"'],
+      show: ['Day off "Mustaqillik kuni"', 'A working Saturday with "Lessons of" Monday', 'After publishing: add a day off and read the preview (lessons removed, teachers told)'],
+      time: 'Only dates from tomorrow change lessons; an entry wholly in the past is read-only; filter **When**: Today and later / Past.',
+    }),
+    F('Subjects and weights', {
+      what: 'Each subject: names in three languages, department, grades, colour, journal type and the weights that make a result.',
+      steps: ['**Subjects** → **Add subject**: names, Department, Grades, Colour, **Journal type** (Graded / Attendance only), **Rating exam**, **Group subject**, Demanding', '**Daily distribution**: Attendance / Classwork / Homework / Rating exam = 100', '**Quarterly distribution** → **Change distribution** → **Copy quarter 1 to the other quarters**'],
+      show: ['Add Robototexnika; turn on Group subject for Matematika, Ingliz tili and Jismoniy tarbiya', 'Kelajak soati and Homework in the "Tutors" department', 'Change a weight after entries exist: "This change alters results" asks a reason'],
+      time: 'Switch changes take effect from a chosen quarter; earlier quarters keep theirs.',
+    }),
+    F('Branch settings', {
+      what: 'The numbers that drive locks, warnings and attendance values.',
+      steps: ['**Settings** → **Edit days** (1–30, default 7)', '**Early-warning list**: result below 50, drop 15 points, attendance below 80 %, absences in a row 3', '**Lessons of a class per day**', '**Attendance values**: Late 50 %, Skipped 0 % per quarter'],
+      show: ['For the demo: Edit days = 1, so a lesson locks the second night'],
+      time: 'Edit days apply to lessons dated after the change.',
+    }),
+    F('Staff: availability and vacancies', {
+      what: 'When a teacher can teach, and planned posts with no person yet.',
+      steps: ['Staff panel → Availability → **Change from a date** → time ranges per weekday', 'People → **Vacancies** → **Add vacancy** → Name, Department, Subjects', 'Later: **Fill** (Person, From) or **Name an acting teacher**; **Close the vacancy**'],
+      show: ['Give Aziz Rahimov "09:00–16:05" Monday to Friday', 'Create the vacancies "Arab tili" and "AP Economics"; they get load rows in Part 2'],
+      time: 'A new availability starts tomorrow at the earliest while one is in force; a vacancy fill from tomorrow.',
+    }),
+    F('Students: import from Excel', {
+      what: 'A whole class list with relatives in one file. Nothing is saved until every row is clean.',
+      steps: ['People → **Students** → **Import from Excel** → **Download the template**', 'Up to 3 relatives per row (the first is the main contact)', '**Upload the filled file** → Problems and "To decide" → **Save all N students**'],
+      show: ['Import the invented students of the eight classes, props included (see the Recording plan)', 'A relative’s phone already known: "Relative N: link to …"', 'The planted bad row: nothing saved until it is fixed'],
+      time: 'A student starting today or earlier needs a class; the same file again creates nothing.',
+    }),
+    F('A student record', {
+      what: 'One record per child: UID, profile tabs and dated changes.',
+      steps: ['**Add student** (duplicate warning "This student may already exist")', 'Tabs: Overview, Results, Attendance, Contract and scholarship, Relatives, History', '**Correct the UID** → Reason', 'Photo: **Add photo**'],
+      show: ['Open one student; walk through the tabs', 'Filters: Grade, Class, "No class", Consent'],
+      who: 'AVP and Super Admin create and edit; a UID is never given twice.',
+    }),
+    F('Relatives and parents', {
+      what: 'One parent record for all their children, matched by phone.',
+      steps: ['Student → **Relatives** → **Add a relative**: Relationship, Main phone, Main contact, Receives notices', 'People → **Parents**: Main phone, Students, Other branches; filter "No valid phone"', 'A known phone: "Found: …" or "Who is …?" → same person / new owner', '**Merge with …**, **Add an extra phone**'],
+      show: ['Give two siblings the same mother', 'Home tile "Parents with no valid phone"'],
+    }),
+    F('Leaving and returning', {
+      what: 'Dated: a future last day is a scheduled leaving.',
+      steps: ['Student → **Leave school** → Last day at school, Reason (or tick many → Leave school)', '**Cancel the leaving** / **Undo leaving**', '**Return to school** → First day back (or "First day of next year")', '**Delete a student created twice** (no data only)'],
+      show: ['Schedule a leaving for next Friday: "Leaves the school (last day …)"', 'Jump past it (time machine): Inactive, journal "Left or moved"'],
+      time: 'Inactive from the day after the last day; a past last day lists journal entries to void.',
+    }),
+    F('Classes and Tutors', {
+      what: 'A class is a grade and a name with a home room, a size limit and one Tutor (Class teacher for grades 0–4).',
+      steps: ['**Classes and subjects** → **Classes** → **New class**: Grade, Name, Language, Main classroom, Max. students, Academic year', 'Panel → **Give Tutor** → Person, From (and **Set acting Tutor** with Until)', 'Preview: "N Tutor lessons go to …"'],
+      show: ['The eight classes, from 3 Genius (105) to 11 Yale (408)', 'Grade 3 asks for a **Class teacher**, grade 5 for a **Tutor**: Kamola → 3 Genius, Umida → 5 Melbourne', 'A person without the role cannot be chosen: the panel says to ask the Super Admin'],
+      time: 'From today or later; future Tutor lessons follow the new Tutor; held lessons keep who held them.',
+    }),
+    F('Putting students into classes', {
+      what: 'Placement from a date, with the size limit checked on every day ahead.',
+      steps: ['Class panel → **Put into …** (or Students list → tick → Put into a class)', '"Free seats today", "Fewest free seats ahead"', 'A planned placement: **Withdraw** before its day'],
+      show: ['Place the imported students', 'Home tile "Students with no class" goes to zero'],
+    }),
+    F('Groups: every kind', {
+      what: 'A group belongs to one subject and draws from one class or several.',
+      steps: ['Classes → **Groups** → **New group**: Name, Subject, **Classes** (both), Language, Max.', 'Kind reads "Group across classes"', '**Place students** → Group placement: Subject, Grades, Date → tick → **Put into …** or **Place automatically**', 'Auto-placed students: "Placed automatically, review" → **Mark reviewed**'],
+      show: ['Grade 5: Matematika and English A, B, C across three classes; PE 5A+5B', 'PE 5D+6D: one group from grades 5 and 6 ("Lesson slots of both grades")', 'Arab tili of 3 Genius in two: Kind "Split of a class"', 'Moliya 11A+11B holding every student of both classes'],
+      time: 'Members join from the date; a placement that has begun changes only by a transfer.',
+    }),
+    F('Moves between classes and groups', {
+      what: 'Dated transfers with a full history.',
+      steps: ['Student → **Move to another class** → New class, First day there', '**Move to another group**', 'Scheduled: **Change the move to …** / **Cancel the move to …**; begun: **Undo the move**', 'Tab **History**: one line per stay'],
+      show: ['Move a student from English B to English A from Wednesday', 'After the jump: History "Moved from … to …"'],
+      time: 'First day defaults to tomorrow; only the AVP or Super Admin may date a move in the past.',
+    }),
+    F('Moves between branches', {
+      what: 'One branch releases a student; the other accepts into a class.',
+      steps: ['Student → **Move to another branch** → Branch, First day there → "Released to …"', 'Receiving AVP: Students → "Released to this branch: N students" → **Accept** (Class, groups) / **Decline**'],
+      show: ['Release one student to Demo Yunusobod; second browser accepts'],
+      time: 'Accepted from its first day on; an accept cannot be undone.',
+    }),
+
+    D('Part 2', 'The timetable', 'From the teaching load to a published week, then its daily changes.'),
+    F('Teaching load', {
+      what: 'Who teaches what to whom, how many lessons a week. It is a dated version.',
+      steps: ['Timetable → **Teaching load** → **New draft** (Empty or Copy of version N; Start date)', '**Add row**: Class or group, Subject, Teacher (or vacancy), Lessons per week, Room, **Double lessons allowed**', 'Columns **Block** and **Problems**; filter "With problems"', '**Weekly totals**: Classes and Teachers ("Over by n", Contract load)'],
+      show: ['Enter the 34 lessons of 5 Melbourne; PE Boys + PE Girls become one Block', 'Kelajak soati: "Teacher: Umida Rashidova, the class’s Tutor. It changes with the Tutor."', 'Arab tili group 2 and AP Economics with a vacancy as teacher'],
+      time: 'A draft starts today or later; default next Monday.',
+    }),
+    F('Draft builder: the readiness steps', {
+      what: 'Checks before the board: templates, load, teachers, rooms, rules.',
+      steps: ['Timetable → **Draft builder**: 1 Period and day templates → **Confirm the templates**', '2 Teaching load · 3 Teachers · 4 Rooms (each Ready or not)', '5 Rules: **Weights of the preferences** 0–10, **Pin a lesson** → **Confirm the rules**', '6 Generate: "Not yet available"'],
+      show: ['Pin Kelajak soati of 5 Melbourne to Tuesday lesson 5', '"Not ready for generation: n steps are not ready" until all pass'],
+    }),
+    F('The board', {
+      what: 'Drag lessons into slots; every move is checked by the rule engine at once.',
+      steps: ['Builder step 7 → **View** By class / By teacher / By room', 'Side panel **To place and conflicts** → **Place** / **Double**', 'Drag: each slot shows Free, Warning or Blocked with the rule', 'Tile: **Move**, **Remove**, **Room**, **Suggest a place**'],
+      show: ['Place the Matematika block as a Double on Monday 1–2: groups A, B and C at once, in 208, 209 and 204', 'Drag a lesson onto a slot where Aziz is busy: Blocked, with the reason', 'Place the PE block: both groups in Sport zal 2 at once'],
+      notes: 'Clash checks use real clock time, so a teacher with a lesson in another branch is blocked including the travel time.',
+    }),
+    F('Board tools', {
+      what: 'Suggestions, locks, undo and the edit lock.',
+      steps: ['**Suggest a place**: Free slots / Make room by moving other lessons → **Apply**', '**Lock this class**, **Lock the day**, **Lock the teacher**', '**Undo** / **Redo** (Ctrl+Z, Ctrl+Shift+Z)', 'Other branches: grey "Busy in …"'],
+      show: ['Second browser (Super Admin) opens the draft: "Nodira is editing this draft"; after 5 minutes **Take over**', 'Practice draft only, never published: mark the 3 Genius Arab tili split "Mixed block" and pair its halves on the board, then delete the draft'],
+      time: 'The edit lock is free after 5 minutes without activity.',
+    }),
+    F('Publish', {
+      what: 'Turns the draft into dated lessons and journals. It cannot be edited after.',
+      steps: ['Step 8 **Review and publish** → Start date (Usual start / Quarter start)', 'Checks: "Nothing stops the publish." / reasons; warnings', '**What the publish changes**: lessons, teachers told, classes, rooms', 'Transition week tick; One-day changes kept / Needs a decision; **Publish** → "Publish version N?"'],
+      show: ['Publish from next Monday', 'Teachers’ bells: "Timetable version N was published…"'],
+      time: 'Start tomorrow at the earliest. **Withdraw** only before the start date.',
+    }),
+    F('Versions and out-of-date drafts', {
+      what: 'Every published version is kept; a draft made before a change is marked out of date.',
+      steps: ['Timetable → **Version history** → **Compare with**, **Print**, **Restore as a new draft**', 'A draft "Draft, out of date" → **What changed** → Keep the draft / Take the published → **Bring up to date**'],
+      show: ['Copy version 1 into a draft for next month; change a calendar day; bring the draft up to date'],
+    }),
+    F('One-day changes', {
+      what: 'Today and later: cancel, change room, move. After the lesson: correct what happened.',
+      steps: ['Timetable → **Day changes** → Date, Class', '**Cancel lesson** → Reason / **Restore**; **Change room**; **Move** (New date, Lesson slot)', '**Bulk cancel**: classes, lesson slots, reason → **Check** → **Cancel lessons**', 'Past lesson → **Correct**: did not take place / took place / someone else taught / another room'],
+      show: ['Move tomorrow’s Tarix to lesson 7', 'Bulk cancel lessons 6–7 for a school event'],
+      time: 'Changes only before a lesson starts; corrections only after.',
+    }),
+    F('Exams', {
+      what: 'An exam takes rooms, classes and lesson slots; clashing lessons are cancelled for it.',
+      steps: ['Timetable → **Exams** → **New exam**: Title, Subject, Rooms and classes, From / To lesson, Invigilators, **Rating exam of the quarter**', '**Check** → **Save the exam**'],
+      show: ['A Matematika exam for both classes in lessons 3–4'],
+      time: 'Only in slots not yet started; kept after a later publish.',
+    }),
+    F('Teacher absence and substitutes', {
+      what: 'A teacher away: their lessons need a teacher until someone is assigned.',
+      steps: ['Timetable → **Absences** → **Add an absence** (Person, First and Last day, Reason)', '**Substitute for the whole absence**, or Day changes → **Substitute** (teaches the subject / same department / another)', 'Home: "Lessons that need a teacher"'],
+      show: ['Feruza is ill for two days; Dilfuza substitutes', 'The substitute’s bell: "You are the substitute for a lesson on …"'],
+      time: 'From today or later; after 10 school days the platform suggests a new version.',
+    }),
+    F('Room closures', {
+      what: 'A room out of use moves its lessons.',
+      steps: ['Timetable → **Room closures** → **Close a room** (Room, dates, Reason) → **Move all to another room**'],
+      show: ['Close 209 for one day; home tile "Lessons that need a room"'],
+    }),
+    F('Timetable views and print', {
+      what: 'School, class, teacher and room views by day or week.',
+      steps: ['Timetable → **Timetable views** → View, Period, Date', '**Print**, **Excel** (PDF on production)', 'Marks: Changed, Exam, Cancelled, Busy in …'],
+      show: ['Print the 5 Melbourne week and hold it beside the paper sheet'],
+    }),
+
+    D('Part 3', 'Journals, plans and the quarter', 'Record after a few school days have passed (time machine).'),
+    F('Home page', {
+      what: 'The day of the branch and everything that needs the AVP.',
+      steps: ['**Lessons today** (status counts), **Quarter progress**, **Timetable conflicts**', '**Requests waiting for you**', 'Tiles: no class, no valid phone, need a teacher, unresolved, need a room or invigilator', '**Early warning: the branch**'],
+      show: ['Morning shot: lessons in progress; one tile with work in it'],
+    }),
+    F('Reading any journal', {
+      what: 'The AVP reads every journal of the branch; the teacher enters.',
+      steps: ['Journal → **Journals** → Classes / Groups → a row', 'Quarter, Month / Whole quarter, Filter, **View**: Grid / Lesson mode, **Legend**', 'Cell **History**: Before / After / Who / When'],
+      show: ['Open the journal of Matematika group A; show the legend'],
+    }),
+    F('Correct a journal', {
+      what: 'The AVP never types marks: a correction always has a reason, and the teacher is told.',
+      steps: ['Journal → **Correct** → "Correct: …" → **Reason of the correction** → **Start correcting**', 'Change values; bar "Correcting …" → **Stop correcting**'],
+      show: ['Correct a wrong number; the teacher’s bell shows old and new value'],
+      time: 'Until the quarter is closed.',
+    }),
+    F('Unlock requests and the edit period', {
+      what: 'A locked lesson opens only by an approved request, for one person, for 1–7 days.',
+      steps: ['Journal → **Unlock requests**: Waiting for me / My requests / Branch', '**Decide** → **Approve** (Days open 1–7) or **Refuse** (reason)', '**Extend the edit period** for the branch: From, To, Days, Reason'],
+      show: ['Approve Aziz’s request for 1 day', 'Demo Yunusobod: the seeded request "I was ill that day…"'],
+      time: 'Approved: open until 00:00 after decision + days. Entries after are marked late.',
+    }),
+    F('Exemptions', {
+      what: 'A student excused from lessons for a time, with a reason the teachers do not see.',
+      steps: ['Journal → **Exemptions** → **New exemption**: Kind (Temporary / Full), Subjects, Time, First and Last day, Reason, Detail, document', '**Check** → choose per held lesson → **Save**', '**End from a date**, **Void, entered in error**'],
+      show: ['Excuse one girl from PE for next week: cell shows 4 "Temporarily exempt"', 'Moliya: one **Full** exemption for every student of 11A and 11B who doesn’t take it (up to 60 at once): cells show 5'],
+      time: 'Coming → In force → Ending this week → Ended; editable only before its start.',
+    }),
+    F('Student absences, orphans, support view', {
+      what: 'Three oversight pages.',
+      steps: ['**Student absences** → **Set the reason** (with the Tutor)', '**Orphan lessons** → **Assign a teacher** for lessons of a teacher who left (Days 1–7)', '**Support view**: Journal, Date, Student → "How the result was calculated", "Saves, refusals and events"'],
+      show: ['Open the support view for one student’s day'],
+      who: 'The support view is logged at each opening.',
+    }),
+    F('Journal discipline and branch export', {
+      what: 'How well journals are kept, and the whole branch in one file.',
+      steps: ['Journal → **Journal discipline**: From, To, Department → counts → **Show what is counted** → Excel', 'Journal → **Export of the branch** → Format, Quarter → **Ask for the export** → **Download**'],
+      time: 'The download link works 24 hours.',
+    }),
+    F('Plan windows and minimum works', {
+      what: 'The days teachers write their quarter plans. At the end, plans lock.',
+      steps: ['Lesson plans → **Plan windows** → First day, Last day → **Save window**', '**Extend window** for one teacher', '**Minimum works per quarter**: Classworks, Homeworks'],
+      show: ['Open the window for the demo quarter'],
+      time: 'Needs the quarter’s timetable published; never past the quarter’s end; reminders at 07:00 3 days before and on the last day.',
+    }),
+    F('Plan edit requests and master plans', {
+      what: 'After the window, plans change only by an approved request.',
+      steps: ['Lesson plans → **Plan edit requests** → **Decide** → Approve (School days open 1–10) / Refuse; **Approve together**', '**Master plans** → **Add master** (for subjects with no Head Teacher)', '**Plan reports**: Completeness, Progress, Edit requests'],
+      show: ['Approve a "window_end" request', 'Parallel classes: where 5 Melbourne and 5 Tokyo have reached'],
+    }),
+    F('Closing checklist', {
+      what: 'Everything that blocks or warns before a quarter is closed.',
+      steps: ['Journal → **Closing checklist**', 'Blocking: rating exam entries missing, flagged results undecided, lessons inside the edit period, plan periods open…', 'Decide flags: **Keep the number** / **Exempt** / **Not assessed**', '**Remind teachers**, **End plan periods**'],
+      time: 'Opens 14 days before the quarter’s last day.',
+      show: ['Demo Yunusobod: quarter 1 (ended 31 October) has a full checklist now'],
+    }),
+    F('Close and reopen the quarter', {
+      what: 'Closing stores final results; the journals become read only.',
+      steps: ['**Close the quarter** → tick warnings → **Lock now and close** if needed', '"Closed on … by … · version 1"', '**Reopen**: whole branch or one journal, 1–14 days, Reason → **Close again**'],
+      time: 'Only on the last day or later; reminder every 07:00 until it is closed.',
+      show: ['Journal now says "Quarter closed: read only"; files say "Final"'],
+    }),
+    F('Results, rating, early warning, reports', {
+      what: 'Everything comes from one calculation; a figure opens the lessons behind it.',
+      steps: ['Student → **Results** tab; click a figure → "Lessons behind …"', 'Results → **Rating**: In a subject / Of a class / Of classes', 'Results → **Early warning** → **Mark handled**', 'Results → **Reports**: Attendance, Results table, Subject mastery, Journal discipline, Timetable load'],
+      show: ['Rating of the two classes; one student on the early-warning list'],
+      time: '"Provisional" until the quarter is closed; totals show "Updated …" with Refresh.',
+    }),
+    feedback,
+  ],
+};

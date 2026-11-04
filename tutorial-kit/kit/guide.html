@@ -1,0 +1,261 @@
+<title>Demo Branch Recording Kit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Golos+Text:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column of numbered steps, grouped by the person who does them; a sticky progress bar. */
+:root {
+  --bg: #F3F3F1; --panel: #FFFFFF; --ink: #06113C; --muted: #4A5270; --line: #DCDDE3;
+  --accent: #FF8A32; --accent-ink: #06113C; --today: #FFF4E8; --cam: #1D4FA8; --cam-bg: #E3ECFB;
+  --off: #4A5270; --off-bg: #ECEDF1; --warn: #7A4A00; --warn-bg: #FFF1CC; --ok: #146C2E; --ok-bg: #E6F4EA;
+  --display: 'Bitter', Georgia, serif; --body: 'Golos Text', 'Segoe UI', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0B1230; --panel: #121B42; --ink: #E9ECF7; --muted: #AEB5D1; --line: #2A3563;
+  --accent: #FF9A4D; --accent-ink: #06113C; --today: #2A2416; --cam: #9DB8F2; --cam-bg: #1C2A57;
+  --off: #AEB5D1; --off-bg: #1D2650; --warn: #F2C46B; --warn-bg: #3A2E12; --ok: #8ED6A4; --ok-bg: #143523; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0B1230; --panel: #121B42; --ink: #E9ECF7; --muted: #AEB5D1; --line: #2A3563;
+  --accent: #FF9A4D; --accent-ink: #06113C; --today: #2A2416; --cam: #9DB8F2; --cam-bg: #1C2A57;
+  --off: #AEB5D1; --off-bg: #1D2650; --warn: #F2C46B; --warn-bg: #3A2E12; --ok: #8ED6A4; --ok-bg: #143523; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px }
+main { max-width: 860px; margin: 0 auto }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel) }
+header.top { padding-block: 40px 20px; display: grid; gap: 10px }
+h1 { font: 700 2.2rem/1.15 var(--display); margin: 0; text-wrap: balance }
+h2 { font: 700 1.45rem/1.2 var(--display); margin: 0; text-wrap: balance }
+h3 { font: 600 1.05rem/1.3 var(--body); margin: 0 }
+p { margin: 0 }
+.lede { color: var(--muted); max-width: 65ch }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.track { flex: 1 1 200px; height: 8px; background: var(--off-bg); border-radius: 4px; overflow: hidden }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width .2s }
+.bar span { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem }
+.bar button { font: 500 .85rem var(--body); color: var(--ink); background: var(--off-bg); border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer }
+.bar button:focus-visible, input:focus-visible + .box { outline: 2px solid var(--accent); outline-offset: 2px }
+section { margin-top: 36px; display: grid; gap: 14px }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; min-width: 0 }
+.who { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding-top: 6px }
+.who h3 { font-size: 1.1rem }
+.who p { color: var(--muted); font-size: .92rem }
+table { border-collapse: collapse; width: 100%; font-size: .93rem }
+.tw { overflow-x: auto }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { color: var(--muted); font-weight: 600; font-size: .82rem; letter-spacing: .02em }
+code, .file { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .86em; background: var(--off-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere }
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px }
+.step.done { background: var(--today) }
+.step label { grid-row: span 2; display: flex; padding-top: 2px; cursor: pointer }
+.step input { position: absolute; opacity: 0; width: 1px; height: 1px }
+.box { width: 22px; height: 22px; border: 2px solid var(--muted); border-radius: 5px; display: grid; place-items: center }
+input:checked + .box { background: var(--accent); border-color: var(--accent) }
+input:checked + .box::after { content: ""; width: 6px; height: 11px; border: solid var(--accent-ink); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translate(-1px, -1px) }
+.head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; min-width: 0 }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600 }
+.tag { font-size: .74rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap }
+.cam { background: var(--cam-bg); color: var(--cam) }
+.offc { background: var(--off-bg); color: var(--off) }
+.mixed { background: var(--warn-bg); color: var(--warn) }
+.body { min-width: 0; display: grid; gap: 6px; color: var(--ink) }
+.body ul { margin: 0; padding-left: 20px; display: grid; gap: 3px }
+.body .path { color: var(--muted); font-size: .93rem }
+.note { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: .92rem }
+.good { background: var(--ok-bg); color: var(--ok); border-radius: 8px; padding: 10px 12px; font-size: .92rem }
+a { color: var(--cam) }
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .93rem }
+@media (prefers-reduced-motion: reduce) { .fill { transition: none } }
+@media (max-width: 520px) { h1 { font-size: 1.7rem } .step { padding: 12px } }
+</style>
+
+<main>
+<header class="top">
+  <h1>Demo Branch Recording Kit</h1>
+  <p class="lede">Everything to build "Istirohat demo" on the test site and record every feature: the five kit files, the build in order, and the props you add by hand while filming. Tick each step as you go; the ticks stay in this browser.</p>
+  <div class="links">
+    <a href="https://claude.ai/artifact/QKMf388eTYYyjQdvwLg7Qb">Recording plan</a>
+    <a href="https://claude.ai/artifact/V8fBAkvnhG8Hkep8nx1bSP">Super Admin deck</a>
+    <a href="https://claude.ai/artifact/N5db8jb2oU3AEW9F4o91A2">Academic Vice Principal deck</a>
+    <a href="https://claude.ai/artifact/3wwKm5Zqh8dypgpLCn4QPJ">Teacher deck</a>
+  </div>
+</header>
+
+<div class="bar" role="status">
+  <div class="track" aria-hidden="true"><div class="fill" id="fill"></div></div>
+  <span id="count">0 of 0 steps done</span>
+  <button type="button" id="reset">Clear ticks</button>
+</div>
+
+<section>
+  <h2>The five files</h2>
+  <div class="panel tw">
+    <table>
+      <tr><th>File</th><th>Used in</th><th>What it is</th></tr>
+      <tr><td><span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span></td><td>Step 9</td><td>Staff import with 3 planted mistakes (4 rows refused). Shows how the import refuses.</td></tr>
+      <tr><td><span class="file">2 Xodimlar importi - toza.xlsx</span></td><td>Step 9</td><td>The same 52 teachers and Tutors, clean.</td></tr>
+      <tr><td><span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span></td><td>Step 17</td><td>Student import with 3 planted mistakes (4 rows refused) and one duplicate warning.</td></tr>
+      <tr><td><span class="file">4 Oʻquvchilar importi - toza.xlsx</span></td><td>Step 17</td><td>The same 130 students, clean, still with the duplicate warning to tick.</td></tr>
+      <tr><td><span class="file">5 Demo filial maʼlumotlari.xlsx</span></td><td>Whole build</td><td>The cheat sheet: subjects, rooms, day templates, classes, groups and members, teaching load, one timetable sheet per class, working hours, and the list of planted props.</td></tr>
+    </table>
+  </div>
+  <p class="good">The four import files are filled in the platform’s own templates and were read back through the platform’s own import reader: the clean files give zero problems, and the mistake files fail exactly on the planted rows.</p>
+</section>
+
+<section>
+  <h2>Before the build</h2>
+  <ol class="steps">
+    <li class="step" data-id="a1"><label><input type="checkbox" id="c-a1"><span class="box"></span></label>
+      <div class="head"><span class="num">A1</span><h3>Reset the test site with the demo school</h3><span class="tag offc">Off camera</span></div>
+      <div class="body"><p class="path">GitHub → Actions → <b>Demo data on the test environment</b> → Run workflow on <code>main</code></p>
+      <ul><li>Wait first until the latest <code>deploy-test</code> on main is green.</li><li>Type a demo password (10+ characters) and <code>REPLACE</code>. It wipes the whole test database, about 10 minutes.</li><li>Keep the run’s <b>Summary</b>: it lists every seeded login (the Super Admin, the Demo Yunusobod AVP, the Senior Head Teacher, the 0 London Class teacher).</li></ul></div></li>
+    <li class="step" data-id="a2"><label><input type="checkbox" id="c-a2"><span class="box"></span></label>
+      <div class="head"><span class="num">A2</span><h3>One phone with an authenticator app</h3><span class="tag offc">Off camera</span></div>
+      <div class="body"><p>The Super Admin and the Academic Vice Principal must set up the second step at their first sign-in. Use one phone with two entries.</p></div></li>
+    <li class="step" data-id="a3"><label><input type="checkbox" id="c-a3"><span class="box"></span></label>
+      <div class="head"><span class="num">A3</span><h3>Browsers ready</h3><span class="tag offc">Off camera</span></div>
+      <div class="body"><p>Chrome profiles “SA”, “AVP”, “Tutor”; Firefox for the Teacher; Edge for the Head Teacher; a private window for read-only roles and the Class teacher. After each first password change, sign in again with <b>Trust this device</b> so nobody is signed out mid-take.</p></div></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Build the branch</h2>
+  <p class="lede">Do the whole build once as a rehearsal, then run step A1 again to wipe it, then repeat it for the real recording. Steps marked “On camera” belong to a video; “Mixed” means film one example and do the rest off camera.</p>
+
+  <div class="who"><h3>Super Admin</h3><p>Chrome profile “SA” · the seeded Super Admin login</p></div>
+  <ol class="steps">
+    <li class="step" data-id="b1"><label><input type="checkbox" id="c-b1"><span class="box"></span></label>
+      <div class="head"><span class="num">1</span><h3>Create the branch</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">School setup → Branches → <b>New branch</b></p><ul><li>Name <b>Istirohat demo</b>, working weekdays Monday–Friday, time zone Asia/Tashkent.</li><li>Open it from the Branches list to switch to it.</li><li>School setup → <b>Travel time</b>: 20 minutes to Demo Yunusobod.</li></ul></div></li>
+    <li class="step" data-id="b2"><label><input type="checkbox" id="c-b2"><span class="box"></span></label>
+      <div class="head"><span class="num">2</span><h3>Building, floors, rooms</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">Buildings and floors → <b>Add building</b> “Asosiy bino” → <b>Add floor</b> 1, 2, 4 · Rooms → <b>Add room</b></p><ul><li>All 12 rooms: sheet <b>2 Rooms</b>. Sport zal 1 and 2: type Sports hall, <b>Shared</b>, 2 lessons at once, capacity 60.</li><li>On camera: room 208, Sport zal 2, then the <b>By floor</b> view.</li></ul></div></li>
+    <li class="step" data-id="b3"><label><input type="checkbox" id="c-b3"><span class="box"></span></label>
+      <div class="head"><span class="num">3</span><h3>Departments</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p>The departments already exist: STEAM, Xorijiy tillar, Milliy fanlar, Tabiiy fanlar, Umumiy fanlar, Tyutorlar. On camera, add a test department, rename it, then archive it.</p></div></li>
+    <li class="step" data-id="b4"><label><input type="checkbox" id="c-b4"><span class="box"></span></label>
+      <div class="head"><span class="num">4</span><h3>Academic year</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">Academic years → <b>Add year</b> → <b>Change quarters</b> → <b>Start year</b></p><ul><li>Year 02.09.2026 – 25.05.2027.</li><li>Quarters: 02.09–31.10.2026 · 09.11–26.12.2026 · 11.01–20.03.2027 · 30.03–25.05.2027.</li><li>Using the compressed year from the Recording plan (option B)? Use one-week quarters instead.</li></ul></div></li>
+    <li class="step" data-id="b5"><label><input type="checkbox" id="c-b5"><span class="box"></span></label>
+      <div class="head"><span class="num">5</span><h3>Subjects</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">School setup → Subjects → <b>Add subject</b></p><ul><li>Create the 24 rows marked <b>Create</b> on sheet <b>1 Subjects</b>: names in three languages, department, grades. Kelajak soati and Uy vazifasi go in <b>Tyutorlar</b>. School Counseling: journal type <b>Attendance only</b>.</li><li>Turn on <b>Group subject</b> for Matematika, Ingliz tili, Jismoniy tarbiya (already there) and Arab tili.</li><li>The import files name subjects exactly as on the sheet, so type the names exactly.</li></ul></div></li>
+    <li class="step" data-id="b6"><label><input type="checkbox" id="c-b6"><span class="box"></span></label>
+      <div class="head"><span class="num">6</span><h3>“Rating exams in grades 0–4”</h3><span class="tag offc">Later</span></div>
+      <div class="body"><p>Leave it off for now. It is filmed later, in the Class teacher video, before and after.</p></div></li>
+    <li class="step" data-id="b7"><label><input type="checkbox" id="c-b7"><span class="box"></span></label>
+      <div class="head"><span class="num">7</span><h3>Office staff, by hand</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">People → Staff → <b>Add person</b> → <b>Create account</b> → <b>Print</b> the slip → <b>Give a role</b> (branch Istirohat demo, from today)</p><ul><li>Fayzullayeva Nodira → Academic Vice Principal (main division Rahbariyat). On camera.</li><li>Yoʻldoshev Rustam → Principal; Valiyeva Shoira → Vice Principal for Spiritual and Moral Education (Rahbariyat).</li><li>Tojiboyev Ulugʻbek → Head Tutor (Oʻquv boʻlimi, department Tyutorlar).</li><li>Phones: +998 97 190 00 01 to 04.</li></ul></div></li>
+    <li class="step" data-id="b8"><label><input type="checkbox" id="c-b8"><span class="box"></span></label>
+      <div class="head"><span class="num">8</span><h3>Second step for the AVP</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p>In the AVP browser: sign in with Nodira’s slip, choose a password, set up the second step with the phone, save the recovery codes. This is the AVP video’s opening.</p></div></li>
+    <li class="step" data-id="b9"><label><input type="checkbox" id="c-b9"><span class="box"></span></label>
+      <div class="head"><span class="num">9</span><h3>Staff import</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">People → Staff → <b>Import from Excel</b> → <b>Upload the filled file</b></p><ul><li>Upload <span class="file">1 Xodimlar importi - xatolar bilan.xlsx</span>. The preview refuses 4 rows: Alimov Bobur (role Super administrator), Raximova Laylo and Sharipov Ilhom (the same phone), Haydarova Gulnoza (subject “Matematka” misspelt). Nothing is saved.</li><li>Upload <span class="file">2 Xodimlar importi - toza.xlsx</span> → <b>Save all 52 people</b> → <b>Print the slips</b>.</li><li>Keep the slips: every teacher’s first password is on them, valid 7 days.</li></ul></div></li>
+    <li class="step" data-id="b10"><label><input type="checkbox" id="c-b10"><span class="box"></span></label>
+      <div class="head"><span class="num">10</span><h3>Roles the import cannot give</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><ul><li>Ergasheva Madina → <b>Head Teacher</b>, subjects Ingliz tili, Rus tili, Arab tili, Ona tili va adabiyot. On camera.</li><li>Nurmatova Kamola and Ibragimova Ozoda → <b>Class teacher</b>.</li><li>For the password-reset scene: put a real mailbox in Rahimov Aziz’s email field.</li></ul></div></li>
+  </ol>
+
+  <div class="who"><h3>Academic Vice Principal</h3><p>Chrome profile “AVP” · Nodira Fayzullayeva</p></div>
+  <ol class="steps">
+    <li class="step" data-id="b11"><label><input type="checkbox" id="c-b11"><span class="box"></span></label>
+      <div class="head"><span class="num">11</span><h3>Slot types, day templates, where they apply</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">School setup → Slot types · Day templates · Where templates apply</p><ul><li>Slot types: Lesson 40, Break 15, Lunch 40 (Break), Juma 125 (Break).</li><li>Four templates from sheet <b>3 Day templates</b>: Asosiy 5-8 (whole branch), Boshlangʻich 1-4 (grades 1–4), Yuqori 9-11 (grades 9–11), Juma 5-11 (Friday, grades 5–11).</li><li>If the platform refuses two breaks in a row, use one 70-minute break around lunch.</li></ul></div></li>
+    <li class="step" data-id="b12"><label><input type="checkbox" id="c-b12"><span class="box"></span></label>
+      <div class="head"><span class="num">12</span><h3>Calendar</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p>Day off “Konstitutsiya kuni” on 08.12.2026. More calendar scenes come after publishing: a working Saturday and a shortened day, each with its preview.</p></div></li>
+    <li class="step" data-id="b13"><label><input type="checkbox" id="c-b13"><span class="box"></span></label>
+      <div class="head"><span class="num">13</span><h3>Settings and weights</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><ul><li>Settings: <b>Edit days</b> 7 (1 if you use the compressed year). Leave the early-warning defaults.</li><li>Subjects → each graded subject: daily distribution (for example Attendance 20, Classwork 40, Homework 40) → quarterly distribution → <b>Copy quarter 1 to the other quarters</b>. Film one subject.</li></ul></div></li>
+    <li class="step" data-id="b14"><label><input type="checkbox" id="c-b14"><span class="box"></span></label>
+      <div class="head"><span class="num">14</span><h3>Vacancies</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">People → Vacancies → <b>Add vacancy</b></p><ul><li>“Arab tili oʻqituvchisi”: Xorijiy tillar, subject Arab tili.</li><li>“AP Iqtisodiyot oʻqituvchisi”: Umumiy fanlar, subject AP Iqtisodiyot.</li></ul></div></li>
+    <li class="step" data-id="b15"><label><input type="checkbox" id="c-b15"><span class="box"></span></label>
+      <div class="head"><span class="num">15</span><h3>Working hours</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">People → Staff → a person → Availability → <b>Change from a date</b></p><p>All 52 people on sheet <b>8 Working hours</b>: 09:00–16:05 Monday to Friday, Tutors included. The builder will not publish while anyone with lessons has no hours. Film one; do the rest off camera.</p></div></li>
+    <li class="step" data-id="b16"><label><input type="checkbox" id="c-b16"><span class="box"></span></label>
+      <div class="head"><span class="num">16</span><h3>Classes, Tutors and Class teachers</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">Classes and subjects → Classes → <b>New class</b> → the class → <b>Give Tutor</b> / <b>Give Class teacher</b> (from today)</p><ul><li>The eight classes from sheet <b>4 Classes and Tutors</b>. 3 Indigo is entered as a Russian-language class.</li><li>On camera: 3 Genius asks for a Class teacher, 5 Melbourne for a Tutor.</li></ul></div></li>
+    <li class="step" data-id="b17"><label><input type="checkbox" id="c-b17"><span class="box"></span></label>
+      <div class="head"><span class="num">17</span><h3>Student import</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">People → Students → <b>Import from Excel</b></p><ul><li>Upload <span class="file">3 Oʻquvchilar importi - xatolar bilan.xlsx</span>. Refused rows: IS26020 (no contract number), IS26040 (class “Melborne”), IS26060 and IS26061 (one phone under two names). Plus the warning that IS26901 has the same name and birth date as IS26039.</li><li>Upload <span class="file">4 Oʻquvchilar importi - toza.xlsx</span> → tick the warning → <b>Save all 130 students</b>.</li><li>IS26902 starts on 01.12.2026 with no class. If you import on or after that day, change her start date in the file first.</li></ul></div></li>
+    <li class="step" data-id="b18"><label><input type="checkbox" id="c-b18"><span class="box"></span></label>
+      <div class="head"><span class="num">18</span><h3>Merge the duplicate</h3><span class="tag cam">On camera · Super Admin</span></div>
+      <div class="body"><p>In the SA browser: the student IS26901 → <b>Merge with another record</b> → UID <b>IS26039</b> → <b>Show the merge</b> → reason → <b>Merge</b>. Do this before the groups, so the duplicate never needs groups.</p></div></li>
+    <li class="step" data-id="b19"><label><input type="checkbox" id="c-b19"><span class="box"></span></label>
+      <div class="head"><span class="num">19</span><h3>Groups and group placement</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><ul><li>Classes → Groups → <b>New group</b>: the 22 groups on sheet <b>5 Groups</b>. The Ingliz 3-x groups ask “Mix Uzbek and Russian classes?”; the 5D6D groups show “Lesson slots of both grades”.</li><li><b>Place students</b> → Group placement: members from sheet <b>6 Group members</b> (date: today). Every student must be in one group of each grouped subject, or publish stops with “Students not placed”.</li><li>On camera: grade 5 Matematika groups and the PE Boys/Girls split.</li></ul></div></li>
+    <li class="step" data-id="b20"><label><input type="checkbox" id="c-b20"><span class="box"></span></label>
+      <div class="head"><span class="num">20</span><h3>Teaching load</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">Timetable → Teaching load → <b>New draft</b> (Empty, start next Monday) → <b>Add row</b></p><ul><li>All rows from sheet <b>7 Teaching load</b>. Group rows of one subject become one Block by themselves; Kelajak soati and Uy vazifasi fill their own teacher.</li><li>On camera: grade 5. Then <b>Weekly totals</b>.</li></ul></div></li>
+    <li class="step" data-id="b21"><label><input type="checkbox" id="c-b21"><span class="box"></span></label>
+      <div class="head"><span class="num">21</span><h3>Builder steps and the board</h3><span class="tag mixed">Mixed</span></div>
+      <div class="body"><p class="path">Timetable → Draft builder → steps 1–5 → step 7 the board</p><ul><li>Place every lesson where the sheets <b>T &lt;class&gt;</b> show it, doubles with <b>Double</b>.</li><li>On camera: grade 5, then each special moment: the 5D+6D group, Moliya with the capacity warning, grade 3 Arab tili, the 11th-grade lunch.</li></ul></div></li>
+    <li class="step" data-id="b22"><label><input type="checkbox" id="c-b22"><span class="box"></span></label>
+      <div class="head"><span class="num">22</span><h3>Publish</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p>Step 8 <b>Review and publish</b> → start next Monday → read the impact → <b>Publish</b>.</p></div></li>
+    <li class="step" data-id="b23"><label><input type="checkbox" id="c-b23"><span class="box"></span></label>
+      <div class="head"><span class="num">23</span><h3>Moliya exemptions</h3><span class="tag cam">On camera</span></div>
+      <div class="body"><p class="path">Journal → Exemptions → <b>New exemption</b>: Kind Full, Chosen subjects Moliya</p><p>The 20 students marked “Does not take Moliya” on sheet <b>6 Group members</b>, in one batch → <b>Check</b> → <b>Save</b>.</p></div></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Props you add by hand while filming</h2>
+  <div class="panel tw">
+    <table>
+      <tr><th>Prop</th><th>How</th><th>Video</th></tr>
+      <tr><td>One phone, two families</td><td>Add a relative to a 5 Tokyo student with another family’s mother’s phone and a new name → “Who is …?” → “A different person: the number has a new owner”</td><td>AVP</td></tr>
+      <tr><td>Over the contract</td><td>Ahmedov Javlon: “Lessons per week by contract” 4 (he teaches 6) → weekly totals “Over by 2”</td><td>AVP</td></tr>
+      <tr><td>Teacher absence</td><td>Hamidova Feruza ill for two days → substitutes from the absence</td><td>AVP</td></tr>
+      <tr><td>Scheduled changes</td><td>A student leaving next Friday; a class move; a group move (Head Teacher: Ingliz 5B → 5A)</td><td>AVP, Head Teacher</td></tr>
+      <tr><td>Branch move</td><td>Release a student to Demo Yunusobod; accept as the Yunusobod AVP from the Summary</td><td>AVP</td></tr>
+      <tr><td>Starts later</td><td>IS26902 (01.12.2026): after her date, “Students with no class” → put her into 5 London</td><td>AVP</td></tr>
+      <tr><td>Accounts</td><td>Lock and unlock a teacher; reset a password; the email reset for Rahimov Aziz</td><td>Super Admin</td></tr>
+      <tr><td>Room, exam, mixed block</td><td>Close room 209 for a day; a grade-5 Matematika exam; a practice draft with a “Mixed block”, then delete it</td><td>AVP</td></tr>
+      <tr><td>Rating exam</td><td>Matematika: Rating exam on from a quarter; grade 3 also needs “Rating exams in grades 0–4” (Super Admin)</td><td>Teacher, Class teacher</td></tr>
+    </table>
+  </div>
+  <p class="note">Already planted in the files, nothing to do: siblings (IS26003 in 3 Genius and IS26052 in 5 Tokyo share both parents), a teacher who is a parent (IS26085 in 6 Imperial, whose father is Otabek Normatov), eight students with no consent date, two scholarships per class. Sheet <b>9 Planted props</b> lists each one.</p>
+</section>
+
+<section>
+  <h2>Things to know</h2>
+  <div class="panel">
+    <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
+      <li>Every person and phone is invented. Phones are +998 97 1xx for staff and +998 93/94 for parents, away from the demo seed’s numbers.</li>
+      <li>The files were checked with the platform’s own reader. Checks that need the live database (the one-department rule, class placement, phones already held) run when you press Save; they should pass, and the preview names any row that does not.</li>
+      <li>6 Imperial: its real grade-6 Matematika and English blocks are not built, so they are whole-class rows. Say so on camera.</li>
+      <li>3 Indigo is entered as a Russian-language class because its sheet has Oʻzbek tili. If it is not, set its language to Uzbek; nothing else changes.</li>
+      <li>After the rehearsal, run step A1 again: it wipes the branch and you start the real take from step 1.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<script>
+(function () {
+  var KEY = 'istirohat-kit-ticks';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var fill = document.getElementById('fill');
+  var count = document.getElementById('count');
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function render() {
+    var done = 0;
+    steps.forEach(function (li) {
+      var on = !!state[li.dataset.id];
+      li.querySelector('input').checked = on;
+      li.classList.toggle('done', on);
+      if (on) done += 1;
+    });
+    count.textContent = done + ' of ' + steps.length + ' steps done';
+    fill.style.width = (steps.length ? (100 * done / steps.length) : 0) + '%';
+  }
+  steps.forEach(function (li) {
+    li.querySelector('input').addEventListener('change', function (e) { state[li.dataset.id] = e.target.checked; save(); render(); });
+  });
+  document.getElementById('reset').addEventListener('click', function () { state = {}; save(); render(); });
+  render();
+})();
+</script>
