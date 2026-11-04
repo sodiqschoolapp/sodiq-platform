@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
+import { DailyWork } from '../results/daily/daily.service.js';
 import { errorCode, signInKit, type SignInKit } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
@@ -137,6 +138,38 @@ describe('the demo clock on the test environment', () => {
     expect(period.demoNow).toBe('2026-11-05T02:05:00.000Z');
   });
 
+  // Decisions 4 and 6: the tick of the new date sends that date's work once; days jumped over
+  // are not replayed; "did not run" waits an hour of demo time after the check.
+  it('runs the daily work of the new date after the jump, once', async () => {
+    const runs = () =>
+      database.migrator
+        .selectFrom('scheduled_runs')
+        .select(['kind', 'day'])
+        .where('branch_id', '=', branch)
+        .orderBy('kind')
+        .execute();
+
+    await app.get(DailyWork).tick();
+    await app.get(DailyWork).tick();
+
+    expect(await runs()).toEqual(
+      [
+        'journal.about_to_lock',
+        'journal.exports_cleanup',
+        'plans.reminders',
+        'results.check',
+        'results.closing_overdue',
+        'timetable.forced_delete_purge',
+      ].map((kind) => ({ kind, day: '2026-11-05' })),
+    );
+
+    ok(await jump('2026-11-05T08:06:00+05:00'));
+    await app.get(DailyWork).tick();
+    expect((await runs()).filter((run) => run.kind === 'results.check_missed')).toEqual([
+      { kind: 'results.check_missed', day: '2026-11-05' },
+    ]);
+  });
+
   it('refuses a jump that does not go forward, and writes nothing', async () => {
     const before = await database.migrator
       .selectFrom('demo_clock')
@@ -152,8 +185,8 @@ describe('the demo clock on the test environment', () => {
     expect(
       await database.migrator.selectFrom('demo_clock').selectAll().executeTakeFirstOrThrow(),
     ).toEqual(before);
-    expect(await jumps()).toHaveLength(1);
-    expect(await ticks()).toHaveLength(1);
+    expect(await jumps()).toHaveLength(2);
+    expect(await ticks()).toHaveLength(2);
   });
 
   it('refuses a jump of more than 400 days', async () => {
@@ -164,7 +197,7 @@ describe('the demo clock on the test environment', () => {
     const far = await jump(new Date(then + 400 * DAY + 1).toISOString());
     expect(far.status).toBe(409);
     expect(errorCode(far)).toBe('demo_clock_too_far');
-    expect(await jumps()).toHaveLength(1);
+    expect(await jumps()).toHaveLength(2);
   });
 
   it('refuses a moment without its offset', async () => {
@@ -181,8 +214,8 @@ describe('the demo clock on the test environment', () => {
     expect(
       answers.filter((answer) => answer.status === 409).map((answer) => errorCode(answer)),
     ).toEqual(['demo_clock_backwards']);
-    expect(await jumps()).toHaveLength(2);
-    expect(await ticks()).toHaveLength(2);
+    expect(await jumps()).toHaveLength(3);
+    expect(await ticks()).toHaveLength(3);
   });
 
   it('keeps the offset in force before a jump takes effect as its previous offset', async () => {
@@ -190,7 +223,8 @@ describe('the demo clock on the test environment', () => {
       .selectFrom('demo_clock')
       .selectAll()
       .executeTakeFirstOrThrow();
-    const first = Date.parse('2026-11-05T02:05:00Z') - Date.parse('2026-11-04T05:00:05Z');
+    // The second jump took effect at 05:00:10 real, to 03:06 demo (08:06 in Tashkent).
+    const first = Date.parse('2026-11-05T03:06:00Z') - Date.parse('2026-11-04T05:00:10Z');
 
     expect(Number(row.previous_offset_ms)).toBe(first);
     expect(Number(row.offset_ms)).toBeGreaterThan(first);
