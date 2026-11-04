@@ -674,7 +674,7 @@ const stepHtml = (ses, step, i) => {
   const [cls, label] = TAG[step.tag];
   return `<li class="step" data-id="${step.id}"><label><input type="checkbox" id="c-${step.id}"><span class="box"></span></label>
   <div class="head"><span class="num">${ses.n}.${i + 1}</span><h3>${step.title}</h3><span class="tag ${cls}">${label}</span></div>
-  <div class="body">${step.decks.length ? `<div class="decks">${step.decks.map(chip).join('')}</div>` : ''}${CLICKS[step.id] ? `${clicksHtml(CLICKS[step.id])}<details class="about"><summary>What this step is for</summary>${step.body}</details>` : step.body}</div></li>`;
+  <div class="body">${step.decks.length ? `<div class="decks">${step.decks.map(chip).join('')}</div>` : ''}${CLICKS[step.id] ? clicksHtml(CLICKS[step.id]) : step.body}</div></li>`;
 };
 const sessionHtml = (ses) => `<section id="s${ses.n}">
   <div class="ses"><span class="snum">Session ${ses.n}</span><h2>${ses.title}</h2><p class="when">${ses.when}</p>${ses.lede ? `<p class="lede">${ses.lede}</p>` : ''}</div>

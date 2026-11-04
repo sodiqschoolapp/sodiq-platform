@@ -1,0 +1,397 @@
+{
+ "s5a": {
+  "clicks": [
+   "— Teacher deck, slides 3–7 —",
+   "In the Chrome profile **Teacher** (Rahimov Aziz): open the test site. The **Sign in** page opens.",
+   "In the **Language** chooser at the top of the page, open the list so the camera sees `Oʻzbekcha`, `Русский` and `English`, then choose `English`.",
+   "Slide 3, wrong password: type Aziz’s login from his slip in **Login** and `wrong-password-1` in **Password**, then click **Sign in**. The red line says “The login or the password is wrong. Check both and try again.”",
+   "In **Password**, type the one-time password from Aziz’s slip. Leave **Trust this device** off and click **Sign in**.",
+   "The page **Choose a new password** opens. Fill **One-time password** with the slip’s password and **New password** and **New password again** with `Sodiq-demo-26` (any 10 to 128 characters you note for the week), then click **Change password**. **Home** opens.",
+   "A line says “This device is not trusted: a one-time password was in use at sign-in…”. Click **Close**.",
+   "Slide 4: at the foot of the left menu, click **Sign out**. On **Sign in**, type the login and `Sodiq-demo-26`, turn **Trust this device** on (its note says 7 days) and click **Sign in**.",
+   "Slide 5: before signing in again, click **Forgot your password?**, type Aziz’s login in **Login** and click **Send link**. The neutral answer starts “If this login has an email address on record…”. Click **Back to sign-in**.",
+   "Slide 6: at the foot of the menu, click the **Account** button, then the **Account** item. Show **Photo**, **Language**, **Password**, **Sessions**, the sign-in history and **Trusted devices**. Then click the **Account** button → **Theme** → **Dark**, and two seconds later **As the device**.",
+   "Slide 7: in the top bar, press `Ctrl+K` and type `Na`, then press Esc. Click the **Notifications** bell → **Mark all as read**. Narrow the window to phone width to show the tab bar with **More**, then widen it again.",
+   "— Tutor deck slides 4–8, Class teacher deck slides 4–8, Head Teacher deck slides 4–8 —",
+   "Do lines 2–11 again in the Chrome profile **Tutor** with Rashidova Umida’s slip, in **Class teacher** with Nurmatova Kamola’s slip, and in **Head Teacher** with Ergasheva Madina’s slip. On slide 8, Kamola’s top bar shows **Menu and home page: Class teacher** (or **Teacher**) and Madina’s shows **Menu and home page: Head Teacher** (or **Teacher**).",
+   "— Senior HT deck, slides 3–7 —",
+   "In the Chrome profile **Senior HT**: sign in with the login and password of the seeded Senior Head Teacher from the demo run’s Summary. Slide 3 reuses any of the takes above (the screen is the same). Film slides 4–7 as in lines 8–11. The top bar also shows the branch dropdown.",
+   "Off camera, in **Spare 1**: first sign-in of Rasulova Shahnoza (Ingliz 5B) with her slip, new password `Sodiq-demo-26`.",
+   "Off camera, in **Spare 2**: first sign-in of Qosimova Zarina (PE girls) with her slip, new password `Sodiq-demo-26`."
+  ],
+  "check": "Every profile ends on **Home** with the person’s login at the foot of the menu. Kamola and Madina see the **Menu and home page: …** button and the Senior Head Teacher sees the branch dropdown.",
+  "unsure": [
+   "Rashidova Umida is imported with the role Tutor only (kit-data role 'Tutor', no subjects). The **Menu and home page** button shows only for two or more roles, so the Tutor deck’s “A Tutor is usually a Teacher too” and the **Menu and home page: Tutor / Teacher** step will not appear for her.",
+   "Which role a two-role account starts in (Teacher or Class teacher / Head Teacher) was not confirmed. Use the button to set the role the deck needs.",
+   "Whether the seeded Senior Head Teacher’s password is a one-time password that forces **Choose a new password** is not confirmed. The Summary says.",
+   "Slips from step 2.10 (Week 0 Thursday) work for 7 days, so they run out on Thursday of Week 1. Sanjar and Feruza sign in for the first time only on Thursday (steps 6.4, 6.5). Sign them in earlier off camera, or have the SA use **Reset password** under **Sign-in access**."
+  ]
+ },
+ "s5b": {
+  "clicks": [
+   "— Teacher deck, slides 9–10 — before 09:00 —",
+   "In **Teacher** (Aziz), click **Home** in the left menu. The card **Today, <Monday’s date>** has two rows: lesson 1 at 09:00–09:40 and lesson 2 at 09:55–10:35, **Class or group** `Matematika 5A`, **Subject** `Mathematics`, **Room** `208`, **State** **As planned**, and an **Open the journal** button on each.",
+   "Scroll down past **Reminders** (“Nothing waits for you.”) to **This week, <Monday> – <Friday>**: Monday lessons 1–2, Thursday lessons 1–2 and Friday lessons 7–8, all `Matematika 5A`, room 208. Then show **My journals** and **Early warning: my journals** (“Nobody listed.”).",
+   "Slide 10: in the left menu, click **Timetable**. The page **Timetable views** opens on Aziz’s own timetable. Set **Period** to **Week** and **Date** to Monday of Week 1. If the grade-5 exam of step 4.6 falls in his slots, Thursday shows **Exam**.",
+   "Click **Print** and cancel the print dialog. Click **Excel**; the file downloads.",
+   "— Tutor deck, slides 10–11 —",
+   "In **Tutor** (Umida), click **Home**. The card **Class 5 Melbourne** shows **Today** and **This week** with “Nothing marked yet”, **Absent now**: “Nobody.” and **Timetable today**: the Mathematics groups at 09:00, Arabic 10:50, Project-based learning 11:45, Robotics 13:35, History 14:30, Science 15:25. Below it are **Early warning: 5 Melbourne** and her own lessons (Monday: “No lessons today.”).",
+   "Slide 11: click **Classes and subjects**. Only `5 Melbourne` is listed. Click it to open the panel: **Main classroom** `208`, Tutor Rashidova Umida with her dates, and Komilov Sanjar as **Acting Tutor** (planned for Thursday–Friday).",
+   "Click **Timetable**, set **View** to **Class** and the **Class** field to `5 Melbourne`, then set **Period** to **Week**.",
+   "— Class teacher deck, slides 10–11 —",
+   "In **Class teacher** (Kamola), set **Menu and home page:** to **Class teacher**, then click **Home**: the card **Class 3 Genius**, then her Monday lessons in room 105: Mathematics lesson 2 (09:55), Native language lesson 5 (12:40), Art lesson 7 (14:30) and Logic lesson 8 (15:25).",
+   "Click **Classes and subjects** → `3 Genius`. Then click **Timetable**, set **View** to **Class** and the class to `3 Genius`, and set **Period** to **Week**: Tuesday lesson 8 (15:25) is **Homework**.",
+   "— Head Teacher deck, slides 3 and 10 —",
+   "In **Head Teacher** (Madina), click **Menu and home page: Head Teacher**. The menu shows “Your rights stay those of all your roles.” Choose **Teacher**: the menu becomes Home, Timetable, Journal, Lesson plans, Results. Open it again and choose **Head Teacher**.",
+   "Slide 10: click **Home**. **Today** says “No lessons today.” (Madina teaches on Tuesday, Wednesday and Friday), and the **Requests waiting for you** card is still empty.",
+   "— Senior HT deck, slides 8 and 10 —",
+   "In **Senior HT**, set the branch dropdown in the top bar to `Istirohat demo`. Click **Journal** → **Groups** → `Matematika 5A` (empty before the bell), then go back and open `Matematika 5B`.",
+   "Set the branch dropdown to `Demo Chilonzor` → **Journal** → **Classes** → `6 Oxford`, subject **Mathematics**. Set the dropdown back to `Istirohat demo`, then click **Home** (slide 10)."
+  ],
+  "check": "Each home shows the right card: Aziz’s two Monday lessons, **Class 5 Melbourne** with “Absent now: Nobody.”, **Class 3 Genius**, and the Head Teacher’s **Requests waiting for you**. The Senior Head Teacher is back on `Istirohat demo`.",
+  "unsure": [
+   "The Teacher deck’s “a moved lesson marked Changed” cannot show in Aziz’s week: no one-day change of step 4.6 touches Matematika 5A (the Tarix move is another class). Show **changed** in a class view instead (Tuesday, the class whose Tarix moved).",
+   "A Teacher’s **Timetable** opens **Timetable views** directly. Whether it offers only the **Teacher** view (no **View** switch) was not confirmed.",
+   "Subject names appear in English in the English UI (Matematika → Mathematics, Kelajak soati → Future hour, Uy vazifasi → Homework, Jismoniy tarbiya → Physical education). Group and class names stay as typed."
+  ]
+ },
+ "s5c": {
+  "clicks": [
+   "— Teacher deck, slide 11 — at 09:00 or later (entry opens at the lesson’s start, never before) —",
+   "Narrow the **Teacher** window to phone width (or use the phone signed in as Aziz). At this width the journal opens in lesson mode by itself.",
+   "Click **Home** → **Today** → the lesson 1 row `Matematika 5A` → **Open the journal**.",
+   "Lesson mode shows **Lesson of <Monday>, 09:00**, **Topic** **No plan** and the list of 16 students. Tap **All present**: “16 students marked present.”",
+   "Row Bahromova Odina (IS26036, 5 Melbourne): tap **0** (Absent from school).",
+   "Row Nazarov Bekzod (IS26033, 5 Melbourne): tap **0**.",
+   "Row Valiyev Elbek (IS26063, 5 Tokyo): tap **2** (Late). Step 5.4 adds a comment to this mark.",
+   "Widen the window and set **View** to **Grid**: lesson 1’s **A** column shows the marks. Switch **View** to **Lesson mode** and back to **Grid**.",
+   "Leave lesson 2 (09:55) with no data all day. Step 5.9 needs it **Not started**.",
+   "— Tutor deck, slide 10, “Absent now” — between 09:05 and 09:40 —",
+   "In **Tutor** (Umida), reload **Home**. In **Class 5 Melbourne**, **Absent now** lists Bahromova Odina and Nazarov Bekzod, and **Today** shows a percentage."
+  ],
+  "check": "Lesson 1 of Matematika 5A has 13 × 1, 2 × 0 and 1 × 2 (the 0s are IS26036 and IS26033). Umida’s **Absent now** names both absent students.",
+  "unsure": [
+   "The Teacher deck’s hint “Was at school at an earlier lesson today…” appears only in a later lesson of the same day. Lesson 1 has no earlier lesson, so it is filmed on Thursday lesson 2 (step 6.4).",
+   "The grid order and the count of 16 assume the 5 London student released in step 3.15 is not in Matematika 5A (Mat 5A from 5 London: IS26066, IS26069, IS26072, IS26075, IS26078). If they are, that student is folded under “Left or moved” and the count is 15.",
+   "Whether **Absent now** also lists a Late (2) student was not confirmed."
+  ]
+ },
+ "s5d": {
+  "clicks": [
+   "— Teacher deck, slide 12 — in **Teacher** at desktop width, after lesson 1 —",
+   "Click **Journal** → **Groups** → `Matematika 5A` and set **View** to **Grid**.",
+   "In the header of lesson 1’s **A** column (Monday, lesson 1), click **…** (**Lesson card**), then **Works of the lesson**. The dialog **Works of the lesson, <Monday>** says **No plan**. Click **Add classwork**, then **Close**. A column **CW 1** with **Soni** appears.",
+   "In the **CW 1** header, click **…** (**Work: CW 1**). Set **Total (Soni)** to `10`, click **Set total**, then **Close**. The header reads `Soni 10`.",
+   "Click Bahromov Ibrohim’s **CW 1** cell and type each number followed by Enter (the cursor moves down; a number goes in a cell of a present student only): Bahromov Ibrohim `6`, Eshonqulov Ahmad `8`, Eshonqulova Mohinur `9`, Fayziyeva Mohinur `7`, Jalolov Bekzod `10`, Nazarova Kamila `9`, Rahmatov Yahyo `8`, Rahmatova Shirin `10`, Shodiyev Elbek `7`, Shodiyeva Mohinur `9`, Sobirov Ahmad `6`, Sobirova Kamila `8`, Valiyev Elbek `7`, Valiyeva Kamila `9`. Leave Bahromova Odina and Nazarov Bekzod empty. Each cell shows its percent (8 → 80%).",
+   "Click **…** (**Work: CW 1**) again and point at **Not held**, **Check at the next lesson** and **Remove work** without clicking them, then click **Close**.",
+   "— slide 14 —",
+   "Click Valiyev Elbek’s **A** cell of lesson 1 (the 2) and press `C`. The dialog **Comments: Valiyev Elbek** opens. In **Comment on the attendance mark**, set **Text** to `Came 10 minutes late: the school bus was late` and **Who sees it** to **Staff only**, click **Save**, then **Close**. The cell gets a corner marker.",
+   "— slide 22 (before filling the plan, because a copy goes only into an empty plan) —",
+   "Click **Lesson plans** → **Groups** → `Matematika 5A`. The page **Matematika 5A · Mathematics** opens; **Window:** reads “open until <Wednesday>”.",
+   "Click **Copy from a plan**. In the dialog **Copy the items of another plan**, show **Academic year**, **Plan** = `Matematika 5B` (Qodirov Bahodir) and **Items**: **All items** / **Only items of lessons not yet held**, then click **Back**.",
+   "Click **Copy from a master**. The dialog **Copy from a master plan** says “No master plan fits this plan yet.” (the Senior Head Teacher writes one in step 5.6). Close it. **Share plan** is not offered: Aziz has no second Matematika group of grade 5.",
+   "— slide 21 —",
+   "Leave row 1 (Monday, lesson 1) empty: its works were made in the journal.",
+   "Click row **2** (Monday, lesson 2) → **Fill in**. In the form **Row 2**, set **Topic** to `Natural sonlarni taqqoslash`, click **Add homework** and set **Homework 1** to `12-mashq, 15-bet`, then **Save**.",
+   "Row **3** (Thursday, lesson 1) → **Fill in**: **Topic** `Natural sonlarni qoʻshish`, **Add classwork** → **Classwork 1** `Ogʻzaki hisob`, **Save**.",
+   "Row **4** (Thursday, lesson 2) → **Fill in**: **Topic** `Qoʻshish xossalari`, **Add homework** → **Homework 1** `20-mashq`, **Save**.",
+   "Row **5** (Friday, lesson 7) → **Fill in**: **Topic** `Natural sonlarni ayirish`, **Add classwork** → **Classwork 1** `Mustaqil ish`, **Save**.",
+   "Row **6** (Friday, lesson 8) → **Fill in**: click **Same topic as the previous lesson**, then **Add homework** → **Homework 1** `27-mashq`, **Save**. Point at **Add file**, **Links** and **Clear row** without using them.",
+   "— slide 16 —",
+   "Click **Journal** → `Matematika 5A`. Lesson 2’s header now shows **No. 2** and its topic. Click **…** (**Lesson card**) in lesson 2’s **A** header: **Topic** `Natural sonlarni taqqoslash`, **Homework given today** `12-mashq, 15-bet`, **Objectives**, **Materials**.",
+   "Tick **Topic not delivered** and click **Close**. Click **Lesson plans** → `Matematika 5A`: row 2 is marked **Topic not delivered**, the region **Not covered** holds the topic, and **Edit requests** shows **Edit request prepared**. Do not click **Send request** (step 6.3 sends it).",
+   "— slide 20 —",
+   "Click **Journal** → `Matematika 5A`. In the page header, click **Print** (print preview, stamped Provisional) and cancel it, then click **Excel** (the quarter downloads). Set **Month** to November and click **Excel** again for the month."
+  ],
+  "check": "The journal has **CW 1** (`Soni 10`) with numbers and percents in lesson 1 and a comment marker on Valiyev Elbek’s 2. Plan rows 2–6 are filled. Row 2 is marked **Topic not delivered**, with an **Edit request prepared** waiting.",
+  "unsure": [
+   "**Add classwork** and **Add homework given** appear only on a lesson whose plan row is empty (“No plan”). That is why row 1 stays empty and the classwork is added in the journal.",
+   "The Teacher deck’s “give homework Monday, check it Tuesday” does not match the code. Homework is checked at the next lesson of the journal, and for Matematika 5A that is Thursday lesson 1 (from the homework of row 2, Monday lesson 2). Homework given at Monday lesson 1 would be checked at lesson 2 the same day.",
+   "**Copy from a plan** and **Copy from a master** are refused once the plan has items on lessons not yet held (“This plan already has items on lessons not yet held…”). So Aziz cannot copy the Senior Head Teacher’s master after this step. The deck’s “Aziz copies from Bahodir’s plan” works only before he fills rows, and only if Bahodir’s plan has items.",
+   "**Share plan** is offered only when another class or group qualifies (same subject, grade, language and owner, with an empty plan). Aziz has none. The deck’s example (Feruza shares 5 Melbourne Ona tili with 5 Tokyo) needs Feruza’s account.",
+   "Not confirmed: whether filling row 2 after the lesson marks it **Edited after the lesson**, and whether ticking **Topic not delivered** turns lesson 2 from **Not started** to **In progress** (the status counts only marks, numbers, totals, “not held” and comments).",
+   "The **PDF** button exists; the deck says PDF works on production."
+  ]
+ },
+ "s5e": {
+  "clicks": [
+   "— Tutor deck, slide 13 —",
+   "In **Tutor** (Umida), click **Journal**, then the link **Student absences** at the top right of **Journals**. Set **Class** to `5 Melbourne` and **From** and **To** to Monday of Week 1.",
+   "Two rows show: Bahromova Odina and Nazarov Bekzod, **Lessons missed** 1, **Reason** “No reason yet”.",
+   "Click **Bahromova Odina** → **Set the reason**. Set **Reason** to **Illness** and **Note** to `Mother phoned at 09:20: fever`, then **Save**. The row shows Illness and the note, and **Attach a file** appears (show it, do not attach).",
+   "In **Teacher** (Aziz), reload the Matematika 5A journal. Bahromova Odina’s 0 now carries the reason sign (“Reason: Illness”); the note is not shown.",
+   "— slide 14 —",
+   "In **Tutor**: **Journal** → **Groups** → `Ingliz 5A` (English). Only the 5 Melbourne students show: IS26035 Sobirov Kamron, IS26038 Rahmatova Shirin, IS26041 Fayziyev Otabek, IS26044 Sobirova Odina and IS26047 Rahmatov Shohjahon.",
+   "— slide 15 —",
+   "**People** → **Students**: the whole branch list, view only. Click IS26036 Bahromova Odina. The tabs are **Overview**, **Results**, **Attendance**, **Contract and scholarship**, **Relatives** and **History**.",
+   "Close the panel. Click **Filters**, set **Class** to `5 Melbourne`, then click **Export** and open the file.",
+   "— Class teacher deck, slides 13–15 and 17 —",
+   "In **Class teacher** (Kamola, set to **Class teacher**), lesson 2 at 09:55 or later: **Home** → **Today** → Mathematics `3 Genius` → **Open the journal** → **All present**, then type `0` in IS26004 Sobirova Odina’s **A** cell.",
+   "Click **Journal** → **Student absences**, set **Class** to `3 Genius` and **From** and **To** to Monday. Click **Sobirova Odina** → **Set the reason**: **Reason** **Family**, **Note** `Father phoned: family trip`, **Save**.",
+   "Slide 14: **Journal** → **Groups** → `Ingliz 3-1`. Only the 3 Genius students show: IS26001, IS26004, IS26007, IS26010, IS26013 and IS26016.",
+   "Slide 15: **People** → **Students** → **Filters**, **Class** `3 Genius` → **Export**.",
+   "Slide 17: set **Menu and home page: Class teacher** to **Teacher**. Click **Home** → **Today** → Mathematics 09:55 → **Open the journal** (`3 Genius · Mathematics`). Then **Lesson plans** → **Classes** → `3 Genius` to show her plans. Switch back to **Class teacher**."
+  ],
+  "check": "Student absences shows Bahromova Odina with “Illness” and the note, and Sobirova Odina with “Family”. Aziz’s cell shows only the category. Each Tutor journal of a group shows only the Tutor’s own students.",
+  "unsure": [
+   "The Teacher has no reason screen: absence reasons are only for Tutors, Class teachers, the AVP and the Super Admin, read by the Principal, the Spiritual Vice Principal and the Head Tutor. That matches the deck.",
+   "The Tutor deck lists a **Timetable** tab on the student record. The code has none: the tabs are Overview, Results, Attendance, Contract and scholarship, Relatives, History, and which ones a Tutor sees was not confirmed.",
+   "The Class teacher deck’s “two months of entries in Demo Yunusobod 0 London as the Super Admin” is optional and not written here."
+  ]
+ },
+ "s5f": {
+  "clicks": [
+   "— Head Teacher deck, slides 14–18 — in **Head Teacher** (Madina, set to **Head Teacher**) —",
+   "Slide 14: **Journal** → **Groups** → `Ingliz 5B` (English, Rasulova Shahnoza), read only. Go back to **Journals**, click **Journal discipline**, set **From** and **To** to Monday and show the counts of her subjects’ teachers.",
+   "Slide 15: **Lesson plans** → **Groups** → `Ingliz 5B` → **Excel**. Go back, click **Plan reports**, set **Report** to **Completeness** and **Quarter** to Quarter 2. The table shows who has not filled the quarter.",
+   "Slide 16: **Lesson plans** → **Master plans** → **Add master**. Set **Subject** to `English`, **Grade** to `5`, **Language** to Uzbek, **Quarter** to `Quarter 2` and **Name** to `Ingliz tili 5-sinf, 2-chorak`, then **Save**. Click **Add row** three times, saving each **Topic**: `Daily routines`, `Present Simple`, `My school`.",
+   "Off camera, in **Spare 1** (Shahnoza): **Lesson plans** → **Groups** → `Ingliz 5B` → **Copy from a master**. Set **Master plan** to `Ingliz tili 5-sinf, 2-chorak` and click **Copy**. Her first rows get the three topics, and the page shows “Copied from the master …”.",
+   "Slide 17: **People** → **Students** → IS26057 Jalolov Bekzod (5 Tokyo, Ingliz 5B) → **Move to another group**. Set **New group** to `Ingliz 5A`, leave **First day there** at tomorrow (Tuesday) and **Save**. The panel shows “Moves to Ingliz 5A on <Tuesday>”.",
+   "**People** → **Head Teachers**: her subjects with **From**, **Until** and **State**.",
+   "Slide 18: **Timetable**, set **View** to **Teacher** and the teacher to `Rasulova Shahnoza`, **Period** **Week**. Only her English lessons show (Tuesday 3–4, Wednesday 7–8, Friday 3–4, room 209).",
+   "— Senior HT deck, slides 14–18 — in **Senior HT**, branch dropdown `Istirohat demo` —",
+   "Slide 14: **Journal** → **Groups** → `Matematika 5A` (Aziz’s numbers are visible) and `Matematika 5B`. Then **Journal discipline**, **From** and **To** Monday.",
+   "Slide 15: **Lesson plans** → **Groups** → the Matematika plans. Then **Plan reports** → **Completeness**, Quarter 2.",
+   "Slide 16: **Lesson plans** → **Master plans** → **Add master**. Set **Subject** `Mathematics`, **Grade** `5`, **Language** Uzbek, **Quarter** `Quarter 2`, **Name** `Matematika 5-sinf, 2-chorak`, **Kept for** **All branches**, then **Save**. Click **Add row** for `Natural sonlar`, `Qoʻshish va ayirish` and `Koʻpaytirish`.",
+   "Slide 17: **People** → **Students** → IS26043 Valiyev Ahmad (5 Melbourne, Matematika 5B) → **Move to another group**. Set **New group** to `Matematika 5A`, leave **First day there** at tomorrow and **Save**.",
+   "Slide 18: **Timetable**, **View** **Teacher**, teacher `Rahimov Aziz`, **Week**."
+  ],
+  "check": "Two masters exist (English grade 5 for this branch, Mathematics grade 5 for all branches). Two group moves are scheduled for Tuesday: IS26057 Ingliz 5B → 5A and IS26043 Matematika 5B → 5A. The teacher views show only the subject’s lessons.",
+  "unsure": [
+   "The deck’s “Master for Matematika grade 5; Aziz copies it” cannot be done after step 5.4: Aziz’s plan already has items (plan_not_empty). Shahnoza’s copy of the English master is the one to film.",
+   "Whether the Head Teacher’s **Add master** form shows **Kept for** (the deck says it is the Senior Head Teacher’s choice) was not confirmed.",
+   "The field names of **Move to another group** come from the code (**Group**, **New group**, **First day there**). Whether **Group** is a subject choice or a read-only line was not confirmed.",
+   "IS26043’s move adds a second newcomer to Aziz’s Matematika 5A from Tuesday, on top of the step-3.14 move from Wednesday. If that student was the one moved in 3.14, choose another 5B student (IS26049 Rahmatov Otabek, 5 Tokyo)."
+  ]
+ },
+ "s5g": {
+  "clicks": [
+   "— Teacher deck, slide 15 —",
+   "In **Teacher**: **Journal** → `Matematika 5A`, **Month** = **Whole quarter**. The rating column shows only for the whole quarter.",
+   "The column header reads **Rating exam** with **No date** under it. Click its **…** (**Rating exam**). In the dialog, set **Exam date** to Monday of Week 1, click **Save the date**, then **Close**.",
+   "If **Exam date** is instead already filled and greyed with “From the exam in the timetable” (step 4.6 ticked **Rating exam of the quarter** on the Thursday exam), scores open only from that day. Film the rest of this slide on Thursday.",
+   "Click Eshonqulov Ahmad’s **Rating exam** cell and type each score followed by Enter: Eshonqulov Ahmad `78`, Eshonqulova Mohinur `85`, Fayziyeva Mohinur `64`, Jalolov Bekzod `92`, Nazarova Kamila `88`.",
+   "Select Bahromova Odina’s **Rating exam** cell and press `E`. In the dialog **Rating exam: Bahromova Odina**, click **Did not sit**, then **Close**.",
+   "— Class teacher deck, slide 18 —",
+   "In **Class teacher** (Kamola): **Journal** → **Classes** → `3 Genius`, **Subject** `Mathematics`, **Whole quarter**. There is no **Rating exam** column (before).",
+   "In **SA**: **School setup** → **Settings**. The section **School settings** shows **Rating exams in grades 0–4**: **Off**. Click **Turn on**. In the dialog **This change alters results**, set **Reason** to `Rating exams start in grades 3–4 from quarter 2` and click **Save the change**. The line now reads **On**.",
+   "In **Class teacher**, reload the 3 Genius Mathematics journal. The **Rating exam** column (**No date**) is there (after)."
+  ],
+  "check": "Matematika 5A has the rating column with five scores and “Did not sit” for Bahromova Odina. The SA’s setting reads On, and the 3 Genius Mathematics journal gained the **Rating exam** column.",
+  "unsure": [
+   "Scores open only from the exam date (“Scores are typed from the exam date on.”). A date linked to a timetable exam cannot be changed in the journal (“The date comes from the exam in the timetable. Change it there.”).",
+   "The Teacher deck lists **Exempt** per student. In the code only the AVP (and the SA) sets **Exempt** and “not held”. The teacher has **Save the score**, **Did not sit** and **Clear**.",
+   "Once a grade 0–4 journal has rating entries, **Turn off** is refused (“It cannot be turned off yet.”). That is the refusal the SA deck slide 17 shows."
+  ]
+ },
+ "s5h": {
+  "clicks": [
+   "— AVP deck, slides 40–41 and 45 — during the morning —",
+   "In **AVP** (Fayzullayeva Nodira; the second-step code from the phone if asked), click **Home**. Show **Lessons today** (“Not started n · in progress n · still to start n”), **Quarter progress** (Quarter 2, school days passed), **Timetable conflicts** (“Version 1 in force”), **Requests waiting for you**, the tiles below them, and **Early warning: the branch**.",
+   "Slide 41: **Journal** → **Groups** → `Matematika 5A`. Show **Quarter**, **Month**, **Filter** and **View** (**Grid** / **Lesson mode**), then scroll to **Legend** (Attendance marks, Grades, Weights).",
+   "Click Valiyev Elbek’s **A** cell of lesson 1 and press `H`. **History: Valiyev Elbek** shows **Before** / **After** / **Who** / **When**. Click **Close**.",
+   "Slide 45: **Journal** → **Student absences**, **Class** `5 Melbourne`, **From** and **To** Monday. Bahromova Odina shows Illness (set by Rashidova Umida). Click **Nazarov Bekzod** → **Set the reason**, set **Reason** to **Unknown** and **Note** to `No call from the family yet`, then **Save**.",
+   "**Journal** → **Orphan lessons**: “No incomplete lesson of a teacher who left.”",
+   "**Journal** → **Support view**. Set **Journal** to Matematika 5A, **Date** to Monday and **Student** to Bahromova Odina. Show **How the result was calculated** and **Saves, refusals and events**."
+  ],
+  "check": "The AVP home shows the morning counts. The Matematika 5A journal is read-only for the AVP, with the legend and a cell history. Both 5 Melbourne absences have a reason.",
+  "unsure": [
+   "Pressing `H` in an attendance cell opens the history in the code’s key handler. Whether it works for the AVP, who reads and does not enter, was not confirmed. If it does not, film it in Aziz’s journal.",
+   "The **Support view** may need a button to confirm the three choices. The code has the label **Choose**, but where it sits was not confirmed."
+  ]
+ },
+ "s5i": {
+  "clicks": [
+   "— Teacher deck, slide 17 — after 16:05 (or jump to the evening with the time machine) —",
+   "In **Teacher**, click **Home**. **Today** reads “1 of 2 lessons complete”: lesson 1 **Complete**, lesson 2 **Not started**.",
+   "**Reminders** lists **No attendance** for lesson 2 (“16 students without attendance”) and **No topic** for lesson 1 (row 1 of the plan is empty). Click **Open** on the No attendance line: the journal opens at that lesson.",
+   "In the journal, the folded **Reminders** panel shows the same lines. Then click **Timetable** (Day): the lessons carry the same status.",
+   "Do not enter lesson 2: on Wednesday it locks as **Locked incomplete** for step 6.2."
+  ],
+  "check": "Home says “1 of 2 lessons complete”, with **Complete** on lesson 1, **Not started** on lesson 2, and reminders with **Open** buttons.",
+  "unsure": [
+   "“About to lock” reminders come from 07:00 in the last 48 hours before the lock (Tuesday morning for Monday’s lessons with edit days 1), not on Monday evening.",
+   "If ticking **Topic not delivered** in step 5.4 counts as data, lesson 2 shows **In progress** instead of **Not started**. If so, film this slide before step 5.4’s lesson-card part."
+  ]
+ },
+ "s6a": {
+  "clicks": [
+   "— Tutor deck, slide 12 — Tuesday, from 13:35 —",
+   "In **Tutor** (Umida), click **Home**. Her lessons **Today** show `5 Melbourne` **Future hour** (Kelajak soati), 13:35–14:15, room 208. Click **Open the journal**.",
+   "The journal `5 Melbourne · Future hour` opens. Click **All present**, then type `0` in IS26036 Bahromova Odina’s **A** cell (still ill).",
+   "— Class teacher deck, slide 12 — Tuesday, from 15:25 —",
+   "In **Class teacher** (Kamola), click **Home** → `3 Genius` **Homework** (Uy vazifasi), 15:25–16:05, room 105 → **Open the journal** → **All present**.",
+   "— Teacher deck, slide 19, exempt part — Tuesday, from 14:30 —",
+   "In **Spare 2** (Qosimova Zarina), click **Home**. The card **Exempt today** lists IS26034 Valiyeva Kamila (5 Melbourne), the girl excused in step 4.8.",
+   "**Today** → `Jismoniy 5AB Qizlar` **Physical education**, lessons 7–8, Sport zal 2 → **Open the journal**. Her **A** cell shows **4** (Temporarily exempt) and takes no mark. Click **All present** for the others.",
+   "Off camera, Tuesday from 10:50, in **Spare 1** (Shahnoza): **Home** → `Ingliz 5B` lesson 3 → **Open the journal** → **All present** in lesson 3 only. Leave lesson 4 (11:45) empty so it locks incomplete for step 6.3."
+  ],
+  "check": "Future hour and Homework have attendance. Zarina’s home shows **Exempt today** and the girl’s cell is a 4. Shahnoza’s Ingliz 5B has lesson 3 marked and lesson 4 empty.",
+  "unsure": [
+   "Zarina’s PE girls lesson on Tuesday is a double (lessons 7–8, 14:30–16:05), not “lesson 7” alone.",
+   "Whether the exempt cell shows 4 (Temporary) or 5 (Full) depends on the **Kind** chosen in step 4.8."
+  ]
+ },
+ "s6b": {
+  "clicks": [
+   "— Teacher deck, slides 18–19 — Wednesday —",
+   "In **Teacher**: **Journal** → `Matematika 5A`. The panel **Edit period** shows **Lesson of <Monday>** “Locked: the edit period ended <Tuesday 23:59>.” with **Request unlock**; this row is lesson 2, **Locked incomplete**. **Show 1 locked lesson** reveals lesson 1.",
+   "On lesson 2’s row, click **Request unlock**. In the form **Request unlock: Lesson of <Monday>**, set **Reason** to `I did not take attendance in the second half of Monday’s double lesson`, then click **Send**. The row reads “Locked since … Unlock request sent.” with **Withdraw the request**.",
+   "— Senior HT deck, slides 11–12 —",
+   "In **Senior HT** (branch `Istirohat demo`), click **Home**. **Requests waiting for you** reads “1 unlock request”. Slide 11 is the table **Who decides a request**: narrate it.",
+   "**Journal** → **Unlock requests** → tab **Waiting for me** → the row Lesson of <Monday> · Matematika 5A · Mathematics · Rahimov Aziz → **Decide**. Set **Decision** to **Approve** and **Days open** to `1`, then click **Approve**.",
+   "In **Teacher**, reload. The row reads “Unlocked until … by <Senior Head Teacher>.” Click lesson 2’s first **A** cell and type `1` for each student (the cursor moves down), but `0` for Bahromova Odina and Nazarov Bekzod.",
+   "Hover a new cell: “Entered after the edit period, approved by <Senior Head Teacher>”.",
+   "Slide 19, moved students: the list now has IS26055 Sobirov Shohjahon (from Wednesday, the group move of step 3.14); his earlier cells are greyed.",
+   "— AVP deck, slide 42 —",
+   "In **AVP**: **Journal** → **Groups** → `Matematika 5A` → **Edit period** → **Show 1 locked lesson** → Lesson of <Monday> (lesson 1) → **Correct**. Set **Reason of the correction** to `The paper shows 9: 7 was a typing mistake` and click **Start correcting**.",
+   "Under the bar “Correcting Lesson of …”, type `9` in Shodiyev Elbek’s **CW 1** cell of lesson 1 and press Enter, then click **Stop correcting**.",
+   "In **Teacher**, open the **Notifications** bell: “A mark of Shodiyev Elbek in Matematika 5A, <Monday> was corrected: 7 → 9. Reason: The paper shows 9: 7 was a typing mistake”.",
+   "— AVP deck, slide 46 —",
+   "**Journal** → **Journal discipline**. Set **From** to Monday, **To** to Wednesday and **Department** to **All departments**. On the Rahimov Aziz row, open **Show what is counted: Entries after the edit period**, then click **Excel**.",
+   "**Journal** → **Export of the branch**. Set **Format** to **Excel**, **Quarter** to Quarter 2 and **Month** to **Whole quarter**, then click **Ask for the export**. Click **Refresh** until **Ready**, then **Download**.",
+   "— AVP deck, slide 25, after the date —",
+   "**People** → **Students** → IS26037 Jalolov Yahyo (the class move of step 3.14) → tab **History**: “Moved from 5 Melbourne to 5 Tokyo · Done”. Then IS26055 Sobirov Shohjahon → **History**: “Moved from group Matematika 5B to group Matematika 5A · Done”."
+  ],
+  "check": "Aziz’s lesson 2 is filled, with late markers naming the Senior Head Teacher. Shodiyev Elbek’s CW 1 reads 9 with a correction marker, and Aziz’s bell shows 7 → 9. The discipline report counts the late entries, the branch export is ready, and both moves show **Done** in History.",
+  "unsure": [
+   "The AVP’s **Correct** shows only on lessons outside the edit period (locked or unlocked), never on an open lesson.",
+   "The correction notice always says “A mark of …”, even for a number.",
+   "Whether **All present** or **Copy attendance from the first lesson** work on an unlocked lesson was not confirmed (the header buttons need the lesson to be enterable). Typing the marks one by one works.",
+   "Matematika has no Head Teacher in this branch, so Aziz’s request goes to the Senior Head Teacher and the AVP, as the guide says."
+  ]
+ },
+ "s6c": {
+  "clicks": [
+   "— Head Teacher deck, slides 11–12 — Thursday —",
+   "In **Spare 1** (Shahnoza): **Journal** → **Groups** → `Ingliz 5B`. In **Edit period**, on **Lesson of <Tuesday>** (lesson 4, Locked incomplete), click **Request unlock**. Set **Reason** to `Lesson 4 attendance was not entered on Tuesday` and click **Send**.",
+   "In **Head Teacher** (Madina, set to **Head Teacher**), click **Home**. **Requests waiting for you** reads “1 unlock request”. Slide 11: narrate the table **Who decides a request**.",
+   "**Journal** → **Unlock requests** → **Waiting for me** → Shahnoza’s row → **Decide**. Set **Decision** to **Approve** and **Days open** to `1`, click **Approve**, then **Open the journal**.",
+   "In **Spare 1**, reload. In lesson 4’s **A** column, type `1` for each student.",
+   "— Teacher deck, slide 23 —",
+   "In **Teacher**: **Lesson plans** → **Groups** → `Matematika 5A`. **Window:** reads “ended <Wednesday>”. Under **Edit requests**, **Edit request prepared** lists “The plan was not complete when the window ended (from …)” and the item not covered. Show **Ask to edit** (**Kind**: Text / Re-plan) and click **Back**, then click **Send request**. Its status becomes **Waiting**.",
+   "In **Spare 1** (Shahnoza): **Lesson plans** → **Groups** → `Ingliz 5B` → **Send request** on the prepared request.",
+   "— Senior HT deck, slide 13 —",
+   "In **Senior HT**: **Lesson plans** → **Plan edit requests** → Aziz’s `Matematika 5A` row → **Decide**. Set **Decision** to **Approve** and **School days open** to `2`, keep the **Allow …** dates ticked, then click **Approve**.",
+   "— Head Teacher deck, slide 13 —",
+   "In **Head Teacher**: **Lesson plans** → **Plan edit requests** → Shahnoza’s `Ingliz 5B` row → **Decide** → **Approve**, **School days open** `2` → **Approve**.",
+   "In **Teacher**, reload the plan. Row **7** (Monday of Week 2, lesson 1) → **Fill in**: **Topic** `Natural sonlarni koʻpaytirish`, **Save**. Then click **Finished** and confirm **Finished**.",
+   "— AVP deck, slide 48 —",
+   "In **AVP**: **Lesson plans** → **Plan edit requests**. Both requests show **Approved** with who decided. Then **Lesson plans** → **Parallel classes**: set **Subject** to `Native language and literature`, **Grade** to `5` and **Quarter** to Quarter 2. 5 Melbourne, 5 Tokyo and 5 London show **Reached** and **Next**.",
+   "— Head Teacher deck, slide 20 —",
+   "In **SA**: **People** → **Staff** → Ergasheva Madina → **Account and roles** → the Head Teacher row → **Change subjects**. Untick `Russian`, set **New subjects from** to today and **Save**.",
+   "In **Head Teacher**: **People** → **Head Teachers** shows the new list with **From** / **Until** / **State**.",
+   "In **SA**: **Change subjects** again, tick `Russian` and **Save**."
+  ],
+  "check": "Shahnoza’s Tuesday lesson 4 is filled late. Both plan requests are approved: Aziz’s by the Senior Head Teacher, Shahnoza’s by Madina. Aziz finished his edit. Madina’s subjects are back to the four.",
+  "unsure": [
+   "The Teacher deck lists Kind “Window extension”. The **Ask to edit** form offers only **Text** and **Re-plan** (Re-plan only while lessons are ahead). A window extension is the AVP’s **Extend window**.",
+   "The HT deck says waiting requests move to the new Head Teacher when the subjects change. To show that, change the subjects while a request of that subject is still waiting (before Madina approves). Not confirmed: whether two subject changes on one day (remove, then give back) are both accepted.",
+   "Shahnoza’s plan has a prepared window-end request only if it was incomplete when the window ended. If she filled everything, use **Ask to edit** → **Kind** **Text** → **Reason** `Topic wording` → **Send request**."
+  ]
+ },
+ "s6d": {
+  "clicks": [
+   "— Teacher deck, slide 12, homework checked — Thursday, from 09:00 —",
+   "In **Teacher**: **Home** → **Today** → Matematika 5A lesson 1 → **Open the journal**. Lesson 1 has the planned **Ogʻzaki hisob** and **12-mashq, 15-bet** with “from <Monday>”; hover it: “Given on <Monday>, checked at this lesson”.",
+   "Click **…** on **12-mashq, 15-bet**, set **Total (Soni)** to `5` and click **Set total**, then **Close**. Type its numbers from the first row (for example `5`, `4`, `3`, `5`…), and the same for **Ogʻzaki hisob** after setting its total to `10`.",
+   "If the exam of step 4.6 sits in Thursday lessons 1–2, both Matematika lessons show **Cancelled for an exam** and the homework column moves to Friday lesson 7: film this part on Friday.",
+   "Teacher deck, slide 11 hint: in lesson 2 (09:55), click **Copy attendance from the first lesson** (the copy icon in the **A** header): “n marks copied from the first lesson.” Type `0` for IS26042 Nazarova Kamila. The hint “Was at school at an earlier lesson today: Nazarova Kamila. The Tutor sees this day.” appears. Change her mark to `3`.",
+   "— Teacher deck, slide 13 —",
+   "In **Spare 1**: click **Sign out** at the foot of the menu, then sign in as the teacher chosen in step 4.6 as substitute for Hamidova Feruza’s Thursday lessons 7–8, `5 London` **Native language and literature**, room 204.",
+   "In **Spare 2**: **Sign out** Zarina and sign in as Hamidova Feruza (first sign-in with her slip; if it has run out, SA → **People** → **Staff** → Hamidova Feruza → **Sign-in access** → **Reset password**).",
+   "From 14:30, the substitute: **Home** → **Today** → `5 London` → **Open the journal**. Feruza: **Journal** → **Classes** → `5 London` → **Subject** `Native language and literature`. Both pages stay open.",
+   "Substitute: click IS26067 Bahromov Kamron’s **A** cell of lesson 7 and type `1` (Saved).",
+   "Feruza, without reloading: click the same cell and type `2`. The dialog **Someone changed this cell** shows “Saved now: 1 (Present), by …” and “You typed: 2 (Late)”. Click **Use mine**.",
+   "Show **Undo** (Ctrl+Z) in the page header and the states **Saving** → **Saved**.",
+   "The grade-5 exam: in **Teacher**, click **Timetable**, set **Period** to **Week**: Thursday shows **Exam**."
+  ],
+  "check": "Thursday’s homework column has a total and numbers. The two-browser dialog appeared and was answered with **Use mine**. Aziz’s week shows the exam.",
+  "unsure": [
+   "The guide’s s5a puts Shahnoza in Spare 1 and Zarina in Spare 2. Here the substitute and Feruza take those profiles (sign out first). Shahnoza’s part of step 6.3 must be finished before this.",
+   "The substitute’s name comes from step 4.6 and is not in the guide.",
+   "Feruza can enter on her absence days because she stays the journal’s owner on the date (ownerOn ignores the owner’s absence). The deck’s “teacher and substitute” dialog is therefore possible. Another person’s entry shows only after a reload.",
+   "If the exam took Matematika 5A’s Thursday slots, the plan rows of Thursday move (the plan follows the timetable) and Aziz may get a new **Edit request prepared**."
+  ]
+ },
+ "s6e": {
+  "clicks": [
+   "— Tutor deck, slide 17 — Thursday —",
+   "In **Spare 2** (after step 6.4): **Sign out**, then sign in as Komilov Sanjar (slip, or a reset by the SA if it has run out).",
+   "**Home** shows two cards: **Class 5 Tokyo** (his own) and **Class 5 Melbourne** (acting Thursday–Friday), each with **Absent now** and **Timetable today**.",
+   "**Classes and subjects** lists `5 Melbourne` and `5 Tokyo`. Open `5 Melbourne`: under **Tutors**, Rashidova Umida (Tutor) and Komilov Sanjar (**Acting Tutor**, Thursday – Friday, **Current**).",
+   "In **Tutor** (Umida), open the **Notifications** bell and look for “A change of a class's Tutor changed your Tutor lessons. Your week before and after:”."
+  ],
+  "check": "Sanjar’s home shows 5 Melbourne beside 5 Tokyo on Thursday and Friday, and the class panel lists him as **Acting Tutor**.",
+  "unsure": [
+   "“tutor_changed” is sent only when the acting dates move a Tutor lesson. 5 Melbourne’s Kelajak soati is on Tuesday, so Thursday–Friday moves nothing. The acting Tutor was also set in Week 0, before the timetable was published. Umida’s bell will most likely have no such notice. To film it, the AVP sets an acting period that covers a Tuesday (for example Tuesday of Week 2) after publishing.",
+   "Sanjar’s account needs a Chrome profile. None is named in the guide, so Spare 2 is reused here."
+  ]
+ },
+ "s6f": {
+  "clicks": [
+   "— Teacher deck, slide 24 — Friday —",
+   "In **Teacher**, click **Results**. The page **Rating** shows “Provisional: the quarter is open”. Set **List** to **In a subject**, **Quarter** to Quarter 2 and **Subject and class or group** to `Mathematics · Matematika 5A`. Show the table (**Place**, **Student**, **Result**, **Note**) and click **Excel**.",
+   "In the address bar, open `<test site>/people/students`. Only his students show (no People menu). Open IS26042 Nazarova Kamila → **Results**.",
+   "**Results** → **Early warning**: his journals’ list.",
+   "— Tutor deck, slide 16 —",
+   "In **Tutor**: **Results** → **Rating**, set **List** to **Of a class** and **Class** to `5 Melbourne`. Then **People** → **Students** → IS26036 Bahromova Odina → **Results**, and click a figure to open the lessons behind it. Then **Results** → **Early warning** and **Reports** → **Attendance**, **Class** `5 Melbourne`, this week.",
+   "— Class teacher deck, slide 16 —",
+   "In **Class teacher**, the same screens for `3 Genius` (student IS26004 Sobirova Odina).",
+   "— Head Teacher deck, slide 19 —",
+   "In **Head Teacher**: **Results** → **Rating** → **In a subject** → `English · Ingliz 5B`. Then **Reports** → **Subject mastery**, **Subject** `English`, **Grade** `5`.",
+   "— Senior HT deck, slide 19 —",
+   "In **Senior HT** (branch `Istirohat demo`): **Results** → **Rating** → `Mathematics · Matematika 5A`. Then **Reports** → **Subject mastery**, **Subject** `Mathematics`, **Grade** `5`.",
+   "— AVP deck, slide 51, demo branch part —",
+   "In **AVP**: **Results** → **Rating** → **Of classes**, **Grade** `5`. Then **Early warning** (usually “No student needs attention in this list.” after one week). Then **Reports**: **Attendance**, **Results table** (**Class** `5 Melbourne`), **Subject mastery**, **Journal discipline**, **Timetable load**."
+  ],
+  "check": "Every list carries “Provisional: the quarter is open” and each role sees only its scope: own journals, own class, own subjects, or the branch.",
+  "unsure": [
+   "The AVP, the Head Teacher and the Senior Head Teacher may only view the early-warning list. **Mark handled** belongs to the Teacher, the Tutor / Class teacher and the Super Admin, so the AVP deck’s “Early warning → Mark handled” is not possible for the AVP.",
+   "The exact labels of the Reports pages’ own filters were not checked beyond **From**, **To**, **Class**, **Subject** and **Grade**."
+  ]
+ },
+ "s6g": {
+  "clicks": [
+   "— SA deck, slide 24, after the date — Friday —",
+   "In **SA**: **People** → **Staff** → the spare test teacher of step 2.13. The **Status** column and the panel’s **Status history** show **Left** from Friday; the person can no longer sign in.",
+   "— AVP deck, slide 21, after the date —",
+   "In **AVP**: **People** → **Students** → IS26063 Valiyev Elbek (the leaving of step 3.11). On Friday, **Overview** shows “Leaves the school (last day <Friday>)” and the status is still Active.",
+   "From Saturday (time machine, or Monday of Week 2), the status reads “Inactive from <Saturday>” and **History** shows **Left the school**. In a journal of 5 Tokyo, the student is under the fold “Left or moved: 1 student”."
+  ],
+  "check": "The staff list shows **Left** for the spare teacher. The student shows the planned leaving on Friday and is inactive with “Left the school” from the next day.",
+  "unsure": [
+   "A student’s leaving makes them inactive “from the day after the last day”. With the last day on Friday, nothing changes on Friday itself, so film the after-state on Saturday or Monday. Staff “Left” acts from its date, so it shows on Friday.",
+   "The guide names neither the leaving student nor the spare teacher. Use the ones created in steps 3.11 and 2.13."
+  ]
+ },
+ "s6h": {
+  "clicks": [
+   "— SA deck, slide 33 — any morning —",
+   "In **SA**: **Journal** → **Closing checklist**, **Quarter** 2. On a clean night there is no “Nightly check of …” line (it shows only with differences), and the page may say “The checklist opens on <date>.”",
+   "Open the **Notifications** bell: no “The nightly check of … found …” or “… did not run.” notice. Narrate that a clean night shows no line."
+  ],
+  "check": "No nightly-check line and no notice: a clean night.",
+  "unsure": [
+   "**Recalculate and compare** / **Apply with a reason** sit on a closed quarter’s reopened journal (reopening panel), not on an open quarter’s checklist."
+  ]
+ },
+ "s6i": {
+  "clicks": [
+   "— AVP deck, slide 23, second time — 1 December 2026 —",
+   "In **AVP**, click **Home**. The tile **Students with no class** shows `1`. Click **Open the list**: the student list, filtered to no class and active, shows IS26902 Yoʻldosheva Samira.",
+   "Tick her row, then click **Put into a class** in the bar above the list.",
+   "In the panel **Put 1 student into a class**, set **Class** to `5 London · <year>` (it shows **Free seats today** and **Fewest free seats ahead**) and **From** to `01.12.2026`, then click **Save**.",
+   "The lines “1 student placed.” and “1 student was placed into groups automatically.” appear. Click **Review them on the group placement screen**.",
+   "On **Group placement**, her rows are tagged **Placed automatically, review**. Check her groups: one each of Mathematics (Matematika 5A/5B/5C), English (Ingliz 5A/5B/5C) and Physical education. Click **Mark reviewed**.",
+   "If she went to `Jismoniy 5D6D Bolalar`: **People** → **Students** → IS26902 → **Move to another group**, **New group** `Jismoniy 5D6D Qizlar`, **First day there** `01.12.2026` → **Save**.",
+   "**Home**: the tile **Students with no class** is gone (0)."
+  ],
+  "check": "IS26902 is in 5 London from 01.12.2026, with one group of Mathematics, English and Physical education (girls’ PE). The no-class tile is gone.",
+  "unsure": [
+   "In the code, putting a student into a class places them into a group of every group subject of the class automatically (smallest group with a free seat, all or none). The guide’s separate “into its groups” step is therefore a review, not a placement.",
+   "The automatic choice does not check sex for the PE Boys/Girls groups as far as the code shows. Hence the conditional move in line 7.",
+   "Only the AVP or the SA may date a move today. A Head Teacher’s move starts tomorrow at the earliest."
+  ]
+ }
+}
