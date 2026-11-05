@@ -28,6 +28,8 @@ Read this first in a new chat. It holds every decision and fact from the chat of
 
 4. **Lesson mode enters attendance only** (5 Nov, step 5.3). `07-journal.md` Lesson mode: “large buttons: attendance, then each classwork, then each homework”. `LessonMode` in `apps/web/src/features/journal/journal-page.tsx` has buttons for attendance only and shows each work’s number read-only (“—”); numbers are typed in the grid. A gap against the spec, not a crash.
 
+5. **“Not started” reads as “the lesson did not start”** (5 Nov, step 5.6). Journal discipline shows a held lesson both under **Held** and **Not started**; the status means “held, nothing entered” (`07-journal.md`, Lesson status). Owner: rename it. The status name is spec text: a Look first with `/spec-change` wording.
+
 ## The goal (owner's words, summarised)
 
 Tutorial videos for each role (Super Admin, Academic Vice Principal, Principal, Spiritual VP, Head Tutor, Tutor, Class teacher, Senior Head Teacher, Head Teacher, Teacher) that show **literally every feature** of each role. Videos will be clipped later per feature. Recorded on the **test site** (never production) in a new demo branch, with several browsers signed in as different people. Features that need days to pass must be shown without really waiting.
