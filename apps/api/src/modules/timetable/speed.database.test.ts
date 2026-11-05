@@ -1251,7 +1251,11 @@ async function peopleOf(t: AppKit, branch: BranchOfRun): Promise<Person[]> {
   }
   const tutorStaff = branch.teachers.find((id) => !teachers.has(id) && !linked.has(id));
   const tutor = await add('tutor', tutorStaff === undefined ? {} : { staffId: tutorStaff });
-  await classes.tutorRow(branch.id, branch.classes[0]?.id ?? '', tutor.assignment.id, {
+  // A Tutor has a class of grades 5 to 11; grades 0 to 4 have a Class teacher (task 9.4e,
+  // `class_tutors_needs_class_teacher`): the first class of grade 5 or above (task 10.1c: the
+  // larger sizes start with grade 1).
+  const tutored = branch.classes.find((one) => one.grade >= 5) ?? branch.classes[0];
+  await classes.tutorRow(branch.id, tutored?.id ?? '', tutor.assignment.id, {
     from: new Date(SPEED_CLOCK),
     givenBy: people[0]?.accountId ?? '',
   });
