@@ -21,12 +21,15 @@ export const DECODED_CACHE_BYTES = 24 * 1024 * 1024;
 export class DecodedCache {
   private readonly values = new Map<string, { value: unknown; bytes: number }>();
   private bytes = 0;
+  /** The reads that found their value kept (for a test that the cache is used). */
+  hits = 0;
 
   constructor(private readonly limit = DECODED_CACHE_BYTES) {}
 
   get(key: string): unknown {
     const found = this.values.get(key);
     if (found === undefined) return undefined;
+    this.hits += 1;
     // Read again: the most recent, last in the order of the map.
     this.values.delete(key);
     this.values.set(key, found);

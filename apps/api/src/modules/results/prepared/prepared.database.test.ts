@@ -1228,6 +1228,10 @@ describe('the prepared report totals (task 9.3b-1)', () => {
   // reports show 'updated at' and may be up to two minutes behind the journal. A page that finds
   // them further behind calculates from source and shows 'updating'."
   describe('the two minutes a prepared total may be behind (task 10.1c)', () => {
+    /** The window in seconds, and the last second within it and the first past it (correction 3). */
+    const WINDOW = PREPARED_BEHIND_MS / 1000;
+    const WITHIN = WINDOW - 1;
+    const PAST = WINDOW + 1;
     /** `MOMENT` moved by seconds, as an ISO text. */
     const after = (seconds: number, from = MOMENT) =>
       new Date(new Date(from).getTime() + seconds * 1000).toISOString();
@@ -1243,7 +1247,7 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       await saveAt(c.s, saved, [
         { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
       ]);
-      for (const seconds of [0, 119, 120]) {
+      for (const seconds of [0, WITHIN, WINDOW]) {
         const list = await rating(c, after(seconds, saved));
         expect(list.prepared, `${String(seconds)} s`).toEqual<PreparedStamp>({
           updatedAt: new Date(MOMENT).toISOString(),
@@ -1252,7 +1256,7 @@ describe('the prepared report totals (task 9.3b-1)', () => {
         // The figure prepared before the save: 80 gives 86.7.
         expect(valueOf(list, c.bobur), `${String(seconds)} s`).toBe(867);
       }
-      const behind = await rating(c, after(121, saved));
+      const behind = await rating(c, after(PAST, saved));
       expect(behind.prepared.updating).toBe(true);
       expect(valueOf(behind, c.bobur)).toBe(1000);
     });
@@ -1264,12 +1268,12 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       await saveAt(c.s, first, [
         { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
       ]);
-      await saveAt(c.s, after(91, first), [
+      await saveAt(c.s, after(PAST - 30, first), [
         { lessonId: c.l12.id, studentId: c.aziz, workId: c.work, value: 10 },
       ]);
-      expect((await rating(c, after(120, first))).prepared.updating).toBe(false);
-      // The newest change is 30 s old, the oldest 121 s.
-      const behind = await rating(c, after(121, first));
+      expect((await rating(c, after(WINDOW, first))).prepared.updating).toBe(false);
+      // The newest change is 30 s old, the oldest one second past the window.
+      const behind = await rating(c, after(PAST, first));
       expect(behind.prepared.updating).toBe(true);
       expect([valueOf(behind, c.aziz), valueOf(behind, c.bobur)]).toEqual([1000, 1000]);
     });
@@ -1293,16 +1297,16 @@ describe('the prepared report totals (task 9.3b-1)', () => {
         .insertInto('report_school_changes')
         .values({ table_name: 'subjects', changed_at: new Date(changed) })
         .execute();
-      expect((await rating(c, after(119, changed))).prepared.updating).toBe(false);
-      expect((await rating(c, after(120, changed))).prepared.updating).toBe(false);
-      expect((await rating(c, after(121, changed))).prepared.updating).toBe(true);
-      await prepare(c.s.branch, after(121, changed));
-      expect((await rating(c, after(121, changed))).prepared.updating).toBe(false);
+      expect((await rating(c, after(WITHIN, changed))).prepared.updating).toBe(false);
+      expect((await rating(c, after(WINDOW, changed))).prepared.updating).toBe(false);
+      expect((await rating(c, after(PAST, changed))).prepared.updating).toBe(true);
+      await prepare(c.s.branch, after(PAST, changed));
+      expect((await rating(c, after(PAST, changed))).prepared.updating).toBe(false);
       await t.database.migrator
         .insertInto('report_school_changes')
         .values({ table_name: 'subjects', changed_at: null })
         .execute();
-      expect((await rating(c, after(121, changed))).prepared.updating).toBe(true);
+      expect((await rating(c, after(PAST, changed))).prepared.updating).toBe(true);
     });
 
     it('reads a unit prepared up to 120 s past its next change (a lesson start), from source after (decision 2a)', async () => {
@@ -1315,9 +1319,9 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       )?.startsAt;
       if (start === undefined) throw new Error('The lesson of the 26th.');
       const begun = new Date(start).toISOString();
-      expect((await rating(c, after(119, begun))).prepared.updating).toBe(false);
-      expect((await rating(c, after(120, begun))).prepared.updating).toBe(false);
-      expect((await rating(c, after(121, begun))).prepared.updating).toBe(true);
+      expect((await rating(c, after(WITHIN, begun))).prepared.updating).toBe(false);
+      expect((await rating(c, after(WINDOW, begun))).prepared.updating).toBe(false);
+      expect((await rating(c, after(PAST, begun))).prepared.updating).toBe(true);
     });
 
     it("reads the figures of a quarter's last day up to 00:02 of the next day, from source after (decision 2a)", async () => {
@@ -1333,8 +1337,9 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       // Written by the preparation: the midnight after the quarter's last day.
       expect(next.next_change_at).toEqual(new Date('2026-11-01T00:00:00+05:00'));
       const path = '/api/results/early-warning';
-      expect((await read(c, path, '2026-11-01T00:01:59+05:00')).prepared.updating).toBe(false);
-      expect((await read(c, path, '2026-11-01T00:02:01+05:00')).prepared.updating).toBe(true);
+      const midnight = '2026-11-01T00:00:00+05:00';
+      expect((await read(c, path, after(WITHIN, midnight))).prepared.updating).toBe(false);
+      expect((await read(c, path, after(PAST, midnight))).prepared.updating).toBe(true);
     });
 
     it('reads a unit of an older shape from source at any age', async () => {
@@ -1368,9 +1373,20 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       await prepare(c.s.branch);
       const saved = after(600);
       await saveAt(c.s, saved, [{ lessonId: c.l12.id, studentId: c.bobur, value: 2 }]);
+      const fromSource = new Map<string, unknown>();
       for (const path of paths) {
-        expect((await read(c, path, after(120, saved))).prepared.updating, path).toBe(false);
-        expect((await read(c, path, after(121, saved))).prepared.updating, path).toBe(true);
+        expect((await read(c, path, after(WINDOW, saved))).prepared.updating, path).toBe(false);
+        const behind = await read(c, path, after(PAST, saved));
+        expect(behind.prepared.updating, path).toBe(true);
+        fromSource.set(path, withoutStamp(behind));
+      }
+      // Past the window each reader gives the figures of the source: those it gives once the save
+      // is prepared (code review, must-fix 2: never the stale prepared value marked "updating").
+      await prepare(c.s.branch, after(PAST, saved));
+      for (const path of paths) {
+        const prepared = await read(c, path, after(PAST, saved));
+        expect(prepared.prepared.updating, path).toBe(false);
+        expect(withoutStamp(prepared), path).toEqual(fromSource.get(path));
       }
     });
 
@@ -1400,8 +1416,11 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       await prepare(c.s.branch);
       expect(valueOf(await rating(c), c.bobur)).toBe(867);
       const kept = decodedUnits.size;
+      const hits = decodedUnits.hits;
       expect(valueOf(await rating(c), c.bobur)).toBe(867);
       expect(decodedUnits.size).toBe(kept);
+      // The second read took the decoded value kept (code review, should-fix 5).
+      expect(decodedUnits.hits).toBeGreaterThan(hits);
       const saved = after(600);
       await saveAt(c.s, saved, [
         { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },

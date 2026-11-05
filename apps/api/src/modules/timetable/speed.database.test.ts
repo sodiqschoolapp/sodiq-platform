@@ -144,15 +144,10 @@ interface LoadModel {
   /** Its 95th percentiles and failed requests fail the run at triple. */
   readonly asserted: boolean;
 }
+// The asserted model first, so the present pace (which saturates the runner) neither holds the
+// run past its deadline before it nor leaves its backlog of units behind (code review,
+// should-fix 6).
 const MODELS: readonly LoadModel[] = [
-  {
-    key: 'present',
-    title: 'the present pace',
-    ...(LARGE
-      ? { users: 1000, durationMs: 10 * 60_000, gapMs: [5000, 15000] as const }
-      : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const }),
-    asserted: false,
-  },
   {
     key: 'school',
     title: "the school's own pace in Release 1, staff only",
@@ -160,6 +155,14 @@ const MODELS: readonly LoadModel[] = [
       ? { users: 200, durationMs: 10 * 60_000, gapMs: [10_000, 30_000] as const }
       : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const }),
     asserted: true,
+  },
+  {
+    key: 'present',
+    title: 'the present pace',
+    ...(LARGE
+      ? { users: 1000, durationMs: 10 * 60_000, gapMs: [5000, 15000] as const }
+      : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const }),
+    asserted: false,
   },
 ];
 
@@ -995,16 +998,30 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               expect(stamp.updating, `${what}: 119 s after a save`).toBe(false);
             }
             t.clock.advance(2_000);
-            for (const [what, who, path] of [...prepared.slice(0, 3), ...reports.slice(3, 4)]) {
+            const behindReads = [...prepared.slice(0, 3), ...reports.slice(3, 4)];
+            const sourceFigures = new Map<string, unknown>();
+            for (const [what, who, path] of behindReads) {
               const behind = await once(() => as(who).get(path));
               const stamp = (behind.last.body as { prepared: PreparedStamp }).prepared;
               expect(stamp.updating, `${what}: 121 s after a save`).toBe(true);
+              sourceFigures.set(what, withoutStamp(behind.last.body));
               timings.push({
                 what: `${branch.name}: ${what} from source, 121 s after a save (further behind than two minutes)`,
                 target: 'reported',
                 runs: behind.runs,
                 fromSource: true,
               });
+            }
+            // The figures read from source are those of the save: the same once it is prepared
+            // (code review, must-fix 2).
+            await prepareBranch(t, branch.id);
+            for (const [what, who, path] of behindReads) {
+              const response = await as(who).get(path);
+              const stamp = (response.body as { prepared: PreparedStamp }).prepared;
+              expect(stamp.updating, `${what}: prepared after the save`).toBe(false);
+              expect(withoutStamp(response.body), `${what}: the source's figures`).toEqual(
+                sourceFigures.get(what),
+              );
             }
           }
           // Plan Step 3: a partial report after every branch, kept if the job is stopped.
@@ -1039,6 +1056,8 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         }
         for (const model of MODELS) {
           deadline.checkFor(`the load, ${model.title}`, model.durationMs + 2 * 60_000);
+          // Each model starts with every branch prepared, as the job leaves a quiet school.
+          for (const branch of school.branches) await prepareBranch(t, branch.id);
           // Task 10.1c (review of the plan, finding 1): the clock moves with real time during the
           // load, the same in both processes, so a unit the job leaves behind for more than two
           // minutes is read from source and counted, as on the live system.
