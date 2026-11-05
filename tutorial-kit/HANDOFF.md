@@ -26,6 +26,8 @@ Read this first in a new chat. It holds every decision and fact from the chat of
 2. **Calendar preview names classes "0 Genius"** (5 Nov, step 4.7). `apps/api/src/modules/timetable/calendar-lessons.ts` passes `new Map()` as the units' grades to `namesOf`, so every class shows grade 0 in "What this save changes".
 3. **Journal → Student absences: "Something went wrong on the server"** (5 Nov, 13:06 Tashkent, AVP in Istirohat Demo, no filters, during the break before quarter 2). Cause not found yet: `StudentAbsences.list` in `apps/api/src/modules/journal/student-absences.service.ts`; read the test site's API log for that minute (the test site, never production).
 
+4. **Lesson mode enters attendance only** (5 Nov, step 5.3). `07-journal.md` Lesson mode: “large buttons: attendance, then each classwork, then each homework”. `LessonMode` in `apps/web/src/features/journal/journal-page.tsx` has buttons for attendance only and shows each work’s number read-only (“—”); numbers are typed in the grid. A gap against the spec, not a crash.
+
 ## The goal (owner's words, summarised)
 
 Tutorial videos for each role (Super Admin, Academic Vice Principal, Principal, Spiritual VP, Head Tutor, Tutor, Class teacher, Senior Head Teacher, Head Teacher, Teacher) that show **literally every feature** of each role. Videos will be clipped later per feature. Recorded on the **test site** (never production) in a new demo branch, with several browsers signed in as different people. Features that need days to pass must be shown without really waiting.
