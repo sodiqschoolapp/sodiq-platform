@@ -2,6 +2,24 @@
 
 Read this first in a new chat. It holds every decision and fact from the chat of 3–4 November 2026 in which the tutorial material was made. Nothing here is product code; it is the material for recording tutorial videos of the platform.
 
+## Where we are (5 November 2026, morning): read this first
+
+- **The owner is rehearsing** (guide Session 1: Sessions 2–4 done off camera) and is at **guide step 4.6 "Changes for Week 1"** of Session 4. The teaching load (4.1), the board (4.2) and the publish blockers were done with the console scripts below; the owner reported being at 4.6, so 4.3–4.5 are done. On the test site it is the break between quarter 1 (ended 31 October) and quarter 2 (starts Monday 9 November); the draft starts on 9 November. "Week 1" in the guide is the week of 9 November.
+- **The guide** is the **Tutorial Recording Guide** (https://claude.ai/artifact/UZkxFkrEm7sygksVN9fNte). Every one of its 72 steps has numbered clicks with the app's exact English labels, written from the code and the e2e tests (not clicked through), with a green "You should see" line and a fold-out "Check during the rehearsal" list. Source: `kit/guide-src.mjs` (sessions), `kit/clicks/*.json` (the clicks per step id), `kit/guide.css`, `kit/guide.js`, `kit/guide-steps.json`. To change a step: edit its entry in `kit/clicks/<session>.json`, run `node kit/guide-src.mjs` (it also checks every deck slide is covered), then publish `kit/guide.html` to the same URL (Artifact publish with `url`). One Chrome profile per person (SA, AVP, Teacher, Tutor, Class teacher, Head Teacher, Senior HT, Principal, Spiritual VP, Head Tutor, Yunusobod AVP, Spare 1, Spare 2). The same demo students run through all sessions (leaver IS26063 Valiyev Elbek, class move IS26037, group move IS26055, PE-exempt girl IS26034 Valiyeva Kamila, relative prop on IS26057).
+- **When the owner sends a screenshot** of a mismatch: read the code (`apps/web/src/i18n/locales/en.ts`, the feature, the e2e spec), explain, and fix the step in `kit/clicks`.
+- **Console scripts** (generated into `kit/out/`, pasted into Chrome's console in the AVP window on the test site; each skips what already exists and checks every name before saving):
+  - `add-teaching-load.js` from `kit/load-script.mjs`: the 112 rows of sheet 7.
+  - `place-lessons.js` from `kit/board-script.mjs`: every lesson of the T <class> sheets, matched to slots by start time from the grid's `facts.days`; a group places its whole block.
+  - `fill-weights.js` from `kit/weights-script.mjs`: missing daily (20/40/40) and quarter distributions (20/40/40, or 20/30/30 + exam 20) of the load's graded subjects, quarters not yet ended; the grades 0–4 split when needed.
+  - Lessons learned: the AVP may not GET /api/setup/branches (403), so scripts read the branch from GET /api/auth/session (`branches`); headers `X-Branch-Id` and `X-App-Version: 1`; names are compared ignoring case, apostrophes and hyphens (the site has "Jismoniy 5D-6D Bolalar"); a vacancy is taken when it is the only one offered (the site calls it "AP Econ oʻqituvchisi").
+- **Demo clock (task 10.5)**: built, merged ([sodiqschoolapp/sodiq-platform#280](https://github.com/sodiqschoolapp/sodiq-platform/pull/280)), deployed to the test site on 5 November 04:19 UTC. The Render Blueprint `sodiq-test` has **Sync paused**; its manual sync (create `DEMO_CLOCK=1` and `WEB_ORIGIN=https://app-test.sodiqschool.uz` on sodiq-test-api and sodiq-test-worker) was waiting for the owner's **Approve** at handoff. After it: Super Admin, School setup → Demo time. Forward only; the only way back is the demo data workflow (wipes the test database). Sign-in stays on real time. Jumps move time for the whole test site.
+- **#281** (merged): the e2e server leaves the daily tick unscheduled (it stalled the page walk).
+- **Flaky browser tests on main** that can skip `deploy-test` again: `student-import.spec.ts` (two "Import from Excel" links on the Students page, header and empty state) and `pages.spec.ts:204` (the Students heading not seen in 5 s). A re-run passed on 5 Nov. The owner has not yet answered whether to open a small fix PR (non-task PRs are merged by the owner; the review routine reviews them).
+- **The loop**: after 10.5 the start routine starts the first unticked task, 5.10 Solver service; the owner was told and did not ask to pause it.
+- **Academic Director test account**: recommended the shared Mathematics teacher of Demo Yunusobod and Demo Chilonzor (the login listed twice in the demo run Summary); the Super Admin resets the password and hands over the one-time slip (not the shared demo password). Quarter 2 plan window in the seed is open until 7 November; no lessons until 9 November unless the clock is moved. Do not touch Demo Yunusobod's quarter-1 closing (Session 7 films it).
+- **Email password reset** only writes to the log (LogMailer, Phase 10 decision 16); the owner said no change is needed.
+- **Differences found between the old plan and the app** (already in the clicks): no time-zone field on a new branch; drafts cannot be deleted (the practice draft stays); no "Double" button (tick **Double lesson**); a branch move is accepted only from its first day (release from today); acting Tutor "Until" is the first day without the class; Moliya exemptions one class at a time; the seeded unlock request exists only on some reset dates; Demo Yunusobod has a seeded Principal, Spiritual VP and Head Tutor.
+
 ## The goal (owner's words, summarised)
 
 Tutorial videos for each role (Super Admin, Academic Vice Principal, Principal, Spiritual VP, Head Tutor, Tutor, Class teacher, Senior Head Teacher, Head Teacher, Teacher) that show **literally every feature** of each role. Videos will be clipped later per feature. Recorded on the **test site** (never production) in a new demo branch, with several browsers signed in as different people. Features that need days to pass must be shown without really waiting.
@@ -70,7 +88,7 @@ The real timetables (PDFs the owner uploaded: Istirohat 13-variant grades 5–11
 
 - **A. Seeded past**: film history-dependent scenes in Demo Yunusobod (works today; its Q1 is already over, so closing can be filmed now).
 - **B. Compressed year**: demo branch with one-week quarters and edit days 1 (works today; try saving one-week quarters first).
-- **C. Demo clock** (recommended, needs a build task): Super Admin page "Demo time" on the test site only, jump forward; TOTP, idle sign-out and reset links must stay on real time (today they read the injected clock); jobs catch up on the next 15-minute tick; forward only; refused on production with a test. **Open decision: the owner has not yet said whether to add it to the build plan.**
+- **C. Demo clock**: built as task 10.5 (see the top of this file).
 
 ## The recording order given to the owner (last answer)
 
@@ -78,6 +96,6 @@ The real timetables (PDFs the owner uploaded: Istirohat 13-variant grades 5–11
 
 ## Open questions
 
-- Demo clock: build it or not.
+- 3 Indigo Arabic: the PDF shows three a week (Wednesday lesson 5, Thursday lessons 3 and 8); the owner asked whether it is only one. Kept as the paper until the owner says otherwise.
 - English "(guruhlar)": the kit assumes ability groups across the grade's classes, one per teacher; the owner has not confirmed.
 - 3 Indigo really Russian-language? (assumed from its Oʻzbek tili lessons).
