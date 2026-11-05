@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 5 November 2026: report totals up to two minutes behind, the order of building, and "Nothing entered"
+
+- What changed:
+  1. **Report totals.** Prepared totals for reports may be up to two minutes behind the journal and are shown with "updated at"; only a page that finds them further behind calculates from source and shows "updating". Unchanged: the journal row, the bottom row and student results are always calculated from the entries themselves.
+  2. **Order of building.** Release 1 goes live first and Release 2 is built next. Closing the year, the year rollover and the start of a new year are built alongside Release 2 and work by the end of the 2026/27 school year. Built later, when the owner decides: automatic timetable generation (timetables are built by hand in the grid until then, with the same rule engine), the Free now board, live updates between people in one journal, and offline entry with the printable attendance sheet. The Release 1 row reads "Timetable with grid editing; automatic generation is built later"; the scope reminder of the index reads "Release 1, then Release 2".
+  3. **"Nothing entered".** The first lesson status is named "Nothing entered" (uz "Hech narsa kiritilmagan", ru "Ничего не внесено") in place of "Not started"; its meaning is unchanged: the lesson was held and nothing is entered.
+- Why: the owner, 5 November 2026, in chat. (1) Under the load of `12` every save put the prepared totals behind, so every report read worked them out again from source and one API process saturated (task 10.1b, `docs/progress.md`, 29 October 2026); decision A of `docs/decisions.md`, "5 November 2026: the speed results of 10.1b". (2) The deferred tasks are not needed urgently; the year-end work must work by June 2027 (`docs/decisions.md`, "5 November 2026: Release 2 before the deferred list"). (3) In the tutorial rehearsal a held lesson read as "not started" next to "Held" (pull request #282, which already changed the screens).
+- Code: (1) task 10.1c of `docs/build-plan.md` (not built): the reads of prepared totals stop working them out again while they are at most two minutes behind; no built code changes with this entry. (2) none: the order is in `docs/build-plan.md` (pull request #283). (3) none: the screens already say "Nothing entered" (pull request #282); the status key `not_started` is unchanged. The other uses of "not started" in the spec (`06`, Exam: slots that have not started; `09`, Completeness of plans) mean something else and are unchanged.
+- Files: `docs/spec/edge-cases/system-behaviour.md` (the row "Report totals are two minutes behind the journal"), `docs/spec/01-overview.md` (Scope and releases: the Release 1 row and the paragraph "Order of building"), `docs/spec/00-index.md` (Scope reminder), `docs/spec/07-journal.md` (Lesson status, first row).
+
 ## 3 November 2026: Excel import of students and staff from the system's template
 
 - What changed:

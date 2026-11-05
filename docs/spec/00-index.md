@@ -68,4 +68,4 @@ Each file lists what can happen outside the normal flow and the rule that settle
 
 ## Scope reminder
 
-Build Release 1 only, in the order of `docs/build-plan.md`. Release 2 and Release 3 items appear in the spec so that the data model leaves room for them; they are not built now unless a task says so.
+Build in the order of `docs/build-plan.md`: Release 1, then Release 2 (owner, 5 November 2026; `01`, Scope and releases, Order of building). Release 3 items appear in the spec so that the data model leaves room for them; they are not built now unless a task says so.

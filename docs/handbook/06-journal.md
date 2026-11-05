@@ -12,7 +12,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 
 **How it works.**
 
-1. A lesson with nothing entered is **Nothing entered** (the spec calls it "Not started"; the screen says what it means: the lesson was held and nothing is in the journal yet).
+1. A lesson that was held with nothing entered yet is **Nothing entered**.
 2. As soon as anything is entered (a mark, a number, a total, "not held", or a comment), the lesson is **In progress**.
 3. It is **Complete** when every expected student has an attendance mark, and every work of the lesson has its total and a number, or "not graded", for each student marked present or late.
 4. When the edit period ends before the lesson is complete, it is **Locked incomplete**. It needs an unlock; while the unlock is open it stays Locked incomplete until the missing entries are made.

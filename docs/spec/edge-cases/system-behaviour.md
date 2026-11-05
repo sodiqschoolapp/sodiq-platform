@@ -6,7 +6,7 @@
 | Case | Rule |
 | --- | --- |
 | A background job fails half-way, or runs twice. | Every job can be repeated safely. A job is recorded together with the data change that caused it, so it cannot be lost between the two. Nothing that cannot be rebuilt lives only in the job queue. |
-| Report totals are two minutes behind the journal. | The journal row, the bottom row and student results are always calculated from the entries themselves. Prepared totals for reports show "updated at". A page that finds them behind calculates from source and shows "updating". |
+| Report totals are two minutes behind the journal. | The journal row, the bottom row and student results are always calculated from the entries themselves. Prepared totals for reports show "updated at" and may be up to two minutes behind the journal. A page that finds them further behind calculates from source and shows "updating". |
 | The nightly check. | It recalculates open journals and stored final results. A difference alerts the developer and blocks closing that journal. A check that did not run also raises an alert. |
 | A publish takes a while. | Users see a banner. Timetable changes for the affected dates wait; reading continues. The target is under 60 seconds for a branch. |
 | A release goes out at 19:00; a tab opened at 14:00 sends old-format entries next morning. | Every request carries the application version. Entries from the previous version are accepted for at least one release; otherwise the page asks to reload and keeps the unsent entries. Database changes are made in two steps so that tables are never locked for long. |
