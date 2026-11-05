@@ -99,7 +99,15 @@ import { QuerySpans } from '../../testing/speed-spans.js';
  */
 
 const SIZE_NAME = process.env.SPEED_SIZE;
-const size = SIZES[SIZE_NAME === 'triple' || SIZE_NAME === 'full' ? SIZE_NAME : 'small'];
+const named = SIZES[SIZE_NAME === 'triple' || SIZE_NAME === 'full' ? SIZE_NAME : 'small'];
+/**
+ * Task 10.1c (plan decision 8): `SPEED_BRANCHES=1` keeps the first branch of the size only, for a
+ * measurement in a session's machine; one branch meets the same data per branch. The Speed
+ * workflow never sets it.
+ */
+const BRANCHES = Number(process.env.SPEED_BRANCHES ?? '0');
+const size =
+  BRANCHES > 0 ? { ...named, classesPerGrade: named.classesPerGrade.slice(0, BRANCHES) } : named;
 /** The times are asserted at three times the data only. */
 const TRIPLE = size.name === 'triple';
 /** The whole year filled and the 1,000 users: every size but the small one. */

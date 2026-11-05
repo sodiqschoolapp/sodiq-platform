@@ -54,6 +54,14 @@ export const SCHOOL_INPUTS = [
 export const PREPARED_SHAPE = 'shape:4';
 
 /**
+ * How far behind the journal a prepared unit may be and still be read as it is (task 10.1c,
+ * `edge/system-behaviour`, "Report totals are two minutes behind the journal": "may be up to two
+ * minutes behind the journal. A page that finds them further behind calculates from source"). The
+ * only place that knows the two minutes (review of the plan, correction 3).
+ */
+export const PREPARED_BEHIND_MS = 2 * 60_000;
+
+/**
  * The snapshot of this transaction as text: taken before the preparation reads anything (review
  * correction 2), so every change it reads was committed by then or later.
  */
@@ -88,12 +96,46 @@ const freshCondition = (now: Date, schoolInputs: string) => sql<boolean>`
   )
 `;
 
+/**
+ * The condition "a reader may read this preparation row as it is" for a row named `p` (task
+ * 10.1c): its shape is this release's and it is at most `PREPARED_BEHIND_MS` behind at `now`.
+ * A unit is behind from the oldest change it has not seen (plan decision 2) and from a passed
+ * `next_change_at` (decision 2a). The `changed_at` of the change rows (0140, 0143), whose
+ * comments say no rule compares it, is compared here: the injected clock at the change
+ * (`app.now`); a row without it counts as further behind. The job keeps `freshCondition`, so it
+ * still prepares every unit that is behind at all.
+ */
+const usableCondition = (now: Date, schoolInputs: string) => {
+  const limit = new Date(now.getTime() - PREPARED_BEHIND_MS);
+  return sql<boolean>`
+    (p.next_change_at is null or p.next_change_at >= ${limit})
+    and p.school_inputs = ${schoolInputs}
+    and not exists (
+      select from report_school_changes s
+      where s.xid >= pg_snapshot_xmin(p.seen) and not pg_visible_in_snapshot(s.xid, p.seen)
+        and (s.changed_at is null or s.changed_at < ${limit})
+    )
+    and not exists (
+      select from report_changes c
+      where c.branch_id = p.branch_id
+        and c.xid >= pg_snapshot_xmin(p.seen)
+        and (c.quarter_id is null or c.quarter_id = p.quarter_id)
+        and (c.journal_id is null or c.journal_id = any (p.journal_ids))
+        and not pg_visible_in_snapshot(c.xid, p.seen)
+        and (c.changed_at is null or c.changed_at < ${limit})
+    )
+  `;
+};
+
 export interface FreshUnit {
   readonly value: unknown;
   readonly preparedAt: Date;
 }
 
-/** The fresh units of one kind and quarter among those named, with their values. */
+/**
+ * The units of one kind and quarter among those named that a reader may read as they are (fresh,
+ * or at most `PREPARED_BEHIND_MS` behind), with their values.
+ */
 export async function freshUnits(
   transaction: Transaction,
   input: {
@@ -120,7 +162,7 @@ export async function freshUnits(
       and p.kind = ${input.kind}
       and p.quarter_id = ${input.quarterId}
       and p.unit_id = any (${[...input.unitIds]}::uuid[])
-      and ${freshCondition(input.now, input.schoolInputs)}
+      and ${usableCondition(input.now, input.schoolInputs)}
   `.execute(transaction);
   return new Map(
     found.rows.map((row) => [
@@ -131,7 +173,8 @@ export async function freshUnits(
 }
 
 /**
- * The prepared facts of the lessons named whose `statuses` unit is fresh; with `part: 'counts'`
+ * The prepared facts of the lessons named whose `statuses` unit a reader may read as it is
+ * (`usableCondition`, task 10.1c); with `part: 'counts'`
  * only each lesson's `row` and `counts` (`PreparedLesson`, the column `summary`), not the facts
  * (task 10.1b).
  */
@@ -154,7 +197,7 @@ export async function freshLessons(
       select p.quarter_id, p.unit_id, p.prepared_at
       from report_prepared p
       where p.branch_id = ${input.branchId} and p.kind = 'statuses'
-        and ${freshCondition(input.now, input.schoolInputs)}
+        and ${usableCondition(input.now, input.schoolInputs)}
     )
     select l.lesson_id, f.prepared_at, ${value} as value
     from report_prepared_lessons l

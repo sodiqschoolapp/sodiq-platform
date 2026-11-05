@@ -30,6 +30,8 @@ import { PreparedTotals, prepareUnit } from './prepare.job.js';
 import {
   freshLessons,
   isFresh,
+  behindUnits,
+  PREPARED_BEHIND_MS,
   PREPARED_SHAPE,
   pruneSchoolChanges,
   SCHOOL_INPUTS,
@@ -151,7 +153,12 @@ describe('the prepared report totals (task 9.3b-1)', () => {
     )?.version ?? null;
 
   async function saveOn(s: PublishedScene, date: string, cells: Cell[], fail = false) {
-    t.clock.set(`${date}T18:00:00+05:00`);
+    await saveAt(s, `${date}T18:00:00+05:00`, cells, fail);
+  }
+
+  /** Cells saved through `Transactions.run` at `moment`: their change rows carry it (`app.now`). */
+  async function saveAt(s: PublishedScene, moment: string, cells: Cell[], fail = false) {
+    t.clock.set(moment);
     try {
       const writer = await load.classes.account();
       // Each cell with the version stored, as the grid sends it.
@@ -1214,5 +1221,221 @@ describe('the prepared report totals (task 9.3b-1)', () => {
         .where('id', '=', hidden.s.branch)
         .execute();
     }
+  });
+
+  // Task 10.1c, decision A of 5 November 2026: `edge/system-behaviour`, "Prepared totals for
+  // reports show 'updated at' and may be up to two minutes behind the journal. A page that finds
+  // them further behind calculates from source and shows 'updating'."
+  describe('the two minutes a prepared total may be behind (task 10.1c)', () => {
+    /** `MOMENT` moved by seconds, as an ISO text. */
+    const after = (seconds: number, from = MOMENT) =>
+      new Date(new Date(from).getTime() + seconds * 1000).toISOString();
+
+    it('keeps the window in one constant of two minutes', () => {
+      expect(PREPARED_BEHIND_MS).toBe(120_000);
+    });
+
+    it('reads a unit prepared while its oldest unseen change is up to 120 s old, and from source with the new figure after', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const saved = after(600);
+      await saveAt(c.s, saved, [
+        { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
+      ]);
+      for (const seconds of [0, 119, 120]) {
+        const list = await rating(c, after(seconds, saved));
+        expect(list.prepared, `${String(seconds)} s`).toEqual<PreparedStamp>({
+          updatedAt: new Date(MOMENT).toISOString(),
+          updating: false,
+        });
+        // The figure prepared before the save: 80 gives 86.7.
+        expect(valueOf(list, c.bobur), `${String(seconds)} s`).toBe(867);
+      }
+      const behind = await rating(c, after(121, saved));
+      expect(behind.prepared.updating).toBe(true);
+      expect(valueOf(behind, c.bobur)).toBe(1000);
+    });
+
+    it('is decided by the oldest change the unit has not seen, not the newest', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const first = after(600);
+      await saveAt(c.s, first, [
+        { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
+      ]);
+      await saveAt(c.s, after(91, first), [
+        { lessonId: c.l12.id, studentId: c.aziz, workId: c.work, value: 10 },
+      ]);
+      expect((await rating(c, after(120, first))).prepared.updating).toBe(false);
+      // The newest change is 30 s old, the oldest 121 s.
+      const behind = await rating(c, after(121, first));
+      expect(behind.prepared.updating).toBe(true);
+      expect([valueOf(behind, c.aziz), valueOf(behind, c.bobur)]).toEqual([1000, 1000]);
+    });
+
+    it('reads from source at once for a change row written without a moment', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      expect((await rating(c)).prepared.updating).toBe(false);
+      await t.database.migrator
+        .insertInto('report_changes')
+        .values({ branch_id: c.s.branch, quarter_id: c.quarter, journal_id: c.journal })
+        .execute();
+      expect((await rating(c)).prepared.updating).toBe(true);
+    });
+
+    it('reads a school-wide change the same way: prepared up to 120 s, from source after, and at once without a moment', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const changed = after(600);
+      await t.database.migrator
+        .insertInto('report_school_changes')
+        .values({ table_name: 'subjects', changed_at: new Date(changed) })
+        .execute();
+      expect((await rating(c, after(119, changed))).prepared.updating).toBe(false);
+      expect((await rating(c, after(120, changed))).prepared.updating).toBe(false);
+      expect((await rating(c, after(121, changed))).prepared.updating).toBe(true);
+      await prepare(c.s.branch, after(121, changed));
+      expect((await rating(c, after(121, changed))).prepared.updating).toBe(false);
+      await t.database.migrator
+        .insertInto('report_school_changes')
+        .values({ table_name: 'subjects', changed_at: null })
+        .execute();
+      expect((await rating(c, after(121, changed))).prepared.updating).toBe(true);
+    });
+
+    it('reads a unit prepared up to 120 s past its next change (a lesson start), from source after (decision 2a)', async () => {
+      const c = await scene();
+      // Monday 26 October, 07:00: the lesson of the 26th has not started.
+      const early = '2026-10-26T07:00:00+05:00';
+      await prepare(c.s.branch, early);
+      const start = (await lessonsOf(c.s.classId)).find(
+        (one) => one.date === '2026-10-26',
+      )?.startsAt;
+      if (start === undefined) throw new Error('The lesson of the 26th.');
+      const begun = new Date(start).toISOString();
+      expect((await rating(c, after(119, begun))).prepared.updating).toBe(false);
+      expect((await rating(c, after(120, begun))).prepared.updating).toBe(false);
+      expect((await rating(c, after(121, begun))).prepared.updating).toBe(true);
+    });
+
+    it("reads the figures of a quarter's last day up to 00:02 of the next day, from source after (decision 2a)", async () => {
+      const c = await scene();
+      await prepare(c.s.branch, '2026-10-31T10:00:00+05:00');
+      const next = await t.database.migrator
+        .selectFrom('report_prepared')
+        .select('next_change_at')
+        .where('branch_id', '=', c.s.branch)
+        .where('kind', '=', 'figures')
+        .where('quarter_id', '=', c.quarter)
+        .executeTakeFirstOrThrow();
+      // Written by the preparation: the midnight after the quarter's last day.
+      expect(next.next_change_at).toEqual(new Date('2026-11-01T00:00:00+05:00'));
+      const path = '/api/results/early-warning';
+      expect((await read(c, path, '2026-11-01T00:01:59+05:00')).prepared.updating).toBe(false);
+      expect((await read(c, path, '2026-11-01T00:02:01+05:00')).prepared.updating).toBe(true);
+    });
+
+    it('reads a unit of an older shape from source at any age', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      await t.database.migrator
+        .updateTable('report_prepared')
+        .set({ school_inputs: 'shape:1' })
+        .where('branch_id', '=', c.s.branch)
+        .execute();
+      expect((await rating(c)).prepared.updating).toBe(true);
+    });
+
+    it('lets every reader of a prepared kind read within the window, and none after it', async () => {
+      const c = await scene();
+      const paths = [
+        // outcomes
+        `/api/results/rating/subject?quarterId=${c.quarter}&journalId=${c.journal}`,
+        // figures
+        '/api/results/early-warning',
+        '/api/results/branch-summary',
+        // plan_progress
+        `/api/plans/reports/progress?quarterId=${c.quarter}`,
+        // closing
+        `/api/results/closing?quarterId=${c.quarter}`,
+        // statuses
+        '/api/journal/discipline?from=2026-10-01&to=2026-10-27',
+        // attendance
+        '/api/results/reports/attendance?from=2026-10-01&to=2026-10-27',
+      ];
+      await prepare(c.s.branch);
+      const saved = after(600);
+      await saveAt(c.s, saved, [{ lessonId: c.l12.id, studentId: c.bobur, value: 2 }]);
+      for (const path of paths) {
+        expect((await read(c, path, after(120, saved))).prepared.updating, path).toBe(false);
+        expect((await read(c, path, after(121, saved))).prepared.updating, path).toBe(true);
+      }
+    });
+
+    it("never holds back the journal or a student's results: both show a save at once", async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const saved = after(600);
+      await saveAt(c.s, saved, [
+        { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
+      ]);
+      const moment = after(30, saved);
+      const journal = await read(
+        c,
+        `/api/journal/journals/${c.journal}?quarterId=${c.quarter}`,
+        moment,
+      );
+      expect(JSON.stringify(journal)).toContain('"score":10');
+      const results = await read(c, `/api/results/students/${c.bobur}`, moment);
+      // 80 of 100 before the save; 100 after it, worked out from the entries.
+      const quarters = (results as unknown as { subjects: { quarters: { classwork: number }[] }[] })
+        .subjects[0]?.quarters;
+      expect(quarters?.[0]?.classwork).toBe(100);
+    });
+
+    it('still lists a unit 30 s behind for the job, which prepares it again', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const saved = after(600);
+      await saveAt(c.s, saved, [
+        { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
+      ]);
+      const now = after(30, saved);
+      const behind = await t.app
+        .get(Transactions)
+        .run([c.s.branch], (transaction) =>
+          behindUnits(transaction, c.s.branch, new Date(now), PREPARED_SHAPE),
+        );
+      expect(behind).toContainEqual({
+        kind: 'outcomes',
+        quarterId: c.quarter,
+        unitId: c.s.subject,
+      });
+      const before = await t.database.migrator
+        .selectFrom('report_prepared')
+        .select(['prepared_at', sql<string>`seen::text`.as('seen')])
+        .where('branch_id', '=', c.s.branch)
+        .where('kind', '=', 'outcomes')
+        .where('quarter_id', '=', c.quarter)
+        .executeTakeFirstOrThrow();
+      const totals = new PreparedTotals(t.app.get(Transactions));
+      t.clock.set(now);
+      try {
+        await totals.run(10 * 60_000);
+      } finally {
+        t.clock.set(START);
+      }
+      const again = await t.database.migrator
+        .selectFrom('report_prepared')
+        .select(['prepared_at', sql<string>`seen::text`.as('seen')])
+        .where('branch_id', '=', c.s.branch)
+        .where('kind', '=', 'outcomes')
+        .where('quarter_id', '=', c.quarter)
+        .executeTakeFirstOrThrow();
+      expect(again.prepared_at).toEqual(new Date(now));
+      expect(again.seen).not.toBe(before.seen);
+      expect(valueOf(await rating(c, now), c.bobur)).toBe(1000);
+    });
   });
 });
