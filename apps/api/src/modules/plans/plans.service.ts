@@ -485,25 +485,37 @@ export class PlansService {
     const first = quarters[0];
     const last = quarters.at(-1);
     if (journals.length === 0 || first === undefined || last === undefined) return counts;
-    const rows = await transaction
-      .selectFrom('lessons')
-      .select([
-        'class_id',
-        'group_id',
-        'subject_id',
-        sql<string>`lesson_date::text`.as('date'),
-        sql<number>`count(*)::int`.as('count'),
-      ])
-      .where('cancel_cause', 'is', null)
-      .where('lesson_date', '>=', first.startDate)
-      .where('lesson_date', '<=', last.endDate)
-      .where(
-        'subject_id',
-        'in',
-        journals.map((journal) => journal.subjectId),
-      )
-      .groupBy(['class_id', 'group_id', 'subject_id', 'lesson_date'])
-      .execute();
+    // Counted per quarter by the database (task 10.1c: per date, a year at three times the size
+    // was 78,000 rows read and summed here, 84 ms of the closing checklist). A lesson counts in
+    // the first quarter that holds its date, as before; the quarters of a year do not overlap.
+    const rows = (
+      await sql<{
+        class_id: string | null;
+        group_id: string | null;
+        subject_id: string;
+        quarter_id: string;
+        count: number;
+      }>`
+        select l.class_id, l.group_id, l.subject_id, q.id as quarter_id, count(*)::int as count
+        from lessons l
+        join lateral (
+          select q.id
+          from unnest(
+            ${quarters.map((one) => one.id)}::uuid[],
+            ${quarters.map((one) => one.startDate)}::date[],
+            ${quarters.map((one) => one.endDate)}::date[]
+          ) with ordinality as q (id, start_date, end_date, position)
+          where q.start_date <= l.lesson_date and l.lesson_date <= q.end_date
+          order by q.position
+          limit 1
+        ) q on true
+        where l.cancel_cause is null
+          and l.lesson_date >= ${first.startDate}::date
+          and l.lesson_date <= ${last.endDate}::date
+          and l.subject_id = any (${[...new Set(journals.map((journal) => journal.subjectId))]}::uuid[])
+        group by l.class_id, l.group_id, l.subject_id, q.id
+      `.execute(transaction)
+    ).rows;
     const byUnit = new Map(
       journals.map((journal) => [
         `${journal.classId ?? ''}|${journal.groupId ?? ''}|${journal.subjectId}`,
@@ -512,9 +524,8 @@ export class PlansService {
     );
     for (const row of rows) {
       const journalId = byUnit.get(`${row.class_id ?? ''}|${row.group_id ?? ''}|${row.subject_id}`);
-      const quarter = quarters.find((one) => one.startDate <= row.date && row.date <= one.endDate);
-      if (journalId === undefined || quarter === undefined) continue;
-      const key = `${journalId}|${quarter.id}`;
+      if (journalId === undefined) continue;
+      const key = `${journalId}|${row.quarter_id}`;
       counts.set(key, (counts.get(key) ?? 0) + row.count);
     }
     return counts;

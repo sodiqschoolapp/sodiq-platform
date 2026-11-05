@@ -560,6 +560,42 @@ export class TimetableAbsences {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const moment = await transactionMoment(transaction);
+      // Task 10.1c: only a lesson with nobody, a vacancy or a person away at its start is in these
+      // lists (`lessonStateOf`), and a person is away only within an away span. The spans are read
+      // first over the times of every lesson with a teacher, as `awayLessons` reads them, and the
+      // lessons of a person with none are not read (at three times the size every lesson of the
+      // year was read: 180 ms of the Academic Vice Principal's home). Each state is still decided
+      // below by `awayLessons` and `lessonStateOf`, the one place of it.
+      const taught = await transaction
+        .selectFrom('lessons')
+        .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+        .innerJoin('academic_years', 'academic_years.id', 'lesson_blocks.academic_year_id')
+        .select([
+          'lessons.teacher_id',
+          (eb) => eb.fn.min('lessons.starts_at').as('first'),
+          (eb) => eb.fn.max('lessons.starts_at').as('last'),
+        ])
+        .where('lessons.branch_id', '=', branchId)
+        .where('academic_years.status', '<>', 'closed')
+        .where('lessons.cancel_cause', 'is', null)
+        .where('lessons.teacher_id', 'is not', null)
+        .groupBy('lessons.teacher_id')
+        .execute();
+      const firsts = taught.map((one) => new Date(one.first).getTime());
+      const lasts = taught.map((one) => new Date(one.last).getTime());
+      const mayBeAway =
+        taught.length === 0
+          ? []
+          : [
+              ...(
+                await awaySpans(
+                  transaction,
+                  taught.map((one) => one.teacher_id ?? ''),
+                  new Date(Math.min(...firsts)),
+                  new Date(Math.max(...lasts) + 1),
+                )
+              ).keys(),
+            ];
       const lessons = await transaction
         .selectFrom('lessons')
         .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
@@ -580,6 +616,15 @@ export class TimetableAbsences {
         // too (`edge/timetable`, "The school needs next year's timetable in August").
         .where('academic_years.status', '<>', 'closed')
         .where('lessons.cancel_cause', 'is', null)
+        .where((eb) =>
+          eb.or([
+            eb('lessons.teacher_id', 'is', null),
+            eb('staff.kind', '=', 'vacancy'),
+            ...(mayBeAway.length === 0
+              ? []
+              : [sql<boolean>`lessons.teacher_id = any (${mayBeAway}::uuid[])`]),
+          ]),
+        )
         .orderBy('lessons.starts_at')
         .execute();
       const needsInvigilator = await this.examsAway(transaction, branchId, moment);

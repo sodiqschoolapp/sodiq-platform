@@ -1129,7 +1129,8 @@ async function idsOf(t: AppKit, branch: BranchOfRun, teacher: Person | null) {
     .where('academic_year_id', '=', branch.year)
     .orderBy('number')
     .execute();
-  const classId = branch.classes[0]?.id ?? '';
+  // The Tutor's own class (`peopleOf`), whose week the Tutor reads under load.
+  const classId = tutoredClassOf(branch)?.id ?? '';
   const student = await migrator
     .selectFrom('class_memberships')
     .innerJoin('students', 'students.id', 'class_memberships.student_id')
@@ -1251,15 +1252,20 @@ async function peopleOf(t: AppKit, branch: BranchOfRun): Promise<Person[]> {
   }
   const tutorStaff = branch.teachers.find((id) => !teachers.has(id) && !linked.has(id));
   const tutor = await add('tutor', tutorStaff === undefined ? {} : { staffId: tutorStaff });
-  // A Tutor has a class of grades 5 to 11; grades 0 to 4 have a Class teacher (task 9.4e,
-  // `class_tutors_needs_class_teacher`): the first class of grade 5 or above (task 10.1c: the
-  // larger sizes start with grade 1).
-  const tutored = branch.classes.find((one) => one.grade >= 5) ?? branch.classes[0];
-  await classes.tutorRow(branch.id, tutored?.id ?? '', tutor.assignment.id, {
+  await classes.tutorRow(branch.id, tutoredClassOf(branch)?.id ?? '', tutor.assignment.id, {
     from: new Date(SPEED_CLOCK),
     givenBy: people[0]?.accountId ?? '',
   });
   return people;
+}
+
+/**
+ * The class of the speed run's Tutor: a Tutor has a class of grades 5 to 11, grades 0 to 4 have a
+ * Class teacher (task 9.4e, `class_tutors_needs_class_teacher`), so the first class of grade 5
+ * or above (task 10.1c: the larger sizes start with grade 1).
+ */
+function tutoredClassOf(branch: BranchOfRun): { readonly id: string } | undefined {
+  return branch.classes.find((one) => one.grade >= 5) ?? branch.classes[0];
 }
 
 /** The journal of the branch with the most lessons in the quarter. */

@@ -59,9 +59,14 @@ export function decode(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(decode);
   if (!isRecord(value)) return value;
-  const [tag, ...rest] = Object.keys(value);
-  if (tag === undefined || rest.length > 0)
-    throw new Error('A prepared value has an unknown shape.');
+  // The one key of a tagged object, found without a list of its keys (task 10.1c: the decode of
+  // the early-warning list's figures was a third of its read at three times the size).
+  let tag: string | undefined;
+  for (const key in value) {
+    if (tag !== undefined) throw new Error('A prepared value has an unknown shape.');
+    tag = key;
+  }
+  if (tag === undefined) throw new Error('A prepared value has an unknown shape.');
   const body = value[tag];
   switch (tag) {
     case '$f': {

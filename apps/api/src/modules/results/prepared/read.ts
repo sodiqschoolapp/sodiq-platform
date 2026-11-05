@@ -67,6 +67,8 @@ async function split(
   kind: 'outcomes' | 'figures' | 'closing',
   quarterId: string,
   subjectIds: readonly string[],
+  part?: string,
+  fields?: readonly string[],
 ): Promise<{ fresh: Map<string, FreshUnit>; behind: string[] }> {
   const fresh = await freshUnits(moment.transaction, {
     branchId: moment.branchId,
@@ -75,6 +77,8 @@ async function split(
     unitIds: subjectIds,
     now: moment.now,
     schoolInputs: PREPARED_SHAPE,
+    ...(part === undefined ? {} : { part }),
+    ...(fields === undefined ? {} : { fields }),
   });
   for (const one of fresh.values()) freshness.used(one.preparedAt);
   const behind = subjectIds.filter((id) => !fresh.has(id));
@@ -82,17 +86,34 @@ async function split(
   return { fresh, behind };
 }
 
-/** `outcomesOf` of the rating from the prepared units. */
+/**
+ * `outcomesOf` of the rating from the prepared units. With `bySubjectOnly` (task 10.1c: the
+ * rating of a class, of the classes and the branch summary, which read each student's outcome
+ * per subject only) the units' `byJournal` is neither read nor decoded, and the answer's
+ * `byJournal` holds only what was worked out from source.
+ */
 export async function preparedOutcomes(
   moment: BranchMoment,
   quarter: QuarterRef,
   state: QuarterState,
   subjectIds: readonly string[] | null,
   freshness: Freshness,
+  options: { readonly bySubjectOnly?: boolean } = {},
 ): Promise<Outcomes> {
   const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
-  const { fresh, behind } = await split(moment, freshness, 'outcomes', quarter.id, subjects);
-  const parts: Outcomes[] = [...fresh.values()].map((one) => one.value as Outcomes);
+  const { fresh, behind } = await split(
+    moment,
+    freshness,
+    'outcomes',
+    quarter.id,
+    subjects,
+    undefined,
+    options.bySubjectOnly === true ? ['bySubject', 'readLive'] : undefined,
+  );
+  const parts: Outcomes[] = [...fresh.values()].map((one) => {
+    const value = one.value as Partial<Outcomes> & Pick<Outcomes, 'bySubject' | 'readLive'>;
+    return { byJournal: value.byJournal ?? new Map(), ...value };
+  });
   if (behind.length > 0) parts.push(await outcomesOf(moment, quarter, state, behind));
   const byJournal = new Map<string, ReadonlyMap<string, StudentQuarterOutcome>>();
   const bySubject = new Map<string, ReadonlyMap<string, StudentQuarterOutcome>>();
@@ -119,10 +140,11 @@ export async function preparedFigures(
   previous: Map<string, Fraction | null>;
 }> {
   const subjects = subjectIds ?? (await subjectsOf(moment, quarter));
-  const own = await split(moment, freshness, 'figures', quarter.id, subjects);
+  // Task 10.1c: the `figures` of the quarter's own units only, never their `work` decoded too.
+  const own = await split(moment, freshness, 'figures', quarter.id, subjects, 'figures');
   const figures = new Map<string, JudgedFigures>();
   for (const one of own.fresh.values()) {
-    for (const [key, value] of (one.value as FiguresValue).figures) figures.set(key, value);
+    for (const [key, value] of one.value as FiguresValue['figures']) figures.set(key, value);
   }
   if (own.behind.length > 0) {
     for (const [key, value] of await quarterFigures(moment, quarter, own.behind)) {

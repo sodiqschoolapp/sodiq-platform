@@ -762,7 +762,9 @@ async function classIn(context: Context, query: RatingClassQuery): Promise<Ratin
   const referenceDate = referenceDateOf(quarter, context.today);
   const state = await quarterStateOf(context, quarter);
   const freshness = new Freshness();
-  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness, {
+    bySubjectOnly: true,
+  });
   const members = await membersOn(transaction, { classId: shown.id, groupId: null }, referenceDate);
   const figures = figuresOf(outcomes, members);
   const names = await namesOf(transaction, [...figures.keys()]);
@@ -798,7 +800,9 @@ async function classesIn(context: Context, query: RatingClassesQuery): Promise<R
       (query.language === undefined || one.language === query.language),
   );
   const freshness = new Freshness();
-  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness, {
+    bySubjectOnly: true,
+  });
   const figures = new Map<string, { value: Fraction | null; students: number }>();
   for (const one of classes) {
     const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);
@@ -928,7 +932,9 @@ export async function gradeFiguresOf(
   const context: Context = { transaction, access, ...clock };
   const referenceDate = referenceDateOf(quarter, context.today);
   const state = await quarterStateOf(context, quarter);
-  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness);
+  const outcomes = await preparedOutcomes(context, quarter, state, null, freshness, {
+    bySubjectOnly: true,
+  });
   const byGrade = new Map<number, string[]>();
   for (const one of await classesOfYear(context, quarter.academicYearId)) {
     const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);

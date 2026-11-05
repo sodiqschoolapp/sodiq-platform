@@ -26,6 +26,7 @@ import { ratingEntryAndNote } from '../../../testing/rating-kit.js';
 import { publishedScene, type PublishedScene } from '../../../testing/published-scene.js';
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
+import { decodedUnits } from './decoded-cache.js';
 import { PreparedTotals, prepareUnit } from './prepare.job.js';
 import {
   freshLessons,
@@ -1392,6 +1393,63 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       const quarters = (results as unknown as { subjects: { quarters: { classwork: number }[] }[] })
         .subjects[0]?.quarters;
       expect(quarters?.[0]?.classwork).toBe(100);
+    });
+
+    it('keeps the decoded value of a preparation between reads, and reads the next preparation once made (decoded-cache.ts)', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      expect(valueOf(await rating(c), c.bobur)).toBe(867);
+      const kept = decodedUnits.size;
+      expect(valueOf(await rating(c), c.bobur)).toBe(867);
+      expect(decodedUnits.size).toBe(kept);
+      const saved = after(600);
+      await saveAt(c.s, saved, [
+        { lessonId: c.l12.id, studentId: c.bobur, workId: c.work, value: 10 },
+      ]);
+      await prepare(c.s.branch, after(1, saved));
+      const again = await rating(c, after(2, saved));
+      expect(again.prepared.updating).toBe(false);
+      expect(valueOf(again, c.bobur)).toBe(1000);
+      expect(decodedUnits.size).toBe(kept + 1);
+    });
+
+    it('lists for the job the units behind the longest first, whatever their kind', async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const now = new Date(after(600));
+      const passed = (kind: string, seconds: number) =>
+        t.database.migrator
+          .updateTable('report_prepared')
+          .set({ next_change_at: new Date(now.getTime() - seconds * 1000) })
+          .where('branch_id', '=', c.s.branch)
+          .where('kind', '=', kind)
+          .where('quarter_id', '=', c.quarter)
+          .execute();
+      // By the order of their kind, attendance comes before outcomes; behind for 30 s and 90 s.
+      await passed('attendance', 30);
+      await passed('outcomes', 90);
+      const listed = await t.app
+        .get(Transactions)
+        .run([c.s.branch], (transaction) =>
+          behindUnits(transaction, c.s.branch, now, PREPARED_SHAPE),
+        );
+      const kinds = listed.filter((one) => one.quarterId === c.quarter).map((one) => one.kind);
+      expect(kinds.indexOf('outcomes')).toBeGreaterThanOrEqual(0);
+      expect(kinds.indexOf('outcomes')).toBeLessThan(kinds.indexOf('attendance'));
+      // A unit of an older shape is behind the longest of all.
+      await t.database.migrator
+        .updateTable('report_prepared')
+        .set({ school_inputs: 'shape:1' })
+        .where('branch_id', '=', c.s.branch)
+        .where('kind', '=', 'statuses')
+        .where('quarter_id', '=', c.quarter)
+        .execute();
+      const again = await t.app
+        .get(Transactions)
+        .run([c.s.branch], (transaction) =>
+          behindUnits(transaction, c.s.branch, now, PREPARED_SHAPE),
+        );
+      expect(again[0]?.kind).toBe('statuses');
     });
 
     it('still lists a unit 30 s behind for the job, which prepares it again', async () => {
