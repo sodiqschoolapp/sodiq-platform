@@ -2,6 +2,13 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 5 November 2026: a work added by hand is named
+
+- What changed: a classwork or "homework given" added by hand at a lesson with no plan item is named when it is added. The title is required, at most 60 characters, and is the work's column title as a plan's title would be. The teacher may rename it while the lesson can still be edited; each change is kept in history. When the plan item is written later and its works take over these columns, the plan's titles replace the typed ones, which stay in history; a hand-added work left without a match keeps its own title.
+- Why: the owner, 5 November 2026, in chat: a work added from the lesson card with no plan was always called "CW 1" or "HW 1", and teachers must be able to name it; needed before Release 2, where families see homework. The owner chose: the title is required (not optional), it can be renamed, and the plan's title wins when a plan item is written later.
+- Code: task 10.6 of `docs/build-plan.md` (not built), added with this change. Works added by hand before it (on production since the pilot) have no title; they keep showing "CW 1" or "HW 1" until a teacher renames them, and no migration fills them (stop-list item 3). No calculation changes; the limit of 10 works of each kind is unchanged.
+- Files: `docs/spec/07-journal.md` (Journal grid, Classwork and homework), `docs/spec/edge-cases/journal.md` (the row "A lesson is held with no plan item").
+
 ## 5 November 2026: report totals up to two minutes behind, the order of building, and "Nothing entered"
 
 - What changed:
