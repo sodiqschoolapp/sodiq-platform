@@ -1384,11 +1384,19 @@ Order decided by the owner on 3 November 2026: 9.4g and 9.4h (the spec change of
   - From 10.1b (`docs/progress.md`, 29 October 2026): the `class_figures` unit (allowed by 0143, not built) is the first thing to try for the ratings and the branch summary; Speed run 40989986438 holds the numbers of 10.1b.
   - Items 3 to 5 of the stop list (a migration that changes or removes existing rows, `packages/calc`, permissions) still stop the task. `.github/workflows/speed.yml` may change for the two load models and the run's time only.
 
+## Release 2
+
+Decided by the owner on 5 November 2026 (`docs/decisions.md`, "5 November 2026: Release 2 before the deferred list"): Release 2 (`10`; `01`, Scope and releases) is built after 10.1c and before the deferred list below. Its plan is written in a session with the owner while 10.1c builds and lands here as its tasks, replacing the gate line below.
+
+> **Owner gate.** The Release 2 tasks are not written yet. The start routine stops here until the owner merges the Release 2 plan, which replaces this line with its tasks.
+
 ## Deferred until after 25 October 2026
 
 Decided by the owner on 16 October 2026: these tasks are not needed for the release on the test site on 25 October 2026 and are built after it, in this order. The start routine never reaches them before the owner gate of Phase 10. Year-end work (closing the year, rollover, a new year) is needed only in June 2027; the handbook is written once the features are finished (`docs/decisions.md`, 16 October 2026).
 
 Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is built after the release too, first of this list. Until then a timetable is built in the grid by hand, with the rule engine, "Suggest a place" and the readiness check as they are; Release 1 still includes generation.
+
+Decided by the owner on 5 November 2026: Release 2 comes before this list. **9.5a, 9.5b and 9.5c start by 1 March 2027**, whatever is running then: on that date the owner moves them, in this order, in front of the first unticked Release 2 task (a commit by hand or a pull request), so that closing the year, the rollover and the start of the 2027/28 year work by June 2027. The rest of this list (5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c, 9.6) is parked with no date and is started only when the owner moves a task up.
 
 - [ ] **5.10 Solver service**
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
@@ -1480,6 +1488,6 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
 
 ## After Release 1
 
-Release 2 (portal, SMS and Telegram notices, stipend, automatic UIDs) and Release 3 (HR, nurse, psychologist, library, mobile apps) get their own plans when Release 1 is live. Do not start them early.
+Release 2 (portal, SMS and Telegram notices, stipend, automatic UIDs) has its section above, before the deferred list (owner, 5 November 2026). Release 3 (HR, nurse, psychologist, library, mobile apps) gets its own plan later. Do not start it early.
 
 From 9.2c (for the stipend task of Release 2): once a stipend list is confirmed for a quarter, only the Super Admin may reopen that quarter, and the awards a reopening affects are flagged for the Super Admin, never changed (`edge/journal`, "The stipend list was already confirmed for a quarter that is reopened"). 9.2c lets the Academic Vice Principal reopen, as no stipend exists in Release 1.

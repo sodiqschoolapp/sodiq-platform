@@ -65,6 +65,16 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 5 November 2026: Release 2 before the deferred list (owner)
+
+Decided by the owner in chat on 5 November 2026.
+
+| Decision | Reason |
+| --- | --- |
+| The order: 10.1c; the Release 2 plan, written in a session with the owner while 10.1c builds; the Release 2 tasks; 9.5a to 9.5c start by 1 March 2027, whatever is running; 5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c and 9.6 are parked with no date | The deferred tasks are not needed urgently; the year-end work must work by June 2027, the end of the 2026/27 school year |
+| **Look first** (spec text). `01` puts automatic generation and the year rollover in Release 1, and `00-index`, Scope reminder, says "Build Release 1 only". Both are changed by the owner's `/spec-change` of 5 November 2026 (`docs/spec-changes.md`) | The spec is the source of truth; the order of building must not contradict it |
+| An owner gate line stands in front of the deferred list until the Release 2 plan is merged | The start routine takes the first unticked task; without the line it would start 5.10 after 10.1c |
+
 ## 5 November 2026: the speed results of 10.1b (owner)
 
 The owner accepted the three recommendations made in chat on 5 November 2026, after the triple run of 10.1b (`docs/progress.md`, 29 October 2026).
