@@ -1271,7 +1271,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - Build: for every route that lets in a Tutor, a Teacher, a Head Teacher or a Senior Head Teacher, the limit of each and the test that proves the refusal (`ROUTE_SCOPE`, `route-scopes.test.ts`), and the narrower rules of whole-branch roles; the missing tests and fixes; the security headers of every answer; the written permission and security checklist (`docs/security/permission-checklist.md`), its tables generated from the code and compared by a test.
   - Done when: every route with a scoped role names its limit and a test, and the checklist is written.
 
-- [x] **10.4 Production and the go-live checklist**; production deployed and checklists approved: pending, owner
+- [x] **10.4 Production and the go-live checklist**; production deployed (first deploy 27 October 2026); go-live checklist sections 1 to 3 done (owner, 5 November 2026); section 4 (the branches) and the approval of both checklists: pending, owner
   - Read: `13`, `edge/academic-year`, `14` (Whole system).
   - Build: the production environment; the first Super Admin; the written go-live and pilot checklists (which data to enter first, which grade pilots, how results are compared).
   - Done when: production is deployed and the checklists are approved by the owner.
@@ -1279,7 +1279,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - Stop-list items of this task (accounts, secrets, production, the deploy job under `.github/`) are approved in advance by the owner for this task; the session still asks the owner for each secret and account step and never handles a secret's value.
   - From 10.3a (pull request #241, decision 4, Look first): the go-live checklist has the item "the 10.3 permission and security checklist (`docs/security/permission-checklist.md`) is signed by the owner"; production is not started without it. The checklist also asks for a hand check on the test environment of the security headers (sign-in, journal grid, timetable board drag, a live notice, Print, in current Chrome, Edge, Firefox and Safari) and the providers' encryption at rest (Neon, R2).
 
-- [x] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1); checklist signed: pending, issue #42
+- [x] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1); checklist signed by the owner on 29 October 2026 (issue #42), the two hand checks accepted as a known risk
   - Read: `02` (Rules), `.claude/rules/api.md` (the 404 rules of tasks 1.3, 1.5, 2.5b-1), `edge/people-roles-accounts`.
   - Build: `ROUTE_IDS`, for every route with an id of a branch record in its path or body, the named route tests that send another branch's id and an unknown one and expect 404 with the rows of both branches and the audit log unchanged, with a meta-test like `route-scopes.test.ts`; the missing tests and fixes; its section of `docs/security/permission-checklist.md`. Not split again: what it cannot hold goes to a From line.
   - Done when: every route with an id names its 404 tests, and the checklist is complete for the owner to sign. The box is ticked with "checklist signed: pending, issue #42" (pull request #241, decision 4).
@@ -1295,7 +1295,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - From 9.4b (pull request #236, decision 12): the home pages are worked out on read: `GET /api/journal/attendance-today` (the cells of every class of the branch, the week from Monday), `GET /api/results/branch-summary` (the quarter's outcomes of every graded journal, as the rating's classes list), `GET /api/timetable/conflicts-summary` (the conflict check of every draft and of the version in force) and `GET /api/journal/lessons-today`. Time each for a branch at full size; `08`: "Every report opens in under 2 seconds".
   - From the owner (28 October 2026, on pull request #245, answer (a) to the plan review): this task adds the new file `.github/workflows/speed.yml` and its workflow test, and nothing else under `.github/`; `ci.yml`, `routines.yml`, `deploy-production.yml` and `demo-data.yml` stay unchanged, and nothing under `.claude/`, `CLAUDE.md`, `scripts/hooks/` or `docs/cloud-loop.md` changes.
 
-- [x] **10.2a Backups, restore drill and alerts** (split from 10.2 in pull request #256, decision 1, Look first); restore drill: pending, owner
+- [x] **10.2a Backups, restore drill and alerts** (split from 10.2 in pull request #256, decision 1, Look first); first restore drill done by the owner on 1 November 2026 (`docs/go-live/restore-drills.md`)
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
   - Build: the daily export to R2; written steps for restoring to a side copy; Sentry, Grafana Cloud and UptimeRobot alerts (by email, answer 8); the sign-in-and-save check is 10.2b.
   - Done when: the owner has restored a backup once by following the written steps. The box is ticked with "restore drill: pending, owner" (plan decision 15).
