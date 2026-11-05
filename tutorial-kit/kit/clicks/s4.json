@@ -144,10 +144,10 @@
   "clicks": [
    "Chrome profile **AVP**. — Slide 14 (second half) —",
    "Left menu **School setup** → **Calendar** → **Add entry**.",
-   "Form **New calendar entry**: **Kind** `Special day` · **Name** `Ishchi shanba` · **First date** and **Last date** Saturday of Week 2 · **For** `Whole branch` · **Day template** `Asosiy 5-8` · **Lessons of** `Monday` · **Exam week** `Not an exam week` · click **Save**.",
-   "The dialog **What this save changes** opens: read the grade rows (Before “No lessons: not a working weekday” → After “lessons of Monday”) and **The published timetable** (“… lessons are created”, teachers told).",
-   "Click **Save** in the dialog.",
-   "**Add entry** again: **Kind** `Special day` · **Name** `Qisqartirilgan kun` · **First date** and **Last date** Wednesday of Week 2 · **For** `Whole branch` · **Day template** `Juma 5-11` · **Lessons of** `Its own weekday` · **Exam week** `Not an exam week` · **Save**.",
+   "Form **New calendar entry**: **Kind** `Special day` · **Name** `Ishchi shanba` · **First date** and **Last date** Saturday of Week 2 · **For** `Some grades` **From grade** `5` **To grade** `8` · **Day template** `Asosiy 5-8` · **Lessons of** `Monday` · **Exam week** `Not an exam week` · click **Save**.",
+   "The dialog **What this save changes** opens: read the grade rows (Before “No lessons: not a working weekday” → After “lessons of Monday”) and **The published timetable** (“… lessons are created”, no blocked conflict). Class names may show as “0 Melbourne”, “0 Imperial”: a display slip of this preview, not the data.",
+   "Click **Save** in the dialog. Then **Add entry** twice more for the same Saturday, same name, kind and Lessons of `Monday`: **Some grades** `1`–`4` with `Boshlangʻich 1-4`, and **Some grades** `9`–`11` with `Yuqori 9-11`; **Save** each in its dialog.",
+   "**Add entry** again: **Kind** `Special day` · **Name** `Qisqartirilgan kun` · **First date** and **Last date** Wednesday of Week 2 · **For** `Some grades` **From grade** `5` **To grade** `11` · **Day template** `Juma 5-11` · **Lessons of** `Its own weekday` · **Exam week** `Not an exam week` · **Save**.",
    "In **What this save changes** read “… lessons are created cancelled: not in the day's template” and the shortened days list (“Lessons kept: …”); leave the default choice; click **Save**.",
    "Optional: **Check a date** → **Date** Saturday of Week 2 → each grade shows “lessons of Monday”."
   ],
@@ -155,8 +155,9 @@
   "unsure": [
    "No shortened day template exists (step 3.3 made only four); `Juma 5-11` (six lessons) is used to shorten the day. A dedicated short template would need School setup → Day templates first.",
    "Working hours (sheet 8) are Monday–Friday, so the Saturday preview likely says “… lessons will need a teacher” and those lessons appear in “Lessons that need a teacher” on Home pages later. Either add Saturday hours or press **Cancel** in the preview after filming it.",
-   "A Special day needs one Day template for all grades chosen; lessons are matched by their number in the day, so `Asosiy 5-8` gives grades 3 and 11 grade-5 times on that Saturday.",
-   "The 4.4 draft may turn “Draft, out of date” after these saves."
+   "A Special day takes one Day template for all grades chosen, and lessons are matched by their number in the day. With `Whole branch` + `Asosiy 5-8`, grades 3 and 11 get grade-5 clock times, and a teacher of two grades meets herself (seen 5 Nov: “A teacher cannot be in two lessons at the same time · 3 Indigo / 5 Melbourne Project-based learning”, save stopped). One entry per grade range with its own template keeps Monday’s real times. If the Wednesday entry also shows a blocked conflict between grades 5–8 and 9–11, split it the same way (5–8 and 9–11, both `Juma 5-11`), or limit it to 5–8.",
+   "The 4.4 draft may turn “Draft, out of date” after these saves.",
+   "App slip (5 Nov): the calendar preview names classes “0 Genius”, “0 Melbourne”: `calendar-lessons.ts` passes an empty grade map to `namesOf`, so every class shows grade 0. Display only."
   ]
  },
  "b23": {
