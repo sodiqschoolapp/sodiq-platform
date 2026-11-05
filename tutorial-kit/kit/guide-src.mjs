@@ -783,7 +783,7 @@ ${deckRows}
       <li>Cross-branch scenes and anything that needs months of history are filmed in the seeded Demo Yunusobod and Demo Chilonzor (Session 7, and the steps that say so).</li>
       <li>6 Imperial: its real grade-6 Matematika and English blocks are not built, so they are whole-class rows. Say so on camera.</li>
       <li>3 Indigo is entered as a Russian-language class. If it is not, set its language to Uzbek; nothing else changes.</li>
-      <li>If a demo clock is built later, Session 6 shrinks to one sitting; nothing else on this page changes.</li>
+      <li>Demo time (SA → School setup → Demo time) moves the whole test site forward, never back; each step of Sessions 5 and 6 starts with the move it needs. Sign-in keeps real time. Only the demo data workflow (a wipe) brings real time back.</li>
     </ul>
   </div>
 </section>

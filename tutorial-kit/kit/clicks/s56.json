@@ -1,6 +1,7 @@
 {
  "s5a": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Date** `09.11.2026` · **Time** `08:00` → **Move to this time** → **Move demo time**. Every window shows “Demo time: …” in the top bar within a few seconds.",
    "— Teacher deck, slides 3–7 —",
    "In the Chrome profile **Teacher** (Rahimov Aziz): open the test site. The **Sign in** page opens.",
    "In the **Language** chooser at the top of the page, open the list so the camera sees `Oʻzbekcha`, `Русский` and `English`, then choose `English`.",
@@ -29,6 +30,7 @@
  },
  "s5b": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move; stay before 09:00.",
    "— Teacher deck, slides 9–10 — before 09:00 —",
    "In **Teacher** (Aziz), click **Home** in the left menu. The card **Today, <Monday’s date>** has two rows: lesson 1 at 09:00–09:40 and lesson 2 at 09:55–10:35, **Class or group** `Matematika 5A`, **Subject** `Mathematics`, **Room** `208`, **State** **As planned**, and an **Open the journal** button on each.",
    "Scroll down past **Reminders** (“Nothing waits for you.”) to **This week, <Monday> – <Friday>**: Monday lessons 1–2, Thursday lessons 1–2 and Friday lessons 7–8, all `Matematika 5A`, room 208. Then show **My journals** and **Early warning: my journals** (“Nobody listed.”).",
@@ -57,6 +59,7 @@
  },
  "s5c": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): move to Monday `09:05` (lesson 1 has started).",
    "— Teacher deck, slide 11 — at 09:00 or later (entry opens at the lesson’s start, never before) —",
    "Narrow the **Teacher** window to phone width (or use the phone signed in as Aziz). At this width the journal opens in lesson mode by itself.",
    "Click **Home** → **Today** → the lesson 1 row `Matematika 5A` → **Open the journal**.",
@@ -78,6 +81,7 @@
  },
  "s5d": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): move to Monday `10:00` (after lesson 1; Kamola's lesson 2 of step 5.5 has started too).",
    "— Teacher deck, slide 12 — in **Teacher** at desktop width, after lesson 1 —",
    "Click **Journal** → **Groups** → `Matematika 5A` and set **View** to **Grid**.",
    "In the header of lesson 1’s **A** column (Monday, lesson 1), click **…** (**Lesson card**), then **Works of the lesson**. The dialog **Works of the lesson, <Monday>** says **No plan**. Click **Add classwork**, then **Close**. A column **CW 1** with **Soni** appears.",
@@ -115,6 +119,7 @@
  },
  "s5e": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Monday, from 10:00).",
    "— Tutor deck, slide 13 —",
    "In **Tutor** (Umida), click **Journal**, then the link **Student absences** at the top right of **Journals**. Set **Class** to `5 Melbourne` and **From** and **To** to Monday of Week 1.",
    "Two rows show: Bahromova Odina and Nazarov Bekzod, **Lessons missed** 1, **Reason** “No reason yet”.",
@@ -141,6 +146,7 @@
  },
  "s5f": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Monday morning).",
    "— Head Teacher deck, slides 14–18 — in **Head Teacher** (Madina, set to **Head Teacher**) —",
    "Slide 14: **Journal** → **Groups** → `Ingliz 5B` (English, Rasulova Shahnoza), read only. Go back to **Journals**, click **Journal discipline**, set **From** and **To** to Monday and show the counts of her subjects’ teachers.",
    "Slide 15: **Lesson plans** → **Groups** → `Ingliz 5B` → **Excel**. Go back, click **Plan reports**, set **Report** to **Completeness** and **Quarter** to Quarter 2. The table shows who has not filled the quarter.",
@@ -166,6 +172,7 @@
  },
  "s5g": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Monday).",
    "— Teacher deck, slide 15 —",
    "In **Teacher**: **Journal** → `Matematika 5A`, **Month** = **Whole quarter**. The rating column shows only for the whole quarter.",
    "The column header reads **Rating exam** with **No date** under it. Click its **…** (**Rating exam**). In the dialog, set **Exam date** to Monday of Week 1, click **Save the date**, then **Close**.",
@@ -186,6 +193,7 @@
  },
  "s5h": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Monday).",
    "— AVP deck, slides 40–41 and 45 — during the morning —",
    "In **AVP** (Fayzullayeva Nodira; the second-step code from the phone if asked), click **Home**. Show **Lessons today** (“Not started n · in progress n · still to start n”), **Quarter progress** (Quarter 2, school days passed), **Timetable conflicts** (“Version 1 in force”), **Requests waiting for you**, the tiles below them, and **Early warning: the branch**.",
    "Slide 41: **Journal** → **Groups** → `Matematika 5A`. Show **Quarter**, **Month**, **Filter** and **View** (**Grid** / **Lesson mode**), then scroll to **Legend** (Attendance marks, Grades, Weights).",
@@ -202,6 +210,7 @@
  },
  "s5i": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): move to Monday `16:10`.",
    "— Teacher deck, slide 17 — after 16:05 (or jump to the evening with the time machine) —",
    "In **Teacher**, click **Home**. **Today** reads “1 of 2 lessons complete”: lesson 1 **Complete**, lesson 2 **Not started**.",
    "**Reminders** lists **No attendance** for lesson 2 (“16 students without attendance”) and **No topic** for lesson 1 (row 1 of the plan is empty). Click **Open** on the No attendance line: the journal opens at that lesson.",
@@ -216,6 +225,7 @@
  },
  "s6a": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Tomorrow, 07:05** (Tuesday). Then do the parts in clock order, moving each time: `10:55` Shahnoza (off camera, last item) → `13:40` Umida → `14:35` Zarina → `15:30` Kamola.",
    "— Tutor deck, slide 12 — Tuesday, from 13:35 —",
    "In **Tutor** (Umida), click **Home**. Her lessons **Today** show `5 Melbourne` **Future hour** (Kelajak soati), 13:35–14:15, room 208. Click **Open the journal**.",
    "The journal `5 Melbourne · Future hour` opens. Click **All present**, then type `0` in IS26036 Bahromova Odina’s **A** cell (still ill).",
@@ -234,6 +244,7 @@
  },
  "s6b": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Tomorrow, 07:05** (Wednesday). Monday's lessons locked at midnight (edit days 1).",
    "— Teacher deck, slides 18–19 — Wednesday —",
    "In **Teacher**: **Journal** → `Matematika 5A`. The panel **Edit period** shows **Lesson of <Monday>** “Locked: the edit period ended <Tuesday 23:59>.” with **Request unlock**; this row is lesson 2, **Locked incomplete**. **Show 1 locked lesson** reveals lesson 1.",
    "On lesson 2’s row, click **Request unlock**. In the form **Request unlock: Lesson of <Monday>**, set **Reason** to `I did not take attendance in the second half of Monday’s double lesson`, then click **Send**. The row reads “Locked since … Unlock request sent.” with **Withdraw the request**.",
@@ -263,6 +274,7 @@
  },
  "s6c": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Tomorrow, 07:05** (Thursday). Tuesday is locked and the plan window (ended Wednesday) is closed. Do step 6.5 now as well, before the next move.",
    "— Head Teacher deck, slides 11–12 — Thursday —",
    "In **Spare 1** (Shahnoza): **Journal** → **Groups** → `Ingliz 5B`. In **Edit period**, on **Lesson of <Tuesday>** (lesson 4, Locked incomplete), click **Request unlock**. Set **Reason** to `Lesson 4 attendance was not entered on Tuesday` and click **Send**.",
    "In **Head Teacher** (Madina, set to **Head Teacher**), click **Home**. **Requests waiting for you** reads “1 unlock request”. Slide 11: narrate the table **Who decides a request**.",
@@ -292,6 +304,7 @@
  },
  "s6d": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): Thursday `14:35` for the substitute and Feruza (lesson 7, 5 London). The homework part (the next three items, up to **Copy attendance**) waits for Friday `14:35`: the exam cancelled Thursday's Matematika, so Matematika 5A's next lesson is Friday 14:30.",
    "— Teacher deck, slide 12, homework checked — Thursday, from 09:00 —",
    "In **Teacher**: **Home** → **Today** → Matematika 5A lesson 1 → **Open the journal**. Lesson 1 has the planned **Ogʻzaki hisob** and **12-mashq, 15-bet** with “from <Monday>”; hover it: “Given on <Monday>, checked at this lesson”.",
    "Click **…** on **12-mashq, 15-bet**, set **Total (Soni)** to `5` and click **Set total**, then **Close**. Type its numbers from the first row (for example `5`, `4`, `3`, `5`…), and the same for **Ogʻzaki hisob** after setting its total to `10`.",
@@ -316,6 +329,7 @@
  },
  "s6e": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Thursday morning, after the 07:05 move of step 6.3).",
    "— Tutor deck, slide 17 — Thursday —",
    "In **Spare 2** (after step 6.4): **Sign out**, then sign in as Komilov Sanjar (slip, or a reset by the SA if it has run out).",
    "**Home** shows two cards: **Class 5 Tokyo** (his own) and **Class 5 Melbourne** (acting Thursday–Friday), each with **Absent now** and **Timetable today**.",
@@ -330,6 +344,7 @@
  },
  "s6f": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Tomorrow, 07:05** (Friday). Do steps 6.6 and 6.7, then move to Friday `14:35` for the homework part of step 6.4.",
    "— Teacher deck, slide 24 — Friday —",
    "In **Teacher**, click **Results**. The page **Rating** shows “Provisional: the quarter is open”. Set **List** to **In a subject**, **Quarter** to Quarter 2 and **Subject and class or group** to `Mathematics · Matematika 5A`. Show the table (**Place**, **Student**, **Result**, **Note**) and click **Excel**.",
    "In the address bar, open `<test site>/people/students`. Only his students show (no People menu). Open IS26042 Nazarova Kamila → **Results**.",
@@ -353,6 +368,7 @@
  },
  "s6g": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Friday morning).",
    "— SA deck, slide 24, after the date — Friday —",
    "In **SA**: **People** → **Staff** → the spare test teacher of step 2.13. The **Status** column and the panel’s **Status history** show **Left** from Friday; the person can no longer sign in.",
    "— AVP deck, slide 21, after the date —",
@@ -367,6 +383,7 @@
  },
  "s6h": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move: any morning after a **Tomorrow, 07:05** move (the nightly check runs at 02:00).",
    "— SA deck, slide 33 — any morning —",
    "In **SA**: **Journal** → **Closing checklist**, **Quarter** 2. On a clean night there is no “Nightly check of …” line (it shows only with differences), and the page may say “The checklist opens on <date>.”",
    "Open the **Notifications** bell: no “The nightly check of … found …” or “… did not run.” notice. Narrate that a clean night shows no line."
@@ -378,6 +395,7 @@
  },
  "s6i": {
   "clicks": [
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): **Date** `01.12.2026` · **Time** `07:05`. The last move of the rehearsal: everything of Week 1 must be done first. Session 8 can follow on this day from 10:00.",
    "— AVP deck, slide 23, second time — 1 December 2026 —",
    "In **AVP**, click **Home**. The tile **Students with no class** shows `1`. Click **Open the list**: the student list, filtered to no class and active, shows IS26902 Yoʻldosheva Samira.",
    "Tick her row, then click **Put into a class** in the bar above the list.",
