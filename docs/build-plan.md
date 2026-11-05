@@ -1271,7 +1271,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - Build: for every route that lets in a Tutor, a Teacher, a Head Teacher or a Senior Head Teacher, the limit of each and the test that proves the refusal (`ROUTE_SCOPE`, `route-scopes.test.ts`), and the narrower rules of whole-branch roles; the missing tests and fixes; the security headers of every answer; the written permission and security checklist (`docs/security/permission-checklist.md`), its tables generated from the code and compared by a test.
   - Done when: every route with a scoped role names its limit and a test, and the checklist is written.
 
-- [x] **10.4 Production and the go-live checklist**; production deployed and checklists approved: pending, owner
+- [x] **10.4 Production and the go-live checklist**; production deployed (first deploy 27 October 2026); go-live checklist sections 1 to 3 done (owner, 5 November 2026); section 4 (the branches) and the approval of both checklists: pending, owner
   - Read: `13`, `edge/academic-year`, `14` (Whole system).
   - Build: the production environment; the first Super Admin; the written go-live and pilot checklists (which data to enter first, which grade pilots, how results are compared).
   - Done when: production is deployed and the checklists are approved by the owner.
@@ -1279,7 +1279,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - Stop-list items of this task (accounts, secrets, production, the deploy job under `.github/`) are approved in advance by the owner for this task; the session still asks the owner for each secret and account step and never handles a secret's value.
   - From 10.3a (pull request #241, decision 4, Look first): the go-live checklist has the item "the 10.3 permission and security checklist (`docs/security/permission-checklist.md`) is signed by the owner"; production is not started without it. The checklist also asks for a hand check on the test environment of the security headers (sign-in, journal grid, timetable board drag, a live notice, Print, in current Chrome, Edge, Firefox and Safari) and the providers' encryption at rest (Neon, R2).
 
-- [x] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1); checklist signed: pending, issue #42
+- [x] **10.3b Permission and security review: records of another branch by id** (split from 10.3 in pull request #241, decision 1); checklist signed by the owner on 29 October 2026 (issue #42), the two hand checks accepted as a known risk
   - Read: `02` (Rules), `.claude/rules/api.md` (the 404 rules of tasks 1.3, 1.5, 2.5b-1), `edge/people-roles-accounts`.
   - Build: `ROUTE_IDS`, for every route with an id of a branch record in its path or body, the named route tests that send another branch's id and an unknown one and expect 404 with the rows of both branches and the audit log unchanged, with a meta-test like `route-scopes.test.ts`; the missing tests and fixes; its section of `docs/security/permission-checklist.md`. Not split again: what it cannot hold goes to a From line.
   - Done when: every route with an id names its 404 tests, and the checklist is complete for the owner to sign. The box is ticked with "checklist signed: pending, issue #42" (pull request #241, decision 4).
@@ -1295,7 +1295,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - From 9.4b (pull request #236, decision 12): the home pages are worked out on read: `GET /api/journal/attendance-today` (the cells of every class of the branch, the week from Monday), `GET /api/results/branch-summary` (the quarter's outcomes of every graded journal, as the rating's classes list), `GET /api/timetable/conflicts-summary` (the conflict check of every draft and of the version in force) and `GET /api/journal/lessons-today`. Time each for a branch at full size; `08`: "Every report opens in under 2 seconds".
   - From the owner (28 October 2026, on pull request #245, answer (a) to the plan review): this task adds the new file `.github/workflows/speed.yml` and its workflow test, and nothing else under `.github/`; `ci.yml`, `routines.yml`, `deploy-production.yml` and `demo-data.yml` stay unchanged, and nothing under `.claude/`, `CLAUDE.md`, `scripts/hooks/` or `docs/cloud-loop.md` changes.
 
-- [x] **10.2a Backups, restore drill and alerts** (split from 10.2 in pull request #256, decision 1, Look first); restore drill: pending, owner
+- [x] **10.2a Backups, restore drill and alerts** (split from 10.2 in pull request #256, decision 1, Look first); first restore drill done by the owner on 1 November 2026 (`docs/go-live/restore-drills.md`)
   - Read: `13` (Hosting and data), `14` (Whole system), `edge/system-behaviour`.
   - Build: the daily export to R2; written steps for restoring to a side copy; Sentry, Grafana Cloud and UptimeRobot alerts (by email, answer 8); the sign-in-and-save check is 10.2b.
   - Done when: the owner has restored a backup once by following the written steps. The box is ticked with "restore drill: pending, owner" (plan decision 15).
@@ -1325,7 +1325,7 @@ Order decided by the owner on 26 October 2026, at night: 9.4c and 10.3 first; on
   - From 8.7 (pull request #225, decision 6, Look first): the Journal discipline report of `08` moves onto prepared totals with "updated at" and gets its export and the list of lessons behind each count; the counts per teacher of 8.7 (`GET /api/journal/discipline`, worked out on read from `lessonStatuses` and `lessonsCounted`) are the figures it prepares, with the same columns and scope (the branch; own subjects for the Head Teachers; the Tutor subjects for the Head Tutor).
   - From 9.4b (pull request #236, decision 7): `08`, Home pages by role, Academic Vice Principal, "quarter progress": the home card shows the quarter's dates and the closing checklist's counts (`QuarterProgressCard`, `apps/web/src/features/access/home-cards.tsx`); the school days passed of the quarter's total come with the prepared totals here.
 
-- [x] **10.2b The sign-in-and-save check in a hidden Monitoring branch** (split from 10.2 in pull request #256, decision 1); check green on production: pending, owner
+- [x] **10.2b The sign-in-and-save check in a hidden Monitoring branch** (split from 10.2 in pull request #256, decision 1); check green on production: confirmed by the owner on 5 November 2026 (set up and green after the first deploy)
   - Read: `13` (Monitoring), `14` (Whole system), `edge/system-behaviour`, `02` (Roles and access), `docs/monitoring.md`.
   - Build: the hidden Monitoring branch of answer 10, built by a command the owner runs once on the server, left out of every school report and of the daily reminders to the Super Admins; the sign-in-and-save check every 5 minutes from 07:00 as a Grafana Synthetic Monitoring k6 script from an EU probe, and its alert in `apps/api/src/monitoring/alert-rules.ts`.
   - Done when: the check runs green on production for one school day.
@@ -1377,11 +1377,26 @@ Order decided by the owner on 3 November 2026: 9.4g and 9.4h (the spec change of
   - Done when: production cannot turn it on (config and blueprint tests), a jump cannot go back (database test), every process changes time at the same moment, a jump of 8 days leaves a session and its second step working while a role starting that day is in force for the same session, the daily work of the new date runs after a jump, every route has allow and refuse tests, and the browser test jumps a day and sees the new date.
   - Approved by the owner in chat on 4 November 2026, put on record in pull request #280 (correction 4 of the plan review): the task itself; the permission area `demo_clock`, Super Admin only (view, edit), stop-list item 5; the school-wide table `demo_clock` (`.claude/rules/database.md`: a table added to `SCHOOL_WIDE_TABLES` is the owner's decision). Items 1 to 4 are not touched: `render.production.yaml` is unchanged and the Render Sync of the test Blueprint is the owner's own step.
 
+- [ ] **10.1c The six reads missed at three times the size, and the load run** (owner, 5 November 2026, decisions A to C of that day in `docs/decisions.md`; before 5.10)
+  - Read: `12` (Speed targets, Load), `08` (Analytics in Release 1; Home pages by role), `edge/system-behaviour` ("Report totals are two minutes behind the journal", as the owner's `/spec-change` of decision A leaves it), `14` (Whole system); `docs/progress.md`, the entry of 10.1b; the code of 10.1b (`.github/workflows/speed.yml`, `apps/api/src/modules/results/prepared/`).
+  - Build: find where the time goes, then bring under target at `SPEED_SIZE=triple`, measured alone: the Academic Vice Principal's home (2.1 s, target 1 s), a student's results page (1.3 s, 1 s), the rating of the classes, the rating list of a class, the early-warning list and the branch summary (5 to 7 s, 2 s each). Read the "Where the time went" section of a Speed run from a place a session can read (print it in the job log if the artifact cannot be downloaded). Then the load run of `12` in the two models of decision B: (1) the present pace (one action every 5 to 15 s per person) against two API processes, the shape of production (answer 15 of "Decided ahead for Phase 10"); (2) a model of the school's own pace in Release 1, staff only, the pace written in the plan with its reason. Prepared totals up to two minutes behind are shown with "updated at" and not worked out again on read (decision A), once the spec says so.
+  - Done when: the Speed workflow on `main` at `SPEED_SIZE=triple` finishes green alone, and both load models finish with their 95th percentiles reported; a target the code truly cannot meet is written in `docs/progress.md` with its measured time and the reason, and flagged **Look first** on issue #42.
+  - From 10.1b (`docs/progress.md`, 29 October 2026): the `class_figures` unit (allowed by 0143, not built) is the first thing to try for the ratings and the branch summary; Speed run 40989986438 holds the numbers of 10.1b.
+  - Items 3 to 5 of the stop list (a migration that changes or removes existing rows, `packages/calc`, permissions) still stop the task. `.github/workflows/speed.yml` may change for the two load models and the run's time only.
+
+## Release 2
+
+Decided by the owner on 5 November 2026 (`docs/decisions.md`, "5 November 2026: Release 2 before the deferred list"): Release 2 (`10`; `01`, Scope and releases) is built after 10.1c and before the deferred list below. Its plan is written in a session with the owner while 10.1c builds and lands here as its tasks, replacing the gate line below.
+
+> **Owner gate.** The Release 2 tasks are not written yet. The start routine stops here until the owner merges the Release 2 plan, which replaces this line with its tasks.
+
 ## Deferred until after 25 October 2026
 
 Decided by the owner on 16 October 2026: these tasks are not needed for the release on the test site on 25 October 2026 and are built after it, in this order. The start routine never reaches them before the owner gate of Phase 10. Year-end work (closing the year, rollover, a new year) is needed only in June 2027; the handbook is written once the features are finished (`docs/decisions.md`, 16 October 2026).
 
 Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is built after the release too, first of this list. Until then a timetable is built in the grid by hand, with the rule engine, "Suggest a place" and the readiness check as they are; Release 1 still includes generation.
+
+Decided by the owner on 5 November 2026: Release 2 comes before this list. **9.5a, 9.5b and 9.5c start by 1 March 2027**, whatever is running then: on that date the owner moves them, in this order, in front of the first unticked Release 2 task (a commit by hand or a pull request), so that closing the year, the rollover and the start of the 2027/28 year work by June 2027. The rest of this list (5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c, 9.6) is parked with no date and is started only when the owner moves a task up.
 
 - [ ] **5.10 Solver service**
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
@@ -1473,6 +1488,6 @@ Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is
 
 ## After Release 1
 
-Release 2 (portal, SMS and Telegram notices, stipend, automatic UIDs) and Release 3 (HR, nurse, psychologist, library, mobile apps) get their own plans when Release 1 is live. Do not start them early.
+Release 2 (portal, SMS and Telegram notices, stipend, automatic UIDs) has its section above, before the deferred list (owner, 5 November 2026). Release 3 (HR, nurse, psychologist, library, mobile apps) gets its own plan later. Do not start it early.
 
 From 9.2c (for the stipend task of Release 2): once a stipend list is confirmed for a quarter, only the Super Admin may reopen that quarter, and the awards a reopening affects are flagged for the Super Admin, never changed (`edge/journal`, "The stipend list was already confirmed for a quarter that is reopened"). 9.2c lets the Academic Vice Principal reopen, as no stipend exists in Release 1.

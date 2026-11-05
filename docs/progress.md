@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 November 2026: the owner's open items, and the order after Phase 10 (no task)
+
+- **Go-live checklist**: sections 1 to 3 ticked by the owner (the security headers not checked by hand, accepted as a known risk on 29 October; encryption at rest from the providers' documentation). Section 4 is not started: no branch is fully set up on production yet; the school starts using production in a few days. The approval lines of `checklist.md` and `pilot.md` stay pending.
+- **Confirmed by the owner**: the sign-in-and-save check runs green (10.2b); the test Blueprint was synced in Render (10.5); the decisions of 9.4d to 9.4h and 10.5 on issue #42. The plan's notes of 10.3b and 10.2a were brought up to date (signed on 29 October; restore drill on 1 November).
+- **Speed** (`docs/decisions.md`, 5 November 2026, A to C): report totals up to two minutes behind with "updated at" (a `/spec-change` of `edge/system-behaviour`); the load run in two models; task **10.1c** for the six reads missed at triple, next.
+- **Order** (`docs/decisions.md`, 5 November 2026, Release 2 before the deferred list): 10.1c, then the Release 2 plan (written with the owner while 10.1c builds), then Release 2; 9.5a to 9.5c start by 1 March 2027; the rest of the deferred list parked with no date. An owner gate line stands before the deferred list until the Release 2 plan is merged.
+
+The next sessions must know:
+
+- Production is 10 merges behind `main` (last deploy 1 November, pull request #269; the rehearsal fixes of pull request #282 since); the owner deploys again before the school starts on it.
+- On 1 March 2027 the owner moves 9.5a to 9.5c in front of the first unticked Release 2 task.
+
 ## 5 November 2026: fixes found in the tutorial rehearsal on the test site
 
 Not a task of the build plan: five faults the owner met while rehearsing the tutorial videos (tutorial-kit/HANDOFF.md, "App bugs found during the rehearsal").

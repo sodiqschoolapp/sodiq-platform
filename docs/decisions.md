@@ -65,6 +65,26 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 5 November 2026: Release 2 before the deferred list (owner)
+
+Decided by the owner in chat on 5 November 2026.
+
+| Decision | Reason |
+| --- | --- |
+| The order: 10.1c; the Release 2 plan, written in a session with the owner while 10.1c builds; the Release 2 tasks; 9.5a to 9.5c start by 1 March 2027, whatever is running; 5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c and 9.6 are parked with no date | The deferred tasks are not needed urgently; the year-end work must work by June 2027, the end of the 2026/27 school year |
+| **Look first** (spec text). `01` puts automatic generation and the year rollover in Release 1, and `00-index`, Scope reminder, says "Build Release 1 only". Both are to be changed by the owner's `/spec-change` (wording proposed in chat on 5 November 2026; logged in `docs/spec-changes.md` once made) | The spec is the source of truth; the order of building must not contradict it |
+| An owner gate line stands in front of the deferred list until the Release 2 plan is merged | The start routine takes the first unticked task; without the line it would start 5.10 after 10.1c |
+
+## 5 November 2026: the speed results of 10.1b (owner)
+
+The owner accepted the three recommendations made in chat on 5 November 2026, after the triple run of 10.1b (`docs/progress.md`, 29 October 2026).
+
+| Decision | Reason |
+| --- | --- |
+| **A.** Prepared totals for reports may be up to two minutes behind the journal and are shown with "updated at"; a page that finds them further behind calculates from source and shows "updating". The journal row, its bottom row and student results stay worked out from the entries on every read. The owner runs `/spec-change` of `edge/system-behaviour`, the row "Report totals are two minutes behind the journal", with: "Prepared totals for reports show 'updated at' and may be up to two minutes behind the journal. A page that finds them further behind calculates from source and shows 'updating'." | Under load every save puts the units behind, so every report read worked them out again from source and the server saturated; the journal, the record of the school, is not touched by the change |
+| **B.** The load of `12` (1,000 people at once) is run in two models: the present pace (an action every 5 to 15 s per person) against two API processes, the shape of production; and a model of the school's own pace in Release 1 (staff only) | One process cannot serve about 100 requests a second at about 0.13 s each; production runs two servers, and Release 1 has about 200 staff users, not 1,000 people acting every 10 s |
+| **C.** The six reads missed alone at three times the size are fixed now, in task 10.1c, before 5.10 | At the school's size they are within target, but the Academic Vice Principal's home is opened most, and the cause is cheaper to find before the data grows |
+
 ## 26 October 2026: the review routine is told it may merge
 
 Decided by the owner on 26 October 2026. The review routine's sessions run in auto mode, whose permission check judges each command on its own, beside the allow list of `.claude/settings.json`. On #234 and #236 it refused the merge of `review-pr` step 10 twice, the second time as "Merge Without Review", although the command was written as the allow list requires and the same call had merged #227 to #233; the owner merged both by hand. The routine's prompt now opens with the owner's standing permission to merge a `task/` pull request at `[review] ready to merge` with green checks, at the sha the review named (`docs/cloud-loop.md`, section 4). Nothing else changes: the reviewer still merges only `task/` pull requests, and every other merge stays with the owner. If a merge is still refused, step 10's fallback stands: one `@abbosc` comment, the label `needs-owner`, and the owner merges by hand.

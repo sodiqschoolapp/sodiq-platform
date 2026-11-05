@@ -6,33 +6,35 @@ Nothing here asks for a secret in a chat or a file. No real name goes into the r
 
 Approved by the owner on: ____________________ (pending)
 
+Sections 1 to 3 ticked by the owner on 5 November 2026. Section 4 is not started: no branch is fully set up on production yet; the school starts using production in a few days.
+
 ## 1. Before the first deploy
 
-- [ ] **The permission and security checklist is signed** (`docs/security/permission-checklist.md`, the line "Signed by the owner on"; task 10.3a, decision 4). Production is not started without it.
-- [ ] **Security headers by hand on the test environment** (task 10.3a): in the current Chrome, Edge, Firefox and Safari, at `https://app-test.sodiqschool.uz`, with the browser's console open: sign in, open a journal grid and type a mark, drag a lesson on the timetable board, receive a live notice, and use Print. Nothing is blocked and the console shows no "Content Security Policy" refusal. Note the browser versions here: ____________________
-- [ ] **Encryption at rest confirmed** (`13`, Security: "Personal data is encrypted in transit and at rest"): Neon (its security page: storage encrypted at rest) and Cloudflare R2 (objects encrypted at rest). Note where it was read: ____________________
-- [ ] **The keys kept**: the two production database passwords and the production `SECOND_STEP_KEY` are in the password manager, apart from the test ones.
-- [ ] **The environment `production` protected** in GitHub: the owner as required reviewer, `main` only (`docs/deploy.md`, Production, step 6).
-- [ ] **The image proved**: Deploy production with "Only build the image" is green on the commit to deploy.
+- [x] **The permission and security checklist is signed** (`docs/security/permission-checklist.md`, the line "Signed by the owner on"; task 10.3a, decision 4). Production is not started without it.
+- [x] **Security headers by hand on the test environment** (task 10.3a): in the current Chrome, Edge, Firefox and Safari, at `https://app-test.sodiqschool.uz`, with the browser's console open: sign in, open a journal grid and type a mark, drag a lesson on the timetable board, receive a live notice, and use Print. Nothing is blocked and the console shows no "Content Security Policy" refusal. Note the browser versions here: not done by hand; accepted by the owner as a known risk on 29 October 2026 (issue #42, `docs/security/permission-checklist.md`, Hand checks).
+- [x] **Encryption at rest confirmed** (`13`, Security: "Personal data is encrypted in transit and at rest"): Neon (its security page: storage encrypted at rest) and Cloudflare R2 (objects encrypted at rest). Note where it was read: the providers' documentation (AES-256 at rest), not their dashboards (`docs/security/permission-checklist.md`, Hand checks).
+- [x] **The keys kept**: the two production database passwords and the production `SECOND_STEP_KEY` are in the password manager, apart from the test ones.
+- [x] **The environment `production` protected** in GitHub: the owner as required reviewer, `main` only (`docs/deploy.md`, Production, step 6).
+- [x] **The image proved**: Deploy production with "Only build the image" is green on the commit to deploy.
 
 ## 2. The first deploy (after 18:00 or at the weekend, Tashkent time)
 
-- [ ] Deploy production is green: window, release check, migrations, deploy, smoke test.
-- [ ] `https://app.sodiqschool.uz` shows the sign-in page, with a valid certificate.
+- [x] Deploy production is green: window, release check, migrations, deploy, smoke test.
+- [x] `https://app.sodiqschool.uz` shows the sign-in page, with a valid certificate.
 
 ## 3. Right after the deploy
 
-- [ ] **The first Super Admin** created on the server (`docs/deploy.md`, Production, step 9), signed in, password changed, second step set up. At most 3 Super Admins (answer 17); the others are given the role in the app.
-- [ ] **Print and PDF**: a Print and a PDF of a page with Uzbek Latin (oʻ, gʻ) and Cyrillic text come out readable.
-- [ ] **A photo** stored and shown (the R2 bucket `sodiq-files` answers).
-- [ ] **A live notice** reaches a second signed-in browser.
-- [ ] **No permanent developer account** in the live system (`docs/security/permission-checklist.md`): the Super Admins are people of the school; anybody else, a developer included, gets an ordinary account with a role, audited, ended when the work is done.
-- [ ] **The feedback button** sends a report.
-- [ ] **Email is off** (answer 16): the administrators know that they reset a password from the account in the app; the link "Forgot your password?" writes to the log only.
-- [ ] **Sentry** `sodiq-production` receives nothing unexpected in the first hour.
-- [ ] **Monitoring set up** (`docs/monitoring.md`, task 10.2a): the Grafana variables and the Sentry Secret File on Render, the rules imported and "Normal", UptimeRobot's three checks green, the source maps uploaded (the build log says so).
-- [ ] **The daily export**: the environment `backup` exists, a run of Actions, Backup by hand is green, and `sodiq-backups` holds its file.
-- [ ] **The first restore drill** (`docs/restore.md`, the monthly drill; the Done-when of 10.2a), noted in `restore-drills.md`.
+- [x] **The first Super Admin** created on the server (`docs/deploy.md`, Production, step 9), signed in, password changed, second step set up. At most 3 Super Admins (answer 17); the others are given the role in the app.
+- [x] **Print and PDF**: a Print and a PDF of a page with Uzbek Latin (oʻ, gʻ) and Cyrillic text come out readable.
+- [x] **A photo** stored and shown (the R2 bucket `sodiq-files` answers).
+- [x] **A live notice** reaches a second signed-in browser.
+- [x] **No permanent developer account** in the live system (`docs/security/permission-checklist.md`): the Super Admins are people of the school; anybody else, a developer included, gets an ordinary account with a role, audited, ended when the work is done.
+- [x] **The feedback button** sends a report.
+- [x] **Email is off** (answer 16): the administrators know that they reset a password from the account in the app; the link "Forgot your password?" writes to the log only.
+- [x] **Sentry** `sodiq-production` receives nothing unexpected in the first hour.
+- [x] **Monitoring set up** (`docs/monitoring.md`, task 10.2a): the Grafana variables and the Sentry Secret File on Render, the rules imported and "Normal", UptimeRobot's three checks green, the source maps uploaded (the build log says so).
+- [x] **The daily export**: the environment `backup` exists, a run of Actions, Backup by hand is green, and `sodiq-backups` holds its file.
+- [x] **The first restore drill** (`docs/restore.md`, the monthly drill; the Done-when of 10.2a), noted in `restore-drills.md` (1 November 2026).
 
 ## 4. The branch, before the first lesson in the platform
 
