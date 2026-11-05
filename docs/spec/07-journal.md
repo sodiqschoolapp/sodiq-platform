@@ -176,7 +176,7 @@ Every lesson that has been held shows a status, on the teacher's home page, on t
 
 | Status | Meaning |
 | --- | --- |
-| Not started | The lesson was held and nothing is entered. |
+| Nothing entered | The lesson was held and nothing is entered. |
 | In progress | Attendance is marked, but a planned work still lacks its total or some numbers. |
 | Complete | Attendance is marked for every expected student, and every planned work is graded or marked "not held". |
 | Locked incomplete | The edit period ended before the lesson was complete. It needs an unlock. |
