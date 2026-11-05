@@ -23,7 +23,7 @@ import {
   patternPlacements,
   type PatternBlock,
 } from '@sodiq/timetable-rules';
-import { sql } from 'kysely';
+import { CompiledQuery, sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import {
@@ -47,7 +47,7 @@ import {
   writeSessions,
   type LoadAction,
   type LoadPerson,
-  type LoadTimes,
+  type LoadResult,
 } from '../../testing/load-run.js';
 import {
   asVice,
@@ -79,6 +79,8 @@ import {
 } from '../../testing/speed-data.js';
 import { Deadline, speedPhaseOf } from '../../testing/speed-phases.js';
 import { QuerySpans } from '../../testing/speed-spans.js';
+import { startSecondApi } from '../../testing/speed/second-api.js';
+import { Transactions } from '../../database/transactions.js';
 
 /**
  * The speed run (task 10.1; `12`, Speed targets; `14`, Whole system: Speed
@@ -126,9 +128,47 @@ const STATE = resolve(import.meta.dirname, `../../../speed-state-${size.name}.js
 const KEPT = `sodiq_speed_${size.name}`;
 /** The queries of the measuring phase, for where the time of a missed target went. */
 const spans = new QuerySpans();
-const LOAD = LARGE
-  ? { users: 1000, durationMs: 10 * 60_000, gapMs: [5000, 15000] as const }
-  : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const };
+/**
+ * Task 10.1c, decision B of 5 November 2026: the load of `12` in two models, each against two API
+ * processes (the shape of production, answer 15 of "Decided ahead for Phase 10"). The present pace
+ * is reported, not asserted (plan decision 1, Look first); the school's own pace in Release 1,
+ * staff only, is asserted at triple (decision 5: about 200 staff accounts and no portal in
+ * Release 1, every one at once at a lesson start, acting in bursts).
+ */
+interface LoadModel {
+  readonly key: 'present' | 'school';
+  readonly title: string;
+  readonly users: number;
+  readonly durationMs: number;
+  readonly gapMs: readonly [number, number];
+  /** Its 95th percentiles and failed requests fail the run at triple. */
+  readonly asserted: boolean;
+}
+const MODELS: readonly LoadModel[] = [
+  {
+    key: 'present',
+    title: 'the present pace',
+    ...(LARGE
+      ? { users: 1000, durationMs: 10 * 60_000, gapMs: [5000, 15000] as const }
+      : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const }),
+    asserted: false,
+  },
+  {
+    key: 'school',
+    title: "the school's own pace in Release 1, staff only",
+    ...(LARGE
+      ? { users: 200, durationMs: 10 * 60_000, gapMs: [10_000, 30_000] as const }
+      : { users: 10, durationMs: 20_000, gapMs: [500, 1500] as const }),
+    asserted: true,
+  },
+];
+
+/** What a load model gave. */
+interface LoadRun {
+  readonly model: LoadModel;
+  readonly result: LoadResult;
+  readonly preparations: number;
+}
 
 /** The targets of `12`, Speed targets, in milliseconds. */
 const TARGET = { page: 1000, journal: 1000, save: 300, move: 200, report: 2000, search: 200 };
@@ -279,6 +319,11 @@ interface Breakdown {
   readonly queries: number;
   readonly ms: number;
   readonly slowest: readonly { text: string; count: number; ms: number }[];
+  /**
+   * Task 10.1c, Step 1: the plans of the two slowest texts, as the request ran them (`sodiq_app`,
+   * the branch filter, `app.now`, no JIT), at the large sizes.
+   */
+  readonly plans?: readonly string[];
 }
 
 interface SpeedState {
@@ -341,10 +386,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
       // wrote nothing).
       const deadline = new Deadline(startedAt + LIMIT - (LARGE ? 10 : 1) * 60_000);
       let state: SpeedState;
-      let load: LoadTimes = {};
+      const load: LoadRun[] = [];
+      /** The branch whose reads are measured now (the plans of Step 1 run in it). */
+      let measuring: string | null = null;
       const breakdown: Breakdown[] = [];
 
       const write = async (failure: string | null, written?: string) => {
+        // Task 10.1c, Step 1: a session cannot download the run's report, so at the large sizes
+        // "Where the time went" is printed to the job log too.
+        if (LARGE && breakdown.length > 0) console.log(whereTheTimeWent(breakdown).join('\n'));
         await writeFile(
           REPORT,
           report({
@@ -384,12 +434,51 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         const once = performance.now() - started;
         const runs =
           once > 5 * target ? { runs: [once], last: first } : await timed(size.repeats, checked);
-        state.timings.push({ what, target: `under ${String(target / 1000)} s`, runs: runs.runs });
+        state.timings.push({
+          what,
+          target: `under ${String(target / 1000)} s`,
+          runs: runs.runs,
+          // Task 10.1c, Step 1: whether the answer was worked out from source ("updating").
+          fromSource: JSON.stringify(runs.last.body).includes('"updating":true'),
+        });
         if (Math.max(...runs.runs) >= target) {
-          breakdown.push({ what, runs: runs.runs.length + 1, ...spans.summary(5) });
+          const summary = spans.summary(5);
+          const plans = LARGE ? await plansOf(summary.slowest.slice(0, 2)) : [];
+          breakdown.push({ what, runs: runs.runs.length + 1, ...summary, plans });
         }
         if (TRIPLE) expect.soft(Math.max(...runs.runs), what).toBeLessThan(target);
         return runs.last;
+      };
+
+      /**
+       * Task 10.1c, Step 1 (review of the plan, finding 3): `EXPLAIN (ANALYZE, BUFFERS)` of the
+       * slowest run of each text, run as the request ran it: through `Transactions.run` (as
+       * `sodiq_app`, with the branch filter, `app.now` and no JIT), then rolled back.
+       */
+      const plansOf = async (texts: readonly { text: string }[]): Promise<string[]> => {
+        const branch = measuring;
+        if (branch === null) return [];
+        const found: string[] = [];
+        for (const { text } of texts) {
+          const slowest = spans.slowestParameters.get(text);
+          if (slowest === undefined) continue;
+          const rolledBack = new Error('rolled back');
+          try {
+            await t.app.get(Transactions).run([branch], async (transaction) => {
+              const plan = await transaction.executeQuery<{ 'QUERY PLAN': string }>(
+                CompiledQuery.raw(`explain (analyze, buffers) ${slowest.sql}`, [
+                  ...slowest.parameters,
+                ]),
+              );
+              found.push(plan.rows.map((row) => row['QUERY PLAN']).join('\n'));
+              throw rolledBack;
+            });
+          } catch (error) {
+            if (error !== rolledBack) found.push(`No plan: ${String(error)}`);
+          }
+        }
+        spans.reset();
+        return found;
       };
 
       try {
@@ -587,6 +676,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             return found;
           };
           const ids = await idsOf(t, branch, person('teacher'));
+          measuring = branch.id;
 
           // Task 9.3b-1, the prepared report totals: nothing is prepared yet, so every report
           // is calculated from source and says "updating"; the preparation reads only watched
@@ -679,6 +769,9 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               watchedWithoutBranch: [],
             });
           }
+          // The clock of the preparation: a branch before this one moved it past the window (task
+          // 10.1c, the from-source timing).
+          const preparedAt = t.clock.now().toISOString();
           const units = await once(() => prepareBranch(t, branch.id));
           timings.push({
             what: `${branch.name}: prepare every report total (${String(units.last)} units)`,
@@ -690,9 +783,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             const response = await as(who).get(path);
             const stamp = (response.body as { prepared: PreparedStamp }).prepared;
             expect(stamp.updating, `${what}: after the preparation`).toBe(false);
-            expect(stamp.updatedAt, `${what}: updated at`).toBe(
-              new Date(SPEED_CLOCK).toISOString(),
-            );
+            expect(stamp.updatedAt, `${what}: updated at`).toBe(preparedAt);
             expect(withoutStamp(response.body), `${what}: the same figures`).toEqual(
               fromSource.get(what),
             );
@@ -738,18 +829,40 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           // Open any page: under 1 s (the reads of a page together, as the browser sends them).
           for (const [page, { role, reads }] of Object.entries(PAGE_READS)) {
             const api = as(person(role));
-            await measure(`${branch.name}: open ${page} (${role})`, TARGET.page, async () => {
+            const what = `${branch.name}: open ${page} (${role})`;
+            await measure(what, TARGET.page, async () => {
               const paths = reads(ids);
               const answers = await Promise.all(paths.map((path) => api.get(path)));
               const failed = answers.findIndex((one) => one.status >= 300);
               const answer = answers[failed];
               return answer === undefined
-                ? { status: 200, body: null }
+                ? {
+                    status: 200,
+                    body: {
+                      updating: answers.some((one) =>
+                        JSON.stringify(one.body).includes('"updating":true'),
+                      ),
+                    },
+                  }
                 : {
                     status: answer.status,
                     body: { path: paths[failed], answer: answer.body as unknown },
                   };
             });
+            // Task 10.1c, Step 1 (review of the plan, finding 2): a page that missed names its
+            // dominant read: each read alone, once.
+            const timing = state.timings.at(-1);
+            if (timing !== undefined && Math.max(...timing.runs) >= TARGET.page) {
+              for (const path of reads(ids)) {
+                const alone = await once(() => api.get(path));
+                timings.push({
+                  what: `${what}, its read ${path} alone`,
+                  target: 'reported',
+                  runs: alone.runs,
+                  fromSource: JSON.stringify(alone.last.body).includes('"updating":true'),
+                });
+              }
+            }
           }
 
           // Open a journal for a quarter: under 1 s.
@@ -770,7 +883,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           // Each save sends the version the last one answered, as the grid does;
           // present and late in turn, so every save changes the cell.
           let version: number | null = null;
-          let mark: 1 | 2 = 2;
+          let mark = 2 as 1 | 2;
           await measure(`${branch.name}: save one attendance cell`, TARGET.save, async () => {
             mark = mark === 1 ? 2 : 1;
             const response = await teacher.post(`/api/journal/lessons/${lesson}/attendance`, {
@@ -865,9 +978,39 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
               );
             }
           }
+          // Task 10.1c, decision 4 and correction 2 of the plan review: the reports read from source
+          // when their units are further behind than two minutes, timed from a real change (a
+          // save through the route) with the clock moved past the window; reported, not asserted.
+          if (checked) {
+            mark = mark === 1 ? 2 : 1;
+            const saved = await teacher.post(`/api/journal/lessons/${lesson}/attendance`, {
+              saves: [{ studentId: first, mark, version }],
+            });
+            expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+            version = (saved.body as AttendanceSaved).cells[0]?.version ?? null;
+            t.clock.advance(119_000);
+            for (const [what, who, path] of prepared.slice(0, 3)) {
+              const within = await as(who).get(path);
+              const stamp = (within.body as { prepared: PreparedStamp }).prepared;
+              expect(stamp.updating, `${what}: 119 s after a save`).toBe(false);
+            }
+            t.clock.advance(2_000);
+            for (const [what, who, path] of [...prepared.slice(0, 3), ...reports.slice(3, 4)]) {
+              const behind = await once(() => as(who).get(path));
+              const stamp = (behind.last.body as { prepared: PreparedStamp }).prepared;
+              expect(stamp.updating, `${what}: 121 s after a save`).toBe(true);
+              timings.push({
+                what: `${branch.name}: ${what} from source, 121 s after a save (further behind than two minutes)`,
+                target: 'reported',
+                runs: behind.runs,
+                fromSource: true,
+              });
+            }
+          }
           // Plan Step 3: a partial report after every branch, kept if the job is stopped.
           await write(null, `after the reads of ${branch.name}`);
         }
+        measuring = null;
 
         // Load: the people of the school at once, with the same times.
         const loadPeople: LoadPerson[] = [];
@@ -894,46 +1037,67 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             });
           }
         }
-        deadline.checkFor('the load', LOAD.durationMs + 60_000);
-        const users = await writeSessions(
-          t.database.migrator,
-          loadPeople,
-          LOAD.users,
-          new Date(SPEED_CLOCK),
-        );
-        // Task 10.1b (review of the plan, finding 5): the preparation runs every minute during the
-        // load, as the worker runs it on the live system, so the saves of the load put their own
-        // units behind and the job catches up.
-        const loading = runLoad(t.kit.server, users, LOAD);
-        let done = false;
-        const preparing = (async () => {
-          let runs = 0;
-          const started = performance.now();
-          while (!done) {
-            await t.app.get(PreparedTotals, { strict: false }).run();
-            runs += 1;
-            const next = started + runs * 60_000;
-            while (!done && performance.now() < next) await delay(1000);
+        for (const model of MODELS) {
+          deadline.checkFor(`the load, ${model.title}`, model.durationMs + 2 * 60_000);
+          // Task 10.1c (review of the plan, finding 1): the clock moves with real time during the
+          // load, the same in both processes, so a unit the job leaves behind for more than two
+          // minutes is read from source and counted, as on the live system.
+          const moment = t.clock.now();
+          const users = await writeSessions(t.database.migrator, loadPeople, model.users, moment);
+          const realStart = Date.now();
+          const second = await startSecondApi({
+            database: t.database.name,
+            moment,
+            realStart,
+          });
+          t.clock.set(moment);
+          t.clock.runFrom(realStart);
+          try {
+            // Task 10.1b (review of the plan, finding 5): the preparation runs every minute during
+            // the load, as the worker runs it on the live system, so the saves of the load put
+            // their own units behind and the job catches up.
+            const loading = runLoad([t.kit.server, second.url], users, model);
+            let done = false;
+            const preparing = (async () => {
+              let runs = 0;
+              const started = performance.now();
+              while (!done) {
+                await t.app.get(PreparedTotals, { strict: false }).run();
+                runs += 1;
+                const next = started + runs * 60_000;
+                while (!done && performance.now() < next) await delay(1000);
+              }
+              return runs;
+            })();
+            const result = await loading.finally(() => {
+              done = true;
+            });
+            load.push({ model, result, preparations: await preparing });
+          } finally {
+            t.clock.stop();
+            await second.stop();
           }
-          return runs;
-        })();
-        load = await loading.finally(() => {
-          done = true;
-        });
-        state.notes.push(
-          `Under load the preparation of the totals ran ${String(await preparing)} times, once a minute.`,
-        );
-        for (const [name, times] of Object.entries(load)) {
-          expect(times.runs.length, `${name}: ran`).toBeGreaterThan(0);
-          // At the large sizes every action is reported before the run fails.
-          (LARGE ? expect.soft : expect)(
-            times.failures,
-            `${name}: ${JSON.stringify(times.statuses)}`,
-          ).toBe(0);
-          if (TRIPLE)
-            expect
-              .soft(percentile95(times.runs), `${name} under load`)
-              .toBeLessThan(targetOf(name));
+          await write(null, `the load, ${model.title}`);
+        }
+        for (const { model, result } of load) {
+          // Both processes served the load.
+          expect(result.perProcess.length, model.title).toBe(2);
+          for (const served of result.perProcess) expect(served, model.title).toBeGreaterThan(0);
+          for (const [name, times] of Object.entries(result.times)) {
+            expect(times.runs.length, `${model.title}, ${name}: ran`).toBeGreaterThan(0);
+            // Plan decision 1 (Look first): the present pace is reported, not asserted, at the
+            // large sizes; every model is held to no failed request in the small run.
+            if (LARGE && !model.asserted) continue;
+            // At the large sizes every action is reported before the run fails.
+            (LARGE ? expect.soft : expect)(
+              times.failures,
+              `${model.title}, ${name}: ${JSON.stringify(times.statuses)}`,
+            ).toBe(0);
+            if (TRIPLE)
+              expect
+                .soft(percentile95(times.runs), `${model.title}, ${name} under load`)
+                .toBeLessThan(targetOf(name));
+          }
         }
       }
     },
@@ -1244,6 +1408,25 @@ function targetOf(name: string): number {
   return TARGET.page;
 }
 
+/** The section "Where the time went" (task 10.1b), with the plans of task 10.1c, Step 1. */
+function whereTheTimeWent(breakdown: readonly Breakdown[]): string[] {
+  if (breakdown.length === 0) return [];
+  return [
+    '## Where the time went',
+    '',
+    "Each measure that missed its target: the time of its queries summed over its runs, and the slowest query texts by their sum; the rest of its time is the server's own work. At the large sizes, the plans of the two slowest texts as the request ran them.",
+    '',
+    ...breakdown.flatMap((one) => [
+      `- **${one.what}**: ${String(one.queries)} queries in ${String(one.runs)} requests, ${ms(one.ms)} in all.`,
+      ...one.slowest.map(
+        (query) => `  - ${ms(query.ms)}, ${String(query.count)}×: \`${query.text.slice(0, 300)}\``,
+      ),
+      ...(one.plans ?? []).flatMap((plan) => ['', '```', plan, '```', '']),
+    ]),
+    '',
+  ];
+}
+
 const ms = (value: number) => `${value.toFixed(value < 10 ? 1 : 0)} ms`;
 
 /** Three times the estimate of `edge/system-behaviour`, Data volume, at its lower end. */
@@ -1258,7 +1441,7 @@ function report(input: {
   timings: readonly Timing[];
   fills: readonly { branch: string; filled: Filled }[];
   counts: { lessons: number; cells: number; history: number };
-  load: LoadTimes;
+  load: readonly LoadRun[];
   breakdown: readonly Breakdown[];
   notes: readonly string[];
   lockCount: number;
@@ -1269,7 +1452,7 @@ function report(input: {
   return [
     `# Speed run (${size.name})`,
     '',
-    `Run by \`apps/api/src/modules/timetable/speed.database.test.ts\` (\`SPEED_SIZE=${size.name}\`). Published from ${RUN_START}; journals filled to ${FILLED_UNTIL} (${String(DENSITY.classworks)} classworks a lesson, a homework every second lesson, ${String(DENSITY.corrections)} % of the scores corrected once); measured at ${SPEED_CLOCK}. Machine: ${input.machine}; one API process and its database on one machine.`,
+    `Run by \`apps/api/src/modules/timetable/speed.database.test.ts\` (\`SPEED_SIZE=${size.name}\`). Published from ${RUN_START}; journals filled to ${FILLED_UNTIL} (${String(DENSITY.classworks)} classworks a lesson, a homework every second lesson, ${String(DENSITY.corrections)} % of the scores corrected once); measured at ${SPEED_CLOCK}. Machine: ${input.machine}; the reads alone against one API process, the load against two (task 10.1c), with the database on the same machine: the two processes and PostgreSQL share its processors, where production has two servers and a database of its own.`,
     '',
     ...(input.written === null
       ? []
@@ -1307,38 +1490,29 @@ function report(input: {
     '',
     `Each read timed ${String(size.repeats)} times after one warm-up; a write once. ${TRIPLE ? 'Asserted on the slowest.' : 'Not asserted at this size.'}`,
     '',
-    '| Measure | Target (`12`) | Median | Slowest |',
-    '| --- | --- | --- | --- |',
+    '"From source": the last answer said "updating" (its prepared totals were further behind than two minutes, or not prepared).',
+    '',
+    '| Measure | Target (`12`) | Median | Slowest | From source |',
+    '| --- | --- | --- | --- | --- |',
     ...input.timings.map(
       (one) =>
-        `| ${one.what} | ${one.target} | ${ms(median(one.runs))} | ${ms(Math.max(...one.runs))} |`,
+        `| ${one.what} | ${one.target} | ${ms(median(one.runs))} | ${ms(Math.max(...one.runs))} | ${one.fromSource === undefined ? '' : one.fromSource ? 'yes' : 'no'} |`,
     ),
     '',
-    `## Under load (${String(LOAD.users)} users for ${String(LOAD.durationMs / 1000)} s, ${String(LOAD.gapMs[0] / 1000)} to ${String(LOAD.gapMs[1] / 1000)} s between actions)`,
-    '',
-    '| Action | Target | Requests | Median | 95th percentile | Answers | Updating |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
-    ...Object.entries(input.load).map(
-      ([name, times]) =>
-        `| ${name} | under ${String(targetOf(name) / 1000)} s | ${String(times.runs.length)} | ${ms(median(times.runs))} | ${ms(percentile95(times.runs))} | ${JSON.stringify(times.statuses)} | ${String(times.updating)} |`,
-    ),
-    '',
-    ...(input.breakdown.length === 0
-      ? []
-      : [
-          '## Where the time went',
-          '',
-          "Each measure that missed its target: the time of its queries summed over its runs, and the slowest query texts by their sum; the rest of its time is the server's own work.",
-          '',
-          ...input.breakdown.flatMap((one) => [
-            `- **${one.what}**: ${String(one.queries)} queries in ${String(one.runs)} requests, ${ms(one.ms)} in all.`,
-            ...one.slowest.map(
-              (query) =>
-                `  - ${ms(query.ms)}, ${String(query.count)}×: \`${query.text.slice(0, 300)}\``,
-            ),
-          ]),
-          '',
-        ]),
+    ...input.load.flatMap(({ model, result, preparations }) => [
+      `## Under load: ${model.title} (${String(model.users)} users for ${String(model.durationMs / 1000)} s, ${String(model.gapMs[0] / 1000)} to ${String(model.gapMs[1] / 1000)} s between actions; ${model.asserted ? 'asserted at triple' : 'reported, not asserted'})`,
+      '',
+      `Two API processes (${result.perProcess.map(String).join(' and ')} requests); the clock ran with real time; the preparation of the totals ran ${String(preparations)} times, once a minute.`,
+      '',
+      '| Action | Target | Requests | Median | 95th percentile | Answers | Updating |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      ...Object.entries(result.times).map(
+        ([name, times]) =>
+          `| ${name} | under ${String(targetOf(name) / 1000)} s | ${String(times.runs.length)} | ${ms(median(times.runs))} | ${ms(percentile95(times.runs))} | ${JSON.stringify(times.statuses)} | ${String(times.updating)} |`,
+      ),
+      '',
+    ]),
+    ...whereTheTimeWent(input.breakdown),
     `The whole run took ${input.total.toFixed(0)} s.`,
     '',
   ].join('\n');

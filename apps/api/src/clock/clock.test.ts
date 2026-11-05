@@ -20,6 +20,26 @@ describe('FixedClock', () => {
     expect(clock.now().toISOString()).toBe('2026-12-31T19:00:00.000Z');
   });
 
+  // Task 10.1c: the load of the speed run, where two processes share one clock that moves.
+  it('runs with real time from its moment once told, the same for two clocks given one real start, until set or stopped', () => {
+    const realStart = Date.now() - 90_000;
+    const one = new FixedClock('2027-05-20T10:00:00+05:00');
+    const other = new FixedClock('2027-05-20T10:00:00+05:00');
+    one.runFrom(realStart);
+    other.runFrom(realStart);
+    const shown = one.now().getTime() - new Date('2027-05-20T10:00:00+05:00').getTime();
+    expect(shown).toBeGreaterThanOrEqual(90_000);
+    expect(shown).toBeLessThan(100_000);
+    expect(Math.abs(other.now().getTime() - one.now().getTime())).toBeLessThan(1000);
+
+    one.stop();
+    const stopped = one.now().getTime();
+    expect(one.now().getTime()).toBe(stopped);
+
+    other.set('2027-05-20T10:00:00+05:00');
+    expect(other.now().toISOString()).toBe('2027-05-20T05:00:00.000Z');
+  });
+
   it('cannot be changed through a moment it handed out', () => {
     const clock = new FixedClock('2026-10-05T23:59:00+05:00');
 

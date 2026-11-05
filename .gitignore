@@ -3,6 +3,7 @@ dist/
 dist-worker/
 dist-e2e/
 dist-demo/
+dist-speed/
 build/
 coverage/
 .turbo/

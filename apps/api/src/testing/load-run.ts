@@ -99,13 +99,25 @@ async function listening(server: Server): Promise<string> {
   return `http://127.0.0.1:${String(address.port)}`;
 }
 
-/** Runs the virtual users against the server and answers the times of each action. */
+/** What a load run answers: the times of each action, and the requests each process was sent. */
+export interface LoadResult {
+  readonly times: LoadTimes;
+  readonly perProcess: readonly number[];
+}
+
+/**
+ * Runs the virtual users against the API processes and answers the times of each action. A
+ * process is a server of this process (opened on a free port) or the address of another one
+ * (task 10.1c: the second API process of the speed run); each user keeps to one of them.
+ */
 export async function runLoad(
-  server: Server,
+  processes: readonly (Server | string)[],
   users: readonly { person: LoadPerson; cookie: string }[],
   plan: LoadPlan,
-): Promise<LoadTimes> {
-  const baseUrl = await listening(server);
+): Promise<LoadResult> {
+  const baseUrls = await Promise.all(
+    processes.map((one) => (typeof one === 'string' ? Promise.resolve(one) : listening(one))),
+  );
   const child = spawn(process.execPath, [resolve(import.meta.dirname, 'load-runner.ts')], {
     stdio: ['pipe', 'pipe', 'inherit'],
   });
@@ -117,7 +129,7 @@ export async function runLoad(
   });
   child.stdin.end(
     JSON.stringify({
-      baseUrl,
+      baseUrls,
       durationMs: plan.durationMs,
       gapMs: plan.gapMs,
       branchHeader: BRANCH_HEADER,
@@ -131,5 +143,5 @@ export async function runLoad(
   );
   const code = await finished;
   if (code !== 0) throw new Error(`The load runner ended with ${String(code)}.`);
-  return JSON.parse(Buffer.concat(output).toString('utf8')) as LoadTimes;
+  return JSON.parse(Buffer.concat(output).toString('utf8')) as LoadResult;
 }

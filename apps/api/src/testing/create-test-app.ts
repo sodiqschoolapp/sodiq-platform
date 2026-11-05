@@ -27,7 +27,9 @@ import type { Fetch } from '../monitoring/grafana.js';
 import { MONITORING_FETCH } from '../monitoring/monitoring.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { FixedClock } from './fixed-clock.js';
-import { withDatabaseName } from './test-database.js';
+// From database-server.ts, which needs no vitest: the second API process of the speed run's load
+// (testing/speed/server.ts, task 10.1c) builds this app in plain Node.
+import { withDatabaseName } from './database-server.js';
 
 /** Does not exist, so a test that forgot to pass a database fails instead of using `sodiq_dev`. */
 const NO_DATABASE = 'sodiq_test_database_not_passed';

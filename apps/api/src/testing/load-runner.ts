@@ -22,7 +22,11 @@ interface User {
 }
 
 interface Plan {
-  readonly baseUrl: string;
+  /**
+   * The API processes (task 10.1c: two, the shape of production); each user is sent to one of them,
+   * the same for all its actions, as a balancer that keeps a session on one server.
+   */
+  readonly baseUrls: readonly string[];
   readonly users: readonly User[];
   readonly durationMs: number;
   readonly gapMs: readonly [number, number];
@@ -53,7 +57,10 @@ async function main(): Promise<void> {
   const end = performance.now() + plan.durationMs;
   const [low, high] = plan.gapMs;
   const gap = () => low + Math.random() * (high - low);
+  const perProcess = plan.baseUrls.map(() => 0);
   const run = async (user: User, first: number) => {
+    const server = first % plan.baseUrls.length;
+    const baseUrl = plan.baseUrls[server] ?? '';
     // The users start spread over the first pause, not all at once.
     await pause(Math.random() * high);
     let index = first;
@@ -65,7 +72,7 @@ async function main(): Promise<void> {
       let status: string;
       let updating = false;
       try {
-        const response = await fetch(`${plan.baseUrl}${action.path}`, {
+        const response = await fetch(`${baseUrl}${action.path}`, {
           method: action.method,
           headers: {
             Cookie: user.cookie,
@@ -81,6 +88,7 @@ async function main(): Promise<void> {
       } catch {
         status = 'error';
       }
+      perProcess[server] = (perProcess[server] ?? 0) + 1;
       const known = times.get(action.name) ?? { runs: [], failures: 0, statuses: {}, updating: 0 };
       known.runs.push(performance.now() - started);
       known.statuses[status] = (known.statuses[status] ?? 0) + 1;
@@ -93,7 +101,7 @@ async function main(): Promise<void> {
     }
   };
   await Promise.all(plan.users.map((user, index) => run(user, index)));
-  process.stdout.write(JSON.stringify(Object.fromEntries(times)));
+  process.stdout.write(JSON.stringify({ times: Object.fromEntries(times), perProcess }));
 }
 
 await main();

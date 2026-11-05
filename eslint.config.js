@@ -183,6 +183,8 @@ export default defineConfig(
     // The API and the seed command of the browser tests (apps/api, e2e:build).
     '**/dist-e2e/**',
     '**/dist-demo/**',
+    // The second API process of the speed run's load (apps/api, tsconfig.speed.json).
+    '**/dist-speed/**',
     '**/.turbo/**',
     '**/playwright-report/**',
     '**/test-results/**',
