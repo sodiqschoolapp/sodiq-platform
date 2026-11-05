@@ -3405,7 +3405,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     vice: {
       lessonsToday: 'Уроки сегодня',
-      statusCounts: 'Не начаты {{notStarted}} · в процессе {{inProgress}} · ещё впереди {{ahead}}',
+      statusCounts: 'Ничего не внесено {{notStarted}} · в процессе {{inProgress}} · ещё впереди {{ahead}}',
       conflicts: 'Конфликты расписания',
       published: 'Действующая версия {{number}}',
       draft: 'Черновик {{number}}',
@@ -6584,7 +6584,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       open: 'Карточка урока',
     },
     lessonStatus: {
-      not_started: 'Не начат',
+      not_started: 'Ничего не внесено',
       in_progress: 'В работе',
       complete: 'Заполнен',
       locked_incomplete: 'Закрыт незаполненным',
@@ -6659,7 +6659,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       allDepartments: 'Все кафедры',
       teacher: 'Учитель',
       held: 'Проведено',
-      notStarted: 'Не начато',
+      notStarted: 'Ничего не внесено',
       inProgress: 'В работе',
       complete: 'Заполнено',
       lockedIncomplete: 'Закрыто незаполненными',

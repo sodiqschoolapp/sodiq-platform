@@ -3233,7 +3233,7 @@ export const en = {
     vice: {
       lessonsToday: 'Lessons today',
       statusCounts:
-        'Not started {{notStarted}} · in progress {{inProgress}} · still to start {{ahead}}',
+        'Nothing entered {{notStarted}} · in progress {{inProgress}} · still to start {{ahead}}',
       conflicts: 'Timetable conflicts',
       published: 'Version {{number}} in force',
       draft: 'Draft {{number}}',
@@ -6235,7 +6235,7 @@ export const en = {
       open: 'Lesson card',
     },
     lessonStatus: {
-      not_started: 'Not started',
+      not_started: 'Nothing entered',
       in_progress: 'In progress',
       complete: 'Complete',
       locked_incomplete: 'Locked incomplete',
@@ -6294,7 +6294,7 @@ export const en = {
       allDepartments: 'All departments',
       teacher: 'Teacher',
       held: 'Held',
-      notStarted: 'Not started',
+      notStarted: 'Nothing entered',
       inProgress: 'In progress',
       complete: 'Complete',
       lockedIncomplete: 'Locked incomplete',

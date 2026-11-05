@@ -6,13 +6,13 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 
 <!-- Sources: spec 07 (Lesson status, Exemptions), edge/journal (Entering, rows 1 to 3 and 15; Locks), edge/00-definitions (Held lesson, Data on a lesson, Expected student, Lock moment); task 8.7, decisions 2, 7 and 8 -->
 
-**What it is.** Every lesson that has been held shows one of four statuses: Not started (**Boshlanmagan**), In progress (**Jarayonda**), Complete (**Toʻldirilgan**) and Locked incomplete (**Toʻldirilmay yopilgan**). The status is worked out each time a page opens, from what is entered.
+**What it is.** Every lesson that has been held shows one of four statuses: Nothing entered (**Hech narsa kiritilmagan**), In progress (**Jarayonda**), Complete (**Toʻldirilgan**) and Locked incomplete (**Toʻldirilmay yopilgan**). The status is worked out each time a page opens, from what is entered.
 
 **Who can use it.** Everyone who may open a journal, the timetable or the teaching home sees the status there. Nobody sets it by hand.
 
 **How it works.**
 
-1. A lesson with nothing entered is **Not started**.
+1. A lesson with nothing entered is **Nothing entered** (the spec calls it "Not started"; the screen says what it means: the lesson was held and nothing is in the journal yet).
 2. As soon as anything is entered (a mark, a number, a total, "not held", or a comment), the lesson is **In progress**.
 3. It is **Complete** when every expected student has an attendance mark, and every work of the lesson has its total and a number, or "not graded", for each student marked present or late.
 4. When the edit period ends before the lesson is complete, it is **Locked incomplete**. It needs an unlock; while the unlock is open it stays Locked incomplete until the missing entries are made.

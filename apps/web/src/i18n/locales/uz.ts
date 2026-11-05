@@ -3275,7 +3275,7 @@ export const uz: Texts<'one' | 'other'> = {
     vice: {
       lessonsToday: 'Bugungi darslar',
       statusCounts:
-        'Boshlanmagan {{notStarted}} · jarayonda {{inProgress}} · hali oldinda {{ahead}}',
+        'Hech narsa kiritilmagan {{notStarted}} · jarayonda {{inProgress}} · hali oldinda {{ahead}}',
       conflicts: 'Dars jadvali ziddiyatlari',
       published: 'Amaldagi {{number}}-versiya',
       draft: '{{number}}-qoralama',
@@ -6292,7 +6292,7 @@ export const uz: Texts<'one' | 'other'> = {
       open: 'Dars kartasi',
     },
     lessonStatus: {
-      not_started: 'Boshlanmagan',
+      not_started: 'Hech narsa kiritilmagan',
       in_progress: 'Jarayonda',
       complete: 'Toʻldirilgan',
       locked_incomplete: 'Toʻldirilmay yopilgan',
@@ -6351,7 +6351,7 @@ export const uz: Texts<'one' | 'other'> = {
       allDepartments: 'Barcha kafedralar',
       teacher: 'Oʻqituvchi',
       held: 'Oʻtilgan',
-      notStarted: 'Boshlanmagan',
+      notStarted: 'Hech narsa kiritilmagan',
       inProgress: 'Jarayonda',
       complete: 'Toʻldirilgan',
       lockedIncomplete: 'Toʻldirilmay yopilgan',
