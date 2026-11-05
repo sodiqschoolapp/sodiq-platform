@@ -6761,6 +6761,12 @@ export const en = {
       cleared: 'Cleared',
       line: '{{text}} · {{who}} · {{when}}',
     },
+    lessonMode: {
+      score: '{{work}}, {{name}}',
+      outOf: 'of {{total}}',
+      total: '{{work}}: total {{total}}',
+      setTotal: '{{work}}: set the total',
+    },
     works: {
       noPlan: 'No plan',
       unplanned: 'unplanned',

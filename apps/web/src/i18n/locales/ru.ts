@@ -7164,6 +7164,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       cleared: 'Очищено',
       line: '{{text}} · {{who}} · {{when}}',
     },
+    lessonMode: {
+      score: '{{work}}, {{name}}',
+      outOf: 'из {{total}}',
+      total: '{{work}}: всего {{total}}',
+      setTotal: '{{work}}: задайте «всего»',
+    },
     works: {
       noPlan: 'Нет плана',
       unplanned: 'вне плана',

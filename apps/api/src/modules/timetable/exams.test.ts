@@ -1150,7 +1150,8 @@ describe('exams in the timetable', () => {
         subjectId: art.subject,
       });
       const before = await t.auditCount();
-      const { confirm: _confirm, ...checked } = body;
+      // The check takes the body of a save without its tick.
+      const checked = Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'confirm'));
       refusedWith(
         await request(t.kit.server)
           .post('/api/timetable/exams/check')

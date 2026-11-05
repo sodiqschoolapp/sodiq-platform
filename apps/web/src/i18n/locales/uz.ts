@@ -6820,6 +6820,12 @@ export const uz: Texts<'one' | 'other'> = {
       cleared: 'Tozalandi',
       line: '{{text}} · {{who}} · {{when}}',
     },
+    lessonMode: {
+      score: '{{work}}, {{name}}',
+      outOf: '{{total}} dan',
+      total: '{{work}}: jami {{total}}',
+      setTotal: '{{work}}: jamini belgilang',
+    },
     works: {
       noPlan: 'Reja yoʻq',
       unplanned: 'rejasiz',
