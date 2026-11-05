@@ -184,6 +184,12 @@ export const ERROR_CODES = [
   'exam_unit_year',
   /** Task 5.6c-1: the exam meets a blocked rule (an invigilator or a room in a lesson or another exam, a vacancy or an inactive invigilator, a day off); `details` lists each. */
   'exam_blocked',
+  /** A class, or students of it, would be in two places at the exam's time: a class with a group of its students, or in another exam (`time_claims_class_excl`, `lesson_block_student_twice`; test site, 5 November 2026). */
+  'exam_class_twice',
+  /** An invigilator would be in two places at the exam's time (`time_claims_teacher_excl`). */
+  'exam_invigilator_twice',
+  /** A room of the exam is taken at that time or would hold more than it may (`time_claims_room_excl`, `room_shared_full`, `room_shared_capacity`). */
+  'exam_room_taken',
   /** Task 5.6c-1 (decision 8): the exam meets warnings that need a tick; `details` lists each, and the save is sent again with `confirm`. */
   'exam_warnings',
   /** Task 5.6c-1 (decision 3): a lesson the exam no longer covers cannot be restored; `details` lists each with the free rooms of its time, and the save is sent again with the lesson in `keepCancelled`. */

@@ -223,6 +223,12 @@ export const uz: Texts<'one' | 'other'> = {
     exam_unit_year: 'Boshqa oʻquv yilining sinfi yoki guruhi bu imtihonni topshira olmaydi.',
     exam_blocked:
       'Imtihonni quyidagi sabablarga koʻra saqlab boʻlmaydi: shu vaqtdagi dars yoki imtihon, navbatchilik qila olmaydigan xodim yoki darssiz sana. Imtihonni yoki unga toʻsqinlik qilayotgan narsani oʻzgartiring.',
+    exam_class_twice:
+      'Imtihon vaqtida sinf yoki uning baʼzi oʻquvchilari ikki joyda boʻlib qoladi: sinf oʻz oʻquvchilari bor guruh bilan birga belgilangan yoki sinf shu vaqtda boshqa imtihonda. Sinf yoki guruh belgisini olib tashlang yoki boshqa imtihonni oʻzgartiring.',
+    exam_invigilator_twice:
+      'Nazoratchi imtihon vaqtida ikki joyda boʻlib qoladi: darsda yoki boshqa imtihonda. Boshqa nazoratchini tanlang yoki avval oʻsha dars yoki imtihonni oʻzgartiring.',
+    exam_room_taken:
+      'Imtihon xonalaridan biri shu vaqtda band yoki unga ruxsat etilganidan koʻp kishi tushadi. Boshqa xonani tanlang.',
     exam_warnings: 'Quyidagi ogohlantirishlarni tekshiring va imtihonni saqlash uchun belgilang.',
     exam_restore_blocked:
       'Imtihon bekor qilgan baʼzi darslarni qaytarib boʻlmaydi (quyidagi roʻyxat). Ularni sabab bilan bekor holida qoldiring yoki avval vaqtini boʻshating.',
@@ -3269,7 +3275,7 @@ export const uz: Texts<'one' | 'other'> = {
     vice: {
       lessonsToday: 'Bugungi darslar',
       statusCounts:
-        'Boshlanmagan {{notStarted}} · jarayonda {{inProgress}} · hali oldinda {{ahead}}',
+        'Hech narsa kiritilmagan {{notStarted}} · jarayonda {{inProgress}} · hali oldinda {{ahead}}',
       conflicts: 'Dars jadvali ziddiyatlari',
       published: 'Amaldagi {{number}}-versiya',
       draft: '{{number}}-qoralama',
@@ -6286,7 +6292,7 @@ export const uz: Texts<'one' | 'other'> = {
       open: 'Dars kartasi',
     },
     lessonStatus: {
-      not_started: 'Boshlanmagan',
+      not_started: 'Hech narsa kiritilmagan',
       in_progress: 'Jarayonda',
       complete: 'Toʻldirilgan',
       locked_incomplete: 'Toʻldirilmay yopilgan',
@@ -6345,7 +6351,7 @@ export const uz: Texts<'one' | 'other'> = {
       allDepartments: 'Barcha kafedralar',
       teacher: 'Oʻqituvchi',
       held: 'Oʻtilgan',
-      notStarted: 'Boshlanmagan',
+      notStarted: 'Hech narsa kiritilmagan',
       inProgress: 'Jarayonda',
       complete: 'Toʻldirilgan',
       lockedIncomplete: 'Toʻldirilmay yopilgan',
@@ -6813,6 +6819,12 @@ export const uz: Texts<'one' | 'other'> = {
       noHistory: 'Hali oʻzgarish yoʻq.',
       cleared: 'Tozalandi',
       line: '{{text}} · {{who}} · {{when}}',
+    },
+    lessonMode: {
+      score: '{{work}}, {{name}}',
+      outOf: '{{total}} dan',
+      total: '{{work}}: jami {{total}}',
+      setTotal: '{{work}}: jamini belgilang',
     },
     works: {
       noPlan: 'Reja yoʻq',

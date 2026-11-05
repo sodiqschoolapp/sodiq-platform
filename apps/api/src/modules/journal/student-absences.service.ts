@@ -370,14 +370,13 @@ export class StudentAbsences {
     const listed = [...days.values()].filter(
       (day) => day.lessons.length > 0 || day.reason !== null,
     );
+    // Nothing to name: an empty `in` list is no SQL, and '' is no uuid (500 on the test
+    // site in a week without marks, 5 November 2026).
+    if (listed.length === 0) return [];
     const students = await transaction
       .selectFrom('students')
       .select(['id', 'uid', 'first_name', 'last_name', 'paternal_name'])
-      .where(
-        'id',
-        'in',
-        listed.length === 0 ? [''] : [...new Set(listed.map((day) => day.studentId))],
-      )
+      .where('id', 'in', [...new Set(listed.map((day) => day.studentId))])
       .execute();
     const studentOf = new Map(
       students.map((row) => [

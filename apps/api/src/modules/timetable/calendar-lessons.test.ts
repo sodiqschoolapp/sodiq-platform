@@ -1463,6 +1463,8 @@ describe('calendar entries after publishing', () => {
           ]),
         ).toEqual([[change.id, 'move', OCT26, OCT19, ['day_off']]]);
         expect(shown.lessons.names.units.map((one) => one.id)).toContain(s.classId);
+        // The class is named with its own grade, never grade 0 (test site, 5 November 2026).
+        expect(shown.lessons.names.units.find((one) => one.id === s.classId)?.grades).toEqual([7]);
 
         // Test 7: without the key or a choice, an older key, a choice for no
         // item shown, "keep" on a one-day change: refused, nothing written.

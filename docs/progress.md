@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 5 November 2026: fixes found in the tutorial rehearsal on the test site
+
+Not a task of the build plan: five faults the owner met while rehearsing the tutorial videos (tutorial-kit/HANDOFF.md, "App bugs found during the rehearsal").
+
+- **Student absences answered 500** in a week with class members and no mark (the break between quarters): the read named students with `['']` as a uuid. It now answers an empty list (`student-absences.service.ts`, test "lists a week with members and no mark").
+- **Calendar preview named classes "0 Genius"**: `namesOf` (`impact.ts`) takes a class's own grade when the caller passes no units (the calendar preview passes none).
+- **Exam check said "the reasons listed below" with no list**: the database refusals of an exam (class, teacher and room claims, a shared room, a student twice in a block) have codes of their own: `exam_class_twice`, `exam_invigilator_twice`, `exam_room_taken`, with texts in three languages. Met with a class ticked together with a group of its students.
+- **Lesson mode took attendance only**: it now has a number field per classwork and homework for each student (saved as in the grid, on leaving the field or Enter), a button per work for its total, and "Works of the lesson" (`lesson-mode-score.tsx`, `lesson-mode.test.tsx`). `07`, Lesson mode.
+- **The lesson status "Not started"** is shown as "Nothing entered" (uz "Hech narsa kiritilmagan", ru "Ничего не внесено") on the journal, Journal discipline and the vice principal's home: a held lesson read as "not started" beside "Held". The spec keeps the name: a Look first with `/spec-change` wording on issue #42.
+
+Left out: `lesson_block_class_out_exam` still answers `exam_blocked` (only a fault of the code reaches it).
+
 ## 4 November 2026: task 10.5 Demo clock on the test environment
 
 - **Table** (0156): `demo_clock`, one school-wide row: `offset_ms`, `previous_offset_ms`, `effective_at`, `changed_at`, `changed_by`; no delete for the application; a trigger refuses any offset that goes back, for every user. A missing row is real time.

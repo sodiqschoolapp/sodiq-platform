@@ -38,7 +38,8 @@ import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
-import { useWorksEntry } from './works-entry';
+import { useWorkName, useWorksEntry, type WorksEntry } from './works-entry';
+import { LessonModeScore } from './lesson-mode-score';
 import {
   correctionOf,
   EditPeriodPanel,
@@ -517,6 +518,8 @@ function JournalLoaded({
             lesson={nearest}
             students={[...members, ...exempt, ...folded]}
             entry={entry}
+            works={works}
+            onRefusedNumber={setRefusedNumber}
           />
         ) : (
           <div
@@ -626,20 +629,28 @@ const MARK_NAMES = { 0: 'absent', 1: 'present', 2: 'late', 3: 'skipped' } as con
  * Lesson mode (`07`, Lesson mode: "On a phone, one lesson is shown at a time
  * as a list of students"; decision 12): the lesson of the date asked, or the
  * nearest to today; task 6.3: the attendance marks as large buttons and
- * "All present" for a lesson the reader enters; 8.1 adds the numbers.
+ * "All present" for a lesson the reader enters. The numbers of each classwork and homework
+ * (`07`, Lesson mode: "attendance, then each classwork, then each homework"): a field per work
+ * that saves as the grid does, and a button per work for its total (found missing on the test
+ * site, 5 November 2026).
  */
 function LessonMode({
   grid,
   lesson,
   students,
   entry,
+  works,
+  onRefusedNumber,
 }: {
   grid: JournalGrid;
   lesson: JournalLesson | null;
   students: readonly JournalStudent[];
   entry: AttendanceEntry;
+  works: WorksEntry;
+  onRefusedNumber: (total: number) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const workName = useWorkName();
   if (lesson === null) {
     return (
       <div className={PANEL}>
@@ -702,16 +713,46 @@ function LessonMode({
           </p>
         )}
       </div>
-      {lesson.canEnter && (
-        <div>
-          <Button
-            disabled={entry.busy}
-            onClick={() => {
-              entry.allPresent(lesson.id);
-            }}
-          >
-            {t('journal.entry.allPresent')}
-          </Button>
+      {(lesson.canEnter || lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
+        <div className="flex flex-wrap gap-2">
+          {lesson.canEnter && (
+            <Button
+              disabled={entry.busy}
+              onClick={() => {
+                entry.allPresent(lesson.id);
+              }}
+            >
+              {t('journal.entry.allPresent')}
+            </Button>
+          )}
+          {/* The total of each work, as the "…" of its column in the grid. */}
+          {lesson.canEnterWorks &&
+            lesson.works.map((work) => (
+              <Button
+                key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                variant="secondary"
+                disabled={works.busy}
+                onClick={() => {
+                  works.openWork(lesson, work);
+                }}
+              >
+                {work.total === null
+                  ? t('journal.lessonMode.setTotal', { work: workName(work) })
+                  : t('journal.lessonMode.total', { work: workName(work), total: work.total })}
+              </Button>
+            ))}
+          {/* Works added by hand when the lesson has no plan item (`edge/journal`). */}
+          {(lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
+            <Button
+              variant="secondary"
+              disabled={works.busy}
+              onClick={() => {
+                works.openLesson(lesson);
+              }}
+            >
+              {t('journal.works.button')}
+            </Button>
+          )}
         </div>
       )}
       <ul className="grid gap-2">
@@ -763,18 +804,37 @@ function LessonMode({
                     )}
                   </span>
                 )}
-                {lesson.works.map((work, workIndex) => (
-                  <span
-                    key={work.id}
-                    aria-label={
-                      work.kind === 'classwork'
-                        ? t('journal.grid.classworkShort', { number: work.position })
-                        : t('journal.grid.homeworkShort', { number: work.position })
-                    }
-                  >
-                    {cell?.works[workIndex]?.score ?? '—'}
-                  </span>
-                ))}
+                {lesson.works.map((work, workIndex) => {
+                  const total = work.total;
+                  // As the grid: a lesson the reader enters, or a cell an unlock opened.
+                  return total !== null &&
+                    cell !== undefined &&
+                    !cell.closed &&
+                    (lesson.canEnterWorks || cell.open) ? (
+                    <LessonModeScore
+                      key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                      lesson={lesson}
+                      index={index}
+                      work={{ ...work, total }}
+                      workIndex={workIndex}
+                      student={student}
+                      name={workName(work)}
+                      works={works}
+                      onRefusedNumber={onRefusedNumber}
+                    />
+                  ) : (
+                    <span
+                      key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                      aria-label={
+                        work.kind === 'classwork'
+                          ? t('journal.grid.classworkShort', { number: work.position })
+                          : t('journal.grid.homeworkShort', { number: work.position })
+                      }
+                    >
+                      {cell?.works[workIndex]?.score ?? '—'}
+                    </span>
+                  );
+                })}
               </span>
             </li>
           );

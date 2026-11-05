@@ -460,4 +460,26 @@ describe('the reasons of absence', () => {
       },
     );
   });
+
+  // Found on the test site (5 November 2026, the break between quarters): a week with class
+  // members and no mark answered 500.
+  it('lists a week with members and no mark, for the Academic Vice Principal', async () => {
+    const s = await scene();
+    const vice = await account();
+    await as(
+      s.branch,
+      vice,
+      [{ role: 'academic_vice_principal', branchId: s.branch }],
+      async ({ get }) => {
+        for (const path of [
+          '/api/journal/student-absences',
+          `/api/journal/student-absences?classId=${s.classId}&from=2026-11-02&to=2026-11-05`,
+        ]) {
+          const answer = await get(path);
+          expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+          expect(studentAbsencesSchema.parse(answer.body).days).toEqual([]);
+        }
+      },
+    );
+  });
 });

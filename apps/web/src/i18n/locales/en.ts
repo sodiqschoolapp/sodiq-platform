@@ -217,6 +217,12 @@ export const en = {
     exam_unit_year: 'A class or group of another academic year cannot sit this exam.',
     exam_blocked:
       'The exam cannot be saved for the reasons listed below: a lesson or exam at the same time, an invigilator who cannot invigilate, or a date without lessons. Change the exam, or what stands in its way.',
+    exam_class_twice:
+      'A class, or some of its students, would be in two places at the exam’s time: a class ticked together with a group that holds its students, or a class already in another exam then. Untick the class or the group, or change the other exam.',
+    exam_invigilator_twice:
+      'An invigilator would be in two places at the exam’s time, in a lesson or another exam. Choose another invigilator, or change that lesson or exam first.',
+    exam_room_taken:
+      'A room of the exam is taken at that time, or would hold more than it may. Choose another room.',
     exam_warnings: 'Check the warnings below and tick them to save the exam.',
     exam_restore_blocked:
       'Some lessons the exam cancelled cannot be brought back, listed below. Keep them cancelled with a reason, or free their time first.',
@@ -3227,7 +3233,7 @@ export const en = {
     vice: {
       lessonsToday: 'Lessons today',
       statusCounts:
-        'Not started {{notStarted}} · in progress {{inProgress}} · still to start {{ahead}}',
+        'Nothing entered {{notStarted}} · in progress {{inProgress}} · still to start {{ahead}}',
       conflicts: 'Timetable conflicts',
       published: 'Version {{number}} in force',
       draft: 'Draft {{number}}',
@@ -6229,7 +6235,7 @@ export const en = {
       open: 'Lesson card',
     },
     lessonStatus: {
-      not_started: 'Not started',
+      not_started: 'Nothing entered',
       in_progress: 'In progress',
       complete: 'Complete',
       locked_incomplete: 'Locked incomplete',
@@ -6288,7 +6294,7 @@ export const en = {
       allDepartments: 'All departments',
       teacher: 'Teacher',
       held: 'Held',
-      notStarted: 'Not started',
+      notStarted: 'Nothing entered',
       inProgress: 'In progress',
       complete: 'Complete',
       lockedIncomplete: 'Locked incomplete',
@@ -6754,6 +6760,12 @@ export const en = {
       noHistory: 'No changes yet.',
       cleared: 'Cleared',
       line: '{{text}} · {{who}} · {{when}}',
+    },
+    lessonMode: {
+      score: '{{work}}, {{name}}',
+      outOf: 'of {{total}}',
+      total: '{{work}}: total {{total}}',
+      setTotal: '{{work}}: set the total',
     },
     works: {
       noPlan: 'No plan',

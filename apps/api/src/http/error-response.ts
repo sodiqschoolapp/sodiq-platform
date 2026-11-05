@@ -110,6 +110,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   exam_unit_year: 'A sitting class or group is of another academic year.',
   exam_blocked:
     'The exam meets a blocked rule: a clash, an invigilator who cannot invigilate, or a date without lessons.',
+  exam_class_twice:
+    'A class or some of its students would be in two places at the exam’s time (a class with a group of its students, or another exam).',
+  exam_invigilator_twice: 'An invigilator would be in two places at the exam’s time.',
+  exam_room_taken: 'A room of the exam is taken at that time or would hold more than it may.',
   exam_warnings: 'The exam meets warnings that need a tick.',
   exam_restore_blocked: 'A lesson the exam no longer covers cannot be restored.',
   exam_rating_subject: 'The subject of the exam has no rating exam.',
