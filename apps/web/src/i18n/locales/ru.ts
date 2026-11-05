@@ -3405,7 +3405,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     vice: {
       lessonsToday: 'Уроки сегодня',
-      statusCounts: 'Ничего не внесено {{notStarted}} · в процессе {{inProgress}} · ещё впереди {{ahead}}',
+      statusCounts:
+        'Ничего не внесено {{notStarted}} · в процессе {{inProgress}} · ещё впереди {{ahead}}',
       conflicts: 'Конфликты расписания',
       published: 'Действующая версия {{number}}',
       draft: 'Черновик {{number}}',
