@@ -1136,6 +1136,33 @@ describe('exams in the timetable', () => {
   });
 
   describe('a group that sits (edge/timetable, Exams, third row)', () => {
+    // Found on the test site (5 November 2026): a class ticked with a group of its own students
+    // met the class claims of the database, and the check said "the reasons listed below" with
+    // no list.
+    it('refuses a class with a group of its students, in the check and the save, with a code of its own', async () => {
+      const s = await scene({ art: true });
+      const art = s.art;
+      if (art === null) throw new Error('No art.');
+      const body = examOf(s, {
+        date: THURSDAY,
+        classIds: [s.classId],
+        groupIds: [art.group],
+        subjectId: art.subject,
+      });
+      const before = await t.auditCount();
+      const { confirm: _confirm, ...checked } = body;
+      refusedWith(
+        await request(t.kit.server)
+          .post('/api/timetable/exams/check')
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, s.branch)
+          .send(checked),
+        409,
+        'exam_class_twice',
+      );
+      refusedWith(await create(s.branch, { ...body, confirm: true }), 409, 'exam_class_twice');
+      expect(await t.auditCount()).toBe(before);
+    });
     it('cancels the group’s own lesson at the exam’s time, keeps the other group of its block, and refuses an exam longer than it', async () => {
       const s = await scene({ artPair: true });
       const art = s.art;
@@ -1469,7 +1496,9 @@ describe('exams in the timetable', () => {
       expect(early === null ? null : (early as Response).body).toBeNull();
       expect(await held).toBeUndefined();
       const response = await pending;
-      refusedWith(response, 409, 'exam_blocked');
+      // The claims of the database refuse it, under their own code since the test site found
+      // `exam_blocked` with no list (5 November 2026).
+      refusedWith(response, 409, 'exam_invigilator_twice');
       const after = await everything();
       // Only the held side's lesson and claim changed.
       // Every table but the held side's lesson and its claim (spec review of the code, should-fix 2).

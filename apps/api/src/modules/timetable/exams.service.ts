@@ -96,12 +96,14 @@ import { PlanFollow } from '../plans/plan-follow.js';
 /** The claims and checks of the database a save can meet, as refusals. */
 export const EXAM_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   ...PUBLISH_REFUSALS,
-  time_claims_teacher_excl: 'exam_blocked',
-  time_claims_room_excl: 'exam_blocked',
-  time_claims_class_excl: 'exam_blocked',
-  room_shared_full: 'exam_blocked',
-  room_shared_capacity: 'exam_blocked',
-  lesson_block_student_twice: 'exam_blocked',
+  // Refusals of the database carry no list of reasons, so each has a code of its own whose
+  // text names it; `exam_blocked` says "listed below" (test site, 5 November 2026).
+  time_claims_teacher_excl: 'exam_invigilator_twice',
+  time_claims_room_excl: 'exam_room_taken',
+  time_claims_class_excl: 'exam_class_twice',
+  room_shared_full: 'exam_room_taken',
+  room_shared_capacity: 'exam_room_taken',
+  lesson_block_student_twice: 'exam_class_twice',
   lesson_block_class_out_exam: 'exam_blocked',
   exam_year: 'exam_year',
   exam_date: 'exam_year',
