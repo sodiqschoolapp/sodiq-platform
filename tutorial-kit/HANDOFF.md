@@ -20,7 +20,9 @@ Read this first in a new chat. It holds every decision and fact from the chat of
 - **Email password reset** only writes to the log (LogMailer, Phase 10 decision 16); the owner said no change is needed.
 - **Differences found between the old plan and the app** (already in the clicks): no time-zone field on a new branch; drafts cannot be deleted (the practice draft stays); no "Double" button (tick **Double lesson**); a branch move is accepted only from its first day (release from today); acting Tutor "Until" is the first day without the class; Moliya exemptions one class at a time; the seeded unlock request exists only on some reset dates; Demo Yunusobod has a seeded Principal, Spiritual VP and Head Tutor.
 
-## App bugs found during the rehearsal (owner: fix later)
+## App bugs found during the rehearsal
+
+All five fixed on branch `fix/rehearsal-bugs` (5 Nov; not yet a pull request, not yet on the test site). Once deployed, guide steps 5.3–5.4 can film the numbers in lesson mode.
 
 1. **Exam check, empty reasons** (5 Nov, step 4.6). A database refusal during the exam's Check (`EXAM_REFUSALS`: class, teacher or room claim, `lesson_block_student_twice`, …) shows `errors.exam_blocked` "…for the reasons listed below…" with nothing listed: the check's collector does not catch constraint refusals, and `FailureAlert` shows no details. Met with a class and its own group ticked in one exam.
 2. **Calendar preview names classes "0 Genius"** (5 Nov, step 4.7). `apps/api/src/modules/timetable/calendar-lessons.ts` passes `new Map()` as the units' grades to `namesOf`, so every class shows grade 0 in "What this save changes".
