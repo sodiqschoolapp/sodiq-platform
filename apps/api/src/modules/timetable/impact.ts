@@ -486,7 +486,7 @@ export async function namesOf(
       ? Promise.resolve([])
       : transaction
           .selectFrom('classes')
-          .select(['id', 'name'])
+          .select(['id', 'name', 'grade'])
           .where('id', 'in', ids(unitIds))
           .execute(),
     ids(unitIds).length === 0
@@ -521,12 +521,20 @@ export async function namesOf(
           .orderBy('id')
           .execute(),
   ]);
+  // A class not in `units` (a calendar preview passes none) takes its own grade, so its
+  // name never reads "0 Genius" (found on the test site, 5 November 2026).
   const unitNames = [
-    ...classes.map((one) => ({ ...one, kind: 'class' as const })),
-    ...groups.map((one) => ({ ...one, kind: 'group' as const })),
-  ]
-    .map((one) => ({ ...one, grades: [...(units.get(one.id)?.grades ?? [])] }))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    ...classes.map(({ grade, ...one }) => ({
+      ...one,
+      kind: 'class' as const,
+      grades: [...(units.get(one.id)?.grades ?? [grade])],
+    })),
+    ...groups.map((one) => ({
+      ...one,
+      kind: 'group' as const,
+      grades: [...(units.get(one.id)?.grades ?? [])],
+    })),
+  ].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const names: PreviewNamesAnswer = {
     units: unitNames,
