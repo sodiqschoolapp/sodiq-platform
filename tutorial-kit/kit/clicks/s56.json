@@ -146,7 +146,7 @@
  },
  "s5f": {
   "clicks": [
-   "**Demo time** (in **SA**: **School setup** → **Demo time**): no move (Monday morning).",
+   "**Demo time** (in **SA**: **School setup** → **Demo time**): move to Monday `11:35`. Madina’s subjects (Ingliz tili, Rus tili, Arab tili, Ona tili) start at 10:50 on Monday; before that **Journal discipline** says “No lessons were held on these days”. At 11:35 it shows the 10:50 lessons, with “no attendance” for any not yet marked.",
    "— Head Teacher deck, slides 14–18 — in **Head Teacher** (Madina, set to **Head Teacher**) —",
    "Slide 14: **Journal** → **Groups** → `Ingliz 5B` (English, Rasulova Shahnoza), read only. Go back to **Journals**, click **Journal discipline**, set **From** and **To** to Monday and show the counts of her subjects’ teachers.",
    "Slide 15: **Lesson plans** → **Groups** → `Ingliz 5B` → **Excel**. Go back, click **Plan reports**, set **Report** to **Completeness** and **Quarter** to Quarter 2. The table shows who has not filled the quarter.",
