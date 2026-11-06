@@ -7995,6 +7995,42 @@ try {
   };
   seeded.transfersVice = { login: transfersVice.login, password: transfersVice.firstPassword };
 
+  // The Academic Vice Principal of the parent slips test (task 11.1), in a branch of its own
+  // with a year around today: two students of "7 Seeded" (below), each with a parent.
+  const slipsBranch = await insertBranch(migrator, 'Parent slips browser test branch');
+  classBranches.push(slipsBranch);
+  const slipsVice = await create('Zarina', 'Olimova');
+  await transactions.run([slipsBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: slipsVice.id,
+      role: 'academic_vice_principal',
+      branchId: slipsBranch,
+      givenBy: null,
+    }),
+  );
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: slipsBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: slipsBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+  seeded.parentSlips = { login: slipsVice.login, password: slipsVice.firstPassword };
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
@@ -8016,6 +8052,73 @@ try {
           .execute();
       }
     }
+  }
+
+  // Task 11.1: the two students of "7 Seeded" of the parent slips branch, each with a parent.
+  const slipsClass = await migrator
+    .selectFrom('classes')
+    .select('id')
+    .where('branch_id', '=', slipsBranch)
+    .where('grade', '=', 7)
+    .executeTakeFirstOrThrow();
+  const slipsUntil = isoDate(new Date(yearStart.getTime() + 365 * dayMs));
+  const slipStudents: readonly (readonly [string, string, string])[] = [
+    ['Laylo', 'Yoqubova', 'Nigora Yoqubova'],
+    ['Sardor', 'Hakimov', 'Rustam Hakimov'],
+  ];
+  for (const [index, [first, last, parent]] of slipStudents.entries()) {
+    await migrator.transaction().execute(async (transaction) => {
+      const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+      const id = found.rows[0]?.id ?? '';
+      const uid = `SLIP-E2E-${String(index + 1)}`;
+      await transaction
+        .insertInto('students')
+        .values({
+          id,
+          branch_id: slipsBranch,
+          uid,
+          first_name: first,
+          last_name: last,
+          name_key: studentNameKey(last, first),
+          sex: index === 0 ? 'female' : 'male',
+          birth_date: '2013-05-06',
+          grade: 7,
+          starts_on: startDate,
+          created_by: slipsVice.id,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_uids')
+        .values({ uid, student_id: id, branch_id: slipsBranch, held_from: yearStart })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({ student_id: id, branch_id: slipsBranch, number: uid, signed_on: startDate })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: id,
+          branch_id: slipsBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      await linkRelative(transaction, id, slipsBranch, yearStart, { fullName: parent });
+      await transaction
+        .insertInto('class_memberships')
+        .values({
+          branch_id: slipsBranch,
+          student_id: id,
+          class_id: slipsClass.id,
+          valid_from: startDate,
+          valid_until: slipsUntil,
+          own_until: slipsUntil,
+          cause: 'placement',
+        })
+        .execute();
+    });
   }
 
   console.log(JSON.stringify(seeded));

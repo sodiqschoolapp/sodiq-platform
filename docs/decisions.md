@@ -389,6 +389,32 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 6 November 2026: Parent accounts, slips and reset (task 11.1)
+
+Plan approved on pull request #292 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a check removed because the requirement changed). 0158 drops `relative_accounts_switched_off_check`; `relative_accounts_merged_off` (0037) stays; no existing row changes | Reading 4 of the Release 2 plan; `edge/close-relatives`: "Every relative linked to a student has a Parent account" (decision 1) |
+| **Look first** (permission guard). A parent session reaches only `GET session`, `POST password`, `PUT language` and `POST sign-out` (`@AnySignedIn({ parent: true })`); the guard refuses it every other route before the table is read. The sessions list, sign-out everywhere, trusted devices ("Trust this device" is not honoured at a parent's sign-in) and own sign-in history are refused: not in the owner's approval | Build plan 11.1: "the `parent` role signs in and changes its own password and language, and gains no other right" (decision 2) |
+| **Look first** (spec text). A valid slip of another branch is listed as "another branch" with its date, never its class; within a branch the class is named. Proposed `/spec-change` of `edge/close-relatives`, first passwords: "…is listed with that class and date (a class of another branch is listed as "another branch", with the date)…" | Row 1: students of other branches appear as a count (decision 15) |
+| The login: the staff form from the first and the last word of the full name; a Cyrillic name in Latin letters (`latinSpelling`) | Reading 1 (decision 3); a relative's name is typed in either script |
+| "No password of their own yet": no account, or a first or reset password not changed. A valid slip (any class, or a reset) is printed again only on "print again"; an expired one is printed anew | Printing silently would replace a password the family holds (decision 4, as the review added) |
+| The account is made at the first print; a merged or archived relative is never listed | Decision 5 |
+| A parent account whose relative is archived, merged, or has no live link with portal access on to an active student is answered as a wrong password at sign-in, and its open session reaches nothing | `10`, Telegram: "when the account can no longer sign in" (decision 6) |
+| The Academic Vice Principal's scope: a relative linked live to an active student of the branch of the request, checked in each route | `10`: "a branch where one of the parent's children studies" (decision 7) |
+| The never-used report is one route under `export`, each read and download logged; "never used" is `password_changed_at` empty | The approval; decision 8 |
+| `parent_slips` keeps who printed what, without the password; one audit entry per slip, in the branch of the request | "Every printing is in the audit log" (decision 9) |
+| `PARENT_BOT_USERNAME` is a public setting for the slip; unset, the slip names the site address | Reading 2 (decision 10) |
+| The first sign-in is audited at the first password a parent chooses (`parent_account.first_sign_in`, school log) | Decision 11 |
+| A parent's reset is valid 7 days, a first password 30 days; passwords and slips by real time | `edge/close-relatives`; task 10.5, decision 1 (decisions 12 and 18) |
+| A parent session opens its own frame (language, password, sign-out); a staff page sends it there | Decision 13 |
+| A merge moves no account; the merged record's login stops through decision 6 | Decision 14 |
+| For #42: the 11.4 approval names "`parent_accounts` edit, as in 11.1", while 11.1 grants view, create and export | Build plan text, decided by the plan of 11.4 (decision 16) |
+| Demo seed: Parent accounts for every class but the first of each branch, with the demo password | Decision 17 |
+| **Build decision.** A print locks the `relative_accounts` rows of the class in the order of their ids and reads the state again after the lock; a print and a reset at the same moment give one valid password | Must-fix 3 of the plan's spec review |
+| **Build decision.** The relative's personal data report shows the login, whether a password was chosen, the last sign-in and every slip with its branch | Correction 3 of the plan review |
+
 ## 6 November 2026: a work added by hand is named (task 10.6)
 
 Plan approved on pull request #290 with its two corrections. Flagged on issue #42.
