@@ -8,10 +8,11 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Web** (feature `portal`): Grades (quarter chooser, each subject's figures with the staff page's labels, "provisional" until closed, the scores with titles, dates and comments) and Attendance (the week by day, exempt as exempt); four tabs. Texts in three languages.
 - **Browser test**: `portal.spec.ts` goes on to Kamron's Grades and Attendance; the e2e seed gains a classwork, a late mark and a parents and a staff comment.
 
-Left out: earlier years and an earlier branch's results on Grades (on #42, decision 3); the rating (11.6); the digest (11.5); a branch move inside one week is not tested here (the per-date branches are 11.2's `childWeekScope`, tested there); the demo seed gains no comments.
+Left out: earlier years and an earlier branch's results on Grades (on #42, decision 3); the rating (11.6); the digest (11.5); the demo seed gains no comments.
 
 The next sessions must know:
 
+- "Final" is per subject (`final`): a subject under an unfinished reopening of a closed quarter is provisional.
 - A family read of results goes through `StudentResultsService.familyGrades` / `familyLessons`, called only after `portalChild` or `childWeekScope`; never through `run(access, …)`.
 - The digest (11.5) reads marks the same way (`familyLessons`, exemptions worked out on read) and comments with `visibility = 'parents'`.
 
