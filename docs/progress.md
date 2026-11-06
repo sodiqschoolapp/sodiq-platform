@@ -10,7 +10,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Web** (feature `portal`): `/portal` with the child switcher, Timetable and Homework by week, "Account" to `/parent`; a parent lands on `/portal`. Texts in three languages.
 - **Browser test**: `portal.spec.ts` at 390 px: a mother of two children opens both pages and switches child; `parent-slips.spec.ts` now lands on the portal.
 
-Left out: grades, attendance and comments (11.3); the Telegram mini app (11.4); the digest frequency (11.5); the topic of future lessons on the timetable (on issue #42). `CLAUDE.md` gets `portal` in its module list from the owner (correction 1).
+Left out: grades, attendance and comments (11.3); the Telegram mini app (11.4); the digest frequency (11.5); the topic of future lessons on the timetable (on issue #42); homework texts in the demo seed (not built in this task; the portal shows whatever homework the demo school holds); the handbook page (the handbook is paused until 3.7). `CLAUDE.md` gets `portal` in its module list from the owner (correction 1).
 
 The next sessions must know:
 

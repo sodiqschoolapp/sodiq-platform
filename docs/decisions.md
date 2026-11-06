@@ -413,6 +413,11 @@ Plan approved on pull request #294 with corrections 1 and 2. Flagged on issue #4
 | No photo in the switcher: names and the class | Decision 14 |
 | **Build decision.** The child's week is read through the one view builder (`TimetableViews.childWeekIn`), and the homework through the journal's columns reader (`journalsColumns`) | One source of the timetable and of what was given (`06`, One source) |
 | **Build decision.** The subject's colour is in the portal's answers, used as on every timetable | `12`, Look and feel (should-fix 10) |
+| **Build decision.** The portal's path ids (`studentId`, `fileId`) are listed as kind `own` in the route-id list: a child of the own family, refused 404 by the child scope whatever its branch | They are not branch records of the request; the closest kind (permission review must-fix 1) |
+| **Build decision.** The guard refuses a portal route that is also open to a session owing a step, as for a route with a permission | Defence in depth (permission review should-fix 4) |
+| **Build decision.** A homework without a title shows "Homework n" ("Домашнее задание n", "n-uy vazifasi"), not the journal's "HW n" | A family does not read the journal's short form (plan decision 8 said "HW n") |
+| **Build decision.** A day of the week without a class of the child (before it joined, after the year) shows no lesson; a week with none says "No lessons for the child this week" | Approved decision 6; the text is true on every path (spec review should-fix 2) |
+| **Build decision.** Homework is ordered by the date it was given, then by subject | `10`: "Tasks by date and subject" (spec review should-fix 11) |
 
 ## 6 November 2026: Parent accounts, slips and reset (task 11.1)
 
