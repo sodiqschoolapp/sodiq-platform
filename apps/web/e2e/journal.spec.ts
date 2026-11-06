@@ -104,8 +104,22 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   const works = page.getByRole('dialog');
   await expect(works).toContainText(en.journal.works.noPlan);
   await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();
+  // Task 10.6: the classwork is named when it is added, and the title is its column title.
+  await works
+    .getByLabel(en.journal.works.classworkTitle, { exact: true })
+    .fill('Fractions dictation');
+  await works.getByRole('button', { name: en.journal.works.add, exact: true }).click();
+  await expect(
+    works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }),
+  ).toBeVisible();
   await works.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
   await expect(page.getByRole('button', { name: /^Work: / })).toHaveCount(before + 1);
+  await expect(
+    page.getByRole('button', {
+      name: 'Work: Fractions dictation',
+      exact: true,
+    }),
+  ).toHaveCount(1);
 
   // Task 8.2 (07, Keyboard: "a key opens the comment"): the key C on an A cell opens the
   // comments of the student for that lesson; a note "visible to parents" is saved and the

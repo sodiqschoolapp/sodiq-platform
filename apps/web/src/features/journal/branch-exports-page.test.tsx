@@ -269,6 +269,8 @@ const SUPPORT: JournalSupport = {
       totalAfter: 20,
       notHeldBefore: false,
       notHeldAfter: false,
+      titleBefore: null,
+      titleAfter: null,
       how: 'entry',
       by,
     },

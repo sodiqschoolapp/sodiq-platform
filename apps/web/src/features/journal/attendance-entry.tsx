@@ -426,6 +426,8 @@ function CellHistoryDialog({
                     : 'journal.grid.parts.homework',
                 );
                 const total = line.totalBefore !== line.totalAfter;
+                // Task 10.6: a rename, or the takeover that replaced a typed title.
+                const titled = !total && line.titleBefore !== line.titleAfter;
                 const yesNo = (value: boolean | null) =>
                   value === null ? '—' : value ? t('journal.works.yes') : t('journal.works.no');
                 return (
@@ -433,13 +435,23 @@ function CellHistoryDialog({
                     <TableCell>
                       {total
                         ? t('journal.works.historyTotal', { work })
-                        : t('journal.works.historyNotHeld', { work })}
+                        : titled
+                          ? t('journal.works.historyTitle', { work })
+                          : t('journal.works.historyNotHeld', { work })}
                     </TableCell>
                     <TableCell>
-                      {total ? (line.totalBefore ?? '—') : yesNo(line.notHeldBefore)}
+                      {total
+                        ? (line.totalBefore ?? '—')
+                        : titled
+                          ? (line.titleBefore ?? '—')
+                          : yesNo(line.notHeldBefore)}
                     </TableCell>
                     <TableCell>
-                      {total ? (line.totalAfter ?? '—') : yesNo(line.notHeldAfter)}
+                      {total
+                        ? (line.totalAfter ?? '—')
+                        : titled
+                          ? (line.titleAfter ?? '—')
+                          : yesNo(line.notHeldAfter)}
                     </TableCell>
                     <TableCell>
                       {line.changedBy === null ? '—' : accountText(line.changedBy, '—')}

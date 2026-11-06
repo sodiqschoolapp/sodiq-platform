@@ -1,6 +1,8 @@
 import {
+  WORK_TITLE_MAX,
   WORK_TOTAL_MAX,
   WORK_TOTAL_MIN,
+  workTitleLength,
   type JournalGrid,
   type JournalLesson,
   type JournalStudent,
@@ -13,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { NumberField } from '@/components/field';
+import { Field, NumberField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +39,7 @@ import {
   carryWork,
   invalidateJournal,
   removeWork,
+  renameWork,
   saveScores,
   setNotGraded,
   setWorkNotHeld,
@@ -404,8 +407,11 @@ export function useWorksEntry(
           language={i18n.language}
           busy={changing || notGraded.isPending}
           nameOfWork={nameOfWork}
-          onAdd={(kind) => {
-            run({ run: () => addWork(lesson.id, { kind }), ask: () => Promise.resolve(false) });
+          onAdd={(kind, title) => {
+            run({
+              run: () => addWork(lesson.id, { kind, title }),
+              ask: () => Promise.resolve(false),
+            });
           }}
           onUndo={(chosen) => {
             setNotHeld(lesson, chosen, false);
@@ -445,6 +451,14 @@ export function useWorksEntry(
           onCarry={() => {
             run({
               run: () => carryWork(lesson.id, { column: columnOf(work), version: work.version }),
+              ask: () => Promise.resolve(false),
+            });
+          }}
+          onRename={(title) => {
+            if (work.id === null) return;
+            const id = work.id;
+            run({
+              run: () => renameWork(lesson.id, id, { title, version: work.version ?? 1 }),
               ask: () => Promise.resolve(false),
             });
           }}
@@ -505,7 +519,7 @@ function LessonWorksDialog({
   language: string;
   busy: boolean;
   nameOfWork: (work: JournalWork) => string;
-  onAdd: (kind: 'classwork' | 'homework') => void;
+  onAdd: (kind: 'classwork' | 'homework', title: string) => void;
   onUndo: (work: JournalWork) => void;
   /** Task 8.7: the empty cells the lesson waits for, and "not graded" for them. */
   waiting: number;
@@ -518,6 +532,8 @@ function LessonWorksDialog({
     return found === undefined ? null : schoolDateText(found.date, language);
   };
   const title = t('journal.works.title', { date: schoolDateText(lesson.date, language) });
+  // Task 10.6: a work added by hand is named when it is added.
+  const [adding, setAdding] = useState<'classwork' | 'homework' | null>(null);
   return (
     <Dialog
       open
@@ -540,13 +556,13 @@ function LessonWorksDialog({
           {!lesson.planItem && (
             <div className="grid gap-2" data-no-plan="true">
               <p className="font-semibold">{t('journal.works.noPlan')}</p>
-              {lesson.canEnterWorks && (
+              {lesson.canEnterWorks && adding === null && (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="secondary"
                     disabled={busy}
                     onClick={() => {
-                      onAdd('classwork');
+                      setAdding('classwork');
                     }}
                   >
                     {t('journal.works.addClasswork')}
@@ -555,12 +571,32 @@ function LessonWorksDialog({
                     variant="secondary"
                     disabled={busy}
                     onClick={() => {
-                      onAdd('homework');
+                      setAdding('homework');
                     }}
                   >
                     {t('journal.works.addHomework')}
                   </Button>
                 </div>
+              )}
+              {lesson.canEnterWorks && adding !== null && (
+                <WorkTitleForm
+                  key={adding}
+                  initial=""
+                  label={
+                    adding === 'classwork'
+                      ? t('journal.works.classworkTitle')
+                      : t('journal.works.homeworkTitle')
+                  }
+                  action={t('journal.works.add')}
+                  busy={busy}
+                  onSave={(typed) => {
+                    onAdd(adding, typed);
+                    setAdding(null);
+                  }}
+                  onCancel={() => {
+                    setAdding(null);
+                  }}
+                />
               )}
             </div>
           )}
@@ -624,6 +660,7 @@ function WorkDialog({
   onTotal,
   onNotHeld,
   onCarry,
+  onRename,
   onRemove,
   onClose,
 }: {
@@ -635,6 +672,8 @@ function WorkDialog({
   onTotal: (total: number) => void;
   onNotHeld: (notHeld: boolean) => void;
   onCarry: () => void;
+  /** Task 10.6: the new title of a work added by hand. */
+  onRename: (title: string) => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
@@ -686,6 +725,16 @@ function WorkDialog({
             </div>
           )}
         </form>
+        {/* Task 10.6: a work added by hand is renamed while the lesson can be edited. */}
+        {enter && work.unplanned && work.id !== null && (
+          <WorkTitleForm
+            initial={work.title ?? ''}
+            label={t('journal.works.titleLabel')}
+            action={t('journal.works.rename')}
+            busy={busy}
+            onSave={onRename}
+          />
+        )}
         {enter && (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -720,5 +769,70 @@ function WorkDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Task 10.6: the title of a work added by hand (`07`, Entering data: "each with a title the
+ * teacher types when adding it (required, at most 60 characters)"), counted in characters as
+ * the server counts them (`workTitleLength`); the server checks it again.
+ */
+function WorkTitleForm({
+  initial,
+  label,
+  action,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  label: string;
+  action: string;
+  busy: boolean;
+  onSave: (title: string) => void;
+  onCancel?: () => void;
+}) {
+  const { t } = useTranslation();
+  const [typed, setTyped] = useState(initial);
+  const [tried, setTried] = useState(false);
+  const title = typed.trim();
+  const length = workTitleLength(title);
+  const problem =
+    length === 0
+      ? t('journal.works.titleRequired')
+      : length > WORK_TITLE_MAX
+        ? t('journal.works.titleTooLong', { max: WORK_TITLE_MAX })
+        : undefined;
+  return (
+    <form
+      className="grid gap-2"
+      data-work-title-form="true"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setTried(true);
+        if (problem === undefined && title !== initial) onSave(title);
+      }}
+    >
+      <Field
+        label={label}
+        value={typed}
+        autoComplete="off"
+        error={tried || length > WORK_TITLE_MAX ? problem : undefined}
+        note={t('journal.works.titleCount', { typed: length, max: WORK_TITLE_MAX })}
+        onChange={(event) => {
+          setTyped(event.target.value);
+        }}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={busy || (initial !== '' && title === initial)}>
+          {action}
+        </Button>
+        {onCancel !== undefined && (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t('journal.works.cancel')}
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }

@@ -67,12 +67,22 @@ export function workLineText(
   t: TFunction,
   line: Pick<
     WorkLine,
-    'workKind' | 'totalBefore' | 'totalAfter' | 'notHeldBefore' | 'notHeldAfter'
+    | 'workKind'
+    | 'totalBefore'
+    | 'totalAfter'
+    | 'notHeldBefore'
+    | 'notHeldAfter'
+    | 'titleBefore'
+    | 'titleAfter'
   >,
 ): string {
   const work = t(
     line.workKind === 'classwork' ? 'journal.grid.parts.classwork' : 'journal.grid.parts.homework',
   );
+  // Task 10.6: a rename, or the takeover that replaced a typed title with the plan's.
+  if (line.titleBefore !== line.titleAfter && line.totalBefore === line.totalAfter) {
+    return `${t('journal.works.historyTitle', { work })}: ${line.titleBefore ?? '—'} → ${line.titleAfter ?? '—'}`;
+  }
   if (line.totalBefore !== line.totalAfter) {
     return `${t('journal.works.historyTotal', { work })}: ${String(line.totalBefore ?? '—')} → ${String(line.totalAfter ?? '—')}`;
   }
