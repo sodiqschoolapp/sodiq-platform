@@ -5,10 +5,11 @@ import { changeFirstPassword, languageChooser, signIn } from './steps';
 
 // Task 11.2, pull request #294 (`10`, What parents see; `12`, Devices: "Phone: ... the portal"):
 // at phone width a mother of two children signs in, sees the first child's week, opens the
-// homework, and switches to the other child. All names are invented.
+// homework, and switches to the other child. Task 11.3, pull request #296: back on the first
+// child, the Grades and the Attendance pages. All names are invented.
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('a parent opens the timetable and the homework of both children at phone width', async ({
+test('a parent opens the timetable and the homework of both children, then the grades and attendance, at phone width', async ({
   page,
 }) => {
   const account = accountOf('portal');
@@ -55,4 +56,33 @@ test('a parent opens the timetable and the homework of both children at phone wi
   await expect(page.getByRole('button', { name: en.portal.nextWeek, exact: true })).toBeVisible();
   await expect(page.getByText('Biology')).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: en.layout.menu })).toHaveCount(0);
+
+  // Task 11.3: Kamron's grades: yesterday's classwork with its comment visible to parents.
+  await child.selectOption({ label: 'Kamron Usmonov, 7 Seeded' });
+  await page.getByRole('link', { name: en.portal.grades.title, exact: true }).click();
+  await expect(page).toHaveURL(/\/grades$/);
+  const biology = page.getByRole('region', { name: 'Biology' });
+  await expect(biology.getByText('Cells and tissues', { exact: true })).toBeVisible();
+  await expect(biology.getByText('8 of 10 · 80%', { exact: true })).toBeVisible();
+  await expect(biology.getByText('Well done on the diagram', { exact: true })).toBeVisible();
+  await expect(page.getByText(en.portal.grades.provisional, { exact: true })).toBeVisible();
+  await expect(page.getByText(/Staff only/)).toHaveCount(0);
+  expect(
+    await page.evaluate<boolean>(
+      '(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)()',
+    ),
+  ).toBe(false);
+
+  // Attendance: late yesterday (this week, or the week before on a Monday); no staff comment.
+  await page.getByRole('link', { name: en.portal.attendance.title, exact: true }).click();
+  await expect(page).toHaveURL(/\/attendance$/);
+  const late = page.getByText(en.portal.attendance.marks.late, { exact: true });
+  await expect(
+    late.or(page.getByText(en.portal.attendance.empty, { exact: true })).first(),
+  ).toBeVisible();
+  if (!(await late.isVisible())) {
+    await page.getByRole('button', { name: en.portal.previousWeek, exact: true }).click();
+  }
+  await expect(late).toBeVisible();
+  await expect(page.getByText(/Staff only/)).toHaveCount(0);
 });

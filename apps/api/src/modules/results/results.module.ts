@@ -55,6 +55,8 @@ import { StudentResultsService } from './student-results.service.js';
     PreparedTotals,
     ResultsReportsService,
   ],
+  // Task 11.3: the parent portal reads the same results (`portal-grades.service.ts`).
+  exports: [StudentResultsService],
 })
 export class ResultsModule implements OnModuleInit {
   constructor(

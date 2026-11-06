@@ -1,6 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import {
   PLAN_FILE_TYPES,
+  portalAttendanceWeekSchema,
+  portalGradesQuerySchema,
+  portalGradesSchema,
+  type PortalAttendanceWeek,
+  type PortalGrades,
+  type PortalGradesQuery,
   portalChildParamsSchema,
   portalChildrenSchema,
   portalFileParamsSchema,
@@ -20,6 +26,7 @@ import { ReturnsStoredFile, type StoredFile } from '../../http/stored-file.js';
 import { PortalChild } from '../access/access.decorators.js';
 import { CurrentSession } from '../auth/session.guard.js';
 import type { ActiveSession } from '../auth/sessions.service.js';
+import { PortalGradesService } from './portal-grades.service.js';
 import { PortalHomeworkService } from './portal-homework.service.js';
 import { portalChildrenOf } from './portal-scope.js';
 import { PortalTimetable } from './portal-timetable.service.js';
@@ -35,6 +42,7 @@ export class PortalController {
     private readonly transactions: Transactions,
     private readonly timetable: PortalTimetable,
     private readonly homework: PortalHomeworkService,
+    private readonly grades: PortalGradesService,
   ) {}
 
   /** The child switcher: each linked student with portal access on, active, in any branch. */
@@ -75,6 +83,33 @@ export class PortalController {
     @ValidQuery(portalWeekQuerySchema) query: PortalWeekQuery,
   ): Promise<PortalHomeworkWeek> {
     return this.homework.week(session.accountId, params.studentId, query.date);
+  }
+
+  /**
+   * The Grades page (task 11.3, pull request #296): the figures of each subject in a quarter as
+   * the staff results page gives them, the scores and the comments visible to parents.
+   */
+  @Get('children/:studentId/grades')
+  @PortalChild()
+  @Returns(portalGradesSchema)
+  gradesOf(
+    @CurrentSession() session: ActiveSession,
+    @ValidParams(portalChildParamsSchema) params: PortalChildParams,
+    @ValidQuery(portalGradesQuerySchema) query: PortalGradesQuery,
+  ): Promise<PortalGrades> {
+    return this.grades.grades(session.accountId, params.studentId, query.quarter);
+  }
+
+  /** The Attendance page (task 11.3): the marks of a week by day and lesson, exempt as exempt. */
+  @Get('children/:studentId/attendance')
+  @PortalChild()
+  @Returns(portalAttendanceWeekSchema)
+  attendanceWeek(
+    @CurrentSession() session: ActiveSession,
+    @ValidParams(portalChildParamsSchema) params: PortalChildParams,
+    @ValidQuery(portalWeekQuerySchema) query: PortalWeekQuery,
+  ): Promise<PortalAttendanceWeek> {
+    return this.grades.attendance(session.accountId, params.studentId, query.date);
   }
 
   /** A file of a homework the page lists for this child (decision 2, Look first); not an export. */

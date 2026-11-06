@@ -1,4 +1,10 @@
-import { portalChildrenSchema, portalHomeworkWeekSchema, portalWeekSchema } from '@sodiq/shared';
+import {
+  portalAttendanceWeekSchema,
+  portalChildrenSchema,
+  portalGradesSchema,
+  portalHomeworkWeekSchema,
+  portalWeekSchema,
+} from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
@@ -36,6 +42,34 @@ export const portalHomeworkQuery = (studentId: string, date: string | undefined)
       portalHomeworkWeekSchema.parse(
         await answerOf(
           api.GET('/api/portal/children/{studentId}/homework', {
+            params: { path: { studentId }, query: date === undefined ? {} : { date } },
+          }),
+        ),
+      ),
+  });
+
+/** The grades of a child in a quarter (task 11.3); the current quarter when none is given. */
+export const portalGradesQuery = (studentId: string, quarter: string | undefined) =>
+  queryOptions({
+    queryKey: [...PORTAL_KEY, 'grades', studentId, quarter ?? null],
+    queryFn: async () =>
+      portalGradesSchema.parse(
+        await answerOf(
+          api.GET('/api/portal/children/{studentId}/grades', {
+            params: { path: { studentId }, query: quarter === undefined ? {} : { quarter } },
+          }),
+        ),
+      ),
+  });
+
+/** The marks of a child in the week of a date (task 11.3). */
+export const portalAttendanceQuery = (studentId: string, date: string | undefined) =>
+  queryOptions({
+    queryKey: [...PORTAL_KEY, 'attendance', studentId, date ?? null],
+    queryFn: async () =>
+      portalAttendanceWeekSchema.parse(
+        await answerOf(
+          api.GET('/api/portal/children/{studentId}/attendance', {
             params: { path: { studentId }, query: date === undefined ? {} : { date } },
           }),
         ),

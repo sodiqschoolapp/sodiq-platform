@@ -342,13 +342,16 @@ describe('the parent portal', () => {
       `/api/portal/children/${studentId}/timetable?date=2026-10-26`,
       `/api/portal/children/${studentId}/homework?date=2026-10-26`,
       `/api/portal/children/${studentId}/files/${file}`,
+      // Task 11.3.
+      `/api/portal/children/${studentId}/grades`,
+      `/api/portal/children/${studentId}/attendance?date=2026-10-26`,
     ];
 
     it('answers the parent’s own children, in both branches', async () => {
       for (const path of [...routes(child)]) {
         expect((await get(parent, path)).status, path).toBe(200);
       }
-      for (const path of routes(secondChild).slice(0, 2)) {
+      for (const path of routes(secondChild).filter((one) => !one.includes('/files/'))) {
         expect((await get(parent, path)).status, path).toBe(200);
       }
     });

@@ -19,6 +19,8 @@ const RESTORE_PLACE = `src/modules/setup/place-forced-deletes.test.ts > is refus
 const P = 'src/modules/portal/portal.test.ts';
 const CHILD_SCOPE = `${P} > every route of a child refuses a child out of scope with 404`;
 const CHILD_FILES = `${P} > the files of homework`;
+const CHILD_QUARTER =
+  'src/modules/portal/portal-grades.test.ts > answers 404 for a quarter of another year or branch, and 400 for an unknown field';
 const CHILD_RULE = 'build plan 11.2: one child-scope check used by every portal route';
 
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
@@ -44,6 +46,13 @@ export const OTHER_IDS: RouteIds = {
     line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
   ],
   'GET /api/portal/children/:studentId/homework': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
+  ],
+  'GET /api/portal/children/:studentId/grades': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
+    line('query:quarter', 'quarter of the child’s year', 'own', CHILD_RULE, [CHILD_QUARTER]),
+  ],
+  'GET /api/portal/children/:studentId/attendance': [
     line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
   ],
   'GET /api/portal/children/:studentId/files/:fileId': [

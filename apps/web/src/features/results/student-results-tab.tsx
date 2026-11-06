@@ -61,8 +61,18 @@ export function useQuarterChoice(
   return [offered ?? latest ?? quarters[0]?.id, setChosen];
 }
 
-/** The labels of a quarter's outcome (`studentQuarterOutcome`, From 4.3). */
-function labelsOf(row: ResultSubjectQuarter, t: TFunction, language: string): string[] {
+/**
+ * The labels of a quarter's outcome (`studentQuarterOutcome`, From 4.3); the parent portal shows
+ * the same (task 11.3, review decision 4).
+ */
+export function labelsOf(
+  row: Pick<
+    ResultSubjectQuarter,
+    'outcome' | 'basedOn' | 'countsFrom' | 'leftSubjectOn' | 'atLeaving'
+  >,
+  t: TFunction,
+  language: string,
+): string[] {
   const { outcome } = row;
   const labels: string[] = [];
   if (outcome.kind === 'number') {
@@ -95,7 +105,7 @@ function labelsOf(row: ResultSubjectQuarter, t: TFunction, language: string): st
   return labels;
 }
 
-function outcomeText(outcome: QuarterOutcomeShown, t: TFunction) {
+export function outcomeText(outcome: QuarterOutcomeShown, t: TFunction): string {
   switch (outcome.kind) {
     case 'number':
       return String(outcome.shown);

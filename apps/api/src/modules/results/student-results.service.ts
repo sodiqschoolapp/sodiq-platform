@@ -90,6 +90,28 @@ import { storedRecordsOf } from './stored-records.js';
  *   is closed"), or the year; a start quarter closed "not official" is left out of it.
  */
 
+/** What the Grades page of the parent portal reads (task 11.3). */
+export interface FamilyGrades {
+  readonly results: StudentResults;
+  readonly attendance: StudentAttendance;
+  /** The quarter whose lessons are given; `null` with no year. */
+  readonly quarterId: string | null;
+  readonly lessons: readonly StudentResultLessons[];
+}
+
+/** A held lesson of the child with its mark (4 and 5 from an exemption in force). */
+export interface FamilyLesson {
+  readonly lessonId: string;
+  readonly date: string;
+  readonly journalId: string;
+  readonly subject: {
+    readonly id: string;
+    readonly names: StudentResultLessons['subject']['names'];
+    readonly colour: string;
+  };
+  readonly mark: number | null;
+}
+
 const shown = (value: Fraction | null): number | null =>
   value === null ? null : Number(value.roundHalfUp());
 
@@ -109,14 +131,18 @@ interface QuarterRow {
 
 interface Context {
   readonly transaction: Transaction;
-  readonly access: Access;
   readonly branchId: string;
   readonly timeZone: string;
   readonly now: Date;
   readonly today: string;
   readonly studentId: string;
-  readonly staffId: string | null;
   readonly goLive: string | null;
+  /**
+   * The reader's reading of the student's row of a journal on a day: for staff by role and scope
+   * (`studentRowReading`); for the family of the child in the parent portal `whole` (task 11.3,
+   * decision 1, Look first). Every other rule of the reads is the same for both.
+   */
+  readonly readingOf: (journal: JournalRow, day: string) => Promise<StudentRowReading>;
 }
 
 /** One subject in one quarter as the reader may read it. */
@@ -158,97 +184,7 @@ export class StudentResultsService {
   }
 
   results(access: Access, studentId: string, yearId: string | undefined): Promise<StudentResults> {
-    return this.run(access, studentId, async (context) => {
-      const year = await yearOf(context, yearId);
-      const years = await yearsOf(context);
-      if (year === null) {
-        return studentResultsSchema.parse({ year, years, quarters: [], subjects: [] });
-      }
-      const quarters = await quartersOf(context, year.id);
-      const closings = await closingsOf(
-        context.transaction,
-        quarters.map((one) => one.id),
-      );
-      const fourthClosed = quarters.some((one) => one.number === 4 && closings.has(one.id));
-      // Task 10.1b: each journal's columns read once for the four quarters of this read.
-      const columns: JournalColumnsCache = { columns: new Map(), rows: new Map() };
-      const subjects = [];
-      for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
-        const rows: unknown[] = [];
-        const outcomes = new Map<number, StudentQuarterOutcome>();
-        // The year is the mean of every quarter's result (`07`, rule 11): a reader who does
-        // not read the subject in each quarter with a result sees no year (review must-fix 1).
-        let readsEveryQuarter = true;
-        let subject: JournalRow['subject'] | undefined;
-        for (const quarter of quarters) {
-          const one = await subjectQuarter(context, year, quarter, subjectId, columns);
-          if (one === undefined || one.attendanceOnly) continue;
-          const quarterly = one.weights.quarterly;
-          if (quarterly === null) continue;
-          const closing = closings.get(quarter.id);
-          const found =
-            closing === undefined
-              ? { record: undefined, reopened: false }
-              : await storedRecordOf(context.transaction, quarter.id, subjectId, studentId);
-          const stored = found.record;
-          const input = inputOf(
-            context,
-            one,
-            quarterly,
-            await decisionOf(context.transaction, quarter.id, subjectId, context.studentId),
-            // A journal with an unfinished reopening is read live and provisional (task 9.2c).
-            closing !== undefined && !found.reopened,
-          );
-          const outcome =
-            stored === undefined ? studentQuarterOutcome(input) : storedQuarterOutcome(stored);
-          outcomes.set(quarter.number, outcome);
-          if (one.reading !== 'whole') {
-            readsEveryQuarter = false;
-            continue;
-          }
-          const averages =
-            outcome.kind === 'number'
-              ? outcome.result.averages
-              : quarterResult(stored === undefined ? input : storedQuarterInputs(stored)).averages;
-          subject = one.journal.subject;
-          rows.push({
-            quarterId: quarter.id,
-            unit: unitOf(one.journal),
-            attendance: shown(averages.attendance),
-            classwork: shown(averages.classwork),
-            homework: shown(averages.homework),
-            ratingExam: ratingShownOf(one) ? shown(averages.ratingExam) : null,
-            ratingShown: ratingShownOf(one),
-            outcome: outcomeShown(outcome),
-            basedOn: outcome.basedOn,
-            countsFrom: outcome.from,
-            leftSubjectOn: outcome.leftSubjectOn,
-            atLeaving: outcome.atLeaving,
-          });
-        }
-        if (subject === undefined) continue;
-        subjects.push({
-          subject: { id: subjectId, names: subject.names, colour: subject.colour },
-          quarters: rows,
-          year:
-            (year.status === 'closed' || fourthClosed) && readsEveryQuarter
-              ? yearShown(context.goLive, quarters, outcomes, notOfficialOf(closings))
-              : null,
-        });
-      }
-      subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
-      return studentResultsSchema.parse({
-        year,
-        years,
-        quarters: quarters.map((quarter) => ({
-          ...quarter,
-          notInSystem: notInSystem(context.goLive, quarter),
-          notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
-          closed: closings.has(quarter.id),
-        })),
-        subjects,
-      });
-    });
+    return this.run(access, studentId, (context) => resultsIn(context, yearId));
   }
 
   attendance(
@@ -256,64 +192,7 @@ export class StudentResultsService {
     studentId: string,
     yearId: string | undefined,
   ): Promise<StudentAttendance> {
-    return this.run(access, studentId, async (context) => {
-      const year = await yearOf(context, yearId);
-      const years = await yearsOf(context);
-      if (year === null) {
-        return studentAttendanceSchema.parse({ year, years, quarters: [], subjects: [] });
-      }
-      const quarters = await quartersOf(context, year.id);
-      const closings = await closingsOf(
-        context.transaction,
-        quarters.map((one) => one.id),
-      );
-      const subjects = [];
-      for (const subjectId of await subjectsOf(context.transaction, studentId, year.id, year)) {
-        const rows: unknown[] = [];
-        let subject: JournalRow['subject'] | undefined;
-        for (const quarter of quarters) {
-          const one = await subjectQuarter(context, year, quarter, subjectId);
-          if (one === undefined || one.reading === null) continue;
-          subject = one.journal.subject;
-          const lessons = one.found.lessons.map((lesson) => lesson.lesson);
-          const counts = { present: 0, absent: 0, late: 0, skipped: 0, exempt: 0, unmarked: 0 };
-          for (const lesson of lessons) {
-            if (lesson.mark === null) counts.unmarked += 1;
-            else if (lesson.mark === 1) counts.present += 1;
-            else if (lesson.mark === 0) counts.absent += 1;
-            else if (lesson.mark === 2) counts.late += 1;
-            else if (lesson.mark === 3) counts.skipped += 1;
-            else counts.exempt += 1;
-          }
-          rows.push({
-            quarterId: quarter.id,
-            unit: unitOf(one.journal),
-            attendanceOnly: one.attendanceOnly,
-            average: shown(
-              quarterAttendanceAverage({ attendanceValues: valuesOf(one.weights), lessons }),
-            ),
-            counts,
-          });
-        }
-        if (subject === undefined) continue;
-        subjects.push({
-          subject: { id: subjectId, names: subject.names, colour: subject.colour },
-          quarters: rows,
-        });
-      }
-      subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
-      return studentAttendanceSchema.parse({
-        year,
-        years,
-        quarters: quarters.map((quarter) => ({
-          ...quarter,
-          notInSystem: notInSystem(context.goLive, quarter),
-          notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
-          closed: closings.has(quarter.id),
-        })),
-        subjects,
-      });
-    });
+    return this.run(access, studentId, (context) => attendanceIn(context, yearId));
   }
 
   lessons(
@@ -374,7 +253,7 @@ export class StudentResultsService {
       // subject by role learns that (404); anyone else gets the scope refusal it would get for a
       // journal it may not read, so a subject outside the scope tells nothing (.claude/rules/api.md).
       if (one === undefined) {
-        const byRole = roleReadingOf(context.access, {
+        const byRole = roleReadingOf(access, {
           subjectId,
           classId: null,
           groupClassIds: [],
@@ -383,47 +262,125 @@ export class StudentResultsService {
         throw notFound();
       }
       if (one.reading === null) throw new ApiException('permission_denied', 403);
-      const whole = one.reading === 'whole' && !one.attendanceOnly;
-      const values = valuesOf(one.weights);
-      const unitNames = new Map(one.found.spans.map((span) => [span.journalId, span.unitName]));
-      const ratingIn = whole && one.weights.quarterly !== null && ratingShownOf(one);
-      return studentResultLessonsSchema.parse({
-        subject: {
-          id: subjectId,
-          names: one.journal.subject.names,
-          colour: one.journal.subject.colour,
-        },
-        quarter: { id: quarter.id, number: quarter.number },
-        reading: whole ? 'whole' : 'attendance',
-        lessons: one.found.lessons.map((counted) => {
-          const { mark } = counted.lesson;
-          const value = mark === null ? null : attendanceValue(mark, values);
-          const worksOf = (
-            works: typeof counted.lesson.classworks,
-            columns: typeof counted.classworkColumns,
-          ) =>
-            !whole
-              ? []
-              : works.map((work, index) => ({
-                  workId: columns[index]?.workId,
-                  title: columns[index]?.title ?? null,
-                  position: columns[index]?.position ?? index + 1,
-                  score: work.score,
-                  total: work.total,
-                  percent:
-                    work.score === null ? null : Number(shownPercent(work.score, work.total)),
-                }));
-          return {
-            lessonId: counted.lessonId,
-            date: counted.date,
-            unit: { journalId: counted.journalId, name: unitNames.get(counted.journalId) ?? '' },
-            mark,
-            attendanceValue: value instanceof Fraction ? shown(value) : null,
-            classworks: worksOf(counted.lesson.classworks, counted.classworkColumns),
-            homeworks: worksOf(counted.lesson.homeworks, counted.homeworkColumns),
-          };
-        }),
-        ratingExam: ratingIn ? one.found.ratingExam : null,
+      return lessonsAnswer(one, quarter, subjectId);
+    });
+  }
+
+  /**
+   * The Grades page of the parent portal (task 11.3, pull request #296; `10`, What parents see:
+   * "the averages and quarter results of each subject as the staff pages show them"): the same
+   * Results and Attendance answers as the profile's tabs, and the lessons behind the figures of
+   * one quarter, read as the family of the child reads them (`whole`, decision 1, Look first).
+   * Called only after the child scope (`portalChild`) let the parent in; the branch is the
+   * child's present branch (decision 3, Look first). `quarterId` of another year or branch: 404.
+   */
+  familyGrades(
+    branchId: string,
+    studentId: string,
+    quarterId: string | undefined,
+  ): Promise<FamilyGrades> {
+    return this.family(branchId, studentId, async (context) => {
+      const results = await resultsIn(context, undefined);
+      const attendance = await attendanceIn(context, undefined);
+      const year = results.year;
+      const quarters = year === null ? [] : await quartersOf(context, year.id);
+      let quarter: QuarterRow | undefined;
+      if (quarterId !== undefined) {
+        quarter = quarters.find((one) => one.id === quarterId.toLowerCase());
+        if (quarter === undefined) throw notFound();
+      } else {
+        quarter =
+          quarters.find((one) => one.startDate <= context.today && context.today <= one.endDate) ??
+          [...quarters].reverse().find((one) => one.startDate <= context.today) ??
+          quarters[0];
+      }
+      const lessons: StudentResultLessons[] = [];
+      if (year !== null && quarter !== undefined) {
+        const yearRow: YearRow = year;
+        for (const subject of results.subjects) {
+          if (!subject.quarters.some((one) => one.quarterId === quarter.id)) continue;
+          const one = await subjectQuarter(context, yearRow, quarter, subject.subject.id);
+          if (one !== undefined) lessons.push(lessonsAnswer(one, quarter, subject.subject.id));
+        }
+      }
+      return { results, attendance, quarterId: quarter?.id ?? null, lessons };
+    });
+  }
+
+  /**
+   * The held lessons of the child from `from` to `to` (both included) in the branch, with the
+   * marks as the journal and the profile's Attendance tab read them (`subjectQuarterLessons`, the
+   * exemption worked out on read by `exemptionMarksOf`): the Attendance page of the parent portal
+   * (task 11.3). Called only after the child scope let the parent in.
+   */
+  familyLessons(
+    branchId: string,
+    studentId: string,
+    from: string,
+    to: string,
+  ): Promise<FamilyLesson[]> {
+    return this.family(branchId, studentId, async (context) => {
+      const found: FamilyLesson[] = [];
+      for (const year of await yearsOf(context)) {
+        if (year.endDate < from || to < year.startDate) continue;
+        for (const quarter of await quartersOf(context, year.id)) {
+          if (quarter.endDate < from || to < quarter.startDate) continue;
+          for (const subjectId of await subjectsOf(
+            context.transaction,
+            context.studentId,
+            year.id,
+            quarter,
+          )) {
+            const one = await subjectQuarter(context, year, quarter, subjectId);
+            if (one === undefined) continue;
+            for (const counted of one.found.lessons) {
+              if (counted.date < from || to < counted.date) continue;
+              found.push({
+                lessonId: counted.lessonId,
+                date: counted.date,
+                journalId: counted.journalId,
+                subject: {
+                  id: subjectId,
+                  names: one.journal.subject.names,
+                  colour: one.journal.subject.colour,
+                },
+                mark: counted.lesson.mark,
+              });
+            }
+          }
+        }
+      }
+      return found;
+    });
+  }
+
+  /**
+   * The context of the family of a child (task 11.3): the child's branch, every journal row of the
+   * child read `whole`. No `Access`: a parent session has no assignment (0158).
+   */
+  private family<T>(
+    branchId: string,
+    studentId: string,
+    work: (context: Context) => Promise<T>,
+  ): Promise<T> {
+    // No read of `students`: the child scope was checked by the caller, and a child moved
+    // between branches is read in the branch of its earlier memberships too (11.2 decision 6).
+    return this.transactions.run([branchId], async (transaction) => {
+      const branch = await transaction
+        .selectFrom('branches')
+        .select('time_zone')
+        .where('id', '=', branchId)
+        .executeTakeFirstOrThrow();
+      const now = await transactionMoment(transaction);
+      return work({
+        transaction,
+        branchId,
+        timeZone: branch.time_zone,
+        now,
+        today: schoolDateOf(now, branch.time_zone),
+        studentId,
+        goLive: await goLiveOf(transaction, branchId),
+        readingOf: () => Promise.resolve('whole'),
       });
     });
   }
@@ -453,19 +410,223 @@ export class StudentResultsService {
       if (studentReaderOf(access, 'students', places ?? NO_PLACES) === undefined) {
         throw new ApiException('permission_denied', 403);
       }
+      const staffId = teaches(access) ? await ownStaffOf(transaction, access.accountId) : null;
       return work({
         transaction,
-        access,
         branchId,
         timeZone: branch.time_zone,
         now,
         today,
         studentId,
-        staffId: teaches(access) ? await ownStaffOf(transaction, access.accountId) : null,
         goLive: await goLiveOf(transaction, branchId),
+        readingOf: (journal, day) =>
+          studentRowReading(transaction, access, { branchId, journal, studentId, day, staffId }),
       });
     });
   }
+}
+
+async function resultsIn(context: Context, yearId: string | undefined): Promise<StudentResults> {
+  const year = await yearOf(context, yearId);
+  const years = await yearsOf(context);
+  if (year === null) {
+    return studentResultsSchema.parse({ year, years, quarters: [], subjects: [] });
+  }
+  const quarters = await quartersOf(context, year.id);
+  const closings = await closingsOf(
+    context.transaction,
+    quarters.map((one) => one.id),
+  );
+  const fourthClosed = quarters.some((one) => one.number === 4 && closings.has(one.id));
+  // Task 10.1b: each journal's columns read once for the four quarters of this read.
+  const columns: JournalColumnsCache = { columns: new Map(), rows: new Map() };
+  const subjects = [];
+  for (const subjectId of await subjectsOf(context.transaction, context.studentId, year.id, year)) {
+    const rows: unknown[] = [];
+    const outcomes = new Map<number, StudentQuarterOutcome>();
+    // The year is the mean of every quarter's result (`07`, rule 11): a reader who does
+    // not read the subject in each quarter with a result sees no year (review must-fix 1).
+    let readsEveryQuarter = true;
+    let subject: JournalRow['subject'] | undefined;
+    for (const quarter of quarters) {
+      const one = await subjectQuarter(context, year, quarter, subjectId, columns);
+      if (one === undefined || one.attendanceOnly) continue;
+      const quarterly = one.weights.quarterly;
+      if (quarterly === null) continue;
+      const closing = closings.get(quarter.id);
+      const found =
+        closing === undefined
+          ? { record: undefined, reopened: false }
+          : await storedRecordOf(context.transaction, quarter.id, subjectId, context.studentId);
+      const stored = found.record;
+      const input = inputOf(
+        context,
+        one,
+        quarterly,
+        await decisionOf(context.transaction, quarter.id, subjectId, context.studentId),
+        // A journal with an unfinished reopening is read live and provisional (task 9.2c).
+        closing !== undefined && !found.reopened,
+      );
+      const outcome =
+        stored === undefined ? studentQuarterOutcome(input) : storedQuarterOutcome(stored);
+      outcomes.set(quarter.number, outcome);
+      if (one.reading !== 'whole') {
+        readsEveryQuarter = false;
+        continue;
+      }
+      const averages =
+        outcome.kind === 'number'
+          ? outcome.result.averages
+          : quarterResult(stored === undefined ? input : storedQuarterInputs(stored)).averages;
+      subject = one.journal.subject;
+      rows.push({
+        quarterId: quarter.id,
+        unit: unitOf(one.journal),
+        attendance: shown(averages.attendance),
+        classwork: shown(averages.classwork),
+        homework: shown(averages.homework),
+        ratingExam: ratingShownOf(one) ? shown(averages.ratingExam) : null,
+        ratingShown: ratingShownOf(one),
+        outcome: outcomeShown(outcome),
+        basedOn: outcome.basedOn,
+        countsFrom: outcome.from,
+        leftSubjectOn: outcome.leftSubjectOn,
+        atLeaving: outcome.atLeaving,
+      });
+    }
+    if (subject === undefined) continue;
+    subjects.push({
+      subject: { id: subjectId, names: subject.names, colour: subject.colour },
+      quarters: rows,
+      year:
+        (year.status === 'closed' || fourthClosed) && readsEveryQuarter
+          ? yearShown(context.goLive, quarters, outcomes, notOfficialOf(closings))
+          : null,
+    });
+  }
+  subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
+  return studentResultsSchema.parse({
+    year,
+    years,
+    quarters: quarters.map((quarter) => ({
+      ...quarter,
+      notInSystem: notInSystem(context.goLive, quarter),
+      notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
+      closed: closings.has(quarter.id),
+    })),
+    subjects,
+  });
+}
+
+async function attendanceIn(
+  context: Context,
+  yearId: string | undefined,
+): Promise<StudentAttendance> {
+  const year = await yearOf(context, yearId);
+  const years = await yearsOf(context);
+  if (year === null) {
+    return studentAttendanceSchema.parse({ year, years, quarters: [], subjects: [] });
+  }
+  const quarters = await quartersOf(context, year.id);
+  const closings = await closingsOf(
+    context.transaction,
+    quarters.map((one) => one.id),
+  );
+  const subjects = [];
+  for (const subjectId of await subjectsOf(context.transaction, context.studentId, year.id, year)) {
+    const rows: unknown[] = [];
+    let subject: JournalRow['subject'] | undefined;
+    for (const quarter of quarters) {
+      const one = await subjectQuarter(context, year, quarter, subjectId);
+      if (one === undefined || one.reading === null) continue;
+      subject = one.journal.subject;
+      const lessons = one.found.lessons.map((lesson) => lesson.lesson);
+      const counts = { present: 0, absent: 0, late: 0, skipped: 0, exempt: 0, unmarked: 0 };
+      for (const lesson of lessons) {
+        if (lesson.mark === null) counts.unmarked += 1;
+        else if (lesson.mark === 1) counts.present += 1;
+        else if (lesson.mark === 0) counts.absent += 1;
+        else if (lesson.mark === 2) counts.late += 1;
+        else if (lesson.mark === 3) counts.skipped += 1;
+        else counts.exempt += 1;
+      }
+      rows.push({
+        quarterId: quarter.id,
+        unit: unitOf(one.journal),
+        attendanceOnly: one.attendanceOnly,
+        average: shown(
+          quarterAttendanceAverage({ attendanceValues: valuesOf(one.weights), lessons }),
+        ),
+        counts,
+      });
+    }
+    if (subject === undefined) continue;
+    subjects.push({
+      subject: { id: subjectId, names: subject.names, colour: subject.colour },
+      quarters: rows,
+    });
+  }
+  subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
+  return studentAttendanceSchema.parse({
+    year,
+    years,
+    quarters: quarters.map((quarter) => ({
+      ...quarter,
+      notInSystem: notInSystem(context.goLive, quarter),
+      notOfficial: closings.get(quarter.id)?.startQuarter === 'not_official',
+      closed: closings.has(quarter.id),
+    })),
+    subjects,
+  });
+}
+
+/** The lessons behind the figures of one subject and quarter, as the reader reads them. */
+function lessonsAnswer(
+  one: SubjectQuarter,
+  quarter: { readonly id: string; readonly number: number },
+  subjectId: string,
+): StudentResultLessons {
+  const whole = one.reading === 'whole' && !one.attendanceOnly;
+  const values = valuesOf(one.weights);
+  const unitNames = new Map(one.found.spans.map((span) => [span.journalId, span.unitName]));
+  const ratingIn = whole && one.weights.quarterly !== null && ratingShownOf(one);
+  return studentResultLessonsSchema.parse({
+    subject: {
+      id: subjectId,
+      names: one.journal.subject.names,
+      colour: one.journal.subject.colour,
+    },
+    quarter: { id: quarter.id, number: quarter.number },
+    reading: whole ? 'whole' : 'attendance',
+    lessons: one.found.lessons.map((counted) => {
+      const { mark } = counted.lesson;
+      const value = mark === null ? null : attendanceValue(mark, values);
+      const worksOf = (
+        works: typeof counted.lesson.classworks,
+        columns: typeof counted.classworkColumns,
+      ) =>
+        !whole
+          ? []
+          : works.map((work, index) => ({
+              workId: columns[index]?.workId,
+              title: columns[index]?.title ?? null,
+              position: columns[index]?.position ?? index + 1,
+              score: work.score,
+              total: work.total,
+              percent: work.score === null ? null : Number(shownPercent(work.score, work.total)),
+            }));
+      return {
+        lessonId: counted.lessonId,
+        date: counted.date,
+        unit: { journalId: counted.journalId, name: unitNames.get(counted.journalId) ?? '' },
+        mark,
+        attendanceValue: value instanceof Fraction ? shown(value) : null,
+        classworks: worksOf(counted.lesson.classworks, counted.classworkColumns),
+        homeworks: worksOf(counted.lesson.homeworks, counted.homeworkColumns),
+      };
+    }),
+    ratingExam: ratingIn ? one.found.ratingExam : null,
+  });
 }
 
 /**
@@ -574,13 +735,7 @@ async function subjectQuarter(
   if (journal === undefined) return undefined;
   const switches = switchesIn(journal, quarter.id);
   if (switches === undefined) return undefined;
-  const reading = await studentRowReading(context.transaction, context.access, {
-    branchId: context.branchId,
-    journal,
-    studentId: context.studentId,
-    day: readingDay(last, context.today),
-    staffId: context.staffId,
-  });
+  const reading = await context.readingOf(journal, readingDay(last, context.today));
   return {
     quarter,
     found,
@@ -730,13 +885,7 @@ async function membershipReadings(context: Context, year: YearRow): Promise<Stud
     };
     for (const journal of journals) {
       if (journal.classId !== row.unit_id && journal.groupId !== row.unit_id) continue;
-      const reading = await studentRowReading(transaction, context.access, {
-        branchId: context.branchId,
-        journal,
-        studentId: context.studentId,
-        day: readingDay(span, context.today),
-        staffId: context.staffId,
-      });
+      const reading = await context.readingOf(journal, readingDay(span, context.today));
       // A journal attendance only in every quarter has no result to read (decision 10).
       const graded = journal.quarters.some((one) => !one.attendanceOnly);
       const counted = reading === 'whole' && !graded ? 'attendance' : reading;

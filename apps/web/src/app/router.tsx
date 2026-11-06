@@ -46,10 +46,12 @@ import { NeverUsedPage } from '@/features/people/never-used-page';
 import { ParentSlipsPage } from '@/features/people/parent-slips-page';
 import { ParentsNeverUsedPage } from '@/features/people/parents-never-used-page';
 import { ParentHomePage } from '@/features/auth/parent-home-page';
+import { PortalAttendancePage } from '@/features/portal/portal-attendance-page';
 import { PortalFrame } from '@/features/portal/portal-frame';
+import { PortalGradesPage } from '@/features/portal/portal-grades-page';
 import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
 import { PortalIndexPage } from '@/features/portal/portal-index-page';
-import { portalSearch } from '@/features/portal/portal-search';
+import { portalQuarterSearch, portalSearch } from '@/features/portal/portal-search';
 import { PortalTimetablePage } from '@/features/portal/portal-timetable-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -296,6 +298,21 @@ const portalHomeworkRoute = createRoute({
   path: '$studentId/homework',
   validateSearch: portalSearch,
   component: PortalHomeworkPage,
+});
+
+/** Task 11.3: the grades of a quarter and the attendance of a week. */
+const portalGradesRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/grades',
+  validateSearch: portalQuarterSearch,
+  component: PortalGradesPage,
+});
+
+const portalAttendanceRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/attendance',
+  validateSearch: portalSearch,
+  component: PortalAttendancePage,
 });
 
 /** The parent's password change by choice (task 11.1). */
@@ -880,7 +897,13 @@ const routeTree = rootRoute.addChildren([
   setUpRoute,
   parentRoute,
   parentPasswordRoute,
-  portalRoute.addChildren([portalIndexRoute, portalTimetableRoute, portalHomeworkRoute]),
+  portalRoute.addChildren([
+    portalIndexRoute,
+    portalTimetableRoute,
+    portalHomeworkRoute,
+    portalGradesRoute,
+    portalAttendanceRoute,
+  ]),
   appRoute.addChildren([
     homeRoute,
     accountRoute,
