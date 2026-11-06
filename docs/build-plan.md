@@ -1402,7 +1402,7 @@ Decided by the owner on 16 October 2026: these tasks are not needed for the rele
 
 Decided by the owner on 20 October 2026: automatic generation (5.10 and 5.11) is built after the release too, first of this list. Until then a timetable is built in the grid by hand, with the rule engine, "Suggest a place" and the readiness check as they are; Release 1 still includes generation.
 
-Decided by the owner on 5 November 2026: Release 2 comes before this list. **9.5a, 9.5b and 9.5c start by 1 March 2027**, whatever is running then: on that date the owner moves them, in this order, in front of the first unticked Release 2 task (a commit by hand or a pull request), so that closing the year, the rollover and the start of the 2027/28 year work by June 2027. The rest of this list (5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c, 9.6) is parked with no date and is started only when the owner moves a task up.
+Decided by the owner on 5 November 2026: Release 2 comes before this list. **9.5a, 9.5b and 9.5c start by 1 March 2027**, whatever is running then: on that date the owner moves them, in this order, in front of the first unticked Release 2 task (a commit by hand or a pull request), so that closing the year, the rollover and the start of the 2027/28 year work by June 2027. The rest of this list (5.10, 5.11, 3.7, 5.7c, 8.3b, 8.3c, 9.6, and 10.1d, added on 6 November 2026) is parked with no date and is started only when the owner moves a task up.
 
 - [ ] **5.10 Solver service**
   - Read: `06` (Auto-generation, Rules), `13`, `edge/timetable` (Generator and editing).
@@ -1491,6 +1491,12 @@ Decided by the owner on 5 November 2026: Release 2 comes before this list. **9.5
   - Read: `docs/handbook/README.md` (Role guides, Languages) and every page, `02`, `12` (Language), the Uzbek and Russian texts of the screens.
   - Build: the role guides of `docs/handbook/roles/`, one per role of `02`, as the README says; then `docs/handbook/uz/` and `docs/handbook/ru/` with every reference page and every role guide in natural Uzbek and Russian, using the words the screens use; the English pages stay the source.
   - Done when: every role of `02` has a guide whose list matches the "Who can use it" tables, each guide links every rule it touches instead of restating it, every English page has both versions with the same headings, rules and cases; the owner corrects the wording afterwards. The builder may split this task.
+
+- [ ] **10.1d The Academic Vice Principal's home as one request, and the load on a production-shaped setup** (owner, 6 November 2026, on pull request #285; parked, not this week)
+  - Read: `12` (Speed targets, Load), `08` (Home pages by role), `edge/system-behaviour`, `docs/progress.md` (the entry of 10.1c and the misses it recorded), the code of 10.1c (`apps/api/src/modules/results/prepared/`, `speed.database.test.ts`, `testing/load-run.ts`).
+  - Build: the Academic Vice Principal's home reads its parts in one request, so its reads no longer queue on the session row's lock (10.1c measured 1.10 to 1.16 s at three times the size against 1 s; the lock stays, owner, 6 November 2026: it orders every sign-in change). Then the load of `12` in the school's pace on a setup shaped like production (two API servers and a separate database, invented data at three times the size), where 10.1c could measure it only on one 4-processor runner.
+  - Done when: the home is under 1 s at `SPEED_SIZE=triple`, alone, with the session lock unchanged; the load of the school's pace is measured on the production-shaped setup, with its 95th percentiles reported, and any target still missed written in `docs/progress.md` and flagged **Look first** on issue #42.
+  - A production-shaped setup costs money on a provider (stop-list item 1): it waits for the owner. The session lock and the sign-in code keep their rules; a change that loosens them is refused.
 
 ## After Release 1
 
