@@ -65,6 +65,32 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 6 November 2026: the Release 2 plan (owner)
+
+Decided by the owner in chat on 6 November 2026, with the `/spec-change` of that day (`docs/spec-changes.md`). The tasks are in `docs/build-plan.md`, Release 2.
+
+| Decision | Reason |
+| --- | --- |
+| The parent portal comes first and is urgent: 11.1 parent accounts and slips, 11.2 and 11.3 the portal pages, 11.4 the Telegram bot and the chat link, 11.5 the digest. Then 11.6 to 11.12 (rating in the portal, announcements and events, instant messages to families, stipend, automatic UIDs, the student portal, the optional assistant) | The owner's vision of 6 November 2026: parents first, Telegram as the main channel, a digest |
+| Parents sign in with a login and password on printed slips; no SMS and no sign-in codes; the portal is a Telegram mini app of the platform's own pages; the digest by the parent's chosen frequency; absence in the digest only for now; students later | The owner's answers to the five questions and the twelve readings approved with the spec wording |
+| Privacy is written into every Release 2 task's Done when: allow and refuse tests for another family's child, a link with portal access off, an unlinked relative, a student who left, another branch, a staff-only comment, and a parent session on every staff route | A parent seeing another family's child is the worst bug of Release 2, as a wrong mark is of Release 1 |
+| The bot token and webhook secret are the owner's (stop-list item 1): the owner creates the bot, sets its menu button and puts the values on Render; the production bot is set up by the owner at go-live of the portal, after 11.5 | No session ever sees a secret; production is the owner's |
+| The parent role's rights are approved in advance task by task in `docs/build-plan.md` (11.1 to 11.5: `parent_accounts` for the Super Admin and the Academic Vice Principal; `portal` view for the parent within the child scope; digest settings and `digest_log` for the Super Admin) | Stop-list item 5 would otherwise stop each task |
+| An owner gate line stands before 11.11 (the student portal) until the owner decides by a `/spec-change` how students sign in | `10` leaves student sign-in to be decided when the student portal is planned |
+
+Readings decided in this plan where the spec is silent, for issue #42 (each with the recommendation taken):
+
+1. Parent logins take the staff form (`a.karimov`), built from the first and last words of the relative's full name, never reused.
+2. A slip is printed in the language chosen when printing, and names the bot and how to open it.
+3. The module and feature name `portal` is added to the list of names (`CLAUDE.md`, Repository layout; Standing decisions) by task 11.2.
+4. **Look first.** The switched-off check of `relative_accounts` (0036) is removed by a new migration in 11.1, because the requirement changed (the migration's own comment says Release 2 drops it); no existing row changes.
+5. Launch data from Telegram is accepted for 24 hours after Telegram signed it; older data asks for the password.
+6. The bot uses the Bot API through Node's own `fetch` and `crypto`: no new dependency.
+7. **Look first.** The Content Security Policy allows Telegram's mini app script, on the portal pages only.
+8. A chat that blocked the bot is marked and skipped by the digest until the parent opens the bot again.
+9. The attendance counts of the digest's summary line come from the same attendance service as the staff pages; no figure is calculated in the portal or the digest.
+10. The authors of announcements (11.7) are a permission decision proposed in that task's plan and decided by the owner.
+
 ## 5 November 2026: Release 2 before the deferred list (owner)
 
 Decided by the owner in chat on 5 November 2026.

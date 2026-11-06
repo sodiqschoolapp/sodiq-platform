@@ -22,7 +22,7 @@ These rules apply to every page and every role.
 
 ## Language
 
-- Uzbek, Russian and English are complete: every label, message, email, SMS and export. A missing translation fails the build.
+- Uzbek, Russian and English are complete: every label, message, email, Telegram message and export. A missing translation fails the build.
 - Each person chooses a language; the choice is remembered. Names of people, subjects and classes are stored as entered.
 - Dates, numbers and weekdays follow the chosen language. The week starts on Monday.
 

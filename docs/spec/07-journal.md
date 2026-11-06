@@ -100,7 +100,7 @@ One rule covers every figure: a student is measured only on the lessons they wer
 | Stipend list | A candidate with an "Exempt" or flagged result is marked for the Super Admin's decision. |
 | Attendance reports and daily percent | Exempt is its own category. It is never counted as absent, and exempt students are taken out of the number expected that day. |
 | Journal discipline report | Exempt cells do not count as unmarked. |
-| Notices to parents (Release 2) | No absence notice is sent for an exempt lesson. |
+| The parent portal and digest (Release 2) | An exempt lesson is never shown or sent as an absence. |
 
 ### Problem cases
 

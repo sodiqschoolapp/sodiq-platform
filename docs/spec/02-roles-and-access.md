@@ -17,8 +17,8 @@ There are 16 user types. One person has one account and can hold several roles (
 | Senior Head Teacher | Own subjects in all branches | Everything a Head Teacher can do, for the subjects given to them, in every branch. Sees the Head Teachers of those subjects and the requests waiting for them. Can keep a master plan for all branches. Also works as a Teacher. |
 | Head Teacher | Own subjects in own branch | Oversees the subjects given to them in a branch. Full student list across classes and groups; exports it with the Basic fields. Views journals and lesson plans of those subjects, and the timetables of the teachers who teach them. Moves students between groups of those subjects. Approves unlock requests and requests to edit a lesson plan after the window, for those subjects. Keeps master plans. Also works as a Teacher. |
 | Teacher | Own lessons; the students they teach | Own timetable. The students they teach (the members of their classes and groups in the teaching load in force), with the Basic fields only, and no other student. Journals of own classes and groups: attendance, marks, comments. Rating. Lesson plans. |
-| Student | Self | Own timetable, attendance, marks, homework. Release 2. |
-| Parent | Own children | The same for each child, plus notifications. Release 2. |
+| Student | Self | Own timetable, attendance, marks, homework. Release 2, after the parent portal. |
+| Parent | Own children | For each child whose link has portal access on: timetable, homework, grades with the comments visible to parents, attendance, in the portal (a Telegram mini app), plus a digest in the Telegram bot. Changes no data. Release 2. |
 | HR, Nurse, Psychologist, Librarian | Own branch | Own module. Release 3. |
 
 ## Head Teachers and Senior Head Teachers
@@ -38,7 +38,7 @@ There are 16 user types. One person has one account and can hold several roles (
 - Permissions are a table: rows are roles, columns are actions (view, create, edit, archive, export) per area. At first the table is fixed in code for the 16 roles. A screen where the Super Admin edits it and adds new roles comes later; it changes where the table is kept, not how the checks work.
 - Parents see only their own children. Medical and psychologist records are visible only to the roles that own them.
 - Every sign-in, change, archive and export is written to an audit log that nobody can edit.
-- There is no open sign-up. Every account is created by an administrator. Staff sign in with login and password and must change the password at first sign-in. Two-step verification is required for the Super Admin and Academic Vice Principal and optional for others. Parents and students sign in by phone number and SMS code from Release 2.
+- There is no open sign-up. Every account is created by an administrator. Staff sign in with login and password and must change the password at first sign-in. Two-step verification is required for the Super Admin and Academic Vice Principal and optional for others. From Release 2 parents also sign in with a login and password, given on a printed slip and changed at first sign-in, without two-step verification; an administrator resets a forgotten password. Students have no sign-in in the first version of Release 2.
 - Admissions manager and accountant, which appear in the older documents, are not created now.
 
 ## Accounts and sign-in: build order
@@ -47,6 +47,6 @@ Sign-in starts simple and grows. Permission checks do not: they are in place fro
 
 | When | Sign-in | Permissions |
 | --- | --- | --- |
-| From the first piece of work | Accounts created by an administrator. Login and password. Password change at first sign-in. Password reset by an administrator. Sessions end after a period without use. | Every record carries its branch. Every request passes one permission check on the server. A short list of routes works without sign-in: the health check and sign-in (all its steps), and later password reset by email. Each is declared public in code, and a test holds the exact list. Tests for what each role can and cannot do. Roles and permissions fixed in code. |
+| From the first piece of work | Accounts created by an administrator. Login and password. Password change at first sign-in. Password reset by an administrator. Sessions end after a period without use. | Every record carries its branch. Every request passes one permission check on the server. A short list of routes works without sign-in: the health check and sign-in (all its steps), later password reset by email, and from Release 2 the Telegram bot's webhook, which checks the secret Telegram sends with each update. Each is declared public in code, and a test holds the exact list. Tests for what each role can and cannot do. Roles and permissions fixed in code. |
 | Before the school goes live | Two-step sign-in for the Super Admin and Academic Vice Principal. A limit on failed sign-in attempts. Password reset by email. | No change: roles and permissions stay fixed in code. The permission matrix screen is built after go-live. |
-| Release 2 | Phone number and SMS code for parents and students. | Student and parent access switched on. |
+| Release 2 | Login and password for parents, on slips printed class by class; signing in once in the Telegram mini app links the parent's chat. No SMS and no sign-in codes. Students later. | Parent access switched on; student access with the student portal. |
