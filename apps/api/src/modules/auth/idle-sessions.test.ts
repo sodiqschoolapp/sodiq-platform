@@ -256,9 +256,9 @@ describe('sessions over time', () => {
       });
     });
 
-    // Task 10.1c (code review round 1, finding 1): the reads of one page come at once with one
-    // session; the use takes the session's row last, so they queue only on the use itself, and
-    // a change that holds the row (an account lock) is still waited for.
+    // Task 10.1c (code review round 1, finding 1): the use of a session waits for a change that
+    // holds the session's row (an account lock, a password change, a second step) and reads the
+    // account after it; two uses at the same moment both answer.
     describe('while another request holds the session row', () => {
       it('still refuses a session that is over by time, writing its end once the row is free', async () => {
         clock.set('2026-10-05T09:00:00+05:00');
