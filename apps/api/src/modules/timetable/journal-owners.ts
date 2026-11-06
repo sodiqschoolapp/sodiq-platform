@@ -98,6 +98,14 @@ export function daysWithoutTeacher(
   until: string,
 ): { from: string; until: string; vacancyId: string }[] {
   const found: { from: string; until: string; vacancyId: string }[] = [];
+  // Only a run that names a vacancy gives the owner `none` (`ownerOn`): with none in the range,
+  // no day is without a teacher, and the days are not walked (task 10.1c: the closing checklist
+  // walked every day of every journal of the quarter, 45 ms of its read at three times the size).
+  if (
+    !runs.some((run) => run.vacancy && run.from < until && (run.until === null || run.until > from))
+  ) {
+    return found;
+  }
   for (let day = from; day < until; day = addDays(day, 1)) {
     const owner = ownerOn(runs, periods, out, day);
     if (owner?.kind !== 'none') continue;

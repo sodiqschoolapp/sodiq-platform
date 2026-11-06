@@ -1198,6 +1198,8 @@ export interface Timing {
   readonly what: string;
   readonly target: string;
   readonly runs: readonly number[];
+  /** Task 10.1c: whether the read's last answer was worked out from source ("updating"). */
+  readonly fromSource?: boolean;
 }
 
 export const median = (runs: readonly number[]) => {

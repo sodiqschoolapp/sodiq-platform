@@ -2,6 +2,22 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 10.1c The six reads missed at three times the size, and the load run
+
+- **Two minutes behind** (decision A): a reader reads a prepared unit as it is while its oldest unseen change (or passed `next_change_at`) is at most `PREPARED_BEHIND_MS` old. The 5 to 7 s of the ratings, the early-warning list and the branch summary in 10.1b were their from-source path after the run's own saves.
+- **Faster reads and preparation**: decoded `outcomes` and `figures` kept per process (`decoded-cache.ts`); attention lists, plan rows and `daysWithoutTeacher` narrowed; the job prepares a subject's three units together (outcomes worked out once), the longest behind first, 40 s a minute.
+- **Speed run 42172306290 on dcc28b2** (triple), alone: every target met. Vice Principal's home 790 / 932 / 790 ms (1113 to 1159 on 2836150, the same code for it: the margin is thin), results page 657 to 764 ms, ratings, early-warning list and branch summary 29 to 208 ms.
+- **Look first, from source** (decision 4): 2962 to 3212 ms, over `08`'s 2 s, when a unit is more than two minutes behind.
+- **Load, two API processes on the runner's 4 processors with PostgreSQL.** The school's pace (200 staff, 10 to 30 s, asserted): every 95th percentile within target but three, **Look first**: the rating of the classes 20.7 s (4 of 49 from source while the job caught up), search 238 ms (200), the week of a class 1193 ms (1000). The present pace (1,000 users, reported), **Look first**: saturated, medians 23.6 to 38.2 s, 95th percentiles 30.7 to 46.6 s for every action, no failed request (14,003 answers, all 200).
+- **Look first, kept**: the use of a session holds its row's lock to the end of its transaction, so a page's reads of one session queue on it. Two changes were tried and reverted: `skip locked` let a request through while the account was being locked; taking the lock last made a request read the account before a concurrent password change or second step (the page walk stuck).
+
+Left out: a preparation fast enough that no report goes to source under steady saves at triple (finer units than a subject).
+
+The next sessions must know:
+
+- A prepared unit within two minutes is read as it is; a test of "from source" checks the figures too (`.claude/rules/database.md`).
+- The Speed run prints its tables and "Where the time went" to the job log at the large sizes; `SPEED_BRANCHES=1` builds one triple branch on a session's machine.
+
 ## 5 November 2026: the owner's open items, and the order after Phase 10 (no task)
 
 - **Go-live checklist**: sections 1 to 3 ticked by the owner (the security headers not checked by hand, accepted as a known risk on 29 October; encryption at rest from the providers' documentation). Section 4 is not started: no branch is fully set up on production yet; the school starts using production in a few days. The approval lines of `checklist.md` and `pilot.md` stay pending.

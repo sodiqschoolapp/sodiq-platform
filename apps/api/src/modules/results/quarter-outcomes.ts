@@ -80,7 +80,48 @@ async function membersOf(
  * The outcomes of the quarter's graded journals of the subjects named (every
  * subject when `subjectIds` is `null`), in the branch of the transaction.
  */
-export async function quarterOutcomes(
+/**
+ * Task 10.1c (code review round 1, finding 2): the transactions whose `quarterOutcomes` are kept
+ * and shared. A preparation of the report totals reads a subject's outcomes for three kinds of
+ * unit (`outcomes`, `figures`, `closing`) in one transaction that writes nothing they read
+ * before it has read them, so it works them out once. Only such a transaction is registered
+ * (`shareOutcomesIn`): any other reads them again each time, as before.
+ */
+const shared = new WeakMap<
+  object,
+  Map<string, Promise<{ journals: ReadonlyMap<string, JournalOutcomes> }>>
+>();
+
+/** Keeps the `quarterOutcomes` of `transaction` for its later reads with the same input. */
+export function shareOutcomesIn(transaction: Transaction): void {
+  if (!shared.has(transaction)) shared.set(transaction, new Map());
+}
+
+export function quarterOutcomes(
+  transaction: Transaction,
+  input: Parameters<typeof outcomesOfQuarter>[1],
+): Promise<{ journals: ReadonlyMap<string, JournalOutcomes> }> {
+  const kept = shared.get(transaction);
+  if (kept === undefined) return outcomesOfQuarter(transaction, input);
+  const key = JSON.stringify([
+    input.branchId,
+    input.timeZone,
+    input.now.toISOString(),
+    input.quarter.id,
+    input.quarter.startDate,
+    input.quarter.endDate,
+    input.subjectIds === null ? null : [...input.subjectIds].sort(),
+    input.journalIds === undefined ? null : [...input.journalIds].sort(),
+    input.quarterClosed === true,
+  ]);
+  const found = kept.get(key);
+  if (found !== undefined) return found;
+  const reading = outcomesOfQuarter(transaction, input);
+  kept.set(key, reading);
+  return reading;
+}
+
+async function outcomesOfQuarter(
   transaction: Transaction,
   input: {
     readonly branchId: string;
