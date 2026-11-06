@@ -333,7 +333,8 @@ describe('classwork and homework in the grid', () => {
 
   // Task 10.6: a work added by hand before 10.6 shows "HW 1" and is renamed in its dialog; a
   // planned work has no rename.
-  it('renames a work added by hand from its dialog, and offers no rename for a planned work', async () => {
+  it('renames a work added by hand from its dialog, shows a refusal there, and offers no rename for a planned work', async () => {
+    let renames = 0;
     const given: JournalWork = {
       ...TEST,
       id: uid(81),
@@ -374,15 +375,30 @@ describe('classwork and homework in the grid', () => {
       'GET /api/auth/session': () =>
         json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
-      [`PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`]: () =>
-        json({
+      [`PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`]: () => {
+        renames += 1;
+        // The first rename is refused: the lesson is locked; the second is taken.
+        if (renames === 1) {
+          return json(
+            {
+              error: {
+                code: 'journal_locked',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+              },
+            },
+            409,
+          );
+        }
+        return json({
           ...SAVED,
           id: uid(81),
           kind: 'homework',
           total: null,
           title: 'Exercises',
           version: 2,
-        }),
+        });
+      },
     });
     renderApp(`/journal/${JOURNAL}`);
     fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
@@ -391,6 +407,9 @@ describe('classwork and homework in the grid', () => {
       target: { value: 'Exercises' },
     });
     fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    // Plan review, correction 2: the refusal is told inside the dialog.
+    expect(await within(dialog).findByText(en.errors.journal_locked)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
     await waitFor(() => {
       expect(
         calls
@@ -398,7 +417,10 @@ describe('classwork and homework in the grid', () => {
             (call) => call.route === `PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`,
           )
           .map((call) => call.body),
-      ).toEqual([{ title: 'Exercises', version: 1 }]);
+      ).toEqual([
+        { title: 'Exercises', version: 1 },
+        { title: 'Exercises', version: 1 },
+      ]);
     });
     fireEvent.click(within(dialog).getByRole('button', { name: en.journal.entry.close }));
     // The planned column of the first lesson: its title comes from the plan.

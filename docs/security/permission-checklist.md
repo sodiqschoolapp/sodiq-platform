@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 493, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 468.
-- Routes with a limit inside the route: 153.
-- Routes that take an id: 388, with 823 ids (branch 729, school 76, own 2, none 16).
+- Routes of the application: 494, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 469.
+- Routes with a limit inside the route: 154.
+- Routes that take an id: 389, with 825 ids (branch 731, school 76, own 2, none 16).
 - Areas of the permission table: 58.
 
 ## Routes without a role
@@ -530,6 +530,8 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `PUT /api/journal/lessons/:lessonId/delivery` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
 | `PUT /api/journal/lessons/:lessonId/homework-given` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
 | `PUT /api/journal/lessons/:lessonId/homework-given` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
+| `PUT /api/journal/lessons/:lessonId/works/:workId/title` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
+| `PUT /api/journal/lessons/:lessonId/works/:workId/title` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
 | `PUT /api/journal/lessons/:lessonId/works/not-held` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
 | `PUT /api/journal/lessons/:lessonId/works/not-held` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
 | `PUT /api/journal/lessons/:lessonId/works/total` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
@@ -1295,6 +1297,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/journal/lessons/:lessonId/delivery` | `path:lessonId` | lesson | branch | `src/modules/plans/plan-delivery.test.ts > answers 404 for the delivery of another branch’s or an unknown lesson, leaving every row of both branches` |
 | `PUT /api/journal/lessons/:lessonId/homework-given` | `path:lessonId` | lesson | branch | `src/modules/plans/plan-delivery.test.ts > refuses a homework of another lesson, and 404s an unknown or other-branch homework` |
 | `PUT /api/journal/lessons/:lessonId/homework-given` | `body:planWorkIds` | plan work | branch | `src/modules/plans/plan-delivery.test.ts > refuses a homework of another lesson, and 404s an unknown or other-branch homework` |
+| `PUT /api/journal/lessons/:lessonId/works/:workId/title` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
+| `PUT /api/journal/lessons/:lessonId/works/:workId/title` | `path:workId` | journal work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `PUT /api/journal/lessons/:lessonId/works/not-held` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `PUT /api/journal/lessons/:lessonId/works/not-held` | `body:column.workId` | journal work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `PUT /api/journal/lessons/:lessonId/works/not-held` | `body:column.planWorkId` | plan work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |

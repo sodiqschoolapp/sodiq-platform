@@ -158,6 +158,28 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 - In lesson mode on a phone, the topic, the classwork and the homework stand at the top.
 - The **Works** button inside the card opens the works of the lesson (totals, "not held", works added by hand).
 
+## Naming a work added by hand
+
+<!-- Sources: spec 07 (Entering data: Classwork and homework), edge/journal ("A lesson is held with no plan item"), edge/lesson-plans (titles of at most 60 characters); the owner's /spec-change of 5 November 2026; task 10.6, decisions 1 to 8 -->
+
+**What it is.** At a lesson held with no plan item the teacher may add classworks and homework given by hand. Each one gets a title when it is added, and the title is the column title, as a plan's title would be.
+
+**How it works.**
+
+1. Open the lesson card, then **Works** (or **Works of the lesson** in lesson mode).
+2. Press **Add classwork** or **Add homework given**, type the title and press **Add**.
+3. To rename it, open the work from its column (the **…** of the header) and change its title.
+
+**Who can use it.** Whoever may add a work at that lesson: the lesson's teacher, a substitute or acting teacher on the day.
+
+**Rules.**
+
+- The title is required and is at most 60 characters; spaces around it are dropped.
+- A work can be renamed while the lesson can still be edited (its edit days, or an open unlock). Each change is kept in the work's history.
+- When the plan item is written later, its works take over the columns in order and their titles replace the typed ones; the typed titles stay in the history. A work added by hand with no match keeps its own title.
+- A work that came from the plan is renamed in the plan, not in the journal.
+- Works added by hand before this change have no title and show as "CW 1" or "HW 1" until someone renames them.
+
 ## Topic not delivered and homework not given
 
 <!-- Sources: edge/lesson-plans ("A substitute supervises the class", "On Thursday it is recorded that Monday's lesson did not happen"), spec 09 (In the journal); task 8.8, decisions 4 to 9 and 18 -->

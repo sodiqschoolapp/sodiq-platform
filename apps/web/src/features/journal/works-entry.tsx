@@ -406,6 +406,7 @@ export function useWorksEntry(
           grid={grid}
           language={i18n.language}
           busy={changing || notGraded.isPending}
+          failure={failure}
           nameOfWork={nameOfWork}
           onAdd={(kind, title) => {
             run({
@@ -441,6 +442,7 @@ export function useWorksEntry(
           work={work}
           lastTotal={grid.lastTotal}
           busy={changing}
+          failure={failure}
           name={nameOfWork(work)}
           onTotal={(total) => {
             setTotal(lesson, work, total);
@@ -507,6 +509,7 @@ function LessonWorksDialog({
   grid,
   language,
   busy,
+  failure,
   nameOfWork,
   onAdd,
   onUndo,
@@ -518,6 +521,8 @@ function LessonWorksDialog({
   grid: JournalGrid;
   language: string;
   busy: boolean;
+  /** Task 10.6 (plan review, correction 2): a refused add is shown in the dialog. */
+  failure: unknown;
   nameOfWork: (work: JournalWork) => string;
   onAdd: (kind: 'classwork' | 'homework', title: string) => void;
   onUndo: (work: JournalWork) => void;
@@ -546,6 +551,7 @@ function LessonWorksDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 text-sm">
+          <FailureAlert error={failure} />
           {lesson.canEnterWorks && waiting > 0 && (
             <div>
               <Button variant="secondary" disabled={busy} onClick={onNotGraded}>
@@ -656,6 +662,7 @@ function WorkDialog({
   work,
   lastTotal,
   busy,
+  failure,
   name,
   onTotal,
   onNotHeld,
@@ -668,6 +675,8 @@ function WorkDialog({
   work: JournalWork;
   lastTotal: number | null;
   busy: boolean;
+  /** Task 10.6 (plan review, correction 2): a refused rename is shown in the dialog. */
+  failure: unknown;
   name: string;
   onTotal: (total: number) => void;
   onNotHeld: (notHeld: boolean) => void;
@@ -725,6 +734,7 @@ function WorkDialog({
             </div>
           )}
         </form>
+        <FailureAlert error={failure} />
         {/* Task 10.6: a work added by hand is renamed while the lesson can be edited. */}
         {enter && work.unplanned && work.id !== null && (
           <WorkTitleForm
