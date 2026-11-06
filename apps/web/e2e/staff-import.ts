@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { heading } from './steps';
+import { heading, headerLink } from './steps';
 
 // Written by the seed of the API (`STAFF_IMPORT_FILE` of apps/api/src/testing/e2e/import-file.ts).
 const FILE = path.join(tmpdir(), 'sodiq-e2e-staff-import.xlsx');
@@ -21,7 +21,7 @@ export async function importStaff(page: Page): Promise<void> {
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
     .selectOption({ label: 'Years browser test branch' });
   await expect(heading(page, en.people.staff.title)).toBeVisible();
-  await page.getByRole('link', { name: en.people.staffImport.open, exact: true }).click();
+  await headerLink(page, en.people.staffImport.open).click();
   await expect(heading(page, en.people.staffImport.title)).toBeVisible();
 
   const download = page.waitForEvent('download');

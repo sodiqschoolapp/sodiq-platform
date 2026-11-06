@@ -2,15 +2,21 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
+import { watchPage, whatPageShows } from './diagnose';
 import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { xlsxTexts } from './xlsx-text';
 
 /** The file a click saves, read back. */
 async function saved(page: Page, click: () => Promise<void>): Promise<Buffer> {
   const started = page.waitForEvent('download');
-  await click();
-  const file = await started;
-  return readFile(await file.path());
+  try {
+    await click();
+    const file = await started;
+    return readFile(await file.path());
+  } catch (error) {
+    // The click or the download did not finish on CI once (6 November 2026): say what was there.
+    throw new Error(`No file was saved: ${await whatPageShows(page)}`, { cause: error });
+  }
 }
 
 // docs/spec/07-journal.md, last paragraph: "Export to Excel and PDF, and print, for a month or a
@@ -23,6 +29,7 @@ test('a Principal exports a journal to Excel and downloads the export of the bra
   page,
 }) => {
   test.setTimeout(90_000);
+  watchPage(page);
   const account = accountOf('exportsPrincipal');
   await page.goto('/sign-in');
   await languageChooser(page).selectOption('en');

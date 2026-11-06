@@ -48,11 +48,14 @@ export async function createEmptyDatabase(name: string): Promise<string> {
  * Drops a database whose connections were just closed, or does nothing when it
  * does not exist. A backend lives a moment longer than the connection that was
  * just closed. `with (force)` would have to terminate it, and the owner may not
- * terminate a backend of the application user: wait until it is gone.
+ * terminate a backend of the application user: wait until it is gone. Up to 30 s: the job
+ * queue of `worker.test.ts` closes its pool after `stop`, and on a busy CI runner that took more
+ * than the 5 s this waited before, so the drop failed ("permission denied to terminate process",
+ * 5 November 2026).
  */
 export async function dropDatabaseOnceUnused(name: string): Promise<void> {
   await onServer(async (client) => {
-    for (let attempt = 0; attempt < 100; attempt += 1) {
+    for (let attempt = 0; attempt < 600; attempt += 1) {
       const found = await client.query<{ open: number }>(
         'select count(*)::int as open from pg_stat_activity where datname = $1',
         [name],
