@@ -14,13 +14,14 @@ const PARENT = sessionOf({
 });
 
 describe('the frame of a parent', () => {
-  it('opens in place of the staff home page, with language, password and sign-out', async () => {
+  it('opens as the account page, with language, password, sign-out and the way back to the portal', async () => {
     const calls = fakeApi({ 'GET /api/auth/session': () => json(PARENT) });
-    renderApp('/');
+    renderApp('/parent');
     await screen.findByRole('heading', { name: en.parent.title });
     expect(screen.getByText('Dilfuza Karimova')).toBeDefined();
     expect(screen.getByRole('link', { name: en.parent.password })).toBeDefined();
     expect(screen.getByRole('button', { name: en.parent.signOut })).toBeDefined();
+    expect(screen.getByRole('link', { name: en.parent.portal })).toBeDefined();
     // No staff menu, and no call of a staff route.
     expect(screen.queryByRole('navigation', { name: en.layout.menu })).toBeNull();
     expect(
@@ -28,10 +29,13 @@ describe('the frame of a parent', () => {
     ).toEqual([]);
   });
 
-  it('sends a parent away from a staff page', async () => {
-    fakeApi({ 'GET /api/auth/session': () => json(PARENT) });
+  it('sends a parent away from a staff page, to the portal (task 11.2)', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT),
+      'GET /api/portal/children': () => json({ children: [] }),
+    });
     renderApp('/people/staff');
-    await screen.findByRole('heading', { name: en.parent.title });
+    await screen.findByText(en.portal.noChild);
   });
 
   it('is not open to staff', async () => {

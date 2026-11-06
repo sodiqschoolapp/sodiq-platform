@@ -12,16 +12,18 @@ import { PUBLIC_ROUTE } from '../auth/session.guard.js';
 import type { Requirement } from './permission-check.js';
 
 /**
- * Who may call a route. Every route declares exactly one of the three, on the
+ * Who may call a route. Every route declares exactly one of the four, on the
  * handler itself:
  *
  * - `@Public()`: works without sign-in (the short list of `public-routes.test.ts`);
  * - `@AnySignedIn()`: every signed-in account, for its own account only;
- * - `@Requires(area, action)`: a role that the permission table gives the action.
+ * - `@Requires(area, action)`: a role that the permission table gives the action;
+ * - `@PortalChild()`: a parent session, for a child of its own (task 11.2).
  */
 export type RouteAccess =
   | { kind: 'public' }
   | { kind: 'any_signed_in'; parent: boolean }
+  | { kind: 'portal' }
   | ({ kind: 'requires' } & Requirement);
 
 const ACCESS = Symbol('ACCESS');
@@ -61,6 +63,20 @@ export function declarationsOf(handler: object): RouteAccess[] {
  */
 export const AnySignedIn = (options: { parent?: true } = {}): MethodDecorator =>
   declare({ kind: 'any_signed_in', parent: options.parent === true });
+
+/**
+ * A route of the parent portal (task 11.2, pull request #294, decision 1, Look first). The
+ * guard lets in a parent session only, when the permission table gives the `parent` role
+ * `view` in the `portal` area; every staff session is refused, the Super Admin's too (build
+ * plan 11.2: "no staff role has it"). A Parent account has no assignment (0158), so
+ * `Requires` cannot let it in. The route then checks the child scope on every request
+ * (`portalChild` of `modules/portal/portal-scope.ts`): the guard decides the role only.
+ */
+export const PortalChild = (): MethodDecorator =>
+  applyDecorators(
+    declare({ kind: 'portal' }),
+    ApiResponse({ status: 403, schema: toOpenApiSchema(apiErrorSchema, 'output') }),
+  );
 
 export interface RequiresOptions {
   /** `none` for school-wide work, which names no branch. Left out: the branch of the request. */

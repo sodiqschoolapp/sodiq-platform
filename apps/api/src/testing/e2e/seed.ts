@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import { createDatabase } from '../../database/database.js';
-import { Transactions } from '../../database/transactions.js';
+import { MOMENT_SETTING, Transactions } from '../../database/transactions.js';
 import { Assignments } from '../../modules/access/assignments.service.js';
 import { Audit } from '../../modules/audit/audit.service.js';
 import { Accounts } from '../../modules/auth/accounts.service.js';
@@ -8031,6 +8031,33 @@ try {
   });
   seeded.parentSlips = { login: slipsVice.login, password: slipsVice.firstPassword };
 
+  // Task 11.2: the parent portal. A branch of its own with a year around today, and a mother
+  // of two children, one in "7 Seeded" and one in "8 Seeded" (below), with a Parent account.
+  const portalBranch = await insertBranch(migrator, 'Portal browser test branch');
+  classBranches.push(portalBranch);
+  const portalVice = await create('Shoira', 'Toshpulatova');
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: portalBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: portalBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+  });
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
@@ -8116,6 +8143,231 @@ try {
           valid_until: slipsUntil,
           own_until: slipsUntil,
           cause: 'placement',
+        })
+        .execute();
+    });
+  }
+
+  // Task 11.2: the two children of the portal branch and their mother's Parent account.
+  const portalUntil = isoDate(new Date(yearStart.getTime() + 365 * dayMs));
+  const portalClasses = await migrator
+    .selectFrom('classes')
+    .select(['id', 'grade'])
+    .where('branch_id', '=', portalBranch)
+    .orderBy('grade')
+    .execute();
+  const portalChildren: readonly (readonly [string, string, number])[] = [
+    ['Kamron', 'Usmonov', 7],
+    ['Nilufar', 'Usmonova', 8],
+  ];
+  const mother: { id: string | null } = { id: null };
+  for (const [index, [first, last, grade]] of portalChildren.entries()) {
+    const classId = portalClasses.find((one) => one.grade === grade)?.id ?? '';
+    await migrator.transaction().execute(async (transaction) => {
+      const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+      const id = found.rows[0]?.id ?? '';
+      const uid = `PORTAL-E2E-${String(index + 1)}`;
+      await transaction
+        .insertInto('students')
+        .values({
+          id,
+          branch_id: portalBranch,
+          uid,
+          first_name: first,
+          last_name: last,
+          name_key: studentNameKey(last, first),
+          sex: index === 0 ? 'male' : 'female',
+          birth_date: '2013-05-06',
+          grade,
+          starts_on: startDate,
+          created_by: portalVice.id,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_uids')
+        .values({ uid, student_id: id, branch_id: portalBranch, held_from: yearStart })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({ student_id: id, branch_id: portalBranch, number: uid, signed_on: startDate })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: id,
+          branch_id: portalBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      if (mother.id === null) {
+        mother.id = await linkRelative(transaction, id, portalBranch, yearStart, {
+          fullName: 'Feruza Usmonova',
+        });
+      } else {
+        await transaction
+          .insertInto('student_relatives')
+          .values({
+            student_id: id,
+            branch_id: portalBranch,
+            relative_id: mother.id,
+            relationship: 'mother',
+            main_contact: true,
+            linked_at: yearStart,
+          })
+          .execute();
+      }
+      await transaction
+        .insertInto('class_memberships')
+        .values({
+          branch_id: portalBranch,
+          student_id: id,
+          class_id: classId,
+          valid_from: startDate,
+          valid_until: portalUntil,
+          own_until: portalUntil,
+          cause: 'placement',
+        })
+        .execute();
+    });
+  }
+  const portalParent = await create('Feruza', 'Usmonova');
+  await migrator.transaction().execute(async (transaction) => {
+    await sql`select set_config(${MOMENT_SETTING}, ${yearStart.toISOString()}, true)`.execute(
+      transaction,
+    );
+    await transaction
+      .updateTable('relative_accounts')
+      .set({ account_id: portalParent.id, switched_on_at: yearStart })
+      .where('relative_id', '=', mother.id ?? '')
+      .execute();
+  });
+  seeded.portal = { login: portalParent.login, password: portalParent.firstPassword };
+
+  // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
+  // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,
+  // checked at yesterday's: the portal shows the week and the homework of Kamron.
+  {
+    const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+    const lessonsKit = await LessonsKit.create(migrator);
+    const biology = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Biology',
+      journalType: 'graded',
+    });
+    const year = await migrator
+      .selectFrom('academic_years')
+      .select(['id', sql<string>`end_date::text`.as('end')])
+      .where('branch_id', '=', portalBranch)
+      .executeTakeFirstOrThrow();
+    const quarterDates: [string, string][] = [
+      [startDate, plus(20)],
+      [plus(30), plus(90)],
+      [plus(100), plus(170)],
+      [plus(180), year.end],
+    ];
+    const quarters: string[] = [];
+    for (const [index, [start, end]] of quarterDates.entries()) {
+      const quarter = await migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year.id)
+        .where('number', '=', index + 1)
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      quarters.push(quarter.id);
+    }
+    const weights = { attendance: 20, classwork: 40, homework: 40 };
+    await migrator
+      .insertInto('subject_daily_weights')
+      .values({ branch_id: portalBranch, subject_id: biology, ...weights })
+      .execute();
+    await migrator
+      .insertInto('subject_quarter_weights')
+      .values(
+        quarters.map((quarter) => ({
+          branch_id: portalBranch,
+          subject_id: biology,
+          quarter_id: quarter,
+          ...weights,
+        })),
+      )
+      .execute();
+    const kamronClass = portalClasses.find((one) => one.grade === 7)?.id ?? '';
+    const source = await lessonsKit.source(
+      portalBranch,
+      year.id,
+      [{ classId: kamronClass, groupId: null, subjectId: biology }],
+      startDate,
+    );
+    const row = await migrator
+      .selectFrom('teaching_load_rows')
+      .select('teacher_id')
+      .where('id', '=', source.lessons[0]?.loadRowId ?? '')
+      .executeTakeFirstOrThrow();
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: portalBranch,
+        academic_year_id: year.id,
+        class_id: kamronClass,
+        group_id: null,
+        subject_id: biology,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    const lessonOn = new Map<number, string>();
+    for (let offset = -7; offset <= 7; offset += 1) {
+      const date = plus(offset);
+      const lessonId = await migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: portalBranch,
+            academic_year_id: year.id,
+            quarter_id: quarters[0] ?? '',
+            lesson_date: date,
+            starts_at: new Date(`${date}T08:00:00+05:00`),
+            ends_at: new Date(`${date}T08:45:00+05:00`),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        return (
+          await transaction
+            .insertInto('lessons')
+            .values({
+              branch_id: portalBranch,
+              block_id: block.id,
+              lesson_date: block.lesson_date,
+              starts_at: block.starts_at,
+              ends_at: block.ends_at,
+              class_id: kamronClass,
+              subject_id: biology,
+              teacher_id: row.teacher_id,
+              load_row_id: source.lessons[0]?.loadRowId ?? '',
+              pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+      lessonOn.set(offset, lessonId);
+    }
+    await migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${`${plus(-2)}T09:00:00+05:00`}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: portalBranch,
+          lesson_id: lessonOn.get(-1) ?? '',
+          source_lesson_id: lessonOn.get(-2) ?? '',
+          kind: 'homework',
+          title: 'Read pages 20 to 24',
         })
         .execute();
     });

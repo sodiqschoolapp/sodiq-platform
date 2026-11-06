@@ -899,6 +899,19 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'create', 'export'],
   }),
   /**
+   * The parent portal (task 11.2, pull request #294): the pages of the own children of a
+   * Parent account, read only (`10`, What parents see). Approved by the owner on 6 November
+   * 2026 with the spec change (build plan 11.2, stop-list item 5): "the permission area
+   * `portal` (view only) for the `parent` role, limited to the child scope ...; no staff
+   * role has it". A route of the area is declared `@PortalChild()`: the guard lets in a parent
+   * session only, and the route checks the child scope on every request. Not given to the
+   * Super Admin (`OWN_FAMILY_AREAS`): `edge/close-relatives`, "the staff account does not
+   * show the parent view".
+   */
+  portal: rows({
+    parent: ['view'],
+  }),
+  /**
    * The Super Admin's forced delete of a dated lesson and its restore within
    * 30 days, and the store of forced deletes (task 5.8b, pull request #195,
    * decision 10): 06, Protection: "Forced delete is for Super Admin only, with
@@ -951,6 +964,15 @@ export function permits(table: PermissionTable, role: Role, area: string, action
   return rows !== undefined && Object.hasOwn(rows, role) && (rows[role]?.includes(action) ?? false);
 }
 
+/**
+ * Areas of the own family of a Parent account (task 11.2, decision 15 of pull request #294,
+ * Look first): what the `parent` role reads there is its own children, so the rule "the Super
+ * Admin has every action that any other role has" does not reach them. `edge/close-relatives`:
+ * "a parent session never carries staff rights, and the staff account does not show the parent
+ * view"; build plan 11.2: "no staff role has it". No staff role may have an action here.
+ */
+export const OWN_FAMILY_AREAS: readonly string[] = ['portal'];
+
 /** The Principal "views everything in the branch ... changes nothing"; exports are allowed. */
 const PRINCIPAL_ACTIONS: readonly Action[] = ['view', 'export'];
 
@@ -964,7 +986,8 @@ const PRINCIPAL_ACTIONS: readonly Action[] = ['view', 'export'];
  *   act" and the last row of "Personal data and the audit log": "the Principal
  *   has no edit rights").
  * - The Super Admin has every action that any other role has: "Everything
- *   every other role can do".
+ *   every other role can do", except in an area of the own family
+ *   (`OWN_FAMILY_AREAS`), where no role but the parent has any action.
  */
 export function checkTable(table: PermissionTable): string[] {
   const problems: string[] = [];
@@ -991,6 +1014,14 @@ export function checkTable(table: PermissionTable): string[] {
       if (!PRINCIPAL_ACTIONS.some((allowed) => allowed === action)) {
         problems.push(`${area}: the Principal has ${action}`);
       }
+    }
+    if (OWN_FAMILY_AREAS.includes(area)) {
+      for (const role of ROLES) {
+        if (role !== 'parent' && (written[role] ?? []).length > 0) {
+          problems.push(`${area}: ${role} has an action in an area of the own family`);
+        }
+      }
+      continue;
     }
     const superAdmin = new Set(written.super_admin ?? []);
     for (const role of ROLES) {

@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 11.2 The portal: frame, child switcher, timetable and homework
+
+- **Database** (0159): `portal_children` (the child scope: an open link, portal access on, relative not archived or merged, student active; the child's branch, names and class) and `portal_child_branches` (the branch of each part of a span), both SECURITY DEFINER and in the allow-list; no row changes.
+- **Access**: the `portal` area (`parent`: view; `OWN_FAMILY_AREAS` keeps every staff role out); `@PortalChild()`, a parent session only; the harness walks it as kind `portal`.
+- **API** (module `portal`): the switcher, a child's week (through `TimetableViews.childWeekIn`: the child's class and groups on each date, a block kept out for an exam left out, an exam's room by its own classes and groups), the homework of a week (through `journalsColumns`: held lessons, "not given" left out, topic, text, due date, files), and a file of a listed homework. Every route checks the child scope on each request (404).
+- **Web** (feature `portal`): `/portal` with the child switcher, Timetable and Homework by week, "Account" to `/parent`; a parent lands on `/portal`. Texts in three languages.
+- **Browser test**: `portal.spec.ts` at 390 px: a mother of two children opens both pages and switches child; `parent-slips.spec.ts` now lands on the portal.
+
+Left out: grades, attendance and comments (11.3); the Telegram mini app (11.4); the digest frequency (11.5); the topic of future lessons on the timetable (on issue #42); homework texts in the demo seed (not built in this task; the portal shows whatever homework the demo school holds); the handbook page (the handbook is paused until 3.7). `CLAUDE.md` gets `portal` in its module list from the owner (correction 1).
+
+The next sessions must know:
+
+- A portal route is `@PortalChild()` and calls `portalChild` or `childWeekScope` (`modules/portal/portal-scope.ts`) first; a message to families (11.5, 11.8) uses `portal_children` too.
+- A portal answer is a strict schema of `packages/shared/src/portal.ts`: a staff field added to it fails the parse.
+
 ## 6 November 2026: task 11.1 Parent accounts: login, slips, reset
 
 - **Database** (0158): the switched-off check of `relative_accounts` dropped (Look first); `relative_accounts.account_id`, written once with `switched_on_at`; guards that keep parent and staff accounts apart (no assignment, no staff link); `parent_slips` (append-only, branch-filtered, no password); the readers `parent_slip_state` (a slip of any branch, its class only for the own branch) and `parent_account_blocked`.

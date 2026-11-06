@@ -57,6 +57,7 @@ describe('the ids of the routes', () => {
     'notifications',
     'people',
     'plans',
+    'portal',
     'results',
     'setup',
     'timetable',

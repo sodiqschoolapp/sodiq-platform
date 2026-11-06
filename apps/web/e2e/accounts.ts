@@ -118,7 +118,8 @@ export type AccountKey =
   | 'whoHeadTutor'
   | 'whoHeadTeacher'
   | 'importVice'
-  | 'parentSlips';
+  | 'parentSlips'
+  | 'portal';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

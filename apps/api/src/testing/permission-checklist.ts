@@ -78,6 +78,14 @@ function routesWithoutRole(sources: ChecklistSources): string[] {
   }
   lines.push(
     '',
+    'A Parent account only, for a child of its own (`@PortalChild`, task 11.2; every staff role refused, the child scope checked in the route):',
+    '',
+  );
+  for (const [route, listed] of Object.entries(sources.access).sort()) {
+    if (listed === 'portal') lines.push(`- \`${route}\``);
+  }
+  lines.push(
+    '',
     'Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):',
     '',
     '| Route | Owed steps |',
@@ -139,7 +147,7 @@ function countsOf(sources: ChecklistSources): string[] {
     '## The routes in numbers',
     '',
     `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.`,
-    `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. With a permission of the table: ${String(withRole)}.`,
+    `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. The parent portal: ${String(routes.filter((listed) => listed === 'portal').length)}. With a permission of the table: ${String(withRole)}.`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
     `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,
     `- Areas of the permission table: ${String(Object.keys(sources.table).length)}.`,

@@ -199,7 +199,7 @@ export class TimetableViews {
     const branchId = branchOf(access);
     const scope = await scopeOf(transaction, access);
     if (!scope.school) throw scopeRefusal();
-    return this.viewOf(transaction, access, branchId, 'branch', query.date, query.span, {
+    return this.viewOf(transaction, access.accountId, branchId, 'branch', query.date, query.span, {
       subject: null,
       pick: () => ({ lesson: () => true, examRooms: (exam) => exam.rooms }),
     });
@@ -228,7 +228,7 @@ export class TimetableViews {
     if (found === undefined) throw notFound();
     const scope = await scopeOf(transaction, access);
     if (scope.classes !== 'all' && !scope.classes.has(found.id)) throw scopeRefusal();
-    return this.viewOf(transaction, access, branchId, 'class', query.date, query.span, {
+    return this.viewOf(transaction, access.accountId, branchId, 'class', query.date, query.span, {
       subject: { id: found.id, name: classDisplayName(found.grade, found.name) },
       classId: found.id,
       pick: () => ({
@@ -276,7 +276,7 @@ export class TimetableViews {
       subjectsOn = (date) => shown.get(date) ?? new Set();
     }
     const { name } = found;
-    return this.viewOf(transaction, access, branchId, 'teacher', query.date, query.span, {
+    return this.viewOf(transaction, access.accountId, branchId, 'teacher', query.date, query.span, {
       subject: { id: found.id, name },
       busyOf: found.kind === 'person' && subjectsOn === null ? found.id : null,
       pick: (date) => {
@@ -318,7 +318,7 @@ export class TimetableViews {
     if (found === undefined) throw notFound();
     const scope = await scopeOf(transaction, access);
     if (!scope.whole) throw scopeRefusal();
-    return this.viewOf(transaction, access, branchId, 'room', query.date, query.span, {
+    return this.viewOf(transaction, access.accountId, branchId, 'room', query.date, query.span, {
       subject: { id: found.id, name: found.name },
       pick: () => ({
         lesson: (lesson) => lesson.room?.id === found.id,
@@ -383,7 +383,7 @@ export class TimetableViews {
         const branchToday = schoolDateOf(moment, branch.time_zone);
         const view = await this.viewOf(
           transaction,
-          access,
+          access.accountId,
           branch.id,
           'teacher',
           branchToday,
@@ -455,7 +455,8 @@ export class TimetableViews {
 
   private async viewOf(
     transaction: Transaction,
-    access: Access,
+    /** The account reading: a pattern day is read as that account's (`stateOf`). */
+    readerId: string,
     branchId: string,
     kind: ViewKind,
     date: string,
@@ -471,6 +472,8 @@ export class TimetableViews {
       readonly replacedOf?: string;
       /** A span wholly outside the years answers its days marked, not 422 (the home page, task 5.9b). */
       readonly quietOutside?: boolean;
+      /** The class of each date for the name of its day off, when it changes over the span (the portal, task 11.2). */
+      readonly classOn?: (date: string) => string | undefined;
     },
   ): Promise<TimetableView> {
     const dates = viewDates(date, span);
@@ -551,7 +554,7 @@ export class TimetableViews {
       const fromPattern = version !== null && !(await hasStoredLessons(transaction, version.id));
       const pick = input.pick(day);
       const stored = fromPattern
-        ? await this.patternLessons(transaction, access, version, day)
+        ? await this.patternLessons(transaction, readerId, version, day)
         : (await storedLessonsOn(transaction, branchId, day)).filter(
             // A lesson the expansion created cancelled (a day off, not in the
             // template) is no lesson of the day: "Days off produce no lessons" (`06`, Model).
@@ -633,7 +636,13 @@ export class TimetableViews {
       days.push({
         date: day,
         outsideYear: false,
-        dayOff: dayOffOn(settings, entryName, day, input.classId, gradeOf),
+        dayOff: dayOffOn(
+          settings,
+          entryName,
+          day,
+          input.classOn === undefined ? input.classId : input.classOn(day),
+          gradeOf,
+        ),
         version: version === null ? null : { number: version.number, startsOn: version.startsOn },
         fromPattern,
         axis,
@@ -676,18 +685,48 @@ export class TimetableViews {
   }
 
   /**
+   * A child's week in one branch for the parent portal (task 11.2, pull request #294): the
+   * view of a class over the dates, with the lessons and exam rooms the portal picks for the
+   * child on each date. Read in the caller's transaction, whose branch is the child's on
+   * those dates (decision 6). A span outside the years answers its days marked (should-fix 4).
+   */
+  async childWeekIn(
+    transaction: Transaction,
+    readerId: string,
+    branchId: string,
+    input: {
+      readonly date: string;
+      readonly classId: string;
+      readonly classOn: (date: string) => string | undefined;
+      readonly lesson: (lesson: ViewLesson) => boolean;
+      readonly examRooms: (rooms: readonly ChildExamRoom[], date: string) => ChildExamRoom[];
+    },
+  ): Promise<TimetableView> {
+    return this.viewOf(transaction, readerId, branchId, 'class', input.date, 'week', {
+      subject: null,
+      classId: input.classId,
+      classOn: input.classOn,
+      quietOutside: true,
+      pick: (day) => ({
+        lesson: input.lesson,
+        examRooms: (exam) => input.examRooms(exam.rooms, day),
+      }),
+    });
+  }
+
+  /**
    * The lessons of a version published before 0079, which has no dated
    * lessons, from its pattern (decision 13; 5.5b-2 decision 2), shaped as
    * stored lessons with the entry's id: one-day changes are not included.
    */
   private async patternLessons(
     transaction: Transaction,
-    access: Access,
+    readerId: string,
     version: VersionInForce,
     day: string,
   ): Promise<StoredDayLesson[]> {
     const row = await this.timetable.versionRow(transaction, version.id);
-    const state = await this.pattern.stateOf(transaction, row, access.accountId);
+    const state = await this.pattern.stateOf(transaction, row, readerId);
     const { dated, begins } = await datedLessonsOf(transaction, state, day, day);
     return dated.lessons.map((one) => {
       const { placement } = one;
@@ -946,8 +985,16 @@ async function teachersOf(
 }
 
 /** An exam of the day with every room, the classes each holds and its invigilators' ids. */
-type DayExamRoom = ViewExam['rooms'][number] & { invigilatorIds: string[] };
+type DayExamRoom = ViewExam['rooms'][number] & {
+  invigilatorIds: string[];
+  /** The classes the room names itself and its groups, not folded (the portal, task 11.2). */
+  ownClassIds: string[];
+  groupIds: string[];
+};
 type DayExam = Omit<ViewExam, 'rooms'> & { rooms: DayExamRoom[] };
+
+/** An exam room as the portal picks it: by the classes and groups the room itself names. */
+export type ChildExamRoom = DayExamRoom;
 
 async function examsOfDay(
   transaction: Transaction,
@@ -987,6 +1034,8 @@ async function examsOfDay(
       units: [...room.classes.map((one) => one.name), ...room.groups.map((one) => one.name)],
       invigilators: room.invigilators.map((one) => one.name),
       invigilatorIds: room.invigilators.map((one) => one.id),
+      ownClassIds: room.classes.map((one) => one.id),
+      groupIds: room.groups.map((one) => one.id),
     })),
   }));
 }
