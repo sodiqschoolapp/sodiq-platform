@@ -117,7 +117,7 @@ describe('the slips of the parents of a class', () => {
     await waitFor(() => {
       expect(rows()).toHaveLength(3);
     });
-    fireEvent.change(screen.getByLabelText(en.people.parentSlips.language), {
+    fireEvent.change(screen.getByRole('combobox', { name: en.people.parentSlips.language }), {
       target: { value: 'ru' },
     });
     fireEvent.click(screen.getByRole('button', { name: en.people.parentSlips.printSlips }));
@@ -133,6 +133,9 @@ describe('the slips of the parents of a class', () => {
     expect(card.length).toBeGreaterThan(0);
     expect(within(sheet).getAllByText('Secret-Slip-Pass-1').length).toBeGreaterThan(0);
     expect(sheet.textContent).toContain('@sodiq_school_test_bot');
+    // Four slips to an A4 page (`10`): the print sheet holds every slip, in its four-up mode.
+    const printSheet = document.querySelector('[data-slip-sheet][data-four]');
+    expect(printSheet?.querySelectorAll('[data-slip]')).toHaveLength(1);
     expect(screen.getByRole('button', { name: en.people.parentSlips.print })).toBeDefined();
     // The password is in the page's state only: no query or mutation keeps it.
     await waitFor(() => {

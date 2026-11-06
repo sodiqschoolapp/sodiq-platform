@@ -218,13 +218,13 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'is_parent_account(uuid)':
     'Whether an account is linked to a relative (a Parent account), a yes or no asked by the guards that keep parent and staff accounts apart, whatever branch the relative is linked in (10, Signing in: "A parent session never carries staff rights"; task 11.1, plan of pull request #292).',
   'relative_accounts_not_staff()':
-    'Refuses linking a relative to an account that has a staff record or an assignment in any branch; the row filter hides other branches\' staff records (task 11.1, plan of pull request #292).',
+    "Refuses linking a relative to an account that has a staff record or an assignment in any branch; the row filter hides other branches' staff records (task 11.1, plan of pull request #292).",
   'assignments_not_parent()':
     'Refuses an assignment for a Parent account, whatever branch links the relative (task 11.1, plan of pull request #292).',
   'staff_not_parent()':
     'Refuses linking a staff record to a Parent account, whatever branch links the relative (task 11.1, plan of pull request #292).',
   'student_active_at(uuid,timestamp with time zone)':
-    'Whether a student is active on the date of a moment in the time zone of the student\'s branch, a yes or no asked by sign-in, which comes before any branch is known (task 11.1, decision 6 of pull request #292).',
+    "Whether a student is active on the date of a moment in the time zone of the student's branch, a yes or no asked by sign-in, which comes before any branch is known (task 11.1, decision 6 of pull request #292).",
   'parent_account_blocked(uuid,timestamp with time zone)':
     'Whether a Parent account can no longer sign in (relative archived or merged, or no live link with portal access on to an active student in any branch), a yes or no asked by sign-in and by every request of a parent session, before any branch is known (10, Telegram: "when the account can no longer sign in"; task 11.1, decision 6 of pull request #292).',
   'own_relative_name(uuid)':

@@ -42,7 +42,9 @@ test('an Academic Vice Principal prints the parent slips of a class, and a paren
   );
 
   // One slip per parent of the class, in the language chosen.
-  await page.getByLabel(en.people.parentSlips.language, { exact: true }).selectOption('en');
+  await page
+    .getByRole('combobox', { name: en.people.parentSlips.language, exact: true })
+    .selectOption('en');
   await page.getByRole('button', { name: en.people.parentSlips.printSlips, exact: true }).click();
   const sheet = page.getByRole('region', { name: '2 slips' });
   await expect(sheet).toBeVisible();

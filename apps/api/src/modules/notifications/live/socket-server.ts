@@ -109,6 +109,11 @@ export class LiveSockets implements BeforeApplicationShutdown {
     if (session.owedStep !== null) {
       return session.owedStep;
     }
+    // Task 11.1: notifications are for staff; a parent session is refused like no session
+    // (the parent frame opens no live connection).
+    if (session.kind === 'parent') {
+      return 'not_signed_in';
+    }
     const data: ConnectionData = { sessionId: session.sessionId, accountId: session.accountId };
     socket.data = data;
     await socket.join(roomOf(session.accountId));

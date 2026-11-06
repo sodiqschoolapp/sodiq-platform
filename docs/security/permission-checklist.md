@@ -133,7 +133,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 500, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Routes of the application: 500, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
 - Without sign-in: 4. For the own account: 21. With a permission of the table: 475.
 - Routes with a limit inside the route: 154.
 - Routes that take an id: 394, with 831 ids (branch 737, school 76, own 2, none 16).

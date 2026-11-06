@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { useView } from '@/features/access/use-view';
 import { LANGUAGE_NAMES, LANGUAGES, isLanguage } from '@/i18n/languages';
+import { branchQuery } from '@/features/setup/setup-api';
 import { momentText } from '@/lib/dates';
 import { parentSlipsKey, parentSlipsQuery, printParentSlips } from './parent-accounts-api';
 import { ParentSlipsSheet } from './parent-slip';
@@ -32,6 +33,7 @@ export function ParentSlipsPage(): React.JSX.Element {
   const search = useSearch({ from: '/app/people/classes/$classId/parent-slips' });
   const { branchId } = useView();
   const list = useQuery(parentSlipsQuery(branchId, classId));
+  const branch = useQuery(branchQuery(branchId));
   const [language, setLanguage] = useState<Language>(
     isLanguage(i18n.language) ? i18n.language : 'uz',
   );
@@ -47,7 +49,13 @@ export function ParentSlipsPage(): React.JSX.Element {
     },
   });
 
-  const dateOf = (iso: string) => momentText(i18n.language, iso, { month: 'long' });
+  // A day shown from a stored moment is the branch's (`.claude/rules/database.md`, task 9.4g).
+  const timeZone = branch.data?.timeZone;
+  const dateOf = (iso: string) =>
+    momentText(i18n.language, iso, {
+      month: 'long',
+      ...(timeZone === undefined ? {} : { timeZone }),
+    });
   const stateText = (row: Row): string => {
     if (row.state !== 'valid_slip' || row.slip === null) {
       return t(`people.parentSlips.${row.state}`);
@@ -95,7 +103,7 @@ export function ParentSlipsPage(): React.JSX.Element {
     ],
     // `stateText` reads only `t` and the language.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, i18n.language],
+    [t, i18n.language, timeZone],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {

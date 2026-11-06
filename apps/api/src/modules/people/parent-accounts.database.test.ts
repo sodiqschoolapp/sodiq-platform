@@ -482,7 +482,7 @@ describe('Parent accounts in the database', () => {
     });
   });
 
-  it('gives no email reset to a Parent account (an administrator resets a parent)', async () => {
+  it('gives no email reset to a Parent account, which never has a staff record (staff_not_parent)', async () => {
     const { relative } = await studentWithRelative(north);
     const account = await newAccount();
     await switchOn(north, relative, account);

@@ -35,6 +35,7 @@ import { PasswordResets } from '../auth/password-resets.service.js';
 import { Sessions } from '../auth/sessions.service.js';
 import { SignInThrottle } from '../auth/sign-in-throttle.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { staffOfRelatives } from './same-person.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -198,6 +199,7 @@ export class ParentAccounts {
       const found = await this.classOf(transaction, classId);
       const today = await branchToday(transaction, branchId);
       await this.refuseOutside(transaction, classId, today, request.printAgain);
+      await this.refuseOwn(transaction, access, request.printAgain);
       // Must-fix 3 of the spec review: the account rows of the relatives are locked, in the
       // order of their ids and in a statement of their own; their state is read again after.
       const ids = [
@@ -280,6 +282,7 @@ export class ParentAccounts {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const today = await branchToday(transaction, branchId);
       const one = await this.inScope(transaction, relativeId, today);
+      await this.refuseOwn(transaction, access, [relativeId]);
       await this.lockRelatives(transaction, [relativeId]);
       const account = await transaction
         .selectFrom('relative_accounts')
@@ -662,6 +665,32 @@ export class ParentAccounts {
     }
   }
 
+  /**
+   * An administrator does not replace the password of their own Parent account (the relative
+   * marked the same person as their staff record): "an administrator's own password is not
+   * reset by that administrator" (`PasswordResets`; permission review of the code, should-fix
+   * 5). A first print of the own slip is allowed: it replaces nothing.
+   */
+  private async refuseOwn(
+    transaction: Transaction,
+    access: Access,
+    relativeIds: readonly string[],
+  ): Promise<void> {
+    const marks = await staffOfRelatives(transaction, relativeIds);
+    if (marks.size === 0) {
+      return;
+    }
+    const own = await transaction
+      .selectFrom('staff')
+      .select('id')
+      .where('id', 'in', [...marks.values()])
+      .where('account_id', '=', access.accountId)
+      .executeTakeFirst();
+    if (own !== undefined) {
+      throw new ApiException('own_account', 403);
+    }
+  }
+
   private async lockRelatives(transaction: Transaction, ids: readonly string[]): Promise<void> {
     if (ids.length === 0) {
       return;
@@ -840,4 +869,3 @@ function stateOf(one: Linked, slip: ParentSlip | null): ParentSlipState {
   }
   return slip?.valid === true ? 'valid_slip' : 'to_print';
 }
-

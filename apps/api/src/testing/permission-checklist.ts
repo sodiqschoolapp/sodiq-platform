@@ -138,7 +138,7 @@ function countsOf(sources: ChecklistSources): string[] {
   return [
     '## The routes in numbers',
     '',
-    `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.`,
+    `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.`,
     `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. With a permission of the table: ${String(withRole)}.`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
     `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,

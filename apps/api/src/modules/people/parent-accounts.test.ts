@@ -21,6 +21,8 @@ import {
   type DayTemplatesKit,
 } from '../../testing/day-templates-kit.js';
 import { ParentsKit } from '../../testing/parents-kit.js';
+import { binary, fileOf } from '../../testing/xlsx-kit.js';
+import { MOMENT_SETTING } from '../../database/transactions.js';
 import { cookieOf, errorCode, NEW_PASSWORD, signInKit } from '../../testing/sign-in-kit.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -124,7 +126,16 @@ describe('the Parent accounts', () => {
   /** Every row of the tables a print or reset writes, and the log: what a refused one leaves. */
   const rowsOf = () =>
     Promise.all(
-      ['accounts', 'relative_accounts', 'parent_slips', 'sessions', 'audit_log'].map(
+      [
+        'accounts',
+        'relative_accounts',
+        'parent_slips',
+        'sessions',
+        'sign_in_throttle',
+        'password_reset_links',
+        'audit_log',
+        'audit_log_school',
+      ].map(
         async (table) =>
           (await sql`select * from ${sql.table(table)} order by 1`.execute(t.database.migrator))
             .rows,
@@ -304,6 +315,19 @@ describe('the Parent accounts', () => {
       }
     });
 
+    it('answers 404 for a "print again" relative of another class of the branch', async () => {
+      const { classId } = await classWithParent();
+      const other = await classWithParent();
+      await printed(other.classId);
+      const before = await rowsOf();
+      refusedWith(
+        await print(classId, { language: 'uz', printAgain: [other.relativeId] }),
+        404,
+        'not_found',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('answers 404 for a class of another branch or unknown', async () => {
       const south = await classWithParent(t.south);
       for (const id of [south.classId, UNKNOWN]) {
@@ -402,6 +426,105 @@ describe('the Parent accounts', () => {
       }
     });
 
+    it('writes no one-time password in the log or the audit log', async () => {
+      const { relativeId } = await classWithParent();
+      await parents.session(relativeId);
+      const lines: string[] = [];
+      Logger.overrideLogger(new ShippingLogger());
+      ShippingLogger.sink = (_level, text) => {
+        lines.push(text);
+      };
+      let response: Response;
+      try {
+        response = await reset(relativeId);
+      } finally {
+        ShippingLogger.sink = undefined;
+      }
+      const [slip] = printedParentSlipsSchema.parse(response.body).slips;
+      const password = slip?.password ?? '';
+      expect(password.length).toBeGreaterThan(0);
+      const logs = JSON.stringify([
+        (await sql`select * from audit_log`.execute(t.database.migrator)).rows,
+        (await sql`select * from audit_log_school`.execute(t.database.migrator)).rows,
+        (await sql`select * from parent_slips`.execute(t.database.migrator)).rows,
+      ]);
+      expect(logs).not.toContain(password);
+      expect(lines.join('\n')).not.toContain(password);
+    });
+
+    it('names on the slip only the children of the branch of the request', async () => {
+      const north = await classWithParent(t.north);
+      const south = await classWithParent(t.south);
+      await childIn(t.south, south.classId, north.relativeId);
+      await parents.session(north.relativeId);
+      const [slip] = printedParentSlipsSchema.parse((await reset(north.relativeId)).body).slips;
+      expect(slip?.children.map((child) => child.studentId)).toEqual([north.studentId]);
+    });
+
+    it('lists a valid reset slip as "reset", printed again only on "print again"', async () => {
+      const { classId, relativeId } = await classWithParent();
+      await printed(classId);
+      // The first password chosen, then forgotten: a reset slip is valid now.
+      await t.database.migrator
+        .updateTable('accounts')
+        .set({ must_change_password: false, password_expires_at: null })
+        .where(
+          'id',
+          '=',
+          (
+            await t.database.migrator
+              .selectFrom('relative_accounts')
+              .select('account_id')
+              .where('relative_id', '=', relativeId)
+              .executeTakeFirstOrThrow()
+          ).account_id ?? '',
+        )
+        .execute();
+      expect((await reset(relativeId)).status).toBe(200);
+      const listed = parentSlipListSchema.parse((await slipsOf(classId)).body);
+      expect(listed.relatives.find((one) => one.relativeId === relativeId)).toMatchObject({
+        state: 'valid_slip',
+        slip: { kind: 'reset', valid: true, className: null, otherBranch: false },
+      });
+      expect(slipFor(await printed(classId), relativeId)).toBeUndefined();
+      expect(
+        slipFor(await printed(classId, { language: 'uz', printAgain: [relativeId] }), relativeId),
+      ).toMatchObject({ kind: 'first' });
+    });
+
+    it('answers 404 for a relative whose link in the branch was ended (unlinked)', async () => {
+      const { studentId, relativeId } = await classWithParent();
+      // Another relative stays the main contact; the link of this one ends.
+      await parents.relativeOf(t.north, studentId);
+      await parents.session(relativeId);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config(${MOMENT_SETTING}, ${'2026-10-01T05:00:00.000Z'}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: false })
+          .where('student_id', '=', studentId)
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: true })
+          .where('student_id', '=', studentId)
+          .where('relative_id', '!=', relativeId)
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ unlinked_at: new Date('2026-10-01T05:00:00.000Z') })
+          .where('student_id', '=', studentId)
+          .where('relative_id', '=', relativeId)
+          .execute();
+      });
+      const before = await rowsOf();
+      refusedWith(await reset(relativeId), 404, 'not_found');
+      refusedWith(await accountOf(relativeId), 404, 'not_found');
+      expect(await rowsOf()).toEqual(before);
+    });
+
     it('is refused before the first print (409 parent_no_account)', async () => {
       const { relativeId } = await classWithParent();
       const before = await rowsOf();
@@ -491,7 +614,14 @@ describe('the Parent accounts', () => {
         switchedOn: true,
         login: slip?.login,
         signedIn: false,
-        slips: [{ kind: 'first', printedAt: slip?.printedAt, validUntil: slip?.validUntil }],
+        slips: [
+          {
+            kind: 'first',
+            branch: 'North',
+            printedAt: slip?.printedAt,
+            validUntil: slip?.validUntil,
+          },
+        ],
       });
       expect(report.relative.account?.lastSignInAt).not.toBeNull();
       expect(JSON.stringify(response.body)).not.toContain(slip?.password);
@@ -501,7 +631,12 @@ describe('the Parent accounts', () => {
   describe('the first sign-in of a parent', () => {
     it('is audited once, at the first password the parent chooses', async () => {
       const { relativeId } = await classWithParent();
-      const { account } = await parents.session(relativeId);
+      const { account, cookie } = await parents.session(relativeId);
+      // A second password chosen later is no first sign-in.
+      const kit = signInKit(t.app);
+      expect((await kit.changePassword(cookie, NEW_PASSWORD, 'another-password-91')).status).toBe(
+        204,
+      );
       // A school-wide entry (no branch), as every sign-in event.
       const entries = await t.database.migrator
         .selectFrom('audit_log_school')
@@ -510,6 +645,28 @@ describe('the Parent accounts', () => {
         .where('record_id', '=', account.id)
         .execute();
       expect(entries).toHaveLength(1);
+    });
+
+    it('changes its own language and signs out (the routes approved for the parent)', async () => {
+      const { relativeId } = await classWithParent();
+      const { account, cookie } = await parents.session(relativeId);
+      const changed = await request(t.kit.server)
+        .put('/api/auth/language')
+        .set('Cookie', cookie)
+        .send({ language: 'ru' });
+      expect(changed.status, JSON.stringify(changed.body)).toBeLessThan(300);
+      const stored = await t.database.migrator
+        .selectFrom('accounts')
+        .select('language')
+        .where('id', '=', account.id)
+        .executeTakeFirstOrThrow();
+      expect(stored.language).toBe('ru');
+      expect(
+        (await request(t.kit.server).post('/api/auth/sign-out').set('Cookie', cookie)).status,
+      ).toBeLessThan(300);
+      expect(
+        (await request(t.kit.server).get('/api/auth/session').set('Cookie', cookie)).status,
+      ).toBe(401);
     });
 
     it('carries the parent kind and no staff right, never "Trust this device"', async () => {
@@ -540,19 +697,63 @@ describe('the Parent accounts', () => {
       expect(sessionResponseSchema.parse(trusted.body).trustedUntil).toBeNull();
     });
 
-    it('a staff member who is also a parent gets no staff right with the parent login', async () => {
-      const { relativeId } = await classWithParent();
+    // `10`: "A staff member who is also a parent has two accounts, each with its own login";
+    // `edge/close-relatives`: the two records are marked the same person by the phone.
+    async function viceWhoIsAParent() {
+      const { classId, studentId } = await classWithParent();
       const staff = signInKit(t.app, {
         newAccountsHold: { role: 'academic_vice_principal', branchId: t.north },
       });
       const vice = await staff.completeSession('Dilnoza', 'Parentova');
+      const { staffId } = await classes.person(t.north, ['uz'], { accountId: vice.account.id });
+      const record = await t.database.migrator
+        .selectFrom('staff')
+        .select('phone')
+        .where('id', '=', staffId)
+        .executeTakeFirstOrThrow();
+      const relativeId = await parents.relativeOf(t.north, studentId, {
+        fullName: 'Dilnoza Parentova',
+        phone: record.phone,
+      });
+      const marked = await t.database.migrator
+        .selectFrom('staff')
+        .select('id')
+        .where('phone', '=', record.phone)
+        .execute();
+      expect(marked).toHaveLength(1);
+      return { classId, relativeId, vice };
+    }
+
+    it('a staff member who is also a parent gets no staff right with the parent login', async () => {
+      const { classId, relativeId, vice } = await viceWhoIsAParent();
       const parent = await parents.session(relativeId);
-      // The staff login is staff, the parent login is a parent with no right.
-      const own = sessionResponseSchema.parse(
+      // The parent login: a parent, no staff right, not even those of the same person's staff account.
+      const asParent = sessionResponseSchema.parse(
+        (await request(t.kit.server).get('/api/auth/session').set('Cookie', parent.cookie)).body,
+      );
+      expect(asParent).toMatchObject({ kind: 'parent', assignments: [], branches: [] });
+      refusedWith(await slipsOf(classId, t.north, parent.cookie), 403, 'permission_denied');
+      // The staff login: staff, no parent view (no parent name, the staff assignments).
+      const asStaff = sessionResponseSchema.parse(
         (await request(t.kit.server).get('/api/auth/session').set('Cookie', vice.cookie)).body,
       );
-      expect(own.kind).toBe('staff');
-      refusedWith(await slipsOf(UNKNOWN, t.north, parent.cookie), 403, 'permission_denied');
+      expect(asStaff).toMatchObject({ kind: 'staff', fullName: null });
+      expect(asStaff.assignments.map((one) => one.role)).toContain('academic_vice_principal');
+    });
+
+    it('refuses an administrator the reset and "print again" of their own Parent account', async () => {
+      const { classId, relativeId, vice } = await viceWhoIsAParent();
+      // The first print is allowed: it replaces nothing.
+      const answer = await printed(classId, undefined, t.north, vice.cookie);
+      expect(slipFor(answer, relativeId)).toBeDefined();
+      const before = await rowsOf();
+      refusedWith(await reset(relativeId, t.north, vice.cookie), 403, 'own_account');
+      refusedWith(
+        await print(classId, { language: 'uz', printAgain: [relativeId] }, t.north, vice.cookie),
+        403,
+        'own_account',
+      );
+      expect(await rowsOf()).toEqual(before);
     });
 
     it('is refused when the relative can no longer sign in, as a wrong password', async () => {
@@ -573,29 +774,61 @@ describe('the Parent accounts', () => {
   });
 
   describe('the report of Parent accounts never used', () => {
-    it('lists the accounts with no password chosen, logged as an export', async () => {
-      const { classId, relativeId } = await classWithParent();
+    it('lists the accounts of the branch with no password chosen, logged as an export', async () => {
+      // As the Academic Vice Principal of the north: a mother with a child in each branch, a
+      // parent who signed in, and a parent of the south only.
+      const north = await classWithParent(t.north);
+      const south = await classWithParent(t.south);
+      const southOnly = await classWithParent(t.south);
+      const mother = north.relativeId;
+      const southChild = await childIn(t.south, south.classId, mother);
       const signedIn = await classWithParent();
-      await printed(classId);
+      await printed(north.classId);
+      await printed(southOnly.classId, undefined, t.south, southVice);
       await parents.session(signedIn.relativeId);
-      const response = await t.get('/api/people/parent-accounts/never-used', t.north);
+      const response = await t.get(
+        '/api/people/parent-accounts/never-used',
+        t.north,
+        t.vicePrincipal,
+      );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       const answer = parentsNeverUsedSchema.parse(response.body);
       const ids = answer.accounts.map((one) => one.relativeId);
-      expect(ids).toContain(relativeId);
+      expect(ids).toContain(mother);
       expect(ids).not.toContain(signedIn.relativeId);
+      expect(ids).not.toContain(southOnly.relativeId);
+      // The mother is listed with her child of this branch only.
+      const listed = answer.accounts.find((one) => one.relativeId === mother);
+      expect(listed?.children.map((child) => child.studentId)).toEqual([north.studentId]);
+      expect(listed?.children.map((child) => child.studentId)).not.toContain(southChild);
       const [entry] = (await t.entries('parent_account.never_used')).slice(-1);
-      expect(entry).toMatchObject({ branch_id: t.north });
-
-      const file = await t.post('/api/people/parent-accounts/never-used/export', t.north, {
-        ids: [relativeId],
-        columns: ['name', 'login', 'expired'],
-        selection: 'matching',
-        search: '',
-        filters: {},
+      expect(entry).toMatchObject({
+        branch_id: t.north,
+        details: { rows: answer.accounts.length },
       });
+
+      const file = await request(t.kit.server)
+        .post('/api/people/parent-accounts/never-used/export')
+        .set('Cookie', t.vicePrincipal)
+        .set(BRANCH_HEADER, t.north)
+        .send({
+          ids: [mother],
+          columns: ['name', 'login', 'children', 'expired'],
+          selection: 'ticked',
+          search: '',
+          filters: {},
+        })
+        .buffer(true)
+        .parse(binary);
       expect(file.status).toBe(200);
-      expect(await t.entries('parent_account.never_used_export')).not.toHaveLength(0);
+      const { sheet } = await fileOf(file);
+      expect(sheet.rows).toHaveLength(1);
+      expect(String(sheet.rows[0]?.[2])).not.toContain('\n');
+      expect(sheet.rows[0]?.[2]).toBe(
+        `${listed?.children[0]?.lastName ?? ''} ${listed?.children[0]?.firstName ?? ''}`,
+      );
+      const [exported] = (await t.entries('parent_account.never_used_export')).slice(-1);
+      expect(exported).toMatchObject({ branch_id: t.north, details: { rows: 1 } });
     });
 
     it('answers 404 in the file for a relative of another branch or unknown, with nothing logged', async () => {

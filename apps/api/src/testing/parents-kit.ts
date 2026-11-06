@@ -72,7 +72,7 @@ export class ParentsKit {
   async relativeOf(
     branch: string,
     studentId: string,
-    input: { fullName?: string; portalAccess?: boolean } = {},
+    input: { fullName?: string; portalAccess?: boolean; phone?: string | null } = {},
   ): Promise<string> {
     count += 1;
     const fullName = input.fullName ?? `Shahlo Nazarova${'a'.repeat(count % 5)}`;
@@ -81,7 +81,12 @@ export class ParentsKit {
       const id = found.rows[0]?.id ?? '';
       await transaction
         .insertInto('relatives')
-        .values({ id, full_name: fullName, name_key: relativeNameKey(fullName), phone: null })
+        .values({
+          id,
+          full_name: fullName,
+          name_key: relativeNameKey(fullName),
+          phone: input.phone ?? null,
+        })
         .execute();
       await transaction
         .insertInto('relative_accounts')

@@ -16,6 +16,7 @@ import { SECTION_TITLE } from '@/components/ui/control';
 import { Select } from '@/components/ui/select';
 import { useView } from '@/features/access/use-view';
 import { LANGUAGE_NAMES, LANGUAGES, isLanguage } from '@/i18n/languages';
+import { branchQuery } from '@/features/setup/setup-api';
 import { momentText } from '@/lib/dates';
 import { parentAccountKey, parentAccountQuery, resetParentPassword } from './parent-accounts-api';
 import { ParentSlipsSheet } from './parent-slip';
@@ -34,6 +35,7 @@ export function ParentAccountPart({ relativeId, name }: { relativeId: string; na
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const account = useQuery({ ...parentAccountQuery(branchId, relativeId), enabled: mayView });
+  const branch = useQuery({ ...branchQuery(branchId), enabled: mayView });
   const [language, setLanguage] = useState<Language>(
     isLanguage(i18n.language) ? i18n.language : 'uz',
   );
@@ -52,7 +54,13 @@ export function ParentAccountPart({ relativeId, name }: { relativeId: string; na
   if (!mayView) {
     return null;
   }
-  const when = (iso: string) => momentText(i18n.language, iso, { month: 'long' });
+  // A day shown from a stored moment is the branch's (`.claude/rules/database.md`, task 9.4g).
+  const timeZone = branch.data?.timeZone;
+  const when = (iso: string) =>
+    momentText(i18n.language, iso, {
+      month: 'long',
+      ...(timeZone === undefined ? {} : { timeZone }),
+    });
   const slipText = (slip: ParentSlip) =>
     slip.kind === 'reset'
       ? t('people.parentSlips.resetSlip', { date: when(slip.printedAt) })

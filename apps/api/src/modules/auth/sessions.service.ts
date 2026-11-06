@@ -138,6 +138,8 @@ export function owedStepOf(
 export interface PeekedSession {
   sessionId: string;
   accountId: string;
+  /** Task 11.1: a parent session has no live connection (it gets no notification). */
+  kind: SessionKind;
   owedStep: OwedStep | null;
 }
 
@@ -624,6 +626,7 @@ export class Sessions {
         peeked.push({
           sessionId: row.id,
           accountId: row.account_id,
+          kind: (await isParentAccount(transaction, row.account_id)) ? 'parent' : 'staff',
           owedStep: owedStepOf(secondStep, row.must_change_password),
         });
       }
