@@ -232,6 +232,8 @@ describe('the pages of the design system', () => {
       path.join('src', 'components', 'page-header.tsx'),
       path.join('src', 'components', 'states.tsx'),
       path.join('src', 'features', 'people', 'first-password-slip.tsx'),
+      // Task 11.1: the parents' slip is a printout like the staff slip above.
+      path.join('src', 'features', 'people', 'parent-slip.tsx'),
     ];
     const wrong = drawn
       .filter(

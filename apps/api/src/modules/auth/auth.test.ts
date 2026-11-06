@@ -164,6 +164,8 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'a.karimov',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: true,
         name: null,
@@ -453,6 +455,8 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'p.davronova',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: true,
         name: null,
@@ -605,6 +609,8 @@ describe('sign-in, sessions and the password change', () => {
       const session = await request(server).get('/api/auth/session').set('Cookie', cookie);
       expect(session.body).toEqual({
         login: 'u.davronova',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: false,
         name: null,
@@ -624,6 +630,8 @@ describe('sign-in, sessions and the password change', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         login: 'v.davronov',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: false,
         name: null,

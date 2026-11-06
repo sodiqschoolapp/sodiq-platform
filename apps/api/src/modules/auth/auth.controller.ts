@@ -56,7 +56,7 @@ export class AuthController {
   }
 
   @Get('session')
-  @AnySignedIn()
+  @AnySignedIn({ parent: true })
   @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
@@ -84,7 +84,7 @@ export class AuthController {
   }
 
   @Post('password')
-  @AnySignedIn()
+  @AnySignedIn({ parent: true })
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
   @ReturnsNothing()
@@ -108,7 +108,7 @@ export class AuthController {
   }
 
   @Post('sign-out')
-  @AnySignedIn()
+  @AnySignedIn({ parent: true })
   @AllowedBeforeSecondStep()
   @AllowedBeforePasswordChange()
   @AllowedBeforeSecondStepSetUp()
@@ -147,7 +147,7 @@ export class AuthController {
    * changes the browser alone (decided by the owner).
    */
   @Put('language')
-  @AnySignedIn()
+  @AnySignedIn({ parent: true })
   @ReturnsNothing()
   async setLanguage(
     @CurrentSession() session: ActiveSession,

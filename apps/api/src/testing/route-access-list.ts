@@ -282,15 +282,18 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // The password reset by email (task 2.3c-2, decision 1 of pull request #66).
   'POST /api/auth/password-reset': 'public',
   'POST /api/auth/password-reset/confirm': 'public',
+  // Task 11.1 (decision 2 of pull request #292, Look first): a parent session reaches the four
+  // routes marked `any_signed_in_parent` only ("signs in and changes its own password and
+  // language", approved by the owner), and every other route refuses it.
   // The own sign-in, and a feedback report about the app: open to every
   // signed-in account, the Principal included (docs/decisions.md, tasks 0.7b and
   // 0.8b-3). Each acts on the account of the session only.
-  'GET /api/auth/session': 'any_signed_in',
+  'GET /api/auth/session': 'any_signed_in_parent',
   'GET /api/auth/sessions': 'any_signed_in',
-  'POST /api/auth/password': 'any_signed_in',
-  'POST /api/auth/sign-out': 'any_signed_in',
+  'POST /api/auth/password': 'any_signed_in_parent',
+  'POST /api/auth/sign-out': 'any_signed_in_parent',
   'POST /api/auth/sign-out-everywhere': 'any_signed_in',
-  'PUT /api/auth/language': 'any_signed_in',
+  'PUT /api/auth/language': 'any_signed_in_parent',
   // The own photo (task 2.3c-2, decision 18 of pull request #66): the Principal too.
   'PUT /api/auth/photo': 'any_signed_in',
   'DELETE /api/auth/photo': 'any_signed_in',
@@ -622,6 +625,20 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // across branches to all but the Super Admin by the route (relative-owners.test.ts).
   'GET /api/people/relatives/no-valid-phone': { branch: 'request', roles: SETUP_VIEWERS },
   'POST /api/people/relatives/:id/merge': { branch: 'request', roles: STUDENT_EDITORS },
+  // Task 11.1 (approved by the owner on 6 November 2026): the area `parent_accounts`, the
+  // Academic Vice Principal for the relatives of the branch only (parent-accounts.test.ts).
+  'GET /api/people/classes/:classId/parent-slips': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/classes/:classId/parent-slips': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/parents/:relativeId/password-reset': {
+    branch: 'request',
+    roles: STUDENT_EDITORS,
+  },
+  'GET /api/people/parents/:relativeId/account': { branch: 'request', roles: STUDENT_EDITORS },
+  'GET /api/people/parent-accounts/never-used': { branch: 'request', roles: STUDENT_EDITORS },
+  'POST /api/people/parent-accounts/never-used/export': {
+    branch: 'request',
+    roles: STUDENT_EDITORS,
+  },
   // Task 3.1c (decision 2 of pull request #90): the class Tutor, own classes
   // only (classes/tutor-scope.test.ts).
   'GET /api/people/students/:id/relatives': {

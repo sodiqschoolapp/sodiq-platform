@@ -45,8 +45,26 @@ export const secondStepStateSchema = z.enum(['not_needed', 'pending', 'set_up_re
 export type SecondStepState = z.infer<typeof secondStepStateSchema>;
 
 /** Who is signed in, and what must be done before anything else. */
+/**
+ * Whose account a session is (task 11.1): a staff account, or a relative's Parent account
+ * (`10`, Signing in: "A parent session never carries staff rights"). A parent session has no
+ * assignment and reaches only the routes of its own account that the owner approved.
+ */
+export const SESSION_KINDS = ['staff', 'parent'] as const;
+
+export const sessionKindSchema = z.enum(SESSION_KINDS);
+
+export type SessionKind = z.infer<typeof sessionKindSchema>;
+
 export const sessionResponseSchema = z.object({
   login: z.string(),
+  /** Staff or parent (task 11.1). */
+  kind: sessionKindSchema,
+  /**
+   * The relative's full name for a parent session, `null` for staff and while a step of
+   * sign-in is owed (task 11.1; a relative has no separate first and last name).
+   */
+  fullName: z.string().nullable(),
   /**
    * The first and last name of the staff record linked to the account, for
    * the menu (pull request #61, decision 6); `null` for an account with no

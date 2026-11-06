@@ -70,6 +70,20 @@ const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
 };
 
 /**
+ * A name in the Latin of the Uzbek state alphabet, letter by letter (task 11.1: the login of
+ * a relative whose name is typed in Cyrillic, decision 18 of pull request #292). Latin letters
+ * and the rest stay as they are; `loginBase` then drops what a login cannot hold.
+ */
+export function latinSpelling(text: string): string {
+  let latin = '';
+  for (const letter of text.normalize('NFKC')) {
+    const lower = letter.toLocaleLowerCase('en');
+    latin += CYRILLIC_TO_LATIN[lower] ?? letter;
+  }
+  return latin;
+}
+
+/**
  * A text with its spelling differences removed (answer 18: "Search and the
  * duplicate check treat look-alike spellings as the same (Oʻtkir, O'tkir,
  * Ўткир)"): lower case, Cyrillic written in Latin, every apostrophe and the

@@ -58,6 +58,11 @@ export interface PasswordReset extends AuditNames {
   accountId: string;
   /** The account of the administrator who resets it. */
   resetBy: string;
+  /**
+   * How long the one-time password works: 24 hours for staff (the default), 7 days for a
+   * parent (`edge/close-relatives`, task 11.1, decision 12).
+   */
+  validForMs?: number;
   requestId?: string;
 }
 
@@ -115,7 +120,7 @@ export class PasswordResets {
     const oneTimePassword = randomFirstPassword();
     const passwordHash = await hashPassword(oneTimePassword);
     const now = this.clock.now();
-    const validUntil = new Date(now.getTime() + RESET_PASSWORD_VALID_MS);
+    const validUntil = new Date(now.getTime() + (reset.validForMs ?? RESET_PASSWORD_VALID_MS));
 
     const changed = await transaction
       .updateTable('accounts')

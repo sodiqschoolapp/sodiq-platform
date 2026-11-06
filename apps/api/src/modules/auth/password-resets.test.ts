@@ -255,6 +255,8 @@ describe('a password reset by an administrator', () => {
 
       const answer = {
         login: 'p.maxmudova',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: true,
         name: null,
@@ -283,6 +285,8 @@ describe('a password reset by an administrator', () => {
 
       expect((await kit.get('/api/auth/session', cookie)).body).toEqual({
         login: 'r.maxmudova',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: false,
         name: null,
@@ -305,6 +309,8 @@ describe('a password reset by an administrator', () => {
 
       expect((await kit.signIn(account.login, account.firstPassword)).body).toEqual({
         login: 's.maxmudov',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'not_needed',
         mustChangePassword: true,
         name: null,

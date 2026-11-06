@@ -6,6 +6,7 @@ import {
   type Language,
   type PersonName,
   type SecondStepState,
+  type SessionKind,
   type SessionResponse,
 } from '@sodiq/shared';
 import { sql, type RawBuilder } from 'kysely';
@@ -24,6 +25,7 @@ import { idleLimitMs } from './idle-limit.js';
 import { isLogin } from './login.js';
 import { hashPassword, verifyPassword } from './password-hash.js';
 import { closeOpenResetLinks } from './reset-links.js';
+import { isParentAccount, ownRelativeName, parentAccountBlocked } from './parent-account.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { answerOf, owesAStep } from './session-answer.js';
 import {
@@ -74,6 +76,12 @@ async function personName(
 export interface ActiveSession {
   sessionId: string;
   accountId: string;
+  /**
+   * A staff account or a relative's Parent account (task 11.1), read on every request. A
+   * parent session has no assignment, and the permission guard lets it reach only the routes
+   * marked `AnySignedIn({ parent: true })`.
+   */
+  kind: SessionKind;
   login: string;
   /**
    * Where the session stands with the second step. `pending`: nothing but the
@@ -130,6 +138,8 @@ export function owedStepOf(
 export interface PeekedSession {
   sessionId: string;
   accountId: string;
+  /** Task 11.1: a parent session has no live connection (it gets no notification). */
+  kind: SessionKind;
   owedStep: OwedStep | null;
 }
 
@@ -276,6 +286,20 @@ export class Sessions {
       await this.recordInactiveSignIn(account.id, origin.requestId);
       throw new ApiException('account_inactive', 403);
     }
+    // Task 11.1 (decision 6): a Parent account that can no longer sign in is answered as a
+    // wrong password, so the answer tells no account apart; the attempt is in the history.
+    const parent = await this.transactions.run([], (transaction) =>
+      isParentAccount(transaction, account.id),
+    );
+    if (
+      parent &&
+      (await this.transactions.run([], async (transaction) =>
+        parentAccountBlocked(transaction, account.id, await transactionMoment(transaction)),
+      ))
+    ) {
+      await this.recordFailedSignIn(account.id, origin.requestId);
+      throw new ApiException('sign_in_failed', 401);
+    }
     if (account.password_expires_at !== null && account.password_expires_at <= now) {
       throw new ApiException('password_expired', 401);
     }
@@ -311,8 +335,10 @@ export class Sessions {
         null,
         rolesOf(assignments),
       );
-      const trusted =
-        origin.trustDevice && secondStep === 'not_needed' && !account.must_change_password;
+      // Task 11.1 (decision 2): "Trust this device" is not approved for a parent; the
+      // sign-in of a Parent account is never trusted and asks for no trust.
+      const trustDevice = origin.trustDevice && !parent;
+      const trusted = trustDevice && secondStep === 'not_needed' && !account.must_change_password;
       const session = await transaction
         .insertInto('sessions')
         .values({
@@ -321,7 +347,7 @@ export class Sessions {
           created_at: now,
           last_used_at: now,
           user_agent: origin.userAgent ?? null,
-          trust_requested: origin.trustDevice,
+          trust_requested: trustDevice,
           trusted_from: trusted ? now : null,
         })
         .returning(['id', 'created_at'])
@@ -342,7 +368,7 @@ export class Sessions {
         action: 'auth.sign_in',
         record: { type: 'session', id: session.id },
         // "A sign-in with trust is recorded in the sign-in history."
-        details: origin.trustDevice ? { secondStep, trustRequested: true } : { secondStep },
+        details: trustDevice ? { secondStep, trustRequested: true } : { secondStep },
         ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
       });
       if (trusted) {
@@ -354,6 +380,7 @@ export class Sessions {
         session: {
           sessionId: session.id,
           accountId: account.id,
+          kind: parent ? ('parent' as const) : ('staff' as const),
           login,
           secondStep,
           mustChangePassword: account.must_change_password,
@@ -495,9 +522,22 @@ export class Sessions {
       ) {
         return undefined;
       }
+      // Task 11.1 (decision 6): a Parent account that can no longer sign in reaches nothing.
+      const parent = await isParentAccount(transaction, used.account_id);
+      if (
+        parent &&
+        (await parentAccountBlocked(
+          transaction,
+          used.account_id,
+          await transactionMoment(transaction),
+        ))
+      ) {
+        return undefined;
+      }
       return {
         sessionId: used.id,
         accountId: used.account_id,
+        kind: parent ? 'parent' : 'staff',
         login: account.login,
         secondStep: await this.secondSteps.stateOf(
           transaction,
@@ -559,6 +599,11 @@ export class Sessions {
             transaction,
             row.account_id,
             await transactionMoment(transaction),
+          )) ||
+          (await parentAccountBlocked(
+            transaction,
+            row.account_id,
+            await transactionMoment(transaction),
           ))
         ) {
           continue;
@@ -581,6 +626,7 @@ export class Sessions {
         peeked.push({
           sessionId: row.id,
           accountId: row.account_id,
+          kind: (await isParentAccount(transaction, row.account_id)) ? 'parent' : 'staff',
           owedStep: owedStepOf(secondStep, row.must_change_password),
         });
       }
@@ -607,6 +653,10 @@ export class Sessions {
           session.passwordResetBy === null
             ? null
             : await personName(transaction, sql`reset_by_person_name(${session.accountId}::uuid)`),
+        fullName:
+          owed || session.kind !== 'parent'
+            ? null
+            : await ownRelativeName(transaction, session.accountId),
       };
       if (owed) {
         return answerOf(session, [], names);
@@ -874,6 +924,12 @@ export class Sessions {
 
     return this.transactions.run([], async (transaction) => {
       const now = this.clock.now();
+      // Task 11.1 (decision 11): the first password a parent chooses is the first sign-in.
+      const before = await transaction
+        .selectFrom('accounts')
+        .select('password_changed_at')
+        .where('id', '=', session.accountId)
+        .executeTakeFirstOrThrow();
       const changed = await transaction
         .updateTable('accounts')
         .set({
@@ -924,6 +980,15 @@ export class Sessions {
         details: { endedSessions: ended.length },
         ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
       });
+      if (session.kind === 'parent' && before.password_changed_at === null) {
+        await this.audit.record(transaction, {
+          branchId: null,
+          actorId: session.accountId,
+          action: 'parent_account.first_sign_in',
+          record: { type: 'account', id: session.accountId },
+          ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+        });
+      }
       const trustEnded = await this.endTrust(
         transaction,
         session,

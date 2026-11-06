@@ -20,7 +20,9 @@ import type { Requirement } from './permission-check.js';
  * - `@Requires(area, action)`: a role that the permission table gives the action.
  */
 export type RouteAccess =
-  { kind: 'public' } | { kind: 'any_signed_in' } | ({ kind: 'requires' } & Requirement);
+  | { kind: 'public' }
+  | { kind: 'any_signed_in'; parent: boolean }
+  | ({ kind: 'requires' } & Requirement);
 
 const ACCESS = Symbol('ACCESS');
 
@@ -51,7 +53,14 @@ export function declarationsOf(handler: object): RouteAccess[] {
  * can act"; docs/spec-changes.md, 6 October 2026). Such a route acts on the
  * account of the session only and never on one named in the request.
  */
-export const AnySignedIn = (): MethodDecorator => declare({ kind: 'any_signed_in' });
+/**
+ * Every signed-in account. `{ parent: true }` also lets a parent session in (task 11.1): only
+ * the routes of the own account the owner approved for the `parent` role ("signs in and
+ * changes its own password and language", build plan 11.1); every other route refuses a
+ * parent session.
+ */
+export const AnySignedIn = (options: { parent?: true } = {}): MethodDecorator =>
+  declare({ kind: 'any_signed_in', parent: options.parent === true });
 
 export interface RequiresOptions {
   /** `none` for school-wide work, which names no branch. Left out: the branch of the request. */

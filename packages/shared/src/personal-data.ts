@@ -58,6 +58,27 @@ const portalAccountSchema = z.strictObject({
   switchedOn: z.boolean(),
 });
 
+/**
+ * The Parent account in the relative's own report (task 11.1, correction 3 of the plan review of
+ * #292): the login, whether a password was chosen, the last sign-in and every slip printed,
+ * with its branch; never a password or its hash.
+ */
+const parentAccountReportSchema = z.strictObject({
+  createdAt: z.iso.datetime(),
+  switchedOn: z.boolean(),
+  login: z.string().nullable(),
+  signedIn: z.boolean(),
+  lastSignInAt: z.iso.datetime().nullable(),
+  slips: z.array(
+    z.strictObject({
+      kind: z.enum(['first', 'reset']),
+      branch: z.string(),
+      printedAt: z.iso.datetime(),
+      validUntil: z.iso.datetime(),
+    }),
+  ),
+});
+
 /** What every report holds besides the person. */
 const reportBase = {
   /** From the injected clock. */
@@ -314,7 +335,7 @@ export const relativeReportSchema = z.strictObject({
     email: z.string().nullable(),
     phoneInvalidSince: z.iso.datetime().nullable(),
     archivedAt: z.iso.datetime().nullable(),
-    account: portalAccountSchema.nullable(),
+    account: parentAccountReportSchema.nullable(),
   }),
   /** The staff record marked as the same person (task 2.5b-2). */
   samePerson: z

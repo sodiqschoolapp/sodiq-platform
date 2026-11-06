@@ -115,6 +115,12 @@ export class PermissionGuard implements CanActivate {
     if (session === undefined) {
       throw new Error('The permission guard ran before the session guard.');
     }
+    // Task 11.1 (decision 2 of pull request #292, Look first): a parent session never carries
+    // staff rights. It reaches only the routes of its own account marked for it; every other
+    // route refuses it, before the table is read (the `parent` row of an area included).
+    if (session.kind === 'parent' && (access.kind !== 'any_signed_in' || !access.parent)) {
+      throw new ApiException('permission_denied', 403);
+    }
     if (access.kind === 'any_signed_in') {
       return true;
     }

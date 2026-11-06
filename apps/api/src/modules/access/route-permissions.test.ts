@@ -3,7 +3,9 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ROLES } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { ClassesKit } from '../../testing/classes-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
+import { ParentsKit } from '../../testing/parents-kit.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import {
   EveryMethodController,
@@ -72,6 +74,18 @@ describe('every route of the application, as every role', () => {
       handlerStop,
     });
     callers = await harnessCallers(app, { home, other });
+    // Task 11.1 (Done when: "a parent session is refused on every staff route"): a relative's
+    // Parent account, signed in with its password changed, walks the whole route table too.
+    const admin = await new ClassesKit(database.migrator).account();
+    const parents = new ParentsKit(app, database.migrator, admin);
+    const { relativeId } = await parents.student(home);
+    const parent = await parents.session(relativeId);
+    callers.callers.push({
+      name: 'parent account',
+      role: null,
+      cookies: parent.cookie,
+      parentAccount: true,
+    });
   }, 120_000);
 
   afterAll(async () => {
@@ -99,8 +113,13 @@ describe('every route of the application, as every role', () => {
     expect(Object.fromEntries(marked)).toEqual(STEP_ROUTES);
   });
 
-  it('is tried by 15 roles, an account without a role and nobody', () => {
-    expect(callers.callers.map((caller) => caller.name)).toEqual(['nobody', 'no role', ...ROLES]);
+  it('is tried by 15 roles, an account without a role, a Parent account and nobody', () => {
+    expect(callers.callers.map((caller) => caller.name)).toEqual([
+      'nobody',
+      'no role',
+      ...ROLES,
+      'parent account',
+    ]);
   });
 
   // Every route as 17 callers in two branches: about 58 s here after task 7.2's

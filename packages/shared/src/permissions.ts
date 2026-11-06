@@ -885,6 +885,20 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'create', 'edit'],
   }),
   /**
+   * The Parent accounts of relatives (task 11.1, pull request #292): the slips of a class, the
+   * reset of a parent's password, the account part of the Parent page (`view`, `create`), and
+   * the report of Parent accounts never used (`export`). Approved by the owner on 6 November
+   * 2026 with the spec change (build plan 11.1, stop-list item 5): the Super Admin, and the
+   * Academic Vice Principal for relatives linked to a student of the branch of the request,
+   * which each route checks. `10`, Signing in: "The Academic Vice Principal (own branch) and the
+   * Super Admin print first-password slips". The `parent` row is empty: a parent session is
+   * refused by the guard on every route but its own account's.
+   */
+  parent_accounts: rows({
+    super_admin: ['view', 'create', 'export'],
+    academic_vice_principal: ['view', 'create', 'export'],
+  }),
+  /**
    * The Super Admin's forced delete of a dated lesson and its restore within
    * 30 days, and the store of forced deletes (task 5.8b, pull request #195,
    * decision 10): 06, Protection: "Forced delete is for Super Admin only, with

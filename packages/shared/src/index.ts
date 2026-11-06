@@ -110,6 +110,8 @@ export {
   secondStepRecoveryCodesSchema,
   secondStepSetUpSchema,
   secondStepStateSchema,
+  SESSION_KINDS,
+  sessionKindSchema,
   sessionListSchema,
   setLanguageSchema,
   sessionResponseSchema,
@@ -122,6 +124,7 @@ export {
   type SecondStepRecoveryCodes,
   type SecondStepSetUp,
   type SecondStepState,
+  type SessionKind,
   type SessionList,
   type SessionResponse,
   type SetLanguage,
@@ -759,6 +762,10 @@ export {
   STAFF_CONTACT_EXPORT_COLUMNS,
   STAFF_EXPORT_COLUMNS,
   staffExportSchema,
+  PARENTS_NEVER_USED_EXPORT_COLUMNS,
+  parentsNeverUsedExportSchema,
+  type ParentsNeverUsedExport,
+  type ParentsNeverUsedExportColumn,
   STUDENT_EXPORT_COLUMNS,
   CLASS_EXPORT_COLUMNS,
   classExportSchema,
@@ -2565,3 +2572,6 @@ export {
   type StaffImportTemplateQuery,
   type StaffImportWords,
 } from './staff-import.js';
+
+export * from './parent-accounts.js';
+export { latinSpelling } from './names.js';

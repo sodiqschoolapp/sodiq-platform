@@ -215,6 +215,22 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'is_parent_account(uuid)':
+    'Whether an account is linked to a relative (a Parent account), a yes or no asked by the guards that keep parent and staff accounts apart, whatever branch the relative is linked in (10, Signing in: "A parent session never carries staff rights"; task 11.1, plan of pull request #292).',
+  'relative_accounts_not_staff()':
+    "Refuses linking a relative to an account that has a staff record or an assignment in any branch; the row filter hides other branches' staff records (task 11.1, plan of pull request #292).",
+  'assignments_not_parent()':
+    'Refuses an assignment for a Parent account, whatever branch links the relative (task 11.1, plan of pull request #292).',
+  'staff_not_parent()':
+    'Refuses linking a staff record to a Parent account, whatever branch links the relative (task 11.1, plan of pull request #292).',
+  'student_active_at(uuid,timestamp with time zone)':
+    "Whether a student is active on the date of a moment in the time zone of the student's branch, a yes or no asked by sign-in, which comes before any branch is known (task 11.1, decision 6 of pull request #292).",
+  'parent_account_blocked(uuid,timestamp with time zone)':
+    'Whether a Parent account can no longer sign in (relative archived or merged, or no live link with portal access on to an active student in any branch), a yes or no asked by sign-in and by every request of a parent session, before any branch is known (10, Telegram: "when the account can no longer sign in"; task 11.1, decision 6 of pull request #292).',
+  'own_relative_name(uuid)':
+    'The full name of the relative of the account of the session, for its own session answer, as own_person_name for staff (task 11.1, plan of pull request #292).',
+  'parent_slip_state(uuid,uuid,timestamp with time zone)':
+    'The newest slip of a Parent account in any branch: kind, moments and whether it is valid, with the class named only for a slip of the branch asked for (edge/close-relatives: a valid slip of another class is not printed again; task 11.1, must-fix 1 of the spec review and decision 15 of pull request #292, Look first). No class of another branch, no password.',
   'password_resets_of_branch(uuid,timestamp with time zone,timestamp with time zone)':
     'The password resets of the accounts of the staff of a branch, and of any account that wrote a cell line of the branch within 48 hours of its reset, read from every log whatever branch wrote the entry, ids, kinds and moments only, for the report of entries after a reset (edge/people-roles-accounts, Accounts and sign-in; task 6.1c, decision 1 of pull request #209, Look first): one account serves every branch, so a reset made in one branch opens the account in all of them.',
   'subject_switch_blocked(uuid,smallint,timestamp with time zone,boolean,boolean)':

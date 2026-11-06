@@ -103,6 +103,15 @@ const environmentSchema = z.object({
   // Super Admin can move the platform's "now" forward for the role tutorials. Refused at start
   // anywhere else (`DEMO_CLOCK_ENVIRONMENTS`, `PRODUCTION_WEB_ORIGIN`).
   DEMO_CLOCK: z.preprocess(emptyAsUnset, z.enum(['0', '1']).default('0')),
+  // Task 11.1 (decision 10): the public name of the school's Telegram bot, printed on the
+  // parents' slips; not a secret. Unset, a slip names the site address only.
+  PARENT_BOT_USERNAME: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[A-Za-z][A-Za-z0-9_]{4,31}$/)
+      .optional(),
+  ),
 });
 
 /**
@@ -170,6 +179,8 @@ const PROBLEM: Record<VariableName, string> = {
   RENDER_INSTANCE_ID: 'RENDER_INSTANCE_ID must be the name of an instance',
   DEMO_CLOCK:
     'DEMO_CLOCK must be 0 or 1, and 1 only on the test environment (SENTRY_ENVIRONMENT test or development, never the production address)',
+  PARENT_BOT_USERNAME:
+    'PARENT_BOT_USERNAME must be the name of a Telegram bot without the @, 5 to 32 letters, digits or _, or unset',
 };
 
 export interface AppConfig {
@@ -195,6 +206,8 @@ export interface AppConfig {
   monitoring: MonitoringConfig;
   /** Task 10.5: whether the demo clock runs (the test environment only). */
   demoClock: boolean;
+  /** Task 11.1: the public name of the school's Telegram bot for the parents' slips, or none. */
+  parentBotUsername: string | null;
 }
 
 export interface MonitoringConfig {
@@ -325,6 +338,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
       instance: data.RENDER_INSTANCE_ID ?? 'local',
     },
     demoClock: data.DEMO_CLOCK === '1',
+    parentBotUsername: data.PARENT_BOT_USERNAME ?? null,
   };
 }
 

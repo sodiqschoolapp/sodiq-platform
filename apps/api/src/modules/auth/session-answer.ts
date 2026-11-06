@@ -14,6 +14,8 @@ export interface AnswerNames {
   name: PersonName | null;
   /** The name of the administrator who reset the password; `null` when they have no record. */
   resetBy: PersonName | null;
+  /** The full name of the relative of a Parent account (task 11.1); `null` for staff. */
+  fullName: string | null;
 }
 
 /**
@@ -37,6 +39,8 @@ export function answerOf(
         : `${names.resetBy.firstName} ${names.resetBy.lastName}`;
   return {
     login: session.login,
+    kind: session.kind,
+    fullName: owed ? null : names.fullName,
     name: names.name,
     secondStep: session.secondStep,
     mustChangePassword: session.mustChangePassword,

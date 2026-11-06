@@ -39,6 +39,9 @@ export const AUDIT_ACTION_GROUPS = {
     'account.unlocked',
     'account.password_reset',
     'account.rehire_password',
+    // Task 11.1: a first-password slip of a Parent account printed, and its first sign-in.
+    'parent_account.slip',
+    'parent_account.first_sign_in',
     'account.second_step_started',
     'account.second_step_on',
     'account.second_step_off',
@@ -401,6 +404,9 @@ export const AUDIT_ACTION_GROUPS = {
     'plan.carried_placed',
   ],
   exports: [
+    // Task 11.1: the report of Parent accounts never used, read and downloaded.
+    'parent_account.never_used',
+    'parent_account.never_used_export',
     // Task 8.9: a journal in Excel or PDF, and the branch export: asked for, ready, downloaded.
     'journal.export',
     'journal.branch_export',

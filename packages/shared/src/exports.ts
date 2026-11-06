@@ -30,6 +30,8 @@ export const EXPORT_LISTS = [
   'students',
   'classes',
   'groups',
+  // Task 11.1: the report of Parent accounts never used.
+  'parents_never_used',
 ] as const;
 
 export type ExportList = (typeof EXPORT_LISTS)[number];
@@ -122,6 +124,21 @@ export const GROUP_EXPORT_COLUMNS = [
   'maxSize',
   'status',
 ] as const;
+
+/**
+ * The report of Parent accounts never used (task 11.1): the relative, the login, the children
+ * of the branch, the date of the last slip and its end, and whether it ran out.
+ */
+export const PARENTS_NEVER_USED_EXPORT_COLUMNS = [
+  'name',
+  'login',
+  'children',
+  'printedAt',
+  'validUntil',
+  'expired',
+] as const;
+
+export type ParentsNeverUsedExportColumn = (typeof PARENTS_NEVER_USED_EXPORT_COLUMNS)[number];
 
 export const STUDENT_EXPORT_COLUMNS = [
   'uid',
@@ -295,6 +312,7 @@ export const subjectExportSchema = exportRequestSchema(SUBJECT_EXPORT_COLUMNS);
 export const studentExportSchema = exportRequestSchema(STUDENT_EXPORT_COLUMNS);
 export const classExportSchema = exportRequestSchema(CLASS_EXPORT_COLUMNS);
 export const groupExportSchema = exportRequestSchema(GROUP_EXPORT_COLUMNS);
+export const parentsNeverUsedExportSchema = exportRequestSchema(PARENTS_NEVER_USED_EXPORT_COLUMNS);
 
 export type StaffExport = z.infer<typeof staffExportSchema>;
 export type VacancyExport = z.infer<typeof vacancyExportSchema>;
@@ -305,6 +323,7 @@ export type SubjectExport = z.infer<typeof subjectExportSchema>;
 export type StudentExport = z.infer<typeof studentExportSchema>;
 export type ClassExport = z.infer<typeof classExportSchema>;
 export type GroupExport = z.infer<typeof groupExportSchema>;
+export type ParentsNeverUsedExport = z.infer<typeof parentsNeverUsedExportSchema>;
 
 /** The texts of one list's file: its name (sheet and file) and the heading of each column. */
 export interface ExportListTexts<Column extends string> {
@@ -328,6 +347,7 @@ export interface ExportTexts {
   students: ExportListTexts<StudentExportColumn>;
   classes: ExportListTexts<ClassExportColumn>;
   groups: ExportListTexts<GroupExportColumn>;
+  parents_never_used: ExportListTexts<ParentsNeverUsedExportColumn>;
   /** The texts of the cells of the student file, as the student list and profile write them. */
   student: {
     statuses: Record<StudentStatus, string>;
@@ -372,6 +392,17 @@ export interface ExportTexts {
 }
 
 const en: ExportTexts = {
+  parents_never_used: {
+    name: 'Parent accounts never used',
+    columns: {
+      name: 'Parent',
+      login: 'Login',
+      children: 'Children',
+      printedAt: 'Slip printed',
+      validUntil: 'Valid until',
+      expired: 'Expired',
+    },
+  },
   staff: {
     name: 'Staff',
     columns: {
@@ -599,6 +630,17 @@ const en: ExportTexts = {
 };
 
 const ru: ExportTexts = {
+  parents_never_used: {
+    name: 'Родители не входили',
+    columns: {
+      name: 'Родитель',
+      login: 'Логин',
+      children: 'Дети',
+      printedAt: 'Бланк напечатан',
+      validUntil: 'Действует до',
+      expired: 'Истёк',
+    },
+  },
   staff: {
     name: 'Сотрудники',
     columns: {
@@ -835,6 +877,17 @@ const ru: ExportTexts = {
 };
 
 const uz: ExportTexts = {
+  parents_never_used: {
+    name: 'Kirmagan ota-onalar',
+    columns: {
+      name: 'Ota-ona',
+      login: 'Login',
+      children: 'Farzandlari',
+      printedAt: 'Varaqa chop etilgan',
+      validUntil: 'Amal qiladi',
+      expired: 'Muddati oʻtgan',
+    },
+  },
   staff: {
     name: 'Xodimlar',
     columns: {

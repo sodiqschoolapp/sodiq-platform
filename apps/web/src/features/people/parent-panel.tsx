@@ -25,6 +25,7 @@ import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { HistoryLink } from '@/features/audit/history-link';
+import { ParentAccountPart } from './parent-account-part';
 import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
 import { invalidateRelatives, phoneMatch, relativeDetailQuery } from './people-api';
@@ -161,6 +162,7 @@ export function ParentPanel({ id, name }: { id: string; name: string }) {
           <RelativeTerms relative={relative} />
           <HistoryLink kind="relative" id={relative.id} />
           <ReportLink kind="relative" id={relative.id} />
+          <ParentAccountPart relativeId={relative.id} name={relative.fullName} />
           <section className="grid gap-2">
             <h3 className={SECTION_TITLE}>{t('people.relatives.students')}</h3>
             <ul className="grid gap-1 text-sm">

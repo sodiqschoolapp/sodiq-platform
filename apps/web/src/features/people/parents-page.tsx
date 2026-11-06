@@ -1,11 +1,12 @@
-import { listName, phoneText, type RelativeListItem } from '@sodiq/shared';
+import { listName, PERMISSIONS, permits, phoneText, type RelativeListItem } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPage } from '@/components/list/list-page';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { ParentPanel } from './parent-panel';
 import { relativesQuery } from './people-api';
@@ -26,7 +27,8 @@ export function ParentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const search = useSearch({ from: '/app/people/parents' });
-  const { branchId } = useView();
+  const { branchId, role } = useView();
+  const canReadNeverUsed = role !== null && permits(PERMISSIONS, role, 'parent_accounts', 'export');
   const all = useQuery(relativesQuery(branchId));
   // "No valid phone" comes from the server, which knows the active students
   // of the branch (task 2.5b-1, decision 3).
@@ -105,6 +107,14 @@ export function ParentsPage() {
           { label: t('home.title'), to: '/' },
           { label: t('people.title'), to: '/people' },
         ]}
+        actions={
+          // Task 11.1: the Parent accounts never used, for the readers of `parent_accounts`.
+          canReadNeverUsed ? (
+            <Link to="/people/parent-accounts" className={buttonVariants({ variant: 'secondary' })}>
+              {t('people.parentsNeverUsed.title')}
+            </Link>
+          ) : undefined
+        }
       />
       <PeopleTabs current="parents" />
       <ListPage

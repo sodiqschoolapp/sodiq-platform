@@ -34,7 +34,7 @@ type About =
 type PeopleAction =
   | Extract<
       AuditAction,
-      `${'auth' | 'account' | 'assignment' | 'staff' | 'student' | 'relative' | 'vacancy'}.${string}`
+      `${'auth' | 'account' | 'assignment' | 'staff' | 'student' | 'relative' | 'vacancy' | 'parent_account'}.${string}`
     >
   | 'audit.entry_shown';
 
@@ -70,6 +70,11 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'auth.password_reset_by_email': ['account'],
   // Record the account; an administrator's change also names the person.
   'account.create': ['account', 'person'],
+  // Task 11.1: a slip names the relative as record and person; the first sign-in the account.
+  'parent_account.slip': ['record', 'person'],
+  'parent_account.first_sign_in': ['account'],
+  'parent_account.never_used': ['none'],
+  'parent_account.never_used_export': ['none'],
   'account.linked': ['account', 'person'],
   'account.language_changed': ['account'],
   'account.locked': ['account', 'person'],

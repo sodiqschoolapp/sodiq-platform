@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 11.1 Parent accounts: login, slips, reset
+
+- **Database** (0158): the switched-off check of `relative_accounts` dropped (Look first); `relative_accounts.account_id`, written once with `switched_on_at`; guards that keep parent and staff accounts apart (no assignment, no staff link); `parent_slips` (append-only, branch-filtered, no password); the readers `parent_slip_state` (a slip of any branch, its class only for the own branch) and `parent_account_blocked`.
+- **API**: `parent_accounts` for the Super Admin and the Academic Vice Principal: the slips of a class (list, print, print again; 30 days), the reset (7 days, sessions end), the account part, the never-used report and its file. A parent signs in like staff (a blocked parent is answered as a wrong password, no trust); the session has `kind` and `fullName`; the guard refuses a parent session everywhere but session, password, language and sign-out. The Parent account is in the personal data report.
+- **Web**: Parent slips from the class panel (four to an A4 page, in the language chosen), the account part with the reset on the Parent panel, "Parents never signed in" from the Parents page, the parent's own frame. Demo seed: Parent accounts for every class but the first of each branch.
+
+Left out: the Telegram link and its end (11.4); the portal pages (11.2, 11.3); for the parent, the sessions list, trusted devices and own sign-in history (not approved; on issue #42).
+
+The next sessions must know:
+
+- A parent session reaches only routes marked `@AnySignedIn({ parent: true })`; the route harness walks a Parent account caller (`any_signed_in_parent` in `route-access-list.ts`).
+- A page component of a route with a path parameter declares its return type (`React.JSX.Element`), or eslint reads the whole router as `any`.
+
 ## 6 November 2026: task 10.6 Name a work added by hand
 
 - **Database** (0157): `journal_works.title` (1 to 60 characters, trimmed; null for a planned work and for one added before 10.6); the insert trigger `journal_works_title_required` refuses a new row added by hand by the application with no title (a forced-delete restore passes); `journal_work_history` keeps `title_before` and `title_after` and writes a line for a rename.

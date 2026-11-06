@@ -8,6 +8,7 @@ import { FixedClock } from '../fixed-clock.js';
 import { BRANCHES, SETUP_MOMENT } from './data.js';
 import { fillJournals } from './journal.js';
 import type { DemoAccount } from './people.js';
+import { seedParents } from './parents.js';
 import { buildDemoSchool } from './school.js';
 
 /**
@@ -79,6 +80,8 @@ try {
   const school = await buildDemoSchool({ app, migrator, clock, password, say });
   strict.push(school.superAdmin, ...school.branches.map((branch) => branch.vice));
   await fillJournals({ app, migrator, clock, school, password, today, say });
+  // Task 11.1: the Parent accounts, before the second steps of the vice principals are reset.
+  await seedParents({ migrator, school, password, now: clock.now(), say });
 
   // The second steps the seed set up are removed, so that the owner sets up
   // their own authenticator at the first sign-in of these accounts.
