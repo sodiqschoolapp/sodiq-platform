@@ -517,11 +517,12 @@ describe('phone owners and merges in the database', () => {
           .where('id', '=', merged.relative)
           .execute(),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_merged' });
-      // Before the check of 0036, which Release 2 drops.
+      // The check of 0036 is gone (task 11.1): the switch-on with an account is refused.
+      const login = await newAccount('m.merged');
       await expect(
         database.migrator
           .updateTable('relative_accounts')
-          .set({ switched_on_at: MOMENT })
+          .set({ account_id: login, switched_on_at: MOMENT })
           .where('relative_id', '=', merged.relative)
           .execute(),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'relative_merged' });

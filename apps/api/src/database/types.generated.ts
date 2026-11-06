@@ -1376,6 +1376,20 @@ export interface Notifications {
   read_at: Timestamp | null;
 }
 
+export interface ParentSlips {
+  account_id: string;
+  assignment_id: string;
+  branch_id: string;
+  class_id: string | null;
+  id: Generated<string>;
+  kind: string;
+  language: string;
+  printed_at: Timestamp;
+  printed_by: string;
+  relative_id: string;
+  valid_until: Timestamp;
+}
+
 export interface PasswordResetLinks {
   account_id: string;
   closed_at: Timestamp | null;
@@ -1513,6 +1527,7 @@ export interface Quarters {
 }
 
 export interface RelativeAccounts {
+  account_id: string | null;
   created_at: Timestamp;
   relative_id: string;
   switched_on_at: Timestamp | null;
@@ -2324,6 +2339,7 @@ export interface DB {
   lesson_plans: LessonPlans;
   lessons: Lessons;
   notifications: Notifications;
+  parent_slips: ParentSlips;
   password_reset_links: PasswordResetLinks;
   pattern_block_classes: PatternBlockClasses;
   pattern_blocks: PatternBlocks;

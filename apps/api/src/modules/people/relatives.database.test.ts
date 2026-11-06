@@ -734,7 +734,9 @@ describe('close relatives in the database', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('holds the Parent account switched off until Release 2', async () => {
+    // Task 11.1 (decision 1 of pull request #292, Look first): Release 2 dropped the check of
+    // 0036; the account is switched on only with the account it is linked to (0158).
+    it('switches the Parent account on only with its account (task 11.1)', async () => {
       const { relative } = await studentWithRelative(north);
       await expect(
         database.migrator
@@ -744,7 +746,7 @@ describe('close relatives in the database', () => {
           .execute(),
       ).rejects.toMatchObject({
         code: CHECK_VIOLATION,
-        constraint: 'relative_accounts_switched_off_check',
+        constraint: 'relative_account_switch_on',
       });
     });
   });
