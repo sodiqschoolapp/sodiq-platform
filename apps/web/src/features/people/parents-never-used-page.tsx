@@ -11,7 +11,6 @@ import { PageHeader } from '@/components/page-header';
 import { useView } from '@/features/access/use-view';
 import { momentText } from '@/lib/dates';
 import { parentsNeverUsedQuery } from './parent-accounts-api';
-import { PeopleTabs } from './people-tabs';
 
 type Row = ParentsNeverUsed['accounts'][number];
 
@@ -119,9 +118,9 @@ export function ParentsNeverUsedPage(): React.JSX.Element {
         breadcrumbs={[
           { label: t('home.title'), to: '/' },
           { label: t('people.title'), to: '/people' },
+          { label: t('people.relatives.title'), to: '/people/parents' },
         ]}
       />
-      <PeopleTabs current="parent-accounts" />
       <ListPage
         listId="parents-never-used"
         caption={t('people.parentsNeverUsed.caption')}

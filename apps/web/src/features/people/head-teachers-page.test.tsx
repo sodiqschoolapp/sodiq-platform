@@ -157,8 +157,6 @@ describe('the Head Teachers of the branch', () => {
       en.people.neverUsed.title,
       // Task 6.1c: the entries after a reset, for the same readers.
       en.people.resetEntries.title,
-      // Task 11.1: the Parent accounts never used.
-      en.people.parentsNeverUsed.title,
     ]);
     expect(
       nav.getByRole('link', { name: en.people.headTeachers.title }).getAttribute('aria-current'),
