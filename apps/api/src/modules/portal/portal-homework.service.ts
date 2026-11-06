@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   planFileTypeSchema,
   portalHomeworkWeekSchema,
+  subjectColourSchema,
   type PlanFile,
   type PortalHomework,
   type PortalHomeworkWeek,
@@ -66,7 +67,16 @@ export class PortalHomeworkService {
     return portalHomeworkWeekSchema.parse({
       today: scope.today,
       monday: scope.dates[0] ?? scope.today,
-      homework: found.map(({ itemId: _item, start: _start, ...homework }) => homework),
+      homework: found.map((one) => ({
+        givenOn: one.givenOn,
+        subject: one.subject,
+        topic: one.topic,
+        title: one.title,
+        number: one.number,
+        description: one.description,
+        dueOn: one.dueOn,
+        files: one.files,
+      })),
     });
   }
 
@@ -187,7 +197,11 @@ async function givenIn(
         rows.push({
           givenOn: lesson.date,
           start: lesson.start,
-          subject: { id: journal.subjectId, names: journal.subject.names },
+          subject: {
+            id: journal.subjectId,
+            names: journal.subject.names,
+            colour: subjectColourSchema.parse(journal.subject.colour),
+          },
           topic: item?.topic ?? null,
           title: one.title,
           number: index + 1,

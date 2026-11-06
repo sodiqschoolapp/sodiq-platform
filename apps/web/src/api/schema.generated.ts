@@ -194855,6 +194855,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
                             teacher: string | null;
                             room: string | null;
@@ -194877,6 +194879,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             } | null;
                             room: string | null;
                         }[];
@@ -195197,6 +195201,8 @@ export interface operations {
                                     ru: string;
                                     en: string;
                                 };
+                                /** @enum {string} */
+                                colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
                             topic: string | null;
                             title: string | null;

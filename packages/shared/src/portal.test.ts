@@ -32,7 +32,11 @@ describe('the portal schemas (task 11.2)', () => {
       start: 480,
       end: 525,
       lessonNumber: 1,
-      subject: { id: ID, names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' } },
+      subject: {
+        id: ID,
+        names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        colour: 'blue',
+      },
       teacher: 'Aziza Karimova',
       room: '101',
       state: 'planned',

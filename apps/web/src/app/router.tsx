@@ -46,6 +46,11 @@ import { NeverUsedPage } from '@/features/people/never-used-page';
 import { ParentSlipsPage } from '@/features/people/parent-slips-page';
 import { ParentsNeverUsedPage } from '@/features/people/parents-never-used-page';
 import { ParentHomePage } from '@/features/auth/parent-home-page';
+import { PortalFrame } from '@/features/portal/portal-frame';
+import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
+import { PortalIndexPage } from '@/features/portal/portal-index-page';
+import { portalSearch } from '@/features/portal/portal-search';
+import { PortalTimetablePage } from '@/features/portal/portal-timetable-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
@@ -226,7 +231,7 @@ async function staffOnly({ context }: { context: RouterContext }): Promise<void>
   const session = await context.queryClient.fetchQuery(sessionQuery);
   if (session?.kind === 'parent') {
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
-    throw redirect({ to: '/parent' });
+    throw redirect({ to: '/portal' });
   }
 }
 
@@ -259,6 +264,38 @@ const parentRoute = createRoute({
   beforeLoad: parentOnly,
   component: ParentHomePage,
   pendingComponent: AuthPendingPage,
+});
+
+/**
+ * The parent portal (task 11.2, pull request #294): the frame with the child switcher, and the
+ * timetable and homework of a child. A parent session lands here (decision 13).
+ */
+const portalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/portal',
+  beforeLoad: parentOnly,
+  component: PortalFrame,
+  pendingComponent: AuthPendingPage,
+});
+
+const portalIndexRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '/',
+  component: PortalIndexPage,
+});
+
+const portalTimetableRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/timetable',
+  validateSearch: portalSearch,
+  component: PortalTimetablePage,
+});
+
+const portalHomeworkRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/homework',
+  validateSearch: portalSearch,
+  component: PortalHomeworkPage,
 });
 
 /** The parent's password change by choice (task 11.1). */
@@ -843,6 +880,7 @@ const routeTree = rootRoute.addChildren([
   setUpRoute,
   parentRoute,
   parentPasswordRoute,
+  portalRoute.addChildren([portalIndexRoute, portalTimetableRoute, portalHomeworkRoute]),
   appRoute.addChildren([
     homeRoute,
     accountRoute,

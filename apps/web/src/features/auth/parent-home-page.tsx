@@ -23,10 +23,14 @@ export function ParentHomePage(): React.JSX.Element {
       <div className="grid gap-6">
         <LanguageSection />
         <div className="flex flex-wrap gap-2">
+          <Link to="/portal" className={buttonVariants({ variant: 'default' })}>
+            {t('parent.portal')}
+          </Link>
           <Link to="/parent/password" className={buttonVariants({ variant: 'secondary' })}>
             {t('parent.password')}
           </Link>
           <Button
+            variant="secondary"
             disabled={signOut.isPending}
             onClick={() => {
               signOut.mutate();

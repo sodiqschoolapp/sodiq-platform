@@ -1070710,11 +1070710,29 @@
                                   "en"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "colour": {
+                                "type": "string",
+                                "enum": [
+                                  "red",
+                                  "orange",
+                                  "amber",
+                                  "lime",
+                                  "green",
+                                  "teal",
+                                  "cyan",
+                                  "blue",
+                                  "indigo",
+                                  "violet",
+                                  "pink",
+                                  "brown"
+                                ]
                               }
                             },
                             "required": [
                               "id",
-                              "names"
+                              "names",
+                              "colour"
                             ],
                             "additionalProperties": false
                           },
@@ -1070807,11 +1070825,29 @@
                                   "en"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "colour": {
+                                "type": "string",
+                                "enum": [
+                                  "red",
+                                  "orange",
+                                  "amber",
+                                  "lime",
+                                  "green",
+                                  "teal",
+                                  "cyan",
+                                  "blue",
+                                  "indigo",
+                                  "violet",
+                                  "pink",
+                                  "brown"
+                                ]
                               }
                             },
                             "required": [
                               "id",
-                              "names"
+                              "names",
+                              "colour"
                             ],
                             "additionalProperties": false
                           },
@@ -1072716,11 +1072752,29 @@
                                   "en"
                                 ],
                                 "additionalProperties": false
+                              },
+                              "colour": {
+                                "type": "string",
+                                "enum": [
+                                  "red",
+                                  "orange",
+                                  "amber",
+                                  "lime",
+                                  "green",
+                                  "teal",
+                                  "cyan",
+                                  "blue",
+                                  "indigo",
+                                  "violet",
+                                  "pink",
+                                  "brown"
+                                ]
                               }
                             },
                             "required": [
                               "id",
-                              "names"
+                              "names",
+                              "colour"
                             ],
                             "additionalProperties": false
                           },

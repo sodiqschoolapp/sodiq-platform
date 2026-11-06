@@ -46,7 +46,12 @@ export class PortalController {
       portalChildrenOf(transaction, session.accountId),
     );
     return portalChildrenSchema.parse({
-      children: children.map(({ branchId: _branch, ...child }) => child),
+      children: children.map((child) => ({
+        id: child.id,
+        firstName: child.firstName,
+        lastName: child.lastName,
+        className: child.className,
+      })),
     });
   }
 

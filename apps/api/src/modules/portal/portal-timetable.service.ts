@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   portalWeekSchema,
+  subjectColourSchema,
   type PortalDay,
   type PortalExam,
   type PortalLesson,
@@ -83,6 +84,27 @@ export class PortalTimetable {
       examRooms: (rooms, day) =>
         inSpan(span, day) ? childExamRooms(rooms, units.classOn(day), units.groupsOn(day)) : [],
     });
+    const subjectIds = [
+      ...new Set([
+        ...view.lessons.map((one) => one.subject.id),
+        ...view.exams.flatMap((one) => (one.subject === null ? [] : [one.subject.id])),
+      ]),
+    ];
+    const colourOf = new Map(
+      (subjectIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('subjects')
+            .select(['id', 'colour'])
+            .where('id', 'in', subjectIds)
+            .execute()
+      ).map((one) => [one.id, one.colour]),
+    );
+    const subjectOf = (one: { id: string; names: { uz: string; ru: string; en: string } }) => ({
+      id: one.id,
+      names: one.names,
+      colour: subjectColourSchema.parse(colourOf.get(one.id)),
+    });
     return {
       days: view.days
         .filter((day) => inSpan(span, day.date))
@@ -92,7 +114,7 @@ export class PortalTimetable {
         start: lesson.start,
         end: lesson.end,
         lessonNumber: lesson.lessonNumber,
-        subject: { id: lesson.subject.id, names: lesson.subject.names },
+        subject: subjectOf(lesson.subject),
         // A vacancy is "to be named" like no teacher: its label is the school's (should-fix 6).
         teacher: lesson.teacher?.kind === 'person' ? lesson.teacher.name : null,
         room: lesson.room?.name ?? null,
@@ -106,7 +128,7 @@ export class PortalTimetable {
         start: exam.start,
         end: exam.end,
         title: exam.title,
-        subject: exam.subject,
+        subject: exam.subject === null ? null : subjectOf(exam.subject),
         room: exam.rooms[0]?.room.name ?? null,
       })),
     };

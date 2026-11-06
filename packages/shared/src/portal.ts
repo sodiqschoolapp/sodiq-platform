@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { planFileSchema } from './plans.js';
+import { subjectColourSchema } from './subjects.js';
 
 /**
  * The parent portal (task 11.2, pull request #294; `10`, What parents see): the pages of the
@@ -10,6 +11,9 @@ import { planFileSchema } from './plans.js';
  */
 
 const names = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
+
+/** A subject with its colour, used the same way as on every timetable (`12`, Look and feel). */
+const subject = z.strictObject({ id: z.uuid(), names, colour: subjectColourSchema });
 
 /** A child in the switcher: an open link, portal access on, the student active (`portal_children`). */
 export const portalChildSchema = z.object({
@@ -51,7 +55,7 @@ export const portalLessonSchema = z.strictObject({
   start: z.int().min(0),
   end: z.int().min(1),
   lessonNumber: z.int().min(1).nullable(),
-  subject: z.strictObject({ id: z.uuid(), names }),
+  subject,
   /** The teacher of the lesson on its date (a substitute when one is recorded); `null` for "to be named". */
   teacher: z.string().nullable(),
   /** `null` for "room to be named". */
@@ -71,7 +75,7 @@ export const portalExamSchema = z.strictObject({
   start: z.int().min(0),
   end: z.int().min(1),
   title: z.string(),
-  subject: z.strictObject({ id: z.uuid(), names }).nullable(),
+  subject: subject.nullable(),
   room: z.string().nullable(),
 });
 
@@ -103,7 +107,7 @@ export type PortalWeek = z.infer<typeof portalWeekSchema>;
 export const portalHomeworkSchema = z.strictObject({
   /** The date of the lesson it was given at. */
   givenOn: schoolDateSchema,
-  subject: z.strictObject({ id: z.uuid(), names }),
+  subject,
   /** The topic of the lesson it was given at (`09`: parents see the topic and the homework). */
   topic: z.string().nullable(),
   /** `null` for a work added by hand before task 10.6: shown "HW n" with `number`. */
