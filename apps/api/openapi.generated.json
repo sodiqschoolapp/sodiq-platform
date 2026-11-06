@@ -1074803,6 +1074803,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "final": {
+                            "type": "boolean"
+                          },
                           "attendanceOnly": {
                             "type": "boolean"
                           },
@@ -1075193,6 +1075196,7 @@
                         },
                         "required": [
                           "subject",
+                          "final",
                           "attendanceOnly",
                           "figures",
                           "attendance",

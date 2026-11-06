@@ -195579,6 +195579,7 @@ export interface operations {
                                 /** @enum {string} */
                                 colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
+                            final: boolean;
                             attendanceOnly: boolean;
                             figures: {
                                 attendance: number | null;
