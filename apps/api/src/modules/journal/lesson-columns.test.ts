@@ -35,6 +35,7 @@ const stored = (id: string, more: Partial<StoredWork>): StoredWork => ({
   total: null,
   notHeld: false,
   carriedFromLessonId: null,
+  title: null,
   version: 1,
   hasNumbers: false,
   ...more,

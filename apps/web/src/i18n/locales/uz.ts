@@ -848,6 +848,9 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu ish uchun sonlar allaqachon kiritilgan. «Oʻtkazilmadi» belgisini tasdiqlang.',
     work_stale:
       'Kimdir bu ishni hozirgina oʻzgartirdi. Jurnal uni hozir koʻrsatadi; qayta urinib koʻring.',
+    work_planned:
+      'Bu ish dars rejasidan olingan va nomi ham rejadan olinadi. Nomni rejada oʻzgartiring.',
+    journal_work_title_required: 'Ish nomini kiriting, koʻpi bilan 60 ta belgi.',
     work_holds_numbers:
       'Bu uy vazifasining shu darsda sonlari bor, shuning uchun u shu yerda tekshiriladi.',
     work_carried: 'Bu uy vazifasi bir marta keyingi darsga oʻtkazilgan.',
@@ -3842,6 +3845,7 @@ export const uz: Texts<'one' | 'other'> = {
         work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
         work_move: 'Ish tekshiriladigan darsga koʻchirildi',
         work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
+        work_rename: 'Qoʻlda qoʻshilgan ish nomi oʻzgartirildi',
         rating_date: 'Reyting imtihoni sanasi belgilandi',
         rating_not_held: 'Reyting imtihoni oʻtkazilmagan deb belgilandi',
         rating_entry: 'Reyting imtihoni yozuvi',

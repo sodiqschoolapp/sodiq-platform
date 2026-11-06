@@ -159,6 +159,8 @@ export interface StoredWork {
   readonly plan_work_id?: string | null;
   readonly position?: number;
   readonly carried_from_lesson_id?: string | null;
+  /** Task 10.6: absent from a store row written before 0157. */
+  readonly title?: string | null;
   readonly version?: number;
   readonly changed_by?: string | null;
   readonly changed_how?: string;
@@ -453,6 +455,8 @@ export class LessonForcedDeletes implements OnModuleInit {
           'plan_work_id',
           'position',
           'carried_from_lesson_id',
+          // Task 10.6: the title of a work added by hand goes and comes back with it.
+          'title',
           'version',
           'changed_by',
           'changed_how',
@@ -996,6 +1000,8 @@ async function restoreCells(
       plan_work_id: there(one.plan_work_id, plansThere),
       position: one.position ?? 1,
       carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),
+      // Task 10.6: absent from a store row written before 0157, brought back as none.
+      title: one.title ?? null,
       version: one.version ?? 1,
       changed_by: one.changed_by ?? null,
       changed_how: 'restored',

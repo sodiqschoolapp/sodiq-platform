@@ -486,6 +486,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/journal/journals/:journalId/rating/:quarterId/not-held',
       'PUT /api/journal/lessons/:lessonId/delivery',
       'PUT /api/journal/lessons/:lessonId/homework-given',
+      'PUT /api/journal/lessons/:lessonId/works/:workId/title',
       'PUT /api/journal/lessons/:lessonId/works/not-held',
       'PUT /api/journal/lessons/:lessonId/works/total',
       'PUT /api/journal/student-absences/:studentId/:date',

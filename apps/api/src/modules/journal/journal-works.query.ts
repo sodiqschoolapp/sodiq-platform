@@ -44,6 +44,7 @@ export async function storedWorks(
       'journal_works.total',
       'journal_works.not_held',
       'journal_works.carried_from_lesson_id',
+      'journal_works.title',
       'journal_works.version',
       (eb) =>
         eb
@@ -74,6 +75,7 @@ export async function storedWorks(
     total: row.total,
     notHeld: row.not_held,
     carriedFromLessonId: row.carried_from_lesson_id,
+    title: row.title,
     version: row.version,
     hasNumbers: Boolean(row.has_numbers),
   }));

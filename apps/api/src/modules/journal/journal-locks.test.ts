@@ -674,7 +674,12 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) => {
-          ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }));
+          ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          );
           ok(await save(calls, x.second, x.ahmedov, 2));
           // The note at 23:59 of the last day is taken (code review 1, finding 4).
           ok(
@@ -694,7 +699,10 @@ describe('the edit period through the routes', () => {
         async (calls) => {
           expect(
             codeOf(
-              await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }),
+              await calls.post(`/api/journal/lessons/${x.second}/works`, {
+                kind: 'classwork',
+                title: 'Dictation',
+              }),
             ),
           ).toBe('journal_locked');
           const note = await calls.put('/api/journal/comments', {
@@ -1126,6 +1134,7 @@ describe('the edit period through the routes', () => {
           codeOf(
             await calls.post(`/api/journal/lessons/${x.second}/works`, {
               kind: 'classwork',
+              title: 'Dictation',
               correction,
             }),
           ),
@@ -1187,6 +1196,7 @@ describe('the edit period through the routes', () => {
         ok(
           await calls.post(`/api/journal/lessons/${x.second}/works`, {
             kind: 'classwork',
+            title: 'Dictation',
             correction,
           }),
         );
@@ -1219,7 +1229,11 @@ describe('the edit period through the routes', () => {
       );
       const correction = { reason: 'The register says so' };
       const work = await as(x.vice, x.branch, (calls) =>
-        calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork', correction }),
+        calls.post(`/api/journal/lessons/${x.second}/works`, {
+          kind: 'classwork',
+          title: 'Dictation',
+          correction,
+        }),
       );
       const added = ok(work).body as { id: string; version: number };
       await as(chief, x.branch, async (calls) => {
@@ -1366,8 +1380,12 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) =>
-          ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'homework' }))
-            .body as {
+          ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ).body as {
             id: string;
           },
         LAST_MINUTE,
@@ -1393,7 +1411,10 @@ describe('the edit period through the routes', () => {
         x.branch,
         async (calls) => {
           const work = ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }),
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
           ).body as {
             id: string;
             version: number;

@@ -669,6 +669,7 @@ describe('the support view', () => {
       await at(owner, '2026-10-26T09:00:00+05:00');
       const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
         kind: 'homework',
+        title: 'Exercises',
       });
       expect(added.status, JSON.stringify(added.body)).toBe(200);
       const work = added.body as { id: string };
@@ -785,6 +786,7 @@ describe('the support view', () => {
       await at(owner, '2026-10-26T09:00:00+05:00');
       const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
         kind: 'classwork',
+        title: 'Dictation',
       });
       expect(added.status, JSON.stringify(added.body)).toBe(200);
       const work = added.body as { id: string; version: number };

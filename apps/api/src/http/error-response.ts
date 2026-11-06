@@ -558,6 +558,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   total_confirm: 'Numbers exist: the change needs a confirmation.',
   not_held_confirm: 'Numbers exist: the mark needs a confirmation.',
   work_stale: 'The work was changed since it was read.',
+  work_planned: 'A work from the plan takes its title from the plan.',
+  journal_work_title_required: 'A work added by hand needs a title of at most 60 characters.',
   work_holds_numbers: 'The homework has numbers at this lesson.',
   work_carried: 'The homework was carried once already.',
   no_next_lesson: 'The journal has no later lesson.',

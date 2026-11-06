@@ -661,7 +661,12 @@ describe('lesson status, reminders and the counts per teacher', () => {
       teacherIn(s),
       async (calls) => {
         ok(await mark(calls, s.second, [{ studentId: s.ahmedov, mark: 1 }]));
-        ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' }));
+        ok(
+          await calls.post(`/api/journal/lessons/${s.second}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
+        );
       },
       '2026-10-20T12:00:00+05:00',
     );
@@ -964,7 +969,10 @@ describe('lesson status, reminders and the counts per teacher', () => {
       async (calls) => {
         ok(await mark(calls, s.second, [{ studentId: s.ahmedov, mark: 1 }]));
         const added = ok(
-          await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' }),
+          await calls.post(`/api/journal/lessons/${s.second}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
         ) as { id: string };
         expect(
           codeOf(
@@ -1824,7 +1832,11 @@ describe('lesson status, reminders and the counts per teacher', () => {
           { column, notHeld: false, version: null },
         ],
         ['post', `/api/journal/lessons/${lessonId}/works/carry`, { column, version: null }],
-        ['post', `/api/journal/lessons/${lessonId}/works`, { kind: 'classwork' }],
+        [
+          'post',
+          `/api/journal/lessons/${lessonId}/works`,
+          { kind: 'classwork', title: 'Dictation' },
+        ],
         ['post', `/api/journal/lessons/${lessonId}/not-graded`, {}],
       ];
       for (const lessonId of [s.third, s.first]) {

@@ -949,6 +949,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: JOURNAL_WRITERS,
   },
   'PUT /api/journal/lessons/:lessonId/works/total': { branch: 'request', roles: JOURNAL_WRITERS },
+  // Task 10.6: rename a work added by hand (scope in the route, journal-works.test.ts).
+  'PUT /api/journal/lessons/:lessonId/works/:workId/title': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
   'PUT /api/journal/lessons/:lessonId/works/not-held': {
     branch: 'request',
     roles: JOURNAL_WRITERS,

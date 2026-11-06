@@ -650,22 +650,34 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const refused = await calls.post(`/api/journal/lessons/${s.first}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(refused)).toBe('lesson_has_plan_item');
         const added: string[] = [];
         for (let index = 0; index < 10; index += 1) {
           added.push(
             workSavedSchema.parse(
-              ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+              ok(
+                await calls.post(`/api/journal/lessons/${s.second}/works`, {
+                  kind: 'classwork',
+                  title: 'Dictation',
+                }),
+              ),
             ).id,
           );
         }
         const eleventh = await calls.post(`/api/journal/lessons/${s.second}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(eleventh)).toBe('journal_works_limit');
         const homework = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.second).works.map((one) => [one.position, one.unplanned])).toEqual(
@@ -697,7 +709,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         ok(await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`), 204);
         const grid = await gridOf(calls, s);
@@ -712,7 +729,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       const homework = await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         ok(
           await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
@@ -901,7 +923,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       const given = await as(owner, s.branch, teacherIn(s), async (calls) =>
         workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.third}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.third}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         ),
       );
       // The 9 November lesson goes as a version change removes a lesson with no data.
@@ -1054,7 +1081,7 @@ describe('classwork and homework', () => {
         ['put', 'works/not-held', { column, notHeld: true, version: null }],
         ['post', 'works/carry', { column, version: null }],
         ['post', 'scores', { saves: [{ studentId: s.ahmedov, column, score: 1, version: null }] }],
-        ['post', 'works', { kind: 'classwork' }],
+        ['post', 'works', { kind: 'classwork', title: 'Dictation' }],
         ['delete', `works/${ownWork.id}`, {}],
       ];
       const send = (calls: Calls, method: string, path: string, body: object) =>
@@ -1175,6 +1202,7 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, [{ role: 'teacher', branchId: s.branch }], async (calls) => {
         const refused = await calls.post(`/api/journal/lessons/${lesson}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(refused)).toBe('lesson_attendance_only');
       });
@@ -1183,7 +1211,10 @@ describe('classwork and homework', () => {
 
   describe('who enters (permission review of the code, should-fix 3)', () => {
     const addOne = (calls: Calls, lessonId: string) =>
-      calls.post(`/api/journal/lessons/${lessonId}/works`, { kind: 'classwork' });
+      calls.post(`/api/journal/lessons/${lessonId}/works`, {
+        kind: 'classwork',
+        title: 'Dictation',
+      });
 
     it('lets a substitute add works at the substituted lesson only', async () => {
       const owner = await account();
@@ -1339,7 +1370,12 @@ describe('classwork and homework', () => {
         [{ role: 'teacher', branchId: v.branch }],
         async (calls) => {
           const added = workSavedSchema.parse(
-            ok(await calls.post(`/api/journal/lessons/${v.lesson}/works`, { kind: 'classwork' })),
+            ok(
+              await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
+                kind: 'classwork',
+                title: 'Dictation',
+              }),
+            ),
           );
           const totalled = workSavedSchema.parse(
             ok(
@@ -1370,6 +1406,7 @@ describe('classwork and homework', () => {
         async (calls) => {
           const refused = await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
             kind: 'classwork',
+            title: 'Dictation',
           });
           expect(codeOf(refused)).toBe('lesson_attendance_only');
           ok(
@@ -1388,7 +1425,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         for (let index = 0; index < 9; index += 1) {
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' }));
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          );
         }
       });
       // The held side writes what the route writes: the lock of the limit, then the tenth work.
@@ -1425,7 +1467,10 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, [], async (calls) => {
         const started = new Promise<Response>((resolve, reject) => {
           calls
-            .post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })
+            .post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            })
             .then(resolve, reject);
         });
         for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -1545,10 +1590,20 @@ describe('classwork and homework', () => {
       await openPlanWindows(t.database.migrator, s.branch, s.year);
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const first = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         const second = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         for (const [work, score] of [
           [first, 4],

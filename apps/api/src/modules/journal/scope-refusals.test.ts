@@ -319,7 +319,12 @@ describe('the journal routes outside the scope of a role', () => {
           'journal_entry_scope',
         ],
         ['post', `${lesson}/copy-attendance`, {}, 'journal_entry_scope'],
-        ['post', `${lesson}/works`, { kind: 'classwork' }, 'journal_entry_scope'],
+        [
+          'post',
+          `${lesson}/works`,
+          { kind: 'classwork', title: 'Dictation' },
+          'journal_entry_scope',
+        ],
         ['delete', `${lesson}/works/${workId}`, {}, 'journal_entry_scope'],
         [
           'put',

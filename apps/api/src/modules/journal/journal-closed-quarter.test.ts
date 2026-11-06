@@ -337,6 +337,7 @@ describe('the journal of a closed quarter', () => {
       closed(
         await calls.post(`/api/journal/lessons/${x.second}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
           correction,
         }),
       );
@@ -374,7 +375,10 @@ describe('the journal of a closed quarter', () => {
       x.branch,
       async (calls) => {
         const added = ok(
-          await calls.post(`/api/journal/lessons/${x.third}/works`, { kind: 'classwork' }),
+          await calls.post(`/api/journal/lessons/${x.third}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
         ).body as { id: string; version: number };
         ok(
           await calls.put(`/api/journal/lessons/${x.third}/works/total`, {
