@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
 import { labelsOf, outcomeText } from '@/features/results/student-results-tab';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
@@ -76,7 +76,12 @@ export function PortalGradesPage(): React.JSX.Element {
             </section>
           ) : (
             answer.subjects.map((subject) => (
-              <SubjectCard key={subject.subject.id} subject={subject} language={language} />
+              <SubjectCard
+                key={subject.subject.id}
+                subject={subject}
+                language={language}
+                reopened={shown.closed && !subject.final}
+              />
             ))
           )}
         </>
@@ -88,9 +93,12 @@ export function PortalGradesPage(): React.JSX.Element {
 function SubjectCard({
   subject,
   language,
+  reopened,
 }: {
   subject: PortalSubjectGrades;
   language: Language;
+  /** The quarter is closed, but this subject is being corrected under a reopening (9.2c). */
+  reopened: boolean;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const titleId = `subject-${subject.subject.id}`;
@@ -107,6 +115,11 @@ function SubjectCard({
         <SubjectSwatch colour={subject.subject.colour} />
         {subject.subject.names[language]}
       </h2>
+      {reopened && (
+        <p className="mb-2 text-sm font-semibold" data-subject-state="provisional">
+          {t('portal.grades.reopened')}
+        </p>
+      )}
       {figures === null ? (
         <dl className="grid grid-cols-2 gap-3">
           {figure(t('results.columns.attendance'), subject.attendance)}
@@ -165,7 +178,7 @@ function SubjectCard({
       ))}
       {!subject.attendanceOnly && (
         <>
-          <h3 className="mt-4 mb-2 text-sm font-semibold">{t('portal.grades.scores')}</h3>
+          <h4 className={cn(SUBSECTION_TITLE, 'mt-4 mb-2')}>{t('portal.grades.scores')}</h4>
           {subject.scores.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('portal.grades.noScores')}</p>
           ) : (

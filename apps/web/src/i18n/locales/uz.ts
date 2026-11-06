@@ -2129,6 +2129,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
     grades: {
       title: 'Baholar',
+      reopened: 'Dastlabki: chorak yopilgandan keyin bu fan boʻyicha tuzatish kiritilmoqda.',
       resultWithGrade: '{{result}} · baho {{grade}}',
       quarter: 'Chorak',
       provisional: 'Dastlabki: chorak hali yopilmagan.',

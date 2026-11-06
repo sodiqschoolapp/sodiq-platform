@@ -2206,6 +2206,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     grades: {
       title: 'Оценки',
+      reopened: 'Предварительно: по этому предмету вносятся исправления после закрытия четверти.',
       resultWithGrade: '{{result}} · оценка {{grade}}',
       quarter: 'Четверть',
       provisional: 'Предварительно: четверть ещё не закрыта.',

@@ -301,10 +301,43 @@ describe('the portal grades and attendance', () => {
       { lessonId: l19, studentId: child, value: 2 },
       { lessonId: l19, studentId: child, workId: works.cw19, value: 4 },
     ]);
+    // A work of the 12th later marked "not held", with a score and a parents comment: neither is sent.
+    const notHeld = await work(l12, 'classwork', 10);
+    await saveOn('2026-10-12', [{ lessonId: l12, studentId: child, workId: notHeld, value: 7 }]);
+    await comment({
+      studentId: child,
+      target: 'work',
+      lessonId: l12,
+      workId: notHeld,
+      body: 'NOTHELD-work',
+      visibility: 'parents',
+    });
+    {
+      const writer = await load.classes.account();
+      t.clock.set('2026-10-13T10:00:00+05:00');
+      try {
+        await t.app.get(Transactions).run([s.branch], async (transaction) => {
+          await t.app.get(Audit).record(transaction, {
+            branchId: s.branch,
+            actorId: writer,
+            action: 'journal.work_not_held',
+          });
+          await transaction
+            .updateTable('journal_works')
+            .set({ not_held: true })
+            .where('id', '=', notHeld)
+            .execute();
+        });
+      } finally {
+        t.clock.set(START);
+      }
+    }
     await saveOn('2026-10-26', [
       { lessonId: l26, studentId: child, value: 0 },
       { lessonId: l26, studentId: otherChild, value: 1 },
       { lessonId: l26, studentId: otherChild, workId: works.cw26, value: 70 },
+      // A score typed for the child before the certificate: never listed once exempt (review must-fix 5).
+      { lessonId: l26, studentId: child, workId: works.cw26, value: 55 },
     ]);
 
     // Comments: one visible to parents and one staff only on each target of the child, and a
@@ -506,6 +539,7 @@ describe('the portal grades and attendance', () => {
     'OTHER-child-12',
     'OTHER-mark-26',
     'OTHER-rating',
+    'NOTHELD-work',
     'STAFF-reason',
     'STAFF-early-warning',
     'low_result',
@@ -612,6 +646,27 @@ describe('the portal grades and attendance', () => {
           .where('lesson_id', '=', lessons.l19)
           .execute();
       });
+    const flipRating = (visibility: 'staff' | 'parents') =>
+      t.app.get(Transactions).run([s.branch], async (transaction) => {
+        await t.app.get(Audit).record(transaction, {
+          branchId: s.branch,
+          actorId: writer,
+          action: 'journal.comment',
+        });
+        await transaction
+          .updateTable('journal_comments')
+          .set({ visibility, changed_by: writer, changed_how: 'entry' })
+          .where('student_id', '=', child)
+          .where('target', '=', 'rating')
+          .execute();
+      });
+    await flipRating('staff');
+    try {
+      const maths = (await gradesOf(child)).subjects.find((one) => one.subject.id === s.subject);
+      expect(maths?.ratingComments).toEqual([]);
+    } finally {
+      await flipRating('parents');
+    }
     await flip('staff', 'Came after the bell, parents');
     try {
       const week = await attendanceOf('2026-10-19');
@@ -641,6 +696,10 @@ describe('the portal grades and attendance', () => {
       ['2026-10-12', s.subject, 'present', null, null],
       ['2026-10-12', s.secondSubject, 'skipped', null, null],
     ]);
+    // Sunday 25 October is in the week of Monday 19th: the 19th in, the 26th and the 12th out.
+    const sunday = await attendanceOf('2026-10-25');
+    expect(sunday.monday).toBe('2026-10-19');
+    expect([...new Set(sunday.lessons.map((one) => one.date))]).toEqual(['2026-10-19']);
     const nineteenth = await attendanceOf('2026-10-19');
     expect(
       nineteenth.lessons.map((one) => [one.subject.id, one.mark, one.comment, one.note]),
@@ -689,7 +748,7 @@ describe('the portal grades and attendance', () => {
         .executeTakeFirstOrThrow()
     ).id;
     await saveOn('2026-10-12', [{ lessonId: oldLesson, studentId: moved, value: 1 }]);
-    await saveOn('2026-10-19', [{ lessonId: lessons.l19, studentId: moved, value: 2 }]);
+    await saveOn('2026-10-19', [{ lessonId: lessons.l19, studentId: moved, value: 0 }]);
     const weekOf = async (date: string) =>
       portalAttendanceWeekSchema
         .parse(ok(await get(parent, `/api/portal/children/${moved}/attendance?date=${date}`)))
@@ -697,7 +756,7 @@ describe('the portal grades and attendance', () => {
     // The old class has maths only; the new one maths and the attendance-only subject.
     expect(await weekOf('2026-10-12')).toEqual([['2026-10-12', s.subject, 'present']]);
     expect(await weekOf('2026-10-19')).toEqual([
-      ['2026-10-19', s.subject, 'late'],
+      ['2026-10-19', s.subject, 'absent'],
       ['2026-10-19', s.secondSubject, 'unmarked'],
     ]);
     // Grades: one maths result over both journals (`07`, Transfers), equal to the staff page.
@@ -710,6 +769,29 @@ describe('the portal grades and attendance', () => {
     expect(portal.subjects.find((one) => one.subject.id === s.subject)?.figures?.outcome).toEqual(
       staffRow?.outcome,
     );
+  });
+
+  it('answers "Exempt" when every lesson of the quarter is exempt, as the staff page does', async () => {
+    const away = await parents.childOf(s.branch, relative);
+    await parents.members.member({
+      branch: s.branch,
+      classId: s.otherClass,
+      studentId: away,
+      from: '2026-09-01',
+    });
+    await saveOn('2026-10-12', [{ lessonId: lessons.l12, studentId: away, value: 0 }]);
+    await exempt(away, '2026-09-01', '2026-10-31');
+    const staffRow = studentResultsSchema
+      .parse(ok(await staffGet(`/api/results/students/${away}`)))
+      .subjects.find((one) => one.subject.id === s.subject)?.quarters[0];
+    const maths = (await gradesOf(away)).subjects.find((one) => one.subject.id === s.subject);
+    expect(staffRow?.outcome).toEqual({ kind: 'exempt' });
+    expect(maths?.figures?.outcome).toEqual({ kind: 'exempt' });
+    expect(maths?.scores).toEqual([]);
+    const marks = portalAttendanceWeekSchema
+      .parse(ok(await get(parent, `/api/portal/children/${away}/attendance?date=2026-10-12`)))
+      .lessons.map((one) => one.mark);
+    expect(marks).toEqual(['exempt', 'exempt']);
   });
 
   it('reads a closed quarter from its stored record and a reopened one live, as the staff page does', async () => {
@@ -753,14 +835,26 @@ describe('the portal grades and attendance', () => {
       const staffRow = studentResultsSchema
         .parse(ok(await staffGet(`/api/results/students/${child}`)))
         .subjects.find((one) => one.subject.id === s.subject)?.quarters[0];
-      const maths = portal.subjects.find((one) => one.subject.id === s.subject)?.figures;
-      expect(maths?.outcome).toEqual(staffRow?.outcome);
-      expect(maths?.classwork).toBe(staffRow?.classwork);
-      expect(maths?.attendance).toBe(staffRow?.attendance);
-      return { portal, maths };
+      const subject = portal.subjects.find((one) => one.subject.id === s.subject);
+      const maths = subject?.figures;
+      // Field by field, flags included (review correction 2).
+      expect(maths).toEqual({
+        attendance: staffRow?.attendance,
+        classwork: staffRow?.classwork,
+        homework: staffRow?.homework,
+        ratingExam: staffRow?.ratingExam,
+        ratingShown: staffRow?.ratingShown,
+        outcome: staffRow?.outcome,
+        basedOn: staffRow?.basedOn,
+        countsFrom: staffRow?.countsFrom,
+        leftSubjectOn: staffRow?.leftSubjectOn,
+        atLeaving: staffRow?.atLeaving,
+      });
+      return { portal, maths, final: subject?.final };
     };
     const closed = await compare();
     expect(closed.portal.quarters.find((one) => one.id === q1)?.closed).toBe(true);
+    expect(closed.final).toBe(true);
     expect(closed.maths).toMatchObject({
       classwork: 100,
       outcome: { kind: 'number', shown: 100, provisional: false },
@@ -775,6 +869,32 @@ describe('the portal grades and attendance', () => {
     });
     const reopened = await compare();
     expect(reopened.maths?.classwork).toBe(60);
+    // Provisional under the reopening, although the quarter is closed (decision 5).
+    expect(reopened.portal.quarters.find((one) => one.id === q1)?.closed).toBe(true);
+    expect(reopened.final).toBe(false);
+    // The year result once quarter 4 is closed, as the staff page answers it (decision 6).
+    const q4 = (
+      await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', s.year)
+        .where('number', '=', 4)
+        .executeTakeFirstOrThrow()
+    ).id;
+    expect(reopened.portal.subjects.find((one) => one.subject.id === s.subject)?.year).toBeNull();
+    await closeQuarter(t.database, {
+      branchId: s.branch,
+      quarterId: q4,
+      accountId: closer,
+      at: '2027-05-31T18:00:00+05:00',
+    });
+    const staffYear = studentResultsSchema
+      .parse(ok(await staffGet(`/api/results/students/${child}`)))
+      .subjects.find((one) => one.subject.id === s.subject)?.year;
+    expect(staffYear).not.toBeNull();
+    expect(
+      (await gradesOf(child, q1)).subjects.find((one) => one.subject.id === s.subject)?.year,
+    ).toEqual(staffYear);
   });
 
   it('answers 404 for a quarter of another year or branch, and 400 for an unknown field', async () => {

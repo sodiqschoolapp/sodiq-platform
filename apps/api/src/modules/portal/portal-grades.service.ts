@@ -95,6 +95,7 @@ export class PortalGradesService {
     // Decision 3 (Look first): the results of the child's present branch.
     const found = await this.results.familyGrades(child.branchId, child.id, quarterId);
     const quarterShown = found.quarterId;
+    const closedShown = found.results.quarters.some((one) => one.id === quarterShown && one.closed);
     const lessonIds = found.lessons.flatMap((one) => one.lessons.map((lesson) => lesson.lessonId));
     const comments = await this.transactions.run([child.branchId], async (transaction) => ({
       lessons: await parentsComments(transaction, child.id, lessonIds),
@@ -156,6 +157,7 @@ export class PortalGradesService {
           names: subject.subject.names,
           colour: subjectColourSchema.parse(subject.subject.colour),
         },
+        final: closedShown && !found.readLive.has(subject.subject.id),
         attendanceOnly: false,
         figures: {
           attendance: row.attendance,
@@ -173,9 +175,13 @@ export class PortalGradesService {
         year: subject.year,
         scores,
         rating: lessons?.ratingExam ?? null,
-        ratingComments: comments.rating
-          .filter((one) => one.subject_id === subject.subject.id)
-          .flatMap((one) => (one.body === null ? [] : [one.body])),
+        // Only beside a rating entry the answer shows (decision 8; spec review must-fix 3).
+        ratingComments:
+          (lessons?.ratingExam ?? null) === null
+            ? []
+            : comments.rating
+                .filter((one) => one.subject_id === subject.subject.id)
+                .flatMap((one) => (one.body === null ? [] : [one.body])),
       });
     }
     // Review correction 1: an attendance-only subject with its attendance figure, no result.
@@ -188,6 +194,7 @@ export class PortalGradesService {
           names: subject.subject.names,
           colour: subjectColourSchema.parse(subject.subject.colour),
         },
+        final: closedShown,
         attendanceOnly: true,
         figures: null,
         attendance: row.average,

@@ -2096,6 +2096,7 @@ export const en = {
     },
     grades: {
       title: 'Grades',
+      reopened: 'Provisional: this subject is being corrected after the quarter was closed.',
       resultWithGrade: '{{result}} · grade {{grade}}',
       quarter: 'Quarter',
       provisional: 'Provisional: the quarter is not closed yet.',

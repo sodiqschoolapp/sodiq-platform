@@ -97,6 +97,8 @@ export interface FamilyGrades {
   /** The quarter whose lessons are given; `null` with no year. */
   readonly quarterId: string | null;
   readonly lessons: readonly StudentResultLessons[];
+  /** The subjects of the closed quarter shown that are read live under a reopening (9.2c). */
+  readonly readLive: ReadonlySet<string>;
 }
 
 /** A held lesson of the child with its mark (4 and 5 from an exemption in force). */
@@ -303,7 +305,24 @@ export class StudentResultsService {
           if (one !== undefined) lessons.push(lessonsAnswer(one, quarter, subject.subject.id));
         }
       }
-      return { results, attendance, quarterId: quarter?.id ?? null, lessons };
+      // A subject whose journal has an unfinished reopening is read live (9.2c): provisional,
+      // although its quarter is closed (spec review of the code, must-fix 2).
+      const readLive = new Set<string>();
+      if (
+        quarter !== undefined &&
+        results.quarters.some((one) => one.id === quarter.id && one.closed)
+      ) {
+        for (const subject of results.subjects) {
+          const found = await storedRecordOf(
+            context.transaction,
+            quarter.id,
+            subject.subject.id,
+            context.studentId,
+          );
+          if (found.reopened) readLive.add(subject.subject.id);
+        }
+      }
+      return { results, attendance, quarterId: quarter?.id ?? null, lessons, readLive };
     });
   }
 

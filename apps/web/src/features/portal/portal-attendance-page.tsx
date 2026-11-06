@@ -20,7 +20,8 @@ const clockOf = (minutes: number) =>
 
 /** The look of each mark; exempt has its own neutral look, never the absence's (decision 7). */
 const MARK_STYLE: Record<PortalMark, string> = {
-  present: 'bg-success-bg text-success',
+  // `docs/design-system.md`: present is plain.
+  present: 'text-foreground',
   late: 'bg-warning-bg text-warning',
   absent: 'bg-destructive-bg text-destructive',
   skipped: 'bg-destructive-bg text-destructive',

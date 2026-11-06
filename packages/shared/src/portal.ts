@@ -234,6 +234,11 @@ export const portalRatingEntrySchema = z.discriminatedUnion('kind', [
 
 export const portalSubjectGradesSchema = z.strictObject({
   subject,
+  /**
+   * The figures are final: the quarter is closed and the subject's journal has no unfinished
+   * reopening (approved decision 5); otherwise provisional.
+   */
+  final: z.boolean(),
   /** An attendance-only subject: its attendance average, no result (review correction 1). */
   attendanceOnly: z.boolean(),
   /** `null` for an attendance-only subject. */

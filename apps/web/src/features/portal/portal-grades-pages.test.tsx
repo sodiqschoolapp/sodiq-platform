@@ -52,6 +52,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
   subjects: [
     {
       subject: maths,
+      final: closed,
       attendanceOnly: false,
       figures: {
         attendance: 75,
@@ -101,6 +102,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
     },
     {
       subject: assembly,
+      final: closed,
       attendanceOnly: true,
       figures: null,
       attendance: 50,
@@ -137,11 +139,11 @@ const WEEK: PortalAttendanceWeek = {
   ],
 };
 
-function portal(language: 'en' | 'ru' = 'en', closed = false) {
+function portal(language: 'en' | 'ru' = 'en', closed = false, grades = GRADES(closed)) {
   return fakeApi({
     'GET /api/auth/session': () => json(PARENT(language)),
     'GET /api/portal/children': () => json(CHILDREN),
-    [`GET /api/portal/children/${ANVAR}/grades`]: () => json(GRADES(closed)),
+    [`GET /api/portal/children/${ANVAR}/grades`]: () => json(grades),
     [`GET /api/portal/children/${ANVAR}/attendance`]: () => json(WEEK),
   });
 }
@@ -171,6 +173,21 @@ describe('the portal grades', () => {
     renderApp(`/portal/${ANVAR}/grades`);
     await screen.findByText(en.portal.grades.final);
     expect(screen.queryByText(en.portal.grades.provisional)).toBeNull();
+  });
+
+  it('marks a subject under a reopening of a closed quarter provisional', async () => {
+    const closed = GRADES(true);
+    portal('en', true, {
+      ...closed,
+      subjects: closed.subjects.map((one) =>
+        one.subject.id === maths.id ? { ...one, final: false } : one,
+      ),
+    });
+    renderApp(`/portal/${ANVAR}/grades`);
+    const card = await screen.findByRole('region', { name: 'Mathematics' });
+    expect(within(card).getByText(en.portal.grades.reopened)).toBeDefined();
+    const other = screen.getByRole('region', { name: 'Spiritual hour' });
+    expect(within(other).queryByText(en.portal.grades.reopened)).toBeNull();
   });
 
   it('speaks the parent’s language', async () => {
