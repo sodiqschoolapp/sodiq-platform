@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 10.1c The six reads missed at three times the size, and the load run
+
+- **Two minutes behind** (decision A): a reader reads a prepared unit as it is while its oldest unseen change (or passed `next_change_at`) is at most `PREPARED_BEHIND_MS` old; the job still prepares every unit behind, the longest behind first. The 5 to 7 s of the ratings, the early-warning list and the branch summary in 10.1b were their from-source path, read right after the speed run's saves (Step 1: 4.3 to 4.6 s from source at one triple branch).
+- **Faster reads**: the decoded values of the `outcomes` and `figures` units kept per process (`decoded-cache.ts`); the attention lists read only lessons that can need a teacher; plan rows counted per quarter in SQL; `daysWithoutTeacher` short-cut. Local, one triple branch: the Vice Principal's home 1.66 → 0.75 s, the results page 1.03 → 0.86 s, the reports 0.06 to 0.19 s.
+- **Speed run 42119753957 on 2836150** (triple, measured alone): within target the results page, the rating of the classes, the rating list of a class, the early-warning list and the branch summary. **Look first, not met**: the Vice Principal's home 1113 / 1159 / 1097 ms (target 1000). Cause found: the nine reads of the page share one session, and `SessionsService.resolve` holds the session row's lock through its reads and commit, so they queue (15 to 18 s of 21 requests waited on that update). The fix belongs to the sign-in code, left for a task of its own.
+- **Load** (two API processes on the runner's 4 processors with PostgreSQL), **Look first, not met**. The school's pace (200 staff, 10 to 30 s), asserted: 95th percentiles 9.3 to 16.9 s for the homes, the journal, the weeks, search and saves, and 275 to 280 s for the two reports. At triple a subject's units take 0.3 to 8 s to prepare, so the job's 20 s a minute cannot keep up with steady saves: the reports fall back to source, which takes the processes' time from every other request. The present pace (1,000 users), reported: not readable from this run (its artifact cannot be downloaded; the next run prints its tables). Locally at one triple branch it saturated: medians 43 to 160 s, 95th percentiles 122 to 234 s, no failed request.
+
+Left out: the session lock of `resolve` and a preparation that keeps up under load (preparing a subject's three kinds in one pass, or a larger budget in the worker): proposed to the owner on issue #42 as one task; `class_figures` (not needed: 0.06 to 0.2 s through the cache); a faster student's results read (within target on CI).
+
+The next sessions must know:
+
+- A prepared unit within two minutes is read as it is; a test of "from source" checks the figures too (`.claude/rules/database.md`).
+- The Speed run prints its tables and "Where the time went" to the job log at the large sizes; `SPEED_BRANCHES=1` builds one triple branch on a session's machine (about two hours to build and fill).
+
 ## 5 November 2026: the owner's open items, and the order after Phase 10 (no task)
 
 - **Go-live checklist**: sections 1 to 3 ticked by the owner (the security headers not checked by hand, accepted as a known risk on 29 October; encryption at rest from the providers' documentation). Section 4 is not started: no branch is fully set up on production yet; the school starts using production in a few days. The approval lines of `checklist.md` and `pilot.md` stay pending.

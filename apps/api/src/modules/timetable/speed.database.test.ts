@@ -398,24 +398,27 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
         // Task 10.1c, Step 1: a session cannot download the run's report, so at the large sizes
         // "Where the time went" is printed to the job log too.
         if (LARGE && breakdown.length > 0) console.log(whereTheTimeWent(breakdown).join('\n'));
-        await writeFile(
-          REPORT,
-          report({
-            failure,
-            written: written ?? null,
-            phase: PHASE,
-            school: state.school,
-            timings: state.timings,
-            fills: state.fills,
-            counts: state.counts,
-            load,
-            breakdown,
-            notes: state.notes,
-            lockCount: state.lockCount,
-            machine: await machineOf(t),
-            total: state.buildSeconds + (performance.now() - startedAt) / 1000,
-          }),
-        );
+        const text = report({
+          failure,
+          written: written ?? null,
+          phase: PHASE,
+          school: state.school,
+          timings: state.timings,
+          fills: state.fills,
+          counts: state.counts,
+          load,
+          breakdown,
+          notes: state.notes,
+          lockCount: state.lockCount,
+          machine: await machineOf(t),
+          total: state.buildSeconds + (performance.now() - startedAt) / 1000,
+        });
+        // Task 10.1c: the report's tables too, once the run ends (the Times and both load
+        // models; the plans of "Where the time went" were printed above).
+        if (LARGE && written === undefined) {
+          console.log(text.split('## Where the time went')[0]);
+        }
+        await writeFile(REPORT, text);
       };
       /** A read timed and, at triple size, asserted on its slowest repeat. */
       const measure = async (

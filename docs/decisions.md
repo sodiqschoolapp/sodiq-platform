@@ -362,6 +362,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 5 November 2026: the six reads at three times the size, and the load in two models (task 10.1c)
+
+Plan approved on pull request #285 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a test made lighter, from decision B). The load runs in two models against two API processes: the school's own pace in Release 1 (200 staff, an action every 10 to 30 s, 10 minutes) asserted at triple on each action's 95th percentile and on no failed request; the present pace (1,000 users, 5 to 15 s) reported only, its misses written in `docs/progress.md` | Decision B; correction 1; plan decision 1 |
+| **Look first** (spec reading, `edge/system-behaviour`). A reader reads a prepared unit as it is while the oldest change it has not seen is at most two minutes old (`PREPARED_BEHIND_MS`, one constant beside `PREPARED_SHAPE`; 120 s exactly is within); a change row without a moment counts as further behind; the job still prepares every unit behind at all (`freshCondition`) | Decision A; plan decision 2; correction 3 |
+| **Look first** (spec reading). A passed `next_change_at` (a lesson start, a midnight, 00:00 after a quarter's last day) is read the same way: within two minutes of it, prepared | Plan decision 2a: what changes then is prepared by the job within its next minute; nothing that decides reads it |
+| **Look first** (spec reading). The window covers every prepared kind, the closing checklist's GET included; the close, the reminders, the decisions, the journal and a student's results read from source | Plan decision 3 |
+| **Look first** (a pinned speed run changed). The timed reads take their figures as a reader meets them, within two minutes of a save prepared; the from-source read is timed from a route's save with the clock moved past the window, reported, and its figures checked against the source | Plan decision 4; correction 2 |
+| **Look first** (a reading of the Done when line). The proof before merge is a triple Speed run on the branch head; the line "green on `main`" is proved by the first run after the merge | Plan decision 7 |
+| **Look first** (new state in the API process). The decoded values of the `outcomes` and `figures` units are kept in each API process between reads (`decoded-cache.ts`), keyed by branch, kind, quarter, unit, the fields read, `prepared_at` and the snapshot of the preparation, bounded by 24 MB of stored (compressed) size, about 200 MB decoded, the least recently read first out. Whether a preparation may be read is decided by the database on every read; the cache only spares the parse and the decode | A quarter's units of one branch are about 24 MB of JSON each kind at triple, parsed and decoded on every read: a third of the early-warning list and most of the ratings (Step 1). Production's servers have 2 GB each (answer 15) |
+| The two models run against two API processes on the Speed runner, sharing its 4 processors with PostgreSQL; the report says so beside the numbers | Plan decision 6 |
+| `SPEED_BRANCHES=1` keeps the first branch of a size, for a measurement in a session's machine; the workflow never sets it | Plan decision 8 |
+| The `class_figures` unit is not built: read through the decoded cache the ratings and the branch summary take 0.06 to 0.2 s at triple | Plan decision 9 |
+| The second API process is a testing entry (`apps/api/src/testing/speed/server.ts`, built by `tsconfig.speed.json`) on the run's database, with a clock that runs with real time from the same moment as the test process's (`FixedClock.runFrom`) | Plan decision 10; review of the plan, finding 1 |
+| **Build decision.** The attention lists of the Vice Principal's home read only the lessons of nobody, of a vacancy, or of a teacher with an away span in the year's range; each lesson's state is still decided by `awayLessons` and `lessonStateOf` | Every lesson of the open years was read: 180 ms of the home at triple |
+| **Build decision.** The plan rows of each journal and quarter (`rowCounts`) are counted per quarter by the database | 78,000 rows a year at triple were read and summed in the API |
+| **Build decision.** `daysWithoutTeacher` returns at once when no run of the range names a vacancy | The closing checklist walked every day of every journal: 45 ms |
+| **Build decision.** The early-warning list reads the `figures` of its quarter's units only; the ratings and the branch summary read `bySubject` and `readLive` of the outcomes only | They never used the rest |
+| **Build decision.** The job prepares the units behind the longest first (an older shape first, then by the oldest unseen change or passed `next_change_at`) | In the order of their kind the subjects' units waited behind every journal's |
+| **Build decision.** At the large sizes the speed run prints "Where the time went" (with the plans of the two slowest queries of each missed read, run as the request ran them) and, at its end, the report's tables to the job log | A cloud session cannot download the run's artifact (its storage host is not reachable) |
+| **Build decision.** The speed run's Tutor has the first class of grade 5 or above | Since 9.4e a class of grades 0 to 4 has a Class teacher: every triple run stopped at the Tutor |
+
 ## 4 November 2026: the demo clock of the test environment (task 10.5)
 
 Plan approved on pull request #280 with its corrections. Flagged on issue #42.
