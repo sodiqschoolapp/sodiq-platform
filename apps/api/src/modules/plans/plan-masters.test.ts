@@ -408,11 +408,15 @@ describe('master plans', () => {
     ] as const) {
       found[table] = rows.map((row) => JSON.stringify(row)).sort();
     }
+    // In a fixed order, as every table above: with no `order by` the database may answer the same
+    // ids in another order, and the comparison failed at random on CI (found on #294, 7 November
+    // 2026).
     found.audit = (
       await t.database.migrator
         .selectFrom('audit_log')
         .select('id')
         .where('branch_id', '=', branch)
+        .orderBy('id')
         .execute()
     ).map((row) => row.id);
     return found;
