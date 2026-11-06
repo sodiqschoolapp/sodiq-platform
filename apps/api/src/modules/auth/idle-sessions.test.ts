@@ -256,6 +256,40 @@ describe('sessions over time', () => {
       });
     });
 
+    // Task 10.1c (code review round 1, finding 1): the reads of one page come at once with one
+    // session; the use takes the session's row last, so they queue only on the use itself, and
+    // a change that holds the row (an account lock) is still waited for.
+    describe('while another request holds the session row', () => {
+      it('still refuses a session that is over by time, writing its end once the row is free', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { account, cookie } = await kit.fullSession('Hamid', 'Latipov');
+        clock.advance(30 * MINUTE);
+        // The end is written under the row's lock, so the refusal waits for the holder, a request
+        // that commits within moments; here the holder commits after half a second.
+        const holding = database.migrator.transaction().execute(async (transaction) => {
+          await sql`select id from sessions where account_id = ${account.id} for update`.execute(
+            transaction,
+          );
+          await new Promise((done) => setTimeout(done, 500));
+        });
+        const [response] = await Promise.all([kit.probe(cookie), holding]);
+        expect(response.status).toBe(401);
+        expect(errorCode(response)).toBe('not_signed_in');
+        expect((await sessionsOf(account.id))[0]?.ended_at).not.toBeNull();
+      });
+
+      it('counts the use of the request that holds the row, so the session lasts from it', async () => {
+        clock.set('2026-10-05T09:00:00+05:00');
+        const { cookie } = await kit.fullSession('Jasur', 'Latipov');
+        clock.advance(20 * MINUTE);
+        // Two requests at once: one takes the row, the other reads it.
+        const answers = await Promise.all([kit.probe(cookie), kit.probe(cookie)]);
+        expect(answers.map((one) => one.status)).toEqual([200, 200]);
+        clock.advance(20 * MINUTE);
+        expect((await kit.probe(cookie)).status).toBe(200);
+      });
+    });
+
     it('counts from the last use, not from the sign-in', async () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const { cookie } = await kit.fullSession('Charos', 'Latipova');

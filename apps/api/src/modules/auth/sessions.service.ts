@@ -8,7 +8,8 @@ import {
   type SecondStepState,
   type SessionResponse,
 } from '@sodiq/shared';
-import { sql, type RawBuilder } from 'kysely';
+import { sql, type ExpressionBuilder, type RawBuilder } from 'kysely';
+import type { DB } from '../../database/types.generated.js';
 import { REAL_CLOCK } from '../../clock/clock.module.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -440,32 +441,63 @@ export class Sessions {
       );
       const roles = rolesOf(assignments);
       const limit = idleLimitMs(roles);
+      // The session is in force: not ended, within its life, and trusted or used within the
+      // limit (the same rule as `endByTime`).
+      const inForce = (builder: ExpressionBuilder<DB, 'sessions'>) =>
+        builder.and([
+          builder('token_hash', '=', tokenHash(token)),
+          builder('ended_at', 'is', null),
+          builder('created_at', '>', new Date(now.getTime() - SESSION_MAX_LIFE_MS)),
+          builder.or([
+            builder.and([
+              builder('trusted_from', 'is not', null),
+              builder('trust_ended_at', 'is', null),
+            ]),
+            builder('last_used_at', '>', new Date(now.getTime() - limit)),
+          ]),
+        ]);
+      const columns = [
+        'id',
+        'account_id',
+        'second_step_passed_at',
+        'created_at',
+        'trusted_from',
+        'trust_ended_at',
+      ] as const;
+      // Task 10.1c (code review round 1, finding 1): what the answer reads of the account is read
+      // before the use, without the session row; the use, which takes the row's lock to the end
+      // of the transaction, comes last. The reads of one page come at once with one session and
+      // queued on that lock, each through every read of this transaction. The use still waits
+      // for a change that holds the row (an account lock, a sign-out), and refuses a session it
+      // ended.
+      const account = await transaction
+        .selectFrom('accounts')
+        .select(['login', 'must_change_password', 'password_reset_by', 'locked_at', 'language'])
+        .where('id', '=', owner.account_id)
+        .executeTakeFirstOrThrow();
+      // An inactive or left staff member is refused on every request from the
+      // date of the status, read from the stored rows (task 2.2a).
+      const blocked = await staffAccountBlocked(
+        transaction,
+        owner.account_id,
+        await transactionMoment(transaction),
+      );
+      const passwordResetBy = await this.loginOf(transaction, account.password_reset_by);
+      const seen = await transaction
+        .selectFrom('sessions')
+        .select('second_step_passed_at')
+        .where(inForce)
+        .executeTakeFirst();
+      const stepOf = (passedAt: Date | null) =>
+        this.secondSteps.stateOf(transaction, owner.account_id, passedAt, roles);
+      const step = seen === undefined ? undefined : await stepOf(seen.second_step_passed_at);
       const use = () =>
         transaction
           .updateTable('sessions')
           // Never backwards: of two requests at the same moment the later clock stays.
           .set({ last_used_at: sql<Date>`greatest(last_used_at, ${now})` })
-          .where('token_hash', '=', tokenHash(token))
-          .where('ended_at', 'is', null)
-          .where('created_at', '>', new Date(now.getTime() - SESSION_MAX_LIFE_MS))
-          // The same rule as `endByTime`, in one statement with the use.
-          .where((builder) =>
-            builder.or([
-              builder.and([
-                builder('trusted_from', 'is not', null),
-                builder('trust_ended_at', 'is', null),
-              ]),
-              builder('last_used_at', '>', new Date(now.getTime() - limit)),
-            ]),
-          )
-          .returning([
-            'id',
-            'account_id',
-            'second_step_passed_at',
-            'created_at',
-            'trusted_from',
-            'trust_ended_at',
-          ])
+          .where(inForce)
+          .returning(columns)
           .executeTakeFirst();
       let used = await use();
       if (used === undefined && (await this.endIfOver(transaction, token, now, limit))) {
@@ -475,38 +507,27 @@ export class Sessions {
       if (used === undefined) {
         return undefined;
       }
-      const account = await transaction
-        .selectFrom('accounts')
-        .select(['login', 'must_change_password', 'password_reset_by', 'locked_at', 'language'])
-        .where('id', '=', used.account_id)
-        .executeTakeFirstOrThrow();
       if (account.locked_at !== null) {
         // A lock ends every session; this holds also if one were still open.
         return undefined;
       }
-      // An inactive or left staff member is refused on every request from the
-      // date of the status, read from the stored rows (task 2.2a).
-      if (
-        await staffAccountBlocked(
-          transaction,
-          used.account_id,
-          await transactionMoment(transaction),
-        )
-      ) {
+      if (blocked) {
         return undefined;
       }
+      // The session row as the use found it decides; its second step is read again only when
+      // another request changed it since the read above.
+      const secondStep =
+        step !== undefined &&
+        seen?.second_step_passed_at?.getTime() === used.second_step_passed_at?.getTime()
+          ? step
+          : await stepOf(used.second_step_passed_at);
       return {
         sessionId: used.id,
         accountId: used.account_id,
         login: account.login,
-        secondStep: await this.secondSteps.stateOf(
-          transaction,
-          used.account_id,
-          used.second_step_passed_at,
-          roles,
-        ),
+        secondStep,
         mustChangePassword: account.must_change_password,
-        passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
+        passwordResetBy,
         trustedUntil: isTrusted(used) ? latestEndOf(used) : null,
         language: languageOf(account.language),
         assignments,
