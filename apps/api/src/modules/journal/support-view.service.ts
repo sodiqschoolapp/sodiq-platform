@@ -253,9 +253,10 @@ export class SupportView {
         one.changed_how === 'deleted' || one.changed_how === 'forced_delete'
           ? one.title_before
           : one.title_after;
+      // The last line decides: a takeover leaves no typed title (the plan's replaced it).
       kinds.set(one.work_id, {
         kind: one.kind === 'homework' ? 'homework' : 'classwork',
-        title: title ?? kinds.get(one.work_id)?.title ?? null,
+        title,
       });
     }
     const lineWork = (workId: string | null) => {

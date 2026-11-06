@@ -326,6 +326,13 @@ describe('the journal routes outside the scope of a role', () => {
           'journal_entry_scope',
         ],
         ['delete', `${lesson}/works/${workId}`, {}, 'journal_entry_scope'],
+        // Task 10.6: the rename of a work added by hand.
+        [
+          'put',
+          `${lesson}/works/${workId}/title`,
+          { title: 'Quiz', version: 1 },
+          'journal_entry_scope',
+        ],
         [
           'put',
           `${lesson}/works/total`,

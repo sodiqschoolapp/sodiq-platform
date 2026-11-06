@@ -429,6 +429,85 @@ describe('classwork and homework in the grid', () => {
     expect(within(planned).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
   });
 
+  // Task 10.6 (spec review of the code, must-fix 2): a lesson the person cannot enter offers no
+  // rename, the work added by hand included.
+  it('offers no rename of a work added by hand at a lesson the person cannot enter', async () => {
+    const given: JournalWork = {
+      ...TEST,
+      id: uid(81),
+      planWorkId: null,
+      sourceLessonId: PLANNED,
+      kind: 'homework',
+      title: 'Exercises',
+      unplanned: true,
+      version: 1,
+    };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        GRID.lessons[0] as JournalLesson,
+        { ...(GRID.lessons[1] as JournalLesson), canEnterWorks: false, works: [given] },
+      ],
+      students: GRID.students.map((one) => ({
+        ...one,
+        cells: [
+          one.cells[0] as JournalStudent['cells'][number],
+          {
+            ...(one.cells[1] as JournalStudent['cells'][number]),
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
+          },
+        ],
+      })),
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Exercises' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Work: Exercises' });
+    expect(within(dialog).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
+    expect(within(dialog).queryByLabelText(en.journal.works.titleLabel)).toBeNull();
+  });
+
+  // Task 10.6 (spec review of the code, should-fix 4): a refused add keeps the typed title and
+  // tells the refusal in the dialog.
+  it('keeps the typed title in the form when the add is refused, and tells why in the dialog', async () => {
+    const calls = open({
+      [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
+        json(
+          {
+            error: {
+              code: 'journal_works_limit',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+            },
+          },
+          409,
+        ),
+    });
+    const dialog = await worksOf(1);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
+    const field = within(dialog).getByLabelText(en.journal.works.classworkTitle);
+    fireEvent.change(field, { target: { value: 'Dictation' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.add }));
+    expect(await within(dialog).findByText(en.errors.journal_works_limit)).toBeTruthy();
+    expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toHaveLength(1);
+    expect(
+      within(dialog).getByLabelText<HTMLInputElement>(en.journal.works.classworkTitle).value,
+    ).toBe('Dictation');
+  });
+
   /** Task 8.8: the lesson card of the lesson at `index`, then its works (the second lesson has no plan item). */
   const worksOf = async (index: number): Promise<HTMLElement> => {
     const cards = await screen.findAllByRole('button', { name: en.journal.card.open });

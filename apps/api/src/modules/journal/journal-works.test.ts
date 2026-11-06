@@ -1856,6 +1856,25 @@ describe('classwork and homework', () => {
             version: given.version,
           }),
         );
+        // Permission review, should-fix 3: a work that is not a column of the lesson named is
+        // refused there, nothing written.
+        const elsewhere = workSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Essay',
+            }),
+          ),
+        );
+        const rows = await rowsOf(s.branch);
+        const entries = await journalEntries();
+        const notHere = await calls.put(
+          `/api/journal/lessons/${s.first}/works/${elsewhere.id}/title`,
+          { title: 'Quiz', version: elsewhere.version },
+        );
+        expect(codeOf(notHere)).toBe('work_not_in_lesson');
+        expect(await rowsOf(s.branch)).toEqual(rows);
+        expect(await journalEntries()).toBe(entries);
         // A planned work takes its title from the plan.
         const planned = workSavedSchema.parse(
           ok(

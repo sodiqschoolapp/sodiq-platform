@@ -133,6 +133,7 @@ describe('the forced delete of a lesson that holds data in the database', () => 
           branch_id: north,
           lesson_id: row.id,
           kind: 'classwork',
+          title: 'Dictation',
           // Task 8.1 (0119): a total is never cleared, so a work "not held" alone has none from the start.
           total: input.notHeld === true && input.noCells === true ? null : 30,
           not_held: input.notHeld ?? false,
@@ -602,6 +603,7 @@ describe('the forced delete of a lesson that holds data in the database', () => 
                 branch_id: north,
                 lesson_id: marked.lesson,
                 kind: 'classwork',
+                title: 'Dictation',
                 total: values.total ?? null,
                 not_held: values.notHeld ?? false,
               })
@@ -614,7 +616,12 @@ describe('the forced delete of a lesson that holds data in the database', () => 
       await inNorth((transaction) =>
         transaction
           .insertInto('journal_works')
-          .values({ branch_id: north, lesson_id: marked.lesson, kind: 'homework' })
+          .values({
+            branch_id: north,
+            lesson_id: marked.lesson,
+            kind: 'homework',
+            title: 'Dictation',
+          })
           .execute(),
       );
       const kept = await storedOf(marked.lesson);

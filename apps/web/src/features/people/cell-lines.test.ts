@@ -22,21 +22,29 @@ describe('a line of a work', () => {
     notHeldAfter: false,
     titleBefore: 'Dictation',
     titleAfter: 'Spelling',
+    changedHow: 'entry' as const,
   };
 
   it('names a rename with the title before and after', () => {
     expect(workLineText(t, line)).toBe('Title of Classwork: Dictation → Spelling');
   });
 
-  it('names the takeover of a typed title, the plan title shown in its place', () => {
-    expect(workLineText(t, { ...line, titleAfter: null })).toBe(
+  it('names the takeover of a typed title, which leaves the work no title of its own', () => {
+    expect(workLineText(t, { ...line, titleAfter: null, changedHow: 'takeover' })).toBe(
       'Title of Classwork: Dictation → —',
     );
   });
 
-  it('names a change of the total first', () => {
-    expect(workLineText(t, { ...line, totalAfter: 20, titleAfter: 'Spelling' })).toBe(
-      'Total of Classwork: 10 → 20',
+  it('reads the delete and the restore of a titled work as such, never as a rename', () => {
+    expect(workLineText(t, { ...line, titleAfter: null, changedHow: 'deleted' })).not.toContain(
+      'Title of',
     );
+    expect(workLineText(t, { ...line, titleBefore: null, changedHow: 'restored' })).not.toContain(
+      'Title of',
+    );
+  });
+
+  it('names a change of the total first', () => {
+    expect(workLineText(t, { ...line, totalAfter: 20 })).toBe('Total of Classwork: 10 → 20');
   });
 });

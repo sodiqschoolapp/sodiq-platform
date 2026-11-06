@@ -266,7 +266,7 @@ export function useWorksEntry(
 
   const { mutate: saveScore, isPending: scoring } = score;
   const { states } = saves;
-  const { mutate: run, isPending: changing } = change;
+  const { mutate: run, mutateAsync: runAsync, isPending: changing } = change;
 
   const works = useMemo(
     (): WorksEntry => ({
@@ -408,12 +408,17 @@ export function useWorksEntry(
           busy={changing || notGraded.isPending}
           failure={failure}
           nameOfWork={nameOfWork}
-          onAdd={(kind, title) => {
-            run({
+          onAdd={(kind, title) =>
+            // Task 10.6 (spec review of the code, should-fix 4): the form stays with its title
+            // until the server took it; a refusal is shown in the dialog.
+            runAsync({
               run: () => addWork(lesson.id, { kind, title }),
               ask: () => Promise.resolve(false),
-            });
-          }}
+            }).then(
+              () => true,
+              () => false,
+            )
+          }
           onUndo={(chosen) => {
             setNotHeld(lesson, chosen, false);
           }}
@@ -524,7 +529,8 @@ function LessonWorksDialog({
   /** Task 10.6 (plan review, correction 2): a refused add is shown in the dialog. */
   failure: unknown;
   nameOfWork: (work: JournalWork) => string;
-  onAdd: (kind: 'classwork' | 'homework', title: string) => void;
+  /** Answers whether the server took it. */
+  onAdd: (kind: 'classwork' | 'homework', title: string) => Promise<boolean>;
   onUndo: (work: JournalWork) => void;
   /** Task 8.7: the empty cells the lesson waits for, and "not graded" for them. */
   waiting: number;
@@ -596,8 +602,9 @@ function LessonWorksDialog({
                   action={t('journal.works.add')}
                   busy={busy}
                   onSave={(typed) => {
-                    onAdd(adding, typed);
-                    setAdding(null);
+                    void onAdd(adding, typed).then((taken) => {
+                      if (taken) setAdding(null);
+                    });
                   }}
                   onCancel={() => {
                     setAdding(null);

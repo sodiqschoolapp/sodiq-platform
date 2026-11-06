@@ -24,7 +24,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useMayView, useView } from '@/features/access/use-view';
-import { accountText, cellKindText, cellValueText } from '@/features/people/cell-lines';
+import {
+  accountText,
+  cellKindText,
+  cellValueText,
+  titleChanged,
+} from '@/features/people/cell-lines';
 import { momentText } from '@/lib/dates';
 import {
   StaleDialog,
@@ -427,7 +432,7 @@ function CellHistoryDialog({
                 );
                 const total = line.totalBefore !== line.totalAfter;
                 // Task 10.6: a rename, or the takeover that replaced a typed title.
-                const titled = !total && line.titleBefore !== line.titleAfter;
+                const titled = titleChanged(line);
                 const yesNo = (value: boolean | null) =>
                   value === null ? '—' : value ? t('journal.works.yes') : t('journal.works.no');
                 return (
