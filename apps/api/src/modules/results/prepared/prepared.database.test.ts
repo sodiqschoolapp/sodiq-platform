@@ -27,7 +27,8 @@ import { publishedScene, type PublishedScene } from '../../../testing/published-
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
 import { decodedUnits } from './decoded-cache.js';
-import { PreparedTotals, prepareUnit } from './prepare.job.js';
+import { groupsOf, PreparedTotals, prepareUnit } from './prepare.job.js';
+import { quarterOutcomes, shareOutcomesIn } from '../quarter-outcomes.js';
 import {
   freshLessons,
   isFresh,
@@ -36,6 +37,7 @@ import {
   PREPARED_SHAPE,
   pruneSchoolChanges,
   SCHOOL_INPUTS,
+  type UnitKind,
 } from './prepared.query.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
@@ -1430,6 +1432,86 @@ describe('the prepared report totals (task 9.3b-1)', () => {
       expect(again.prepared.updating).toBe(false);
       expect(valueOf(again, c.bobur)).toBe(1000);
       expect(decodedUnits.size).toBe(kept + 1);
+    });
+
+    // Code review round 1, finding 2: a subject's three kinds of unit are prepared together, and
+    // the outcomes they read are worked out once in that transaction.
+    it("prepares a subject's outcomes, figures and closing units in one transaction, from one snapshot", async () => {
+      const c = await scene();
+      await prepare(c.s.branch);
+      const subjectUnits = await t.database.migrator
+        .selectFrom('report_prepared')
+        .select(['kind', sql<string>`seen::text`.as('seen')])
+        .where('branch_id', '=', c.s.branch)
+        .where('quarter_id', '=', c.quarter)
+        .where('unit_id', '=', c.s.subject)
+        .execute();
+      expect(new Set(subjectUnits.map((one) => one.kind))).toEqual(
+        new Set(['outcomes', 'figures', 'closing']),
+      );
+      expect(new Set(subjectUnits.map((one) => one.seen)).size).toBe(1);
+    });
+
+    it('works the outcomes of a quarter out once in a transaction that shares them, for the same input only', async () => {
+      const c = await scene();
+      const quarter = await t.database.migrator
+        .selectFrom('quarters')
+        .select([
+          'id',
+          'number',
+          'academic_year_id',
+          sql<string>`start_date::text`.as('start'),
+          sql<string>`end_date::text`.as('end'),
+        ])
+        .where('id', '=', c.quarter)
+        .executeTakeFirstOrThrow();
+      const input = {
+        branchId: c.s.branch,
+        timeZone: 'Asia/Tashkent',
+        now: new Date(MOMENT),
+        quarter: {
+          id: quarter.id,
+          number: quarter.number,
+          academicYearId: quarter.academic_year_id,
+          startDate: quarter.start,
+          endDate: quarter.end,
+        },
+        subjectIds: [c.s.subject],
+      };
+      await t.app.get(Transactions).run([c.s.branch], async (transaction) => {
+        const unshared = await quarterOutcomes(transaction, input);
+        expect(await quarterOutcomes(transaction, input)).not.toBe(unshared);
+        shareOutcomesIn(transaction);
+        const first = await quarterOutcomes(transaction, input);
+        expect(await quarterOutcomes(transaction, { ...input, quarterClosed: false })).toBe(first);
+        expect(await quarterOutcomes(transaction, { ...input, quarterClosed: true })).not.toBe(
+          first,
+        );
+        expect(await quarterOutcomes(transaction, { ...input, subjectIds: null })).not.toBe(first);
+        // The same figures as a transaction that shares nothing.
+        expect(first).toEqual(unshared);
+      });
+    });
+
+    it('groups the units of one quarter and subject at the place of the first, keeping the order', () => {
+      const unit = (kind: UnitKind, quarterId: string, unitId: string) => ({
+        kind,
+        quarterId,
+        unitId,
+      });
+      expect(
+        groupsOf([
+          unit('figures', 'q', 'math'),
+          unit('attendance', 'q', 'journal'),
+          unit('outcomes', 'q', 'math'),
+          unit('outcomes', 'q', 'art'),
+          unit('closing', 'q', 'math'),
+        ]),
+      ).toEqual([
+        [unit('figures', 'q', 'math'), unit('outcomes', 'q', 'math'), unit('closing', 'q', 'math')],
+        [unit('attendance', 'q', 'journal')],
+        [unit('outcomes', 'q', 'art')],
+      ]);
     });
 
     it('lists for the job the units behind the longest first, whatever their kind', async () => {

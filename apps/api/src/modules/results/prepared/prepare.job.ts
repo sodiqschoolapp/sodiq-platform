@@ -17,6 +17,7 @@ import {
   writeUnit,
   type UnitKey,
 } from './prepared.query.js';
+import { shareOutcomesIn } from '../quarter-outcomes.js';
 import { startedQuarters, unitsOf, unitValue } from './units.js';
 
 /**
@@ -38,8 +39,11 @@ export const prepareTotalsJob = defineJob({
  * database with the school's requests, and at the school's size a first preparation takes
  * minutes (CI of pull request #258: the browser tests slowed while it ran unbounded). Elapsed
  * work is measured with the process's monotonic timer, never the clock of the business rules.
+ * Task 10.1c (code review round 1, finding 2): 40 s of each minute, from 20: under steady saves
+ * at three times the size the units behind outgrew 20 s a minute; the browser tests' server no
+ * longer schedules the job (`JOBS_UNSCHEDULED`, 30 October 2026).
  */
-export const RUN_BUDGET_MS = 20_000;
+export const RUN_BUDGET_MS = 40_000;
 
 @Injectable()
 export class PreparedTotals implements BeforeApplicationShutdown {
@@ -125,19 +129,46 @@ export class PreparedTotals implements BeforeApplicationShutdown {
       return { seen, todo: [...todo.values()] };
     });
     let prepared = 0;
-    for (const unit of listing.todo) {
+    for (const group of groupsOf(listing.todo)) {
       // The rest waits for the next run; the change rows stay, so nothing is lost.
       if (this.stopping || performance.now() > deadline) return { prepared, finished: false };
-      const done = await this.transactions.run([branchId], (transaction) =>
-        prepareUnit(transaction, branchId, timeZone, unit),
+      prepared += await this.transactions.run([branchId], (transaction) =>
+        prepareUnits(transaction, branchId, timeZone, group),
       );
-      if (done) prepared += 1;
     }
     await this.transactions.run([branchId], (transaction) =>
       pruneChanges(transaction, branchId, listing.seen),
     );
     return { prepared, finished: true };
   }
+}
+
+/** The kinds of a subject's units, prepared together (`prepareUnits`). */
+const SUBJECT_KINDS: readonly UnitKey['kind'][] = ['outcomes', 'figures', 'closing'];
+
+/**
+ * The units in their order (behind the longest first), the `outcomes`, `figures` and
+ * `closing` of one quarter and subject in one group at the place of the first of them.
+ */
+export function groupsOf(units: readonly UnitKey[]): UnitKey[][] {
+  const groups: UnitKey[][] = [];
+  const bySubject = new Map<string, UnitKey[]>();
+  for (const unit of units) {
+    if (!SUBJECT_KINDS.includes(unit.kind)) {
+      groups.push([unit]);
+      continue;
+    }
+    const key = `${unit.quarterId}|${unit.unitId}`;
+    const group = bySubject.get(key);
+    if (group === undefined) {
+      const created = [unit];
+      bySubject.set(key, created);
+      groups.push(created);
+    } else {
+      group.push(unit);
+    }
+  }
+  return groups;
 }
 
 async function momentOf(
@@ -163,44 +194,72 @@ export async function prepareUnit(
   unit: UnitKey,
   options: { readonly afterSnapshot?: () => Promise<void> } = {},
 ): Promise<boolean> {
-  await sql`
-    select pg_advisory_xact_lock(hashtextextended(${`report:${branchId}:${unitKeyOf(unit)}`}, 0))
-  `.execute(transaction);
+  return (await prepareUnits(transaction, branchId, timeZone, [unit], options)) > 0;
+}
+
+/**
+ * Task 10.1c (code review round 1, finding 2): several units in one transaction, one snapshot
+ * for all of them, each locked (in one order, so two runs never wait on each other in a ring) and
+ * checked fresh as `prepareUnit` does. The job prepares a subject's `outcomes`, `figures` and
+ * `closing` of a quarter together, so the outcomes they all read are worked out once
+ * (`shareOutcomesIn`): at three times the size a subject's units took 0.3 to 8 s each, more
+ * than the job's minute could keep up with under steady saves. Answers the number of units
+ * prepared or removed.
+ */
+export async function prepareUnits(
+  transaction: BranchMoment['transaction'],
+  branchId: string,
+  timeZone: string,
+  units: readonly UnitKey[],
+  options: { readonly afterSnapshot?: () => Promise<void> } = {},
+): Promise<number> {
+  const ordered = [...units].sort((a, b) => unitKeyOf(a).localeCompare(unitKeyOf(b)));
+  for (const unit of ordered) {
+    await sql`
+      select pg_advisory_xact_lock(hashtextextended(${`report:${branchId}:${unitKeyOf(unit)}`}, 0))
+    `.execute(transaction);
+  }
   const seen = await snapshotOf(transaction);
   await options.afterSnapshot?.();
   const inputs = PREPARED_SHAPE;
   const moment = await momentOf(transaction, branchId, timeZone);
-  if (await isFresh(transaction, { branchId, unit, now: moment.now, schoolInputs: inputs })) {
-    return false;
-  }
-  const quarter = (await startedQuarters(moment)).find((one) => one.id === unit.quarterId);
-  if (quarter === undefined) {
-    // Undated or not begun any more: the unit is no longer prepared.
-    await sql`
-      delete from report_prepared
-      where branch_id = ${branchId} and kind = ${unit.kind}
-        and quarter_id = ${unit.quarterId} and unit_id = ${unit.unitId}
-    `.execute(transaction);
-    if (unit.kind === 'statuses') {
-      await sql`
-        delete from report_prepared_lessons
-        where branch_id = ${branchId} and quarter_id = ${unit.quarterId}
-          and journal_id = ${unit.unitId}
-      `.execute(transaction);
+  shareOutcomesIn(transaction);
+  const started = await startedQuarters(moment);
+  let prepared = 0;
+  for (const unit of ordered) {
+    if (await isFresh(transaction, { branchId, unit, now: moment.now, schoolInputs: inputs })) {
+      continue;
     }
-    return true;
+    prepared += 1;
+    const quarter = started.find((one) => one.id === unit.quarterId);
+    if (quarter === undefined) {
+      // Undated or not begun any more: the unit is no longer prepared.
+      await sql`
+        delete from report_prepared
+        where branch_id = ${branchId} and kind = ${unit.kind}
+          and quarter_id = ${unit.quarterId} and unit_id = ${unit.unitId}
+      `.execute(transaction);
+      if (unit.kind === 'statuses') {
+        await sql`
+          delete from report_prepared_lessons
+          where branch_id = ${branchId} and quarter_id = ${unit.quarterId}
+            and journal_id = ${unit.unitId}
+        `.execute(transaction);
+      }
+      continue;
+    }
+    const value = await unitValue(moment, quarter, unit);
+    await writeUnit(transaction, {
+      branchId,
+      unit,
+      journalIds: value.journalIds,
+      seen,
+      schoolInputs: inputs,
+      preparedAt: moment.now,
+      nextChangeAt: value.nextChangeAt,
+      value: value.value,
+      ...(value.lessons === undefined ? {} : { lessons: value.lessons }),
+    });
   }
-  const value = await unitValue(moment, quarter, unit);
-  await writeUnit(transaction, {
-    branchId,
-    unit,
-    journalIds: value.journalIds,
-    seen,
-    schoolInputs: inputs,
-    preparedAt: moment.now,
-    nextChangeAt: value.nextChangeAt,
-    value: value.value,
-    ...(value.lessons === undefined ? {} : { lessons: value.lessons }),
-  });
-  return true;
+  return prepared;
 }
