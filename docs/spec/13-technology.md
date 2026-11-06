@@ -22,7 +22,7 @@ The choice is made for correctness first, then speed, then simplicity for one de
 | Offline entry | TanStack Query with a saved queue in the browser (Dexie) | Unsent entries survive a reload and a restart. |
 | Interface languages | i18next | Three languages; the same texts can be reused by the mobile apps. |
 | Email | Resend | Password resets and notices. Free up to 3,000 emails a month. |
-| Messages to parents (Release 2) | Proposed: a Telegram bot for notices, Telegram Gateway for sign-in codes, SMS only for numbers without Telegram | A Telegram notice is free and a sign-in code costs $0.01. An SMS to Uzbekistan through a global provider costs $0.13 to $0.46. |
+| Messages to parents (Release 2) | A Telegram bot (Telegram Bot API) for the parents' digest, and the parent portal as a Telegram mini app that opens the platform's own pages. No SMS and no sign-in codes (owner, 6 November 2026) | Sending through the bot is free and parents use Telegram. The mini app is the same web app, so there is one portal to build and to secure. |
 | Mobile apps (Release 3) | React Native with Expo | Shares types and logic with the web app. |
 | Monitoring | Sentry for errors; Grafana Cloud for speed, load, logs and the sign-in-and-save check every 5 minutes; UptimeRobot for uptime; alerts go to Telegram | Problems are seen before users report them. All three have free plans that cover this size. |
 | Code and releases | One GitHub repository (pnpm workspaces, Turborepo); GitHub Actions runs the tests and makes the releases | Web app, server, solver and the shared calculation module change together and are tested together. |
@@ -76,7 +76,7 @@ Prices for Release 1, read on each provider's own pricing page on 3 October 2026
 | GitHub | Team, 1 user | $4 per user | $4 |
 | **Total** |  |  | **about $231 to $316** |
 
-Servers of 2 CPU and 4 GB cost $85 each instead of $25, which adds $120 a month. Later or optional: Sentry Team at $29 a month ($26 if paid yearly), Resend Pro at $20 a month for 50,000 emails, Telegram Gateway at $0.01 per delivered sign-in code, and AG Grid Enterprise at $999 once per developer.
+Servers of 2 CPU and 4 GB cost $85 each instead of $25, which adds $120 a month. Later or optional: Sentry Team at $29 a month ($26 if paid yearly), Resend Pro at $20 a month for 50,000 emails, and AG Grid Enterprise at $999 once per developer.
 
 Not chosen: AWS (about $550 to $650 a month for the same setup, and more to operate); a self-managed server at Hetzner (about $200, but one developer alone carries every database failure); Railway (no Frankfurt region and an unmanaged database).
 

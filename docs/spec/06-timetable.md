@@ -147,7 +147,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 - **Impact preview.** Before publishing, the system lists the teachers, classes and rooms affected, the lessons that will be created, moved and removed, any lesson holding data that blocks a removal, and who will be notified.
 - **Start date.** A permanent change starts on a chosen date, next Monday by default and tomorrow at the earliest, with the first day of each coming quarter offered as a shortcut. A change for today goes through a one-day change with a reason.
 - **Out-of-date draft.** If the live timetable changed after a draft was started, the draft must be brought up to date before publishing; the differences are shown.
-- **Everyone is told.** Each affected teacher receives a notice showing before and after. Changed lessons carry a "changed" mark on every timetable view for a week. Students and parents are told from Release 2.
+- **Everyone is told.** Each affected teacher receives a notice showing before and after. Changed lessons carry a "changed" mark on every timetable view for a week. Parents see the change marked in the portal from Release 2; a message to families and the student portal come later in Release 2.
 - **No lesson without a teacher or room.** When a teacher's status is set to inactive or left from a date, or a room is closed, the system lists the future lessons that depend on them and asks for a replacement, or marks them "needs a teacher" or "needs a room" on the Academic Vice Principal's home page. An account can always be locked at once, whatever lessons remain. A dated lesson of a vacancy keeps the vacancy as its teacher and is "needs a teacher" from the day it is created; a substitute is recorded on it as for an absence.
 - **One source.** The platform always shows the timetable in force on the date being viewed. Printed and exported timetables carry the version number and "valid from" date, so an old printout can be recognised.
 - **Lesson plans follow.** Topics stay attached to lessons in order when lessons move.
@@ -167,7 +167,7 @@ The rule behind every row: the past is never rewritten, and a journal belongs to
 - Tutors see the school timetable and their class; Head Tutors the school timetable and every class of the branch; Head Teachers and Senior Head Teachers the teachers of their subjects; Principal and Vice Principals the whole branch; students and parents their own week in Release 2.
 - Print, PDF and Excel for one class, one teacher, one room or the whole school.
 - Load report: lessons per week for each teacher against contract, lessons per subject for each class against the load, room use in percent, free periods.
-- When a published timetable changes, the affected teachers are notified at once; students and parents from Release 2.
+- When a published timetable changes, the affected teachers are notified at once. Parents see it marked in the portal from Release 2.
 
 ## Free now board
 

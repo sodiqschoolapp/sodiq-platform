@@ -68,7 +68,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 - **Relative's page.** Shows the relative's data and all linked students. Editing the phone or name here changes it for every linked student.
 - **Finding relatives.** The Academic Vice Principal has a Relatives list with search by name and phone. Ctrl+K finds a relative by phone for the Super Admin, the Principal and the Academic Vice Principal, and lists the relative's children. The student's Relatives tab shows the linked relatives.
 - **Removing a link.** Unlinking a relative from one student does not affect their other students. A relative with no linked students is archived.
-- **Parent account.** In Release 2 the relative record becomes the parent account: the relative signs in with the main phone and sees every linked student whose link has portal access switched on. This is why the phone must be unique.
+- **Parent account.** In Release 2 the relative record becomes the parent account: the relative signs in with a login and password given on a printed slip (`10`) and sees every linked student whose link has portal access switched on. The main phone is not used for sign-in; it stays unique because one phone belongs to one adult.
 
 ## Teacher and staff record
 
