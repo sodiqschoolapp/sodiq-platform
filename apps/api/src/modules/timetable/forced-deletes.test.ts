@@ -1463,6 +1463,68 @@ describe('the forced delete of a dated lesson and its restore', () => {
       ).toEqual(cells.map((one) => [one.id, one.mark, one.score, 'restored']));
     });
 
+    // Task 10.6: the title of a work added by hand goes into the store and comes back; a store
+    // row written before 0157 has no title and brings the work back untitled ("CW 1").
+    it('keeps the title of a work added by hand in the store and puts it back, and restores an untitled one from an older store row', async () => {
+      const s = await scene();
+      const named = await lessonOf(s, '2026-12-21');
+      const older = await lessonOf(s, '2026-12-28');
+      const works: Record<string, string> = {};
+      for (const lesson of [named, older]) {
+        works[lesson.id] = (
+          await t.database.migrator
+            .insertInto('journal_works')
+            .values({
+              branch_id: s.branch,
+              lesson_id: lesson.id,
+              source_lesson_id: lesson.id,
+              kind: 'classwork',
+              title: 'Dictation',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      }
+      const stores: Record<string, string> = {};
+      for (const lesson of [named, older]) {
+        stores[lesson.id] = storeOf(await forceDelete(s.branch, lesson.id));
+      }
+      const kept = (
+        await t.database.migrator
+          .selectFrom('forced_deletes')
+          .select('rows')
+          .where('id', '=', stores[named.id] ?? '')
+          .executeTakeFirstOrThrow()
+      ).rows as unknown as LessonRows;
+      expect(kept.works?.map((one) => one.title)).toEqual(['Dictation']);
+      await t.database.migrator
+        .updateTable('forced_deletes')
+        .set({
+          rows: sql`jsonb_set(rows, '{works}', (
+            select jsonb_agg(w - 'title') from jsonb_array_elements(rows -> 'works') w
+          ))`,
+        })
+        .where('id', '=', stores[older.id] ?? '')
+        .execute();
+      for (const lesson of [named, older]) done(await restore(s.branch, stores[lesson.id] ?? ''));
+      const back = await t.database.migrator
+        .selectFrom('journal_works')
+        .select(['id', 'title'])
+        .where('id', 'in', [works[named.id] ?? '', works[older.id] ?? ''])
+        .execute();
+      expect(Object.fromEntries(back.map((one) => [one.id, one.title]))).toEqual({
+        [works[named.id] ?? '']: 'Dictation',
+        [works[older.id] ?? '']: null,
+      });
+      const line = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select('title_after')
+        .where('work_id', '=', works[named.id] ?? '')
+        .where('changed_how', '=', 'restored')
+        .executeTakeFirstOrThrow();
+      expect(line.title_after).toBe('Dictation');
+    });
+
     it('restores a store row written before 6.1b-2, with no cells and no works', async () => {
       const s = await scene();
       const lesson = await lessonOf(s, '2026-12-21');

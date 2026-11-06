@@ -102,7 +102,13 @@ describe('journal works in the database', () => {
   /** A work added by hand, as the application inserts it (empty), then its total. */
   const work = (
     lessonId: string,
-    input: { kind?: 'classwork' | 'homework'; position?: number; total?: number } = {},
+    input: {
+      kind?: 'classwork' | 'homework';
+      position?: number;
+      total?: number;
+      /** Task 10.6: the title typed when it is added; `null` to send none. */
+      title?: string | null;
+    } = {},
   ) =>
     inBranch(async (transaction) => {
       await audited(transaction);
@@ -114,6 +120,7 @@ describe('journal works in the database', () => {
           source_lesson_id: lessonId,
           kind: input.kind ?? 'classwork',
           position: input.position ?? 1,
+          title: input.title === undefined ? 'Dictation' : input.title,
           changed_by: account,
         })
         .returning('id')
@@ -136,6 +143,7 @@ describe('journal works in the database', () => {
       lesson_id: string;
       carried_from_lesson_id: string | null;
       plan_work_id: string | null;
+      title: string | null;
     }>,
   ) =>
     inBranch(async (transaction) => {
@@ -331,6 +339,103 @@ describe('journal works in the database', () => {
         .where('work_id', '=', empty)
         .execute();
       expect(lines).toEqual([{ changed_how: 'deleted', total_before: null }]);
+    });
+  });
+
+  // Task 10.6 (0157; the owner's `/spec-change` of 5 November 2026): "each with a title the
+  // teacher types when adding it (required, at most 60 characters)"; "The teacher may rename it
+  // while the lesson can still be edited; each change is kept in history".
+  describe('the title of a work by hand', () => {
+    it('refuses one added with no title, an empty one, one with spaces around it and one of 61 characters, and takes 60', async () => {
+      const { lesson: id } = await scene();
+      expect((await refusal(work(id, { title: null }))).constraint).toBe(
+        'journal_work_title_required',
+      );
+      for (const title of ['', ' Dictation', 'Dictation\t', 'x'.repeat(61), '😀'.repeat(61)]) {
+        expect((await refusal(work(id, { title }))).constraint, title).toBe(
+          'journal_works_title_check',
+        );
+      }
+      await work(id, { title: '😀'.repeat(60) });
+      await work(id, { position: 2, title: 'x'.repeat(60) });
+    });
+
+    it('lets a work added before 0157, with no title, take a total and a rename, and refuses clearing a title to blank', async () => {
+      const { lesson: id } = await scene();
+      // As 8.1 to 10.5 stored one (the migrator here: the guard is for the application).
+      const old = await database.migrator
+        .insertInto('journal_works')
+        .values({ branch_id: north, lesson_id: id, source_lesson_id: id, kind: 'classwork' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await setWork(old.id, { total: 5 });
+      await setWork(old.id, { title: 'Reading' });
+      expect((await refusal(setWork(old.id, { title: ' ' }))).constraint).toBe(
+        'journal_works_title_check',
+      );
+      const lines = await database.migrator
+        .selectFrom('journal_work_history')
+        .select(['title_before', 'title_after', 'total_before', 'total_after', 'changed_how'])
+        .where('work_id', '=', old.id)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        {
+          title_before: null,
+          title_after: null,
+          total_before: null,
+          total_after: 5,
+          changed_how: 'entry',
+        },
+        {
+          title_before: null,
+          title_after: 'Reading',
+          total_before: 5,
+          total_after: 5,
+          changed_how: 'entry',
+        },
+      ]);
+    });
+
+    it('writes a line for each rename with both titles, keeps the title on the delete line, and refuses a rename with no audit entry', async () => {
+      const { lesson: id } = await scene();
+      const named = await work(id);
+      await setWork(named, { title: 'Spelling' });
+      await setWork(named, { title: 'Spelling test' });
+      const unaudited = await refusal(
+        inBranch((transaction) =>
+          transaction
+            .updateTable('journal_works')
+            .set({ title: 'Dictation', changed_by: account })
+            .where('id', '=', named)
+            .execute(),
+        ),
+      );
+      expect(unaudited).toBeDefined();
+      expect(
+        (
+          await database.migrator
+            .selectFrom('journal_works')
+            .select('title')
+            .where('id', '=', named)
+            .executeTakeFirstOrThrow()
+        ).title,
+      ).toBe('Spelling test');
+      await inBranch(async (transaction) => {
+        await audited(transaction);
+        await transaction.deleteFrom('journal_works').where('id', '=', named).execute();
+      });
+      const lines = await database.migrator
+        .selectFrom('journal_work_history')
+        .select(['title_before', 'title_after', 'changed_how'])
+        .where('work_id', '=', named)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        { title_before: 'Dictation', title_after: 'Spelling', changed_how: 'entry' },
+        { title_before: 'Spelling', title_after: 'Spelling test', changed_how: 'entry' },
+        { title_before: 'Spelling test', title_after: null, changed_how: 'deleted' },
+      ]);
     });
   });
 

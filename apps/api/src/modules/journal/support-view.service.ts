@@ -239,25 +239,31 @@ export class SupportView {
         ),
       ),
     ];
-    const kinds = new Map(
-      (unknown.length === 0
-        ? []
-        : await transaction
-            .selectFrom('journal_work_history')
-            .select(['work_id', 'kind'])
-            .where('work_id', 'in', unknown)
-            .execute()
-      ).map((one) => [
-        one.work_id,
-        one.kind === 'homework' ? ('homework' as const) : ('classwork' as const),
-      ]),
-    );
+    // Task 10.6: and by the last title its history keeps, a work added by hand removed since.
+    const kinds = new Map<string, { kind: 'classwork' | 'homework'; title: string | null }>();
+    for (const one of unknown.length === 0
+      ? []
+      : await transaction
+          .selectFrom('journal_work_history')
+          .select(['work_id', 'kind', 'title_before', 'title_after', 'changed_how'])
+          .where('work_id', 'in', unknown)
+          .orderBy('version')
+          .execute()) {
+      const title =
+        one.changed_how === 'deleted' || one.changed_how === 'forced_delete'
+          ? one.title_before
+          : one.title_after;
+      kinds.set(one.work_id, {
+        kind: one.kind === 'homework' ? 'homework' : 'classwork',
+        title: title ?? kinds.get(one.work_id)?.title ?? null,
+      });
+    }
     const lineWork = (workId: string | null) => {
       if (workId === null) return null;
       const shown = scope.lineWork(workId);
       if (shown !== null) return shown;
-      const kind = kinds.get(workId);
-      return kind === undefined ? null : { id: workId, kind, title: null };
+      const found = kinds.get(workId);
+      return found === undefined ? null : { id: workId, kind: found.kind, title: found.title };
     };
     const deliveries = hasLessons
       ? await transaction
@@ -402,6 +408,8 @@ export class SupportView {
         totalAfter: one.total_after,
         notHeldBefore: one.not_held_before,
         notHeldAfter: one.not_held_after,
+        titleBefore: one.title_before,
+        titleAfter: one.title_after,
         how: workChangeSchema.parse(one.changed_how),
         by: one.changed_by === null ? null : named(one.changed_by),
       });

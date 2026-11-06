@@ -69,6 +69,9 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     totalAfter: z.int().nullable(),
     notHeldBefore: z.boolean().nullable(),
     notHeldAfter: z.boolean().nullable(),
+    /** Task 10.6: the title of a work added by hand before and after (a rename, a takeover). */
+    titleBefore: z.string().nullable(),
+    titleAfter: z.string().nullable(),
     how: workChangeSchema,
     by: accountNamedSchema.nullable(),
   }),
