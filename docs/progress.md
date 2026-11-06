@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 11.3 The portal: grades, attendance and comments
+
+- **API** (module `portal`): `GET /api/portal/children/:studentId/grades?quarter` and `…/attendance?date`, `@PortalChild()`, the child scope first (404). Every figure and mark from `StudentResultsService`, which gains a family entry (`familyGrades`, `familyLessons`): the same reads as the profile's tabs with the child's rows read `whole`; the staff routes unchanged. Comments: only `visibility = 'parents'` with a body, joined to the lessons and works answered.
+- **Web** (feature `portal`): Grades (quarter chooser, each subject's figures with the staff page's labels, "provisional" until closed, the scores with titles, dates and comments) and Attendance (the week by day, exempt as exempt); four tabs. Texts in three languages.
+- **Browser test**: `portal.spec.ts` goes on to Kamron's Grades and Attendance; the e2e seed gains a classwork, a late mark and a parents and a staff comment.
+
+Left out: earlier years and an earlier branch's results on Grades (on #42, decision 3); the rating (11.6); the digest (11.5); the demo seed gains no comments.
+
+The next sessions must know:
+
+- "Final" is per subject (`final`): a subject under an unfinished reopening of a closed quarter is provisional.
+- A family read of results goes through `StudentResultsService.familyGrades` / `familyLessons`, called only after `portalChild` or `childWeekScope`; never through `run(access, …)`.
+- The digest (11.5) reads marks the same way (`familyLessons`, exemptions worked out on read) and comments with `visibility = 'parents'`.
+
 ## 6 November 2026: task 11.2 The portal: frame, child switcher, timetable and homework
 
 - **Database** (0159): `portal_children` (the child scope: an open link, portal access on, relative not archived or merged, student active; the child's branch, names and class) and `portal_child_branches` (the branch of each part of a span), both SECURITY DEFINER and in the allow-list; no row changes.

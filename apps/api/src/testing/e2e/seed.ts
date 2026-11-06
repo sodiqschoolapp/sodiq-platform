@@ -8371,6 +8371,74 @@ try {
         })
         .execute();
     });
+    // Task 11.3: at yesterday's lesson Kamron is late and scores 8 of 10 on a classwork with a
+    // comment visible to parents, and a staff-only comment on the mark: the Grades and
+    // Attendance pages show the first and never the second.
+    await migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${`${plus(-1)}T09:00:00+05:00`}, true)`.execute(
+        transaction,
+      );
+      const kamron = await transaction
+        .selectFrom('students')
+        .select('id')
+        .where('uid', '=', 'PORTAL-E2E-1')
+        .executeTakeFirstOrThrow();
+      const lessonId = lessonOn.get(-1) ?? '';
+      const work = await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: portalBranch,
+          lesson_id: lessonId,
+          kind: 'classwork',
+          title: 'Cells and tissues',
+          total: 10,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const cell = {
+        branch_id: portalBranch,
+        lesson_id: lessonId,
+        student_id: kamron.id,
+        version: 1,
+        changed_by: portalVice.id,
+        changed_how: 'entry',
+        changed_at: new Date(0),
+      };
+      await transaction
+        .insertInto('journal_cells')
+        .values([
+          { ...cell, mark: 2 },
+          { ...cell, work_id: work.id, score: 8 },
+        ])
+        .execute();
+      const comment = {
+        branch_id: portalBranch,
+        student_id: kamron.id,
+        lesson_id: lessonId,
+        version: 1,
+        changed_by: portalVice.id,
+        changed_how: 'entry',
+        changed_at: new Date(0),
+      };
+      await transaction
+        .insertInto('journal_comments')
+        .values([
+          {
+            ...comment,
+            target: 'work',
+            work_id: work.id,
+            body: 'Well done on the diagram',
+            visibility: 'parents',
+          },
+          {
+            ...comment,
+            target: 'mark',
+            body: 'Staff only: spoke to the tutor',
+            visibility: 'staff',
+          },
+        ])
+        .execute();
+    });
   }
 
   console.log(JSON.stringify(seeded));

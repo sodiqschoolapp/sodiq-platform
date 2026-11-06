@@ -301,6 +301,9 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/portal/children/:studentId/timetable': 'portal',
   'GET /api/portal/children/:studentId/homework': 'portal',
   'GET /api/portal/children/:studentId/files/:fileId': 'portal',
+  // Task 11.3: grades and attendance, the same child scope.
+  'GET /api/portal/children/:studentId/grades': 'portal',
+  'GET /api/portal/children/:studentId/attendance': 'portal',
   // The own photo (task 2.3c-2, decision 18 of pull request #66): the Principal too.
   'PUT /api/auth/photo': 'any_signed_in',
   'DELETE /api/auth/photo': 'any_signed_in',

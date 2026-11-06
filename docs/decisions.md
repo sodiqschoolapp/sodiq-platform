@@ -401,6 +401,26 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 6 November 2026: the portal: grades, attendance and comments (task 11.3)
+
+Plan approved on pull request #296 with corrections 1 and 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (permission). A parent reads the own child's journal rows whole (every figure, every score), through `StudentResultsService.familyGrades` / `familyLessons`, reached only behind `portalChild` / `childWeekScope`; the staff `run(access, …)` is unchanged | `07`, Who can do what: "Student, Parent: own results in the portal"; `10`, Grades (decision 1) |
+| **Look first** (reading of the build line). "A test on the demo school" is a test on a seeded school with the demo's cases (three totals, late, skipped, exempt, rating exam, a closed quarter, a reopening): the demo school is built through a live app and is not in the suite | Decision 2 |
+| **Look first** (personal data across branches). Grades shows the child's present branch and its current year; Attendance reads each date in the branch of that date's membership (11.2 decision 6). An earlier branch's "result at leaving" and earlier years are not shown | `edge/calculation`: results are not merged across branches; `10` names the current quarter (decision 3) |
+| **Look first** (spec reading, changed by the review). Every flag of the staff page is sent (`few_lessons`, `attendance_only`, `left_subject`, "counts from", "result at leaving"); only the closing workflow itself is not | `10`: "as the staff pages show them" (decision 4, review correction 2) |
+| "Final" per subject: the quarter closed and the subject's journal without an unfinished reopening; otherwise "provisional". A closed quarter from its stored record | `10`: "provisional until it is closed"; 9.2b, 9.2c (decision 5; spec review of the code, must-fix 2) |
+| The year result exactly when the staff page shows it | `08` (decision 6) |
+| Marks 4 and 5 are both `exempt`, worked out on read (`exemptionMarksOf`), never with kind, reason, category or dates; a Tutor's absence reason is never sent; present is plain, the other marks their status colours, in words | `10`, Attendance; `edge/exemptions` (decision 7); `docs/design-system.md` |
+| Comments: `visibility = 'parents'` with a body, filtered in SQL, joined to the lessons and works the answer holds; a rating comment only beside a rating entry shown; no author | `07`, Comments (decision 8; spec review of the code, must-fix 3) |
+| The e2e seed gains a classwork, a late mark, a parents and a staff comment; the demo seed is unchanged | Decision 9 |
+| Attendance by week, Grades by quarter | `12`; `08` (decision 10) |
+| Portal reads are not audited | 11.2 decisions 10 and 11 (decision 11) |
+| A score typed on an absent student is listed; a "not graded" cell, a work "not held" and a work of an exempt lesson are not | `edge/journal` (decision 12) |
+| **Build decision.** Attendance shows the lesson's clock time, not its lesson number | The time reads without the bell schedule; the number is on the Timetable page (spec review of the code, should-fix 2) |
+
 ## 6 November 2026: the portal: frame, child switcher, timetable and homework (task 11.2)
 
 Plan approved on pull request #294 with corrections 1 and 2. Flagged on issue #42.

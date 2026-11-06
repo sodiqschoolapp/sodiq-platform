@@ -8,11 +8,20 @@ import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { portalChildrenQuery } from './portal-api';
 
-export type PortalTab = 'timetable' | 'homework';
+export type PortalTab = 'timetable' | 'homework' | 'grades' | 'attendance';
+
+const TAB_PATHS = {
+  timetable: '/portal/$studentId/timetable',
+  homework: '/portal/$studentId/homework',
+  grades: '/portal/$studentId/grades',
+  attendance: '/portal/$studentId/attendance',
+} as const;
+
+const TABS = ['timetable', 'homework', 'grades', 'attendance'] as const;
 
 /** The tab of the address: the page a switch of child keeps. */
 function tabOf(pathname: string): PortalTab {
-  return pathname.endsWith('/homework') ? 'homework' : 'timetable';
+  return TABS.find((one) => pathname.endsWith(`/${one}`)) ?? 'timetable';
 }
 
 /**
@@ -44,10 +53,7 @@ export function PortalFrame(): React.JSX.Element {
                 value={studentId ?? ''}
                 onChange={(event) => {
                   void navigate({
-                    to:
-                      tab === 'homework'
-                        ? '/portal/$studentId/homework'
-                        : '/portal/$studentId/timetable',
+                    to: TAB_PATHS[tab],
                     params: { studentId: event.target.value },
                   });
                 }}
@@ -77,23 +83,21 @@ export function PortalFrame(): React.JSX.Element {
           </Link>
         </div>
         {studentId !== undefined && (
-          <nav aria-label={t('portal.pages')} className="mx-auto flex max-w-3xl gap-2 px-4 pb-3">
-            <Link
-              to="/portal/$studentId/timetable"
-              params={{ studentId }}
-              className={tabLink('timetable')}
-              aria-current={tab === 'timetable' ? 'page' : undefined}
-            >
-              {t('portal.timetable.title')}
-            </Link>
-            <Link
-              to="/portal/$studentId/homework"
-              params={{ studentId }}
-              className={tabLink('homework')}
-              aria-current={tab === 'homework' ? 'page' : undefined}
-            >
-              {t('portal.homework.title')}
-            </Link>
+          <nav
+            aria-label={t('portal.pages')}
+            className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-4 pb-3 sm:flex"
+          >
+            {TABS.map((one) => (
+              <Link
+                key={one}
+                to={TAB_PATHS[one]}
+                params={{ studentId }}
+                className={tabLink(one)}
+                aria-current={tab === one ? 'page' : undefined}
+              >
+                {t(`portal.${one}.title`)}
+              </Link>
+            ))}
           </nav>
         )}
       </header>

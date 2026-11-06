@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   portalChildParamsSchema,
+  portalAttendanceLessonSchema,
   portalFileParamsSchema,
+  portalGradesQuerySchema,
+  portalScoreSchema,
+  portalSubjectGradesSchema,
   portalLessonSchema,
   portalWeekQuerySchema,
 } from './portal.js';
@@ -46,5 +50,69 @@ describe('the portal schemas (task 11.2)', () => {
     expect(portalLessonSchema.safeParse(lesson).success).toBe(true);
     expect(portalLessonSchema.safeParse({ ...lesson, journalId: ID }).success).toBe(false);
     expect(portalLessonSchema.safeParse({ ...lesson, cancelReason: 'ill' }).success).toBe(false);
+  });
+});
+
+describe('the portal schemas of grades and attendance (task 11.3)', () => {
+  const subject = {
+    id: ID,
+    names: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+    colour: 'blue',
+  };
+
+  it('take a quarter by an optional uuid and refuse anything else', () => {
+    expect(portalGradesQuerySchema.parse({})).toEqual({});
+    expect(portalGradesQuerySchema.safeParse({ quarter: ID }).success).toBe(true);
+    expect(portalGradesQuerySchema.safeParse({ quarter: '1' }).success).toBe(false);
+    expect(portalGradesQuerySchema.safeParse({ quarterId: ID }).success).toBe(false);
+  });
+
+  it('refuse a staff field in a score, a subject and a lesson of attendance', () => {
+    const score = {
+      date: '2026-10-12',
+      kind: 'classwork',
+      title: null,
+      position: 1,
+      score: 12,
+      total: 30,
+      percent: 40,
+      comment: null,
+    };
+    expect(portalScoreSchema.safeParse(score).success).toBe(true);
+    expect(portalScoreSchema.safeParse({ ...score, workId: ID }).success).toBe(false);
+    expect(portalScoreSchema.safeParse({ ...score, visibility: 'staff' }).success).toBe(false);
+    const grades = {
+      subject,
+      final: false,
+      attendanceOnly: true,
+      figures: null,
+      attendance: 50,
+      year: null,
+      scores: [],
+      rating: null,
+      ratingComments: [],
+    };
+    expect(portalSubjectGradesSchema.safeParse(grades).success).toBe(true);
+    expect(portalSubjectGradesSchema.safeParse({ ...grades, unit: { id: ID } }).success).toBe(
+      false,
+    );
+    expect(portalSubjectGradesSchema.safeParse({ ...grades, earlyWarning: true }).success).toBe(
+      false,
+    );
+    const lesson = {
+      date: '2026-10-12',
+      start: 480,
+      end: 525,
+      subject,
+      mark: 'exempt',
+      comment: null,
+      note: null,
+    };
+    expect(portalAttendanceLessonSchema.safeParse(lesson).success).toBe(true);
+    // Exempt has no kind, reason or category (decision 7); no number either.
+    expect(portalAttendanceLessonSchema.safeParse({ ...lesson, mark: 4 }).success).toBe(false);
+    expect(
+      portalAttendanceLessonSchema.safeParse({ ...lesson, exemptionReason: 'illness' }).success,
+    ).toBe(false);
   });
 });
