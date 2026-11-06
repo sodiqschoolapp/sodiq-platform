@@ -139,6 +139,8 @@ describe('the second step of sign-in', () => {
 
       expect(first.body).toEqual({
         login: 'a.rahimov',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'set_up_required',
         mustChangePassword: true,
         name: null,
@@ -340,6 +342,8 @@ describe('the second step of sign-in', () => {
 
       expect(response.body).toEqual({
         login: 'j.rahimov',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'pending',
         mustChangePassword: false,
         name: null,
@@ -378,6 +382,8 @@ describe('the second step of sign-in', () => {
       expect(passed.status).toBe(200);
       expect(passed.body).toEqual({
         login: 'k.rahimova',
+        kind: 'staff',
+        fullName: null,
         secondStep: 'passed',
         mustChangePassword: false,
         name: null,

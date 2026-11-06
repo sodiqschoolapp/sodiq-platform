@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 494, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 469.
+- Routes of the application: 500, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. With a permission of the table: 475.
 - Routes with a limit inside the route: 154.
-- Routes that take an id: 389, with 825 ids (branch 731, school 76, own 2, none 16).
-- Areas of the permission table: 58.
+- Routes that take an id: 394, with 831 ids (branch 737, school 76, own 2, none 16).
+- Areas of the permission table: 59.
 
 ## Routes without a role
 
@@ -156,22 +156,22 @@ Every signed-in account, for its own account only (`@AnySignedIn`):
 - `DELETE /api/auth/trusted-devices/:id`
 - `GET /api/auth/photo`
 - `GET /api/auth/second-step`
-- `GET /api/auth/session`
+- `GET /api/auth/session` (a parent session too, task 11.1)
 - `GET /api/auth/sessions`
 - `GET /api/auth/sign-in-history`
 - `GET /api/auth/trusted-devices`
 - `GET /api/notifications`
-- `POST /api/auth/password`
+- `POST /api/auth/password` (a parent session too, task 11.1)
 - `POST /api/auth/second-step`
 - `POST /api/auth/second-step/confirm`
 - `POST /api/auth/second-step/set-up`
 - `POST /api/auth/second-step/turn-off`
-- `POST /api/auth/sign-out`
+- `POST /api/auth/sign-out` (a parent session too, task 11.1)
 - `POST /api/auth/sign-out-everywhere`
 - `POST /api/feedback`
 - `POST /api/notifications/:id/read`
 - `POST /api/notifications/read-all`
-- `PUT /api/auth/language`
+- `PUT /api/auth/language` (a parent session too, task 11.1)
 - `PUT /api/auth/photo`
 
 Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):
@@ -612,6 +612,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/journal/support` | `query:journalId` | journal | branch | `src/modules/journal/support-view.test.ts > lists a total and "not held" of the date’s works, and refuses another branch’s journal, a student with no membership and a date outside the year` |
 | `GET /api/people/branch-moves/:id/groups` | `query:classId` | class | branch | `src/modules/people/branch-moves.test.ts > answers 404 for a class of the sending branch, an unknown class, an unknown release and a release to another branch` |
 | `GET /api/people/branch-moves/:id/groups` | `path:id` | branch move | branch | `src/modules/people/branch-moves.test.ts > answers 404 for a class of the sending branch, an unknown class, an unknown release and a release to another branch` |
+| `GET /api/people/classes/:classId/parent-slips` | `path:classId` | class | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a class of another branch or unknown` |
+| `GET /api/people/parents/:relativeId/account` | `path:relativeId` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a relative of another branch or unknown` |
 | `GET /api/people/relatives/:id` | `path:id` | relative | branch | `src/modules/people/relatives.test.ts > answers 404 for a relative of another branch only and an unknown one` |
 | `GET /api/people/staff/:id` | `path:id` | staff | branch | `src/modules/people/staff.test.ts > answers 404 for a record of another branch and for an unknown one, and changes nothing` |
 | `GET /api/people/staff/:id/account` | `path:id` | staff | branch | `src/modules/people/staff-accounts.test.ts > answers 404 for a record of another branch and an unknown one` |
@@ -860,6 +862,10 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/people/branch-moves/:id/accept` | `body:journalEntries.seen[].id` | journal entry | branch | `src/modules/journal/journal-transfers.test.ts > on a late accept, for a third branch's entry and an unknown one` |
 | `POST /api/people/branch-moves/:id/cancel` | `path:id` | branch move | branch | `src/modules/people/branch-moves.test.ts > cancels an open release once, and answers 404 to the receiving branch`<br>`src/modules/people/branch-moves.test.ts > answers 404 to a cancel by the Super Admin in the receiving or a third branch` |
 | `POST /api/people/branch-moves/:id/decline` | `path:id` | branch move | branch | `src/modules/people/branch-moves.test.ts > answers 404 for the sending branch's class and group, unknown ids, an unknown subject and a release not to the branch, with nothing written in either branch`<br>`src/modules/people/branch-moves.test.ts > answers 404 to a decline of an unknown release` |
+| `POST /api/people/classes/:classId/parent-slips` | `path:classId` | class | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a class of another branch or unknown` |
+| `POST /api/people/classes/:classId/parent-slips` | `body:printAgain` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a "print again" relative of another branch or unknown` |
+| `POST /api/people/parent-accounts/never-used/export` | `body:ids` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 in the file for a relative of another branch or unknown, with nothing logged` |
+| `POST /api/people/parents/:relativeId/password-reset` | `path:relativeId` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a relative of another branch or unknown` |
 | `POST /api/people/relatives/:id/merge` | `path:id` | relative | branch | `src/modules/people/relative-owners.test.ts > answers 404 for a path id or an otherId of another branch and an unknown one`<br>`src/modules/people/relative-owners.test.ts > answers 404 to the Super Admin for a path id outside the branch of the request and unknown ids` |
 | `POST /api/people/relatives/:id/merge` | `body:otherId` | relative | branch | `src/modules/people/relative-owners.test.ts > answers 404 for a path id or an otherId of another branch and an unknown one`<br>`src/modules/people/relative-owners.test.ts > answers 404 to the Super Admin for a path id outside the branch of the request and unknown ids` |
 | `POST /api/people/relatives/:id/report` | `path:id` | relative | branch | `src/modules/people/personal-data.test.ts > answers 404 for a person of another branch, an unknown id and a vacancy, writing nothing` |
@@ -1661,6 +1667,13 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | senior_head_teacher | yes | yes | yes |  |  |
 | head_teacher | yes | yes | yes |  |  |
 | teacher | yes | yes |  |  |  |
+
+### `parent_accounts`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes | yes |  |  | yes |
+| academic_vice_principal | yes | yes |  |  | yes |
 
 ### `personal_data_report`
 

@@ -669,7 +669,7 @@ describe('the personal data report', () => {
     it('names every people action with what puts it into a report (correction 1)', () => {
       const people = AUDIT_ACTIONS.filter(
         (action) =>
-          /^(auth|account|assignment|staff|student|relative|vacancy)\./.test(action) ||
+          /^(auth|account|assignment|staff|student|relative|vacancy|parent_account)\./.test(action) ||
           action === 'audit.entry_shown',
       ).sort();
       expect(Object.keys(ENTRY_ABOUT).sort()).toEqual(people);

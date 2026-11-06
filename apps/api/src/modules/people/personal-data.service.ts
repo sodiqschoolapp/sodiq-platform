@@ -628,9 +628,37 @@ export class PersonalData {
       }
       const account = await transaction
         .selectFrom('relative_accounts')
-        .select(['created_at', 'switched_on_at'])
-        .where('relative_id', '=', id)
+        .leftJoin('accounts', 'accounts.id', 'relative_accounts.account_id')
+        .select([
+          'relative_accounts.created_at',
+          'relative_accounts.switched_on_at',
+          'relative_accounts.account_id',
+          'accounts.login',
+          'accounts.password_changed_at',
+        ])
+        .where('relative_accounts.relative_id', '=', id)
         .executeTakeFirst();
+      // Task 11.1 (correction 3): the slips of every branch the report reads, and the last sign-in.
+      const accountId = account?.account_id ?? null;
+      const slips =
+        accountId === null
+          ? []
+          : await transaction
+              .selectFrom('parent_slips as p')
+              .innerJoin('branches as b', 'b.id', 'p.branch_id')
+              .select(['p.kind', 'b.name as branch', 'p.printed_at', 'p.valid_until'])
+              .where('p.account_id', '=', accountId)
+              .orderBy('p.printed_at')
+              .orderBy('p.id')
+              .execute();
+      const lastSignIn =
+        accountId === null
+          ? undefined
+          : await transaction
+              .selectFrom('sessions')
+              .select((builder) => builder.fn.max('created_at').as('at'))
+              .where('account_id', '=', accountId)
+              .executeTakeFirst();
       const samePersonId = (await staffOfRelatives(transaction, [id])).get(id);
       const samePerson =
         samePersonId === undefined
@@ -666,7 +694,7 @@ export class PersonalData {
         access,
         assignmentId,
         branches,
-        { kind: 'relative', id, accountId: null, assignmentIds: [] },
+        { kind: 'relative', id, accountId, assignmentIds: [] },
         requestId,
       );
       return {
@@ -687,6 +715,18 @@ export class PersonalData {
               : {
                   createdAt: account.created_at.toISOString(),
                   switchedOn: account.switched_on_at !== null,
+                  login: account.login,
+                  signedIn: account.password_changed_at !== null,
+                  lastSignInAt:
+                    lastSignIn?.at === undefined || lastSignIn.at === null
+                      ? null
+                      : new Date(lastSignIn.at).toISOString(),
+                  slips: slips.map((slip) => ({
+                    kind: slip.kind === 'reset' ? ('reset' as const) : ('first' as const),
+                    branch: slip.branch,
+                    printedAt: slip.printed_at.toISOString(),
+                    validUntil: slip.valid_until.toISOString(),
+                  })),
                 },
         },
         samePerson:

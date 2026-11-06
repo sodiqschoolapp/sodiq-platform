@@ -5,6 +5,7 @@ import {
   parentSlipListSchema,
   parentsNeverUsedSchema,
   printedParentSlipsSchema,
+  relativeReportSchema,
   sessionResponseSchema,
   type PrintedParentSlips,
 } from '@sodiq/shared';
@@ -472,6 +473,31 @@ describe('the Parent accounts', () => {
     });
   });
 
+  describe('the personal data report of a relative (correction 3 of the plan review)', () => {
+    it('names the login, the state, the last sign-in and each slip, never a password', async () => {
+      const { classId, relativeId } = await classWithParent();
+      const slip = slipFor(await printed(classId), relativeId);
+      const signed = await signIn(slip?.login ?? '', slip?.password ?? '');
+      expect(signed.status).toBe(200);
+      const response = await t.post(
+        `/api/people/relatives/${relativeId}/report`,
+        t.north,
+        {},
+        t.admin,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const report = relativeReportSchema.parse(response.body);
+      expect(report.relative.account).toMatchObject({
+        switchedOn: true,
+        login: slip?.login,
+        signedIn: false,
+        slips: [{ kind: 'first', printedAt: slip?.printedAt, validUntil: slip?.validUntil }],
+      });
+      expect(report.relative.account?.lastSignInAt).not.toBeNull();
+      expect(JSON.stringify(response.body)).not.toContain(slip?.password);
+    });
+  });
+
   describe('the first sign-in of a parent', () => {
     it('is audited once, at the first password the parent chooses', async () => {
       const { relativeId } = await classWithParent();
@@ -570,6 +596,26 @@ describe('the Parent accounts', () => {
       });
       expect(file.status).toBe(200);
       expect(await t.entries('parent_account.never_used_export')).not.toHaveLength(0);
+    });
+
+    it('answers 404 in the file for a relative of another branch or unknown, with nothing logged', async () => {
+      const south = await classWithParent(t.south);
+      await printed(south.classId, undefined, t.south, southVice);
+      for (const id of [south.relativeId, UNKNOWN]) {
+        const before = await rowsOf();
+        refusedWith(
+          await t.post('/api/people/parent-accounts/never-used/export', t.north, {
+            ids: [id],
+            columns: ['name'],
+            selection: 'ticked',
+            search: '',
+            filters: {},
+          }),
+          404,
+          'not_found',
+        );
+        expect(await rowsOf()).toEqual(before);
+      }
     });
 
     it('refuses the Principal, a Tutor and a Teacher', async () => {

@@ -69,6 +69,13 @@ const STAFF_CHECK = `${O} > answers 404 to the check of an edit of a staff membe
 const HISTORY = `${O} > answers 404 to the History of a student of another branch or an unknown one`;
 const NEW_MAIN = `${O} > answers 404 to a new main contact of another branch only or an unknown one, changing nothing`;
 
+// Task 11.1: the Parent accounts.
+const PA = 'src/modules/people/parent-accounts.test.ts';
+const PA_CLASS = `${PA} > answers 404 for a class of another branch or unknown`;
+const PA_AGAIN = `${PA} > answers 404 for a "print again" relative of another branch or unknown`;
+const PA_RELATIVE = `${PA} > answers 404 for a relative of another branch or unknown`;
+const PA_EXPORT = `${PA} > answers 404 in the file for a relative of another branch or unknown, with nothing logged`;
+
 const PATH = '.claude/rules/api.md, task 1.3';
 const BODY = '.claude/rules/api.md, task 1.5';
 const QUERY = 'CLAUDE.md, "A query never returns another branch\'s rows"';
@@ -289,6 +296,22 @@ export const PEOPLE_IDS: RouteIds = {
   ],
   'POST /api/people/relatives/:id/show': [
     branch('path:id', 'relative', `${PATH}; ${RELATIVES}`, [RELATIVE_SHOW]),
+  ],
+  'GET /api/people/classes/:classId/parent-slips': [
+    branch('path:classId', 'class', PATH, [PA_CLASS]),
+  ],
+  'POST /api/people/classes/:classId/parent-slips': [
+    branch('path:classId', 'class', PATH, [PA_CLASS]),
+    branch('body:printAgain', 'relative', `${BODY}; ${RELATIVES}`, [PA_AGAIN]),
+  ],
+  'POST /api/people/parents/:relativeId/password-reset': [
+    branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [PA_RELATIVE]),
+  ],
+  'GET /api/people/parents/:relativeId/account': [
+    branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [PA_RELATIVE]),
+  ],
+  'POST /api/people/parent-accounts/never-used/export': [
+    branch('body:ids', 'relative', `${BODY}; ${RELATIVES}`, [PA_EXPORT]),
   ],
   'GET /api/people/students/:id/relatives': [studentPath([RELATIVES_TAB])],
   'POST /api/people/students/:id/relatives': [
