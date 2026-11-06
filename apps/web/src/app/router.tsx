@@ -43,6 +43,9 @@ import { ExamsPage } from '@/features/timetable/exams-page';
 import { examsSearch } from '@/features/timetable/exams-search';
 import { HeadTeachersPage } from '@/features/people/head-teachers-page';
 import { NeverUsedPage } from '@/features/people/never-used-page';
+import { ParentSlipsPage } from '@/features/people/parent-slips-page';
+import { ParentsNeverUsedPage } from '@/features/people/parents-never-used-page';
+import { ParentHomePage } from '@/features/auth/parent-home-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
@@ -217,12 +220,54 @@ const setUpRoute = createRoute({
   pendingComponent: AuthPendingPage,
 });
 
-/** Every page inside the app layout needs a session that owes no step. */
+/** A staff page: a session that owes no step and is not a parent's (task 11.1). */
+async function staffOnly({ context }: { context: RouterContext }): Promise<void> {
+  await only('none')({ context });
+  const session = await context.queryClient.fetchQuery(sessionQuery);
+  if (session?.kind === 'parent') {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
+    throw redirect({ to: '/parent' });
+  }
+}
+
+/**
+ * Every page inside the app layout needs a session that owes no step. A parent session has no
+ * staff page: it goes to its own frame (task 11.1; the server refuses it every staff route).
+ */
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'app',
-  beforeLoad: only('none'),
+  beforeLoad: staffOnly,
+
   component: AppLayout,
+});
+
+/** A page of the parent's own frame: a parent session that owes no step (task 11.1). */
+async function parentOnly({ context }: { context: RouterContext }): Promise<void> {
+  await only('none')({ context });
+  const session = await context.queryClient.fetchQuery(sessionQuery);
+  if (session?.kind !== 'parent') {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- the router's way to redirect
+    throw redirect({ to: '/' });
+  }
+}
+
+/** The parent's frame (task 11.1): language, password and sign-out. */
+const parentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/parent',
+  beforeLoad: parentOnly,
+  component: ParentHomePage,
+  pendingComponent: AuthPendingPage,
+});
+
+/** The parent's password change by choice (task 11.1). */
+const parentPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/parent/password',
+  beforeLoad: parentOnly,
+  component: PasswordPage,
+  pendingComponent: AuthPendingPage,
 });
 
 const homeRoute = createRoute({
@@ -693,6 +738,22 @@ const neverUsedRoute = createRoute({
   component: guarded('account_access', NeverUsedPage),
 });
 
+/** The slips of the parents of a class (task 11.1). */
+const parentSlipsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/classes/$classId/parent-slips',
+  validateSearch: listSearch,
+  component: guarded('parent_accounts', ParentSlipsPage),
+});
+
+/** The Parent accounts never used, a section of People (task 11.1). */
+const parentsNeverUsedRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/parent-accounts',
+  validateSearch: listSearch,
+  component: guarded('parent_accounts', ParentsNeverUsedPage, 'export'),
+});
+
 /** The entries after a password reset of the branch, a section of People (task 6.1c). */
 const resetEntriesRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -780,6 +841,8 @@ const routeTree = rootRoute.addChildren([
   codeRoute,
   passwordRoute,
   setUpRoute,
+  parentRoute,
+  parentPasswordRoute,
   appRoute.addChildren([
     homeRoute,
     accountRoute,
@@ -846,6 +909,8 @@ const routeTree = rootRoute.addChildren([
     headTeachersRoute,
     neverUsedRoute,
     resetEntriesRoute,
+    parentSlipsRoute,
+    parentsNeverUsedRoute,
     auditRoute,
     forcedDeletesRoute,
     personalDataRoute,

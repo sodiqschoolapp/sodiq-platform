@@ -6,7 +6,14 @@ import { useScrollRow } from '@/components/scroll-row';
 import { useView } from '@/features/access/use-view';
 
 type Section =
-  'staff' | 'students' | 'parents' | 'vacancies' | 'head-teachers' | 'never-used' | 'reset-entries';
+  | 'staff'
+  | 'students'
+  | 'parents'
+  | 'vacancies'
+  | 'head-teachers'
+  | 'never-used'
+  | 'reset-entries'
+  | 'parent-accounts';
 
 const SECTIONS: readonly {
   key: Section;
@@ -17,7 +24,8 @@ const SECTIONS: readonly {
     | '/people/vacancies'
     | '/people/head-teachers'
     | '/people/never-used'
-    | '/people/reset-entries';
+    | '/people/reset-entries'
+    | '/people/parent-accounts';
   area: string;
   title:
     | 'people.staff.title'
@@ -26,7 +34,8 @@ const SECTIONS: readonly {
     | 'people.vacancies.title'
     | 'people.headTeachers.title'
     | 'people.neverUsed.title'
-    | 'people.resetEntries.title';
+    | 'people.resetEntries.title'
+    | 'people.parentsNeverUsed.title';
 }[] = [
   { key: 'staff', to: '/people/staff', area: 'staff', title: 'people.staff.title' },
   // Task 2.4a: the students of the branch.
@@ -63,6 +72,13 @@ const SECTIONS: readonly {
     to: '/people/reset-entries',
     area: 'account_access',
     title: 'people.resetEntries.title',
+  },
+  // Task 11.1: the Parent accounts never used, for the readers of `parent_accounts`.
+  {
+    key: 'parent-accounts',
+    to: '/people/parent-accounts',
+    area: 'parent_accounts',
+    title: 'people.parentsNeverUsed.title',
   },
 ];
 

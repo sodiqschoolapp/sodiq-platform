@@ -2,6 +2,7 @@ import {
   buildingExportSchema,
   classExportSchema,
   groupExportSchema,
+  parentsNeverUsedExportSchema,
   divisionExportSchema,
   EXPORT_COLUMNS_HEADER,
   EXPORT_ROWS_LEFT_OUT_HEADER,
@@ -85,6 +86,13 @@ const EXPORTS = {
     api.POST('/api/groups/export', {
       params: header(),
       body: groupExportSchema.parse(body),
+      parseAs: 'blob',
+    }),
+  // Task 11.1: the Parent accounts never used.
+  parents_never_used: (body: Body) =>
+    api.POST('/api/people/parent-accounts/never-used/export', {
+      params: header(),
+      body: parentsNeverUsedExportSchema.parse(body),
       parseAs: 'blob',
     }),
   subjects: (body: Body) =>

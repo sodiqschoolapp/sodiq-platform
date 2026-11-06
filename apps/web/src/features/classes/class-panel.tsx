@@ -7,7 +7,9 @@ import type {
   Room,
   SchoolClass,
 } from '@sodiq/shared';
+import { PERMISSIONS, permits } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
@@ -50,7 +52,8 @@ interface ClassPanelProps {
  */
 export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: ClassPanelProps) {
   const { t } = useTranslation();
-  const { branchId } = useView();
+  const { branchId, role } = useView();
+  const mayPrintSlips = role !== null && permits(PERMISSIONS, role, 'parent_accounts', 'view');
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const panel = usePanelEditing();
@@ -231,6 +234,17 @@ export function ClassPanel({ row, columns, years, rooms, canEdit, canArchive }: 
 
       {panel.editing !== 'record' && (
         <ClassMembers schoolClass={schoolClass} years={years} canEdit={editable} panel={panel} />
+      )}
+
+      {/* Task 11.1: the first-password slips of the parents of the class. */}
+      {panel.editing === null && mayPrintSlips && (
+        <Link
+          to="/people/classes/$classId/parent-slips"
+          params={{ classId: row.id }}
+          className="justify-self-start font-semibold text-link underline-offset-4 hover:underline"
+        >
+          {t('people.parentSlips.open')}
+        </Link>
       )}
 
       {(editable || (canArchive && schoolClass.yearStatus !== 'closed')) &&

@@ -50,6 +50,8 @@ let renderedLanguage: Language = 'en';
 export function sessionOf(fields: Partial<SessionResponse> = {}): SessionResponse {
   return {
     login: 'm.ergasheva',
+    kind: 'staff',
+    fullName: null,
     name: null,
     secondStep: 'not_needed',
     mustChangePassword: false,

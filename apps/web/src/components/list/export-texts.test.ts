@@ -82,6 +82,15 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     status: (texts) => texts.classes.status,
   },
   // Task 3.2a.
+  // Task 11.1: the report of Parent accounts never used.
+  parents_never_used: {
+    name: (texts) => texts.people.parentsNeverUsed.name,
+    login: (texts) => texts.people.parentsNeverUsed.login,
+    children: (texts) => texts.people.parentsNeverUsed.children,
+    printedAt: (texts) => texts.people.parentsNeverUsed.printedAt,
+    validUntil: (texts) => texts.people.parentsNeverUsed.validUntil,
+    expired: (texts) => texts.people.parentsNeverUsed.expired,
+  },
   groups: {
     name: (texts) => texts.groups.columns.name,
     subject: (texts) => texts.groups.columns.subject,
