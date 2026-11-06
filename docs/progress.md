@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 6 November 2026: task 10.6 Name a work added by hand
+
+- **Database** (0157): `journal_works.title` (1 to 60 characters, trimmed; null for a planned work and for one added before 10.6); the insert trigger `journal_works_title_required` refuses a new row added by hand by the application with no title (a forced-delete restore passes); `journal_work_history` keeps `title_before` and `title_after` and writes a line for a rename.
+- **API**: the add takes a required `title`; `PUT /api/journal/lessons/:lessonId/works/:workId/title` renames a work added by hand (`journal` `edit`, the entry scope, the edit period or an open unlock; 409 `work_planned`, `work_stale`, `journal_locked`, `quarter_closed`). The takeover by a plan item clears the typed title (kept in history and in the audit entry). The forced-delete store keeps and restores the title. The columns, the lesson card's homework given, lesson mode, the exports and the support view show the typed title.
+- **Screens**: "Add classwork" and "Add homework given" ask for the title (with a count to 60); the work's dialog renames a work added by hand; the history lines show "Title of …: old → new".
+- **Browser test**: `journal.spec.ts` adds "Fractions dictation" from the lesson card and finds it as the column's title.
+
+Left out: none of the build line. Works added before 10.6 keep no title until someone renames them (no migration fills them, stop-list item 3).
+
+The next sessions must know:
+
+- A test that inserts a work added by hand as the application (`sodiq_app`) gives it a title; the migrator's fixtures need none.
+
 ## 6 November 2026: task 10.1c The six reads missed at three times the size, and the load run
 
 - **Two minutes behind** (decision A): a reader reads a prepared unit as it is while its oldest unseen change (or passed `next_change_at`) is at most `PREPARED_BEHIND_MS` old. The 5 to 7 s of the ratings, the early-warning list and the branch summary in 10.1b were their from-source path after the run's own saves.

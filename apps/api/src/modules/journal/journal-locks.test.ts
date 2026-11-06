@@ -674,7 +674,12 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) => {
-          ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }));
+          ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          );
           ok(await save(calls, x.second, x.ahmedov, 2));
           // The note at 23:59 of the last day is taken (code review 1, finding 4).
           ok(
@@ -694,7 +699,10 @@ describe('the edit period through the routes', () => {
         async (calls) => {
           expect(
             codeOf(
-              await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }),
+              await calls.post(`/api/journal/lessons/${x.second}/works`, {
+                kind: 'classwork',
+                title: 'Dictation',
+              }),
             ),
           ).toBe('journal_locked');
           const note = await calls.put('/api/journal/comments', {
@@ -1126,6 +1134,7 @@ describe('the edit period through the routes', () => {
           codeOf(
             await calls.post(`/api/journal/lessons/${x.second}/works`, {
               kind: 'classwork',
+              title: 'Dictation',
               correction,
             }),
           ),
@@ -1187,6 +1196,7 @@ describe('the edit period through the routes', () => {
         ok(
           await calls.post(`/api/journal/lessons/${x.second}/works`, {
             kind: 'classwork',
+            title: 'Dictation',
             correction,
           }),
         );
@@ -1219,7 +1229,11 @@ describe('the edit period through the routes', () => {
       );
       const correction = { reason: 'The register says so' };
       const work = await as(x.vice, x.branch, (calls) =>
-        calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork', correction }),
+        calls.post(`/api/journal/lessons/${x.second}/works`, {
+          kind: 'classwork',
+          title: 'Dictation',
+          correction,
+        }),
       );
       const added = ok(work).body as { id: string; version: number };
       await as(chief, x.branch, async (calls) => {
@@ -1366,8 +1380,12 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) =>
-          ok(await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'homework' }))
-            .body as {
+          ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ).body as {
             id: string;
           },
         LAST_MINUTE,
@@ -1386,6 +1404,98 @@ describe('the edit period through the routes', () => {
       ).toBeDefined();
     });
 
+    // Task 10.6 (edge/journal, "A lesson is held with no plan item": "The teacher may rename it
+    // while the lesson can still be edited; each change is kept in history").
+    it('renames a work added by hand in the edit period, refuses it once locked, judges a homework at the lesson it is stored at, and takes it under an open unlock', async () => {
+      const x = await scene();
+      const [work, homework] = await as(
+        x.owner,
+        x.branch,
+        async (calls) => {
+          const added = ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ).body as { id: string; version: number };
+          const renamed = ok(
+            await calls.put(`/api/journal/lessons/${x.second}/works/${added.id}/title`, {
+              title: 'Spelling test',
+              version: added.version,
+            }),
+          ).body as { title: string; version: number };
+          expect(renamed).toMatchObject({ title: 'Spelling test', version: 2 });
+          const given = ok(
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ).body as { id: string; version: number };
+          return [renamed, given] as const;
+        },
+        LAST_MINUTE,
+      );
+      const workId = (
+        await t.database.migrator
+          .selectFrom('journal_works')
+          .select('id')
+          .where('source_lesson_id', '=', x.second)
+          .where('kind', '=', 'classwork')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await as(x.owner, x.branch, async (calls) => {
+        const locked = await calls.put(`/api/journal/lessons/${x.second}/works/${workId}/title`, {
+          title: 'Spelling',
+          version: work.version,
+        });
+        expect(codeOf(locked)).toBe('journal_locked');
+        // The check lesson of 26 October is open; the homework is stored at the 19th, locked.
+        const through = await calls.put(
+          `/api/journal/lessons/${x.third}/works/${homework.id}/title`,
+          { title: 'Exercises 4 to 9', version: homework.version },
+        );
+        expect(codeOf(through)).toBe('journal_locked');
+      });
+      const sent = await requested(x);
+      ok(await decide(x, x.head, sent.id, { decision: 'approve', days: 2, version: 1 }));
+      await as(x.owner, x.branch, async (calls) => {
+        ok(
+          await calls.put(`/api/journal/lessons/${x.second}/works/${workId}/title`, {
+            title: 'Spelling',
+            version: work.version,
+          }),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${x.third}/works/${homework.id}/title`, {
+            title: 'Exercises 4 to 9',
+            version: homework.version,
+          }),
+        );
+      });
+      const lines = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select(['title_before', 'title_after', 'changed_how', 'unlock_id'])
+        .where('work_id', '=', workId)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        {
+          title_before: 'Dictation',
+          title_after: 'Spelling test',
+          changed_how: 'entry',
+          unlock_id: null,
+        },
+        {
+          title_before: 'Spelling test',
+          title_after: 'Spelling',
+          changed_how: 'late_entry',
+          unlock_id: sent.id,
+        },
+      ]);
+      expect((await t.entries('journal.work_rename', x.second)).length).toBe(2);
+      expect((await t.entries('journal.work_rename', x.third)).length).toBe(1);
+    });
+
     it('takes a total, a number and "all present" at 23:59 of the last day, and refuses them at 00:00', async () => {
       const x = await scene();
       const added = await as(
@@ -1393,7 +1503,10 @@ describe('the edit period through the routes', () => {
         x.branch,
         async (calls) => {
           const work = ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, { kind: 'classwork' }),
+            await calls.post(`/api/journal/lessons/${x.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
           ).body as {
             id: string;
             version: number;

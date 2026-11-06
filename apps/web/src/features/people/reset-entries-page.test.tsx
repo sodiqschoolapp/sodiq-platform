@@ -54,6 +54,8 @@ const BY_ADMIN: Reset = {
       totalAfter: 30,
       notHeldBefore: false,
       notHeldAfter: false,
+      titleBefore: null,
+      titleAfter: null,
       changedHow: 'entry',
       changedBy: { accountId: uid(2), login: 'n.rahimova', name: 'Rahimova Nodira' },
     },

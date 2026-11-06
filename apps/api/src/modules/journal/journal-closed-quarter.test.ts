@@ -10,7 +10,7 @@ import {
 } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
-import { closeQuarter } from '../../testing/closing-kit.js';
+import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
@@ -337,6 +337,7 @@ describe('the journal of a closed quarter', () => {
       closed(
         await calls.post(`/api/journal/lessons/${x.second}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
           correction,
         }),
       );
@@ -374,7 +375,10 @@ describe('the journal of a closed quarter', () => {
       x.branch,
       async (calls) => {
         const added = ok(
-          await calls.post(`/api/journal/lessons/${x.third}/works`, { kind: 'classwork' }),
+          await calls.post(`/api/journal/lessons/${x.third}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
         ).body as { id: string; version: number };
         ok(
           await calls.put(`/api/journal/lessons/${x.third}/works/total`, {
@@ -433,6 +437,13 @@ describe('the journal of a closed quarter', () => {
             confirm: true,
           }),
         );
+        // Task 10.6: the rename of the work added by hand.
+        closed(
+          await calls.put(`/api/journal/lessons/${x.third}/works/${work}/title`, {
+            title: 'Spelling',
+            version: 2,
+          }),
+        );
         closed(
           await calls.put('/api/journal/comments', {
             on: { target: 'note', lessonId: x.third, studentId: x.ahmedov },
@@ -452,6 +463,46 @@ describe('the journal of a closed quarter', () => {
         );
       },
       '2026-10-31T19:00:00+05:00',
+    );
+    expect(await rowsOf(x.branch)).toEqual(before);
+  });
+
+  // Task 10.6 (spec review of the plan, finding 6): in a reopened quarter a rename, as every
+  // other entry, is taken only under an unlock (0135, `journal_reopened_check`).
+  it('refuses the rename of a work added by hand in a reopened quarter without an unlock', async () => {
+    const x = await scene();
+    const added = await as(
+      x.owner,
+      x.branch,
+      async (calls) =>
+        ok(
+          await calls.post(`/api/journal/lessons/${x.third}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
+        ).body as { id: string; version: number },
+      '2026-10-27T09:00:00+05:00',
+    );
+    await close(x);
+    await reopenQuarter(t.database, {
+      branchId: x.branch,
+      quarterId: x.q1,
+      journalId: x.journal,
+      accountId: x.vice.account.id,
+      at: '2026-10-31T19:00:00+05:00',
+    });
+    const before = await rowsOf(x.branch);
+    await as(
+      x.owner,
+      x.branch,
+      async (calls) => {
+        const refused = await calls.put(`/api/journal/lessons/${x.third}/works/${added.id}/title`, {
+          title: 'Spelling',
+          version: added.version,
+        });
+        expect(codeOf(refused)).toBe('journal_locked');
+      },
+      '2026-10-31T19:30:00+05:00',
     );
     expect(await rowsOf(x.branch)).toEqual(before);
   });

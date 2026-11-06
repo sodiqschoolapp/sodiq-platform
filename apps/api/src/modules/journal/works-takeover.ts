@@ -21,7 +21,9 @@ export interface TakeoverActor {
  * row's item, once per lesson of that row: the planned works with no journal
  * work of their own are linked, in order, to the unplanned works of that
  * lesson and kind in order of their position. The link is set once (0119);
- * a later save never moves a number to another title.
+ * a later save never moves a number to another title. Task 10.6: the title
+ * typed by hand is cleared with the link (the plan's is shown), kept in the
+ * history line and the audit entry.
  */
 export async function takeOverUnplanned(
   transaction: Transaction,
@@ -40,7 +42,13 @@ export async function takeOverUnplanned(
     .orderBy('id')
     .execute();
   if (planned.length === 0) return;
-  const linked: { workId: string; planWorkId: string; lessonId: string }[] = [];
+  const linked: {
+    workId: string;
+    planWorkId: string;
+    lessonId: string;
+    /** Task 10.6: the title typed by hand that the plan's title replaces (kept in history). */
+    replacedTitle: string | null;
+  }[] = [];
   for (const lessonId of [...new Set(lessonIds)].sort()) {
     // The lock of an add by hand at the lesson (code review, should-fix 3): an add that read
     // "no plan item" before this item commits first, and is taken over here.
@@ -49,7 +57,7 @@ export async function takeOverUnplanned(
     );
     const rows = await transaction
       .selectFrom('journal_works')
-      .select(['id', 'kind', 'plan_work_id', 'position'])
+      .select(['id', 'kind', 'plan_work_id', 'position', 'title'])
       .where('source_lesson_id', '=', lessonId)
       .orderBy('position')
       .orderBy('id')
@@ -66,10 +74,17 @@ export async function takeOverUnplanned(
         if (work === undefined) break;
         await transaction
           .updateTable('journal_works')
-          .set({ plan_work_id: work.id, changed_by: actor.accountId, changed_how: 'takeover' })
+          // Task 10.6 (decision 1): the plan's title replaces the typed one, which the history
+          // line of this update keeps (`title_before`, 0157).
+          .set({
+            plan_work_id: work.id,
+            title: null,
+            changed_by: actor.accountId,
+            changed_how: 'takeover',
+          })
           .where('id', '=', row.id)
           .execute();
-        linked.push({ workId: row.id, planWorkId: work.id, lessonId });
+        linked.push({ workId: row.id, planWorkId: work.id, lessonId, replacedTitle: row.title });
       }
     }
   }

@@ -1049,6 +1049,10 @@ export const ERROR_CODES = [
   'not_held_confirm',
   /** The work was changed since it was read; the detail holds the stored work (task 8.1). */
   'work_stale',
+  /** A work from the plan takes its title from the plan, so it is not renamed in the journal (task 10.6, decision 5). */
+  'work_planned',
+  /** A work added by hand is named: the title is required, at most 60 characters (07, Entering data; task 10.6). */
+  'journal_work_title_required',
   /** The homework has numbers at this lesson, so it is not carried (task 8.1, decision 6). */
   'work_holds_numbers',
   /** The homework was carried once already (edge/journal: "'check at the next lesson' (once)"; task 8.1). */

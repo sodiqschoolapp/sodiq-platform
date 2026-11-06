@@ -91,7 +91,7 @@ function lineText(
     }
     case 'work':
       return {
-        what: workLineText(t, { ...line, workKind: line.work.kind }),
+        what: workLineText(t, { ...line, workKind: line.work.kind, changedHow: line.how }),
         detail: t(`journal.works.changes.${line.how}`),
       };
     case 'delivery':

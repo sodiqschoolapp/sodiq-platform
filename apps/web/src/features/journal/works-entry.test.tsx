@@ -160,6 +160,7 @@ const SAVED = {
   total: 30,
   notHeld: false,
   carriedFrom: null,
+  title: null,
   version: 2,
 };
 
@@ -330,6 +331,183 @@ describe('classwork and homework in the grid', () => {
     });
   });
 
+  // Task 10.6: a work added by hand before 10.6 shows "HW 1" and is renamed in its dialog; a
+  // planned work has no rename.
+  it('renames a work added by hand from its dialog, shows a refusal there, and offers no rename for a planned work', async () => {
+    let renames = 0;
+    const given: JournalWork = {
+      ...TEST,
+      id: uid(81),
+      planWorkId: null,
+      sourceLessonId: PLANNED,
+      kind: 'homework',
+      title: null,
+      unplanned: true,
+      version: 1,
+    };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        GRID.lessons[0] as JournalLesson,
+        { ...(GRID.lessons[1] as JournalLesson), works: [given] },
+      ],
+      students: GRID.students.map((one) => ({
+        ...one,
+        cells: [
+          one.cells[0] as JournalStudent['cells'][number],
+          {
+            ...(one.cells[1] as JournalStudent['cells'][number]),
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
+          },
+        ],
+      })),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [`PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`]: () => {
+        renames += 1;
+        // The first rename is refused: the lesson is locked; the second is taken.
+        if (renames === 1) {
+          return json(
+            {
+              error: {
+                code: 'journal_locked',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+              },
+            },
+            409,
+          );
+        }
+        return json({
+          ...SAVED,
+          id: uid(81),
+          kind: 'homework',
+          total: null,
+          title: 'Exercises',
+          version: 2,
+        });
+      },
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Work: HW 1' });
+    fireEvent.change(within(dialog).getByLabelText(en.journal.works.titleLabel), {
+      target: { value: 'Exercises' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    // Plan review, correction 2: the refusal is told inside the dialog.
+    expect(await within(dialog).findByText(en.errors.journal_locked)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter(
+            (call) => call.route === `PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`,
+          )
+          .map((call) => call.body),
+      ).toEqual([
+        { title: 'Exercises', version: 1 },
+        { title: 'Exercises', version: 1 },
+      ]);
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.entry.close }));
+    // The planned column of the first lesson: its title comes from the plan.
+    fireEvent.click(await screen.findByRole('button', { name: /^Work: Test/ }));
+    const planned = await screen.findByRole('dialog', { name: 'Work: Test' });
+    expect(within(planned).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
+  });
+
+  // Task 10.6 (spec review of the code, must-fix 2): a lesson the person cannot enter offers no
+  // rename, the work added by hand included.
+  it('offers no rename of a work added by hand at a lesson the person cannot enter', async () => {
+    const given: JournalWork = {
+      ...TEST,
+      id: uid(81),
+      planWorkId: null,
+      sourceLessonId: PLANNED,
+      kind: 'homework',
+      title: 'Exercises',
+      unplanned: true,
+      version: 1,
+    };
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: [
+        GRID.lessons[0] as JournalLesson,
+        { ...(GRID.lessons[1] as JournalLesson), canEnterWorks: false, works: [given] },
+      ],
+      students: GRID.students.map((one) => ({
+        ...one,
+        cells: [
+          one.cells[0] as JournalStudent['cells'][number],
+          {
+            ...(one.cells[1] as JournalStudent['cells'][number]),
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
+          },
+        ],
+      })),
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Exercises' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Work: Exercises' });
+    expect(within(dialog).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
+    expect(within(dialog).queryByLabelText(en.journal.works.titleLabel)).toBeNull();
+  });
+
+  // Task 10.6 (spec review of the code, should-fix 4): a refused add keeps the typed title and
+  // tells the refusal in the dialog.
+  it('keeps the typed title in the form when the add is refused, and tells why in the dialog', async () => {
+    const calls = open({
+      [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
+        json(
+          {
+            error: {
+              code: 'journal_works_limit',
+              message: 'ENGLISH TEXT FOR THE DEVELOPER',
+              requestId: 'test-request',
+            },
+          },
+          409,
+        ),
+    });
+    const dialog = await worksOf(1);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
+    const field = within(dialog).getByLabelText(en.journal.works.classworkTitle);
+    fireEvent.change(field, { target: { value: 'Dictation' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.add }));
+    expect(await within(dialog).findByText(en.errors.journal_works_limit)).toBeTruthy();
+    expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toHaveLength(1);
+    expect(
+      within(dialog).getByLabelText<HTMLInputElement>(en.journal.works.classworkTitle).value,
+    ).toBe('Dictation');
+  });
+
   /** Task 8.8: the lesson card of the lesson at `index`, then its works (the second lesson has no plan item). */
   const worksOf = async (index: number): Promise<HTMLElement> => {
     const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
@@ -344,18 +522,36 @@ describe('classwork and homework in the grid', () => {
     return screen.getByRole('dialog');
   };
 
-  it('says "No plan" and adds a classwork by hand at a lesson with no plan item', async () => {
+  it('says "No plan" and adds a classwork by hand at a lesson with no plan item, named (task 10.6)', async () => {
     const calls = open({
       [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
-        json({ ...SAVED, total: null, version: 1 }),
+        json({ ...SAVED, total: null, title: 'Dictation', version: 1 }),
     });
     // Task 8.8: the works of a lesson open from its lesson card.
     const dialog = await worksOf(1);
     expect(dialog.textContent).toContain(en.journal.works.noPlan);
     fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
+    const field = within(dialog).getByLabelText(en.journal.works.classworkTitle);
+    const add = within(dialog).getByRole('button', { name: en.journal.works.add });
+    // Task 10.6: the title is required, at most 60 characters, before anything is sent.
+    fireEvent.click(add);
+    expect(await within(dialog).findByText(en.journal.works.titleRequired)).toBeTruthy();
+    fireEvent.change(field, { target: { value: 'x'.repeat(61) } });
+    fireEvent.click(add);
+    expect(
+      within(dialog).getByText(en.journal.works.titleTooLong.replace('{{max}}', '60')),
+    ).toBeTruthy();
+    expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toEqual([]);
+    // Sixty emoji are sixty characters, as the server counts them.
+    fireEvent.change(field, { target: { value: '😀'.repeat(60) } });
+    expect(
+      within(dialog).queryByText(en.journal.works.titleTooLong.replace('{{max}}', '60')),
+    ).toBeNull();
+    fireEvent.change(field, { target: { value: '  Dictation ' } });
+    fireEvent.click(add);
     await waitFor(() => {
       expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toEqual([
-        { kind: 'classwork' },
+        { kind: 'classwork', title: 'Dictation' },
       ]);
     });
   });

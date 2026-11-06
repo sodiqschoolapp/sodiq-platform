@@ -289,6 +289,8 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.work_carry',
     'journal.work_move',
     'journal.work_takeover',
+    // Task 10.6: a work added by hand renamed.
+    'journal.work_rename',
     // Task 8.2: the rating exam's date and "not held", a student's entry, a comment.
     'journal.rating_date',
     'journal.rating_not_held',

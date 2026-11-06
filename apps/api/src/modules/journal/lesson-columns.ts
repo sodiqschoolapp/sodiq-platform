@@ -63,6 +63,8 @@ export interface StoredWork {
   readonly total: number | null;
   readonly notHeld: boolean;
   readonly carriedFromLessonId: string | null;
+  /** Task 10.6: the title typed for a work added by hand (`null` for a planned one or one added before). */
+  readonly title: string | null;
   readonly version: number;
   /** A cell of the work holds a number. */
   readonly hasNumbers: boolean;
@@ -74,7 +76,11 @@ export interface Column {
   readonly planWorkId: string | null;
   readonly sourceLessonId: string | null;
   readonly kind: WorkKind;
-  /** The plan's title; `null` for an unplanned work (the screen numbers it). */
+  /**
+   * The plan's title, or for an unplanned work the title typed when it was
+   * added (task 10.6); `null` for a work added by hand before 10.6 (the
+   * screen numbers it).
+   */
   readonly title: string | null;
   readonly unplanned: boolean;
   /** Its place among the columns of its kind in the lesson, from 1. */
@@ -270,7 +276,7 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
         for (const row of unplannedOf(sourceId, kind)) {
           if (placed.get(row.id) !== lesson.id) continue;
           used.add(row.id);
-          found.push(fromRow(row, lesson.id, null));
+          found.push(fromRow(row, lesson.id, row.title));
         }
       }
       // Carried in first, then any other row kept here (spec review must-fix 2).
@@ -322,7 +328,7 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       given.push({
         workId: row.id,
         planWorkId: null,
-        title: null,
+        title: row.title,
         checkAt,
         ungraded,
         notGiven: false,
@@ -340,12 +346,15 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
   return result;
 }
 
-/** The plan title of a stored row whose plan work an item of the input still names. */
+/**
+ * The plan title of a stored row whose plan work an item of the input still
+ * names; the typed title of a work added by hand (task 10.6).
+ */
 function plannedTitle(
   planned: ReadonlyMap<string, readonly PlannedWork[] | null>,
   row: StoredWork,
 ): string | null {
-  if (row.planWorkId === null) return null;
+  if (row.planWorkId === null) return row.title;
   for (const works of planned.values()) {
     const found = works?.find((work) => work.id === row.planWorkId);
     if (found !== undefined) return found.title;

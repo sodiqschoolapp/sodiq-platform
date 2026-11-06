@@ -550,10 +550,20 @@ describe('the rating exam and comments', () => {
         }
         // A classwork of the first lesson, 5 of 10; a homework given there, checked at the second, 3 of 10.
         const classwork = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${first}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${first}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         const homework = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${first}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${first}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         for (const [lesson, work] of [
           [first, classwork],
@@ -947,7 +957,12 @@ describe('the rating exam and comments', () => {
         );
         expect(note.visibility).toBe('parents');
         const work = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${lesson}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${lesson}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         const total = workSavedSchema.parse(
           ok(

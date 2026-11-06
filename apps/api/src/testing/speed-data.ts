@@ -123,8 +123,10 @@ async function fillDay(
     // written without a total and then given one, as the routes do
     // (`journal_work_insert_data`, 0119).
     await sql`
-        insert into journal_works (branch_id, lesson_id, kind)
-        select l.branch_id, l.id, w.kind
+        insert into journal_works (branch_id, lesson_id, kind, title)
+        select l.branch_id, l.id, w.kind,
+          -- Task 10.6 (0157): a work added by hand is named.
+          case w.kind when 'classwork' then 'Dictation' else 'Exercises' end
         from (
           select l.*, row_number() over (order by l.id) as n
           from lessons l

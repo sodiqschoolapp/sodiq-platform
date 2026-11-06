@@ -903,6 +903,7 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
           );
           const work = await teacher.post(`/api/journal/lessons/${lesson}/works`, {
             kind: 'classwork',
+            title: 'Dictation',
           });
           expect(work.status, JSON.stringify(work.body)).toBeLessThan(300);
           const added = work.body as WorkSaved;

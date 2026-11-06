@@ -420,6 +420,7 @@ describe('the report of entries after a reset', () => {
                 lesson_id: lessonId,
                 source_lesson_id: lessonId,
                 kind: 'classwork',
+                title: 'Dictation',
                 changed_by: person.accountId,
               })
               .returning('id')
@@ -452,6 +453,7 @@ describe('the report of entries after a reset', () => {
           lesson_id: southLesson,
           source_lesson_id: southLesson,
           kind: 'classwork',
+          title: 'Dictation',
           changed_by: person.accountId,
         })
         .returning('id')

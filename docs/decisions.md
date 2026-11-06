@@ -363,6 +363,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 6 November 2026: a work added by hand is named (task 10.6)
+
+Plan approved on pull request #290 with its two corrections. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a journal rule reading). The takeover clears the typed title (`title = null`); its history line keeps it (`title_before`), and the grid shows the plan's title | `edge/journal`: the plan's titles "replace the titles typed by hand (those stay in history)"; one source for a planned column's title (decision 1) |
+| A new row added by hand needs a title (insert trigger `journal_works_title_required`, for `sodiq_app`, not a restore); a check (1 to 60 characters, no spaces, tabs or line breaks around it) that every existing (null) row meets; no migration fills a title | The build line; stop-list item 3 (decision 2) |
+| No correction path for a rename: the edit period or an open unlock only | "while the lesson can still be edited" (decision 3) |
+| A rename writes `changed_how = 'entry'` (`late_entry` under an unlock); the edit, unlock, closed and reopened quarter guards judge it unchanged | No guard widened (decision 4) |
+| A work the plan took is not renamed in the journal: 409 `work_planned` | Planned titles change through the plan (decision 5) |
+| A title is counted in code points on both sides (`workTitleLength`) | "At most 60 characters", as `char_length` counts them (decision 6) |
+| The rename route has the permission of the add (`journal` `edit`, the entry scope) | Approved by the owner on 5 November 2026 (decision 7) |
+| The discipline report, the notices and the comments name no work today and stay unchanged | A plan's title shows in none of them (decision 8, correction 1) |
+| **Build decision.** The rename is taken at every lesson that shows the work (stored, source, shown) and judged at the lesson it is stored at, as the removal is | `.claude/rules/journal.md` |
+| **Build decision.** The work history lines (cell history, reset report, personal-data report, support view) carry `titleBefore` and `titleAfter`; a line of a work removed since is named by the last title its history keeps | Each change is kept in history and read back (`.claude/rules/journal.md`, history readers) |
+| **Build decision.** A homework given by hand is renamed from its column at the check lesson; the "Homework given" list of the lesson card shows its title but has no rename | The answer's `given` names no work id; the column is where every other change of the work is made |
+| **Build decision.** A title typed for a work added by hand shows alone as its column title, without the "unplanned" mark that an untitled one keeps | "the work's column title as a plan's title would be" |
+
 ## 5 November 2026: the six reads at three times the size, and the load in two models (task 10.1c)
 
 Plan approved on pull request #285 with corrections 1 to 3; decisions 1 to 10 confirmed there. Flagged on issue #42.

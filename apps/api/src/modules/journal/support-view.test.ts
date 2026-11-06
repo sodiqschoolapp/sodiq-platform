@@ -669,9 +669,17 @@ describe('the support view', () => {
       await at(owner, '2026-10-26T09:00:00+05:00');
       const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
         kind: 'homework',
+        title: 'Exercises',
       });
       expect(added.status, JSON.stringify(added.body)).toBe(200);
-      const work = added.body as { id: string };
+      const work = added.body as { id: string; version: number };
+      // Task 10.6: renamed before it is removed; its lines keep the title from the history.
+      const renamed = await request(t.kit.server)
+        .put(`/api/journal/lessons/${s.third}/works/${work.id}/title`)
+        .set('Cookie', owner.cookie)
+        .set(BRANCH_HEADER, s.branch)
+        .send({ title: 'Exercises 4 to 9', version: work.version });
+      expect(renamed.status, JSON.stringify(renamed.body)).toBe(200);
       const removed = await request(t.kit.server)
         .delete(`/api/journal/lessons/${s.third}/works/${work.id}`)
         .set('Cookie', owner.cookie)
@@ -727,6 +735,12 @@ describe('the support view', () => {
       expect(
         workLines.every((one) => one.work.id === work.id && one.work.kind === 'homework'),
       ).toBe(true);
+      expect(
+        workLines.map((one) => [one.how, one.titleBefore, one.titleAfter, one.work.title]),
+      ).toEqual([
+        ['entry', 'Exercises', 'Exercises 4 to 9', 'Exercises 4 to 9'],
+        ['deleted', 'Exercises 4 to 9', null, 'Exercises 4 to 9'],
+      ]);
       // The rating exam of a subject of its own on the 20th, with an entry, and a refusal of it.
       await ratingEntryAndNote(t, load, {
         branch: s.branch,
@@ -785,6 +799,7 @@ describe('the support view', () => {
       await at(owner, '2026-10-26T09:00:00+05:00');
       const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
         kind: 'classwork',
+        title: 'Dictation',
       });
       expect(added.status, JSON.stringify(added.body)).toBe(200);
       const work = added.body as { id: string; version: number };

@@ -60,6 +60,19 @@ export const accountText = (named: AccountNamed, empty: string): string =>
   named.name ?? named.login ?? empty;
 
 /**
+ * Task 10.6: a line that renames a work, or the takeover that replaced its typed title; a
+ * delete or a restore line carries the title too and is not one.
+ */
+export const titleChanged = (
+  line: Pick<WorkLine, 'totalBefore' | 'totalAfter' | 'titleBefore' | 'titleAfter' | 'changedHow'>,
+): boolean =>
+  line.titleBefore !== line.titleAfter &&
+  line.totalBefore === line.totalAfter &&
+  line.changedHow !== 'deleted' &&
+  line.changedHow !== 'forced_delete' &&
+  line.changedHow !== 'restored';
+
+/**
  * A line of a work's history (task 8.1): "Total of Classwork: 30 → 20", or
  * '"Not held" of Homework: no → yes'.
  */
@@ -67,12 +80,23 @@ export function workLineText(
   t: TFunction,
   line: Pick<
     WorkLine,
-    'workKind' | 'totalBefore' | 'totalAfter' | 'notHeldBefore' | 'notHeldAfter'
+    | 'workKind'
+    | 'totalBefore'
+    | 'totalAfter'
+    | 'notHeldBefore'
+    | 'notHeldAfter'
+    | 'titleBefore'
+    | 'titleAfter'
+    | 'changedHow'
   >,
 ): string {
   const work = t(
     line.workKind === 'classwork' ? 'journal.grid.parts.classwork' : 'journal.grid.parts.homework',
   );
+  // Task 10.6: a rename, or the takeover that replaced a typed title with the plan's.
+  if (titleChanged(line)) {
+    return `${t('journal.works.historyTitle', { work })}: ${line.titleBefore ?? '—'} → ${line.titleAfter ?? '—'}`;
+  }
   if (line.totalBefore !== line.totalAfter) {
     return `${t('journal.works.historyTotal', { work })}: ${String(line.totalBefore ?? '—')} → ${String(line.totalAfter ?? '—')}`;
   }

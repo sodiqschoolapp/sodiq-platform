@@ -44,6 +44,8 @@ export async function workLines(
       'total_after',
       'not_held_before',
       'not_held_after',
+      'title_before',
+      'title_after',
       'changed_by',
       'changed_how',
       'changed_at',
@@ -84,6 +86,8 @@ export async function workLines(
     totalAfter: row.total_after,
     notHeldBefore: row.not_held_before,
     notHeldAfter: row.not_held_after,
+    titleBefore: row.title_before,
+    titleAfter: row.title_after,
     changedHow: workChangeSchema.parse(row.changed_how),
     changedBy:
       row.changed_by === null
@@ -104,6 +108,8 @@ export function withoutBranch(line: WorkLineWithBranch): WorkLine {
     totalAfter: line.totalAfter,
     notHeldBefore: line.notHeldBefore,
     notHeldAfter: line.notHeldAfter,
+    titleBefore: line.titleBefore,
+    titleAfter: line.titleAfter,
     changedHow: line.changedHow,
     changedBy: line.changedBy,
   };

@@ -559,6 +559,7 @@ describe('the edit period in the database', () => {
             lesson_id: lessonId,
             source_lesson_id: lessonId,
             kind: 'homework',
+            title: 'Dictation',
             changed_by: teacher.accountId,
             changed_how: 'entry',
           })
@@ -594,6 +595,17 @@ describe('the edit period in the database', () => {
         ),
       );
       expect(total.constraint).toBe('journal_locked');
+      // Task 10.6: a change of the title alone is judged as every other write of a work.
+      const renamed = await refusal(
+        inBranch(north, LOCKED, (transaction) =>
+          transaction
+            .updateTable('journal_works')
+            .set({ title: 'Spelling', changed_by: teacher.accountId, changed_how: 'entry' })
+            .where('id', '=', homework)
+            .execute(),
+        ),
+      );
+      expect(renamed.constraint).toBe('journal_locked');
       const removed = await refusal(
         inBranch(north, LOCKED, (transaction) =>
           transaction.deleteFrom('journal_works').where('id', '=', homework).execute(),
@@ -707,6 +719,26 @@ describe('the edit period in the database', () => {
         .where('work_id', '=', homework)
         .executeTakeFirstOrThrow();
       expect(line).toEqual({ changed_how: 'late_entry', unlock_id: unlock, total_after: 10 });
+      // Task 10.6: a rename under the unlock is a late entry too, with the unlock in its line.
+      await inBranch(north, '2026-10-23T10:05:00+05:00', async (transaction) => {
+        await setting(transaction, 'app.unlock_id', unlock);
+        await transaction
+          .updateTable('journal_works')
+          .set({ title: 'Spelling', changed_by: teacher.accountId, changed_how: 'entry' })
+          .where('id', '=', homework)
+          .execute();
+      });
+      const renamed = await database.migrator
+        .selectFrom('journal_work_history')
+        .select(['changed_how', 'unlock_id', 'title_after'])
+        .where('work_id', '=', homework)
+        .where('title_after', '=', 'Spelling')
+        .executeTakeFirstOrThrow();
+      expect(renamed).toEqual({
+        changed_how: 'late_entry',
+        unlock_id: unlock,
+        title_after: 'Spelling',
+      });
     });
 
     it('judges a note at its lesson', async () => {

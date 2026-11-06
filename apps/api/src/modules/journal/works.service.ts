@@ -8,6 +8,7 @@ import {
   type WorkAdd,
   type WorkCarry,
   type WorkColumn,
+  type WorkRename,
   type WorkSaved,
   type Correction,
   type NotGraded,
@@ -67,6 +68,9 @@ const WORK_REFUSALS = {
   // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
   journal_locked: 'journal_locked',
   journal_correction_role: 'journal_correction_role',
+  // Task 10.6 (0157): a work added by hand is named; the schema refuses first.
+  journal_work_title_required: 'journal_work_title_required',
+  journal_works_title_check: 'journal_work_title_required',
 } as const;
 
 function mapWorkRefusal(error: unknown): never {
@@ -101,6 +105,7 @@ interface WorkRow {
   total: number | null;
   not_held: boolean;
   carried_from_lesson_id: string | null;
+  title: string | null;
   version: number;
 }
 
@@ -110,6 +115,7 @@ const savedOf = (row: WorkRow): WorkSaved => ({
   total: row.total,
   notHeld: row.not_held,
   carriedFrom: row.carried_from_lesson_id,
+  title: row.title,
   version: row.version,
 });
 
@@ -120,6 +126,7 @@ const WORK_COLUMNS = [
   'total',
   'not_held',
   'carried_from_lesson_id',
+  'title',
   'version',
 ] as const;
 
@@ -496,6 +503,7 @@ export class WorksService {
             source_lesson_id: scene.lesson.id,
             kind: input.kind,
             position,
+            title: input.title,
             changed_by: access.accountId,
             changed_how: 'entry',
           })
@@ -508,10 +516,72 @@ export class WorksService {
         ...this.actorOf(scene),
         action: 'journal.work_add',
         record: { type: 'lesson', id: scene.lesson.id },
-        newValue: { workId: row.id, kind: input.kind, position },
+        newValue: { workId: row.id, kind: input.kind, position, title: row.title },
       });
       await this.noticeCorrection(transaction, scene);
       return savedOf(row);
+    });
+  }
+
+  /**
+   * Task 10.6: rename a work added by hand (`edge/journal`, "A lesson is held
+   * with no plan item": "The teacher may rename it while the lesson can still
+   * be edited; each change is kept in history"). Taken at every lesson the
+   * screen shows it (`.claude/rules/journal.md`): stored there, its source, or
+   * the lesson that shows it; judged at the lesson it is stored at, as the
+   * guard of 0130 judges it. A planned work takes its title from the plan.
+   */
+  rename(
+    access: Access,
+    lessonId: string,
+    workId: string,
+    input: WorkRename,
+    requestId?: string,
+  ): Promise<WorkSaved> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+      const row = await transaction
+        .selectFrom('journal_works')
+        .select([...WORK_COLUMNS, 'plan_work_id', 'source_lesson_id'])
+        .where('id', '=', workId)
+        .where('branch_id', '=', scene.branchId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (row === undefined) throw notFound();
+      const shown = columnAt(scene.columns.columns, scene.lesson.id, { workId: row.id }) !== null;
+      if (!shown && row.lesson_id !== scene.lesson.id && row.source_lesson_id !== scene.lesson.id) {
+        throw new ApiException('work_not_in_lesson', 409);
+      }
+      if (row.plan_work_id !== null) throw new ApiException('work_planned', 409);
+      if (input.version !== row.version) throw this.stale(row);
+      if (row.title === input.title) return savedOf(row);
+      if (row.lesson_id !== scene.lesson.id) {
+        await decideWrite(transaction, {
+          access,
+          branchId: scene.branchId,
+          target: { kind: 'lesson', lessonId: row.lesson_id },
+          staffId: await ownStaffOf(transaction, access.accountId),
+        });
+      }
+      let saved: WorkRow;
+      try {
+        saved = await transaction
+          .updateTable('journal_works')
+          .set({ title: input.title, changed_by: access.accountId, changed_how: 'entry' })
+          .where('id', '=', row.id)
+          .returning(WORK_COLUMNS)
+          .executeTakeFirstOrThrow();
+      } catch (error) {
+        mapWorkRefusal(error);
+      }
+      await this.audit.record(transaction, {
+        ...this.actorOf(scene),
+        action: 'journal.work_rename',
+        record: { type: 'lesson', id: scene.lesson.id },
+        oldValue: { workId: row.id, kind: row.kind, title: row.title },
+        newValue: { workId: row.id, kind: row.kind, title: saved.title, version: saved.version },
+      });
+      return savedOf(saved);
     });
   }
 

@@ -173,7 +173,12 @@ describe('the journal discipline report: its items and its file (task 9.3b-2)', 
             saves: [{ studentId: ahmedov, mark: 1, version: null }],
           }),
         );
-        ok(await calls.post(`/api/journal/lessons/${second}/works`, { kind: 'classwork' }));
+        ok(
+          await calls.post(`/api/journal/lessons/${second}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+          }),
+        );
         ok(await calls.put(`${ratingBase}/date`, { date: '2026-10-19', version: null }));
         ok(
           await calls.post(`${ratingBase}/entries`, {

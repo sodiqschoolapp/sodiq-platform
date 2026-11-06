@@ -648,6 +648,37 @@ describe('reopening a quarter in the database', () => {
       expect(taken.changed_how).toBe('late_entry');
     });
 
+    // Task 10.6 (spec review of the code, must-fix 1): a change of a work's title alone is a
+    // plain entry, refused in a reopened quarter without an unlock.
+    it('refuses the rename of a work added by hand without an unlock', async () => {
+      const s = await scene();
+      const named = await database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: s.branch,
+          lesson_id: s.lesson,
+          source_lesson_id: s.lesson,
+          kind: 'classwork',
+          title: 'Dictation',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const teacher = (await unlock(s, '2026-10-28T10:00:00+05:00')).teacher;
+      const closing = await close(s);
+      await reopen(s, closing.id);
+      expect(
+        await refusal(
+          inBranch(s.branch, INSIDE, (transaction) =>
+            transaction
+              .updateTable('journal_works')
+              .set({ title: 'Spelling', changed_by: teacher.accountId, changed_how: 'entry' })
+              .where('id', '=', named.id)
+              .execute(),
+          ),
+        ),
+      ).toMatchObject(LOCKED);
+    });
+
     // Plan decision 5: the cells an exemption reopened and the optional cells give no entry in a
     // reopened quarter (they are neither a correction nor an explicit unlock).
     it('refuses a cell an exemption reopened and an optional cell, which they took before the close', async () => {

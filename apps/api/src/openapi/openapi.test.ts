@@ -149,6 +149,7 @@ describe('OpenAPI document', () => {
         '/api/journal/lessons/{lessonId}/works/not-held',
         '/api/journal/lessons/{lessonId}/works/total',
         '/api/journal/lessons/{lessonId}/works/{workId}',
+        '/api/journal/lessons/{lessonId}/works/{workId}/title',
         '/api/journal/orphans',
         '/api/journal/orphans/assignments/{assignmentId}/withdraw',
         '/api/journal/orphans/{lessonId}/assign',

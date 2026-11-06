@@ -218,7 +218,14 @@ describe('journal exports', () => {
     (
       await t.database.migrator
         .insertInto('journal_works')
-        .values({ branch_id: branch, lesson_id: lessonId, kind, total })
+        // Task 10.6: a classwork added by hand carries the title typed for it.
+        .values({
+          branch_id: branch,
+          lesson_id: lessonId,
+          kind,
+          total,
+          title: kind === 'classwork' ? 'Dictation' : null,
+        })
         .returning('id')
         .executeTakeFirstOrThrow()
     ).id;
@@ -424,6 +431,8 @@ describe('journal exports', () => {
       );
       expect(markColumn).toBeGreaterThan(2);
       const cwColumn = headings.findIndex((one) => one.includes('CW1') && one.includes('Soni 30'));
+      // Task 10.6: the title typed for a work added by hand is its column title in the file.
+      expect(headings[cwColumn]).toContain('CW1 Dictation Soni 30');
       expect(headings[cwColumn + 1]).toMatch(/%$/);
       // The date row: real dates (edge/system-behaviour: "Excel exports contain real numbers and dates").
       const dateRow = sheet.rows[5];

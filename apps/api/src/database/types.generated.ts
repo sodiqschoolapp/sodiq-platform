@@ -966,6 +966,8 @@ export interface JournalWorkHistory {
   plan_work_before: string | null;
   reason: string | null;
   source_lesson_id: string | null;
+  title_after: string | null;
+  title_before: string | null;
   total_after: number | null;
   total_before: number | null;
   unlock_id: string | null;
@@ -988,6 +990,7 @@ export interface JournalWorks {
   plan_work_id: string | null;
   position: Generated<number>;
   source_lesson_id: string | null;
+  title: string | null;
   total: number | null;
   version: Generated<number>;
 }

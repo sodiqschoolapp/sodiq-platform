@@ -11,6 +11,7 @@ import {
   workAddSchema,
   workCarrySchema,
   workNotHeldSchema,
+  workRenameSchema,
   workSavedSchema,
   workTotalSchema,
   type JournalLessonParams,
@@ -19,6 +20,7 @@ import {
   type ScoresSaved,
   type WorkAdd,
   type WorkCarry,
+  type WorkRename,
   type WorkSaved,
 } from '@sodiq/shared';
 import type { z } from 'zod';
@@ -55,6 +57,19 @@ export class WorksController {
     @RequestId() requestId: string,
   ): Promise<WorkSaved> {
     return this.works.add(access, params.lessonId, input, requestId);
+  }
+
+  /** Task 10.6: rename a work added by hand while the lesson can be edited. */
+  @Put(':lessonId/works/:workId/title')
+  @Requires('journal', 'edit')
+  @Returns(workSavedSchema)
+  rename(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalWorkParamsSchema) params: JournalWorkParams,
+    @ValidBody(workRenameSchema) input: WorkRename,
+    @RequestId() requestId: string,
+  ): Promise<WorkSaved> {
+    return this.works.rename(access, params.lessonId, params.workId, input, requestId);
   }
 
   @Delete(':lessonId/works/:workId')

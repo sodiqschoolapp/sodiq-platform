@@ -30,9 +30,30 @@ export const journalWorkParamsSchema = z.object({ lessonId: z.uuid(), workId: z.
 
 export type JournalWorkParams = z.infer<typeof journalWorkParamsSchema>;
 
-/** A work added by hand at a lesson with no plan item: a classwork or a "homework given". */
+/** `edge/lesson-plans`: "a short title of at most 60 characters" (`journal_works_title_check`, 0157). */
+export const WORK_TITLE_MAX = 60;
+
+/** The characters of a title as PostgreSQL's `char_length` counts them (code points). */
+export const workTitleLength = (title: string): number => [...title].length;
+
+/**
+ * Task 10.6: the title of a work added by hand, typed by the teacher: trimmed,
+ * 1 to 60 characters (`07`, Entering data; `edge/journal`, "A lesson is held
+ * with no plan item"). The database trims spaces, tabs and line breaks
+ * (`journal_works_title_check`); the schema trims every white space first.
+ */
+export const workTitleSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((title) => workTitleLength(title) <= WORK_TITLE_MAX, {
+    message: 'At most 60 characters',
+  });
+
+/** A work added by hand at a lesson with no plan item: a classwork or a "homework given", named. */
 export const workAddSchema = z.strictObject({
   kind: cellWorkKindSchema,
+  title: workTitleSchema,
   correction: correctionSchema.optional(),
 });
 
@@ -74,6 +95,14 @@ export const workCarrySchema = z.strictObject({
 
 export type WorkCarry = z.infer<typeof workCarrySchema>;
 
+/** Task 10.6: the new title of a work added by hand, on the version it was typed on. */
+export const workRenameSchema = z.strictObject({
+  title: workTitleSchema,
+  version: z.int().min(1),
+});
+
+export type WorkRename = z.infer<typeof workRenameSchema>;
+
 /** A work as stored after a change. */
 export const workSavedSchema = z.object({
   id: z.uuid(),
@@ -81,6 +110,8 @@ export const workSavedSchema = z.object({
   total: z.int().min(WORK_TOTAL_MIN).max(WORK_TOTAL_MAX).nullable(),
   notHeld: z.boolean(),
   carriedFrom: z.uuid().nullable(),
+  /** Task 10.6: the title typed for a work added by hand; `null` for a planned work or one added before. */
+  title: z.string().nullable(),
   version: z.int().min(1),
 });
 

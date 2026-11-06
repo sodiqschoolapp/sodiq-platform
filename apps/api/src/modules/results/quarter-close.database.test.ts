@@ -415,6 +415,7 @@ describe('closing a quarter in the database', () => {
               lesson_id: lesson,
               source_lesson_id: lesson,
               kind: 'classwork',
+              title: 'Dictation',
               changed_by: account,
               changed_how: 'entry',
             })
@@ -441,6 +442,18 @@ describe('closing a quarter in the database', () => {
                 changed_how: 'entry',
                 changed_at: new Date(0),
               })
+              .execute(),
+          ),
+        ),
+      ).toMatchObject(CLOSED);
+      // Task 10.6: a change of the title alone is refused in the closed quarter.
+      expect(
+        await refusal(
+          inBranch(branch, AFTER, (transaction) =>
+            transaction
+              .updateTable('journal_works')
+              .set({ title: 'Spelling', changed_by: account, changed_how: 'entry' })
+              .where('id', '=', kept.id)
               .execute(),
           ),
         ),

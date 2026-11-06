@@ -38,6 +38,7 @@ import {
   type RatingNotHeld,
   type ScoresSave,
   type WorkAdd,
+  type WorkRename,
   type WorkCarry,
   type WorkNotHeld,
   type WorkTotal,
@@ -223,6 +224,15 @@ export const addWork = (lessonId: string, body: WorkAdd) =>
   answerOf(
     api.POST('/api/journal/lessons/{lessonId}/works', {
       params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => workSavedSchema.parse(answer));
+
+/** Task 10.6: renames a work added by hand, on the version it was read. */
+export const renameWork = (lessonId: string, workId: string, body: WorkRename) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/works/{workId}/title', {
+      params: { header: branchHeader(), path: { lessonId, workId } },
       body,
     }),
   ).then((answer) => workSavedSchema.parse(answer));

@@ -650,22 +650,34 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const refused = await calls.post(`/api/journal/lessons/${s.first}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(refused)).toBe('lesson_has_plan_item');
         const added: string[] = [];
         for (let index = 0; index < 10; index += 1) {
           added.push(
             workSavedSchema.parse(
-              ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+              ok(
+                await calls.post(`/api/journal/lessons/${s.second}/works`, {
+                  kind: 'classwork',
+                  title: 'Dictation',
+                }),
+              ),
             ).id,
           );
         }
         const eleventh = await calls.post(`/api/journal/lessons/${s.second}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(eleventh)).toBe('journal_works_limit');
         const homework = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.second).works.map((one) => [one.position, one.unplanned])).toEqual(
@@ -697,7 +709,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         ok(await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`), 204);
         const grid = await gridOf(calls, s);
@@ -712,7 +729,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       const homework = await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         );
         ok(
           await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
@@ -901,7 +923,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       const given = await as(owner, s.branch, teacherIn(s), async (calls) =>
         workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.third}/works`, { kind: 'homework' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.third}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
         ),
       );
       // The 9 November lesson goes as a version change removes a lesson with no data.
@@ -1054,8 +1081,10 @@ describe('classwork and homework', () => {
         ['put', 'works/not-held', { column, notHeld: true, version: null }],
         ['post', 'works/carry', { column, version: null }],
         ['post', 'scores', { saves: [{ studentId: s.ahmedov, column, score: 1, version: null }] }],
-        ['post', 'works', { kind: 'classwork' }],
+        ['post', 'works', { kind: 'classwork', title: 'Dictation' }],
         ['delete', `works/${ownWork.id}`, {}],
+        // Task 10.6: the rename of a work added by hand.
+        ['put', `works/${ownWork.id}/title`, { title: 'Quiz', version: 1 }],
       ];
       const send = (calls: Calls, method: string, path: string, body: object) =>
         method === 'put'
@@ -1126,6 +1155,17 @@ describe('classwork and homework', () => {
         expect(
           (await calls.del(`/api/journal/lessons/${s.second}/works/${randomUUID()}`)).status,
         ).toBe(404);
+        // Task 10.6: the rename of another branch's work and an unknown one.
+        for (const workId of [foreignWork.id, randomUUID()]) {
+          expect(
+            (
+              await calls.put(`/api/journal/lessons/${s.second}/works/${workId}/title`, {
+                title: 'Quiz',
+                version: 1,
+              })
+            ).status,
+          ).toBe(404);
+        }
         for (const studentId of [elsewhere.ahmedov, randomUUID()]) {
           const stranger = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
             saves: [{ studentId, column, score: 1, version: null }],
@@ -1175,6 +1215,7 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, [{ role: 'teacher', branchId: s.branch }], async (calls) => {
         const refused = await calls.post(`/api/journal/lessons/${lesson}/works`, {
           kind: 'classwork',
+          title: 'Dictation',
         });
         expect(codeOf(refused)).toBe('lesson_attendance_only');
       });
@@ -1183,7 +1224,10 @@ describe('classwork and homework', () => {
 
   describe('who enters (permission review of the code, should-fix 3)', () => {
     const addOne = (calls: Calls, lessonId: string) =>
-      calls.post(`/api/journal/lessons/${lessonId}/works`, { kind: 'classwork' });
+      calls.post(`/api/journal/lessons/${lessonId}/works`, {
+        kind: 'classwork',
+        title: 'Dictation',
+      });
 
     it('lets a substitute add works at the substituted lesson only', async () => {
       const owner = await account();
@@ -1339,7 +1383,12 @@ describe('classwork and homework', () => {
         [{ role: 'teacher', branchId: v.branch }],
         async (calls) => {
           const added = workSavedSchema.parse(
-            ok(await calls.post(`/api/journal/lessons/${v.lesson}/works`, { kind: 'classwork' })),
+            ok(
+              await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
+                kind: 'classwork',
+                title: 'Dictation',
+              }),
+            ),
           );
           const totalled = workSavedSchema.parse(
             ok(
@@ -1370,6 +1419,7 @@ describe('classwork and homework', () => {
         async (calls) => {
           const refused = await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
             kind: 'classwork',
+            title: 'Dictation',
           });
           expect(codeOf(refused)).toBe('lesson_attendance_only');
           ok(
@@ -1388,7 +1438,12 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         for (let index = 0; index < 9; index += 1) {
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' }));
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          );
         }
       });
       // The held side writes what the route writes: the lock of the limit, then the tenth work.
@@ -1425,7 +1480,10 @@ describe('classwork and homework', () => {
       await as(owner, s.branch, [], async (calls) => {
         const started = new Promise<Response>((resolve, reject) => {
           calls
-            .post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })
+            .post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            })
             .then(resolve, reject);
         });
         for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -1545,10 +1603,20 @@ describe('classwork and homework', () => {
       await openPlanWindows(t.database.migrator, s.branch, s.year);
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const first = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         const second = workSavedSchema.parse(
-          ok(await calls.post(`/api/journal/lessons/${s.second}/works`, { kind: 'classwork' })),
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
         );
         for (const [work, score] of [
           [first, 4],
@@ -1650,6 +1718,302 @@ describe('classwork and homework', () => {
         expect(codeOf(removed)).toBe('plan_work_has_data');
       });
       expect((await t.entries('journal.work_takeover')).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // Task 10.6 (the owner's `/spec-change` of 5 November 2026): a work added by hand is named.
+  describe('the title of a work added by hand', () => {
+    it('refuses an add with no title, an empty or blank one and one of 61 characters, and keeps a title of 60 trimmed', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const before = await rowsOf(s.branch);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        for (const body of [
+          { kind: 'classwork' },
+          { kind: 'classwork', title: '' },
+          { kind: 'homework', title: '  \t ' },
+          { kind: 'classwork', title: 'x'.repeat(61) },
+          { kind: 'classwork', title: '😀'.repeat(61) },
+        ]) {
+          const refused = await calls.post(`/api/journal/lessons/${s.second}/works`, body);
+          expect(refused.status, JSON.stringify(body)).toBe(400);
+        }
+        expect(await rowsOf(s.branch)).toEqual(before);
+        // Sixty characters, counted as PostgreSQL counts them: one emoji is one character.
+        for (const title of ['x'.repeat(60), '😀'.repeat(60), 'Oʻqish va yozish']) {
+          const added = workSavedSchema.parse(
+            ok(
+              await calls.post(`/api/journal/lessons/${s.second}/works`, {
+                kind: 'classwork',
+                title: `  ${title} `,
+              }),
+            ),
+          );
+          expect(added.title).toBe(title);
+        }
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.second).works.map((one) => one.title)).toEqual([
+          'x'.repeat(60),
+          '😀'.repeat(60),
+          'Oʻqish va yozish',
+        ]);
+      });
+      const [entry] = await t.entries('journal.work_add', s.second);
+      expect(entry?.new_value).toMatchObject({ title: 'x'.repeat(60) });
+    });
+
+    it('shows the typed title as the column title, and a homework given by hand at the lesson that gave it and at its check lesson', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const classwork = workSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
+        );
+        const homework = workSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises 4 to 9',
+            }),
+          ),
+        );
+        const grid = await gridOf(calls, s);
+        expect(
+          lessonIn(grid, s.second).works.map((one) => [one.id, one.title, one.unplanned]),
+        ).toEqual([[classwork.id, 'Dictation', true]]);
+        expect(lessonIn(grid, s.second).given.map((one) => one.title)).toEqual([
+          'Exercises 4 to 9',
+        ]);
+        expect(lessonIn(grid, s.third).works.map((one) => [one.id, one.title])).toEqual([
+          [homework.id, 'Exercises 4 to 9'],
+        ]);
+      });
+    });
+
+    it('renames a work added by hand through the lesson that shows it, refuses a stale version and a planned work, and renames a work added before 10.6', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { classworks: ['Test'] });
+      // A work added by hand before 10.6: no title, shown as "CW 1".
+      const old = await t.database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: s.branch,
+          lesson_id: s.third,
+          source_lesson_id: s.third,
+          kind: 'classwork',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const before = await gridOf(calls, s);
+        expect(lessonIn(before, s.third).works.map((one) => [one.title, one.position])).toEqual([
+          [null, 1],
+        ]);
+        const renamedOld = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.third}/works/${old.id}/title`, {
+              title: ' Reading ',
+              version: 1,
+            }),
+          ),
+        );
+        expect(renamedOld).toMatchObject({ title: 'Reading', version: 2 });
+        // A stale version is refused with the stored work.
+        const stale = await calls.put(`/api/journal/lessons/${s.third}/works/${old.id}/title`, {
+          title: 'Writing',
+          version: 1,
+        });
+        expect(codeOf(stale)).toBe('work_stale');
+        // The same title writes nothing.
+        expect(
+          workSavedSchema.parse(
+            ok(
+              await calls.put(`/api/journal/lessons/${s.third}/works/${old.id}/title`, {
+                title: 'Reading',
+                version: 2,
+              }),
+            ),
+          ).version,
+        ).toBe(2);
+        // A homework given by hand, renamed through its check lesson.
+        const given = workSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'homework',
+              title: 'Exercises',
+            }),
+          ),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${s.third}/works/${given.id}/title`, {
+            title: 'Exercises 4 to 9',
+            version: given.version,
+          }),
+        );
+        // Permission review, should-fix 3: a work that is not a column of the lesson named is
+        // refused there, nothing written.
+        const elsewhere = workSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.second}/works`, {
+              kind: 'classwork',
+              title: 'Essay',
+            }),
+          ),
+        );
+        const rows = await rowsOf(s.branch);
+        const entries = await journalEntries();
+        const notHere = await calls.put(
+          `/api/journal/lessons/${s.first}/works/${elsewhere.id}/title`,
+          { title: 'Quiz', version: elsewhere.version },
+        );
+        expect(codeOf(notHere)).toBe('work_not_in_lesson');
+        expect(await rowsOf(s.branch)).toEqual(rows);
+        expect(await journalEntries()).toBe(entries);
+        // A planned work takes its title from the plan.
+        const planned = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+              column: { planWorkId: item.classworks[0] ?? '', sourceLessonId: s.first },
+              total: 5,
+              version: null,
+            }),
+          ),
+        );
+        const refused = await calls.put(
+          `/api/journal/lessons/${s.first}/works/${planned.id}/title`,
+          { title: 'Quiz', version: planned.version },
+        );
+        expect(codeOf(refused)).toBe('work_planned');
+        // A body with no title, a blank one or one too long: 400.
+        for (const body of [
+          { version: 2 },
+          { title: ' ', version: 2 },
+          { title: 'x'.repeat(61), version: 2 },
+        ]) {
+          expect(
+            (await calls.put(`/api/journal/lessons/${s.third}/works/${old.id}/title`, body)).status,
+          ).toBe(400);
+        }
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual([
+          'Reading',
+          'Exercises 4 to 9',
+        ]);
+        expect(lessonIn(grid, s.second).given.map((one) => one.title)).toEqual([
+          'Exercises 4 to 9',
+        ]);
+      });
+      const lines = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select(['title_before', 'title_after', 'changed_how', 'changed_by'])
+        .where('work_id', '=', old.id)
+        .orderBy('version')
+        .execute();
+      expect(lines).toEqual([
+        {
+          title_before: null,
+          title_after: 'Reading',
+          changed_how: 'entry',
+          changed_by: owner.account.id,
+        },
+      ]);
+      const renames = await t.entries('journal.work_rename', s.third);
+      expect(renames.map((one) => [one.old_value, one.new_value])).toEqual(
+        expect.arrayContaining([
+          [
+            { workId: old.id, kind: 'classwork', title: null },
+            { workId: old.id, kind: 'classwork', title: 'Reading', version: 2 },
+          ],
+        ]),
+      );
+      expect(renames).toHaveLength(2);
+    });
+
+    it('lets a plan item written later replace the typed titles in order, keeps them in history, and leaves a work without a match its own title', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const added: string[] = [];
+        for (const title of ['Dictation', 'Quiz', 'Essay']) {
+          added.push(
+            workSavedSchema.parse(
+              ok(
+                await calls.post(`/api/journal/lessons/${s.second}/works`, {
+                  kind: 'classwork',
+                  title,
+                }),
+              ),
+            ).id,
+          );
+        }
+        ok(
+          await calls.post(`/api/plans/journals/${s.journal}/items`, {
+            quarterId: s.q1,
+            position: await rowOf(s, s.second),
+            lessonId: s.second,
+            values: {
+              topic: 'Fractions',
+              objectives: '',
+              links: [],
+              classworks: [
+                { title: 'Spelling', description: '' },
+                { title: 'Reading aloud', description: '' },
+              ],
+              homeworks: [],
+            },
+          }),
+          201,
+        );
+        const grid = await gridOf(calls, s);
+        expect(
+          lessonIn(grid, s.second).works.map((one) => [one.id, one.title, one.unplanned]),
+        ).toEqual([
+          [added[0], 'Spelling', false],
+          [added[1], 'Reading aloud', false],
+          [added[2], 'Essay', true],
+        ]);
+        // A work the plan took is renamed through the plan only.
+        const refused = await calls.put(
+          `/api/journal/lessons/${s.second}/works/${added[0] ?? ''}/title`,
+          { title: 'Dictation', version: 2 },
+        );
+        expect(codeOf(refused)).toBe('work_planned');
+      });
+      const stored = await t.database.migrator
+        .selectFrom('journal_works')
+        .select(['id', 'title'])
+        .where('source_lesson_id', '=', s.second)
+        .where('kind', '=', 'classwork')
+        .orderBy('position')
+        .execute();
+      expect(stored.map((one) => one.title)).toEqual([null, null, 'Essay']);
+      const lines = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select(['title_before', 'title_after'])
+        .where('lesson_id', '=', s.second)
+        .where('changed_how', '=', 'takeover')
+        .orderBy('title_before')
+        .execute();
+      expect(lines).toEqual([
+        { title_before: 'Dictation', title_after: null },
+        { title_before: 'Quiz', title_after: null },
+      ]);
+      const takeovers = (await t.entries('journal.work_takeover')).map((one) =>
+        JSON.stringify(one.new_value),
+      );
+      expect(
+        takeovers.some(
+          (one) =>
+            one.includes('"replacedTitle":"Dictation"') && one.includes('"replacedTitle":"Quiz"'),
+        ),
+      ).toBe(true);
     });
   });
 });
