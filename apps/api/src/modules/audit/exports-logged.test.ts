@@ -341,6 +341,17 @@ describe('every export is logged', () => {
     'POST /api/plans/journals/:journalId/export': { action: 'plan.export' },
   };
 
+  /**
+   * Task 11.1: the report of Parent accounts never used, each read and each file logged with its
+   * row count; tested with data in `parent-accounts.test.ts`.
+   */
+  const PARENT_FILES: Record<string, { action: string }> = {
+    'GET /api/people/parent-accounts/never-used': { action: 'parent_account.never_used' },
+    'POST /api/people/parent-accounts/never-used/export': {
+      action: 'parent_account.never_used_export',
+    },
+  };
+
   /** Task 9.3a: a rating list in Excel, one entry; the lists themselves are tested in `rating.test.ts`. */
   const RATING_FILES: Record<string, { action: string }> = {
     'POST /api/results/rating/export': { action: 'rating.export' },
@@ -443,6 +454,7 @@ describe('every export is logged', () => {
         ...Object.keys(JOURNAL_FILES),
         ...Object.keys(RATING_FILES),
         ...Object.keys(REPORT_FILES),
+        ...Object.keys(PARENT_FILES),
       ].sort(),
     );
   });

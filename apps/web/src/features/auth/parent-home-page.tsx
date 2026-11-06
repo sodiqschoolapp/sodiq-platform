@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { LanguageSection } from './account/language-section';
-import { AuthPage, FRAME_BUTTON_SIZE } from './auth-page';
+import { AuthPage } from './auth-page';
 import { sessionQuery } from './session';
 import { useSignOut } from './use-sign-out';
 
@@ -23,14 +23,10 @@ export function ParentHomePage(): React.JSX.Element {
       <div className="grid gap-6">
         <LanguageSection />
         <div className="flex flex-wrap gap-2">
-          <Link
-            to="/parent/password"
-            className={buttonVariants({ variant: 'secondary', size: FRAME_BUTTON_SIZE })}
-          >
+          <Link to="/parent/password" className={buttonVariants({ variant: 'secondary' })}>
             {t('parent.password')}
           </Link>
           <Button
-            size={FRAME_BUTTON_SIZE}
             disabled={signOut.isPending}
             onClick={() => {
               signOut.mutate();
