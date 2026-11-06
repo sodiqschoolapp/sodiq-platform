@@ -348,8 +348,11 @@ describe('master plans', () => {
       .execute();
   };
 
-  /** Every row of the tables the routes of 7.3 write, in one branch (and the masters of all branches). */
-  const rowsOf = async (branch: string) => {
+  /**
+   * Every row of the tables the routes of 7.3 write, in the scene's branch, and the masters of all
+   * branches of the scene's subject.
+   */
+  const rowsOf = async ({ branch, subject }: { branch: string; subject: string }) => {
     const found: Record<string, unknown[]> = {};
     for (const table of [
       'lesson_plans',
@@ -367,19 +370,43 @@ describe('master plans', () => {
         .execute()
         .then((rows) => rows.map((row) => JSON.stringify(row)).sort());
     }
-    for (const table of [
-      'lesson_plan_masters',
-      'lesson_plan_master_items',
-      'lesson_plan_master_works',
+    // A master of all branches (no branch) is counted when it is of the scene's subject, its
+    // items and works with it: every write of this file names that subject, a subject of its own
+    // (`load.classes.subject`). Masters of all branches are school-wide, and the test files that
+    // run beside this one (`plan-masters.database.test.ts`, `scope-refusals.test.ts`) write their
+    // own of other subjects; counting every one made this comparison fail at random on CI
+    // (5 and 6 November 2026). Not the subjects of the branch's plans: a test that compares
+    // before any plan exists would then compare no master of all branches (review of #291).
+    const masters = await t.database.migrator
+      .selectFrom('lesson_plan_masters')
+      .selectAll()
+      .where((builder) =>
+        builder.or([
+          builder('branch_id', '=', branch),
+          builder.and([builder('branch_id', 'is', null), builder('subject_id', '=', subject)]),
+        ]),
+      )
+      .execute();
+    const items = await t.database.migrator
+      .selectFrom('lesson_plan_master_items')
+      .selectAll()
+      .where(
+        'master_id',
+        'in',
+        masters.length === 0 ? [randomUUID()] : masters.map((row) => row.id),
+      )
+      .execute();
+    const works = await t.database.migrator
+      .selectFrom('lesson_plan_master_works')
+      .selectAll()
+      .where('item_id', 'in', items.length === 0 ? [randomUUID()] : items.map((row) => row.id))
+      .execute();
+    for (const [table, rows] of [
+      ['lesson_plan_masters', masters],
+      ['lesson_plan_master_items', items],
+      ['lesson_plan_master_works', works],
     ] as const) {
-      found[table] = await t.database.migrator
-        .selectFrom(table)
-        .selectAll()
-        .where((builder) =>
-          builder.or([builder('branch_id', '=', branch), builder('branch_id', 'is', null)]),
-        )
-        .execute()
-        .then((rows) => rows.map((row) => JSON.stringify(row)).sort());
+      found[table] = rows.map((row) => JSON.stringify(row)).sort();
     }
     found.audit = (
       await t.database.migrator
@@ -582,7 +609,7 @@ describe('master plans', () => {
         subjectIds: [await load.classes.subject({ grades: [7] })],
         validFrom: VALID_FROM,
       });
-      const before = await rowsOf(x.s.branch);
+      const before = await rowsOf(x.s);
       const writes = (browser: Browser) => [
         () =>
           send('patch', `/api/plans/masters/${master.id}`, x.s.branch, browser.cookie, {
@@ -647,7 +674,7 @@ describe('master plans', () => {
       expect(codeOf(await createMaster(x, x.head, { name: 'For all', scope: 'all' }))).toBe(
         'plan_master_scope',
       );
-      expect(await rowsOf(x.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s)).toEqual(before);
     });
 
     it('lets the Academic Vice Principal keep the masters of a subject with no Head Teacher in the branch', async () => {
@@ -769,7 +796,7 @@ describe('master plans', () => {
         subjectIds: [await load.classes.subject({ grades: [7] })],
         validFrom: VALID_FROM,
       });
-      const before = await rowsOf(x.s.branch);
+      const before = await rowsOf(x.s);
       for (const browser of [x.head, x.vice, otherSenior]) {
         const calls = [
           () =>
@@ -820,7 +847,7 @@ describe('master plans', () => {
           expect(codeOf(answer)).toBe(browser === otherSenior ? 'plan_scope' : 'plan_master_scope');
         }
       }
-      expect(await rowsOf(x.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s)).toEqual(before);
     });
   });
 
@@ -833,8 +860,8 @@ describe('master plans', () => {
       const second = await masterWith(x, 1, x.head, { name: 'Second' });
       await handWorkOf(x.s.branch, x.s.classId);
       await handWorkOf(y.s.branch, y.s.classId);
-      const beforeX = await rowsOf(x.s.branch);
-      const beforeY = await rowsOf(y.s.branch);
+      const beforeX = await rowsOf(x.s);
+      const beforeY = await rowsOf(y.s);
       for (const masterId of [theirs.id, randomUUID()]) {
         for (const call of [
           () => send('get', `/api/plans/masters/${masterId}`, x.s.branch, x.head.cookie),
@@ -1078,8 +1105,8 @@ describe('master plans', () => {
           expect((await at(NOV02, call)).status).toBe(404);
         }
       }
-      expect(await rowsOf(x.s.branch)).toEqual(beforeX);
-      expect(await rowsOf(y.s.branch)).toEqual(beforeY);
+      expect(await rowsOf(x.s)).toEqual(beforeX);
+      expect(await rowsOf(y.s)).toEqual(beforeY);
     });
   });
 
@@ -1107,7 +1134,7 @@ describe('master plans', () => {
         branchId: x.s.branch,
         validFrom: VALID_FROM,
       });
-      const before = await rowsOf(x.s.branch);
+      const before = await rowsOf(x.s);
       for (const path of ['master-take', 'master-keep']) {
         const call = (browser: Browser) =>
           at(NOV02, async () =>
@@ -1138,7 +1165,7 @@ describe('master plans', () => {
           ),
         ),
       ).toBe('plan_master_stale');
-      expect(await rowsOf(x.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s)).toEqual(before);
       for (const browser of [otherHead, otherTeacher]) {
         expect(
           codeOf(
@@ -1299,9 +1326,9 @@ describe('master plans', () => {
     it('is refused after the window with no approved request (09, The plan window)', async () => {
       const x = await scene();
       const master = await masterWith(x, 2);
-      const before = await rowsOf(x.s.branch);
+      const before = await rowsOf(x.s);
       expect(codeOf(await copyMaster(x, master.id, THURSDAY))).toBe('plan_window_closed');
-      expect(await rowsOf(x.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s)).toEqual(before);
     });
 
     it('carries the master link into a copy of the plan of the same grade and language, and through a separation (decision 11)', async () => {
@@ -1605,13 +1632,13 @@ describe('master plans', () => {
         ['changed', 'M1', true],
         ['changed', 'M4', false],
       ]);
-      const before = await rowsOf(x.s.branch);
+      const before = await rowsOf(x.s);
       for (const path of ['master-take', 'master-keep'] as const) {
         expect(codeOf(await takeOrKeep(x, path, changed.revision, THURSDAY))).toBe(
           'plan_window_closed',
         );
       }
-      expect(await rowsOf(x.s.branch)).toEqual(before);
+      expect(await rowsOf(x.s)).toEqual(before);
       // A Text request over the fourth lesson, approved by the Head Teacher.
       const plan = await planOf(x, THURSDAY);
       const fourth = plan.rows[3];

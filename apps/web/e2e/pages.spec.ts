@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, NEW_PASSWORD } from './accounts';
+import { watchPage, whatPageShows } from './diagnose';
 import {
   changeFirstPassword,
   checkNewRecord,
@@ -19,7 +20,14 @@ import { codeNow } from './totp';
  */
 async function open(page: Page, address: string, title: string): Promise<void> {
   await page.goto(address);
-  await expect(heading(page, title)).toBeVisible({ timeout: 15_000 });
+  try {
+    await expect(heading(page, title)).toBeVisible({ timeout: 15_000 });
+  } catch (error) {
+    // The title never came, though it came on the same commit elsewhere: say what was there.
+    throw new Error(`${address} showed no title "${title}": ${await whatPageShows(page)}`, {
+      cause: error,
+    });
+  }
 }
 
 /**
@@ -212,6 +220,7 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
   // Under CI's 10-minute step limit, which also starts the servers: a stall fails here with a
   // report and a trace (the walk takes 3 to 4 minutes).
   test.setTimeout(420_000);
+  watchPage(page);
   const account = accountOf('pages');
 
   // Signed out: the sign-in frame.

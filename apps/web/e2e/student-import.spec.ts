@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, headerLink, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
 // Written by the seed of the API (`STUDENT_IMPORT_FILE` of apps/api/src/testing/e2e/import-file.ts).
@@ -30,7 +30,7 @@ test('an Academic Vice Principal imports students from the template', async ({ p
 
   await page.goto('/people/students');
   await expect(heading(page, en.people.students.title)).toBeVisible();
-  await page.getByRole('link', { name: en.people.import.open, exact: true }).click();
+  await headerLink(page, en.people.import.open).click();
   await expect(heading(page, en.people.import.title)).toBeVisible();
 
   const texts = en.people.import;
