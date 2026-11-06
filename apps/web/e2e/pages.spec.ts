@@ -11,10 +11,15 @@ import {
 } from './steps';
 import { codeNow } from './totp';
 
-/** A page opened by its address, waited for by its title. */
+/**
+ * A page opened by its address, waited for by its title. The walk opens dozens of pages on
+ * Vite's development server beside the other workers, so a title may take longer than the
+ * default 5 seconds there: twice on `main` (5 November 2026, Subjects and Vacancies) while the
+ * same commit passed on its pull request.
+ */
 async function open(page: Page, address: string, title: string): Promise<void> {
   await page.goto(address);
-  await expect(heading(page, title)).toBeVisible();
+  await expect(heading(page, title)).toBeVisible({ timeout: 15_000 });
 }
 
 /**
