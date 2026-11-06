@@ -413,6 +413,8 @@ Plan approved on pull request #292 with corrections 1 to 3. Flagged on issue #42
 | For #42: the 11.4 approval names "`parent_accounts` edit, as in 11.1", while 11.1 grants view, create and export | Build plan text, decided by the plan of 11.4 (decision 16) |
 | Demo seed: Parent accounts for every class but the first of each branch, with the demo password | Decision 17 |
 | **Build decision.** A print locks the `relative_accounts` rows of the class in the order of their ids and reads the state again after the lock; a print and a reset at the same moment give one valid password | Must-fix 3 of the plan's spec review |
+| **Look first** (build). An administrator marked the same person as the relative cannot reset or "print again" their own Parent account (`own_account`, 403); a first print of their own slip is allowed | An administrator's own password is not reset by that administrator (task 0.6); permission review of the code, should-fix 5 |
+| **Build decision.** A parent session is refused on the live notification connection | Notifications are for staff; spec review of the code, should-fix 7 |
 | **Build decision.** The relative's personal data report shows the login, whether a password was chosen, the last sign-in and every slip with its branch | Correction 3 of the plan review |
 
 ## 6 November 2026: a work added by hand is named (task 10.6)
