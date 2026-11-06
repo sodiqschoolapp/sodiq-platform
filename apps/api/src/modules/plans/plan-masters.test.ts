@@ -367,19 +367,45 @@ describe('master plans', () => {
         .execute()
         .then((rows) => rows.map((row) => JSON.stringify(row)).sort());
     }
-    for (const table of [
-      'lesson_plan_masters',
-      'lesson_plan_master_items',
-      'lesson_plan_master_works',
+    // A master of all branches (no branch) is counted when its subject is one this branch
+    // plans, its items and works with it. Masters of all branches are school-wide, and the
+    // test files that run beside this one (`plan-masters.database.test.ts`,
+    // `scope-refusals.test.ts`) write their own of other subjects; counting every one made
+    // this comparison fail at random on CI (5 and 6 November 2026).
+    const subjects = t.database.migrator
+      .selectFrom('lesson_plans')
+      .select('subject_id')
+      .where('branch_id', '=', branch);
+    const masters = await t.database.migrator
+      .selectFrom('lesson_plan_masters')
+      .selectAll()
+      .where((builder) =>
+        builder.or([
+          builder('branch_id', '=', branch),
+          builder.and([builder('branch_id', 'is', null), builder('subject_id', 'in', subjects)]),
+        ]),
+      )
+      .execute();
+    const items = await t.database.migrator
+      .selectFrom('lesson_plan_master_items')
+      .selectAll()
+      .where(
+        'master_id',
+        'in',
+        masters.length === 0 ? [randomUUID()] : masters.map((row) => row.id),
+      )
+      .execute();
+    const works = await t.database.migrator
+      .selectFrom('lesson_plan_master_works')
+      .selectAll()
+      .where('item_id', 'in', items.length === 0 ? [randomUUID()] : items.map((row) => row.id))
+      .execute();
+    for (const [table, rows] of [
+      ['lesson_plan_masters', masters],
+      ['lesson_plan_master_items', items],
+      ['lesson_plan_master_works', works],
     ] as const) {
-      found[table] = await t.database.migrator
-        .selectFrom(table)
-        .selectAll()
-        .where((builder) =>
-          builder.or([builder('branch_id', '=', branch), builder('branch_id', 'is', null)]),
-        )
-        .execute()
-        .then((rows) => rows.map((row) => JSON.stringify(row)).sort());
+      found[table] = rows.map((row) => JSON.stringify(row)).sort();
     }
     found.audit = (
       await t.database.migrator

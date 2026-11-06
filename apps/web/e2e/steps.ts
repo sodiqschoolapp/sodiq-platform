@@ -12,6 +12,15 @@ export type PageTexts = typeof uz | typeof ru | typeof en;
 export const heading = (page: Page, name: string) =>
   page.getByRole('heading', { name, exact: true });
 
+/**
+ * A link of the page's own header (`PageHeader`, inside `main`), never one of the same words
+ * elsewhere: an empty list repeats its header's actions in its empty state (`12`, an empty page
+ * shows its first action), so "Import from Excel" is on the page twice while the branch holds
+ * no record yet, which depends on which tests ran before (CI, 5 November 2026).
+ */
+export const headerLink = (page: Page, name: string) =>
+  page.getByRole('main').locator('header').getByRole('link', { name, exact: true });
+
 /** The language chooser of the page, named in the language the page is in now. */
 export const languageChooser = (page: Page, t: PageTexts = en) =>
   page.getByRole('combobox', { name: t.language.label, exact: true });
