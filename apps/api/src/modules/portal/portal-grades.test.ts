@@ -787,7 +787,27 @@ describe('the portal grades and attendance', () => {
         .where('number', '=', 1)
         .executeTakeFirstOrThrow()
     ).id;
-    for (const quarter of [otherQuarter, randomUUID()]) {
+    // A quarter of another (the next) year of the child's own branch (permission review should-fix 1).
+    const earlierQuarter = await t.database.migrator.transaction().execute(async (transaction) => {
+      const earlier = await transaction
+        .insertInto('academic_years')
+        .values({ branch_id: s.branch, start_date: '2027-09-02', end_date: '2028-05-30' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const rows = await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: s.branch,
+            academic_year_id: earlier.id,
+            number,
+          })),
+        )
+        .returning(['id', 'number'])
+        .execute();
+      return rows.find((one) => one.number === 1)?.id ?? '';
+    });
+    for (const quarter of [otherQuarter, earlierQuarter, randomUUID()]) {
       const response = await get(parent, `/api/portal/children/${child}/grades?quarter=${quarter}`);
       expect([response.status, codeOf(response)]).toEqual([404, 'not_found']);
       expect(JSON.stringify(response.body)).not.toContain('figures');
@@ -805,7 +825,12 @@ describe('the portal grades and attendance', () => {
       expect([response.status, codeOf(response)]).toEqual([404, 'not_found']);
       expect(JSON.stringify(response.body)).not.toContain('OTHER');
     }
-    const asStaff = await staffGet(`/api/portal/children/${child}/grades`);
-    expect(asStaff.status).toBe(403);
+    for (const path of [
+      `/api/portal/children/${child}/grades`,
+      `/api/portal/children/${child}/attendance?date=2026-10-26`,
+    ]) {
+      const asStaff = await staffGet(path);
+      expect([asStaff.status, codeOf(asStaff)], path).toEqual([403, 'permission_denied']);
+    }
   });
 });

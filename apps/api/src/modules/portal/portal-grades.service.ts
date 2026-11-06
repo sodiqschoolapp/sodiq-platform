@@ -8,9 +8,9 @@ import {
   type PortalMark,
   type PortalScore,
 } from '@sodiq/shared';
-import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { StudentResultsService } from '../results/student-results.service.js';
+import { lessonTimes } from './portal-grades.query.js';
 import { childWeekScope, inSpan, portalChild } from './portal-scope.js';
 
 /** A comment "visible to parents" with a body, by its target (decision 8). */
@@ -237,17 +237,9 @@ export class PortalGradesService {
           .select('time_zone')
           .where('id', '=', span.branchId)
           .executeTakeFirstOrThrow();
-        const times = await sql<{ id: string; start_minutes: number; end_minutes: number }>`
-          select l.id,
-            (extract(epoch from (l.starts_at at time zone ${branch.time_zone})
-              - (l.starts_at at time zone ${branch.time_zone})::date::timestamp) / 60)::int as start_minutes,
-            (extract(epoch from (l.ends_at at time zone ${branch.time_zone})
-              - (l.starts_at at time zone ${branch.time_zone})::date::timestamp) / 60)::int as end_minutes
-          from lessons l
-          where l.id = any(${ids}::uuid[])
-        `.execute(transaction);
+        const times = await lessonTimes(transaction, ids, branch.time_zone);
         return {
-          times: new Map(times.rows.map((row) => [row.id, row])),
+          times: new Map(times.map((row) => [row.id, row])),
           comments: await parentsComments(transaction, scope.child.id, ids),
         };
       });

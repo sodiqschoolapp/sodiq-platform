@@ -1,6 +1,7 @@
 import {
   REQUEST_KEY_HEADER,
   apiErrorSchema,
+  portalAttendanceWeekSchema,
   portalChildrenSchema,
   portalHomeworkWeekSchema,
   portalWeekSchema,
@@ -987,6 +988,25 @@ describe('the parent portal', () => {
       ]);
       expect((await weekAt('2026-11-09')).lessons.map((one) => one.subject.id)).toEqual([
         b.subject,
+      ]);
+      // Task 11.3 (plan test 6): the Attendance page reads each date in the branch of that
+      // date too: the Monday before the move from the old branch, whose `students` row the
+      // child no longer has; a week after it from the new branch once its lesson is held.
+      const attendanceAt = async (date: string, moment?: string) =>
+        portalAttendanceWeekSchema
+          .parse(
+            ok(
+              await get(
+                caller,
+                `/api/portal/children/${own.studentId}/attendance?date=${date}`,
+                moment,
+              ),
+            ),
+          )
+          .lessons.map((one) => [one.date, one.subject.id, one.mark]);
+      expect(await attendanceAt('2026-10-26')).toEqual([['2026-10-26', a.subject, 'unmarked']]);
+      expect(await attendanceAt('2026-11-09', '2026-11-10T12:00:00+05:00')).toEqual([
+        ['2026-11-09', b.subject, 'unmarked'],
       ]);
     });
 
