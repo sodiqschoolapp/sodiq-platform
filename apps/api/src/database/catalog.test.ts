@@ -227,6 +227,10 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "Whether a student is active on the date of a moment in the time zone of the student's branch, a yes or no asked by sign-in, which comes before any branch is known (task 11.1, decision 6 of pull request #292).",
   'parent_account_blocked(uuid,timestamp with time zone)':
     'Whether a Parent account can no longer sign in (relative archived or merged, or no live link with portal access on to an active student in any branch), a yes or no asked by sign-in and by every request of a parent session, before any branch is known (10, Telegram: "when the account can no longer sign in"; task 11.1, decision 6 of pull request #292).',
+  'portal_children(uuid,timestamp with time zone)':
+    "The children a Parent account may see at a moment (open link, portal access on, relative not archived or merged, student active), each with its present branch, first and last name and class: the child scope of every portal route, read before any branch is known, since a parent's session names none and a child may be in any branch (10, What parents see; task 11.2, decisions 3 and 4 of pull request #294, Look first). Nothing else of the student.",
+  'portal_child_branches(uuid,uuid,date,date,timestamp with time zone)':
+    "The branches of a child's class memberships over a span of dates, with the part of the span each covers, only for a child in the account's scope (task 11.2, decision 6 of pull request #294): a branch move accepted ahead keeps the old branch until it takes effect, so a week can lie in two branches. Ids and dates only.",
   'own_relative_name(uuid)':
     'The full name of the relative of the account of the session, for its own session answer, as own_person_name for staff (task 11.1, plan of pull request #292).',
   'parent_slip_state(uuid,uuid,timestamp with time zone)':

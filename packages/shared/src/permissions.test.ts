@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTIONS,
   checkTable,
+  OWN_FAMILY_AREAS,
   freezeTable,
   PERMISSIONS,
   permits,
@@ -766,6 +767,7 @@ describe('a frozen permission table', () => {
       'plan_requests',
       'plan_windows',
       'plans',
+      'portal',
       'quarter_closing',
       'quarters',
       'rating',
@@ -792,6 +794,10 @@ describe('a frozen permission table', () => {
       'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
+    // Task 11.2: the portal for the parent only, view only, as the owner approved; no staff role.
+    expect(
+      Object.entries(PERMISSIONS.portal).filter(([, actions]) => actions.length > 0),
+    ).toEqual([['parent', ['view']]]);
     // Task 11.1: as the owner approved, and no other role (the `parent` row empty).
     expect(
       Object.entries(PERMISSIONS.parent_accounts).filter(([, actions]) => actions.length > 0),
@@ -1073,6 +1079,18 @@ describe('the rules no permission table may break', () => {
 
     expect(checkTable(table)).toEqual([
       'plans: head_teacher has export and the Super Admin does not',
+    ]);
+  });
+
+  // Task 11.2 (decision 15 of #294): the own family's areas are the parent's alone.
+  it('keep every staff role out of an area of the own family, the Super Admin too', () => {
+    expect(OWN_FAMILY_AREAS).toEqual(['portal']);
+    expect(checkTable({ portal: rows({ parent: ['view'] }) })).toEqual([]);
+    expect(checkTable({ portal: rows({ super_admin: ['view'], parent: ['view'] }) })).toEqual([
+      'portal: super_admin has an action in an area of the own family',
+    ]);
+    expect(checkTable({ portal: rows({ teacher: ['view'] }) })).toEqual([
+      'portal: teacher has an action in an area of the own family',
     ]);
   });
 });

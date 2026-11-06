@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../testing/create-test-app.js';
 
 // CLAUDE.md, Repository layout: API code is grouped by module in
-// apps/api/src/modules/<module>/, with these names.
+// apps/api/src/modules/<module>/, with these names; `portal` added by task 11.2 (docs/decisions.md,
+// Standing decisions; the owner adds it to CLAUDE.md, review correction 1 of pull request #294).
 const MODULE_NAMES = [
   'access',
   'audit',
@@ -15,6 +16,7 @@ const MODULE_NAMES = [
   'notifications',
   'people',
   'plans',
+  'portal',
   'results',
   'setup',
   'timetable',

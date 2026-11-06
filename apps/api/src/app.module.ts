@@ -16,6 +16,7 @@ import { JournalModule } from './modules/journal/journal.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PeopleModule } from './modules/people/people.module.js';
 import { PlansModule } from './modules/plans/plans.module.js';
+import { PortalModule } from './modules/portal/portal.module.js';
 import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
@@ -23,7 +24,7 @@ import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { ReportingModule } from './reporting/reporting.module.js';
 
 /**
- * What the API and the jobs worker share: the plumbing and the twelve product
+ * What the API and the jobs worker share: the plumbing and the thirteen product
  * modules, which hold the job handlers beside the routes.
  */
 export const SHARED_MODULES = [
@@ -45,6 +46,7 @@ export const SHARED_MODULES = [
   PlansModule,
   ResultsModule,
   FeedbackModule,
+  PortalModule,
   // Last: its shutdown hook runs after the others at the same distance, so the
   // reports of a stop leave after the connections closed.
   ReportingModule,

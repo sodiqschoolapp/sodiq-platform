@@ -9,6 +9,7 @@ import {
   BRANCH_HEADER,
   branchIdSchema,
   freezeTable,
+  permits,
   type PermissionTable,
   type Role,
   OWN_CLASS_ROLES,
@@ -118,6 +119,15 @@ export class PermissionGuard implements CanActivate {
     // Task 11.1 (decision 2 of pull request #292, Look first): a parent session never carries
     // staff rights. It reaches only the routes of its own account marked for it; every other
     // route refuses it, before the table is read (the `parent` row of an area included).
+    // Task 11.2 (decision 1 of pull request #294, Look first): a portal route is a parent
+    // session's alone, and only while the table gives the `parent` role the portal's `view`;
+    // no staff session reaches it, whatever its roles.
+    if (access.kind === 'portal') {
+      if (session.kind !== 'parent' || !permits(this.table, 'parent', 'portal', 'view')) {
+        throw new ApiException('permission_denied', 403);
+      }
+      return true;
+    }
     if (session.kind === 'parent' && (access.kind !== 'any_signed_in' || !access.parent)) {
       throw new ApiException('permission_denied', 403);
     }

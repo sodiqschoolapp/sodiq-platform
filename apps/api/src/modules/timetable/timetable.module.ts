@@ -89,6 +89,7 @@ import { LoadReports } from './load-report.service.js';
     LessonHistoryReader,
   ],
   // Task 5.6b-1: a calendar save writes the lessons of the dates it changes.
-  exports: [TimetableCalendarLessons],
+  // Task 11.2: the portal reads a child's week through the one view builder.
+  exports: [TimetableCalendarLessons, TimetableViews],
 })
 export class TimetableModule {}

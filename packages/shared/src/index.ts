@@ -298,6 +298,7 @@ export {
 export {
   ACTIONS,
   checkTable,
+  OWN_FAMILY_AREAS,
   freezeTable,
   PERMISSIONS,
   permits,
@@ -2575,3 +2576,4 @@ export {
 
 export * from './parent-accounts.js';
 export { latinSpelling } from './names.js';
+export * from './portal.js';

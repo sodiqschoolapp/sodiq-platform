@@ -294,6 +294,13 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/auth/sign-out': 'any_signed_in_parent',
   'POST /api/auth/sign-out-everywhere': 'any_signed_in',
   'PUT /api/auth/language': 'any_signed_in_parent',
+  // The parent portal (task 11.2, decision 1 of pull request #294, Look first): a Parent
+  // account only, every staff role refused; each route checks the child scope itself
+  // (`portal.test.ts`).
+  'GET /api/portal/children': 'portal',
+  'GET /api/portal/children/:studentId/timetable': 'portal',
+  'GET /api/portal/children/:studentId/homework': 'portal',
+  'GET /api/portal/children/:studentId/files/:fileId': 'portal',
   // The own photo (task 2.3c-2, decision 18 of pull request #66): the Principal too.
   'PUT /api/auth/photo': 'any_signed_in',
   'DELETE /api/auth/photo': 'any_signed_in',

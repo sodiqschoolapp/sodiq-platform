@@ -34,6 +34,8 @@ export type ExpectedAccess =
   | 'public'
   | 'any_signed_in'
   | 'any_signed_in_parent'
+  /** A route of the parent portal (task 11.2): a Parent account only, no staff role. */
+  | 'portal'
   | { roles: readonly Role[]; branch: 'request' | 'none' };
 
 const REACHED_HEADER = 'X-Harness-Reached-Handler';
@@ -202,7 +204,10 @@ function expectedOutcome(listed: ExpectedAccess, caller: Caller, inHomeBranch: b
     return 'not_signed_in';
   }
   if (caller.parentAccount === true) {
-    return listed === 'any_signed_in_parent' ? 'allowed' : 'refused';
+    return listed === 'any_signed_in_parent' || listed === 'portal' ? 'allowed' : 'refused';
+  }
+  if (listed === 'portal') {
+    return 'refused';
   }
   if (listed === 'any_signed_in' || listed === 'any_signed_in_parent') {
     return 'allowed';
