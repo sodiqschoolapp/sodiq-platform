@@ -122,6 +122,24 @@ describe('the decision to merge', () => {
         kind: 'hold',
         reason: `an earlier "${verdict}" at ${HEAD} stands against the "ready to merge"`,
       });
+      // An approval posted before it never hides it (review of #293: two reviewer runs on one
+      // draft sha can post an approval and a "changes needed", #140).
+      expect(
+        decideMerge(
+          pull(),
+          [
+            review(4, `[review] approved at ${HEAD}`),
+            review(5, `[review] ${verdict} at ${HEAD} @abbosc`),
+            ready(10),
+          ],
+          green,
+          10,
+        ),
+        `approved, then ${verdict}`,
+      ).toEqual({
+        kind: 'hold',
+        reason: `an earlier "${verdict}" at ${HEAD} stands against the "ready to merge"`,
+      });
     }
     // A CI red verdict and an approval never stand against it.
     expect(

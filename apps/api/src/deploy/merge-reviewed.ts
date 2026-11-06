@@ -117,10 +117,16 @@ export function decideMerge(
   if (newest.id !== triggerCommentId) {
     return { kind: 'skip', reason: 'a newer review at the head started its own run' };
   }
+  // Every earlier verdict at the head is looked at: an approval or a CI red never stands against
+  // the merge, and must not hide a later one that does (review of #293).
   const against = atHead.find(
-    (review) => review.id !== newest.id && review.verdict !== 'ready to merge' && !review.ciRed,
+    (review) =>
+      review.id !== newest.id &&
+      review.verdict !== 'ready to merge' &&
+      review.verdict !== 'approved' &&
+      !review.ciRed,
   );
-  if (against !== undefined && against.verdict !== 'approved') {
+  if (against !== undefined) {
     return {
       kind: 'hold',
       reason: `an earlier "${against.verdict}" at ${pull.headSha} stands against the "ready to merge"`,
