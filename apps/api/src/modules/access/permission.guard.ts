@@ -123,6 +123,12 @@ export class PermissionGuard implements CanActivate {
     // session's alone, and only while the table gives the `parent` role the portal's `view`;
     // no staff session reaches it, whatever its roles.
     if (access.kind === 'portal') {
+      if (owedStepsAllowedOn(handler).length > 0) {
+        // As for a route with a permission: a session that owes a step never reads a child.
+        throw new Error(
+          `The route ${context.getClass().name}.${handler.name} is a portal route and is also open to a session that owes a step of sign-in.`,
+        );
+      }
       if (session.kind !== 'parent' || !permits(this.table, 'parent', 'portal', 'view')) {
         throw new ApiException('permission_denied', 403);
       }

@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 500, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. With a permission of the table: 475.
+- Routes of the application: 504, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 4. For the own account: 21. The parent portal: 4. With a permission of the table: 475.
 - Routes with a limit inside the route: 154.
-- Routes that take an id: 394, with 831 ids (branch 737, school 76, own 2, none 16).
-- Areas of the permission table: 59.
+- Routes that take an id: 397, with 835 ids (branch 737, school 76, own 6, none 16).
+- Areas of the permission table: 60.
 
 ## Routes without a role
 
@@ -173,6 +173,13 @@ Every signed-in account, for its own account only (`@AnySignedIn`):
 - `POST /api/notifications/read-all`
 - `PUT /api/auth/language` (a parent session too, task 11.1)
 - `PUT /api/auth/photo`
+
+A Parent account only, for a child of its own (`@PortalChild`, task 11.2; every staff role refused, the child scope checked in the route):
+
+- `GET /api/portal/children`
+- `GET /api/portal/children/:studentId/files/:fileId`
+- `GET /api/portal/children/:studentId/homework`
+- `GET /api/portal/children/:studentId/timetable`
 
 Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):
 
@@ -653,6 +660,10 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/plans/reports/requests` | `query:teacherId` | staff | branch | `src/modules/plans/plan-delivery.test.ts > answers none of another branch’s plans to a teacher filter of another branch or an unknown one, in every report and the file` |
 | `GET /api/plans/requests` | `query:yearId` | academic year | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown year, quarter, lesson, event or subject of the request routes, writing nothing` |
 | `GET /api/plans/windows` | `query:yearId` | academic year | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown quarter on open and extend, and writes nothing` |
+| `GET /api/portal/children/:studentId/files/:fileId` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404`<br>`src/modules/portal/portal.test.ts > the files of homework` |
+| `GET /api/portal/children/:studentId/files/:fileId` | `path:fileId` | file of a homework the child’s page lists | own | `src/modules/portal/portal.test.ts > the files of homework` |
+| `GET /api/portal/children/:studentId/homework` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
+| `GET /api/portal/children/:studentId/timetable` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
 | `GET /api/results/branch-summary` | `query:quarterId` | quarter | branch | `src/modules/results/home-pages.test.ts > refuses the Academic Vice Principal and a Teacher (403), and answers 404 for another branch's or an unknown quarter` |
 | `GET /api/results/closing` | `query:quarterId` | quarter | branch | `src/modules/results/closing.test.ts > answers 404 for another branch's or an unknown quarter, journal, subject and student, changing no row` |
 | `GET /api/results/closing/:quarterId/recalculation` | `path:quarterId` | quarter | branch | `src/modules/results/closing.test.ts > answers 404 for another branch's and an unknown quarter and journal, the rows and the audit log unchanged` |
@@ -1734,6 +1745,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | senior_head_teacher | yes |  |  |  | yes |
 | head_teacher | yes |  |  |  | yes |
 | teacher | yes |  | yes |  | yes |
+
+### `portal`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| parent | yes |  |  |  |  |
 
 ### `quarter_closing`
 

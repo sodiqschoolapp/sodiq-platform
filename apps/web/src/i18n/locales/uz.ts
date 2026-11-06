@@ -2096,6 +2096,7 @@ export const uz: Texts<'one' | 'other'> = {
   },
   portal: {
     child: 'Farzand',
+    chooseChild: 'Farzandni tanlang',
     childName: '{{first}} {{last}}',
     childWithClass: '{{first}} {{last}}, {{className}}',
     account: 'Akkaunt',
@@ -2108,7 +2109,7 @@ export const uz: Texts<'one' | 'other'> = {
     today: 'bugun',
     timetable: {
       title: 'Dars jadvali',
-      outsideYear: 'Bu haftada dars yoʻq: u oʻquv yilidan tashqarida.',
+      outsideYear: 'Bu haftada farzandingizda dars yoʻq.',
       dayOff: 'Dam olish kuni: {{name}}',
       noLessons: 'Dars yoʻq',
       lesson: '{{n}}-dars',

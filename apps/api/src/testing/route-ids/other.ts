@@ -14,6 +14,13 @@ const RESTORE_LESSON = `${LESSON_STORE} > is refused to the Academic Vice Princi
 const RESTORE_KEY = `${LESSON_STORE} > keeps a used key to its account, its branch and its role (request keys)`;
 const RESTORE_PLACE = `src/modules/setup/place-forced-deletes.test.ts > is refused to the Academic Vice Principal, the Principal and a Teacher, and answers 404 for another branch’s and an unknown id`;
 
+// Task 11.2 (pull request #294, decision 4): a child of the parent's own family, by the child
+// scope (`portal_children`); another family's child, a child out of scope and an unknown id are 404.
+const P = 'src/modules/portal/portal.test.ts';
+const CHILD_SCOPE = `${P} > every route of a child refuses a child out of scope with 404`;
+const CHILD_FILES = `${P} > the files of homework`;
+const CHILD_RULE = 'build plan 11.2: one child-scope check used by every portal route';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -33,6 +40,21 @@ const line = (
 });
 
 export const OTHER_IDS: RouteIds = {
+  'GET /api/portal/children/:studentId/timetable': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
+  ],
+  'GET /api/portal/children/:studentId/homework': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
+  ],
+  'GET /api/portal/children/:studentId/files/:fileId': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [
+      CHILD_SCOPE,
+      CHILD_FILES,
+    ]),
+    line('path:fileId', 'file of a homework the child’s page lists', 'own', CHILD_RULE, [
+      CHILD_FILES,
+    ]),
+  ],
   'GET /api/audit/entries': [
     line(
       'query:recordId',

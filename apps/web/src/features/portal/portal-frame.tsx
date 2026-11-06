@@ -52,6 +52,12 @@ export function PortalFrame(): React.JSX.Element {
                   });
                 }}
               >
+                {/* A child no longer listed (a link switched off): the field shows no other child. */}
+                {!children.data.children.some((child) => child.id === studentId) && (
+                  <option value={studentId ?? ''} disabled>
+                    {t('portal.chooseChild')}
+                  </option>
+                )}
                 {children.data.children.map((child) => (
                   <option key={child.id} value={child.id}>
                     {child.className === null

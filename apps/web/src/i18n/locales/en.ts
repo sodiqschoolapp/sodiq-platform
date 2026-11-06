@@ -2063,6 +2063,7 @@ export const en = {
   },
   portal: {
     child: 'Child',
+    chooseChild: 'Choose a child',
     childName: '{{first}} {{last}}',
     childWithClass: '{{first}} {{last}}, {{className}}',
     account: 'Account',
@@ -2075,7 +2076,7 @@ export const en = {
     today: 'today',
     timetable: {
       title: 'Timetable',
-      outsideYear: 'No lessons this week: it is outside the school year.',
+      outsideYear: 'No lessons for the child this week.',
       dayOff: 'Day off: {{name}}',
       noLessons: 'No lessons',
       lesson: 'Lesson {{n}}',

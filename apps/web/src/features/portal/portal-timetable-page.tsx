@@ -2,8 +2,10 @@ import { timeText, type PortalExam, type PortalLesson } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { EditIcon } from '@/components/icons';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { cn } from '@/lib/utils';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { portalWeekQuery, weekdayOfDate } from './portal-api';
@@ -41,6 +43,9 @@ export function PortalTimetablePage(): React.JSX.Element {
   const shown = days.filter((day) => !day.outsideYear);
   return (
     <>
+      <h1 className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em]">
+        {t('portal.timetable.title')}
+      </h1>
       <PortalWeekBar
         monday={week.data.monday}
         today={week.data.today}
@@ -64,7 +69,7 @@ export function PortalTimetablePage(): React.JSX.Element {
           ].sort((a, b) => a.start - b.start);
           return (
             <section key={day.date} className={PANEL} aria-labelledby={`day-${day.date}`}>
-              <h3 id={`day-${day.date}`} className="mb-3 text-sm font-semibold">
+              <h3 id={`day-${day.date}`} className={cn(SECTION_TITLE, 'mb-3')}>
                 {weekdayName(language, weekdayOfDate(day.date))},{' '}
                 {schoolDateText(day.date, language, false)}
                 {day.date === week.data.today && <> · {t('portal.today')}</>}
@@ -141,7 +146,10 @@ function LessonRow({
           </span>
         )}
         {lesson.changed && (
-          <span className="block text-sm font-semibold">{t('portal.timetable.changed')}</span>
+          <span className="flex items-center gap-1 text-sm font-semibold">
+            <EditIcon aria-hidden className="size-4" />
+            {t('portal.timetable.changed')}
+          </span>
         )}
       </span>
     </li>

@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
+import { cn } from '@/lib/utils';
 import { schoolDateText } from '@/lib/dates';
 import { datePlus } from './portal-api';
 
@@ -18,7 +20,7 @@ export function PortalWeekBar({
   const thisWeek = monday <= today && today <= sunday;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <h2 className="flex-1 text-[1.0625rem]/6 font-bold">
+      <h2 className={cn(SECTION_TITLE, 'flex-1')}>
         {t('portal.week', {
           from: schoolDateText(monday, i18n.language, false),
           to: schoolDateText(sunday, i18n.language),

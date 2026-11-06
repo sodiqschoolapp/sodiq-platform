@@ -226,11 +226,20 @@ async function givenIn(
       ? []
       : transaction
           .selectFrom('lesson_plan_files')
-          .select(['id', 'item_id', 'name', 'type', 'bytes'])
-          .where('item_id', 'in', itemIds)
-          .where('removed_at', 'is', null)
-          .orderBy('created_at')
-          .orderBy('id')
+          .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_files.item_id')
+          .select([
+            'lesson_plan_files.id',
+            'lesson_plan_files.item_id',
+            'lesson_plan_files.name',
+            'lesson_plan_files.type',
+            'lesson_plan_files.bytes',
+          ])
+          .where('lesson_plan_files.item_id', 'in', itemIds)
+          .where('lesson_plan_files.removed_at', 'is', null)
+          // The same conditions as the download (permission review should-fix 3).
+          .where('lesson_plan_items.cleared_at', 'is', null)
+          .orderBy('lesson_plan_files.created_at')
+          .orderBy('lesson_plan_files.id')
           .execute(),
   ]);
   const descriptionOf = new Map(works.map((one) => [one.id, one.description]));

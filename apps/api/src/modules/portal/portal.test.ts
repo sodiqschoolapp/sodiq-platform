@@ -11,7 +11,7 @@ import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { BRANCH_SETTING, MOMENT_SETTING } from '../../database/transactions.js';
+import { BRANCH_SETTING, MOMENT_SETTING, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { ParentsKit } from '../../testing/parents-kit.js';
@@ -391,6 +391,49 @@ describe('the parent portal', () => {
       expect((await get(parent, path)).status).toBe(200);
     });
 
+    it('ends the session of a parent whose only child leaves the school (401)', async () => {
+      const own = await parents.student(a.branch);
+      // The class row ends with the last school day, as a leaving leaves it.
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.otherClass,
+        studentId: own.studentId,
+        from: '2026-09-01',
+        until: '2026-10-27',
+        ownUntil: '2026-10-27',
+      });
+      const single = await parents.session(own.relativeId);
+      const caller = { cookie: single.cookie, accountId: single.account.id };
+      const path = `/api/portal/children/${own.studentId}/timetable?date=2026-10-26`;
+      expect((await get(caller, path)).status).toBe(200);
+      // Inactive from 27 October, the date of the moment.
+      await parents.members.leaving(t.database.migrator, a.branch, own.studentId, '2026-10-27');
+      const refused = await get(caller, path);
+      expect([refused.status, codeOf(refused)]).toEqual([401, 'not_signed_in']);
+    });
+
+    it('ends the session of a parent whose only link is unlinked (401)', async () => {
+      const own = await parents.student(a.branch);
+      await member(a.branch, a.otherClass, own.studentId);
+      const father = await parents.relativeOf(a.branch, own.studentId);
+      const single = await parents.session(father);
+      const caller = { cookie: single.cookie, accountId: single.account.id };
+      const path = `/api/portal/children/${own.studentId}/homework?date=2026-10-26`;
+      expect((await get(caller, path)).status).toBe(200);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`select set_config(${MOMENT_SETTING}, ${'2026-10-27T04:00:00.000Z'}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('student_relatives')
+          .set({ unlinked_at: new Date('2026-10-27T09:00:00+05:00') })
+          .where('relative_id', '=', father)
+          .execute();
+      });
+      const refused = await get(caller, path);
+      expect([refused.status, codeOf(refused)]).toEqual([401, 'not_signed_in']);
+    });
+
     it('ends the session of a parent whose only child goes out of scope (401)', async () => {
       const own = await parents.student(a.branch);
       await member(a.branch, a.otherClass, own.studentId);
@@ -543,6 +586,55 @@ describe('the parent portal', () => {
       expect((await weekOf(child, date)).exams).toEqual([]);
     });
 
+    it('shows a child placed mid-week from that date only', async () => {
+      const late = await parents.childOf(a.branch, relative);
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.otherClass,
+        studentId: late,
+        from: '2026-10-28',
+      });
+      const first = await weekOf(late, '2026-10-26');
+      // Monday 26 October came before the class: no lesson, and no class that day.
+      expect(first.lessons).toEqual([]);
+      expect(first.days.find((one) => one.date === '2026-10-26')?.outsideYear).toBe(true);
+      expect(first.days.find((one) => one.date === '2026-10-28')?.outsideYear).toBe(false);
+      const next = await weekOf(late, '2026-11-09');
+      expect(next.lessons.map((one) => one.date)).toEqual(['2026-11-09']);
+    });
+
+    it('names a day off of the child’s grade only', async () => {
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: b.branch,
+          kind: 'day_off',
+          name: 'Grade 7 trip',
+          first_date: '2026-10-22',
+          last_date: '2026-10-22',
+          grade_from: 7,
+          grade_to: 7,
+        })
+        .execute();
+      const week = await weekOf(secondChild, '2026-10-19');
+      expect(week.days.find((one) => one.date === '2026-10-22')?.dayOff).toBe('Grade 7 trip');
+      expect(week.days.find((one) => one.date === '2026-10-21')?.dayOff).toBeNull();
+    });
+
+    it('shows a lesson of a vacancy as "to be named", never the vacancy’s label', async () => {
+      const lesson = a.lessons.find((one) => one.date === '2026-11-16');
+      if (lesson === undefined) throw new Error('The scene has 16 November.');
+      const vacancy = await load.vacancy(a.branch);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: vacancy })
+        .where('id', '=', lesson.id)
+        .execute();
+      const week = await weekOf(child, '2026-11-16');
+      expect(week.lessons.map((one) => one.teacher)).toEqual([null]);
+      expect(JSON.stringify(week)).not.toContain('Teacher wanted');
+    });
+
     it('answers a summer week with its days outside the year, never 422', async () => {
       const week = await weekOf(child, '2027-07-05');
       expect(week.lessons).toEqual([]);
@@ -605,6 +697,31 @@ describe('the parent portal', () => {
       }
     });
 
+    it('shows a homework added by hand with the title typed for it (10.6)', async () => {
+      const given = a.lessons.find((one) => one.date === '2026-10-12');
+      const checked = a.lessons.find((one) => one.date === '2026-10-19');
+      if (given === undefined || checked === undefined) throw new Error('The scene has them.');
+      const work = await t.database.migrator
+        .insertInto('journal_works')
+        .values({
+          branch_id: a.branch,
+          lesson_id: checked.id,
+          source_lesson_id: given.id,
+          kind: 'homework',
+          title: 'Read chapter 3',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      try {
+        const week = await homeworkOf(child, '2026-10-12');
+        expect(week.homework.map((one) => [one.title, one.dueOn, one.files])).toEqual([
+          ['Read chapter 3', '2026-10-19', []],
+        ]);
+      } finally {
+        await t.database.migrator.deleteFrom('journal_works').where('id', '=', work.id).execute();
+      }
+    });
+
     it('shows a homework added by hand before 10.6 with no title, by its number', async () => {
       const given = a.lessons.find((one) => one.date === '2026-10-19');
       const checked = a.lessons.find((one) => one.date === '2026-10-26');
@@ -631,6 +748,49 @@ describe('the parent portal', () => {
   });
 
   describe('the files of homework', () => {
+    it('refuses a file once every homework of its item is marked "not given", and a removed file', async () => {
+      const held = a.lessons.find((one) => one.date === '2026-10-26');
+      if (held === undefined) throw new Error('The scene has 26 October.');
+      const marker = await load.classes.account();
+      const marks = await t.database.migrator
+        .insertInto('journal_homework_not_given')
+        .values(
+          item.homeworks.map((work) => ({
+            branch_id: a.branch,
+            journal_id: a.journal,
+            lesson_id: held.id,
+            plan_work_id: work,
+            changed_by: marker,
+            changed_how: 'entry',
+            set_at: new Date('2026-10-26T12:00:00+05:00'),
+          })),
+        )
+        .returning('id')
+        .execute();
+      try {
+        const refused = await get(parent, `/api/portal/children/${child}/files/${file}`);
+        expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+      } finally {
+        await t.database.migrator
+          .deleteFrom('journal_homework_not_given')
+          .where(
+            'id',
+            'in',
+            marks.map((one) => one.id),
+          )
+          .execute();
+      }
+      const removed = await fileOf(a, item.itemId, 'old.pdf');
+      await t.database.migrator
+        .updateTable('lesson_plan_files')
+        .set({ removed_at: new Date('2026-10-26T12:00:00+05:00') })
+        .where('id', '=', removed)
+        .execute();
+      const gone = await get(parent, `/api/portal/children/${child}/files/${removed}`);
+      expect([gone.status, codeOf(gone)]).toEqual([404, 'not_found']);
+      expect(JSON.stringify((await homeworkOf(child)).homework)).not.toContain('old.pdf');
+    });
+
     it('sends a file of a homework the page lists for the child', async () => {
       const response = await get(parent, `/api/portal/children/${child}/files/${file}`);
       expect(response.status).toBe(200);
@@ -686,6 +846,51 @@ describe('the parent portal', () => {
         .where('relative_id', '=', own.relativeId)
         .execute();
       expect(await scopeOf(account.id)).toEqual({ ids: [], blocked: true });
+    });
+
+    it('agrees with the sign-in block for an unlinked relative and a student who left', async () => {
+      const moment = async <T>(at: string, work: (db: Transaction) => Promise<T>) =>
+        t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`select set_config(${MOMENT_SETTING}, ${new Date(at).toISOString()}, true)`.execute(
+            transaction,
+          );
+          return work(transaction);
+        });
+      // Unlinked: the relative's link to the only child ends (another main contact is kept).
+      const one = await parents.student(a.branch);
+      await member(a.branch, a.otherClass, one.studentId);
+      const second = await parents.relativeOf(a.branch, one.studentId);
+      const secondAccount = await parents.account(second);
+      expect(await scopeOf(secondAccount.id)).toEqual({ ids: [one.studentId], blocked: false });
+      await moment('2026-10-20T09:00:00+05:00', (db) =>
+        db
+          .updateTable('student_relatives')
+          .set({ unlinked_at: new Date('2026-10-20T09:00:00+05:00') })
+          .where('relative_id', '=', second)
+          .execute(),
+      );
+      expect(await scopeOf(secondAccount.id)).toEqual({ ids: [], blocked: true });
+      // Left: the only child is inactive from 20 October.
+      const two = await parents.student(a.branch);
+      const leaving = await parents.members.leaving(
+        t.database.migrator,
+        a.branch,
+        two.studentId,
+        '2026-10-20',
+      );
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.otherClass,
+        studentId: two.studentId,
+        from: '2026-09-01',
+        until: '2026-10-20',
+        endedBy: 'leaving',
+        leavingId: leaving,
+      });
+      const twoAccount = await parents.account(two.relativeId);
+      expect(await scopeOf(twoAccount.id)).toEqual({ ids: [], blocked: true });
+      // A merged relative has no live link left (`relative_merged_links`): the link conditions
+      // above already keep it out; `merged_into is null` is kept as 0158 has it.
     });
 
     it('answers the branch of each part of a week a branch move splits', async () => {

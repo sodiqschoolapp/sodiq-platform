@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { PortalChildren, PortalHomeworkWeek, PortalWeek } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -191,8 +191,46 @@ describe('the parent portal', () => {
         json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
     });
     renderApp(`/portal/${ANVAR}/timetable`);
+    // Sent to the staff home page, which only a redirect brings.
+    await screen.findByRole('heading', { name: en.home.title });
+    expect(screen.queryByRole('combobox', { name: en.portal.child })).toBeNull();
+  });
+
+  it('lists every child with its class in the switcher', async () => {
+    portal();
+    renderApp(`/portal/${ANVAR}/timetable`);
+    const select = await screen.findByRole('combobox', { name: en.portal.child });
     await waitFor(() => {
-      expect(screen.queryByRole('combobox', { name: en.portal.child })).toBeNull();
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((one) => one.textContent),
+      ).toEqual(['Anvar Karimov, 7 Oxford', 'Malika Karimova, 3 Cambridge']);
     });
+  });
+
+  it('says so for a week with no class, and shows no other child for one no longer listed', async () => {
+    const gone = '0190a000-0000-7000-8000-0000000000ee';
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT()),
+      'GET /api/portal/children': () => json(CHILDREN),
+      [`GET /api/portal/children/${ANVAR}/timetable`]: () =>
+        json({
+          ...week([]),
+          exams: [],
+          days: [{ date: '2026-10-26', outsideYear: true, dayOff: null }],
+        } satisfies PortalWeek),
+      [`GET /api/portal/children/${gone}/timetable`]: () =>
+        json({ error: { code: 'not_found', message: 'Not found.' } }, 404),
+    });
+    renderApp(`/portal/${ANVAR}/timetable`);
+    await screen.findByText(en.portal.timetable.outsideYear);
+    cleanup();
+    renderApp(`/portal/${gone}/timetable`);
+    const select = await screen.findByRole('combobox', { name: en.portal.child });
+    await screen.findByRole('button', { name: en.problems.retry });
+    expect((select as HTMLSelectElement).selectedOptions[0]?.textContent).toBe(
+      en.portal.chooseChild,
+    );
   });
 });

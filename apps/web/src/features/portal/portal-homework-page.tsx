@@ -4,7 +4,8 @@ import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { cn } from '@/lib/utils';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { downloadPortalFile, portalHomeworkQuery, weekdayOfDate } from './portal-api';
@@ -45,6 +46,9 @@ export function PortalHomeworkPage(): React.JSX.Element {
   const dates = [...new Set(week.data.homework.map((one) => one.givenOn))];
   return (
     <>
+      <h1 className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em]">
+        {t('portal.homework.title')}
+      </h1>
       <PortalWeekBar
         monday={week.data.monday}
         today={week.data.today}
@@ -60,7 +64,7 @@ export function PortalHomeworkPage(): React.JSX.Element {
       ) : (
         dates.map((given) => (
           <section key={given} className={PANEL} aria-labelledby={`given-${given}`}>
-            <h3 id={`given-${given}`} className="mb-3 text-sm font-semibold">
+            <h3 id={`given-${given}`} className={cn(SECTION_TITLE, 'mb-3')}>
               {t('portal.homework.givenOn', {
                 date: `${weekdayName(language, weekdayOfDate(given))}, ${schoolDateText(given, language, false)}`,
               })}
@@ -68,6 +72,12 @@ export function PortalHomeworkPage(): React.JSX.Element {
             <ul className="grid gap-4">
               {week.data.homework
                 .filter((one) => one.givenOn === given)
+                // `10`: "Tasks by date and subject".
+                .sort(
+                  (a, b) =>
+                    a.subject.names[language].localeCompare(b.subject.names[language], language) ||
+                    a.number - b.number,
+                )
                 .map((one) => (
                   <HomeworkRow
                     key={`${one.subject.id}-${String(one.number)}-${one.title ?? ''}`}

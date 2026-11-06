@@ -8245,6 +8245,134 @@ try {
   });
   seeded.portal = { login: portalParent.login, password: portalParent.firstPassword };
 
+  // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
+  // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,
+  // checked at yesterday's: the portal shows the week and the homework of Kamron.
+  {
+    const plus = (days: number) => isoDate(new Date(tashkentToday.getTime() + days * dayMs));
+    const lessonsKit = await LessonsKit.create(migrator);
+    const biology = await lessonsKit.load.classes.subject({
+      grades: [7],
+      name: 'Biology',
+      journalType: 'graded',
+    });
+    const year = await migrator
+      .selectFrom('academic_years')
+      .select(['id', sql<string>`end_date::text`.as('end')])
+      .where('branch_id', '=', portalBranch)
+      .executeTakeFirstOrThrow();
+    const quarterDates: [string, string][] = [
+      [startDate, plus(20)],
+      [plus(30), plus(90)],
+      [plus(100), plus(170)],
+      [plus(180), year.end],
+    ];
+    const quarters: string[] = [];
+    for (const [index, [start, end]] of quarterDates.entries()) {
+      const quarter = await migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year.id)
+        .where('number', '=', index + 1)
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      quarters.push(quarter.id);
+    }
+    const weights = { attendance: 20, classwork: 40, homework: 40 };
+    await migrator
+      .insertInto('subject_daily_weights')
+      .values({ branch_id: portalBranch, subject_id: biology, ...weights })
+      .execute();
+    await migrator
+      .insertInto('subject_quarter_weights')
+      .values(
+        quarters.map((quarter) => ({
+          branch_id: portalBranch,
+          subject_id: biology,
+          quarter_id: quarter,
+          ...weights,
+        })),
+      )
+      .execute();
+    const kamronClass = portalClasses.find((one) => one.grade === 7)?.id ?? '';
+    const source = await lessonsKit.source(
+      portalBranch,
+      year.id,
+      [{ classId: kamronClass, groupId: null, subjectId: biology }],
+      startDate,
+    );
+    const row = await migrator
+      .selectFrom('teaching_load_rows')
+      .select('teacher_id')
+      .where('id', '=', source.lessons[0]?.loadRowId ?? '')
+      .executeTakeFirstOrThrow();
+    await migrator
+      .insertInto('journals')
+      .values({
+        branch_id: portalBranch,
+        academic_year_id: year.id,
+        class_id: kamronClass,
+        group_id: null,
+        subject_id: biology,
+        runs: `{[${startDate},)}`,
+      })
+      .execute();
+    const lessonOn = new Map<number, string>();
+    for (let offset = -7; offset <= 7; offset += 1) {
+      const date = plus(offset);
+      const lessonId = await migrator.transaction().execute(async (transaction) => {
+        const block = await transaction
+          .insertInto('lesson_blocks')
+          .values({
+            branch_id: portalBranch,
+            academic_year_id: year.id,
+            quarter_id: quarters[0] ?? '',
+            lesson_date: date,
+            starts_at: new Date(`${date}T08:00:00+05:00`),
+            ends_at: new Date(`${date}T08:45:00+05:00`),
+            version_id: source.versionId,
+            pattern_block_id: source.patternBlockId,
+          })
+          .returning(['id', 'lesson_date', 'starts_at', 'ends_at'])
+          .executeTakeFirstOrThrow();
+        return (
+          await transaction
+            .insertInto('lessons')
+            .values({
+              branch_id: portalBranch,
+              block_id: block.id,
+              lesson_date: block.lesson_date,
+              starts_at: block.starts_at,
+              ends_at: block.ends_at,
+              class_id: kamronClass,
+              subject_id: biology,
+              teacher_id: row.teacher_id,
+              load_row_id: source.lessons[0]?.loadRowId ?? '',
+              pattern_entry_id: source.lessons[0]?.patternEntryId ?? '',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+      });
+      lessonOn.set(offset, lessonId);
+    }
+    await migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${`${plus(-2)}T09:00:00+05:00`}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: portalBranch,
+          lesson_id: lessonOn.get(-1) ?? '',
+          source_lesson_id: lessonOn.get(-2) ?? '',
+          kind: 'homework',
+          title: 'Read pages 20 to 24',
+        })
+        .execute();
+    });
+  }
+
   console.log(JSON.stringify(seeded));
 } finally {
   await app.close();

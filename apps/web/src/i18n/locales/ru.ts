@@ -2173,6 +2173,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   },
   portal: {
     child: 'Ребёнок',
+    chooseChild: 'Выберите ребёнка',
     childName: '{{first}} {{last}}',
     childWithClass: '{{first}} {{last}}, {{className}}',
     account: 'Аккаунт',
@@ -2185,7 +2186,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     today: 'сегодня',
     timetable: {
       title: 'Расписание',
-      outsideYear: 'На этой неделе уроков нет: она вне учебного года.',
+      outsideYear: 'На этой неделе у ребёнка нет уроков.',
       dayOff: 'Выходной: {{name}}',
       noLessons: 'Уроков нет',
       lesson: 'Урок {{n}}',
