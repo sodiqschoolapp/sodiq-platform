@@ -11,6 +11,7 @@ import {
   snapshotAddress,
   snapshotName,
 } from './neon-snapshot.js';
+import { mergeReviewed } from './merge-reviewed.js';
 import { pdfCheck, PdfCheckError } from './pdf-check.js';
 import { checkRelease, ReleaseCheckError } from './release-check.js';
 import { releaseWindowOpen, tashkentTime } from './release-window.js';
@@ -41,6 +42,10 @@ import { smokeTest, SmokeError } from './smoke.js';
 //   node dist/deploy/cli.js backup-upload <file>
 //     BACKUP_R2_ACCOUNT_ID, BACKUP_R2_ACCESS_KEY_ID, BACKUP_R2_SECRET_ACCESS_KEY and
 //     BACKUP_R2_BUCKET in the environment. Stores the day's dump (backup.ts; task 10.2a).
+//   node dist/deploy/cli.js merge-reviewed <pull number> <comment id>
+//     GITHUB_TOKEN, GITHUB_REPOSITORY and MERGE_TOKEN in the environment. Merges a task pull
+//     request at the sha its newest [review] "ready to merge" names, with checks and e2e green, or
+//     tells the owner why not (merge-reviewed.ts; .github/workflows/merge-reviewed.yml).
 //   node dist/deploy/cli.js backup-mark
 //     GRAFANA_METRICS_URL, GRAFANA_METRICS_USER and GRAFANA_TOKEN in the environment.
 //     Tells Grafana the moment of the last proved and stored dump.
@@ -55,7 +60,7 @@ const [command, ...rest] = process.argv.slice(2);
 
 function usage(): never {
   console.error(
-    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | pdf-check | backup-snapshot | backup-snapshot-delete | backup-upload <file> | backup-mark | backup-roles | backup-compare <counts> <counts>',
+    'Usage: node dist/deploy/cli.js deploy --commit <sha> <serviceId>... | smoke <url> | window | release-check <sha> | merge-reviewed <pull> <comment> | pdf-check | backup-snapshot | backup-snapshot-delete | backup-upload <file> | backup-mark | backup-roles | backup-compare <counts> <counts>',
   );
   process.exit(2);
 }
@@ -225,6 +230,26 @@ try {
       now,
     });
     console.log(`Grafana told: the backup of ${now.toISOString()}.`);
+  } else if (command === 'merge-reviewed') {
+    const [pull, comment] = rest;
+    const pullNumber = Number(pull);
+    const triggerCommentId = Number(comment);
+    if (!Number.isSafeInteger(pullNumber) || !Number.isSafeInteger(triggerCommentId)) {
+      usage();
+    }
+    const settings = required(['GITHUB_TOKEN', 'GITHUB_REPOSITORY']);
+    const outcome = await mergeReviewed({
+      token: settings.GITHUB_TOKEN,
+      // An empty token holds the merge with a notice to the owner instead of failing unseen.
+      mergeToken: process.env.MERGE_TOKEN ?? '',
+      repository: settings.GITHUB_REPOSITORY,
+      pullNumber,
+      triggerCommentId,
+      log: (line) => {
+        console.log(line);
+      },
+    });
+    console.log(`Outcome: ${outcome}.`);
   } else {
     usage();
   }

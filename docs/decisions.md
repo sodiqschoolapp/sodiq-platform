@@ -65,6 +65,18 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 6 November 2026: GitHub merges a reviewed task (owner)
+
+Decided by the owner on 6 November 2026, in chat. From 6 November 2026 the review routine's merge call of `review-pr` step 10 was refused by its session's permission check ("merge without review") on every task: #285, #290 and #292 waited for the owner, as #234 and #236 did before the standing instruction of 26 October 2026 in the routine's prompt. The routine runs in auto mode, whose check judges each command on its own beside the allow list of `.claude/settings.json`, and does not reliably follow the prompt. Cloud sessions offer Auto, Accept edits and Plan only; Bypass is not offered, and `defaultMode` in a settings file is ignored there.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (the loop's own rules, stop-list item 2). The reviewer decides `[review] ready to merge at <sha>`; the workflow Merge reviewed (`.github/workflows/merge-reviewed.yml`, `apps/api/src/deploy/merge-reviewed.ts`) carries the merge out on that comment, with the rule of `review-pr` step 10: this repository, a `task/` branch, into `main`, the newest `[review]` by `abbosc` at the head sha, no other verdict at that sha against it (a `CI red` or an `approved` never is), `checks` and `e2e` green at that sha, merged at that sha only. Otherwise left alone, or held with an `@abbosc` comment and the label `needs-owner` | A fixed program merges where the session's check refused; the merge rule is the same, read from GitHub on every attempt, and no AI judgement runs in the merge step |
+| **Look first** (a secret, stop-list item 1). The merge uses `MERGE_TOKEN`, a fine-grained token of the owner's account for `sodiq-platform` only, Contents and Pull requests read and write, made by the owner (`docs/cloud-loop.md`, section 8). Without it every task is held with a notice | GitHub starts no workflow for a merge made with a workflow's own token: no CI on `main`, no test deploy, no `start-after-merge` |
+| The workflow runs `main`'s code (an `issue_comment` run checks out the default branch), only for a comment by `abbosc`, and passes only the comment's id and the pull request's number to the shell | The repository is public: no pull request's code and no comment text runs with the token |
+| Every session acts as `abbosc`, so a comment that starts with `[review] ready to merge` is trusted as the reviewer's. The workflow merges only a `task/` branch, only the sha named, only with green checks | The same trust the bridge (`routines.yml`) and the start routine already give `abbosc`'s `[review]` comments; before, only the session's check stood between a builder and the merge API, which `.claude/settings.json` allows |
+| `review-pr` step 10 still holds the reviewer's own merge call until the owner changes the skill: the session's check refused the edit of `.claude/skills/` from a cloud session (self-modification). Until then a reviewer run may post `@abbosc … could not merge` and the label `needs-owner` while the workflow merges the same sha a few minutes later | The workflow does not read the label; a merged pull request needs nothing more |
+
 ## 6 November 2026: the Release 2 plan (owner)
 
 Decided by the owner in chat on 6 November 2026, with the `/spec-change` of that day (`docs/spec-changes.md`). The tasks are in `docs/build-plan.md`, Release 2.
