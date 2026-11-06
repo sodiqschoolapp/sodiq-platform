@@ -119,7 +119,11 @@ describe('the parent portal', () => {
   ): Promise<{ itemId: string; homeworks: string[] }> {
     const quarter = await t.database.migrator
       .selectFrom('quarters')
-      .select(['id', sql<string>`start_date::text`.as('start'), sql<string>`end_date::text`.as('end')])
+      .select([
+        'id',
+        sql<string>`start_date::text`.as('start'),
+        sql<string>`end_date::text`.as('end'),
+      ])
       .where('academic_year_id', '=', s.year)
       .where('number', '=', input.quarter ?? 1)
       .executeTakeFirstOrThrow();
@@ -252,7 +256,12 @@ describe('the parent portal', () => {
         .execute();
     });
     left = await parents.childOf(a.branch, relative);
-    const leaving = await parents.members.leaving(t.database.migrator, a.branch, left, '2026-10-20');
+    const leaving = await parents.members.leaving(
+      t.database.migrator,
+      a.branch,
+      left,
+      '2026-10-20',
+    );
     await parents.members.member({
       branch: a.branch,
       classId: a.otherClass,
@@ -478,7 +487,10 @@ describe('the parent portal', () => {
 
     it('shows a group lesson only to a member of the group, and a cancel without its reason', async () => {
       const date = '2026-10-19';
-      const group = await load.classes.group(b.branch, b.year, b.subject, [b.classId, b.otherClass]);
+      const group = await load.classes.group(b.branch, b.year, b.subject, [
+        b.classId,
+        b.otherClass,
+      ]);
       const own = b.lessons.find((one) => one.date === date);
       const other = b.otherLessons.find((one) => one.date === date);
       if (own === undefined || other === undefined) throw new Error('The scene has 19 October.');
@@ -521,7 +533,11 @@ describe('the parent portal', () => {
       const week = await weekOf(secondChild, date);
       expect(week.lessons.map((one) => [one.state, one.exam])).toEqual([['cancelled', true]]);
       expect(week.exams).toEqual([
-        expect.objectContaining({ date, title: 'Quarter exam', room: expect.any(String) as unknown }),
+        expect.objectContaining({
+          date,
+          title: 'Quarter exam',
+          room: expect.any(String) as unknown,
+        }),
       ]);
       // The child of the other branch, the same date: no exam.
       expect((await weekOf(child, date)).exams).toEqual([]);
@@ -707,7 +723,11 @@ describe('the parent portal', () => {
           .execute();
         await transaction
           .updateTable('class_memberships')
-          .set({ valid_until: '2026-10-27', ended_by: 'branch_move', ended_by_branch_move_id: release.id })
+          .set({
+            valid_until: '2026-10-27',
+            ended_by: 'branch_move',
+            ended_by_branch_move_id: release.id,
+          })
           .where('id', '=', old)
           .execute();
         await transaction
@@ -754,8 +774,12 @@ describe('the parent portal', () => {
         portalWeekSchema.parse(
           ok(await get(caller, `/api/portal/children/${own.studentId}/timetable?date=${date}`)),
         );
-      expect((await weekAt('2026-10-26')).lessons.map((one) => one.subject.id)).toEqual([a.subject]);
-      expect((await weekAt('2026-11-09')).lessons.map((one) => one.subject.id)).toEqual([b.subject]);
+      expect((await weekAt('2026-10-26')).lessons.map((one) => one.subject.id)).toEqual([
+        a.subject,
+      ]);
+      expect((await weekAt('2026-11-09')).lessons.map((one) => one.subject.id)).toEqual([
+        b.subject,
+      ]);
     });
 
     it('cannot be run by any role but the application', async () => {

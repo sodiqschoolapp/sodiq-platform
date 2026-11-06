@@ -116,7 +116,8 @@ describe('the parent portal', () => {
     expect(screen.queryByRole('navigation', { name: en.layout.menu })).toBeNull();
     expect(
       calls.every(
-        (call) => call.route === 'GET /api/auth/session' || call.route.startsWith('GET /api/portal/'),
+        (call) =>
+          call.route === 'GET /api/auth/session' || call.route.startsWith('GET /api/portal/'),
       ),
     ).toBe(true);
   });

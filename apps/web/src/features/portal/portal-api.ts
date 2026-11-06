@@ -12,8 +12,7 @@ export const PORTAL_KEY = ['portal'] as const;
 
 export const portalChildrenQuery = queryOptions({
   queryKey: [...PORTAL_KEY, 'children'],
-  queryFn: async () =>
-    portalChildrenSchema.parse(await answerOf(api.GET('/api/portal/children'))),
+  queryFn: async () => portalChildrenSchema.parse(await answerOf(api.GET('/api/portal/children'))),
 });
 
 /** The week of a date of a child; today in the child's branch when no date is given. */
@@ -71,4 +70,3 @@ export function weekdayOfDate(date: string): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
   const day = new Date(Date.parse(`${date}T00:00:00Z`)).getUTCDay();
   return (day === 0 ? 7 : day) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }
-

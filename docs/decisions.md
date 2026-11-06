@@ -21,7 +21,7 @@ Decided once, valid for every task. A session reads this section at its start (`
 | A session asks before dropping, resetting or recreating anything in `sodiq_dev`; test databases are its own `sodiq_test_*` | The owner's local data. |
 | Claude Code never reads `.env` (`.claude/settings.json` denies it); the local `SECOND_STEP_KEY` is public, a server gets its own random key in task 0.10 | Secrets never enter a transcript. |
 | No real personal data anywhere: code, tests, seeds, logs, commit messages, pull requests. Invented names only | `CLAUDE.md`. |
-| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3. |
+| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294). |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
 ## Decided ahead for Phase 10 (owner, 26 October 2026)
@@ -388,6 +388,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 22. Languages of instruction are fixed to Uzbek and Russian (`05`) and shown read-only; grade bands are shown read-only.
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
+
+## 6 November 2026: the portal: frame, child switcher, timetable and homework (task 11.2)
+
+Plan approved on pull request #294 with corrections 1 and 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (permission guard). A fourth access declaration, `@PortalChild()`: the guard lets in a parent session only, while the table gives the `parent` role `view` in `portal`; every staff session is refused | A Parent account has no assignment (0158), so `@Requires` cannot let it in; build plan 11.2, "no staff role has it" (decision 1) |
+| **Look first** (permission table rule). `OWN_FAMILY_AREAS` (`portal`): `checkTable` gives no staff role an action there, the Super Admin included, in place of "the Super Admin has every action any role has" | `edge/close-relatives`: "the staff account does not show the parent view"; the approval: "no staff role has it" (decision 15, build) |
+| **Look first** (spec text). Homework shows the files of its plan item, and nothing else of the item but the lesson's topic. Proposed `/spec-change` of `09`, What a plan contains, row Homework: "… Families see the homework's title and text, and the files of its plan item, in the portal (Release 2)." The risk the owner weighs: a teacher's materials of a lesson (an answer key) reach families | `10`: "with their titles and files"; a homework has no files of its own in `09` (decision 2) |
+| **Look first** (personal data across branches). A parent reads a child's data in any branch; the branch comes from the scope function, never from a header | Build line: "in any branch" (decision 3) |
+| **Look first** (spec text). The topic of the held lesson at which a homework was given is shown with it; no topic of a lesson not yet held | `09`: "Students and parents see the topic and the homework from Release 2" (correction 2) |
+| **Look first** (process). `CLAUDE.md`, Repository layout, is left to the owner: the line to add is "API code is grouped by module in `apps/api/src/modules/<module>/`, and web code by feature in `apps/web/src/features/<feature>/`, with the same names: `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal`." | Correction 1 of the review |
+| Every refusal of the child scope is 404 `not_found` | Tells nothing of which students exist (decision 4) |
+| The scope is read once per request from the database (`portal_children`, 0159), never kept | "from the next request" (decision 5) |
+| Each date of a week is read in the branch of the child's class membership on that date (`portal_child_branches`) | A branch move ends the old rows on its date (0053; decision 6) |
+| A cancel shows "Cancelled" or "Replaced by an exam", never its typed reason; the teacher is the lesson's on its date; a vacancy shows "Teacher to be named"; no lesson status, journal or version | `10` lists rooms, teachers and changes; no staff notes (decision 7) |
+| Homework from held lessons only, "not given" left out, the plan's text as the task text, the check lesson's date as its due date; a work added by hand before 10.6 shows "Homework n" | `09`: a homework is "a task given at this lesson" (decision 8) |
+| Homework of an exempt lesson is shown | `07`'s "left out" is about averages (decision 9) |
+| Portal reads are not audited, and a file download is not an export | The audit log records changes; a plan file's download is not an export either (decisions 10 and 11) |
+| The week, Monday to Sunday, is the unit of both pages; a week outside the year answers its days "outside" | `12` (decision 12; should-fix 4) |
+| `/portal` is the parent's landing page; `/parent` stays the account page, linked as "Account" | Decision 13 |
+| No photo in the switcher: names and the class | Decision 14 |
+| **Build decision.** The child's week is read through the one view builder (`TimetableViews.childWeekIn`), and the homework through the journal's columns reader (`journalsColumns`) | One source of the timetable and of what was given (`06`, One source) |
+| **Build decision.** The subject's colour is in the portal's answers, used as on every timetable | `12`, Look and feel (should-fix 10) |
 
 ## 6 November 2026: Parent accounts, slips and reset (task 11.1)
 

@@ -795,9 +795,9 @@ describe('a frozen permission table', () => {
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
     // Task 11.2: the portal for the parent only, view only, as the owner approved; no staff role.
-    expect(
-      Object.entries(PERMISSIONS.portal).filter(([, actions]) => actions.length > 0),
-    ).toEqual([['parent', ['view']]]);
+    expect(Object.entries(PERMISSIONS.portal).filter(([, actions]) => actions.length > 0)).toEqual([
+      ['parent', ['view']],
+    ]);
     // Task 11.1: as the owner approved, and no other role (the `parent` row empty).
     expect(
       Object.entries(PERMISSIONS.parent_accounts).filter(([, actions]) => actions.length > 0),

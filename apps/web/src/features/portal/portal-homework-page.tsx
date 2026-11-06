@@ -106,7 +106,9 @@ function HomeworkRow({
       <span className="font-semibold">
         {homework.title ?? t('portal.homework.numbered', { n: homework.number })}
       </span>
-      {homework.description !== null && <p className="whitespace-pre-line">{homework.description}</p>}
+      {homework.description !== null && (
+        <p className="whitespace-pre-line">{homework.description}</p>
+      )}
       {homework.dueOn !== null && (
         <span className="text-sm">
           {t('portal.homework.dueOn', { date: schoolDateText(homework.dueOn, language, false) })}

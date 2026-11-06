@@ -6,8 +6,8 @@ import { codeNow } from './totp';
 
 // Task 11.1, pull request #292 (`10`, Signing in; `edge/close-relatives`, first passwords): an
 // Academic Vice Principal prints the slips of "7 Seeded", one per parent of its two students,
-// then one parent signs in with the slip, chooses a password and lands in the parent's own
-// frame, with no staff menu. All names are invented.
+// then one parent signs in with the slip, chooses a password and lands in the portal (task
+// 11.2), with no staff menu. All names are invented.
 test('an Academic Vice Principal prints the parent slips of a class, and a parent signs in', async ({
   page,
 }) => {
@@ -67,11 +67,16 @@ test('an Academic Vice Principal prints the parent slips of a class, and a paren
   await languageChooser(parent).selectOption('en');
   await signIn(parent, en, login, password);
   await changeFirstPassword(parent, en, { login, password });
+  // Task 11.2: a parent lands on the portal, on the child's timetable.
+  const child = parent.getByRole('combobox', { name: en.portal.child, exact: true });
+  await expect(child).toBeVisible();
+  await expect(child.locator('option:checked')).toHaveText('Laylo Yoqubova, 7 Seeded');
+  await expect(parent.getByRole('navigation', { name: en.layout.menu })).toHaveCount(0);
+  await parent.getByRole('link', { name: en.portal.account, exact: true }).click();
   await expect(heading(parent, en.parent.title)).toBeVisible();
   await expect(parent.getByText('Nigora Yoqubova')).toBeVisible();
-  await expect(parent.getByRole('navigation', { name: en.layout.menu })).toHaveCount(0);
-  // A staff page sends the parent back to the own frame.
+  // A staff page sends the parent back to the portal.
   await parent.goto('/people/staff');
-  await expect(heading(parent, en.parent.title)).toBeVisible();
+  await expect(child).toBeVisible();
   await parent.close();
 });

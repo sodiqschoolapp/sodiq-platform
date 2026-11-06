@@ -31,10 +31,7 @@ export function PortalFrame(): React.JSX.Element {
   const tab = tabOf(pathname);
   const studentId = params.studentId;
   const tabLink = (to: PortalTab) =>
-    cn(
-      buttonVariants({ variant: tab === to ? 'default' : 'ghost' }),
-      'flex-1 sm:flex-none',
-    );
+    cn(buttonVariants({ variant: tab === to ? 'default' : 'ghost' }), 'flex-1 sm:flex-none');
   return (
     <div className="min-h-dvh bg-background">
       <header className="bg-card">
@@ -47,7 +44,10 @@ export function PortalFrame(): React.JSX.Element {
                 value={studentId ?? ''}
                 onChange={(event) => {
                   void navigate({
-                    to: tab === 'homework' ? '/portal/$studentId/homework' : '/portal/$studentId/timetable',
+                    to:
+                      tab === 'homework'
+                        ? '/portal/$studentId/homework'
+                        : '/portal/$studentId/timetable',
                     params: { studentId: event.target.value },
                   });
                 }}

@@ -77,7 +77,11 @@ export function PortalTimetablePage(): React.JSX.Element {
                 <ul className="grid gap-3">
                   {items.map((item) =>
                     item.lesson === null ? (
-                      <ExamRow key={`exam-${String(item.start)}`} exam={item.exam} language={language} />
+                      <ExamRow
+                        key={`exam-${String(item.start)}`}
+                        exam={item.exam}
+                        language={language}
+                      />
                     ) : (
                       <LessonRow
                         key={`lesson-${String(item.start)}-${item.lesson.subject.id}`}
@@ -108,11 +112,22 @@ function LessonRow({
   return (
     <li className="grid grid-cols-[4.5rem_1fr] gap-x-3">
       <span className="text-sm text-muted-foreground tabular-nums">
-        {lesson.lessonNumber === null ? null : <>{t('portal.timetable.lesson', { n: lesson.lessonNumber })}<br /></>}
+        {lesson.lessonNumber === null ? null : (
+          <>
+            {t('portal.timetable.lesson', { n: lesson.lessonNumber })}
+            <br />
+          </>
+        )}
         {timeText(lesson.start)}–{timeText(lesson.end)}
       </span>
       <span className="min-w-0">
-        <span className={cancelled ? 'flex items-center gap-2 line-through' : 'flex items-center gap-2 font-semibold'}>
+        <span
+          className={
+            cancelled
+              ? 'flex items-center gap-2 line-through'
+              : 'flex items-center gap-2 font-semibold'
+          }
+        >
           <SubjectSwatch colour={lesson.subject.colour} />
           {lesson.subject.names[language]}
         </span>
