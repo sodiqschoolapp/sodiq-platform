@@ -329,6 +329,12 @@ export const ERROR_CODES = [
   'login_taken',
   /** The staff record has no account yet: roles are given to an account (task 2.3a). */
   'no_account',
+  /** A parent who chose a password is never printed again (task 11.1; `edge/close-relatives`: "A relative who already chose a password is listed as signed in"). */
+  'parent_signed_in',
+  /** A parent's password is reset only once the account exists, printed on a first slip (task 11.1). */
+  'parent_no_account',
+  /** A relative whose links to the class all have portal access off gets no slip (task 11.1; `edge/close-relatives`: "linked to a student of the class with portal access on"). */
+  'parent_portal_off',
   /** The person has left: no account and no role is given (`edge/people-roles-accounts`, Staff over time: "Left: all roles ended"; task 2.3a). */
   'staff_left',
   /** A role is given in one of the branches of the person (task 2.3a, decision 10). */

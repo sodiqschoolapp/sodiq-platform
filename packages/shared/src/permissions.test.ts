@@ -759,6 +759,7 @@ describe('a frozen permission table', () => {
       'journal_orphans',
       'journal_support',
       'journal_unlocks',
+      'parent_accounts',
       'personal_data_report',
       'plan_masters',
       'plan_reports',
@@ -791,6 +792,13 @@ describe('a frozen permission table', () => {
       'vacancies',
     ]);
     expect(PERMISSIONS.branches.super_admin).toEqual(['view', 'create', 'edit']);
+    // Task 11.1: as the owner approved, and no other role (the `parent` row empty).
+    expect(
+      Object.entries(PERMISSIONS.parent_accounts).filter(([, actions]) => actions.length > 0),
+    ).toEqual([
+      ['super_admin', ['view', 'create', 'export']],
+      ['academic_vice_principal', ['view', 'create', 'export']],
+    ]);
     expect(PERMISSIONS.rooms.super_admin).toEqual(['view', 'create', 'edit', 'archive', 'export']);
     expect(PERMISSIONS.divisions.super_admin).toEqual([
       'view',

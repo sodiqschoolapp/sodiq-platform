@@ -29,6 +29,8 @@ import { StaffController } from './staff.controller.js';
 import { StaffSearch } from './staff-search.js';
 import { Staff } from './staff.service.js';
 import { StudentExports } from './student-exports.service.js';
+import { ParentAccountsController } from './parent-accounts.controller.js';
+import { ParentAccounts } from './parent-accounts.service.js';
 import { StaffImports } from './staff-imports.service.js';
 import { StudentImports } from './student-imports.service.js';
 import { StudentPhotosController } from './student-photos.controller.js';
@@ -81,8 +83,10 @@ import { Vacancies } from './vacancies.service.js';
     RelativesController,
     PersonalDataController,
     PeopleSearchController,
+    ParentAccountsController,
   ],
   providers: [
+    ParentAccounts,
     BranchMoves,
     StudentMerges,
     PersonalData,

@@ -76,8 +76,15 @@ export interface NewAccount {
    * hash while it holds its locks. Left out, the password is made here.
    */
   firstPassword?: PreparedFirstPassword;
-  /** For the audit entry: the staff record of the person (task 2.3a). */
+  /** For the audit entry: the staff record of the person (task 2.3a), or the relative (11.1). */
   personId?: string;
+  /**
+   * How long the first password works: 7 days for staff (the default), 30 days for a parent
+   * (`edge/close-relatives`, task 11.1).
+   */
+  validForMs?: number;
+  /** For the audit entry: the branch of the request (task 11.1); left out, the school's log. */
+  branchId?: string;
 }
 
 export interface CreatedAccount {
@@ -122,7 +129,9 @@ export class Accounts {
           login,
           password_hash: passwordHash,
           must_change_password: true,
-          password_expires_at: new Date(now.getTime() + FIRST_PASSWORD_VALID_MS),
+          password_expires_at: new Date(
+            now.getTime() + (account.validForMs ?? FIRST_PASSWORD_VALID_MS),
+          ),
           created_at: now,
           created_by: account.createdBy,
           // A new account is in Uzbek (decided by the owner, task 0.8d).
@@ -133,7 +142,7 @@ export class Accounts {
         .executeTakeFirst();
       if (inserted !== undefined) {
         await this.audit.record(transaction, {
-          branchId: null,
+          branchId: account.branchId ?? null,
           actorId: account.createdBy,
           action: 'account.create',
           record: { type: 'account', id: inserted.id },

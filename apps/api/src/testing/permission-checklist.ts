@@ -68,8 +68,12 @@ function routesWithoutRole(sources: ChecklistSources): string[] {
   }
   lines.push('', 'Every signed-in account, for its own account only (`@AnySignedIn`):', '');
   for (const [route, listed] of Object.entries(sources.access).sort()) {
-    if (listed === 'any_signed_in') {
-      lines.push(`- \`${route}\``);
+    if (listed === 'any_signed_in' || listed === 'any_signed_in_parent') {
+      lines.push(
+        listed === 'any_signed_in_parent'
+          ? `- \`${route}\` (a parent session too, task 11.1)`
+          : `- \`${route}\``,
+      );
     }
   }
   lines.push(
@@ -135,7 +139,7 @@ function countsOf(sources: ChecklistSources): string[] {
     '## The routes in numbers',
     '',
     `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role and nobody, in the own and in another branch.`,
-    `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in').length)}. With a permission of the table: ${String(withRole)}.`,
+    `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. With a permission of the table: ${String(withRole)}.`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
     `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,
     `- Areas of the permission table: ${String(Object.keys(sources.table).length)}.`,

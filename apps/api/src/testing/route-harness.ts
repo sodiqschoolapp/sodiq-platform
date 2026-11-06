@@ -26,8 +26,15 @@ import { signInKit } from './sign-in-kit.js';
  * whether the route works for the branch of the request or for none. Nothing
  * the harness expects is taken from the declaration of the route itself.
  */
+/**
+ * `any_signed_in_parent`: every signed-in account, a Parent account too (task 11.1: the routes of
+ * the own account the owner approved for the parent). Every other route refuses a parent.
+ */
 export type ExpectedAccess =
-  'public' | 'any_signed_in' | { roles: readonly Role[]; branch: 'request' | 'none' };
+  | 'public'
+  | 'any_signed_in'
+  | 'any_signed_in_parent'
+  | { roles: readonly Role[]; branch: 'request' | 'none' };
 
 const REACHED_HEADER = 'X-Harness-Reached-Handler';
 
@@ -86,9 +93,19 @@ export function declarationProblems(
     }
     const [access] = route.access;
     const listed = expected[route.name];
-    const kind = typeof listed === 'string' ? listed : 'requires';
+    const kind =
+      typeof listed === 'string'
+        ? listed === 'any_signed_in_parent'
+          ? 'any_signed_in'
+          : listed
+        : 'requires';
     if (access !== undefined && route.access.length === 1 && access.kind !== kind) {
       problems.push(`${route.name}: declared ${access.kind}, listed as ${kind}`);
+    }
+    if (access?.kind === 'any_signed_in' && access.parent !== (listed === 'any_signed_in_parent')) {
+      problems.push(
+        `${route.name}: declared ${access.parent ? '' : 'not '}open to a parent, listed ${listed === 'any_signed_in_parent' ? '' : 'not '}so`,
+      );
     }
     if (
       access?.kind === 'requires' &&
@@ -130,6 +147,8 @@ export interface Caller {
   role: Role | null;
   /** The cookies of its session; none for the caller who is not signed in. */
   cookies: string | undefined;
+  /** A relative's Parent account (task 11.1), which holds no role. */
+  parentAccount?: true;
 }
 
 export interface HarnessCallers {
@@ -182,7 +201,10 @@ function expectedOutcome(listed: ExpectedAccess, caller: Caller, inHomeBranch: b
   if (caller.cookies === undefined) {
     return 'not_signed_in';
   }
-  if (listed === 'any_signed_in') {
+  if (caller.parentAccount === true) {
+    return listed === 'any_signed_in_parent' ? 'allowed' : 'refused';
+  }
+  if (listed === 'any_signed_in' || listed === 'any_signed_in_parent') {
     return 'allowed';
   }
   if (caller.role === null || !listed.roles.includes(caller.role)) {
