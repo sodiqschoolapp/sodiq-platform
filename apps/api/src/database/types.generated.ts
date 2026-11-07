@@ -82,6 +82,49 @@ export interface AccountSecondSteps {
   secret: string;
 }
 
+export interface AnnouncementClasses {
+  announcement_id: string;
+  branch_id: string;
+  class_id: string;
+}
+
+export interface AnnouncementDeliveries {
+  account_id: string;
+  announcement_id: string;
+  attempts: Generated<number>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  next_try_at: Timestamp;
+  sent_at: Timestamp | null;
+  status: Generated<string>;
+  telegram_link_id: string;
+}
+
+export interface Announcements {
+  archived_at: Timestamp | null;
+  archived_by: string | null;
+  audience: string;
+  body: string;
+  branch_id: string | null;
+  created_at: Generated<Timestamp>;
+  edited_at: Timestamp | null;
+  edited_by: string | null;
+  ends_at: string | null;
+  first_date: string | null;
+  for_parents: boolean;
+  for_staff: boolean;
+  grades: number[] | null;
+  id: Generated<string>;
+  kind: string;
+  last_date: string | null;
+  place: string | null;
+  published_at: Timestamp;
+  published_by: string;
+  starts_at: string | null;
+  title: string;
+  version: Generated<number>;
+}
+
 export interface Assignments {
   account_id: string;
   branch_id: string | null;
@@ -2311,6 +2354,9 @@ export interface DB {
   account_lock_spans: AccountLockSpans;
   account_second_steps: AccountSecondSteps;
   accounts: Accounts;
+  announcement_classes: AnnouncementClasses;
+  announcement_deliveries: AnnouncementDeliveries;
+  announcements: Announcements;
   assignment_subjects: AssignmentSubjects;
   assignments: Assignments;
   audit_log: AuditLog;
