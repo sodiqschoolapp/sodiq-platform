@@ -1063,6 +1063,9 @@ export const uz: Texts<'one' | 'other'> = {
     import_decision_unknown: 'Qatorlar oʻzgardi. Faylni qayta yuklang.',
     import_changed:
       'Shu paytda kimdir oʻquvchilar yoki qarindoshlarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
+    subject_import_already_confirmed: 'Bu import allaqachon saqlangan. Fanlar roʻyxatini oching.',
+    subject_import_changed:
+      'Shu paytda kimdir fanlar yoki choraklarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
     photos_unavailable: 'Suratlar hozir mavjud emas. Keyinroq qayta urinib koʻring.',
     reset_link_invalid:
@@ -1769,6 +1772,39 @@ export const uz: Texts<'one' | 'other'> = {
       groupsElsewhere_other: 'Boshqa filiallarda: {{n}} guruh.',
       takenNames: 'Tiklanmadi, chunki uning nomlaridan biri endi faol fanda bor: {{names}}.',
       departmentArchivedNames: 'Tiklanmadi, chunki kafedra arxivda: {{names}}.',
+    },
+    subjectImport: {
+      open: 'Exceldan import',
+      title: 'Fanlar importi',
+      name: 'Fan',
+      saved_one: '{{count}} ta fan saqlandi.',
+      saved_other: '{{count}} ta fan saqlandi.',
+      toList: 'Fanlar roʻyxatini ochish',
+      confirm_one: '{{count}} ta fanni saqlash',
+      confirm_other: 'Barcha {{count}} ta fanni saqlash',
+      quarters_one:
+        'Baholanadigan fanning choraklik taqsimoti joriy va keyingi yillarning {{count}} ta ochiq choragiga yoziladi.',
+      quarters_other:
+        'Baholanadigan fanning choraklik taqsimoti joriy va keyingi yillarning {{count}} ta ochiq choragiga yoziladi.',
+      noQuarters:
+        'Filialda joriy yoki keyingi yilning ochiq choragi yoʻq: choraklik taqsimotlarni yil qoʻshilganda kiriting.',
+      notClean:
+        'Barcha qatorlar toʻgʻri boʻlmaguncha hech narsa saqlanmaydi. Faylni tuzatib, qaytadan yuklang.',
+      problems: {
+        required: 'buni toʻldiring.',
+        invalid: 'bu qiymat qabul qilinmaydi.',
+        value_unknown: 'roʻyxatdan qiymat tanlang.',
+        name_unknown: 'maktabda bu nomli faol kafedra yoʻq.',
+        name_ambiguous: 'bu nom ikki kafedrada bor; nomni boshqa tilda yozing.',
+        grades_invalid: 'sinflarni “5, 6, 7” yoki “5-7” koʻrinishida, 0 dan 11 gacha yozing.',
+        weight_invalid: '1 dan 100 gacha butun son yozing.',
+        weights_total: 'bu taqsimot qismlarining yigʻindisi 100 boʻlishi kerak.',
+        weights_attendance_only: 'faqat davomat fanida ulushlar yoʻq; buni boʻsh qoldiring.',
+        rating_exam_attendance_only: 'faqat davomat fanida reyting imtihoni yoʻq.',
+        rating_exam_weight_unwanted:
+          'reyting imtihoni oʻchirilgan; buni boʻsh qoldiring yoki uni yoqing.',
+        duplicate_in_file: 'shu nom {{rows}}-qatorlarda ham bor.',
+      },
     },
     travelTimes: {
       title: 'Yoʻl vaqti',

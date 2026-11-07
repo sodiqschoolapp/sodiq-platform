@@ -1,7 +1,17 @@
-import { subjectListSchema, subjectQuarterWeightsSchema } from '@sodiq/shared';
+import {
+  STUDENT_IMPORT_TYPES,
+  subjectImportConfirmResultSchema,
+  subjectImportPreviewSchema,
+  subjectListSchema,
+  subjectQuarterWeightsSchema,
+  type Language,
+  type SubjectImportConfirmResult,
+  type SubjectImportPreview,
+} from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
+import { fileNameOf, save } from '@/components/list/use-export';
 import { SETUP_KEY } from './setup-api';
 
 /**
@@ -51,3 +61,39 @@ export const invalidateSubjects = (queryClient: QueryClient): Promise<unknown> =
     queryClient.invalidateQueries({ queryKey: subjectsKey() }),
     queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'checklist'] }),
   ]);
+
+/**
+ * The subject import (the owner's change of 7 November 2026, #316): the system's template, the
+ * upload of a filled one with its preview, the preview again, and the confirm.
+ */
+export const downloadSubjectImportTemplate = async (language: Language): Promise<void> => {
+  const answer = await api.GET('/api/setup/subjects/import-template', {
+    params: { header: branchHeader(), query: { language } },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(answer));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(answer.response.headers.get('Content-Disposition'), 'subject-import.xlsx'));
+};
+
+export const uploadSubjectImport = async (file: File): Promise<SubjectImportPreview> =>
+  subjectImportPreviewSchema.parse(
+    await answerOf(
+      api.PUT('/api/setup/subjects/imports', {
+        params: { header: branchHeader() },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as Blob,
+        headers: { 'Content-Type': STUDENT_IMPORT_TYPES[0] ?? '' },
+      }),
+    ),
+  );
+
+export const confirmSubjectImport = async (id: string): Promise<SubjectImportConfirmResult> =>
+  subjectImportConfirmResultSchema.parse(
+    await answerOf(
+      api.POST('/api/setup/subjects/imports/{id}/confirm', {
+        params: { header: branchHeader(), path: { id } },
+        body: {},
+      }),
+    ),
+  );

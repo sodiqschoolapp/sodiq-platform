@@ -194,6 +194,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   import_already_done: 'The same file was already imported into the branch.',
   import_decision_unknown: 'A decision names a row or a relative the preview did not offer.',
   import_changed: 'A change made at the same moment met the import; nothing was saved. Try again.',
+  subject_import_already_confirmed: 'This subject import was confirmed already.',
+  subject_import_changed:
+    'A change of subjects made at the same moment met the import; nothing was saved. Try again.',
   photos_not_configured: 'Photos are not configured on this server.',
   photos_unavailable: 'The photo store did not answer.',
   reset_link_invalid: 'The link does not work.',

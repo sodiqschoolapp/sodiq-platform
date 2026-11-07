@@ -517,7 +517,7 @@ describe('the subject import', () => {
       expect(again.alreadyImportedOn).toBe('2026-10-10');
       const before = await rowsOf();
       refusedWith(await confirm(again.importId), 409, 'import_already_done');
-      refusedWith(await confirm(first.importId), 409, 'import_already_confirmed');
+      refusedWith(await confirm(first.importId), 409, 'subject_import_already_confirmed');
       expect(await rowsOf()).toEqual(before);
     });
   });

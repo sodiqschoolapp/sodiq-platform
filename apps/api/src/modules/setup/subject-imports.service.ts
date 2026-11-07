@@ -174,7 +174,7 @@ export class SubjectImports {
         return error.preview;
       }
       if (conflicted(error)) {
-        throw new ApiException('import_changed', 409);
+        throw new ApiException('subject_import_changed', 409);
       }
       throw error;
     }
@@ -193,7 +193,7 @@ export class SubjectImports {
       return await this.transactions.run(access.branchIds, async (transaction) => {
         const record = await this.readImport(transaction, branchId, id, true);
         if (record.confirmedAt !== null) {
-          throw new ApiException('import_already_confirmed', 409);
+          throw new ApiException('subject_import_already_confirmed', 409);
         }
         // Two imports of one file confirmed at the same moment: the second waits here for the
         // first to end and then finds it (the unique index of 0167 stays the last guard).
@@ -237,7 +237,7 @@ export class SubjectImports {
         return { outcome: 'not_clean', preview: error.preview };
       }
       if (conflicted(error)) {
-        throw new ApiException('import_changed', 409);
+        throw new ApiException('subject_import_changed', 409);
       }
       throw error;
     }

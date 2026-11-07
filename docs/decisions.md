@@ -65,6 +65,24 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 7 November 2026: the subject import (owner's change, pull request #316, Part 2)
+
+Plan approved on pull request #316 with its corrections. Flagged on issue #42.
+
+Approved by the owner in chat on 7 November 2026 ("Subject import is needed") and put on record here (correction 1 of the plan review): the subject import routes `GET subjects/import-template`, `PUT subjects/imports`, `POST subjects/imports/:id/preview` and `POST subjects/imports/:id/confirm` for the Super Admin and the Academic Vice Principal (stop-list item 5: they are guarded by `subjects` create and the service also asks `subjects` edit, both held by exactly these two roles, so no role gains a right); and the new `FILE_ROUTES` entry `SUBJECT_IMPORT_ROUTE` (`PUT /api/setup/subjects/imports`, an Excel workbook of at most 5 MB, the types and size of the student and staff imports; `.claude/rules/api.md`: "A route that takes files needs a declared exception there; ask first").
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A new file route, `SUBJECT_IMPORT_ROUTE` | The owner asked for the subject import; approved above |
+| The quarterly distribution is written by `Subjects.writeQuarterWeightsIn`, split out of `writeQuarterWeights`, as a first setting (`first`): no reason and no `setup.quarter_weights_changed` notice (correction 2 of the plan review) | A new subject has no lessons and no stored distribution |
+| The open quarters are locked `for key share` and their closed state read in a statement of its own once per run, before any row; a closed quarter is skipped | `.claude/rules/database.md`; `05`: "Weights of a quarter can change until the quarter is closed" |
+| The entries of the quarterly weights name the first assignment that permits `subjects` edit, decided from every assignment; the other entries the assignment the guard named (`subjects` create) | `.claude/rules/api.md`: a part allowed by another permission names the assignment that allowed it |
+| An empty switch cell takes the hand form's default (the language rule on, the others off); an empty journal type is graded | The form's defaults (`subject-form.tsx`); a graded row then needs its weights, so nothing is guessed silently |
+| A department is matched among the active departments of the school; a name of a department outside Academic is told `department_not_academic`; a name two Academic departments share is `name_ambiguous` | The hand form offers only Academic's departments; never guessed (as the staff import) |
+| A total other than 100 is told on the distribution's first column (`weights_total`); a part out of 1 to 100 or not whole on its own column (`weight_invalid`) | The hand schemas' bounds; the file names the cell to correct |
+| The preview answers `quarterCount`, the open quarters a graded row's quarterly distribution goes to | The person sees before the confirm where the weights land |
+| Two codes of its own, `subject_import_already_confirmed` and `subject_import_changed`, in place of `import_already_confirmed` and `import_changed` | Their texts name the student list and students (`.claude/rules/web.md`: the text of a code is true on every path that sends it); the other import codes (`import_not_template`, `import_empty`, `import_too_many_rows`, `import_already_done`, `import_file_too_large`) are true here |
+
 ## 6 November 2026: GitHub merges a reviewed task (owner)
 
 Decided by the owner on 6 November 2026, in chat. From 6 November 2026 the review routine's merge call of `review-pr` step 10 was refused by its session's permission check ("merge without review") on every task: #285, #290 and #292 waited for the owner, as #234 and #236 did before the standing instruction of 26 October 2026 in the routine's prompt. The routine runs in auto mode, whose check judges each command on its own beside the allow list of `.claude/settings.json`, and does not reliably follow the prompt. Cloud sessions offer Auto, Accept edits and Plan only; Bypass is not offered, and `defaultMode` in a settings file is ignored there.
