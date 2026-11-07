@@ -101,7 +101,7 @@ Readings decided in this plan where the spec is silent, for issue #42 (each with
 7. **Look first.** The Content Security Policy allows Telegram's mini app script, on the portal pages only.
 8. A chat that blocked the bot is marked and skipped by the digest until the parent opens the bot again.
 9. The attendance counts of the digest's summary line come from the same attendance service as the staff pages; no figure is calculated in the portal or the digest.
-10. The authors of announcements (11.7) are a permission decision proposed in that task's plan and decided by the owner.
+10. The authors of announcements (11.7) are a permission decision proposed in that task's plan and decided by the owner. Decided by the owner on 7 November 2026: the Super Admin for any audience; the Academic Vice Principal and the Vice Principal for Spiritual and Moral Education for audiences of the branch of the request (`docs/build-plan.md`, 11.7).
 
 ## 5 November 2026: Release 2 before the deferred list (owner)
 
