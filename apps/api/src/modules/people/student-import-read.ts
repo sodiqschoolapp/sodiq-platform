@@ -305,7 +305,8 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
   };
 
   const sex = required('sex', listed('sex', SEX_VALUES));
-  const birthDate = date('birthDate', true);
+  // Optional (owner, 7 November 2026; `04`, Excel import).
+  const birthDate = date('birthDate', false);
   const startsOn = date('startsOn', true);
   const contractSignedOn = date('contractSignedOn', true);
   const consentSignedOn = date('consentSignedOn', false);
@@ -357,10 +358,8 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
       },
     });
   }
+  // A row may have no relative (`04`, Relatives are optional).
   problems.push(...relativeProblems);
-  if (relatives.length === 0) {
-    problem('relative1FullName', 'needs_relative');
-  }
   for (const column of [
     'uid',
     'lastName',
@@ -377,7 +376,7 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
     lastName: cell('lastName') ?? '',
     paternalName: cell('paternalName') ?? '',
     sex: sex ?? 'male',
-    birthDate: birthDate ?? '2000-01-01',
+    birthDate,
     grade: grade ?? 0,
     documentType,
     documentNumber: cell('documentNumber') ?? '',

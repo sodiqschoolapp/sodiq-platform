@@ -318,14 +318,11 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu dars bekor qilingan. Uning katakchalarini oʻzgartirib boʻlmaydi; avval darsni tiklang.',
     student_merge_has_cells:
       'Birlashtiriladigan yozuvda jurnaldagi baholar yoki davomat bor, birlashtirish ularni hozircha koʻchira olmaydi. Avval ularni koʻchirishni dasturchidan soʻrang.',
-    student_needs_relative:
-      'Oʻquvchi kamida bitta qarindosh bilan saqlanadi. Qarindosh qoʻshing, soʻng qayta saqlang.',
     relative_phone_taken:
       'Bu telefon boshqa qarindoshga tegishli. Raqamni tekshiring yoki oʻsha qarindoshni oching.',
     relative_phone_exists:
       'Bu telefonli qarindosh allaqachon bor. Yangisini yaratish oʻrniga oʻsha kishini bogʻlang.',
     relative_phone_changed: 'Tanlangan qarindoshda endi bu telefon yoʻq. Telefonni qayta kiriting.',
-    last_relative: 'Oʻquvchida kamida bitta qarindosh qolishi kerak. Avval boshqasini qoʻshing.',
     main_contact_needed: 'Boshqa qarindoshni asosiy aloqa qilib tanlang.',
     merge_needs_super_admin:
       'Bu qarindoshlardan biri boshqa filial oʻquvchilariga bogʻlangan. Ularni faqat Super administrator birlashtiradi.',
@@ -2418,7 +2415,6 @@ export const uz: Texts<'one' | 'other'> = {
         value_unknown: 'roʻyxatdan qiymat tanlang.',
         class_unknown: 'filialda boshlanish sanasi yili uchun bunday sinf yoʻq.',
         needs_class: 'bugun yoki undan oldin boshlaydigan oʻquvchiga sinf kerak.',
-        needs_relative: 'kamida bitta qarindosh qoʻshing.',
         duplicate_in_file: 'xuddi shu qiymat {{rows}}-qatorlarda ham bor.',
         phone_two_names_in_file:
           'bu telefon {{rows}}-qatorlarda boshqa ism bilan. Telefonni yoki ismni tuzating.',
@@ -3049,8 +3045,8 @@ export const uz: Texts<'one' | 'other'> = {
       newMain: 'Yangi asosiy aloqa',
       chooseMainFirst: 'Avval asosiy aloqa kim boʻlishini tanlang.',
       choose: 'Tanlang',
-      needsRelative: 'Yozuvni oʻzgartirishdan oldin qarindosh qoʻshing.',
-      stepTitle: 'Qarindosh',
+      none: 'Hali qarindosh yoʻq.',
+      stepTitle: 'Qarindosh (ixtiyoriy)',
       notSet: 'Koʻrsatilmagan',
       linkLabel: 'Bogʻlanish: {{name}}',
       changeLink: 'Bogʻlanishni oʻzgartirish',

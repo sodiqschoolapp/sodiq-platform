@@ -252,7 +252,8 @@ const studentFields = {
   lastName: studentNameSchema,
   paternalName: optionalStudentNameSchema,
   sex: sexSchema,
-  birthDate: schoolDateSchema,
+  /** Optional (owner, 7 November 2026; `04`, Personal). */
+  birthDate: schoolDateSchema.nullable(),
   grade: studentGradeSchema,
   documentType: documentTypeSchema.nullable(),
   documentNumber: documentNumberSchema,
@@ -263,7 +264,8 @@ const studentFields = {
   region: regionSchema.nullable(),
   previousSchool: optionalText(PREVIOUS_SCHOOL_MAX_LENGTH),
   diagnosticScore: z.int().min(0).max(100).nullable(),
-  scholarship: scholarshipSchema,
+  /** None when not chosen (owner, 7 November 2026; `04`, Payment). */
+  scholarship: scholarshipSchema.default({ type: 'none', coverage: null, amount: null }),
   consentSignedOn: schoolDateSchema.nullable(),
   contract: studentContractSchema,
 };
@@ -296,7 +298,7 @@ export const studentCreateSchema = z
     ...studentFields,
     startsOn: schoolDateSchema,
     uid: studentUidSchema,
-    /** At least one relative, exactly one main contact (`04`, Close relatives; task 2.5a). */
+    /** Any relatives, none included; exactly one main contact when there are some (`04`, Close relatives). */
     relatives: studentRelativesInputSchema,
     /**
      * The class the student joins on the start date (task 3.1b, decision 2):
@@ -324,7 +326,8 @@ export type StudentUidCorrection = z.infer<typeof studentUidCorrectionSchema>;
 export const studentCheckSchema = z.strictObject({
   firstName: studentNameSchema,
   lastName: studentNameSchema,
-  birthDate: schoolDateSchema,
+  /** No date of birth: the warning matches the name alone (`edge/students-classes-groups`). */
+  birthDate: schoolDateSchema.nullable(),
   /** The record being edited, which is not its own duplicate. */
   studentId: z.uuid().nullable(),
 });
@@ -491,7 +494,7 @@ export type StudentContact = z.infer<typeof studentContactSchema>;
 
 /** The Identity group: "document numbers, address, date of birth" (edge), and the region (decision 4). */
 export const studentIdentitySchema = z.object({
-  birthDate: schoolDateSchema,
+  birthDate: schoolDateSchema.nullable(),
   documentType: documentTypeSchema.nullable(),
   documentNumber: z.string().nullable(),
   jshshir: z.string().nullable(),

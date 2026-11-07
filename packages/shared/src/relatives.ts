@@ -165,8 +165,7 @@ export type RelativeLinkInput = z.infer<typeof relativeLinkInputSchema>;
 
 /**
  * The relatives of a new student: exactly one main contact (`edge`), no
- * person twice. None is refused by the route as `student_needs_relative`
- * (`04`: "A student cannot be saved without at least one relative").
+ * person twice. None is allowed (`04`, Relatives are optional; owner, 7 November 2026).
  */
 export const studentRelativesInputSchema = z
   .array(relativeLinkInputSchema)

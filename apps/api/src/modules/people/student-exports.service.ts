@@ -34,7 +34,7 @@ interface ExportRow {
   today: string;
   phone: string | null;
   email: string | null;
-  birth_date: string;
+  birth_date: string | null;
   document_type: string | null;
   document_number: string | null;
   jshshir: string | null;

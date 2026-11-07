@@ -878,7 +878,10 @@ function Overview({ student }: { student: StudentDetail }) {
   }
   if (identity !== null) {
     rows.push(
-      [t('people.students.birthDate'), schoolDateText(identity.birthDate, language)],
+      [
+        t('people.students.birthDate'),
+        identity.birthDate === null ? notSet : schoolDateText(identity.birthDate, language),
+      ],
       [
         t('people.students.document'),
         identity.documentType === null

@@ -308,15 +308,12 @@ export const en = {
       'This lesson is cancelled. Its cells cannot be changed; restore the lesson first.',
     student_merge_has_cells:
       'The record to merge has marks or attendance in a journal, which a merge cannot carry yet. Ask the developer to carry them first.',
-    student_needs_relative:
-      'A student is saved with at least one relative. Add a relative, then save again.',
     relative_phone_taken:
       'This phone belongs to another relative. Check the number, or open that relative.',
     relative_phone_exists:
       'A relative with this phone already exists. Link that person instead of creating a new one.',
     relative_phone_changed:
       'The relative you chose no longer has that phone. Type the phone again.',
-    last_relative: 'A student keeps at least one relative. Add another relative first.',
     main_contact_needed: 'Choose another relative as the main contact.',
     merge_needs_super_admin:
       'One of these relatives is linked to students of another branch. Only the Super Admin merges them.',
@@ -2386,7 +2383,6 @@ export const en = {
         value_unknown: 'choose a value from the list.',
         class_unknown: 'no such class in the branch for the year of the start date.',
         needs_class: 'a student who starts today or earlier needs a class.',
-        needs_relative: 'add at least one relative.',
         duplicate_in_file: 'the same value is on rows {{rows}}.',
         phone_two_names_in_file:
           'this phone is under another name on rows {{rows}}. Correct the phone or the name.',
@@ -3013,8 +3009,8 @@ export const en = {
       newMain: 'New main contact',
       chooseMainFirst: 'Choose who becomes the main contact first.',
       choose: 'Choose',
-      needsRelative: 'Add a relative before editing this record.',
-      stepTitle: 'Relative',
+      none: 'No relatives yet.',
+      stepTitle: 'Relative (optional)',
       notSet: 'Not set',
       linkLabel: 'Link of {{name}}',
       changeLink: 'Change the link',
