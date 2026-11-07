@@ -635,9 +635,14 @@ describe('a journal', () => {
     fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
     for (const [name, checked] of [
       [en.journal.page.columnNames.photo, 'true'],
+      // Each hidden column is offered unticked, so it is drawn and hidden, not missing.
       [en.journal.page.columnNames.uid, 'false'],
-      [en.journal.page.columnNames.grade, 'false'],
+      [en.journal.page.columnNames.attendance, 'false'],
+      [en.journal.page.columnNames.classwork, 'false'],
+      [en.journal.page.columnNames.homework, 'false'],
       [en.journal.page.columnNames.ratingExam, 'false'],
+      [en.journal.page.columnNames.result, 'false'],
+      [en.journal.page.columnNames.grade, 'false'],
     ] as const) {
       expect(
         (await screen.findByRole('menuitemcheckbox', { name })).getAttribute('aria-checked'),

@@ -757,17 +757,14 @@ function LessonMode({
                 key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
                 variant="secondary"
                 disabled={works.busy}
-                // Task 10.7: the name says the kind in full; the tag shows its letter.
-                aria-label={
+                // Task 10.7: the name says the kind in full in front of the visible words, which it
+                // holds whole (WCAG 2.5.3, label in name); the tag shows the letter.
+                aria-label={workLabel(
+                  work.kind,
                   work.total === null
-                    ? t('journal.lessonMode.setTotal', {
-                        work: workLabel(work.kind, workName(work)),
-                      })
-                    : t('journal.lessonMode.total', {
-                        work: workLabel(work.kind, workName(work)),
-                        total: work.total,
-                      })
-                }
+                    ? t('journal.lessonMode.setTotal', { work: workName(work) })
+                    : t('journal.lessonMode.total', { work: workName(work), total: work.total }),
+                )}
                 onClick={() => {
                   works.openWork(lesson, work);
                 }}

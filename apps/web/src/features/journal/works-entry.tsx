@@ -620,6 +620,7 @@ function LessonWorksDialog({
               <ul className="grid list-disc gap-1 pl-5">
                 {lesson.given.map((given, index) => (
                   <li key={`${given.title ?? ''}:${String(index)}`}>
+                    <WorkKindTag kind="homework" className="mr-1 align-middle" />
                     {given.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
                     {' · '}
                     {given.ungraded === null

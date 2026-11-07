@@ -522,6 +522,37 @@ describe('classwork and homework in the grid', () => {
     return screen.getByRole('dialog');
   };
 
+  it('tags each work of both kinds listed together in the works dialog (07, Layout; task 10.7)', async () => {
+    const lessons = GRID.lessons.map((one) =>
+      one.id === NO_PLAN
+        ? {
+            ...one,
+            given: [
+              {
+                title: 'Given work',
+                checkAt: null,
+                ungraded: 'year_end' as const,
+                notGiven: false,
+              },
+            ],
+            notHeldWorks: [{ ...TEST, id: uid(85), title: 'Not held work', notHeld: true }],
+          }
+        : one,
+    );
+    open({ [`GET /api/journal/journals/${JOURNAL}`]: () => json({ ...GRID, lessons }) });
+    const dialog = await worksOf(1);
+    expect(
+      [...dialog.querySelectorAll('[data-work-kind]')].map((one) => [
+        one.closest('li')?.textContent?.includes('Not held work') ?? false,
+        one.textContent,
+        one.getAttribute('title'),
+      ]),
+    ).toEqual([
+      [false, 'H', 'Homework'],
+      [true, 'C', 'Classwork'],
+    ]);
+  });
+
   it('says "No plan" and adds a classwork by hand at a lesson with no plan item, named (task 10.6)', async () => {
     const calls = open({
       [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>

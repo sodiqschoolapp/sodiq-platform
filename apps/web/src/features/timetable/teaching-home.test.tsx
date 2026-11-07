@@ -510,6 +510,19 @@ describe('the teaching home page', () => {
       ).toEqual([]);
     });
 
+    it("follows the server's time, not a browser clock an hour off", async () => {
+      // The browser thinks it is 08:10 in Tashkent (the first lesson); the server says 09:10.
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true });
+      vi.setSystemTime(new Date('2026-10-19T03:10:00.000Z'));
+      openHome(() =>
+        json(homeOf({ now: '2026-10-19T04:10:00.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await waitFor(() => {
+        expect(marked()).toEqual([uid(302)]);
+      });
+      expect(pulsing()).toEqual([uid(302)]);
+    });
+
     it('marks no row between lessons', async () => {
       openHome(() =>
         json(homeOf({ now: '2026-10-19T03:50:00.000Z', lessons: DAY, exams: [EXAM] })),

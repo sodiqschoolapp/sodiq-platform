@@ -211,8 +211,9 @@ describe('the numbers of works in lesson mode', () => {
     expect(within(row).queryByRole('textbox')).toBeNull();
     fireEvent.click(
       screen.getByRole('button', {
-        // Task 10.7: the button's name says the kind in full (requirement changed).
-        name: en.journal.lessonMode.setTotal.replace('{{work}}', 'Classwork: Test'),
+        // Task 10.7: the button's name says the kind in full before its visible words
+        // (requirement changed).
+        name: `Classwork: ${en.journal.lessonMode.setTotal.replace('{{work}}', 'Test')}`,
       }),
     );
     expect(
