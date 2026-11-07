@@ -197,93 +197,120 @@ export class StaffAvailability {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          const kind = await this.linked(transaction, id, branchId, true);
-          const entries = await entriesOf(transaction, id, branchId, true);
-          const today = await this.todayIn(transaction, branchId);
-          if (input.from < earliestFrom(entries, today)) {
-            throw new ApiException('date_not_in_future', 409);
-          }
-          const schedule = scheduleFrom(entries, input.from);
-          const ranges = [...input.ranges].sort(byWeekdayAndStart);
-          await this.refuseOverlap(transaction, id, {
-            validFrom: schedule.validFrom,
-            validUntil: schedule.validUntil,
-            ranges,
-          });
-          if (schedule.cut !== null) {
-            await transaction
-              .updateTable('staff_availability')
-              .set({ valid_until: schedule.cut.validUntil })
-              .where('id', '=', schedule.cut.id)
-              .execute();
-          }
-          const entry = await transaction
-            .insertInto('staff_availability')
-            .values({
-              branch_id: branchId,
-              staff_id: id,
-              valid_from: schedule.validFrom,
-              valid_until: schedule.validUntil ?? OPEN,
-            })
-            .returning(['id', 'valid_until'])
-            .executeTakeFirstOrThrow();
-          for (const range of ranges) {
-            await transaction
-              .insertInto('staff_availability_ranges')
-              .values({
-                entry_id: entry.id,
-                branch_id: branchId,
-                staff_id: id,
-                weekday: range.weekday,
-                start_minutes: minutesOf(range.start),
-                end_minutes: minutesOf(range.end),
-                valid_from: schedule.validFrom,
-                valid_until: entry.valid_until,
-              })
-              .execute();
-          }
-          const cut = entries.find((old) => old.id === schedule.cut?.id);
-          await this.audit.record(transaction, {
-            branchId,
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            ...(kind === 'person' ? { personId: id } : {}),
-            action: 'staff.availability_set',
-            record: { type: 'staff', id },
-            oldValue: {
-              cut:
-                cut === undefined
-                  ? null
-                  : { ...entryAnswer(cut), cutAt: schedule.cut?.validUntil ?? null },
-            },
-            newValue: entryAnswer({
-              id: entry.id,
-              validFrom: schedule.validFrom,
-              validUntil: schedule.validUntil,
-              ranges,
-            }),
-            requestId,
-          });
-          // Task 5.5a-3b-1, decisions 2 and 3: the drafts of the branch in the
-          // years the new entry's dates touch.
-          await markDraftsOutOfDate(transaction, this.audit, {
-            branchId,
-            action: 'staff.availability_set',
-            recordId: id,
-            dates: [
-              {
-                from: schedule.validFrom,
-                until: schedule.validUntil === null ? null : previousDay(schedule.validUntil),
-              },
-            ],
-            actorId: access.accountId,
-            assignmentId: access.assignmentId,
-            requestId,
-          });
+          await this.setIn(transaction, access, id, input, requestId);
           return this.answer(transaction, id, branchId);
         }),
       AVAILABILITY_REFUSALS,
     );
+  }
+
+  /**
+   * The body of `set` on a given transaction, without its refusal wrapper
+   * (the staff import of the owner's spec change of 7 November 2026 runs it
+   * for each row in the row's savepoint, inside `refusingAvailability`).
+   *
+   * `importId` is given only by the import, for a record it created in the
+   * same transaction: the entry is named by the import in its audit entry, and
+   * may start before today (from the admission date, the owner's choice), since
+   * the record has no hours that already applied (decision 4 keeps those).
+   */
+  async setIn(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    input: AvailabilitySet,
+    requestId: string,
+    importId?: string,
+  ): Promise<void> {
+    const branchId = branchOf(access);
+    const kind = await this.linked(transaction, id, branchId, true);
+    const entries = await entriesOf(transaction, id, branchId, true);
+    const today = await this.todayIn(transaction, branchId);
+    if (importId !== undefined) {
+      if (entries.length > 0) {
+        throw new Error('The import sets the hours of a record it has just created.');
+      }
+    } else if (input.from < earliestFrom(entries, today)) {
+      throw new ApiException('date_not_in_future', 409);
+    }
+    const schedule = scheduleFrom(entries, input.from);
+    const ranges = [...input.ranges].sort(byWeekdayAndStart);
+    await this.refuseOverlap(transaction, id, {
+      validFrom: schedule.validFrom,
+      validUntil: schedule.validUntil,
+      ranges,
+    });
+    if (schedule.cut !== null) {
+      await transaction
+        .updateTable('staff_availability')
+        .set({ valid_until: schedule.cut.validUntil })
+        .where('id', '=', schedule.cut.id)
+        .execute();
+    }
+    const entry = await transaction
+      .insertInto('staff_availability')
+      .values({
+        branch_id: branchId,
+        staff_id: id,
+        valid_from: schedule.validFrom,
+        valid_until: schedule.validUntil ?? OPEN,
+      })
+      .returning(['id', 'valid_until'])
+      .executeTakeFirstOrThrow();
+    for (const range of ranges) {
+      await transaction
+        .insertInto('staff_availability_ranges')
+        .values({
+          entry_id: entry.id,
+          branch_id: branchId,
+          staff_id: id,
+          weekday: range.weekday,
+          start_minutes: minutesOf(range.start),
+          end_minutes: minutesOf(range.end),
+          valid_from: schedule.validFrom,
+          valid_until: entry.valid_until,
+        })
+        .execute();
+    }
+    const cut = entries.find((old) => old.id === schedule.cut?.id);
+    await this.audit.record(transaction, {
+      branchId,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      ...(kind === 'person' ? { personId: id } : {}),
+      action: 'staff.availability_set',
+      record: { type: 'staff', id },
+      oldValue: {
+        cut:
+          cut === undefined
+            ? null
+            : { ...entryAnswer(cut), cutAt: schedule.cut?.validUntil ?? null },
+      },
+      newValue: entryAnswer({
+        id: entry.id,
+        validFrom: schedule.validFrom,
+        validUntil: schedule.validUntil,
+        ranges,
+      }),
+      ...(importId === undefined ? {} : { details: { importId } }),
+      requestId,
+    });
+    // Task 5.5a-3b-1, decisions 2 and 3: the drafts of the branch in the
+    // years the new entry's dates touch.
+    await markDraftsOutOfDate(transaction, this.audit, {
+      branchId,
+      action: 'staff.availability_set',
+      recordId: id,
+      dates: [
+        {
+          from: schedule.validFrom,
+          until: schedule.validUntil === null ? null : previousDay(schedule.validUntil),
+        },
+      ],
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      requestId,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -455,6 +482,11 @@ export class StaffAvailability {
       earliestFrom: earliestFrom(entries, today),
     };
   }
+}
+
+/** Runs a write of hours with the refusals of the database the hand route maps. */
+export function refusingAvailability<T>(work: () => Promise<T>): Promise<T> {
+  return refusingConstraints(work, AVAILABILITY_REFUSALS);
 }
 
 /**

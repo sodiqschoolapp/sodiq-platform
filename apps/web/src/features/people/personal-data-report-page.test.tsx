@@ -162,6 +162,77 @@ afterEach(() => {
   delete document.body.dataset.printing;
 });
 
+/** A staff member's report of an invented person (task 2.6b). */
+function staffReportOf(staffId: string): StaffReport {
+  return {
+    kind: 'staff',
+    producedAt: REPORT.producedAt,
+    producedBy: REPORT.producedBy,
+    branch: REPORT.branch,
+    entries: [],
+    entriesLeftOut: null,
+    staff: {
+      id: staffId,
+      staffId: 'S-260007',
+      firstName: 'Sarvinoz',
+      lastName: 'Yusupova',
+      fatherName: null,
+      sex: 'female',
+      birthDate: '1989-06-07',
+      jshshir: null,
+      educationLevel: 'master',
+      phone: '+998932000001',
+      email: null,
+      admissionDate: '2026-09-01',
+      contractType: 'full_time',
+      contractDate: null,
+      weeklyLessons: 18,
+      dailyLessons: 5,
+      photoId: null,
+      branches: [
+        { name: 'North', main: true },
+        { name: 'South', main: false },
+      ],
+      divisions: [],
+      subjects: [],
+      languages: ['uz'],
+      statuses: [{ status: 'active', from: '2026-09-01', until: null }],
+      absences: [],
+      availability: [
+        {
+          branch: 'South',
+          from: '2026-09-01',
+          until: null,
+          ranges: [{ weekday: 3, startMinutes: 480, endMinutes: 780 }],
+        },
+      ],
+    },
+    sameAsRelative: null,
+    account: {
+      login: 's.yusupova',
+      createdAt: '2026-09-01T05:00:00.000Z',
+      lastSignInAt: '2026-10-09T04:00:00.000Z',
+      neverUsed: false,
+      language: 'uz',
+      lockedAt: null,
+      lockReason: null,
+      mustChangePassword: false,
+      passwordChangedAt: null,
+      passwordResetAt: null,
+      secondStepOn: true,
+      roles: [
+        {
+          role: 'teacher',
+          branch: 'South',
+          from: '2026-09-01T05:00:00.000Z',
+          until: null,
+          subjects: [],
+        },
+      ],
+    },
+  };
+}
+
 describe('the personal data report page', () => {
   it('shows every part with the labels of the forms and the codes by name, in Russian', async () => {
     const calls = openReport(undefined, 'ru');
@@ -298,73 +369,7 @@ describe('the personal data report page', () => {
 describe('the personal data report of a staff member', () => {
   it('shows the roles and the hours of each branch', async () => {
     const staffId = uid(2);
-    const report: StaffReport = {
-      kind: 'staff',
-      producedAt: REPORT.producedAt,
-      producedBy: REPORT.producedBy,
-      branch: REPORT.branch,
-      entries: [],
-      entriesLeftOut: null,
-      staff: {
-        id: staffId,
-        staffId: 'S-260007',
-        firstName: 'Sarvinoz',
-        lastName: 'Yusupova',
-        fatherName: null,
-        sex: 'female',
-        birthDate: '1989-06-07',
-        jshshir: null,
-        educationLevel: 'master',
-        phone: '+998932000001',
-        email: null,
-        admissionDate: '2026-09-01',
-        contractType: 'full_time',
-        contractDate: null,
-        weeklyLessons: 18,
-        dailyLessons: 5,
-        photoId: null,
-        branches: [
-          { name: 'North', main: true },
-          { name: 'South', main: false },
-        ],
-        divisions: [],
-        subjects: [],
-        languages: ['uz'],
-        statuses: [{ status: 'active', from: '2026-09-01', until: null }],
-        absences: [],
-        availability: [
-          {
-            branch: 'South',
-            from: '2026-09-01',
-            until: null,
-            ranges: [{ weekday: 3, startMinutes: 480, endMinutes: 780 }],
-          },
-        ],
-      },
-      sameAsRelative: null,
-      account: {
-        login: 's.yusupova',
-        createdAt: '2026-09-01T05:00:00.000Z',
-        lastSignInAt: '2026-10-09T04:00:00.000Z',
-        neverUsed: false,
-        language: 'uz',
-        lockedAt: null,
-        lockReason: null,
-        mustChangePassword: false,
-        passwordChangedAt: null,
-        passwordResetAt: null,
-        secondStepOn: true,
-        roles: [
-          {
-            role: 'teacher',
-            branch: 'South',
-            from: '2026-09-01T05:00:00.000Z',
-            until: null,
-            subjects: [],
-          },
-        ],
-      },
-    };
+    const report = staffReportOf(staffId);
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('super_admin')),
       [`POST /api/people/staff/${staffId}/report`]: () => json(report),
@@ -377,5 +382,26 @@ describe('the personal data report of a staff member', () => {
     expect(found.getByText('s.yusupova')).toBeTruthy();
     expect(found.getByText((text) => text.startsWith('South; '))).toBeTruthy();
     expect(found.getByText(en.roles.teacher, { selector: 'dt' })).toBeTruthy();
+  });
+
+  // Owner, 7 November 2026: date of birth, phone and admission date are optional.
+  it("shows a staff member's missing date of birth, phone and admission date as empty", async () => {
+    const staffId = uid(3);
+    const full = staffReportOf(staffId);
+    const report: StaffReport = {
+      ...full,
+      staff: { ...full.staff, birthDate: null, phone: null, admissionDate: null },
+    };
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('super_admin')),
+      [`POST /api/people/staff/${staffId}/report`]: () => json(report),
+    });
+    renderApp(`/people/report/staff/${staffId}`);
+    await screen.findByRole('heading', { name: 'Yusupova Sarvinoz', level: 2 });
+    const valueOf = (label: string) =>
+      within(sheet()).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent;
+    expect(valueOf(en.people.staff.birthDate)).toBe(en.people.report.empty);
+    expect(valueOf(en.people.staff.phone)).toBe(en.people.report.empty);
+    expect(valueOf(en.people.staff.admissionDate)).toBe(en.people.report.empty);
   });
 });

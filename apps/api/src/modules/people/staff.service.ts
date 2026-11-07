@@ -166,12 +166,12 @@ function fieldsOf(row: StaffRow, divisions: StaffDivisions): StaffFields {
     lastName: text(row.last_name),
     fatherName: row.father_name,
     sex: row.sex as Sex,
-    birthDate: text(row.birth_date),
+    birthDate: row.birth_date,
     educationLevel: row.education_level as EducationLevel | null,
-    phone: text(row.phone),
+    phone: row.phone,
     email: row.email,
     jshshir: row.jshshir,
-    admissionDate: text(row.admission_date),
+    admissionDate: row.admission_date,
     contractType: row.contract_type as ContractType | null,
     contractDate: row.contract_date,
     weeklyLessons: row.weekly_lessons,
@@ -405,8 +405,16 @@ export class Staff {
                 .where('kind', '=', 'person')
                 .where(sql<boolean>`lower(first_name) = lower(${input.firstName})`)
                 .where(sql<boolean>`lower(last_name) = lower(${input.lastName})`)
-                .where('birth_date', '=', input.birthDate)
-            : query.where('phone', '=', input.phone);
+                // No date of birth on either side: the name alone (owner, 7 November 2026).
+                .where((where) =>
+                  input.birthDate === null
+                    ? where.lit(true)
+                    : where.or([
+                        where('birth_date', '=', input.birthDate),
+                        where('birth_date', 'is', null),
+                      ]),
+                )
+            : query.where('phone', '=', input.phone ?? NO_PHONE);
         if (input.staffRecordId !== null) {
           query = query.where('id', '<>', input.staffRecordId);
         }
@@ -430,10 +438,15 @@ export class Staff {
       `.execute(transaction);
       // A phone of another staff record is refused on Save (task 3.6b-1):
       // named in the branch, told for another branch (as the UID refusal).
-      const samePhone = (await matches('phone'))[0];
+      // No phone typed: no phone is compared (owner, 7 November 2026).
+      const phone = input.phone;
+      const samePhone = phone === null ? undefined : (await matches('phone'))[0];
       const phoneElsewhere =
-        samePhone === undefined && (await this.phoneElsewhere(transaction, input.phone));
-      const relative = await this.relativeOfPhone(transaction, access, input.phone);
+        phone !== null &&
+        samePhone === undefined &&
+        (await this.phoneElsewhere(transaction, phone));
+      const relative =
+        phone === null ? { exists: false } : await this.relativeOfPhone(transaction, access, phone);
       return {
         sameNameAndBirth: (await matches('name')).map(toMatch),
         elsewhere: elsewhere.rows[0]?.found === true,
@@ -582,7 +595,11 @@ export class Staff {
     if (record.email === null && relative !== undefined && relative.email !== null) {
       record = { ...record, email: relative.email };
     }
-    const year = Number(record.admissionDate.slice(0, 4));
+    // Without an admission date (owner, 7 November 2026) the staff ID takes the
+    // year, and the first status row the date, of the day the record is created
+    // in the branch's time zone (decided without the owner).
+    const firstDay = record.admissionDate ?? (await this.todayIn(transaction, branchId));
+    const year = Number(firstDay.slice(0, 4));
     const staffId = staffIdOf(year, await takeStaffNumber(transaction, year));
     const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
     const id = found.rows[0]?.id;
@@ -600,7 +617,7 @@ export class Staff {
     await this.writeDivisions(transaction, id, [], record.divisions);
     await transaction
       .insertInto('staff_statuses')
-      .values({ staff_id: id, status: 'active', valid_from: record.admissionDate })
+      .values({ staff_id: id, status: 'active', valid_from: firstDay })
       .execute();
     // A new record held no mark before its insert.
     const marks = changesBetween(
@@ -1245,7 +1262,7 @@ export class Staff {
         record: { type: 'staff', id },
         requestId,
       });
-      return { birthDate: text(row.birth_date), jshshir: row.jshshir };
+      return { birthDate: row.birth_date, jshshir: row.jshshir };
     });
   }
 
@@ -1791,7 +1808,7 @@ export class Staff {
         languages: languages
           .filter((language) => language.staff_id === row.id)
           .map((language) => language.language as InstructionLanguage),
-        phone: text(row.phone),
+        phone: row.phone,
         status: (current?.status as StaffStatus | undefined) ?? null,
         planned:
           planned === undefined
@@ -1862,7 +1879,7 @@ export class Staff {
       identityHidden,
       educationLevel: row.education_level as EducationLevel | null,
       email: row.email,
-      admissionDate: text(row.admission_date),
+      admissionDate: row.admission_date,
       contractType: row.contract_type as ContractType | null,
       contractDate: row.contract_date,
       weeklyLessons: row.weekly_lessons,
@@ -2005,6 +2022,9 @@ export class Staff {
     return row === undefined ? null : { id: row.id, fullName: row.full_name };
   }
 }
+
+/** A phone no record holds, for a query that is not run without a phone (the check). */
+const NO_PHONE = '';
 
 const STAFF_COLUMNS = [
   'id',

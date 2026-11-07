@@ -1,4 +1,5 @@
 import {
+  AVAILABILITY_RANGES_MAX,
   errorCodeSchema,
   isLanguage,
   PERMISSIONS,
@@ -54,7 +55,10 @@ function problemText(t: TFunction, language: string, problem: StaffImportProblem
           : null;
   const what =
     own !== undefined
-      ? t(`people.staffImport.problems.${own}`, { rows: (problem.rows ?? []).join(', ') })
+      ? t(`people.staffImport.problems.${own}`, {
+          rows: (problem.rows ?? []).join(', '),
+          max: AVAILABILITY_RANGES_MAX,
+        })
       : refusal.success
         ? t(`errors.${refusal.data}`)
         : t('people.staffImport.problems.invalid');

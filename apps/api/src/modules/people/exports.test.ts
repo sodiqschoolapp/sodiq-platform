@@ -482,6 +482,19 @@ describe('the export of the staff and vacancy lists', () => {
       );
       expect(file.sheet.rows).toEqual([['Super Admin, Principal, Senior Head Teacher']]);
     });
+
+    // Owner, 7 November 2026: a staff phone is optional; the cell is left empty.
+    it('writes an empty phone cell for a person with no phone', async () => {
+      await speak('en');
+      const without = await person({ lastName: 'Telefonsizova', phone: null, birthDate: null });
+      const response = await exportOf(
+        '/api/people/staff/export',
+        send([without.id], ['name', 'phone'], { search: '', filters: {}, selection: 'ticked' }),
+      );
+      expect(response.status, (response.body as Buffer).toString('utf8')).toBe(200);
+      const file = await fileOf(response);
+      expect(file.sheet.rows).toEqual([['Telefonsizova Malika', null]]);
+    });
   });
 
   describe('of the vacancy list', () => {

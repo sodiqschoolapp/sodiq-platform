@@ -4,6 +4,7 @@ import { classNameKey } from './classes.js';
 import { LANGUAGES, type Language } from './language.js';
 import type { Role } from './roles.js';
 import { INSTRUCTION_LANGUAGES, type InstructionLanguage } from './settings.js';
+import type { Weekday } from './setup.js';
 import type { ContractType, EducationLevel, Sex } from './staff.js';
 
 /**
@@ -13,7 +14,11 @@ import type { ContractType, EducationLevel, Sex } from './staff.js';
  * row is one person: the personal fields, the main division and department,
  * the subjects with the grades taught, the languages of instruction, the
  * admission date, the contract type and date, and the role (Teacher, Tutor or
- * none). Only the Super Admin imports staff.
+ * none). Only the Super Admin imports staff. The owner's spec change of 7
+ * November 2026: date of birth, phone and admission date may be left empty,
+ * and one column per weekday, Monday to Saturday, holds the hours the person
+ * is at school that day (`04`, Availability), applied in the branch of the
+ * import from the admission date, or from the import's day without one.
  */
 
 /** Up to this many subjects on a row (plan decision 9). */
@@ -31,6 +36,27 @@ const SUBJECT_COLUMNS = [
 ] as const;
 
 export type StaffImportSubjectColumn = (typeof SUBJECT_COLUMNS)[number];
+
+/**
+ * The hours columns, Monday to Saturday (the school week; Sunday hours are
+ * typed by hand), each with its weekday of `WEEKDAYS`.
+ */
+const HOURS_COLUMNS = [
+  'hoursMonday',
+  'hoursTuesday',
+  'hoursWednesday',
+  'hoursThursday',
+  'hoursFriday',
+  'hoursSaturday',
+] as const;
+
+export type StaffImportHoursColumn = (typeof HOURS_COLUMNS)[number];
+
+/** The hours columns in their order, with the weekday each one holds. */
+export const STAFF_IMPORT_HOURS_COLUMNS: readonly {
+  column: StaffImportHoursColumn;
+  weekday: Weekday;
+}[] = HOURS_COLUMNS.map((column, index) => ({ column, weekday: (index + 1) as Weekday }));
 
 /** The subject columns in their order: each one "name: grades". */
 export const STAFF_IMPORT_SUBJECT_COLUMNS: readonly StaffImportSubjectColumn[] = SUBJECT_COLUMNS;
@@ -57,6 +83,7 @@ export const STAFF_IMPORT_COLUMNS = [
   'contractType',
   'contractDate',
   'role',
+  ...HOURS_COLUMNS,
 ] as const;
 
 export type StaffImportColumn = (typeof STAFF_IMPORT_COLUMNS)[number];
@@ -119,6 +146,12 @@ export const STAFF_IMPORT_WORDS: Readonly<Record<Language, StaffImportWords>> = 
       contractType: 'Shartnoma',
       contractDate: 'Shartnoma sanasi',
       role: 'Rol',
+      hoursMonday: 'Dushanba: soatlar',
+      hoursTuesday: 'Seshanba: soatlar',
+      hoursWednesday: 'Chorshanba: soatlar',
+      hoursThursday: 'Payshanba: soatlar',
+      hoursFriday: 'Juma: soatlar',
+      hoursSaturday: 'Shanba: soatlar',
     },
     subject: '{{n}}-fan: sinflar',
     sexes: { male: 'Erkak', female: 'Ayol' },
@@ -169,6 +202,12 @@ export const STAFF_IMPORT_WORDS: Readonly<Record<Language, StaffImportWords>> = 
       contractType: 'Договор',
       contractDate: 'Дата договора',
       role: 'Роль',
+      hoursMonday: 'Понедельник: часы',
+      hoursTuesday: 'Вторник: часы',
+      hoursWednesday: 'Среда: часы',
+      hoursThursday: 'Четверг: часы',
+      hoursFriday: 'Пятница: часы',
+      hoursSaturday: 'Суббота: часы',
     },
     subject: 'Предмет {{n}}: классы',
     sexes: { male: 'Мужской', female: 'Женский' },
@@ -219,6 +258,12 @@ export const STAFF_IMPORT_WORDS: Readonly<Record<Language, StaffImportWords>> = 
       contractType: 'Contract',
       contractDate: 'Contract date',
       role: 'Role',
+      hoursMonday: 'Monday: hours',
+      hoursTuesday: 'Tuesday: hours',
+      hoursWednesday: 'Wednesday: hours',
+      hoursThursday: 'Thursday: hours',
+      hoursFriday: 'Friday: hours',
+      hoursSaturday: 'Saturday: hours',
     },
     subject: 'Subject {{n}}: grades',
     sexes: { male: 'Male', female: 'Female' },
@@ -322,6 +367,16 @@ export const STAFF_IMPORT_PROBLEMS = [
   'duplicate_in_file',
   /** No login can be made of the name (by hand the Super Admin types one). */
   'import_no_login',
+  /** An hours cell that is not ranges of times (`08:00-16:05`, or several with commas). */
+  'hours_invalid',
+  /** A time of an hours cell outside the day (00:00 to 24:00). */
+  'hours_outside_day',
+  /** A range whose end is not after its start. */
+  'hours_end_before_start',
+  /** Two ranges of one day that share a minute. */
+  'hours_overlap',
+  /** More ranges in the hours of the row than one availability entry holds (`AVAILABILITY_RANGES_MAX`). */
+  'hours_over_limit',
 ] as const;
 
 export const staffImportProblemSchema = z.object({

@@ -208,6 +208,45 @@ describe('the staff import page', () => {
     });
   });
 
+  // Owner, 7 November 2026: the hours columns, Monday to Saturday.
+  it('names each wrong hours cell with its weekday column', async () => {
+    open('super_admin', {
+      'PUT /api/people/staff/imports': () =>
+        json({
+          ...NOT_CLEAN,
+          rows: [
+            {
+              rowNumber: 3,
+              lastName: 'Soatov',
+              firstName: 'Anvar',
+              role: null,
+              problems: [
+                { column: 'hoursMonday', code: 'hours_invalid' },
+                { column: 'hoursWednesday', code: 'hours_outside_day' },
+                { column: 'hoursFriday', code: 'hours_end_before_start' },
+                { column: 'hoursSaturday', code: 'hours_overlap' },
+              ],
+              warning: null,
+              samePerson: null,
+              login: null,
+            },
+          ],
+        }),
+    });
+    await screen.findByRole('heading', { name: en.people.staffImport.title });
+    choose();
+    await waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+    const items = [...rowOf('Soatov').querySelectorAll('li')].map((item) => item.textContent);
+    expect(items).toEqual([
+      `Monday: hours: ${en.people.staffImport.problems.hours_invalid}`,
+      `Wednesday: hours: ${en.people.staffImport.problems.hours_outside_day}`,
+      `Friday: hours: ${en.people.staffImport.problems.hours_end_before_start}`,
+      `Saturday: hours: ${en.people.staffImport.problems.hours_overlap}`,
+    ]);
+  });
+
   it('is not for a role that does not create staff', async () => {
     open('academic_vice_principal');
     expect(await screen.findByText(en.problems.noAccessPart)).toBeDefined();
