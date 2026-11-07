@@ -344,7 +344,7 @@ function LinkActions({
         {t('people.relatives.changeLink')}
       </Button>
       {/* The last relative may go too (`04`, Relatives are optional). */}
-      {(
+      {
         <Button
           variant="secondary"
           {...panel.opener(unlinkKey)}
@@ -360,7 +360,7 @@ function LinkActions({
         >
           {t('people.relatives.unlink')}
         </Button>
-      )}
+      }
       <FailureAlert error={unlink.error} />
     </div>
   ) : null;

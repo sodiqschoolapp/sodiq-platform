@@ -188,6 +188,30 @@ describe('one row', () => {
     expect(father?.relative).toMatchObject({ phone: null, workplace: 'Zavod' });
   });
 
+  // Date of birth, scholarship and relatives are optional (04, Excel import; owner, 7 November 2026).
+  it('reads a row with no date of birth, no scholarship and no relative', async () => {
+    const parsed = await one(
+      studentRow('Oxford', {
+        birthDate: undefined,
+        scholarshipType: undefined,
+        scholarshipCoverage: undefined,
+        scholarshipAmount: undefined,
+        relative1FullName: undefined,
+        relative1Relationship: undefined,
+        relative1Phone: undefined,
+        relative1Workplace: undefined,
+        relative1Email: undefined,
+      }),
+    );
+    expect(parsed.problems).toEqual([]);
+    expect(parsed.input).toMatchObject({
+      birthDate: null,
+      scholarship: { type: 'none', coverage: null, amount: null },
+      relatives: [],
+    });
+    expect(parsed.relatives).toEqual([]);
+  });
+
   it('a relative without a phone may be the main contact, as by hand', async () => {
     const parsed = await one(studentRow('Oxford', { relative1Phone: undefined }));
     expect(parsed.problems).toEqual([]);
@@ -197,7 +221,7 @@ describe('one row', () => {
     });
   });
 
-  it('names each problem with its column: a row without a relative, wrong dates and lists, a bad phone, empty required cells', async () => {
+  it('names each problem with its column: wrong dates and lists, a bad phone, empty required cells, and none for a row without a relative', async () => {
     const parsed = await one({
       ...studentRow('Oxford'),
       relative1FullName: undefined,
@@ -212,7 +236,6 @@ describe('one row', () => {
     expect(parsed.input).toBeNull();
     expect(problemsOf(parsed).sort()).toEqual(
       [
-        'relative1FullName:needs_relative',
         'birthDate:date_invalid',
         'sex:value_unknown',
         'phone:phone_invalid',

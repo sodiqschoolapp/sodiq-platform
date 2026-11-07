@@ -915,13 +915,15 @@ describe('student merges in the database', () => {
             await mergeRow(transaction, kept, merged);
             await transaction
               .updateTable('student_relatives')
-              .set({ unlinked_at: new Date(NOW) })
+              // Live links with no main contact: a student may have no relative (0163), but
+              // one with relatives keeps exactly one main contact.
+              .set({ main_contact: false })
               .where('student_id', '=', kept)
               .execute();
             await removeMerged(transaction, kept, merged);
           }),
         ),
-      ).toMatchObject({ constraint: 'student_needs_relative' });
+      ).toMatchObject({ constraint: 'student_main_contact' });
     });
   });
 

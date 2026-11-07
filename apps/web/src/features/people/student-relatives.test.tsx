@@ -272,7 +272,7 @@ describe("the student's Relatives tab", () => {
     await waitFor(() => {
       expect(tabOf(panel, en.people.students.tabs.relatives).checked).toBe(true);
     });
-    expect(within(panel).getByText(en.people.relatives.needsRelative)).toBeDefined();
+    expect(within(panel).getByText(en.people.relatives.none)).toBeDefined();
     expect(within(panel).getByRole('button', { name: en.people.relatives.add })).toBeDefined();
   });
 
@@ -421,16 +421,30 @@ describe("the student's Relatives tab", () => {
     });
   });
 
-  it('offers no Unlink for the last relative (04: the last relative stays)', async () => {
-    openList({ relatives: [relative(40, 'Dilfuza Rahimova', true)], canEdit: true });
+  // 04, Relatives are optional (owner, 7 November 2026): the last relative may go, with no
+  // new main contact to choose.
+  it('unlinks the last relative after the confirmation, with no new main contact', async () => {
+    const calls = openList(
+      { relatives: [relative(40, 'Dilfuza Rahimova', true)], canEdit: true },
+      {
+        [`POST /api/people/students/${OTKIR.id}/relatives/${uid(40)}/unlink`]: () =>
+          json({ relatives: [], canEdit: true }),
+      },
+    );
     renderApp(PATH);
     const panel = await openPanel();
     fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
     const dilfuza = await rowOf(panel, 'Dilfuza Rahimova');
-    expect(
-      within(dilfuza).getByRole('button', { name: en.people.relatives.changeLink }),
-    ).toBeDefined();
-    expect(within(dilfuza).queryByRole('button', { name: en.people.relatives.unlink })).toBeNull();
+    fireEvent.click(within(dilfuza).getByRole('button', { name: en.people.relatives.unlink }));
+    const dialog = await screen.findByRole('alertdialog', {
+      name: en.people.relatives.unlinkTitle,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.relatives.unlink }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route.endsWith('/unlink'))?.body).toEqual({
+        newMainContactId: null,
+      });
+    });
   });
 
   it('opens "Add relative" through the panel and closes it on Cancel without a call', async () => {

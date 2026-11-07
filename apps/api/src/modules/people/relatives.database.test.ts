@@ -396,18 +396,36 @@ describe('close relatives in the database', () => {
     });
   });
 
-  describe('always connected (04) and one main contact (edge)', () => {
-    it('refuses at the commit a student with no relative', async () => {
-      await expect(
-        inBranch(north, (transaction) => writeStudent(transaction, north)),
-      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_needs_relative' });
+  // Relatives are optional (04; owner, 7 November 2026, 0163): no relative and no last-link
+  // refusal; one main contact still, when a student has relatives (edge).
+  describe('optional relatives (04) and one main contact (edge)', () => {
+    it('keeps at the commit a student with no relative, and with no date of birth', async () => {
+      const student = await inBranch(north, (transaction) => writeStudent(transaction, north));
+      await inBranch(north, (transaction) =>
+        transaction
+          .updateTable('students')
+          .set({ birth_date: null })
+          .where('id', '=', student)
+          .execute(),
+      );
+      const row = await database.migrator
+        .selectFrom('students')
+        .select('birth_date')
+        .where('id', '=', student)
+        .executeTakeFirstOrThrow();
+      expect(row.birth_date).toBeNull();
     });
 
-    it('refuses at the commit the last live link unlinked', async () => {
+    it('keeps at the commit the last live link unlinked', async () => {
       const { student, relative } = await studentWithRelative(north);
-      await expect(
-        inBranch(north, (transaction) => unlink(transaction, student, relative)),
-      ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_needs_relative' });
+      await inBranch(north, (transaction) => unlink(transaction, student, relative));
+      const live = await database.migrator
+        .selectFrom('student_relatives')
+        .select('id')
+        .where('student_id', '=', student)
+        .where('unlinked_at', 'is', null)
+        .execute();
+      expect(live).toEqual([]);
     });
 
     it('refuses at the commit a student with no main contact', async () => {
@@ -473,11 +491,9 @@ describe('close relatives in the database', () => {
           .where('id', '=', student)
           .execute();
 
-      it('refuses the edit of the record', async () => {
+      it('lets the edit of the record pass (04, Relatives are optional)', async () => {
         const student = await linkless();
-        await expect(
-          inBranch(north, (transaction) => rename(transaction, student)),
-        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'student_needs_relative' });
+        await inBranch(north, (transaction) => rename(transaction, student));
       });
 
       it('lets a photo, a status, a UID and the branch move pass', async () => {

@@ -259,10 +259,19 @@ describe('close relatives', () => {
       expect(studentEntry[0]?.new_value).not.toHaveProperty('relatives');
     });
 
-    it('is refused without a relative (the done-when of task 2.5)', async () => {
-      const before = await snapshot();
-      refusedWith(await t.postStudent(t.north, body([])), 422, 'student_needs_relative');
-      expect(await snapshot()).toEqual(before);
+    // Relatives and the date of birth are optional (04; owner, 7 November 2026).
+    it('saves a student with no relative and no date of birth', async () => {
+      const response = await t.postStudent(t.north, { ...body([]), birthDate: null });
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      const created = studentDetailSchema.parse(response.body);
+      expect(created.identity?.birthDate).toBeNull();
+      expect((await tab(created.id)).relatives).toEqual([]);
+      const row = await t.database.migrator
+        .selectFrom('student_relatives')
+        .select('id')
+        .where('student_id', '=', created.id)
+        .execute();
+      expect(row).toEqual([]);
     });
 
     it('takes a relative with no phone of their own', async () => {
@@ -777,16 +786,9 @@ describe('close relatives', () => {
       );
     });
 
-    it('keeps the last relative and asks the next main contact in the unlink', async () => {
+    it('asks the next main contact in the unlink, and lets the last relative go', async () => {
       const { student: created, relativeId: main } = await withRelative(phone());
       const before = await snapshot();
-      refusedWith(
-        await t.post(`/api/people/students/${created.id}/relatives/${main}/unlink`, t.north, {
-          newMainContactId: null,
-        }),
-        409,
-        'last_relative',
-      );
       const added = studentRelativesSchema.parse(
         (
           await t.post(
@@ -844,6 +846,14 @@ describe('close relatives', () => {
         .executeTakeFirstOrThrow();
       expect(stored.archived_at).not.toBeNull();
       refusedWith(await t.get(`/api/people/relatives/${main}`, t.north), 404, 'not_found');
+      // The last relative may go (04, Relatives are optional): no main contact to name.
+      const last = await t.post(
+        `/api/people/students/${created.id}/relatives/${other}/unlink`,
+        t.north,
+        { newMainContactId: null },
+      );
+      expect(last.status, JSON.stringify(last.body)).toBe(200);
+      expect(studentRelativesSchema.parse(last.body).relatives).toEqual([]);
     });
 
     it('restores an archived relative found by phone (decision 14)', async () => {
@@ -938,7 +948,7 @@ describe('close relatives', () => {
   });
 
   describe('a student of 2.4a with no relative (decision 11)', () => {
-    it('is refused the edit of the record until a relative is linked', async () => {
+    it('is edited with no relative, and again once one is linked', async () => {
       const keeper = await withRelative(phone());
       const { student: created, relativeId } = await withRelative(phone());
       // As saved before 0036: its link gone, its relative kept by another student.
@@ -969,13 +979,9 @@ describe('close relatives', () => {
         lastName: full.lastName,
         birthDate: '2014-04-02',
       };
-      const before = await snapshot();
-      refusedWith(
-        await t.put(`/api/people/students/${created.id}`, t.north, edit),
-        422,
-        'student_needs_relative',
-      );
-      expect(await snapshot()).toEqual(before);
+      // Relatives are optional (04; owner, 7 November 2026): the edit passes with none.
+      const unlinkedEdit = await t.put(`/api/people/students/${created.id}`, t.north, edit);
+      expect(unlinkedEdit.status, JSON.stringify(unlinkedEdit.body)).toBe(200);
       const linked = await t.post(
         `/api/people/students/${created.id}/relatives`,
         t.north,
