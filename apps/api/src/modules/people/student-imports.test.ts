@@ -442,6 +442,33 @@ describe('the student import', () => {
       expect(result.outcome).toBe('saved');
     });
 
+    // Owner, 7 November 2026 (edge, the duplicate check): a missing date of birth on either
+    // side matches the name alone, as the hand form's check.
+    it('the name warning with no date of birth: a row without one names the stored student, and a dated row names the stored one without', async () => {
+      const target = await newClass();
+      const dated = studentRow(target.name);
+      const undated = studentRow(target.name, { birthDate: undefined });
+      expect((await confirmed((await uploaded([dated, undated])).importId)).outcome).toBe('saved');
+      const datedId = (await studentOf(dated.uid))?.id;
+      const undatedId = (await studentOf(undated.uid))?.id;
+      const answer = await uploaded([
+        // No date: matches the stored student with a date.
+        studentRow(target.name, {
+          lastName: dated.lastName,
+          firstName: dated.firstName,
+          birthDate: undefined,
+        }),
+        // A date: matches the stored student with none.
+        studentRow(target.name, {
+          lastName: undated.lastName,
+          firstName: undated.firstName,
+          birthDate: new Date(Date.UTC(2012, 0, 5)),
+        }),
+      ]);
+      expect(rowAt(answer, 3).warning).toMatchObject({ students: [{ id: datedId }] });
+      expect(rowAt(answer, 4).warning).toMatchObject({ students: [{ id: undatedId }] });
+    });
+
     it('a match of another branch only is said to exist, nothing named; a JSHSHIR and a document number of another branch block, named as another branch', async () => {
       const south = await newClass(25, t.south, southYear);
       const elsewhere = studentRow(south.name);

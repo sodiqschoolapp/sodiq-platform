@@ -265,14 +265,18 @@ describe('the new owner of a typed phone (task 2.5b-1; edge/close-relatives, row
 });
 
 describe("the student's Relatives tab", () => {
-  it('opens first for a student with no relative, with the add form', async () => {
+  // 04, Profile tabs: Overview first, also with no relative (relatives are optional; owner,
+  // 7 November 2026). The Relatives tab then says so and offers "Add relative".
+  it('opens the Overview first for a student with no relative; the Relatives tab has the add button', async () => {
     openList({ relatives: [], canEdit: true });
     renderApp(PATH);
     const panel = await openPanel();
     await waitFor(() => {
-      expect(tabOf(panel, en.people.students.tabs.relatives).checked).toBe(true);
+      expect(tabOf(panel, en.people.students.tabs.overview).checked).toBe(true);
     });
-    expect(within(panel).getByText(en.people.relatives.none)).toBeDefined();
+    expect(tabOf(panel, en.people.students.tabs.relatives).checked).toBe(false);
+    fireEvent.click(tabOf(panel, en.people.students.tabs.relatives));
+    expect(await within(panel).findByText(en.people.relatives.none)).toBeDefined();
     expect(within(panel).getByRole('button', { name: en.people.relatives.add })).toBeDefined();
   });
 

@@ -540,17 +540,22 @@ export function fileChecks(rows: readonly ParsedRow[]): {
     }
   }
   const sameNameAndBirth = new Map<number, number[]>();
-  const byName = new Map<string, number[]>();
+  // The same name and date of birth, or the same name when either row has no date of
+  // birth (edge, the duplicate check; owner, 7 November 2026).
+  const byName = new Map<string, { row: number; birthDate: string | null }[]>();
   for (const row of rows) {
     if (row.input === null) {
       continue;
     }
-    const key = `${studentNameKey(row.input.lastName, row.input.firstName)}|${row.input.birthDate}`;
-    const earlier = byName.get(key) ?? [];
+    const key = studentNameKey(row.input.lastName, row.input.firstName);
+    const birthDate = row.input.birthDate;
+    const earlier = (byName.get(key) ?? [])
+      .filter((one) => one.birthDate === null || birthDate === null || one.birthDate === birthDate)
+      .map((one) => one.row);
     if (earlier.length > 0) {
-      sameNameAndBirth.set(row.rowNumber, [...earlier]);
+      sameNameAndBirth.set(row.rowNumber, earlier);
     }
-    push(byName, key, row.rowNumber);
+    byName.set(key, [...(byName.get(key) ?? []), { row: row.rowNumber, birthDate }]);
   }
   return { problems, sameNameAndBirth };
 }

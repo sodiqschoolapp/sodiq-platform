@@ -300,6 +300,36 @@ describe('across the rows of the file', () => {
     expect([...checks.sameNameAndBirth]).toEqual([[4, [3]]]);
   });
 
+  // Owner, 7 November 2026 (edge, the duplicate check): a row with no date of birth matches
+  // the same name alone, whichever row has the date.
+  it('the same name with no date of birth on one row is a warning too; two dates that differ are not', async () => {
+    const first = studentRow('Oxford', { birthDate: undefined });
+    const dated = studentRow('Oxford', {
+      lastName: first.lastName,
+      firstName: first.firstName,
+      birthDate: '02.03.2014',
+    });
+    const otherDate = studentRow('Oxford', {
+      lastName: first.lastName,
+      firstName: first.firstName,
+      birthDate: '03.03.2014',
+    });
+    const undated = studentRow('Oxford', {
+      lastName: first.lastName,
+      firstName: first.firstName,
+      birthDate: undefined,
+    });
+    const checks = fileChecks(await parsedOf([first, dated, otherDate, undated]));
+    expect(checks.problems.size).toBe(0);
+    // Row 4 (dated) and row 5 (another date) match row 3 (no date), not each other;
+    // row 6 (no date) matches every earlier row.
+    expect([...checks.sameNameAndBirth]).toEqual([
+      [4, [3]],
+      [5, [3]],
+      [6, [3, 4, 5]],
+    ]);
+  });
+
   it('one relative phone under two names: both rows; under one name (siblings): no problem', async () => {
     const phone = 998977777777;
     const rows = [
