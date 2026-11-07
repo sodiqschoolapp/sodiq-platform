@@ -898,7 +898,8 @@ export const en = {
       'Someone changed this row meanwhile. The value saved now is shown under the field; type your change again.',
     plan_row_held: 'The lesson of this row has been held, so the row cannot be cleared.',
     plan_file_too_large: 'The file is larger than 20 MB. Choose a smaller one.',
-    plan_files_full: 'This row holds 10 files already. Remove one first.',
+    plan_files_full: 'This place holds 10 files already. Remove one first.',
+    plan_work_not_found: 'This work is no longer in the plan. Reload the page.',
     plan_window_closed:
       'The plan window has ended and no approved request opens this row. Ask to edit the plan.',
     plan_window_not_open:
@@ -4083,6 +4084,7 @@ export const en = {
         export: 'Lesson plan printed or exported',
         file_add: 'File added to a plan row',
         file_remove: 'File removed from a plan row',
+        work_journal_add: 'Work added in the journal written into the plan',
         items_followed: 'Plan rows followed a timetable change',
         request_prepared: 'Plan edit request prepared',
         window_open: 'Plan window opened',
@@ -5963,6 +5965,24 @@ export const en = {
     },
   },
   plans: {
+    files: {
+      closeText: 'They are not in the plan. Close the card without them?',
+      closeAction: 'Close without them',
+      materials: 'Materials (staff only)',
+      materialsNote:
+        'The teacher’s own files, such as slides or an answer key. Students and parents never see them.',
+      attachTo: 'Attach a file to {{name}}',
+      attachMaterial: 'Attach a material',
+      pending: 'uploaded when you save',
+      drop: 'Remove',
+      dropOf: 'Remove {{name}}',
+      notUploaded: 'These files were not uploaded',
+      retry: 'Try again',
+      full: 'This place holds 10 files already. Remove one first.',
+      tooLarge: '{{name}} is larger than 20 MB.',
+      wrongType:
+        '{{name}} is not a type a plan takes: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4.',
+    },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {
       carriedIn: 'Carried in',
@@ -6095,6 +6115,7 @@ export const en = {
       incomplete_other: '{{count}} rows without a topic',
     },
     plan: {
+      addedInJournal: 'added in the journal',
       marks: 'Marks',
       title: 'Lesson plan',
       caption: 'Rows of the plan',
@@ -6137,6 +6158,7 @@ export const en = {
       plan: '{{unit}}, {{subject}}, quarter {{quarter}}',
       moved_one: '{{count}} item moves to another lesson',
       moved_other: '{{count}} items move to another lesson',
+      noTopic: 'a row with no topic yet',
       notFitting: 'No longer fit: {{topics}}',
       emptyRows_one: '{{count}} row left empty',
       emptyRows_other: '{{count}} rows left empty',
@@ -6467,6 +6489,11 @@ export const en = {
       hiddenBy: 'hidden by a {{kind}} exemption {{from}} – {{until}}',
     },
     card: {
+      editPlan: 'Edit the plan of this lesson',
+      askToEdit: 'Ask to edit this lesson',
+      askReason: 'Why it should change',
+      askSend: 'Send the request',
+      asked: 'The request was sent.',
       titleLoading: 'Lesson',
       title: 'Lesson {{number}} · {{date}}',
       titleNoNumber: 'Lesson of {{date}}',

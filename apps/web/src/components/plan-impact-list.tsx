@@ -32,7 +32,14 @@ export function PlanImpactList({ plans }: { plans: readonly PlanImpact[] }) {
             </span>
             {plan.moved > 0 && <span>{t('plans.impact.moved', { count: plan.moved })}</span>}
             {plan.notFitting.length > 0 && (
-              <span>{t('plans.impact.notFitting', { topics: plan.notFitting.join('; ') })}</span>
+              <span>
+                {t('plans.impact.notFitting', {
+                  // Task 10.8: an item the journal's add made has no topic yet.
+                  topics: plan.notFitting
+                    .map((topic) => (topic.trim() === '' ? t('plans.impact.noTopic') : topic))
+                    .join('; '),
+                })}
+              </span>
             )}
             {plan.emptyRows > 0 && (
               <span>{t('plans.impact.emptyRows', { count: plan.emptyRows })}</span>

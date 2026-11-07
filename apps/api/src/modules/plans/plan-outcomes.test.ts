@@ -324,10 +324,32 @@ describe('outcomes of "not covered" items and the carried-in tray', () => {
       const plan0 = await planOf(x, x.q2);
       const row = plan0.rows[1];
       if (row === undefined) throw new Error('Row 2.');
+      // Task 10.8 (code review, spec 6): the merged work keeps its mark and its own file.
+      const quiz = last.classworks[0]?.id ?? '';
+      await t.database.migrator
+        .updateTable('lesson_plan_works')
+        .set({ title: 'Quiz' })
+        .where('id', '=', quiz)
+        .execute();
+      await t.database.migrator
+        .insertInto('lesson_plan_files')
+        .values({
+          branch_id: x.s.branch,
+          item_id: last.id,
+          work_id: quiz,
+          name: 'quiz.pdf',
+          type: 'application/pdf',
+          bytes: 9,
+        })
+        .execute();
       const plan = planSchema.parse(ok(await merge(x, last.id, row)).body);
       expect(plan.rows[1]?.item?.id).toBe(items[1]?.id);
       expect(plan.rows[1]?.item?.topic).toBe('Topic 2; Topic 8');
       expect(plan.rows[1]?.item?.classworks.map((one) => one.title)).toEqual(['Essay', 'Quiz']);
+      const merged = plan.rows[1]?.item?.classworks[1]?.id;
+      expect(plan.rows[1]?.item?.files.map((file) => [file.name, file.workId])).toEqual([
+        ['quiz.pdf', merged],
+      ]);
       expect(plan.notCovered).toEqual([]);
       // The merged item has no place left: it is cleared, its history stays.
       const stored = await t.database.migrator

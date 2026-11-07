@@ -133,6 +133,7 @@ const GRID: JournalGrid = {
     number: null,
     topic: null,
     notDelivered: false,
+    addedInJournal: [],
     copyFrom: index === 1 ? FIRST : null,
     lock: OPEN_LOCK,
     works: index === 1 ? [TEST] : [],

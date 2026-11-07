@@ -29,6 +29,8 @@ import {
   scoresSavedSchema,
   studentAbsencesSchema,
   workSavedSchema,
+  workAddedSchema,
+  type PlanWorkRename,
   type AbsenceReasonRecord,
   type AttendanceSave,
   type CommentHistoryQuery,
@@ -219,14 +221,34 @@ export const setAbsenceReason = (studentId: string, date: string, body: AbsenceR
 // ---------------------------------------------------------------------------
 // Task 8.1: classwork and homework.
 
-/** A work added by hand at a lesson with no plan item. */
+/**
+ * A work added at a lesson with no plan item; task 10.8: written into the lesson's plan item
+ * (`09`, In the journal).
+ */
 export const addWork = (lessonId: string, body: WorkAdd) =>
   answerOf(
     api.POST('/api/journal/lessons/{lessonId}/works', {
       params: { header: branchHeader(), path: { lessonId } },
       body,
     }),
-  ).then((answer) => workSavedSchema.parse(answer));
+  ).then((answer) => workAddedSchema.parse(answer));
+
+/** Task 10.8: renames a work added in the journal while its plan item has no topic. */
+export const renamePlanWork = (lessonId: string, planWorkId: string, body: PlanWorkRename) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/plan-works/{planWorkId}/title', {
+      params: { header: branchHeader(), path: { lessonId, planWorkId } },
+      body,
+    }),
+  ).then((answer) => workAddedSchema.parse(answer));
+
+/** Task 10.8: removes an empty work added in the journal while its plan item has no topic. */
+export const removePlanWork = (lessonId: string, planWorkId: string) =>
+  answerOf(
+    api.DELETE('/api/journal/lessons/{lessonId}/plan-works/{planWorkId}', {
+      params: { header: branchHeader(), path: { lessonId, planWorkId } },
+    }),
+  );
 
 /** Task 10.6: renames a work added by hand, on the version it was read. */
 export const renameWork = (lessonId: string, workId: string, body: WorkRename) =>

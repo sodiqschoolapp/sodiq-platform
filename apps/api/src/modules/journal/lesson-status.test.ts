@@ -24,6 +24,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { handWork } from '../../testing/hand-works.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -968,12 +969,13 @@ describe('lesson status, reminders and the counts per teacher', () => {
       teacherIn(s),
       async (calls) => {
         ok(await mark(calls, s.second, [{ studentId: s.ahmedov, mark: 1 }]));
-        const added = ok(
-          await calls.post(`/api/journal/lessons/${s.second}/works`, {
-            kind: 'classwork',
-            title: 'Dictation',
-          }),
-        ) as { id: string };
+        // Task 10.8: a work added by hand before 7 November 2026 (the add now writes a plan work).
+        const added = await handWork(t.database.migrator, {
+          branchId: s.branch,
+          lessonId: s.second,
+          kind: 'classwork',
+          at: '2026-10-20T12:00:00+05:00',
+        });
         expect(
           codeOf(
             await calls.post(`/api/journal/lessons/${s.second}/not-graded`, {

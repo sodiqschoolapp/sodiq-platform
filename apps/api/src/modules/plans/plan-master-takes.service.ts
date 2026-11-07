@@ -139,8 +139,9 @@ export class PlanMasterTakes {
         planId,
         targetsOf(rows, layouts, await this.predecessors(transaction, master.id, planId, rows)),
       );
+      const removedFiles: string[] = [];
       const made = taking
-        ? await this.apply(transaction, scene, planId, master.id, rows, layouts)
+        ? await this.apply(transaction, scene, planId, master.id, rows, layouts, removedFiles)
         : new Map<string, string>();
       await transaction
         .updateTable('lesson_plans')
@@ -167,6 +168,8 @@ export class PlanMasterTakes {
           masterId: master.id,
           masterRevision: master.revision,
           taken: taking,
+          // Task 10.8 (code review 4): the files of the works replaced, removed with them.
+          ...(removedFiles.length === 0 ? {} : { removedFiles: [...removedFiles].sort() }),
           changed: rows.filter((row) => row.change === 'changed').map((row) => row.masterItemId),
           added: rows.filter((row) => row.change === 'added').map((row) => row.masterItemId),
           removed: rows.filter((row) => row.change === 'removed').map((row) => row.masterItemId),
@@ -242,6 +245,8 @@ export class PlanMasterTakes {
     masterId: string,
     rows: readonly CompareRow[],
     layouts: ReadonlyMap<string, { rows: PlanRowLesson[]; places: Map<string, number> }>,
+    /** Task 10.8: the files of the works the take replaced, for its audit entry. */
+    removedFiles: string[],
   ): Promise<Map<string, string>> {
     const live = new Map(
       (await masterItemsOf(transaction, masterId)).map((item) => [item.id, item]),
@@ -249,7 +254,9 @@ export class PlanMasterTakes {
     for (const row of rows) {
       const source = live.get(row.masterItemId);
       if (row.change === 'changed' && row.plan !== null && source !== undefined) {
-        await takeFromMaster(transaction, scene.branchId, row.plan.itemId, source);
+        removedFiles.push(
+          ...(await takeFromMaster(transaction, scene.branchId, row.plan.itemId, source)),
+        );
       }
     }
     const removed = rows
@@ -357,8 +364,9 @@ export class PlanMasterTakes {
         const rows = await planRows(transaction, branchId, journal, quarter, timeZone, now);
         const planId = await planIdOf(transaction, journal.id, quarter.id);
         const items = planId === null ? [] : await planItems(transaction, planId, journal.id);
+        // Task 10.8 (review correction 1): an item the journal's add made has no topic yet.
         const topicAt = (number: number) =>
-          items.find((item) => item.position === number)?.topic ?? null;
+          items.find((item) => item.position === number)?.topic.trim() || null;
         const started = rows.filter((row) => row.started);
         const reached = started.at(-1);
         const next = rows.find((row) => !row.started);

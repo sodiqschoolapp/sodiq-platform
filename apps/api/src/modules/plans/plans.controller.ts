@@ -2,7 +2,7 @@ import { Controller, Delete, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   PLAN_FILE_TYPES,
   planFileParamsSchema,
-  planFileSchema,
+  planItemFileSchema,
   planFileUploadQuerySchema,
   planCopySchema,
   planItemCreateSchema,
@@ -195,7 +195,7 @@ export class PlansController {
 
   @Put('items/:itemId/files')
   @Requires('plans', 'edit')
-  @Returns(planFileSchema)
+  @Returns(planItemFileSchema)
   addFile(
     @CurrentAccess() access: Access,
     @ValidParams(planItemParamsSchema) params: PlanItemParams,
@@ -203,7 +203,7 @@ export class PlansController {
     @ValidFile(PLAN_FILE_ROUTE) file: UploadedFile | null,
     @RequestId() requestId: string,
   ): Promise<PlanFile> {
-    return this.files.add(access, params.itemId, query.name, file, requestId);
+    return this.files.add(access, params.itemId, query.name, file, requestId, query.workId ?? null);
   }
 
   @Delete('files/:fileId')

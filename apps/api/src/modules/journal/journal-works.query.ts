@@ -168,7 +168,7 @@ export async function planItemsOf(
             .execute(),
           transaction
             .selectFrom('lesson_plan_works')
-            .select(['id', 'item_id', 'kind', 'title'])
+            .select(['id', 'item_id', 'kind', 'title', 'added_in_journal_at'])
             .where('item_id', 'in', itemIds)
             .orderBy('kind')
             .orderBy('position')
@@ -183,6 +183,7 @@ export async function planItemsOf(
       id: work.id,
       kind: work.kind === 'homework' ? 'homework' : 'classwork',
       title: work.title,
+      addedInJournal: work.added_in_journal_at !== null,
     });
     worksOf.set(work.item_id, list);
   }
@@ -415,8 +416,11 @@ export async function journalsColumns(
         ids.has(work.lessonId) || (work.sourceLessonId !== null && ids.has(work.sourceLessonId)),
     );
     const planned = new Map<string, readonly PlannedWork[] | null>();
+    const topicless = new Set<string>();
     for (const lesson of lessons) {
       if (items.has(lesson.id)) planned.set(lesson.id, items.get(lesson.id)?.works ?? null);
+      const item = items.get(lesson.id);
+      if (item !== undefined && item !== null && item.topic.trim() === '') topicless.add(lesson.id);
     }
     found.set(journal.id, {
       lessons,
@@ -426,6 +430,7 @@ export async function journalsColumns(
         stored: own,
         journalClosed: closed.has(journal.id),
         notGiven: marks.notGiven,
+        topicless,
       }),
       stored: own,
     });

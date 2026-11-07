@@ -75,6 +75,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   number: null,
   topic: null,
   notDelivered: false,
+  addedInJournal: [],
   copyFrom: null,
   lock: OPEN_LOCK,
   notHeldWorks: [],

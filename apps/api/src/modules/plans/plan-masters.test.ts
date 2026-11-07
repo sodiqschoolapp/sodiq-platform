@@ -1208,6 +1208,28 @@ describe('master plans', () => {
   });
 
   describe('a copy of a master', () => {
+    // Task 10.8, review correction 2 (`09`, Master plans: "Teachers may start from the master,
+    // from a copy, or from an empty plan"): an item the journal's add made on a held row blocks
+    // no copy of a master, and stays at its row.
+    it('copies a master after the journal’s add made the plan’s first item, keeping that item at its held row', async () => {
+      const x = await scene();
+      const master = await masterWith(x, 5);
+      const AFTER = '2026-11-10T12:00:00+05:00';
+      const first = (await planOf(x, NOV02)).rows[0];
+      if (first === undefined) throw new Error('The quarter has rows.');
+      const added = await at(AFTER, async () =>
+        send('post', `/api/journal/lessons/${first.lessonId}/works`, x.s.branch, x.owner.cookie, {
+          kind: 'homework',
+          title: 'Exercises',
+        }),
+      );
+      const work = ok(added).body as { itemId: string };
+      const copied = planSchema.parse(ok(await copyMaster(x, master.id, AFTER)).body);
+      expect(copied.rows[0]?.item?.id).toBe(work.itemId);
+      expect(copied.rows[0]?.item?.homeworks.map((one) => one.title)).toEqual(['Exercises']);
+      expect(copied.rows[1]?.item?.topic).toBe('M1');
+    });
+
     it('fills the rows in order, leaves the last rows empty, and is independent of its master (done when)', async () => {
       const x = await scene();
       const master = await masterWith(x, 5);
@@ -1559,13 +1581,41 @@ describe('master plans', () => {
       expect(codeOf(await takeOrKeep(x, 'master-take', changed.revision - 1))).toBe(
         'plan_master_stale',
       );
+      // Task 10.8 (code review 4): a file on a work of the item the take replaces is removed
+      // with it, and the take's entry names it.
+      const replaced = plan.rows.find((row) => row.item?.topic === 'M2')?.item;
+      if (replaced === undefined || replaced === null) throw new Error('The item M2.');
+      const work = await t.database.migrator
+        .insertInto('lesson_plan_works')
+        .values({
+          branch_id: x.s.branch,
+          item_id: replaced.id,
+          kind: 'homework',
+          position: 1,
+          title: 'Extra',
+          description: '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const file = await t.database.migrator
+        .insertInto('lesson_plan_files')
+        .values({
+          branch_id: x.s.branch,
+          item_id: replaced.id,
+          work_id: work.id,
+          name: 'extra.pdf',
+          type: 'application/pdf',
+          bytes: 9,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
       const taken = planSchema.parse(ok(await takeOrKeep(x, 'master-take', changed.revision)).body);
       expect(topics(taken)).toEqual(['M1', 'M5', 'M2 changed', 'M3', null, null, null, null]);
       expect(taken.master?.updated).toBe(false);
       expect((await compare(x)).rows).toEqual([]);
       const [entry] = await entries('plan.master_taken', x.master.id);
       expect(entry?.new_value).toEqual(
-        expect.objectContaining({ masterRevision: changed.revision }),
+        expect.objectContaining({ masterRevision: changed.revision, removedFiles: [file.id] }),
       );
     });
 

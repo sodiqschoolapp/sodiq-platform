@@ -182,11 +182,15 @@ export function fakeApi(handlers: Record<string, Handler>): ApiCall[] {
         throw new TypeError('The generated client hands fetch a Request.');
       }
       const route = `${input.method} ${new URL(input.url).pathname}`;
-      // A file (a photo, task 2.2c-2; an Excel workbook, task 9.4g) is recorded by its type and
-      // size, not read as JSON.
+      // A file (a photo, task 2.2c-2; an Excel workbook, task 9.4g; a plan's PDF, task 10.8) is
+      // recorded by its type and size, not read as JSON.
       const type = input.headers.get('Content-Type') ?? '';
       let body: unknown;
-      if (type.startsWith('image/') || type.includes('spreadsheetml')) {
+      if (
+        type.startsWith('image/') ||
+        type.includes('spreadsheetml') ||
+        type === 'application/pdf'
+      ) {
         body = { type, size: (await input.arrayBuffer()).byteLength };
       } else {
         const text = await input.text();

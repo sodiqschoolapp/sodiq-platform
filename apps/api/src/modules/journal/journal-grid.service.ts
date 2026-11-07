@@ -1226,7 +1226,12 @@ export class JournalGridReader {
         copyFrom: copyFroms.get(lesson.id) ?? null,
         planItem: columnsOf.get(lesson.id)?.planItem ?? false,
         number: numbers.get(lesson.id) ?? null,
-        topic: plan.items.get(lesson.id)?.topic ?? null,
+        // Task 10.8: an item the journal's add made has no topic until the owner writes it.
+        topic: plan.items.get(lesson.id)?.topic.trim() || null,
+        // Task 10.8: the works of the lesson's item added in the journal.
+        addedInJournal: (plan.items.get(lesson.id)?.works ?? []).flatMap((work) =>
+          work.addedInJournal === true ? [work.id] : [],
+        ),
         notDelivered: plan.notDelivered.has(lesson.id),
         works:
           shape === 'attendance' ? [] : (columnsOf.get(lesson.id)?.columns ?? []).map(gridWork),

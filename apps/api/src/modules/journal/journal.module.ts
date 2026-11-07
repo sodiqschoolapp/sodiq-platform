@@ -1,5 +1,6 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
+import { PlansModule } from '../plans/plans.module.js';
 import { ChromiumPdfRenderer, PDF_RENDERER } from '../../http/pdf.js';
 import { JobRunner } from '../../jobs/job-runner.js';
 import { SupportViewController } from './support-view.controller.js';
@@ -38,7 +39,8 @@ import { WorksController } from './works.controller.js';
 import { WorksService } from './works.service.js';
 
 @Module({
-  imports: [NotificationsModule, AccessModule],
+  // Task 10.8: a work added in the journal is written into the plan (`PlansService`).
+  imports: [NotificationsModule, AccessModule, PlansModule],
   controllers: [
     // Task 8.4: before the controllers whose `lessons/:lessonId` and `journals/:journalId` paths
     // would take `unlocks`.

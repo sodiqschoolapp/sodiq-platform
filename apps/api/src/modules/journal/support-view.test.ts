@@ -18,6 +18,7 @@ import { expectNotFound } from '../../testing/id-refusal-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit, moveStudentBranch } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { handWork } from '../../testing/hand-works.js';
 import { ratingEntryAndNote } from '../../testing/rating-kit.js';
 import { SaveRefusals } from './save-refusals.js';
 
@@ -667,12 +668,14 @@ describe('the support view', () => {
       await give(stranger, [{ role: 'teacher', branchId: s.branch }]);
       // A work added by hand on the 26th, a number typed, then the work removed.
       await at(owner, '2026-10-26T09:00:00+05:00');
-      const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
+      // Task 10.8: added by hand before 7 November 2026 (the add now writes a plan work).
+      const work = await handWork(t.database.migrator, {
+        branchId: s.branch,
+        lessonId: s.third,
         kind: 'homework',
         title: 'Exercises',
+        at: '2026-10-26T09:00:00+05:00',
       });
-      expect(added.status, JSON.stringify(added.body)).toBe(200);
-      const work = added.body as { id: string; version: number };
       // Task 10.6: renamed before it is removed; its lines keep the title from the history.
       const renamed = await request(t.kit.server)
         .put(`/api/journal/lessons/${s.third}/works/${work.id}/title`)
@@ -797,12 +800,13 @@ describe('the support view', () => {
       // A work added by hand, its total set, then marked "not held", through the routes.
       await give(owner, [{ role: 'teacher', branchId: s.branch }]);
       await at(owner, '2026-10-26T09:00:00+05:00');
-      const added = await post(owner, s.branch, `/api/journal/lessons/${s.third}/works`, {
+      // Task 10.8: added by hand before 7 November 2026 (the add now writes a plan work).
+      const work = await handWork(t.database.migrator, {
+        branchId: s.branch,
+        lessonId: s.third,
         kind: 'classwork',
-        title: 'Dictation',
+        at: '2026-10-26T09:00:00+05:00',
       });
-      expect(added.status, JSON.stringify(added.body)).toBe(200);
-      const work = added.body as { id: string; version: number };
       await at(owner, '2026-10-26T09:01:00+05:00');
       const total = await t.put(
         `/api/journal/lessons/${s.third}/works/total`,

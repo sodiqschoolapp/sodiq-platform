@@ -3,6 +3,7 @@ import {
   apiErrorSchema,
   BRANCH_HEADER,
   planFileSchema,
+  planItemFileSchema,
   planItemSchema,
   planListSchema,
   planSchema,
@@ -1128,6 +1129,113 @@ describe('lesson plans and their items', () => {
     });
     expect([await planRowsOf(branch), await planRowsOf(other.scene.branch)]).toEqual(before);
     expect(await planEntries()).toBe(audit);
+  });
+
+  // Task 10.8 (`edge/lesson-plans`: "at most 10 files in an item's materials and at most 10 on
+  // each classwork or homework"; plan decisions 2 and 14, Look first 2).
+  it('keeps 10 files on each work and 10 materials, refuses a work of another item, branch or none, and removes a work’s files with it', async () => {
+    const s = await plannedScene();
+    const branch = s.scene.branch;
+    const [item, other] = await as(s.owner, branch, teacherOf(s), async (api) => [
+      itemOf(
+        await api.post(`/api/plans/journals/${s.journal}/items`, {
+          quarterId: s.q2,
+          position: 1,
+          values: values({
+            classworks: [{ title: 'Test', description: '' }],
+            homeworks: [{ title: 'Exercises', description: '' }],
+          }),
+        }),
+        201,
+      ),
+      itemOf(
+        await api.post(`/api/plans/journals/${s.journal}/items`, {
+          quarterId: s.q2,
+          position: 2,
+          values: values({ homeworks: [{ title: 'Reading', description: '' }] }),
+        }),
+        201,
+      ),
+    ]);
+    if (item === undefined || other === undefined) throw new Error('Two items.');
+    const homework = item.homeworks[0]?.id ?? '';
+    const classwork = item.classworks[0]?.id ?? '';
+    const elsewhere = await plannedScene();
+    const [foreign] = await as(
+      elsewhere.owner,
+      elsewhere.scene.branch,
+      teacherOf(elsewhere),
+      async (api) => [
+        itemOf(
+          await api.post(`/api/plans/journals/${elsewhere.journal}/items`, {
+            quarterId: elsewhere.q2,
+            position: 1,
+            values: values({ homeworks: [{ title: 'Foreign', description: '' }] }),
+          }),
+          201,
+        ),
+      ],
+    );
+    const ok = (response: { status: number; body: unknown }): unknown => {
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      return response.body;
+    };
+    const upload = (api: Api, name: string, workId?: string) =>
+      api.upload(
+        `/api/plans/items/${item.id}/files?name=${name}${workId === undefined ? '' : `&workId=${workId}`}`,
+        'application/pdf',
+        PDF,
+      );
+    await as(s.owner, branch, [], async (api) => {
+      // The rows of both branches (`.claude/rules/api.md`; permission review 5).
+      const before = [await planRowsOf(branch), await planRowsOf(elsewhere.scene.branch)];
+      const audit = await planEntries();
+      for (const workId of [
+        other.homeworks[0]?.id ?? '',
+        foreign?.homeworks[0]?.id ?? '',
+        randomUUID(),
+      ]) {
+        const refused = await upload(api, 'x.pdf', workId);
+        expect([refused.status, codeOf(refused)]).toEqual([404, 'plan_work_not_found']);
+      }
+      expect([await planRowsOf(branch), await planRowsOf(elsewhere.scene.branch)]).toEqual(before);
+      expect(await planEntries()).toBe(audit);
+      for (let index = 0; index < 10; index += 1) {
+        ok(await upload(api, `h${String(index)}.pdf`, homework));
+        ok(await upload(api, `m${String(index)}.pdf`));
+      }
+      expect(codeOf(await upload(api, 'h.pdf', homework))).toBe('plan_files_full');
+      expect(codeOf(await upload(api, 'm.pdf'))).toBe('plan_files_full');
+      const onClasswork = planItemFileSchema.parse(ok(await upload(api, 'c.pdf', classwork)));
+      expect(onClasswork.workId).toBe(classwork);
+      const plan = planOf(await api.get(`/api/plans/journals/${s.journal}?quarterId=${s.q2}`));
+      const files = plan.rows[0]?.item?.files ?? [];
+      expect(files.filter((one) => one.workId === homework)).toHaveLength(10);
+      expect(files.filter((one) => one.workId === null)).toHaveLength(10);
+      // The save that removes the homework removes its 10 files first; the materials stay.
+      const stored = plan.rows[0]?.item;
+      if (stored === undefined || stored === null) throw new Error('The item is at row 1.');
+      ok(
+        await api.put(`/api/plans/items/${item.id}`, {
+          base: baseOf(stored),
+          values: values({ classworks: stored.classworks, homeworks: [] }),
+        }),
+      );
+      const after = planOf(await api.get(`/api/plans/journals/${s.journal}?quarterId=${s.q2}`));
+      expect(after.rows[0]?.item?.files.map((one) => one.workId).sort()).toEqual(
+        [...Array.from({ length: 10 }, () => null), classwork].sort(),
+      );
+    });
+    const removed = await t.database.migrator
+      .selectFrom('lesson_plan_files')
+      .select(['work_id', 'removed_at'])
+      .where('item_id', '=', item.id)
+      .where('name', 'like', 'h%')
+      .execute();
+    expect(removed).toHaveLength(10);
+    expect(removed.every((one) => one.work_id === null && one.removed_at !== null)).toBe(true);
+    const [entry] = (await t.entries('plan.item_edit')).slice(-1);
+    expect((entry?.details as { removedFiles?: string[] } | null)?.removedFiles).toHaveLength(10);
   });
 
   it('answers files_not_configured on a server with no file store, and keeps nothing', async () => {

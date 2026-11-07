@@ -15,6 +15,7 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { handWork } from '../../testing/hand-works.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12 and 19 October are locked. */
@@ -374,19 +375,20 @@ describe('the journal of a closed quarter', () => {
       x.owner,
       x.branch,
       async (calls) => {
-        const added = ok(
+        // Task 10.8: written into the lesson's plan item; its column is planned.
+        const work = ok(
           await calls.post(`/api/journal/lessons/${x.third}/works`, {
             kind: 'classwork',
             title: 'Dictation',
           }),
-        ).body as { id: string; version: number };
-        ok(
+        ).body as { planWorkId: string };
+        const added = ok(
           await calls.put(`/api/journal/lessons/${x.third}/works/total`, {
-            column: { workId: added.id },
+            column: { planWorkId: work.planWorkId, sourceLessonId: x.third },
             total: 10,
-            version: added.version,
+            version: null,
           }),
-        );
+        ).body as { id: string; version: number };
         ok(
           await calls.post(`/api/journal/lessons/${x.third}/scores`, {
             saves: [
@@ -471,18 +473,13 @@ describe('the journal of a closed quarter', () => {
   // other entry, is taken only under an unlock (0135, `journal_reopened_check`).
   it('refuses the rename of a work added by hand in a reopened quarter without an unlock', async () => {
     const x = await scene();
-    const added = await as(
-      x.owner,
-      x.branch,
-      async (calls) =>
-        ok(
-          await calls.post(`/api/journal/lessons/${x.third}/works`, {
-            kind: 'classwork',
-            title: 'Dictation',
-          }),
-        ).body as { id: string; version: number },
-      '2026-10-27T09:00:00+05:00',
-    );
+    // Task 10.8: a work added by hand before 7 November 2026 (the add now writes a plan work).
+    const added = await handWork(t.database.migrator, {
+      branchId: x.branch,
+      lessonId: x.third,
+      kind: 'classwork',
+      at: '2026-10-27T09:00:00+05:00',
+    });
     await close(x);
     await reopenQuarter(t.database, {
       branchId: x.branch,

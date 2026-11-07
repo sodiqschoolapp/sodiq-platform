@@ -1185,6 +1185,7 @@ export interface LessonPlanFiles {
   name: string;
   removed_at: Timestamp | null;
   type: string;
+  work_id: string | null;
 }
 
 export interface LessonPlanFollowMarks {
@@ -1390,6 +1391,8 @@ export interface LessonPlanWorkOpenings {
 }
 
 export interface LessonPlanWorks {
+  added_in_journal_at: Timestamp | null;
+  added_in_journal_by: string | null;
   branch_id: string;
   created_at: Generated<Timestamp>;
   description: Generated<string>;

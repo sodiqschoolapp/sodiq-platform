@@ -1,15 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { shownPercent } from '@sodiq/calc';
 import {
-  LESSON_WORKS_MAX,
   type ErrorDetail,
   type ScoresSave,
   type ScoresSaved,
   type WorkAdd,
   type WorkCarry,
   type WorkColumn,
+  type PlanWorkRename,
+  type WorkAdded,
   type WorkRename,
   type WorkSaved,
+  workAddedSchema,
   type Correction,
   type NotGraded,
   type NotGradedAnswer,
@@ -42,6 +44,8 @@ import { cellsAsSaved, storedCells } from './saved-cells.js';
 import { refuseOtherStudents } from './students-of-branch.js';
 import { lessonStatuses } from './lesson-status.query.js';
 import { inGridOrder } from './attendance.service.js';
+import { PlansService } from '../plans/plans.service.js';
+import { removePlanWork } from './plan-work-remove.js';
 
 /**
  * Classwork and homework (task 8.1, pull request #217; `07`, Entering data,
@@ -150,19 +154,6 @@ async function numbersOf(
 const percentOf = (score: number, total: number | null): number | null =>
   total === null || score > total ? null : Number(shownPercent(score, total));
 
-/** The branch's time zone and the transaction's moment. */
-async function clockAt(
-  transaction: Transaction,
-  branchId: string,
-): Promise<{ timeZone: string; now: Date }> {
-  const branch = await transaction
-    .selectFrom('branches')
-    .select('time_zone')
-    .where('id', '=', branchId)
-    .executeTakeFirstOrThrow();
-  return { timeZone: branch.time_zone, now: await transactionMoment(transaction) };
-}
-
 @Injectable()
 export class WorksService {
   constructor(
@@ -170,6 +161,8 @@ export class WorksService {
     @Inject(Audit) private readonly audit: Audit,
     @Inject(RequestKeys) private readonly requestKeys: RequestKeys,
     @Inject(Notifications) private readonly notifications: Notifications,
+    // Task 10.8: a work added in the journal is written into the plan.
+    @Inject(PlansService) private readonly plans: PlansService,
   ) {}
 
   /**
@@ -467,59 +460,286 @@ export class WorksService {
     );
   }
 
-  /** Add a work by hand at a lesson with no plan item (`edge/journal`, "A lesson is held with no plan item"). */
-  add(access: Access, lessonId: string, input: WorkAdd, requestId?: string): Promise<WorkSaved> {
+  /**
+   * Add a work at a held lesson with no plan item (`edge/journal`, "A lesson is held with no plan
+   * item"). Task 10.8: the work is written into the lesson's plan item, created for it with the
+   * plan when there is none, and marked as added in the journal (`PlansService.addFromJournal`,
+   * which takes the plan's locks, refuses an item with a topic and counts the limit of 10).
+   */
+  add(access: Access, lessonId: string, input: WorkAdd, requestId?: string): Promise<WorkAdded> {
     return this.transactions.run(access.branchIds, async (transaction) => {
       const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
-      // The lock of `journal_works_limit` (0119), which the takeover of a plan item takes too
-      // (code review, should-fix 3): the plan item and the free place are read after it.
-      await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${scene.lesson.id}`}, 0))`.execute(
-        transaction,
-      );
-      const { timeZone, now } = await clockAt(transaction, scene.branchId);
-      const fresh = await journalColumns(transaction, scene.journal, timeZone, now);
-      const own = fresh.columns.get(scene.lesson.id);
-      if (own?.planItem !== false) throw new ApiException('lesson_has_plan_item', 409);
-      const taken = await transaction
-        .selectFrom('journal_works')
-        .select('position')
-        .where('source_lesson_id', '=', scene.lesson.id)
-        .where('kind', '=', input.kind)
-        .where('plan_work_id', 'is', null)
-        .execute();
-      const used = new Set(taken.map((one) => one.position));
-      const position = Array.from({ length: LESSON_WORKS_MAX }, (_, at) => at + 1).find(
-        (one) => !used.has(one),
-      );
-      if (position === undefined) throw new ApiException('journal_works_limit', 409);
-      let row: WorkRow;
-      try {
-        row = await transaction
-          .insertInto('journal_works')
-          .values({
-            branch_id: scene.branchId,
-            // A homework given by hand is stored where it is given (decision 18).
-            lesson_id: scene.lesson.id,
-            source_lesson_id: scene.lesson.id,
-            kind: input.kind,
-            position,
-            title: input.title,
-            changed_by: access.accountId,
-            changed_how: 'entry',
-          })
-          .returning(WORK_COLUMNS)
-          .executeTakeFirstOrThrow();
-      } catch (error) {
-        mapWorkRefusal(error);
+      if (scene.columns.columns.get(scene.lesson.id)?.planItem !== false) {
+        throw new ApiException('lesson_has_plan_item', 409);
       }
+      const actor = this.actorOf(scene);
+      const added = await this.plans.addFromJournal(transaction, access, {
+        branchId: scene.branchId,
+        journalId: scene.journal.id,
+        lessonId: scene.lesson.id,
+        assignmentId: actor.assignmentId,
+        ...(requestId === undefined ? {} : { requestId }),
+        kind: input.kind,
+        title: input.title,
+      });
       await this.audit.record(transaction, {
-        ...this.actorOf(scene),
+        ...actor,
         action: 'journal.work_add',
         record: { type: 'lesson', id: scene.lesson.id },
-        newValue: { workId: row.id, kind: input.kind, position, title: row.title },
+        newValue: {
+          planWorkId: added.planWorkId,
+          itemId: added.itemId,
+          kind: input.kind,
+          title: input.title,
+        },
       });
       await this.noticeCorrection(transaction, scene);
-      return savedOf(row);
+      return workAddedSchema.parse({ ...added, kind: input.kind, title: input.title });
+    });
+  }
+
+  /**
+   * Task 10.8: the lesson a work added in the journal is given at (its source), and whether this
+   * lesson shows it (its source, or the check lesson of a homework; `.claude/rules/journal.md`:
+   * "A route that acts on a stored row takes every lesson the screen shows the row at").
+   */
+  private planWorkAt(
+    columns: JournalColumns,
+    lessonId: string,
+    planWorkId: string,
+  ): { source: string | null; shown: boolean } {
+    let source: string | null = null;
+    let shown = false;
+    for (const [at, lesson] of columns.columns) {
+      const own = [...lesson.columns, ...lesson.notHeld].filter(
+        (column) => column.planWorkId === planWorkId,
+      );
+      if (lesson.given.some((one) => one.planWorkId === planWorkId)) source = at;
+      if (own.some((column) => column.kind === 'classwork' && column.sourceLessonId === at)) {
+        source = at;
+      }
+      if (at === lessonId && own.length > 0) shown = true;
+    }
+    return { source, shown: shown || source === lessonId };
+  }
+
+  /**
+   * Task 10.8 (plan decision 8): the scene of a change of a work added in the journal, in the
+   * lock order of the add (the journal's checks, the plan's journals, the item, the lesson's
+   * advisory lock). Refused `work_planned` once the owner wrote the item's topic: the work is
+   * the owner's then, through the plan.
+   */
+  private async journalPlanWork(
+    transaction: Transaction,
+    access: Access,
+    lessonId: string,
+    planWorkId: string,
+    requestId: string | undefined,
+  ) {
+    const scene = await this.sceneOf(transaction, access, lessonId, requestId);
+    const work = await transaction
+      .selectFrom('lesson_plan_works')
+      .select(['id', 'item_id', 'kind', 'title', 'added_in_journal_at'])
+      .where('id', '=', planWorkId)
+      .where('branch_id', '=', scene.branchId)
+      .executeTakeFirst();
+    if (work === undefined) throw notFound();
+    const { source, shown } = this.planWorkAt(scene.columns, scene.lesson.id, planWorkId);
+    if (!shown || source === null) throw new ApiException('work_not_in_lesson', 409);
+    if (work.added_in_journal_at === null) throw new ApiException('work_planned', 409);
+    const quarter = await sql<{ quarter: string | null }>`
+      select lesson_quarter(${source}::uuid)::text as quarter
+    `.execute(transaction);
+    const quarterId = quarter.rows[0]?.quarter ?? null;
+    if (quarterId !== null) await this.plans.lockPlanOf(transaction, scene.journal.id, quarterId);
+    const item = await this.plans.lockItem(transaction, work.item_id);
+    if (item.topic.trim() !== '') throw new ApiException('work_planned', 409);
+    await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${source}`}, 0))`.execute(
+      transaction,
+    );
+    // The edit period of the lesson it is given at (as `rename` judges a work at its lesson).
+    if (source !== scene.lesson.id) {
+      await decideWrite(transaction, {
+        access,
+        branchId: scene.branchId,
+        target: { kind: 'lesson', lessonId: source },
+        staffId: await ownStaffOf(transaction, access.accountId),
+      });
+    }
+    const fresh = await transaction
+      .selectFrom('lesson_plan_works')
+      .select(['id', 'item_id', 'kind', 'title'])
+      .where('id', '=', planWorkId)
+      .executeTakeFirst();
+    if (fresh === undefined) throw notFound();
+    // The lesson the work is given at and the lessons that show it, read again after the locks
+    // (plan review 1 and 2: every decision on the read after them).
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', scene.branchId)
+      .executeTakeFirstOrThrow();
+    const columns = await journalColumns(
+      transaction,
+      scene.journal,
+      branch.time_zone,
+      await transactionMoment(transaction),
+    );
+    const again = this.planWorkAt(columns, scene.lesson.id, planWorkId);
+    if (!again.shown || again.source !== source) {
+      throw new ApiException('work_not_in_lesson', 409);
+    }
+    return { scene, work: fresh, planId: item.plan_id, source };
+  }
+
+  /** Task 10.8: rename a work added in the journal while its item has no topic (plan decision 8). */
+  renamePlanWork(
+    access: Access,
+    lessonId: string,
+    planWorkId: string,
+    input: PlanWorkRename,
+    requestId?: string,
+  ): Promise<WorkAdded> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const { scene, work, planId } = await this.journalPlanWork(
+        transaction,
+        access,
+        lessonId,
+        planWorkId,
+        requestId,
+      );
+      const kind = work.kind === 'homework' ? 'homework' : 'classwork';
+      const answer = workAddedSchema.parse({
+        planWorkId: work.id,
+        itemId: work.item_id,
+        kind,
+        title: input.title,
+      });
+      if (input.baseTitle !== work.title) {
+        throw new ApiException('work_stale', 409, undefined, [
+          {
+            path: 'title',
+            code: 'work_stale',
+            message: 'The work was changed since it was read.',
+            recordId: work.id,
+          },
+        ]);
+      }
+      if (work.title === input.title) return answer;
+      await transaction
+        .updateTable('lesson_plan_works')
+        .set({ title: input.title })
+        .where('id', '=', work.id)
+        .execute();
+      const actor = this.actorOf(scene);
+      await this.audit.record(transaction, {
+        ...actor,
+        action: 'journal.work_rename',
+        record: { type: 'lesson', id: scene.lesson.id },
+        oldValue: { planWorkId: work.id, kind, title: work.title },
+        newValue: { planWorkId: work.id, kind, title: input.title },
+      });
+      await this.audit.record(transaction, {
+        branchId: actor.branchId,
+        actorId: actor.actorId,
+        assignmentId: actor.assignmentId,
+        action: 'plan.item_edit',
+        record: { type: 'lesson_plan', id: planId },
+        oldValue: { workTitle: { id: work.id, kind, title: work.title } },
+        newValue: { workTitle: { id: work.id, kind, title: input.title } },
+        details: { itemId: work.item_id, inJournal: true },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      return answer;
+    });
+  }
+
+  /**
+   * Task 10.8: remove an empty work added in the journal while its item has no topic: its files
+   * first (plan review 7), its empty journal rows, then the plan work. The item stays.
+   */
+  removePlanWork(
+    access: Access,
+    lessonId: string,
+    planWorkId: string,
+    requestId?: string,
+  ): Promise<void> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const { scene, work, planId } = await this.journalPlanWork(
+        transaction,
+        access,
+        lessonId,
+        planWorkId,
+        requestId,
+      );
+      const rows = await transaction
+        .selectFrom('journal_works')
+        .select(['id', 'total', 'not_held'])
+        .where('plan_work_id', '=', work.id)
+        .orderBy('id')
+        .forUpdate()
+        .execute();
+      for (const row of rows) {
+        const numbers = await numbersOf(transaction, row.id);
+        if (row.total !== null || row.not_held || numbers.length > 0) {
+          throw new ApiException('work_holds_data', 409);
+        }
+      }
+      // The code review of the task: a "not given" mark and the files the owner gave the work
+      // through the plan are data too; the journal never removes them (the owner removes the
+      // files in the plan first).
+      const marked = await transaction
+        .selectFrom('journal_homework_not_given')
+        .select('id')
+        .where('plan_work_id', '=', work.id)
+        .executeTakeFirst();
+      const files = await transaction
+        .selectFrom('lesson_plan_files')
+        .select('id')
+        .where('work_id', '=', work.id)
+        .where('removed_at', 'is', null)
+        .executeTakeFirst();
+      if (marked !== undefined || files !== undefined) {
+        throw new ApiException('work_holds_data', 409);
+      }
+      for (const row of rows) {
+        try {
+          await transaction
+            .updateTable('journal_works')
+            .set({ changed_by: access.accountId, changed_how: 'deleted' })
+            .where('id', '=', row.id)
+            .execute();
+          await transaction.deleteFrom('journal_works').where('id', '=', row.id).execute();
+        } catch (error) {
+          mapWorkRefusal(error);
+        }
+      }
+      await removePlanWork(transaction, work.id);
+      const kind = work.kind === 'homework' ? 'homework' : 'classwork';
+      const actor = this.actorOf(scene);
+      await this.audit.record(transaction, {
+        ...actor,
+        action: 'journal.work_delete',
+        record: { type: 'lesson', id: scene.lesson.id },
+        oldValue: { planWorkId: work.id, kind, title: work.title },
+        // Its empty journal rows, in every journal of a shared plan (permission review 3).
+        details: { ...(actor.details ?? {}), journalWorks: rows.map((row) => row.id) },
+      });
+      await this.audit.record(transaction, {
+        branchId: actor.branchId,
+        actorId: actor.actorId,
+        assignmentId: actor.assignmentId,
+        action: 'plan.item_edit',
+        record: { type: 'lesson_plan', id: planId },
+        oldValue: { removedWork: { id: work.id, kind, title: work.title } },
+        newValue: null,
+        details: {
+          itemId: work.item_id,
+          inJournal: true,
+          removedWorks: [{ id: work.id, kind, title: work.title }],
+        },
+        ...(requestId === undefined ? {} : { requestId }),
+      });
     });
   }
 
