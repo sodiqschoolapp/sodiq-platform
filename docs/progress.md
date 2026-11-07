@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 11.5 The parents' digest
+
+- **Database** (0161): `digest_settings` (one row: 19:00, quiet 21:00 to 08:00; a time inside the quiet hours refused), `digest_frequencies` (no row: twice a week), `telegram_links.bot_blocked_at`, `digests` (one per Parent account and Tashkent date, the send log), `digest_parts` and `digest_entries` (what a delivered digest named and carried, the value as sent), `digest_children()`; no row changes.
+- **API** (module `portal`, `digest/`): `digest.tick` (cron each minute, `CLOCK`) makes the due digests and is the retry and the quiet-hours hold; `digest.send` reads everything at sending, checks the scope again in the send transaction, lists new, "corrected" and "removed" entries by value against the last value sent; routes `GET/PUT /api/setup/school-settings/digest` (Super Admin), `GET /api/digest-log` (`digest_log`), `GET/PUT /api/auth/digest-frequency` (the parent). /start and a launch clear `bot_blocked_at`.
+- **Web**: "Parents' digest" on the Settings page (Super Admin), "Digest in Telegram" on the parent's Account page, the send log at `/people/digest-log`.
+
+Left out: instant messages to families (11.8); the rating in the portal (11.6); the production bot (the owner, after this task); no browser test (the Done when names none).
+
+The next sessions must know:
+
+- A message to families is read at sending and checked against `digest_children` (or `portal_children`) in the transaction that sends; nothing is built ahead.
+- The digest's retry is the tick (`next_try_at`, 8 attempts), not pg-boss: a `transaction: 'none'` delivery is claimed once.
+
 ## 7 November 2026: task 11.4 The Telegram bot and the chat link
 
 - **Database** (0160): `telegram_links` (one open link per account and per chat, unique indexes; a Parent account only; ends with a reason), `sessions.telegram_link_id`, the end reason `telegram_unlinked`; no row changes.

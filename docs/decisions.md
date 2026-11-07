@@ -401,6 +401,34 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 7 November 2026: the parents' digest (task 11.5)
+
+Plan approved on pull request #299 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a pinned list widened: the parent session's routes). `GET` and `PUT /api/auth/digest-frequency` join the routes a parent session reaches; a staff account is refused (403) | "the `parent` role edits its own frequency and language" (decision 1) |
+| **Look first** (permission reading). The digest settings are read and changed under `school_settings`, the Super Admin alone, not under `settings` view | The approval: "for the Super Admin only" (decision 2) |
+| **Look first** (pinned lists widened). `SCHOOL_WIDE_TABLES` gains `digest_settings`, `digest_frequencies`, `digests`, `digest_parts`, `digest_entries`; the SECURITY DEFINER allow-list gains `digest_children`; the frozen list of areas gains `digest_log` | Decision 11; the approved new area (build) |
+| Due moments, quiet hours and periods by `CLOCK`; Telegram's own moments stay on `REAL_CLOCK` | Build line, "from the injected clock" (decision 3) |
+| The summary counts the held lessons that started in the period with `dailyAttendance`: exempt left out, unmarked not counted; all unmarked: "attendance not yet entered" | Build line; Release 2 reading 9 (decision 4) |
+| Marks 0 and 3 are listed as absences, each with its words; 2 as late | `07`, Entering data (decision 5) |
+| A score shows the typed number and total ("8/10"); a rating exam score "n/100" | `07`, The total (decision 6; build) |
+| Corrections by value against the latest value sent, for entries of the last 366 days; a lesson that turned exempt makes its earlier absence "removed"; a value equal to the one sent last is not listed again | `10`; `07`, Effect on totals (decision 7, review must-fix 5) |
+| The period starts at the end of the last digest delivered or with nothing new (the first at the link); each digest reads saves again from 10 minutes before it, the overlap removed by value | `10`, What it holds (decision 8, review correction 1) |
+| A digest time inside the quiet hours is refused by the route and by a check | Decision 9 |
+| A digest late on its own day is sent; a day missed entirely is covered by the next; quiet hours hold the send, not the due row | Decision 10, review correction 3 |
+| The digest tables are school-wide; the journal is read in transactions of the child's branches over the year | Decisions 11 and 17 |
+| Sends are not audited (the send log is the record); the settings and the frequency changes are | Decision 12 |
+| Split at 4096 characters, between children first, then at line ends; the button on the last message | Decision 13 |
+| The retry is the tick's (`next_try_at`, back-off 1 to 60 minutes, 8 attempts, then `failed` with the period left open) | Decision 14 |
+| The personal data report of a relative lists the account's digests (date, status, sent at) | Decision 15 |
+| The send log sits under People, a button on the Parents page, for the Super Admin; it shows the newest 500 digests or those of one date | Decision 16; build |
+| Everything is read at sending; the scope is read again in the transaction of the send | Decision 18 |
+| **Build decision.** `digest_parts` and `digest_entries` keep the student id without a key, and the entries no journal key | A student merge or branch move has nothing of the log to carry; a digest never blocks a change of the journal (review correction 2) |
+| **Build decision.** A score leaves the journal by being cleared (a work that holds a number cannot be removed, 8.1); an entry whose row is gone (a lesson's forced delete) is listed "removed" | Review correction 2 |
+| **Build decision.** No digest falls due while the bot is not set up | Nothing could be sent |
+
 ## 7 November 2026: the Telegram bot and the chat link (task 11.4)
 
 Plan approved on pull request #298 with corrections 1 to 3. Flagged on issue #42.
