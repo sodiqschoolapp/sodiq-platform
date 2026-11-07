@@ -340,6 +340,13 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu sinfning oʻquv yili yopilgan. Uning sinflari va tyutorlari avvalgidek qoladi.',
     class_needs_year:
       'Bu filialda rejalashtirilgan yoki joriy oʻquv yili yoʻq. Uni qoʻshishni Super administratordan soʻrang.',
+    announcement_changed:
+      'Kimdir bu eʼlonni hozirgina oʻzgartirdi. Uni qayta yuklang va oʻzgarishni yana kiriting.',
+    announcement_school_only:
+      'Butun maktab uchun eʼlonni faqat Super administrator yozadi, oʻzgartiradi va arxivlaydi.',
+    announcement_archived: 'Bu eʼlon arxivda. Avval uni tiklang.',
+    announcement_class_unavailable:
+      'Tanlangan sinf arxivda yoki uning oʻquv yili yopilgan. Sinflarni qayta tanlang.',
     class_changed:
       'Kimdir bu sinfni hozirgina oʻzgartirdi. Uni qayta yuklang va oʻzgarishni yana kiriting.',
     class_archived: 'Bu sinf arxivda. Avval uni tiklang.',
@@ -3714,6 +3721,7 @@ export const uz: Texts<'one' | 'other'> = {
       timetable: 'Dars jadvali',
       journal: 'Jurnal',
       plans: 'Dars rejalari',
+      announcements: 'Eʼlonlar',
     },
     scopes: {
       branch: 'Shu filial',
@@ -3790,6 +3798,12 @@ export const uz: Texts<'one' | 'other'> = {
         second_step_off: 'Ikkinchi bosqich oʻchirildi',
         second_step_reset: 'Ikkinchi bosqich qayta oʻrnatildi',
         second_step_unreadable: 'Ikkinchi bosqichni oʻqib boʻlmadi va oʻchirildi',
+      },
+      announcement: {
+        create: 'Eʼlon chop etildi',
+        edit: 'Eʼlon oʻzgartirildi',
+        archive: 'Eʼlon arxivlandi',
+        restore: 'Eʼlon tiklandi',
       },
       telegram: {
         linked: 'Telegram bogʻlandi',

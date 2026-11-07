@@ -451,6 +451,13 @@ export const AUDIT_ACTION_GROUPS = {
     'staff.personal_data_report',
     'relative.personal_data_report',
   ],
+  // Task 11.7: announcements and events written, edited, archived and restored.
+  announcements: [
+    'announcement.create',
+    'announcement.edit',
+    'announcement.archive',
+    'announcement.restore',
+  ],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',

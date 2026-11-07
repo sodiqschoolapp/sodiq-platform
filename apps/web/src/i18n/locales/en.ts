@@ -330,6 +330,13 @@ export const en = {
       'The academic year of this class is closed. Its classes and Tutors stay as they were.',
     class_needs_year:
       'This branch has no planned or current academic year. Ask the Super Admin to add one.',
+    announcement_changed:
+      'Someone changed this announcement a moment ago. Reload it, then make the change again.',
+    announcement_school_only:
+      'Only the Super Admin writes, changes or archives an announcement for the whole school.',
+    announcement_archived: 'This announcement is archived. Restore it first.',
+    announcement_class_unavailable:
+      'A class you chose is archived or its year is closed. Choose the classes again.',
     class_changed:
       'Someone changed this class a moment ago. Reload it, then make the change again.',
     class_archived: 'This class is archived. Restore it first.',
@@ -3674,6 +3681,7 @@ export const en = {
       timetable: 'Timetable',
       journal: 'Journal',
       plans: 'Lesson plans',
+      announcements: 'Announcements',
     },
     scopes: {
       branch: 'This branch',
@@ -3750,6 +3758,12 @@ export const en = {
         second_step_off: 'Second step turned off',
         second_step_reset: 'Second step reset',
         second_step_unreadable: 'Second step could not be read and was removed',
+      },
+      announcement: {
+        create: 'Announcement published',
+        edit: 'Announcement edited',
+        archive: 'Announcement archived',
+        restore: 'Announcement restored',
       },
       telegram: {
         linked: 'Telegram linked',

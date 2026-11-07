@@ -206,3 +206,28 @@ export function monthDates(month: string): { first: string; last: string } {
   const last = new Date(Date.UTC(year, number, 0)).getUTCDate();
   return { first: `${month}-01`, last: `${month}-${String(last).padStart(2, '0')}` };
 }
+
+/**
+ * The frame of the bot's message of an announcement (`10`, Language: "Messages come from
+ * templates in the three languages"; plan decision 8): the author's title and body are sent as
+ * typed, in plain text (no parse mode).
+ */
+export interface AnnouncementTexts {
+  /** The first line of a news item. */
+  news: string;
+  /** The first line of an event. */
+  event: string;
+  /** "When: …" */
+  when: string;
+  /** "Where: …" */
+  where: string;
+}
+
+export const ANNOUNCEMENT_TEXTS = {
+  uz: { news: 'Sodiq maktabi: eʼlon', event: 'Sodiq maktabi: tadbir', when: 'Qachon', where: 'Qayerda' },
+  ru: { news: 'Школа Sodiq: объявление', event: 'Школа Sodiq: мероприятие', when: 'Когда', where: 'Где' },
+  en: { news: 'Sodiq School: announcement', event: 'Sodiq School: event', when: 'When', where: 'Where' },
+} as const satisfies Readonly<Record<'uz' | 'ru' | 'en', AnnouncementTexts>>;
+
+/** The page of the portal the bot's button opens after the mini app's sign-in (`?to=`). */
+export const MINI_APP_TARGETS = ['announcements'] as const;
