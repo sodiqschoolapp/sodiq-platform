@@ -136,7 +136,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 - Routes of the application: 517, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
 - Without sign-in: 5. For the own account: 24. The parent portal: 7. With a permission of the table: 481.
 - Routes with a limit inside the route: 156.
-- Routes that take an id: 403, with 845 ids (branch 742, school 76, own 11, none 16).
+- Routes that take an id: 403, with 846 ids (branch 743, school 76, own 11, none 16).
 - Areas of the permission table: 61.
 
 ## Routes without a role
@@ -1371,6 +1371,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/plans/items/:itemId` | `body:values.classworks[].id` | plan work | none | edge/lesson-plans, "A save is addressed to the item": a work id is matched only against the item's own works (planItemBaseSchema), never read elsewhere |
 | `PUT /api/plans/items/:itemId` | `body:values.homeworks[].id` | plan work | none | edge/lesson-plans, "A save is addressed to the item": a work id is matched only against the item's own works (planItemBaseSchema), never read elsewhere |
 | `PUT /api/plans/items/:itemId/files` | `path:itemId` | plan item | branch | `src/modules/plans/plans.test.ts > answers 404 for another branch’s or an unknown journal, quarter, item, file and year` |
+| `PUT /api/plans/items/:itemId/files` | `query:workId` | plan work | branch | `src/modules/plans/plans.test.ts > keeps 10 files on each work and 10 materials, refuses a work of another item, branch or none, and removes a work’s files with it` |
 | `PUT /api/plans/journals/:journalId/queue` | `path:journalId` | journal | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown journal on the queue, for another branch's lesson or item in a body` |
 | `PUT /api/plans/journals/:journalId/queue` | `body:quarterId` | quarter | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown year, quarter, lesson, event or subject of the request routes, writing nothing` |
 | `PUT /api/plans/journals/:journalId/queue` | `body:base` | plan item | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown journal on the queue, for another branch's lesson or item in a body` |
