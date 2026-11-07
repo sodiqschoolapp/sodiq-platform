@@ -1450,6 +1450,8 @@ After 11.5 the owner puts the parent portal live (stop-list item 1): the product
 
 - [ ] **11.8 Instant messages to families** — Read `10` (Notifications: later in Release 2), `07` (Exemptions). Through the bot, in the parent's language, outside quiet hours: an absence once per day (none for an exempt lesson), a timetable change for today or tomorrow, quarter results final. Each kind can be turned off by the parent. The same privacy tests as 11.5.
 
+> **Owner gate.** The start routine stops here: the owner paused new tasks on 7 November 2026, after 11.7 and the drop of 11.8, to improve what is already built first. The owner deletes this line to start building again.
+
 - [ ] **11.9 Quarterly stipend and scholarship history** — Read `08` (Quarterly stipend), `04` (Student record: contract and scholarship), `edge/people-roles-accounts` (Financial group). The stipend list prepared from `packages/calc`, awarded by the Super Admin, written to the student's history; the history in the portal. A change of `packages/calc` stops the task (item 4).
 
 - [ ] **11.10 Automatic student UIDs** — Read `04` (UID sets, Release 2), `edge/developer-rules` (Identifiers), `edge/academic-year`. The sets per grade and year, the lowest free number offered and reserved in the same transaction as the save, the sets moving up at rollover (with 9.5b). No existing UID changes (item 3).
