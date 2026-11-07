@@ -20,7 +20,6 @@ import { useLeaveSignedOut, useSignOut } from './use-sign-out';
  * task 11.2.
  */
 export function ParentHomePage(): React.JSX.Element {
-  const { t } = useTranslation();
   const { data: session } = useQuery(sessionQuery);
   const signOut = useSignOut();
   return (

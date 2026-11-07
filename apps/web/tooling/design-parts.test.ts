@@ -276,7 +276,10 @@ describe('the pages of the design system', () => {
       'reset-password-page.tsx',
       'code-page.tsx',
       'set-up-page.tsx',
-    ].map((name) => path.join('src', 'features', 'auth', name));
+    ]
+      .map((name) => path.join('src', 'features', 'auth', name))
+      // Task 11.4: the sign-in of the Telegram mini app is a page of the sign-in frame too.
+      .concat(path.join('src', 'features', 'portal', 'telegram-start-page.tsx'));
     const working = drawn.filter(
       ({ file }) =>
         !frame.includes(file) && file !== path.join('src', 'components', 'ui', 'button.tsx'),
