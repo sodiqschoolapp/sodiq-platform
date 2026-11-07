@@ -1,4 +1,3 @@
-import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
 import { MembersKit } from '../../testing/members-kit.js';

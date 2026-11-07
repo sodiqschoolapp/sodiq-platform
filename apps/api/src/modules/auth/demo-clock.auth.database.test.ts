@@ -13,6 +13,9 @@ import {
   type SignInKit,
 } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
+import { ParentsKit } from '../../testing/parents-kit.js';
+import { signedLaunch, TEST_BOT_TOKEN } from '../../testing/telegram-kit.js';
+import request from 'supertest';
 import { newResetToken, resetTokenHash } from './reset-links.js';
 
 // Task 10.5 (pull request #280), decisions 1 and 2 (Look first): with the demo clock on, the
@@ -25,6 +28,8 @@ const REAL_START = '2026-11-04T10:00:00+05:00';
 /** Thursday 12 November 2026, 09:00 in Tashkent: 8 days on, in demo time. */
 const DEMO_TO = '2026-11-12T09:00:00+05:00';
 const NEW_DATE = '2026-11-12';
+/** An invented Telegram user. */
+const CHAT = 7_500_001;
 
 describe('sign-in across a jump of the demo clock', () => {
   let database: TestDatabase;
@@ -53,6 +58,14 @@ describe('sign-in across a jump of the demo clock', () => {
       database: database.app,
       jobsDatabaseUrl: database.appUrl,
       demoClock: { real },
+      // Task 11.4: the Telegram launch is judged by real time too.
+      config: {
+        telegram: {
+          botToken: TEST_BOT_TOKEN,
+          webhookSecret: undefined,
+          webOrigin: 'https://app-test.example.invalid',
+        },
+      },
     });
     kit = signInKit(app);
     const people = new ClassesKit(database.migrator);
@@ -108,6 +121,19 @@ describe('sign-in across a jump of the demo clock', () => {
         token_hash: resetTokenHash(resetToken),
       })
       .execute();
+
+    // Task 11.4: a parent links a chat before the jump.
+    const parents = new ParentsKit(app, database.migrator, await people.account());
+    const { relativeId } = await parents.student(branch);
+    const { account: parent } = await parents.session(relativeId);
+    const linked = await request(kit.server)
+      .post('/api/auth/sign-in')
+      .send({
+        login: parent.login,
+        password: NEW_PASSWORD,
+        telegramInitData: signedLaunch({ telegramUserId: CHAT, signedAt: real.now() }),
+      });
+    expect(linked.status, JSON.stringify(linked.body)).toBe(200);
 
     expect(await sessionOf(starting)).toMatchObject({ assignments: [] });
     expect(await sessionOf(leaving)).toMatchObject({ login: left.account.login });
@@ -168,6 +194,19 @@ describe('sign-in across a jump of the demo clock', () => {
 
   // The account of this link may not get one (no email on a staff record), which the confirm
   // checks after the link's hour: the code tells which of the two refused it.
+  // Task 11.4 (plan of #298, decision 10; spec review of the plan, must-fix 3): Telegram signs in
+  // real time, so a launch is judged by `REAL_CLOCK`, never the demo date 8 days on.
+  it('opens the mini app from launch data signed in real time, not in demo time', async () => {
+    const launch = (signedAt: Date) =>
+      request(kit.server)
+        .post('/api/auth/sign-in')
+        .send({ telegramInitData: signedLaunch({ telegramUserId: CHAT, signedAt }) });
+    const now = await launch(real.now());
+    expect(now.status, JSON.stringify(now.body)).toBe(200);
+    const atDemoTime = await launch(new Date(DEMO_TO));
+    expect([atDemoTime.status, errorCode(atDemoTime)]).toEqual([401, 'telegram_sign_in_needed']);
+  });
+
   it('judges a reset link by real time', async () => {
     const confirm = () =>
       kit

@@ -8,6 +8,7 @@ import {
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Database } from '../../database/database.js';
 import { Transactions } from '../../database/transactions.js';
 import { ShippingLogger } from '../../monitoring/monitoring.service.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
@@ -153,6 +154,39 @@ describe('the Telegram chat link', () => {
         t.database.migrator,
       )
     ).rows.map((row) => row.data.data.linkId);
+
+  /** The log lines written while `work` runs (`ShippingLogger.sink`); none is printed. */
+  async function logLinesOf(work: () => Promise<unknown>): Promise<string[]> {
+    const lines: string[] = [];
+    Logger.overrideLogger(new ShippingLogger());
+    ShippingLogger.sink = (_level, text) => {
+      lines.push(text);
+    };
+    try {
+      await work();
+    } finally {
+      ShippingLogger.sink = undefined;
+    }
+    return lines;
+  }
+
+  /** The backend of a held connection. */
+  const pidOf = async (connection: Database): Promise<number> =>
+    (await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(connection)).rows[0]?.pid ??
+    0;
+
+  /** Whether a request of this test database waits on the held backend (up to 5 s). */
+  async function waitsOn(pid: number): Promise<boolean> {
+    for (let i = 0; i < 200; i += 1) {
+      const blocked = await sql<{ n: number }>`
+        select count(*)::int as n from pg_stat_activity
+        where datname = current_database() and ${pid}::int = any(pg_blocking_pids(pid))
+      `.execute(t.database.migrator);
+      if ((blocked.rows[0]?.n ?? 0) > 0) return true;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return false;
+  }
 
   /** The school-wide audit entries of an action (links and sign-ins have no branch). */
   const schoolEntries = (action: string, recordId?: string) => {
@@ -528,18 +562,33 @@ describe('the Telegram chat link', () => {
       expect((await sessionOf(opened)).status).toBe(200);
       refusedWith(await launchSignIn(launch(linked.chatId)), 401, 'telegram_sign_in_needed');
 
-      // The worker's notice: in the account's language, to the old chat, once.
+      // The worker's notice: in the account's language (Russian here, not the Uzbek fallback),
+      // to the old chat, once; the token and the chat are in no log line.
+      await t.database.migrator
+        .updateTable('accounts')
+        .set({ language: 'ru' })
+        .where('id', '=', linked.account.id)
+        .execute();
       botCalls.length = 0;
       const sender = t.app.get(TellMovedSender);
       const linkId = links[0]?.id ?? '';
-      await t.app.get(Transactions).run([], (transaction) => sender.send(transaction, { linkId }));
-      await t.app.get(Transactions).run([], (transaction) => sender.send(transaction, { linkId }));
+      const lines = await logLinesOf(async () => {
+        await t.app
+          .get(Transactions)
+          .run([], (transaction) => sender.send(transaction, { linkId }));
+        await t.app
+          .get(Transactions)
+          .run([], (transaction) => sender.send(transaction, { linkId }));
+      });
       expect(botCalls).toEqual([
         {
           method: 'sendMessage',
-          body: { chat_id: String(linked.chatId), text: TELEGRAM_TEXTS.uz.moved },
+          body: { chat_id: String(linked.chatId), text: TELEGRAM_TEXTS.ru.moved },
         },
       ]);
+      for (const secret of [TEST_BOT_TOKEN, String(linked.chatId)]) {
+        expect(lines.join('\n')).not.toContain(secret);
+      }
     });
 
     it('tries the notice again when Telegram fails, and not when the chat blocked the bot', async () => {
@@ -554,8 +603,9 @@ describe('the Telegram chat link', () => {
       await expect(send()).rejects.toThrow('Telegram answered 502.');
       expect((await linksOf(linked.account.id))[0]?.told_at).toBeNull();
       botAnswer = { ok: false, status: 403 };
-      await send();
+      const lines = await logLinesOf(send);
       expect((await linksOf(linked.account.id))[0]?.told_at).not.toBeNull();
+      expect(lines).toEqual([`Link ${linkId}: not told, the chat blocked the bot. Telegram`]);
       botAnswer = { ok: true, status: 200 };
     });
 
@@ -576,19 +626,12 @@ describe('the Telegram chat link', () => {
 
     it('takes a shared chat from an account that can no longer sign in (a shared phone)', async () => {
       const linked = await linkedParent();
+      // Portal access switched off on every link of the relative (`parent_account_blocked`).
       await t.database.migrator
-        .updateTable('relatives')
-        .set({ archived_at: t.clock.now() })
-        .where('id', '=', linked.relativeId)
-        .execute()
-        .catch(async () => {
-          // A relative linked to a student cannot be archived: switch portal access off instead.
-          await t.database.migrator
-            .updateTable('student_relatives')
-            .set({ portal_access: false })
-            .where('relative_id', '=', linked.relativeId)
-            .execute();
-        });
+        .updateTable('student_relatives')
+        .set({ portal_access: false })
+        .where('relative_id', '=', linked.relativeId)
+        .execute();
       const other = await parent();
       cookieFrom(await passwordSignIn(other.login, NEW_PASSWORD, launch(linked.chatId)));
       expect(await linksOf(linked.account.id)).toMatchObject([{ end_reason: 'blocked' }]);
@@ -614,18 +657,12 @@ describe('the Telegram chat link', () => {
               linked_at: t.clock.now(),
             })
             .execute();
+          const pid = await pidOf(connection);
           const waiting = new Promise<Response>((resolve, reject) => {
             passwordSignIn(second.login, NEW_PASSWORD, launch(target)).then(resolve, reject);
           });
           // The sign-in waits on the index entry of the held link.
-          for (let i = 0; i < 200; i += 1) {
-            const blocked = await sql<{ n: number }>`
-              select count(*)::int as n from pg_locks l join pg_stat_activity a on a.pid = l.pid
-              where not l.granted and a.datname = current_database()
-            `.execute(t.database.migrator);
-            if ((blocked.rows[0]?.n ?? 0) > 0) break;
-            await new Promise((resolve) => setTimeout(resolve, 25));
-          }
+          expect(await waitsOn(pid)).toBe(true);
           await sql.raw(commit ? 'commit' : 'rollback').execute(connection);
           return waiting;
         });
@@ -637,6 +674,67 @@ describe('the Telegram chat link', () => {
           expect((await openLinkOfChat(target))?.account_id).toBe(second.account.id);
         }
       }
+    });
+
+    // Spec review of the code, must-fix 7: the other order, both real routes (`inOrder` of
+    // .claude/rules/api.md): the first sign-in waits on its account row while the second links
+    // the chat and commits; the first then meets that link and is refused.
+    it('refuses the later of two sign-ins that link one chat, the first route held at its account', async () => {
+      const first = await parent();
+      const second = await parent();
+      const target = chat();
+      await t.database.app.connection().execute(async (holder) => {
+        await sql`begin`.execute(holder);
+        const pid = await pidOf(holder);
+        await sql`select id from accounts where id = ${first.account.id} for update`.execute(
+          holder,
+        );
+        const firstSignIn = new Promise<Response>((resolve, reject) => {
+          passwordSignIn(first.login, NEW_PASSWORD, launch(target)).then(resolve, reject);
+        });
+        expect(await waitsOn(pid)).toBe(true);
+        cookieFrom(await passwordSignIn(second.login, NEW_PASSWORD, launch(target)));
+        await sql`commit`.execute(holder);
+        refusedWith(await firstSignIn, 409, 'telegram_chat_linked');
+      });
+      expect((await openLinkOfChat(target))?.account_id).toBe(second.account.id);
+      expect(await linksOf(first.account.id)).toEqual([]);
+    });
+
+    // Spec review of the code, must-fix 8: a move refused after it was written (the new chat
+    // linked by another account at the same moment) leaves the old link and enqueues no notice.
+    it('keeps the old link and enqueues no notice when a move is refused after it was written', async () => {
+      const linked = await linkedParent();
+      const other = await parent();
+      const target = chat();
+      const jobsBefore = await telegramJobs();
+      await t.database.app.connection().execute(async (holder) => {
+        await sql`begin`.execute(holder);
+        const pid = await pidOf(holder);
+        // The other account's link of the chat, not yet committed: the move does not see it.
+        await sql`select id from accounts where id = ${other.account.id} for update`.execute(
+          holder,
+        );
+        await holder
+          .insertInto('telegram_links')
+          .values({
+            account_id: other.account.id,
+            telegram_user_id: String(target),
+            linked_at: t.clock.now(),
+          })
+          .execute();
+        const moving = new Promise<Response>((resolve, reject) => {
+          passwordSignIn(linked.login, NEW_PASSWORD, launch(target)).then(resolve, reject);
+        });
+        expect(await waitsOn(pid)).toBe(true);
+        await sql`commit`.execute(holder);
+        refusedWith(await moving, 409, 'telegram_chat_linked');
+      });
+      expect(await linksOf(linked.account.id)).toMatchObject([
+        { telegram_user_id: String(linked.chatId), ended_at: null },
+      ]);
+      expect(await telegramJobs()).toEqual(jobsBefore);
+      expect((await sessionOf(linked.cookie)).status).toBe(200);
     });
   });
 
