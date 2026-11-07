@@ -12,11 +12,11 @@ Every teacher must have a lesson plan for each class or group they teach, for ea
 | Lesson number | Order within the quarter. Given by the system. |
 | Date | The date of the dated lesson this item is attached to. Taken from the timetable, never typed. |
 | Topic | Required. |
-| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. A lesson with no classwork has no classwork column. |
-| Homework | Optional, any number. Each homework is a task given at this lesson and becomes a homework column of the next lesson. A lesson can have no homework; then the next lesson has no homework column. |
-| Objectives and materials | Optional: short text, files, links. |
+| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. A lesson with no classwork has no classwork column. A classwork can carry its own files. |
+| Homework | Optional, any number. Each homework is a task given at this lesson and becomes a homework column of the next lesson. A lesson can have no homework; then the next lesson has no homework column. A homework can carry its own files; from Release 2 students and parents see them with the homework. |
+| Objectives and materials | Optional: short text, links, and files for staff only ("Materials": the teacher's own files, such as slides or an answer key; never shown to students or parents). |
 
-- One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest.
+- One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest. Files, of the materials and of each work, can be attached while a row is being written, not only after it is saved.
 - A teacher who teaches the same subject to several classes of one grade (7 Oxford and 7 Princeton) can share one plan between them, if the classes have the same language of instruction. It is written once, and each class has its own dates. A shared plan can be separated later.
 - A group of two grades (Classes, groups and subjects, "Group") has its own plan like any group. Where a plan rule names a grade, both of its grades count: the plan can be copied from a master or a plan of either grade, can be shared only with groups of the same two grades and language, is readable by teachers who have the subject and either grade in their profile, and appears under both grades in the Head Teacher's side-by-side view.
 - A plan can be copied from another class, from another teacher of the same subject and grade, or from last year.
@@ -61,11 +61,12 @@ Nothing opens without an approved request, also when the school itself caused th
 ## In the journal
 
 - The header of each lesson shows the lesson number and the topic, shortened to fit. Clicking it opens the lesson card: number, date, slot, topic, classworks, homeworks, objectives, materials.
-- Columns follow the plan. A lesson has one classwork column for each classwork of its plan item, and one homework column for each homework of the previous lesson's plan item. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not checked, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added through a plan edit request.
+- Columns follow the plan. A lesson has one classwork column for each classwork of its plan item, and one homework column for each homework of the previous lesson's plan item. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not checked, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added on the lesson card or in the plan, under the rules below.
 - The lesson card shows two homework lines: "given today", the homeworks of this lesson's plan item, and "checked today", the homeworks given at the previous lesson, which are what the homework numbers of this lesson refer to.
 - Future lessons are shown as columns with number and topic, so the teacher sees what comes next. Nothing can be entered in them.
 - In lesson mode on a phone, topic, classwork and homework are at the top of the screen.
-- The plan is read only in the journal. It is changed only in the plan, inside the window or through an approved request.
+- The lesson card is a second way into the plan item of its lesson. The plan's owner can change the topic, the objectives and links, the materials and the works there, under the same rules as in the plan: freely while that row is open (inside the window, or for the days of an approved request); otherwise the card offers to send an edit request for that lesson.
+- One exception keeps a missing plan from blocking grading: at a held lesson whose plan item is missing (the plan is missing or the row is empty), whoever may enter the lesson's data, the teacher or the substitute, can add classworks and "homework given" in the journal at any time. Each is written into the lesson's plan item, created for it (with the plan, when there is none), and marked in the plan's history as added in the journal; the plan's editor shows it like any work. The item's topic stays empty until the owner writes it, so the plan stays incomplete until then.
 - Students and parents see the topic and the homework from Release 2.
 
 ## When something else changes
@@ -79,7 +80,7 @@ One rule: plan items follow the lessons in order. The items of lessons already h
 | A lesson moves to another day or slot | Only the dates change. Items stay in date order. |
 | Lessons per week or quarter dates change | Fewer lessons: the last items go to "not covered". More lessons: empty rows appear at the end. In both cases the plan stays locked and the system prepares an edit request for the teacher. |
 | The teacher of the class changes | The plan stays with the class and the new teacher becomes its owner. It stays locked; the system prepares an edit request so that the new teacher can adjust the future lessons. The part taught earlier stays readable. |
-| A substitute takes one lesson | The substitute sees the item of that lesson and cannot edit it. |
+| A substitute takes one lesson | The substitute sees the item of that lesson and cannot edit it; the only exception is a work added in the journal at a lesson with no plan item (In the journal). |
 | One class of a shared plan loses a lesson | Each class has its own dates, so the classes stand at different items. The plan screen shows where each class is. |
 | A group is split or merged, or a new group is formed | The new group gets a copy of the plan it came from, attached to its own lessons. The old group's plan is archived with its journal. |
 | A subject is removed from a class | The remaining items are marked "not covered" and the plan is closed with the journal. |

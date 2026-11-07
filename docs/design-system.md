@@ -188,7 +188,7 @@ The brand book's rules: keep clear space around the logo, never recolour, stretc
 
 ## Motion
 
-Short and quiet: 120 ms for hover and press, 160 ms for panels and menus opening, ease-out; nothing moves on its own. People who ask the system for reduced motion get none.
+Short and quiet: 120 ms for hover and press, 160 ms for panels and menus opening, ease-out; nothing moves on its own, with one exception: the "Open the journal" button of the lesson happening now on a teacher's home page pulses gently (`12`, Home page; owner, 7 November 2026). People who ask the system for reduced motion get none.
 
 ## Accessibility
 
