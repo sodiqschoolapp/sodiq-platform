@@ -17,6 +17,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PeopleModule } from './modules/people/people.module.js';
 import { PlansModule } from './modules/plans/plans.module.js';
 import { PortalModule } from './modules/portal/portal.module.js';
+import { AnnouncementsModule } from './modules/announcements/announcements.module.js';
 import { ResultsModule } from './modules/results/results.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
 import { TimetableModule } from './modules/timetable/timetable.module.js';
@@ -47,6 +48,7 @@ export const SHARED_MODULES = [
   ResultsModule,
   FeedbackModule,
   PortalModule,
+  AnnouncementsModule,
   // Last: its shutdown hook runs after the others at the same distance, so the
   // reports of a stop leave after the connections closed.
   ReportingModule,

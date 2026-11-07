@@ -8,7 +8,8 @@ import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { portalChildrenQuery } from './portal-api';
 
-export type PortalTab = 'timetable' | 'homework' | 'grades' | 'attendance' | 'rating';
+export type PortalTab =
+  'timetable' | 'homework' | 'grades' | 'attendance' | 'rating' | 'announcements';
 
 const TAB_PATHS = {
   timetable: '/portal/$studentId/timetable',
@@ -16,9 +17,10 @@ const TAB_PATHS = {
   grades: '/portal/$studentId/grades',
   attendance: '/portal/$studentId/attendance',
   rating: '/portal/$studentId/rating',
+  announcements: '/portal/$studentId/announcements',
 } as const;
 
-const TABS = ['timetable', 'homework', 'grades', 'attendance', 'rating'] as const;
+const TABS = ['timetable', 'homework', 'grades', 'attendance', 'rating', 'announcements'] as const;
 
 /** The tab of the address: the page a switch of child keeps. */
 function tabOf(pathname: string): PortalTab {

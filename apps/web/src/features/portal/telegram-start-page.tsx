@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate } from '@tanstack/react-router';
+import { Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
@@ -24,6 +24,7 @@ export function TelegramStartPage(): React.JSX.Element {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const target = useSearch({ from: '/portal/telegram' });
   const launch = telegramLaunchData();
   const [asking, setAsking] = useState(false);
   const [login, setLogin] = useState('');
@@ -34,7 +35,9 @@ export function TelegramStartPage(): React.JSX.Element {
   const go = (answer: unknown) => {
     const session: Session = keepSession(queryClient, answer);
     const step = stepOf(session);
-    void navigate({ to: step === 'none' ? '/portal' : STEP_PATH[step] });
+    // Task 11.7: the bot's button of an announcement goes on to the announcements.
+    if (step === 'none') void navigate({ to: '/portal', search: target });
+    else void navigate({ to: STEP_PATH[step] });
   };
 
   const opening = useMutation({
