@@ -1,9 +1,10 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+import { showEveryJournalColumn } from '@/testing/journal-columns';
 import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -251,10 +252,11 @@ function open(
   grid: JournalGrid | null | 'pending',
   path = `/journal/${JOURNAL}`,
   role = 'principal' as const,
+  language: 'en' | 'uz' | 'ru' = 'en',
 ) {
   const calls = fakeApi({
     'GET /api/auth/session': () =>
-      json(sessionOf({ language: 'en', assignments: [{ role, branchId: NORTH.id }] })),
+      json(sessionOf({ language, assignments: [{ role, branchId: NORTH.id }] })),
     [GRID_ROUTE]: () =>
       grid === 'pending'
         ? new Promise<Response>(() => undefined)
@@ -263,7 +265,7 @@ function open(
           : json(grid),
     'GET /api/journal/journals': () => json(LIST),
   });
-  renderApp(path, 'en');
+  renderApp(path, language);
   return calls;
 }
 
@@ -279,6 +281,9 @@ const cellOf = (id: string, colId: string) =>
 
 // docs/spec/07-journal.md, Opening a journal and Layout; task 6.2.
 describe('a journal', () => {
+  // Task 10.7: these tests read the UID and the figures, hidden by default since then.
+  beforeEach(showEveryJournalColumn);
+
   it('shows the header in order, the teacher and the subject chip', async () => {
     open(GRID);
     await screen.findByRole('heading', { name: en.journal.sheet });
@@ -520,7 +525,7 @@ describe('a journal', () => {
       document
         .querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`)
         ?.textContent?.trim(),
-    ).toBe('TestSoni 30');
+    ).toBe('CTestSoni 30');
   });
 
   it('filters the students who left, and those with an empty cell', async () => {
@@ -602,6 +607,105 @@ describe('a journal', () => {
       window.localStorage.removeItem('sodiq.list.journal.hidden');
     }
   });
+
+  it('shows only the photo of the hideable columns in a browser with no choice, and keeps a changed choice (task 10.7)', async () => {
+    // Build plan 10.7 (2): "UID, attendance, classwork and homework averages, rating exam,
+    // result, grade hidden; name, number and lessons always shown". A rating subject with no
+    // month chosen draws the rating exam column too.
+    window.localStorage.removeItem('sodiq.list.journal.hidden');
+    const header = (colId: string) => document.querySelector(`.ag-header-cell[col-id="${colId}"]`);
+    const RATED = { ...GRID, journal: { ...GRID.journal, ratingExam: true } };
+    open(RATED);
+    await waitFor(() => {
+      expect(header('photo')).not.toBeNull();
+    });
+    expect(header('name')).not.toBeNull();
+    expect(header(`${uid(60)}:a`)).not.toBeNull();
+    for (const hidden of [
+      'uid',
+      'attendance',
+      'classwork',
+      'homework',
+      'ratingExam',
+      'result',
+      'grade',
+    ]) {
+      expect(header(hidden), hidden).toBeNull();
+    }
+    fireEvent.click(screen.getByRole('button', { name: en.list.columns }));
+    for (const [name, checked] of [
+      [en.journal.page.columnNames.photo, 'true'],
+      [en.journal.page.columnNames.uid, 'false'],
+      [en.journal.page.columnNames.grade, 'false'],
+      [en.journal.page.columnNames.ratingExam, 'false'],
+    ] as const) {
+      expect(
+        (await screen.findByRole('menuitemcheckbox', { name })).getAttribute('aria-checked'),
+      ).toBe(checked);
+    }
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: en.journal.page.columnNames.uid }),
+    );
+    await waitFor(() => {
+      expect(header('uid')).not.toBeNull();
+    });
+
+    // A reload keeps the changed choice: the UID shown, the rest still hidden.
+    cleanup();
+    open(RATED);
+    await waitFor(() => {
+      expect(header('uid')).not.toBeNull();
+    });
+    expect(header('grade')).toBeNull();
+    expect(header('ratingExam')).toBeNull();
+  });
+
+  it.each([
+    ['en', 'C', 'H', 'Classwork', 'Homework'],
+    ['uz', 'S', 'U', 'Sinf ishi', 'Uy vazifasi'],
+    ['ru', 'К', 'Д', 'Классная работа', 'Домашнее задание'],
+  ] as const)(
+    'tags a classwork and a homework with the letter of their kind in %s (07, Layout; task 10.7)',
+    async (language, classLetter, homeLetter, classWord, homeWord) => {
+      const lesson = GRID.lessons[0];
+      const classwork = lesson?.works[0];
+      if (lesson === undefined || classwork === undefined) throw new Error('the fixture changed');
+      const homework = {
+        ...classwork,
+        id: uid(72),
+        planWorkId: uid(73),
+        kind: 'homework' as const,
+        title: 'Reading',
+      };
+      open(
+        {
+          ...GRID,
+          lessons: [{ ...lesson, works: [classwork, homework] }, ...GRID.lessons.slice(1)],
+        },
+        `/journal/${JOURNAL}`,
+        'principal',
+        language,
+      );
+      const headerOf = (workId: string) =>
+        document.querySelector(`.ag-header-cell[col-id="${uid(60)}:${workId}"]`);
+      await waitFor(() => {
+        expect(headerOf(uid(72))).not.toBeNull();
+      });
+      for (const [workId, letter, word, title] of [
+        [uid(70), classLetter, classWord, 'Test'],
+        [uid(72), homeLetter, homeWord, 'Reading'],
+      ] as const) {
+        const tag = headerOf(workId)?.querySelector('[data-work-kind]');
+        expect(tag?.textContent).toBe(letter);
+        // The full word on hover; the column's accessible name says it in full with the title.
+        expect(tag?.getAttribute('title')).toBe(word);
+        expect(tag?.getAttribute('aria-hidden')).toBe('true');
+        expect(headerOf(workId)?.querySelector('[aria-label]')?.getAttribute('aria-label')).toBe(
+          `${word}: ${title}`,
+        );
+      }
+    },
+  );
 
   it('brings the grid into view once when the journal opens (owner, 27 October 2026)', async () => {
     const scrolled: Element[] = [];

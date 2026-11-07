@@ -170,8 +170,9 @@ const rowOf = async () =>
     return found as HTMLElement;
   });
 
+// Task 10.7: the field's name says the work's kind in full (requirement changed).
 const fieldName = en.journal.lessonMode.score
-  .replace('{{work}}', 'Test')
+  .replace('{{work}}', 'Classwork: Test')
   .replace('{{name}}', 'Zokirov Ali');
 
 // docs/spec/07-journal.md, Lesson mode: "large buttons: attendance, then each classwork, then
@@ -181,6 +182,8 @@ describe('the numbers of works in lesson mode', () => {
     const calls = open('2026-10-27');
     const row = await rowOf();
     const field = within(row).getByRole('textbox', { name: fieldName });
+    // Task 10.7: the field of a work carries the tag of its kind.
+    expect(row.querySelector('[data-work-kind="classwork"]')?.textContent).toBe('C');
     fireEvent.change(field, { target: { value: '7' } });
     fireEvent.blur(field);
     await waitFor(() => {
@@ -208,7 +211,8 @@ describe('the numbers of works in lesson mode', () => {
     expect(within(row).queryByRole('textbox')).toBeNull();
     fireEvent.click(
       screen.getByRole('button', {
-        name: en.journal.lessonMode.setTotal.replace('{{work}}', 'Test'),
+        // Task 10.7: the button's name says the kind in full (requirement changed).
+        name: en.journal.lessonMode.setTotal.replace('{{work}}', 'Classwork: Test'),
       }),
     );
     expect(
@@ -221,7 +225,8 @@ describe('the numbers of works in lesson mode', () => {
     const row = await rowOf();
     expect(within(row).queryByRole('textbox')).toBeNull();
     expect(
-      within(row).getByLabelText(en.journal.grid.classworkShort.replace('{{number}}', '1')),
+      // Task 10.7: the kind in full and the work's title (requirement changed: it was "CW 1").
+      within(row).getByLabelText('Classwork: Test'),
     ).not.toBeNull();
   });
 });

@@ -73,16 +73,18 @@ const NOW_TICK_MS = 30_000;
  * it asks the server nothing (`.claude/rules/web.md`: nothing calls the API on a timer).
  */
 function useServerNow(now: string | undefined, receivedAt: number): number | null {
-  const [, setTick] = useState(0);
+  // The browser's clock as last looked at, kept in state so a render stays pure.
+  const [looked, setLooked] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setTick((tick) => tick + 1);
+      setLooked(Date.now());
     }, NOW_TICK_MS);
     return () => {
       window.clearInterval(timer);
     };
   }, []);
-  return now === undefined ? null : Date.parse(now) + (Date.now() - receivedAt);
+  // An answer newer than the last look is taken at its own moment.
+  return now === undefined ? null : Date.parse(now) + Math.max(0, looked - receivedAt);
 }
 
 /**
