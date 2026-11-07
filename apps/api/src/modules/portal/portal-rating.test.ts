@@ -405,7 +405,10 @@ describe('the portal rating', () => {
         .where('number', '=', 1)
         .executeTakeFirstOrThrow()
     ).id;
-    // Another (the next) year of the child's own branch: the years of a branch follow each other.
+    // A quarter of another (the next) year of the child's own branch, dated, and asked for once it
+    // has started while this year is still the current one: only the choice of the year keeps it
+    // out (permission review of the code, must-fix 1; a branch's years follow each other, so no
+    // earlier year can be added after this one).
     const nextQuarter = await t.database.migrator.transaction().execute(async (transaction) => {
       const earlier = await transaction
         .insertInto('academic_years')
@@ -423,8 +426,27 @@ describe('the portal rating', () => {
         )
         .returning(['id', 'number'])
         .execute();
-      return rows.find((one) => one.number === 1)?.id ?? '';
+      const first = rows.find((one) => one.number === 1)?.id ?? '';
+      await transaction
+        .updateTable('quarters')
+        .set({ start_date: '2027-09-02', end_date: '2027-10-31' })
+        .where('id', '=', first)
+        .execute();
+      return first;
     });
+    const current = await t.database.migrator
+      .selectFrom('academic_years')
+      .select('status')
+      .where('id', '=', s.year)
+      .executeTakeFirstOrThrow();
+    expect(current.status).toBe('current');
+    const started = await get(
+      `/api/portal/children/${kids.kamola}/rating?quarter=${nextQuarter}`,
+      '2027-09-15T12:00:00+05:00',
+    );
+    expect([started.status, codeOf(started)]).toEqual([404, 'not_found']);
+    // The other branch's quarter is kept out by the row filter and by the year alike; this
+    // case is not a test of the year rule (the dated quarter above is).
     for (const id of [await quarter(2), nextQuarter, otherQuarter, randomUUID()]) {
       const response = await get(`/api/portal/children/${kids.kamola}/rating?quarter=${id}`);
       expect([response.status, codeOf(response)], id).toEqual([404, 'not_found']);

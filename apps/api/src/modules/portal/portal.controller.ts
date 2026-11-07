@@ -134,7 +134,7 @@ export class PortalController {
     const child = await this.transactions.run([], (transaction) =>
       portalChild(transaction, session.accountId, params.studentId),
     );
-    return this.rating.familyPosition(child.branchId, child.id, query.quarter);
+    return this.rating.familyPosition(child, query.quarter);
   }
 
   /** A file of a homework the page lists for this child (decision 2, Look first); not an export. */

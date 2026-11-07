@@ -51,6 +51,7 @@ import { journalRows, switchesIn, type JournalRow } from '../journal/journal-gri
 import { WHOLE_ROLES } from '../journal/journal-scope.js';
 import { ownerIdOn } from '../plans/plan-scope.js';
 import { closingOf } from '../setup/closed-quarters.js';
+import type { ScopedChild } from '../portal/portal-scope.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { momentText } from '../timetable/views-export.service.js';
 import { dateText } from '../timetable/views-file.js';
@@ -184,11 +185,10 @@ export class RatingService {
    * (`portalChild`); the answer holds no other student's id, name, figure or place, and no count
    * of the students ranked (plan review, correction 1).
    */
-  familyPosition(
-    branchId: string,
-    studentId: string,
-    quarterId: string | undefined,
-  ): Promise<PortalRating> {
+  familyPosition(child: ScopedChild, quarterId: string | undefined): Promise<PortalRating> {
+    // Only a child `portalChild` answered (permission review of the code, should-fix 1).
+    const { branchId } = child;
+    const studentId = child.id;
     return this.transactions.run([branchId], async (transaction) => {
       const branch = await transaction
         .selectFrom('branches')
