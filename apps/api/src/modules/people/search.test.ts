@@ -562,6 +562,23 @@ describe('Ctrl+K over students and staff', () => {
       expect(await staffIds('4123456789012', t.vicePrincipal)).toEqual([]);
     });
 
+    // Owner, 7 November 2026: a staff phone is optional.
+    it('finds a person with no phone by name, and a phone search passes over them', async () => {
+      const without = await person(t.north, 'Ulugbek', 'Telefonsiz', {
+        jshshir: '41234567890999',
+      });
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ phone: null, birth_date: null, admission_date: null })
+        .where('id', '=', without.id)
+        .execute();
+      expect(await staffIds('Telefonsiz', t.vicePrincipal)).toEqual([without.id]);
+      expect(await staffIds('41234567890999', t.vicePrincipal)).toEqual([without.id]);
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        expect(await staffIds('935554433', cookie)).toEqual([karimov.id]);
+      }
+    });
+
     it('is refused to a Tutor, who does not view staff', async () => {
       const response = await searching('staff', 'Karimov', tutor);
       expect(response.status).toBe(403);

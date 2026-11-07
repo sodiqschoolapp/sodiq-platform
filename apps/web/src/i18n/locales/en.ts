@@ -2382,11 +2382,11 @@ export const en = {
       role: 'Role',
       noRole: 'No role',
       warningHere:
-        'A staff record with this name and date of birth exists: {{names}}. Tick if this is another person.',
+        'A staff record with this name exists, with the same date of birth or with one missing: {{names}}. Tick if this is another person.',
       warningElsewhere:
-        'A staff record of another branch has this name and date of birth. Tick if this is another person.',
+        'A staff record of another branch has this name, with the same date of birth or with one missing. Tick if this is another person.',
       warningRows:
-        'Rows {{rows}} have this name and date of birth. Tick if these are different people.',
+        'Rows {{rows}} have this name, with the same date of birth or with one missing. Tick if these are different people.',
       samePerson:
         'The phone is the main phone of the relative {{name}}: marked as the same person.',
       samePersonElsewhere: 'The phone is a relative’s main phone: marked as the same person.',
@@ -2416,6 +2416,11 @@ export const en = {
         duplicate_in_file: 'the same value is on rows {{rows}}.',
         import_no_login:
           'no login can be made from this name; create this person by hand and type the login.',
+        hours_invalid: 'write the hours as “08:00-16:05”, several separated by commas.',
+        hours_outside_day: 'a time is from 00:00 to 24:00.',
+        hours_end_before_start: 'the end of a range comes after its start.',
+        hours_overlap: 'two ranges of this day overlap.',
+        hours_over_limit: 'the hours of this row have more than {{max}} ranges; join some of them.',
       },
     },
     import: {
@@ -3378,9 +3383,10 @@ export const en = {
       newStatus: 'New status',
       changeStatus: 'Change status',
       duplicateTitle: 'Possibly the same person',
-      duplicateHere: 'A staff member with the same name and date of birth already exists.',
+      duplicateHere:
+        'A staff member with the same name already exists, with the same date of birth or with one missing.',
       duplicateElsewhere:
-        'A staff member with the same name and date of birth works in another branch.',
+        'A staff member with the same name works in another branch, with the same date of birth or with one missing.',
       saveAnyway: 'Save anyway',
       phoneTaken: 'This phone belongs to the staff record {{name}}.',
       phoneTakenElsewhere: 'This phone belongs to a staff record of another branch.',

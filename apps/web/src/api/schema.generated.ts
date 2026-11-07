@@ -103350,7 +103350,7 @@ export interface operations {
                                 grades: number[];
                             }[];
                             languages: ("uz" | "ru")[];
-                            phone: string;
+                            phone: string | null;
                             /** @enum {string|null} */
                             status: "active" | "inactive" | "left" | null;
                             planned: {
@@ -103665,14 +103665,14 @@ export interface operations {
                     /** @enum {string} */
                     sex: "male" | "female";
                     /** Format: date */
-                    birthDate: string;
+                    birthDate: string | null;
                     /** @enum {string|null} */
                     educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
-                    phone: string;
+                    phone: string | null;
                     email: string | null;
                     jshshir: string | null;
                     /** Format: date */
-                    admissionDate: string;
+                    admissionDate: string | null;
                     /** @enum {string|null} */
                     contractType: "full_time" | "part_time" | null;
                     /** Format: date */
@@ -103732,7 +103732,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -103770,7 +103770,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -104730,7 +104730,7 @@ export interface operations {
                             role: "teacher" | "tutor" | null;
                             problems: {
                                 /** @enum {string|null} */
-                                column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | null;
+                                column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | "hoursMonday" | "hoursTuesday" | "hoursWednesday" | "hoursThursday" | "hoursFriday" | "hoursSaturday" | null;
                                 code: string;
                                 rows?: number[];
                                 /** Format: uuid */
@@ -105076,7 +105076,7 @@ export interface operations {
                             role: "teacher" | "tutor" | null;
                             problems: {
                                 /** @enum {string|null} */
-                                column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | null;
+                                column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | "hoursMonday" | "hoursTuesday" | "hoursWednesday" | "hoursThursday" | "hoursFriday" | "hoursSaturday" | null;
                                 code: string;
                                 rows?: number[];
                                 /** Format: uuid */
@@ -105446,7 +105446,7 @@ export interface operations {
                                 role: "teacher" | "tutor" | null;
                                 problems: {
                                     /** @enum {string|null} */
-                                    column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | null;
+                                    column: "lastName" | "firstName" | "fatherName" | "sex" | "birthDate" | "educationLevel" | "phone" | "email" | "jshshir" | "division" | "department" | "subject1" | "subject2" | "subject3" | "subject4" | "subject5" | "subject6" | "subject7" | "subject8" | "languages" | "admissionDate" | "contractType" | "contractDate" | "role" | "hoursMonday" | "hoursTuesday" | "hoursWednesday" | "hoursThursday" | "hoursFriday" | "hoursSaturday" | null;
                                     code: string;
                                     rows?: number[];
                                     /** Format: uuid */
@@ -105809,7 +105809,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -105847,7 +105847,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -106182,14 +106182,14 @@ export interface operations {
                     /** @enum {string} */
                     sex: "male" | "female";
                     /** Format: date */
-                    birthDate: string;
+                    birthDate: string | null;
                     /** @enum {string|null} */
                     educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
-                    phone: string;
+                    phone: string | null;
                     email: string | null;
                     jshshir: string | null;
                     /** Format: date */
-                    admissionDate: string;
+                    admissionDate: string | null;
                     /** @enum {string|null} */
                     contractType: "full_time" | "part_time" | null;
                     /** Format: date */
@@ -106249,7 +106249,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -106287,7 +106287,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -106617,8 +106617,8 @@ export interface operations {
                     firstName: string;
                     lastName: string;
                     /** Format: date */
-                    birthDate: string;
-                    phone: string;
+                    birthDate: string | null;
+                    phone: string | null;
                     /** Format: uuid */
                     staffRecordId: string | null;
                 };
@@ -107000,7 +107000,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -107038,7 +107038,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -107414,7 +107414,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -107452,7 +107452,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -107829,7 +107829,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -107867,7 +107867,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */
@@ -108210,7 +108210,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** Format: date */
-                        birthDate: string;
+                        birthDate: string | null;
                         jshshir: string | null;
                     };
                 };
@@ -114633,7 +114633,7 @@ export interface operations {
                             grades: number[];
                         }[];
                         languages: ("uz" | "ru")[];
-                        phone: string;
+                        phone: string | null;
                         /** @enum {string|null} */
                         status: "active" | "inactive" | "left" | null;
                         planned: {
@@ -114671,7 +114671,7 @@ export interface operations {
                         educationLevel: "secondary" | "specialised_secondary" | "bachelor" | "master" | "phd" | "other" | null;
                         email: string | null;
                         /** Format: date */
-                        admissionDate: string;
+                        admissionDate: string | null;
                         /** @enum {string|null} */
                         contractType: "full_time" | "part_time" | null;
                         /** Format: date */

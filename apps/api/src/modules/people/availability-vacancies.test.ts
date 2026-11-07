@@ -247,6 +247,18 @@ describe('availability and vacancies', () => {
       ]);
     });
 
+    // The staff import may start the hours of a record it has just created before today
+    // (owner, 7 November 2026); by hand a record with no hours still starts today at the earliest.
+    it('refuses by hand a start before today for a record with no hours', async () => {
+      const id = await person();
+      refusedWith(
+        await setHours(id, t.north, '2026-10-09', [monday('08:00', '12:00')]),
+        409,
+        'date_not_in_future',
+      );
+      expect((await hours(id, t.north)).entries).toEqual([]);
+    });
+
     it('runs a change to the next planned entry, and withdraws one planned from the same date', async () => {
       const id = await person();
       expect((await setHours(id, t.north, '2026-11-02', [monday('08:00', '12:00')])).status).toBe(

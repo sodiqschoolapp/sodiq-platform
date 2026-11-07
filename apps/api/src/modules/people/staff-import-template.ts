@@ -3,6 +3,7 @@ import {
   EDUCATION_LEVELS,
   SEXES,
   STAFF_IMPORT_COLUMNS,
+  STAFF_IMPORT_HOURS_COLUMNS,
   STAFF_IMPORT_LANGUAGE_CHOICES,
   STAFF_IMPORT_LISTS_SHEET,
   STAFF_IMPORT_MAX_ROWS,
@@ -46,7 +47,12 @@ function listsOf(language: Language): Partial<Record<StaffImportColumn, string[]
   };
 }
 
-const TEXT_COLUMNS: ReadonlySet<StaffImportColumn> = new Set(['phone', 'jshshir']);
+/** Typed as text: the hours too, so that Excel never turns `08:00-16:05` into a time. */
+const TEXT_COLUMNS: ReadonlySet<StaffImportColumn> = new Set([
+  'phone',
+  'jshshir',
+  ...STAFF_IMPORT_HOURS_COLUMNS.map((hours) => hours.column),
+]);
 
 const DATE_COLUMNS: ReadonlySet<StaffImportColumn> = new Set([
   'birthDate',

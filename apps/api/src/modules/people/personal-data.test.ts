@@ -437,6 +437,22 @@ describe('the personal data report', () => {
     });
   });
 
+  // Owner, 7 November 2026: date of birth, phone and admission date are optional.
+  it("holds a staff member's missing date of birth, phone and admission date as null", async () => {
+    const id = await person(null, [t.north]);
+    await t.database.migrator
+      .updateTable('staff')
+      .set({ birth_date: null, phone: null, admission_date: null })
+      .where('id', '=', id)
+      .execute();
+    const answer = staffReportSchema.parse(ok(await report('staff', id)));
+    expect([answer.staff.birthDate, answer.staff.phone, answer.staff.admissionDate]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+  });
+
   describe("a staff member's report", () => {
     let staffId: string;
     let accountId: string;

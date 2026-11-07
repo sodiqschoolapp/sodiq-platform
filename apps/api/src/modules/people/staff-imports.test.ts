@@ -63,14 +63,18 @@ describe('the staff import', () => {
   const confirm = (id: string, decisions: object = {}, cookie = t.admin, branch = '') =>
     t.post(`/api/people/staff/imports/${id}/confirm`, branch || t.north, decisions, cookie);
 
-  async function confirmed(id: string, decisions: object = {}): Promise<StaffImportConfirmResult> {
-    const response = await confirm(id, decisions);
+  async function confirmed(
+    id: string,
+    decisions: object = {},
+    branch = '',
+  ): Promise<StaffImportConfirmResult> {
+    const response = await confirm(id, decisions, t.admin, branch);
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     return staffImportConfirmResultSchema.parse(response.body);
   }
 
-  async function saved(id: string, decisions: object = {}) {
-    const result = await confirmed(id, decisions);
+  async function saved(id: string, decisions: object = {}, branch = '') {
+    const result = await confirmed(id, decisions, branch);
     if (result.outcome !== 'saved') {
       throw new Error(`Not saved: ${JSON.stringify(result.preview.rows)}`);
     }
@@ -104,6 +108,11 @@ describe('the staff import', () => {
         'staff_languages',
         'staff_statuses',
         'staff_id_counters',
+        // The hours the import writes (owner, 7 November 2026), and the drafts they mark.
+        'staff_availability',
+        'staff_availability_ranges',
+        'timetable_versions',
+        'timetable_version_out_of_date_causes',
         'accounts',
         'assignments',
         'sessions',
@@ -116,6 +125,15 @@ describe('the staff import', () => {
             .rows,
       ),
     );
+
+  const staffBySurnameOrNull = async (lastName: string) =>
+    (
+      await t.database.migrator
+        .selectFrom('staff')
+        .select('id')
+        .where('last_name', '=', lastName)
+        .executeTakeFirst()
+    )?.id ?? null;
 
   const jobsOf = async () =>
     (await sql`select count(*)::int as n from pgboss.job`.execute(t.database.migrator)).rows;
@@ -460,6 +478,148 @@ describe('the staff import', () => {
     });
   });
 
+  /** The staff record of a surname: a row may have no phone (owner, 7 November 2026). */
+  const staffBySurname = (lastName: string) =>
+    t.database.migrator
+      .selectFrom('staff')
+      .select(['id', 'birth_date', 'phone', 'admission_date', 'account_id'])
+      .where('last_name', '=', lastName)
+      .executeTakeFirstOrThrow();
+
+  /** The hours entries of a record, every branch, with their ranges as minutes. */
+  async function hoursOf(staffId: string) {
+    const entries = await t.database.migrator
+      .selectFrom('staff_availability')
+      .select(['id', 'branch_id', 'valid_from', 'valid_until'])
+      .where('staff_id', '=', staffId)
+      .execute();
+    const ranges = await t.database.migrator
+      .selectFrom('staff_availability_ranges')
+      .select(['entry_id', 'branch_id', 'weekday', 'start_minutes', 'end_minutes'])
+      .where('staff_id', '=', staffId)
+      .orderBy('weekday')
+      .orderBy('start_minutes')
+      .execute();
+    return { entries, ranges };
+  }
+
+  describe('optional fields and hours (owner, 7 November 2026)', () => {
+    it('saves a row without date of birth, phone and admission date from the day of the import', async () => {
+      const row = staffRow({ birthDate: '', phone: '', admissionDate: '', lastName: 'Bekmurodov' });
+      const answer = await uploaded([row]);
+      expect(rowAt(answer, 3).problems).toEqual([]);
+      expect(rowAt(answer, 3).samePerson).toBeNull();
+      const result = await saved(answer.importId);
+      expect(result.created).toBe(1);
+      const stored = await staffBySurname('Bekmurodov');
+      expect([stored.birth_date, stored.phone, stored.admission_date]).toEqual([null, null, null]);
+      const status = await t.database.migrator
+        .selectFrom('staff_statuses')
+        .select(['status', 'valid_from'])
+        .where('staff_id', '=', stored.id)
+        .execute();
+      // 10 October 2026 in Tashkent: the day of the import.
+      expect(status).toEqual([{ status: 'active', valid_from: '2026-10-10' }]);
+      expect(result.staff[0]?.staffId).toMatch(/^S-26[0-9]{4}$/);
+      const role = await t.database.migrator
+        .selectFrom('assignments')
+        .select('valid_from')
+        .where('account_id', '=', stored.account_id ?? UNKNOWN)
+        .executeTakeFirstOrThrow();
+      expect(role.valid_from.toISOString()).toBe('2026-10-09T19:00:00.000Z');
+      // No hours cell: no availability.
+      expect(await hoursOf(stored.id)).toEqual({ entries: [], ranges: [] });
+    });
+
+    it('saves the hours of each weekday as one entry from the admission date, in the branch of the import only', async () => {
+      const answer = await uploaded(
+        [
+          staffRow({
+            lastName: 'Soatov',
+            admissionDate: '01.09.2026',
+            hoursMonday: '08:00-16:05',
+            hoursThursday: '08:00-12:00, 13:30-16:05',
+            hoursSaturday: '09:00-13:00',
+          }),
+        ],
+        t.south,
+      );
+      expect(rowAt(answer, 3).problems).toEqual([]);
+      // The preview wrote the record and its hours and rolled both back.
+      expect(await staffBySurnameOrNull('Soatov')).toBeNull();
+      await saved(answer.importId, {}, t.south);
+      const stored = await staffBySurname('Soatov');
+      const { entries, ranges } = await hoursOf(stored.id);
+      expect(entries).toEqual([
+        {
+          id: expect.any(String) as unknown,
+          branch_id: t.south,
+          valid_from: '2026-09-01',
+          valid_until: 'infinity',
+        },
+      ]);
+      expect(
+        ranges.map((one) => [one.branch_id, one.weekday, one.start_minutes, one.end_minutes]),
+      ).toEqual([
+        [t.south, 1, 480, 965],
+        [t.south, 4, 480, 720],
+        [t.south, 4, 810, 965],
+        [t.south, 6, 540, 780],
+      ]);
+      const [entry] = await t.entries('staff.availability_set', stored.id);
+      expect(entry).toMatchObject({
+        branch_id: t.south,
+        details: { importId: answer.importId },
+      });
+    });
+
+    it('saves the hours from the day of the import when the row has no admission date', async () => {
+      const answer = await uploaded([
+        staffRow({ lastName: 'Kunduzov', admissionDate: '', hoursTuesday: '10:00-14:00' }),
+      ]);
+      await saved(answer.importId);
+      const { entries, ranges } = await hoursOf((await staffBySurname('Kunduzov')).id);
+      expect(entries.map((one) => [one.branch_id, one.valid_from])).toEqual([
+        [t.north, '2026-10-10'],
+      ]);
+      expect(ranges.map((one) => [one.weekday, one.start_minutes, one.end_minutes])).toEqual([
+        [2, 600, 840],
+      ]);
+    });
+
+    it('names each wrong hours cell in the preview and saves nothing', async () => {
+      const answer = await uploaded([
+        staffRow({ hoursMonday: 'morning' }),
+        staffRow({ hoursTuesday: '07:00-25:00' }),
+        staffRow({ hoursWednesday: '16:00-08:00' }),
+        staffRow({ hoursFriday: '08:00-12:00, 11:30-15:00' }),
+        staffRow({ hoursSaturday: '08:00-12:00' }),
+      ]);
+      expect(codesAt(answer, 3)).toEqual(['hoursMonday:hours_invalid']);
+      expect(codesAt(answer, 4)).toEqual(['hoursTuesday:hours_outside_day']);
+      expect(codesAt(answer, 5)).toEqual(['hoursWednesday:hours_end_before_start']);
+      expect(codesAt(answer, 6)).toEqual(['hoursFriday:hours_overlap']);
+      expect(codesAt(answer, 7)).toEqual([]);
+      expect(answer.clean).toBe(false);
+      const before = await rowsOf();
+      const result = await confirmed(answer.importId);
+      expect(result.outcome).toBe('not_clean');
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('warns on the same name alone against a record without a date of birth', async () => {
+      const first = await saved(
+        (await uploaded([staffRow({ firstName: 'Nodir', lastName: 'Yolgizov', birthDate: '' })]))
+          .importId,
+      );
+      const answer = await uploaded([
+        staffRow({ firstName: 'Nodir', lastName: 'Yolgizov', birthDate: '03.03.1983' }),
+      ]);
+      expect(rowAt(answer, 3).warning?.records.map((one) => one.id)).toEqual([first.staff[0]?.id]);
+      expect(answer.clean).toBe(false);
+    });
+  });
+
   describe('the rows', () => {
     it('makes a record without an account for a row without a role', async () => {
       const row = staffRow({ role: '' });
@@ -684,7 +844,11 @@ describe('the staff import', () => {
 
   describe('no effect of a preview', () => {
     it('leaves no record, account, role, session, job or entry behind', async () => {
-      const answer = await uploaded([staffRow(), staffRow({ role: 'Tutor' })]);
+      // With hours (owner, 7 November 2026): the entry is written in the preview and rolled back.
+      const answer = await uploaded([
+        staffRow({ hoursMonday: '08:00-16:00' }),
+        staffRow({ role: 'Tutor' }),
+      ]);
       const before = await rowsOf();
       const jobs = await jobsOf();
       const again = await preview(answer.importId);

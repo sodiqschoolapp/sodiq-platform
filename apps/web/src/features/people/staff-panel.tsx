@@ -402,7 +402,9 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const { branchId } = useView();
-  const [shown, setShown] = useState<{ birthDate: string; jshshir: string | null } | null>(null);
+  const [shown, setShown] = useState<{ birthDate: string | null; jshshir: string | null } | null>(
+    null,
+  );
   const show = useMutation({
     mutationFn: async () =>
       staffIdentitySchema.parse(
@@ -421,7 +423,9 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
       : divisions.divisions
           .flatMap((division) => division.departments)
           .find((department) => department.id === id);
-  const birthDate = shown?.birthDate ?? staff.birthDate;
+  // Hidden from the Principal until shown; otherwise `null` is no date set (owner, 7 November 2026).
+  const birthHidden = staff.identityHidden && shown === null;
+  const birthDate = shown === null ? staff.birthDate : shown.birthDate;
   const jshshir = shown === null ? staff.jshshir : shown.jshshir;
   const number = new Intl.NumberFormat(language);
   const notSet = t('people.staff.notSet');
@@ -439,7 +443,11 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
     [t('people.staff.sex'), t(`people.staff.sexes.${staff.sex}`)],
     [
       t('people.staff.birthDate'),
-      birthDate === null ? t('people.staff.hidden') : schoolDateText(birthDate, language),
+      birthHidden
+        ? t('people.staff.hidden')
+        : birthDate === null
+          ? notSet
+          : schoolDateText(birthDate, language),
     ],
     [
       t('people.staff.educationLevel'),
@@ -451,7 +459,7 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
       t('people.staff.jshshir'),
       staff.identityHidden && shown === null ? t('people.staff.hidden') : (jshshir ?? notSet),
     ],
-    [t('people.staff.phone'), phoneText(staff.phone)],
+    [t('people.staff.phone'), staff.phone === null ? notSet : phoneText(staff.phone)],
     [t('people.staff.email'), staff.email ?? notSet],
     [
       t('people.staff.branches'),
@@ -495,7 +503,10 @@ function Overview({ staff, divisions }: { staff: StaffDetail; divisions: Divisio
         })
         .join('; '),
     ],
-    [t('people.staff.admissionDate'), schoolDateText(staff.admissionDate, language)],
+    [
+      t('people.staff.admissionDate'),
+      staff.admissionDate === null ? notSet : schoolDateText(staff.admissionDate, language),
+    ],
     [
       t('people.staff.contractType'),
       staff.contractType === null ? notSet : t(`people.staff.contractTypes.${staff.contractType}`),
