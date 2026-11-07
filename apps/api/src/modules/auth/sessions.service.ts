@@ -734,6 +734,17 @@ export class Sessions {
   /** Ends this session; other sessions of the account stay. */
   async signOut(session: ActiveSession, requestId?: string): Promise<void> {
     await this.transactions.run([], async (transaction) => {
+      // Task 11.4: a session opened through a Telegram link takes the account row first, the
+      // lock order of every write of a link (`TelegramLinks`): a move of the link at the same
+      // moment ends this session and the link in that order too, and the two never deadlock.
+      if (session.telegramLinkId !== null) {
+        await transaction
+          .selectFrom('accounts')
+          .select('id')
+          .where('id', '=', session.accountId)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+      }
       const ended = await transaction
         .updateTable('sessions')
         .set({ ended_at: this.clock.now(), end_reason: 'sign_out' })
@@ -1143,14 +1154,7 @@ export class Sessions {
       // The account row first, then the link: the lock order of every link.
       const account = await transaction
         .selectFrom('accounts')
-        .select([
-          'id',
-          'login',
-          'locked_at',
-          'must_change_password',
-          'password_expires_at',
-          'language',
-        ])
+        .select(['id', 'login', 'locked_at', 'must_change_password', 'language'])
         .where('id', '=', peeked.account_id)
         .forUpdate()
         .executeTakeFirstOrThrow();

@@ -135,12 +135,28 @@ describe('the Parent accounts', () => {
         'password_reset_links',
         'audit_log',
         'audit_log_school',
+        // Task 11.4: a reset ends the Telegram link (permission review of the code, must-fix 1).
+        'telegram_links',
       ].map(
         async (table) =>
           (await sql`select * from ${sql.table(table)} order by 1`.execute(t.database.migrator))
             .rows,
       ),
     );
+
+  let nextChat = 7_300_000;
+  /** Task 11.4: an open Telegram link of a Parent account, which a reset would end. */
+  async function linkChat(accountId: string): Promise<void> {
+    nextChat += 1;
+    await t.database.migrator
+      .insertInto('telegram_links')
+      .values({
+        account_id: accountId,
+        telegram_user_id: String(nextChat),
+        linked_at: t.clock.now(),
+      })
+      .execute();
+  }
 
   const slipFor = (answer: PrintedParentSlips, relativeId: string) =>
     answer.slips.find((slip) => slip.relativeId === relativeId);
@@ -544,7 +560,10 @@ describe('the Parent accounts', () => {
 
     it('answers 404 for a relative of another branch or unknown', async () => {
       const south = await classWithParent(t.south);
-      await parents.session(south.relativeId);
+      await linkChat((await parents.session(south.relativeId)).account.id);
+      // A linked parent of the north too: what a reset would end stays.
+      const north = await classWithParent();
+      await linkChat((await parents.session(north.relativeId)).account.id);
       for (const id of [south.relativeId, UNKNOWN]) {
         const before = await rowsOf();
         refusedWith(await reset(id), 404, 'not_found');
@@ -557,7 +576,9 @@ describe('the Parent accounts', () => {
   describe('who may print and reset', () => {
     it('refuses the Principal, a Tutor, a Teacher and the Vice Principal of another branch', async () => {
       const { classId, relativeId } = await classWithParent();
-      await parents.session(relativeId);
+      await linkChat((await parents.session(relativeId)).account.id);
+      const south = await classWithParent(t.south);
+      await linkChat((await parents.session(south.relativeId)).account.id);
       for (const cookie of [t.principal, tutor, t.teacher, southVice]) {
         const before = await rowsOf();
         refusedWith(await slipsOf(classId, t.north, cookie), 403, 'permission_denied');

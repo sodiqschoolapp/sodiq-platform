@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { ShippingLogger } from '../../monitoring/monitoring.service.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { createTestApp } from '../../testing/create-test-app.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { ParentsKit } from '../../testing/parents-kit.js';
 import { cookieOf, errorCode, NEW_PASSWORD, signInKit } from '../../testing/sign-in-kit.js';
@@ -288,6 +289,47 @@ describe('the Telegram chat link', () => {
         const response = await webhook(body, TEST_WEBHOOK_SECRET);
         expect(response.status).toBe(200);
         expect(response.body).toEqual({});
+      }
+    });
+  });
+
+  // Plan decision 13 (permission review of the code, should-fix 4): before the owner sets the
+  // values, everything Telegram is refused; no database is reached.
+  describe('before the owner set the bot up', () => {
+    it('refuses the webhook without a configured secret, and a launch without a token', async () => {
+      const noSecret = await createTestApp({
+        config: {
+          telegram: { botToken: TEST_BOT_TOKEN, webhookSecret: undefined, webOrigin: WEB_ORIGIN },
+        },
+      });
+      const noBot = await createTestApp({ config: { telegram: undefined } });
+      try {
+        refusedWith(
+          await request(noSecret.getHttpServer())
+            .post('/api/telegram/webhook')
+            .set('X-Telegram-Bot-Api-Secret-Token', TEST_WEBHOOK_SECRET)
+            .send({ update_id: 1 }),
+          401,
+          'not_signed_in',
+        );
+        refusedWith(
+          await request(noBot.getHttpServer())
+            .post('/api/auth/sign-in')
+            .send({ telegramInitData: launch(chat()) }),
+          401,
+          'telegram_sign_in_needed',
+        );
+        refusedWith(
+          await request(noBot.getHttpServer())
+            .post('/api/telegram/webhook')
+            .set('X-Telegram-Bot-Api-Secret-Token', TEST_WEBHOOK_SECRET)
+            .send({ update_id: 1 }),
+          401,
+          'not_signed_in',
+        );
+      } finally {
+        await noSecret.close();
+        await noBot.close();
       }
     });
   });
@@ -610,6 +652,66 @@ describe('the Telegram chat link', () => {
       refusedWith(await launchSignIn(launch(linked.chatId)), 401, 'telegram_sign_in_needed');
     });
 
+    // Permission review of the code, must-fix 2: a sign-out in the mini app takes the account row
+    // before its own session, as a move of the link does, so the two wait and never deadlock.
+    it('waits for a move of the link that holds the account row, then signs out', async () => {
+      const linked = await linkedParent();
+      const opened = cookieFrom(await launchSignIn(launch(linked.chatId)));
+      const old = (await linksOf(linked.account.id))[0]?.id ?? '';
+      const newChat = chat();
+      const answer = await t.database.app.connection().execute(async (connection) => {
+        await sql`begin`.execute(connection);
+        const pid = (await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(connection))
+          .rows[0]?.pid;
+        // The held side is a moving sign-in: the account row first.
+        await sql`select id from accounts where id = ${linked.account.id} for update`.execute(
+          connection,
+        );
+        const signingOut = new Promise<Response>((resolve, reject) => {
+          request(server()).post('/api/auth/sign-out').set('Cookie', opened).then(resolve, reject);
+        });
+        let waited = false;
+        for (let i = 0; i < 200 && !waited; i += 1) {
+          const blocked = await sql<{ n: number }>`
+            select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and ${pid}::int = any(pg_blocking_pids(pid))
+          `.execute(t.database.migrator);
+          waited = (blocked.rows[0]?.n ?? 0) > 0;
+          if (!waited) await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        expect(waited).toBe(true);
+        // Then what the move writes: the old link and its sessions ended, the new link.
+        const now = t.clock.now();
+        await connection
+          .updateTable('telegram_links')
+          .set({ ended_at: now, end_reason: 'moved' })
+          .where('id', '=', old)
+          .execute();
+        await connection
+          .updateTable('sessions')
+          .set({ ended_at: now, end_reason: 'telegram_unlinked' })
+          .where('telegram_link_id', '=', old)
+          .where('ended_at', 'is', null)
+          .execute();
+        await connection
+          .insertInto('telegram_links')
+          .values({
+            account_id: linked.account.id,
+            telegram_user_id: String(newChat),
+            linked_at: now,
+          })
+          .execute();
+        await sql`commit`.execute(connection);
+        return signingOut;
+      });
+      expect(answer.status, JSON.stringify(answer.body)).toBe(204);
+      expect((await linksOf(linked.account.id)).map((one) => one.end_reason)).toEqual([
+        'moved',
+        null,
+      ]);
+      expect((await openLinkOfChat(newChat))?.account_id).toBe(linked.account.id);
+    });
+
     it('stays on a sign-out of a browser session of the same parent', async () => {
       const linked = await linkedParent();
       const browser = cookieFrom(await passwordSignIn(linked.login, NEW_PASSWORD));
@@ -736,6 +838,7 @@ describe('the Telegram chat link', () => {
       for (const id of [south.relativeId, UNKNOWN]) {
         const before = await rowsOf();
         refusedWith(await unlinkBy(id), 404, 'not_found');
+        refusedWith(await unlinkBy(id, t.north, t.admin), 404, 'not_found');
         expect(await rowsOf()).toEqual(before);
       }
     });
