@@ -1006,6 +1006,16 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: JOURNAL_WRITERS,
   },
+  // Task 10.8: rename and remove a work added in the journal, written into the plan (scope in
+  // the route, journal-works.test.ts).
+  'PUT /api/journal/lessons/:lessonId/plan-works/:planWorkId/title': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
+  'DELETE /api/journal/lessons/:lessonId/plan-works/:planWorkId': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
   'PUT /api/journal/lessons/:lessonId/works/not-held': {
     branch: 'request',
     roles: JOURNAL_WRITERS,

@@ -221,6 +221,7 @@ describe('classwork and homework', () => {
       fourth,
       journal: await journalOf(s.classId),
       q1: quarters[0] ?? '',
+      q2: quarters[1] ?? '',
       ahmedov: await student(s.branch, s.classId, 'Ahmedov'),
       boboyev: await student(s.branch, s.classId, 'Boboyev'),
     };
@@ -769,7 +770,9 @@ describe('classwork and homework', () => {
             version: null,
           }),
         );
-        const kept = await calls.del(`/api/journal/lessons/${s.second}/plan-works/${added[0] ?? ''}`);
+        const kept = await calls.del(
+          `/api/journal/lessons/${s.second}/plan-works/${added[0] ?? ''}`,
+        );
         expect(codeOf(kept)).toBe('work_holds_data');
       });
       expect((await t.entries('journal.work_add', s.second)).length).toBe(11);
@@ -980,8 +983,11 @@ describe('classwork and homework', () => {
     it('keeps a homework given by hand when its future check lesson is removed by a version change', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
-      const given = await as(owner, s.branch, teacherIn(s), async (calls) =>
-        await byHand(s.branch, s.third, 'homework', 'Exercises'),
+      const given = await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => await byHand(s.branch, s.third, 'homework', 'Exercises'),
       );
       // The 9 November lesson goes as a version change removes a lesson with no data.
       await t.database.migrator.transaction().execute(async (transaction) => {
@@ -1606,7 +1612,11 @@ describe('classwork and homework', () => {
       expect(homework.itemId).toBe(classwork.itemId);
       const item = await t.database.migrator
         .selectFrom('lesson_plan_items')
-        .innerJoin('lesson_plan_journals', 'lesson_plan_journals.plan_id', 'lesson_plan_items.plan_id')
+        .innerJoin(
+          'lesson_plan_journals',
+          'lesson_plan_journals.plan_id',
+          'lesson_plan_items.plan_id',
+        )
         .innerJoin('lesson_plan_places', 'lesson_plan_places.item_id', 'lesson_plan_items.id')
         .select([
           'lesson_plan_items.topic',
@@ -1745,6 +1755,53 @@ describe('classwork and homework', () => {
       });
     });
 
+    // Review correction 2 (`09`, Master plans: "Teachers may start from the master, from a copy,
+    // or from an empty plan"): an item the add made sits on a held row and blocks no copy.
+    it('lets the owner still start from a copy after an add made the plan, keeping the added item at its held row', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = await added(calls, s.second, 'classwork', 'Dictation');
+        // The source: the second quarter's plan of the same journal, with one item.
+        const firstOfQ2 = await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', s.classId)
+          .where('lesson_date', '>=', '2026-11-09')
+          .where('cancel_cause', 'is', null)
+          .orderBy('starts_at')
+          .executeTakeFirstOrThrow();
+        ok(
+          await calls.post(`/api/plans/journals/${s.journal}/items`, {
+            quarterId: s.q2,
+            position: 1,
+            lessonId: firstOfQ2.id,
+            values: {
+              topic: 'Decimals',
+              objectives: '',
+              links: [],
+              classworks: [],
+              homeworks: [],
+            },
+          }),
+          201,
+        );
+        const copied = planSchema.parse(
+          ok(
+            await calls.post(`/api/plans/journals/${s.journal}/copy`, {
+              quarterId: s.q1,
+              source: { journalId: s.journal, quarterId: s.q2 },
+              part: 'all',
+            }),
+          ),
+        );
+        const row = copied.rows.find((one) => one.lessonId === s.second);
+        expect(row?.item?.id).toBe(work.itemId);
+        expect(row?.item?.classworks.map((one) => one.title)).toEqual(['Dictation']);
+      });
+    });
+
     it('lets the substitute add a work into the plan, and not change the item', async () => {
       const owner = await account();
       const substitute = await account();
@@ -1757,9 +1814,7 @@ describe('classwork and homework', () => {
         .execute();
       await as(substitute, s.branch, teacherIn(s), async (calls) => {
         const work = await added(calls, s.second, 'homework', 'Exercises');
-        expect((await planWork(work.planWorkId)).added_in_journal_by).toBe(
-          substitute.account.id,
-        );
+        expect((await planWork(work.planWorkId)).added_in_journal_by).toBe(substitute.account.id);
         expect(codeOf(await writeTopic(calls, work.itemId, 'Fractions'))).toBe('plan_scope');
       });
     });
@@ -1841,7 +1896,9 @@ describe('classwork and homework', () => {
         // The empty item stays at the row: the next add and the card use it.
         const again = await added(calls, s.third, 'classwork', 'Dictation');
         expect(again.itemId).toBe(work.itemId);
-        const card = lessonCardSchema.parse(ok(await calls.get(`/api/journal/lessons/${s.third}/card`)));
+        const card = lessonCardSchema.parse(
+          ok(await calls.get(`/api/journal/lessons/${s.third}/card`)),
+        );
         expect(card.plan.item?.id).toBe(work.itemId);
         expect(card.plan.edit).toBe('open');
       });
@@ -1851,7 +1908,10 @@ describe('classwork and homework', () => {
         .where('action', '=', 'plan.item_edit')
         .where('record_id', '=', (await planOf(s)).plan_id)
         .executeTakeFirstOrThrow();
-      expect(removal.details).toMatchObject({ inJournal: true, removedFiles: [expect.any(String)] });
+      expect(removal.details).toMatchObject({
+        inJournal: true,
+        removedFiles: [expect.any(String)],
+      });
     });
 
     it('makes an add wait for the owner’s save of the topic and then refuses it (and the other order)', async () => {

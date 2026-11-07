@@ -445,6 +445,93 @@ describe('plans in the journal', () => {
       });
     });
 
+    // Task 10.8 (`09`, In the journal: "The lesson card is a second way into the plan item of its
+    // lesson"; plan decision 11; review 11).
+    it('opens the item to its owner while the row is open, offers the request after the window ends at 23:59, opens it again under an approved request, and gives no way in to anyone else', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.second, { homeworks: ['Read'] });
+      const plan = await planOf(s.journal, s.q1);
+      // The window of quarter 1 ends on Tuesday 27 October, 23:59 branch time.
+      await sql`
+        insert into lesson_plan_windows
+          (branch_id, quarter_id, start_date, end_date, starts_at, ends_at, opened_at, opened_by)
+        select q.branch_id, q.id, date '2020-01-01', date '2026-10-27',
+          timestamptz '2020-01-01T00:00:00+05:00', timestamptz '2026-10-27T23:59:59.999+05:00',
+          now(), ${owner.account.id}::uuid
+        from quarters q where q.id = ${s.q1}::uuid
+      `.execute(t.database.migrator);
+      const stateAt = (moment: string, lessonId = s.second) =>
+        as(
+          owner,
+          s.branch,
+          teacherIn(s),
+          async (calls) => (await cardOf(calls, lessonId)).plan,
+          moment,
+        );
+      const open = await stateAt('2026-10-27T23:59:00+05:00');
+      expect(open).toMatchObject({
+        quarterId: s.q1,
+        edit: 'open',
+        position: await rowOf(s.classId, s.second),
+      });
+      expect(open.item?.id).toBe(item.itemId);
+      expect(open.item?.homeworks.map((one) => one.title)).toEqual(['Read']);
+      // An empty row is open for a create too.
+      expect((await stateAt('2026-10-27T23:59:00+05:00', s.third)).edit).toBe('open');
+      const closed = await stateAt('2026-10-28T00:00:00+05:00');
+      expect(closed).toMatchObject({ edit: 'request' });
+      expect(closed.item?.id).toBe(item.itemId);
+      // An approved Text request for the lesson opens it again.
+      const approver = await load.classes.account();
+      const asked = await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: s.branch,
+          plan_id: plan,
+          journal_id: s.journal,
+          quarter_id: s.q1,
+          kind: 'text',
+          status: 'approved',
+          reason: 'Fix the topic',
+          requested_by: owner.account.id,
+          prepared_at: new Date('2026-10-28T08:00:00+05:00'),
+          sent_at: new Date('2026-10-28T08:00:00+05:00'),
+          decided_at: new Date('2026-10-28T09:00:00+05:00'),
+          decided_by: approver,
+          days: 3,
+          open_until: new Date('2026-10-31T23:59:59.999+05:00'),
+          updated_at: new Date('2026-10-28T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('lesson_plan_request_lessons')
+        .values({
+          branch_id: s.branch,
+          request_id: asked.id,
+          lesson_id: s.second,
+          lesson_date: '2026-10-19',
+          approved: true,
+        })
+        .execute();
+      expect((await stateAt('2026-10-28T10:00:00+05:00')).edit).toBe('open');
+      // Another lesson stays closed.
+      expect((await stateAt('2026-10-28T10:00:00+05:00', s.first)).edit).toBe('request');
+      // A Head Teacher of the subject reads the card whole but is no way into the plan.
+      const head = await account();
+      await as(
+        head,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+        async (calls) => {
+          const card = await cardOf(calls, s.second);
+          expect(card.whole).toBe(true);
+          expect(card.plan).toMatchObject({ edit: 'none', item: null });
+        },
+      );
+    });
+
     it('refuses a teacher who reads neither the journal nor the plan, and 404s another branch or an unknown lesson', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
@@ -833,6 +920,8 @@ describe('plans in the journal', () => {
         const card = await cardOf(calls, s.third);
         expect(card).toMatchObject({ whole: true, canMark: true, topic: 'Fractions' });
         expect(card.files.map((one) => one.id)).toEqual([own]);
+        // Task 10.8: the substitute is no way into the plan.
+        expect(card.plan).toMatchObject({ edit: 'none', item: null });
         expect((await calls.get(`/api/plans/files/${own}`)).status).toBe(200);
         const other = await calls.get(`/api/plans/files/${elsewhere}`);
         expect(codeOf(other)).toBe('plan_scope');

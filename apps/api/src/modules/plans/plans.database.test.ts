@@ -575,4 +575,126 @@ describe('lesson plans in the database', () => {
       transaction.deleteFrom('lesson_plan_works').where('item_id', '=', id).execute(),
     );
   });
+
+  // Task 10.8 (db/migrations/0162): an item with no topic, the mark "added in the journal", the
+  // files of a work and their limits, and a work kept while it holds a file.
+  describe('the files of a work and the journal’s add (0162)', () => {
+    const planWork = (branch: string, itemId: string, kind: string, change: object = {}) =>
+      inBranch(branch, (transaction) =>
+        transaction
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: branch,
+            item_id: itemId,
+            kind,
+            position: 1,
+            title: 'Exercise',
+            ...change,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      );
+
+    it('takes an item with an empty topic, never a topic of spaces', async () => {
+      const u = await unit(north, await yearOf(north));
+      const planId = await plan(u);
+      const empty = await item(north, planId, 1, { topic: '' });
+      expect(empty.id).toBeDefined();
+      const blank = await refusal(item(north, planId, 2, { topic: '   ' }));
+      expect([blank.code, blank.constraint]).toEqual([
+        CHECK_VIOLATION,
+        'lesson_plan_items_topic_check',
+      ]);
+    });
+
+    it('keeps the mark "added in the journal" whole and never lets the application change it', async () => {
+      const u = await unit(north, await yearOf(north));
+      const row = await item(north, await plan(u), 1, { topic: '' });
+      const account = { id: await classes.account() };
+      const half = await refusal(
+        planWork(north, row.id, 'classwork', { added_in_journal_at: new Date(NOW) }),
+      );
+      expect([half.code, half.constraint]).toEqual([
+        CHECK_VIOLATION,
+        'lesson_plan_works_added_in_journal_check',
+      ]);
+      const marked = await planWork(north, row.id, 'classwork', {
+        added_in_journal_at: new Date(NOW),
+        added_in_journal_by: account.id,
+      });
+      const update = await refusal(
+        inBranch(north, (transaction) =>
+          transaction
+            .updateTable('lesson_plan_works')
+            .set({ added_in_journal_at: null, added_in_journal_by: null })
+            .where('id', '=', marked.id)
+            .execute(),
+        ),
+      );
+      expect(update.code).toBe(INSUFFICIENT_PRIVILEGE);
+    });
+
+    it('holds 10 materials and 10 files on each work of an item, counted apart', async () => {
+      const u = await unit(north, await yearOf(north));
+      const row = await item(north, await plan(u), 1);
+      const homework = await planWork(north, row.id, 'homework');
+      const classwork = await planWork(north, row.id, 'classwork');
+      for (let index = 0; index < PLAN_FILES_MAX; index += 1) {
+        await file(north, row.id);
+        await file(north, row.id, { work_id: homework.id });
+      }
+      await file(north, row.id, { work_id: classwork.id });
+      for (const change of [{}, { work_id: homework.id }]) {
+        const eleventh = await refusal(file(north, row.id, change));
+        expect([eleventh.code, eleventh.constraint]).toEqual([
+          CHECK_VIOLATION,
+          'lesson_plan_files_limit',
+        ]);
+      }
+    });
+
+    it('refuses a file of a work of another item', async () => {
+      const u = await unit(north, await yearOf(north));
+      const planId = await plan(u);
+      const first = await item(north, planId, 1);
+      const second = await item(north, planId, 2);
+      const other = await planWork(north, second.id, 'homework');
+      const refused = await refusal(file(north, first.id, { work_id: other.id }));
+      expect([refused.code, refused.constraint]).toEqual([
+        FOREIGN_KEY_VIOLATION,
+        'lesson_plan_files_work_fkey',
+      ]);
+    });
+
+    it('keeps a work while it holds a file not removed, and lets it go with only removed ones', async () => {
+      const u = await unit(north, await yearOf(north));
+      const row = await item(north, await plan(u), 1);
+      const homework = await planWork(north, row.id, 'homework');
+      const attached = await file(north, row.id, { work_id: homework.id });
+      const kept = await refusal(
+        inBranch(north, (transaction) =>
+          transaction.deleteFrom('lesson_plan_works').where('id', '=', homework.id).execute(),
+        ),
+      );
+      expect([kept.code, kept.constraint]).toEqual([
+        CHECK_VIOLATION,
+        'lesson_plan_work_files_left',
+      ]);
+      await inBranch(north, async (transaction) => {
+        await transaction
+          .updateTable('lesson_plan_files')
+          .set({ removed_at: new Date(NOW) })
+          .where('id', '=', attached.id)
+          .execute();
+        await transaction.deleteFrom('lesson_plan_works').where('id', '=', homework.id).execute();
+      });
+      const stored = await database.migrator
+        .selectFrom('lesson_plan_files')
+        .select(['work_id', 'removed_at'])
+        .where('id', '=', attached.id)
+        .executeTakeFirstOrThrow();
+      expect(stored.work_id).toBeNull();
+      expect(stored.removed_at).not.toBeNull();
+    });
+  });
 });
