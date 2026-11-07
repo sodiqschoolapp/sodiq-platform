@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 10.8 The journal and the plan as one; files of each work
+
+- **Journal into plan**: `POST /api/journal/lessons/:lessonId/works` at a held lesson whose item is missing or has no topic writes a plan work (`added_in_journal_at/by`), making the plan and the item (empty topic) when missing (`PlansService.addFromJournal`; locks: the plan's journals, the item, the lesson's advisory lock); `PUT|DELETE …/plan-works/:planWorkId` rename and remove it while the topic is empty. The takeover skips such works; the limit of 10 counts them with older hand-added works.
+- **Lesson card**: answers `plan` (`edit`: open, request or none; the item for the owner); the web edits the item there through the plan's routes (`PlanItemEditor`, shared with the row panel) or sends the edit request for the lesson.
+- **Files of a work** (0162): `lesson_plan_files.work_id`, 10 materials and 10 per work, a work kept while it holds a live file; files picked while writing are uploaded after the save; the portal gives a homework's own files only. An item with no topic counts as an empty row everywhere (list, completeness, header, portal topic).
+
+Left out: files attached through the journal's add (decision 9: through the plan or the card); the files a master take removes are not named in its audit entry.
+
+The next sessions must know:
+
+- A test that needs a work added by hand before 7 November 2026 writes it as the migrator (`byHand` of `journal-works.test.ts`); the route now writes a plan work.
+- Readers of `lesson_plan_items.topic` treat `''` as "no topic" (0162 allows it).
+
 ## 7 November 2026: task 10.7 The kind of a work, the journal's default columns, the lesson happening now
 
 - **Web** (feature `journal`): `WorkKindTag` (`work-kind-tag.tsx`), the letter of a work's kind (S/U, К/Д, C/H) on the 15% tint of `subject-blue` or `subject-orange`, the full word on hover and "<kind word>: <title>" as the name (`journal.grid.workLabel`), in the grid's work headers, lesson mode, the lesson card and the works dialog. A browser with no stored choice hides every hideable column but the photo (`JOURNAL_DEFAULT_HIDDEN`, `readHiddenColumns(listId, fallback)`).

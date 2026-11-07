@@ -401,6 +401,25 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 7 November 2026: the journal and the plan as one, files of each work (task 10.8)
+
+Plan approved on pull request #304 with corrections 1 to 4. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a constraint widened). `lesson_plan_items_topic_check` allows `''` (0162); a topic of spaces is still refused and the plan's save still requires a topic | `09`, In the journal: "The item's topic stays empty until the owner writes it" (decision 1) |
+| **Look first** (a limit widened). `lesson_plan_files_limit` counts 10 materials per item and 10 per work | `edge/lesson-plans`, the limits of files (decision 2) |
+| **Look first** (tests changed). The portal tests of homework files expect a homework's own files only; the journal works tests write the hand-added works of before 7 November as the migrator | `10`, Homework: "never the plan item's materials"; the add now writes into the plan (decision 3) |
+| **Look first** (rules of `.claude/rules/lesson-plans.md` departed from). The journal's add passes no `PlansService.gate` and sets no "edited after the lesson"; the "added in the journal" mark stands in | `09`, In the journal: "at any time"; the one exception to "only the owner edits" (decision 5, correction 3) |
+| **Look first** (spec lines pull apart). Rename and remove of a journal-added work in the journal only while the item has no topic. Proposed `/spec-change` of `edge/journal`: "It may be renamed while the lesson can still be edited and the item's topic is still empty; once the owner writes the topic, the work is renamed in the plan." | Two writers never edit one item (decision 8) |
+| An item with an empty topic is "missing" for the add; it counts as an empty row for completeness, the list, the header and the portal | Decision 4, correction 1 |
+| No journal row at the add; the takeover skips journal-added works | Decision 6 |
+| The mark is two insert-only columns plus the audit line `plan.work_journal_add`; copies and separations carry it | Decision 7, `.claude/rules/lesson-plans.md` |
+| Files picked while writing are held in the form and uploaded after the save; a failure stays "not uploaded" with retry | Decision 10 |
+| A classwork's files are staff only, like the materials | Decision 13 |
+| A shared plan gets the new item where `placeNew` puts it; it never moves an item of a started row, so the planned separation never runs | Decision 16; `placeNew` places "never on a started row" |
+| **Build decision.** The rename and remove of a journal-added work are routes of their own (`…/plan-works/:planWorkId`), not a field on the routes of hand-added works | One id kind per path; the plan named the routes of 10.6 with a field |
+
 ## 7 November 2026: the kind of a work, the default columns, the lesson happening now (task 10.7)
 
 Plan approved on pull request #303 with corrections 1 to 3. Flagged on issue #42.
