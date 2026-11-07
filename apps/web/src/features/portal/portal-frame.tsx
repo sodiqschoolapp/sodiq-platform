@@ -8,16 +8,17 @@ import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { portalChildrenQuery } from './portal-api';
 
-export type PortalTab = 'timetable' | 'homework' | 'grades' | 'attendance';
+export type PortalTab = 'timetable' | 'homework' | 'grades' | 'attendance' | 'rating';
 
 const TAB_PATHS = {
   timetable: '/portal/$studentId/timetable',
   homework: '/portal/$studentId/homework',
   grades: '/portal/$studentId/grades',
   attendance: '/portal/$studentId/attendance',
+  rating: '/portal/$studentId/rating',
 } as const;
 
-const TABS = ['timetable', 'homework', 'grades', 'attendance'] as const;
+const TABS = ['timetable', 'homework', 'grades', 'attendance', 'rating'] as const;
 
 /** The tab of the address: the page a switch of child keeps. */
 function tabOf(pathname: string): PortalTab {
@@ -85,7 +86,7 @@ export function PortalFrame(): React.JSX.Element {
         {studentId !== undefined && (
           <nav
             aria-label={t('portal.pages')}
-            className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-4 pb-3 sm:flex"
+            className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-4 pb-3 sm:flex [&>*:last-child:nth-child(odd)]:col-span-2"
           >
             {TABS.map((one) => (
               <Link

@@ -7,6 +7,8 @@ import {
   portalScoreSchema,
   portalSubjectGradesSchema,
   portalLessonSchema,
+  portalRatingQuerySchema,
+  portalRatingSchema,
   portalWeekQuerySchema,
 } from './portal.js';
 
@@ -114,5 +116,42 @@ describe('the portal schemas of grades and attendance (task 11.3)', () => {
     expect(
       portalAttendanceLessonSchema.safeParse({ ...lesson, exemptionReason: 'illness' }).success,
     ).toBe(false);
+  });
+});
+
+describe('the portal rating (task 11.6)', () => {
+  const answer = {
+    quarters: [
+      { id: ID, number: 1, startDate: '2026-09-02', endDate: '2026-10-31', closed: false },
+    ],
+    quarterId: ID,
+    provisional: true,
+    notOfficial: false,
+    class: {
+      name: '7 Oxford',
+      place: 3,
+      value: 843,
+      subjects: 9,
+      fewerSubjects: false,
+      average: 781,
+    },
+  };
+
+  it('holds the child’s own place and figure and the class average, nothing of another student', () => {
+    expect(portalRatingSchema.parse(answer)).toEqual(answer);
+    // A list of students, a name or a count of the students ranked fails the parse
+    // (review correction 1 of the plan).
+    for (const extra of [{ rows: [] }, { firstName: 'Aziz' }, { ranked: 24 }, { students: 24 }]) {
+      expect(portalRatingSchema.safeParse({ ...answer, ...extra }).success).toBe(false);
+      expect(
+        portalRatingSchema.safeParse({ ...answer, class: { ...answer.class, ...extra } }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('takes an optional quarter and refuses a misspelled field', () => {
+    expect(portalRatingQuerySchema.parse({})).toEqual({});
+    expect(portalRatingQuerySchema.parse({ quarter: ID })).toEqual({ quarter: ID });
+    expect(portalRatingQuerySchema.safeParse({ quarterId: ID }).success).toBe(false);
   });
 });

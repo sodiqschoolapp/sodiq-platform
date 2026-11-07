@@ -745,10 +745,7 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
 }
 
 /** Each student's figure across the graded subjects, students with a result at leaving left out. */
-function figuresOf(
-  outcomes: Outcomes,
-  studentIds: readonly string[],
-): Map<string, SubjectsFigure> {
+function figuresOf(outcomes: Outcomes, studentIds: readonly string[]): Map<string, SubjectsFigure> {
   const figures = new Map<string, SubjectsFigure>();
   for (const studentId of studentIds) {
     const own = [...outcomes.bySubject.values()].flatMap((bySubject) => {
@@ -1003,12 +1000,7 @@ async function positionIn(
   const list = listStateOf(quarter, state, outcomes.readLive, freshness);
   let shownClass: PortalRating['class'] = null;
   if (shown !== undefined) {
-    const standing = await classStandingOf(
-      moment.transaction,
-      outcomes,
-      shown.id,
-      referenceDate,
-    );
+    const standing = await classStandingOf(moment.transaction, outcomes, shown.id, referenceDate);
     const own = standing.places.find((one) => one.id === studentId);
     const figure = standing.figures.get(studentId);
     shownClass = {

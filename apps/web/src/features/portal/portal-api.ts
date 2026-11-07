@@ -3,6 +3,7 @@ import {
   portalChildrenSchema,
   portalGradesSchema,
   portalHomeworkWeekSchema,
+  portalRatingSchema,
   portalWeekSchema,
 } from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
@@ -71,6 +72,20 @@ export const portalAttendanceQuery = (studentId: string, date: string | undefine
         await answerOf(
           api.GET('/api/portal/children/{studentId}/attendance', {
             params: { path: { studentId }, query: date === undefined ? {} : { date } },
+          }),
+        ),
+      ),
+  });
+
+/** The own position of a child in a quarter (task 11.6); the current quarter when none is given. */
+export const portalRatingQuery = (studentId: string, quarter: string | undefined) =>
+  queryOptions({
+    queryKey: [...PORTAL_KEY, 'rating', studentId, quarter ?? null],
+    queryFn: async () =>
+      portalRatingSchema.parse(
+        await answerOf(
+          api.GET('/api/portal/children/{studentId}/rating', {
+            params: { path: { studentId }, query: quarter === undefined ? {} : { quarter } },
           }),
         ),
       ),
