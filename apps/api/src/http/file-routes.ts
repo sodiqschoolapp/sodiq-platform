@@ -129,6 +129,19 @@ export const STAFF_IMPORT_ROUTE: FileRoute = {
   tooLarge: 'import_file_too_large',
 };
 
+/**
+ * The upload of a filled template of the subject import (the owner's change of 7 November
+ * 2026, pull request #316, Look first; approved by the owner in chat, on record in
+ * `docs/decisions.md`): an Excel workbook of at most 5 MB, as the staff import.
+ */
+export const SUBJECT_IMPORT_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/setup/subjects/imports',
+  types: STUDENT_IMPORT_TYPES,
+  maxBytes: STUDENT_IMPORT_MAX_BYTES,
+  tooLarge: 'import_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -138,6 +151,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   ABSENCE_REASON_FILE_ROUTE,
   STUDENT_IMPORT_ROUTE,
   STAFF_IMPORT_ROUTE,
+  SUBJECT_IMPORT_ROUTE,
 ];
 
 /**

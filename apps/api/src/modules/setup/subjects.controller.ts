@@ -8,6 +8,16 @@ import {
   quarterWeightsSchema,
   setupIdParamsSchema,
   subjectExportSchema,
+  subjectImportConfirmResultSchema,
+  subjectImportParamsSchema,
+  subjectImportPreviewSchema,
+  subjectImportRunSchema,
+  subjectImportTemplateQuerySchema,
+  type SubjectImportConfirmResult,
+  type SubjectImportParams,
+  type SubjectImportPreview,
+  type SubjectImportRun,
+  type SubjectImportTemplateQuery,
   subjectListSchema,
   subjectQuarterParamsSchema,
   subjectQuarterWeightsQuerySchema,
@@ -29,10 +39,19 @@ import {
   type SubjectRecord,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsFile, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { SUBJECT_IMPORT_ROUTE, type UploadedFile } from '../../http/file-routes.js';
+import {
+  Returns,
+  ReturnsFile,
+  ValidBody,
+  ValidFile,
+  ValidParams,
+  ValidQuery,
+} from '../../http/schemas.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { SubjectImports } from './subject-imports.service.js';
 import { Subjects } from './subjects.service.js';
 
 /**
@@ -45,7 +64,10 @@ import { Subjects } from './subjects.service.js';
  */
 @Controller('setup')
 export class SubjectsController {
-  constructor(private readonly subjects: Subjects) {}
+  constructor(
+    private readonly subjects: Subjects,
+    private readonly imports: SubjectImports,
+  ) {}
 
   @Get('subjects')
   @Requires('subjects', 'view')
@@ -75,6 +97,63 @@ export class SubjectsController {
     @RequestId() requestId: string,
   ): Promise<Subject> {
     return this.subjects.create(access, record, requestId);
+  }
+
+  /**
+   * The system's template of the subject import (the owner's change of 7 November 2026, pull
+   * request #316; `05`, "Excel import of subjects"), for the Super Admin and the Academic Vice
+   * Principal: the routes ask `subjects` create and the service also `subjects` edit, for the
+   * quarterly weights (plan decision 6). The import routes come before `subjects/:id`, which
+   * would take them otherwise.
+   */
+  @Get('subjects/import-template')
+  @Requires('subjects', 'create')
+  @ReturnsFile()
+  importTemplate(
+    @CurrentAccess() access: Access,
+    @ValidQuery(subjectImportTemplateQuerySchema) query: SubjectImportTemplateQuery,
+  ): Promise<XlsxFile> {
+    return this.imports.template(access, query.language);
+  }
+
+  /** The upload of a filled template: the rows are kept and the preview answered (#316). */
+  @Put('subjects/imports')
+  @Requires('subjects', 'create')
+  @Returns(subjectImportPreviewSchema)
+  importUpload(
+    @CurrentAccess() access: Access,
+    @ValidFile(SUBJECT_IMPORT_ROUTE) file: UploadedFile | null,
+    @RequestId() requestId: string,
+  ): Promise<SubjectImportPreview> {
+    return this.imports.upload(access, file, requestId);
+  }
+
+  /** The preview of a kept upload; nothing is saved (#316). The body is empty: nothing to decide. */
+  @Post('subjects/imports/:id/preview')
+  @HttpCode(200)
+  @Requires('subjects', 'create')
+  @Returns(subjectImportPreviewSchema)
+  importPreview(
+    @CurrentAccess() access: Access,
+    @ValidParams(subjectImportParamsSchema) params: SubjectImportParams,
+    @ValidBody(subjectImportRunSchema) _run: SubjectImportRun,
+    @RequestId() requestId: string,
+  ): Promise<SubjectImportPreview> {
+    return this.imports.preview(access, params.id, requestId);
+  }
+
+  /** Saves every row of a kept upload, or nothing (#316). */
+  @Post('subjects/imports/:id/confirm')
+  @HttpCode(200)
+  @Requires('subjects', 'create')
+  @Returns(subjectImportConfirmResultSchema)
+  importConfirm(
+    @CurrentAccess() access: Access,
+    @ValidParams(subjectImportParamsSchema) params: SubjectImportParams,
+    @ValidBody(subjectImportRunSchema) _run: SubjectImportRun,
+    @RequestId() requestId: string,
+  ): Promise<SubjectImportConfirmResult> {
+    return this.imports.confirm(access, params.id, requestId);
   }
 
   @Put('subjects/:id')

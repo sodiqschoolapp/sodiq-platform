@@ -2095,6 +2095,18 @@ export interface SubjectDailyWeights {
   weights_round: Generated<number>;
 }
 
+export interface SubjectImports {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+}
+
 export interface SubjectPlanMinimums {
   branch_id: string;
   changed_at: Generated<Timestamp>;
@@ -2514,6 +2526,7 @@ export interface DB {
   student_uids: StudentUids;
   students: Students;
   subject_daily_weights: SubjectDailyWeights;
+  subject_imports: SubjectImports;
   subject_plan_minimums: SubjectPlanMinimums;
   subject_quarter_primary_weights: SubjectQuarterPrimaryWeights;
   subject_quarter_weights: SubjectQuarterWeights;

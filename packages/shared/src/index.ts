@@ -2592,6 +2592,8 @@ export {
   type StaffImportWords,
 } from './staff-import.js';
 
+export * from './subject-import.js';
+
 export * from './parent-accounts.js';
 export { latinSpelling } from './names.js';
 export * from './portal.js';

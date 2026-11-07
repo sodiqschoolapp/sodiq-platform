@@ -40,6 +40,7 @@ const WEIGHT_PREVIEWS = `${G} > answers 404 for another branch’s and an unknow
 const WEIGHT_WRITES = `${G} > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged`;
 const S = 'src/modules/setup/subjects.test.ts';
 const SUBJECT = `${S} > of an unknown subject is not found; nothing is written`;
+const SUBJECT_IMPORT = `src/modules/setup/subject-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing`;
 const SUBJECT_QUARTERS = `${S} > of another branch's quarter or year, or an unknown one, are not found; nothing is written`;
 
 const PATH = '.claude/rules/api.md, task 1.3';
@@ -245,6 +246,12 @@ export const SETUP_IDS: RouteIds = {
 
   'POST /api/setup/subjects/export': [school('body:ids', 'subject', SUBJECTS, [SUBJECTS_EXPORT])],
   'POST /api/setup/subjects': [school('body:departmentId', 'department', SCHOOL_WIDE)],
+  'POST /api/setup/subjects/imports/:id/preview': [
+    branch('path:id', 'subject import', PATH, [SUBJECT_IMPORT]),
+  ],
+  'POST /api/setup/subjects/imports/:id/confirm': [
+    branch('path:id', 'subject import', PATH, [SUBJECT_IMPORT]),
+  ],
   'PUT /api/setup/subjects/:id': [
     school('path:id', 'subject', SUBJECTS, [SUBJECT]),
     school('body:departmentId', 'department', SCHOOL_WIDE),

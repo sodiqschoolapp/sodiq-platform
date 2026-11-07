@@ -4000,6 +4000,10 @@ export const en = {
         upload: 'Staff import file uploaded',
         confirm: 'Staff import confirmed',
       },
+      subject_import: {
+        upload: 'Subject import file uploaded',
+        confirm: 'Subject import confirmed',
+      },
       student_import: {
         upload: 'Student import file uploaded',
         confirm: 'Student import confirmed',

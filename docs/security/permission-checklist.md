@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 524, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 487.
+- Routes of the application: 528, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 491.
 - Routes with a limit inside the route: 157.
-- Routes that take an id: 408, with 851 ids (branch 747, school 76, own 12, none 16).
+- Routes that take an id: 410, with 853 ids (branch 749, school 76, own 12, none 16).
 - Areas of the permission table: 63.
 
 ## Routes without a role
@@ -1196,6 +1196,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/setup/subjects/:id/quarter-weights/copy/preview` | `body:yearId` | academic year | branch | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
 | `POST /api/setup/subjects/:id/restore` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `POST /api/setup/subjects/export` | `body:ids` | subject | school | `src/modules/setup/exports.test.ts > answers 404 for an unknown id, with nothing changed` |
+| `POST /api/setup/subjects/imports/:id/confirm` | `path:id` | subject import | branch | `src/modules/setup/subject-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
+| `POST /api/setup/subjects/imports/:id/preview` | `path:id` | subject import | branch | `src/modules/setup/subject-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing` |
 | `POST /api/timetable/absences` | `body:staffId` | staff | branch | `src/modules/timetable/absences.test.ts > answers 404 for another branch’s absence, an unknown one and a person not of the branch, and 422 for a vacancy` |
 | `POST /api/timetable/absences/:id/journal-substitute` | `path:id` | absence | branch | `src/modules/timetable/journal-substitutions.test.ts > answers 404 for another branch's or an unknown absence, journal, teacher and vacancy, and changes nothing`<br>`repeat: src/modules/timetable/journal-substitutions.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
 | `POST /api/timetable/absences/:id/journal-substitute` | `body:journalId` | journal | branch | `src/modules/timetable/journal-substitutions.test.ts > answers 404 for another branch's or an unknown absence, journal, teacher and vacancy, and changes nothing`<br>`repeat: src/modules/timetable/journal-substitutions.test.ts > keeps a used key to its account, its branch and its role (request keys)` |

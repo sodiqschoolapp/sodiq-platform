@@ -4042,6 +4042,10 @@ export const uz: Texts<'one' | 'other'> = {
         upload: 'Xodimlar importi fayli yuklandi',
         confirm: 'Xodimlar importi tasdiqlandi',
       },
+      subject_import: {
+        upload: 'Fanlar importi fayli yuklandi',
+        confirm: 'Fanlar importi tasdiqlandi',
+      },
       student_import: {
         upload: 'Oʻquvchilar importi fayli yuklandi',
         confirm: 'Oʻquvchilar importi tasdiqlandi',
