@@ -699,7 +699,9 @@ function LessonWorksDialog({
 function addedInJournal(grid: JournalGrid, work: JournalWork): boolean {
   if (work.planWorkId === null || work.sourceLessonId === null) return false;
   const source = grid.lessons.find((one) => one.id === work.sourceLessonId);
-  return source !== undefined && !source.planItem && source.addedInJournal.includes(work.planWorkId);
+  return (
+    source !== undefined && !source.planItem && source.addedInJournal.includes(work.planWorkId)
+  );
 }
 
 function WorkDialog({
@@ -819,10 +821,10 @@ function WorkDialog({
             {((work.unplanned && work.id !== null) || inJournal) &&
               work.total === null &&
               !work.notHeld && (
-              <Button variant="ghost" disabled={busy} onClick={onRemove}>
-                {t('journal.works.remove')}
-              </Button>
-            )}
+                <Button variant="ghost" disabled={busy} onClick={onRemove}>
+                  {t('journal.works.remove')}
+                </Button>
+              )}
           </div>
         )}
         <DialogFooter>

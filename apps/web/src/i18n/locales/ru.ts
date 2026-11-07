@@ -6304,7 +6304,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   plans: {
     files: {
       materials: 'Материалы (только для сотрудников)',
-      materialsNote: 'Собственные файлы учителя, например слайды или ключ ответов. Ученики и родители их не видят.',
+      materialsNote:
+        'Собственные файлы учителя, например слайды или ключ ответов. Ученики и родители их не видят.',
       attachTo: 'Прикрепить файл к «{{name}}»',
       attachMaterial: 'Прикрепить материал',
       pending: 'загрузится при сохранении',
@@ -6314,7 +6315,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       retry: 'Повторить',
       full: 'Здесь уже 10 файлов. Сначала удалите один.',
       tooLarge: '{{name}} больше 20 МБ.',
-      wrongType: '{{name}} — тип файла, который план не принимает: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 или MP4.',
+      wrongType:
+        '{{name}} — тип файла, который план не принимает: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 или MP4.',
     },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {

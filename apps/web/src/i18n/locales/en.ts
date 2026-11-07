@@ -5971,7 +5971,8 @@ export const en = {
   plans: {
     files: {
       materials: 'Materials (staff only)',
-      materialsNote: 'The teacher’s own files, such as slides or an answer key. Students and parents never see them.',
+      materialsNote:
+        'The teacher’s own files, such as slides or an answer key. Students and parents never see them.',
       attachTo: 'Attach a file to {{name}}',
       attachMaterial: 'Attach a material',
       pending: 'uploaded when you save',
@@ -5981,7 +5982,8 @@ export const en = {
       retry: 'Try again',
       full: 'This place holds 10 files already. Remove one first.',
       tooLarge: '{{name}} is larger than 20 MB.',
-      wrongType: '{{name}} is not a type a plan takes: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4.',
+      wrongType:
+        '{{name}} is not a type a plan takes: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4.',
     },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {

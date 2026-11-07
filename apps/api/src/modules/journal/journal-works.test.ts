@@ -983,12 +983,8 @@ describe('classwork and homework', () => {
     it('keeps a homework given by hand when its future check lesson is removed by a version change', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
-      const given = await as(
-        owner,
-        s.branch,
-        teacherIn(s),
-        async (calls) => await byHand(s.branch, s.third, 'homework', 'Exercises'),
-      );
+      // Task 10.8: a homework added by hand before 7 November 2026.
+      const given = await byHand(s.branch, s.third, 'homework', 'Exercises');
       // The 9 November lesson goes as a version change removes a lesson with no data.
       await t.database.migrator.transaction().execute(async (transaction) => {
         await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);

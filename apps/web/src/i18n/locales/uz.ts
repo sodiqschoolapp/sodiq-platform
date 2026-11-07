@@ -6026,7 +6026,8 @@ export const uz: Texts<'one' | 'other'> = {
   plans: {
     files: {
       materials: 'Materiallar (faqat xodimlar uchun)',
-      materialsNote: 'Oʻqituvchining oʻz fayllari, masalan slaydlar yoki javoblar kaliti. Oʻquvchilar va ota-onalar ularni koʻrmaydi.',
+      materialsNote:
+        'Oʻqituvchining oʻz fayllari, masalan slaydlar yoki javoblar kaliti. Oʻquvchilar va ota-onalar ularni koʻrmaydi.',
       attachTo: '«{{name}}» ga fayl biriktirish',
       attachMaterial: 'Material biriktirish',
       pending: 'saqlanganda yuklanadi',
@@ -6036,7 +6037,8 @@ export const uz: Texts<'one' | 'other'> = {
       retry: 'Qayta urinish',
       full: 'Bu yerda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
       tooLarge: '{{name}} 20 MB dan katta.',
-      wrongType: '{{name}} reja qabul qiladigan fayl turi emas: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 yoki MP4.',
+      wrongType:
+        '{{name}} reja qabul qiladigan fayl turi emas: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 yoki MP4.',
     },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {

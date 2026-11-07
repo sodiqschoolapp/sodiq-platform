@@ -40,7 +40,7 @@ import { addPlanFile, createPlanItem, invalidatePlans, savePlanItem } from './pl
  */
 
 /** Where a held file goes: the item's materials, or the work of a slot of the form. */
-export type FilePlace = 'materials' | `${WorkKind}:${number}`;
+export type FilePlace = 'materials' | `${WorkKind}:${string}`;
 
 /** A file the person picked and the server has not taken (yet). */
 export interface HeldFile {

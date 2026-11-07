@@ -11,10 +11,7 @@ import { ApiException } from '../../http/api-exception.js';
  * (0162) refuses to delete a work that still holds one. Gives the files removed,
  * for the caller's audit entry.
  */
-export async function removePlanWork(
-  transaction: Transaction,
-  workId: string,
-): Promise<string[]> {
+export async function removePlanWork(transaction: Transaction, workId: string): Promise<string[]> {
   const files = await removeFilesOf(transaction, [workId]);
   await refusingKept(
     transaction.deleteFrom('lesson_plan_works').where('id', '=', workId).execute(),
@@ -23,10 +20,7 @@ export async function removePlanWork(
 }
 
 /** Removes every work of an item (the take of a master's content, task 7.3), as `removePlanWork`. */
-export async function removePlanWorks(
-  transaction: Transaction,
-  itemId: string,
-): Promise<string[]> {
+export async function removePlanWorks(transaction: Transaction, itemId: string): Promise<string[]> {
   const works = await transaction
     .selectFrom('lesson_plan_works')
     .select('id')
