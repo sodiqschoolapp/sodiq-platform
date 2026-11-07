@@ -50,9 +50,17 @@ import { PortalAttendancePage } from '@/features/portal/portal-attendance-page';
 import { PortalFrame } from '@/features/portal/portal-frame';
 import { PortalGradesPage } from '@/features/portal/portal-grades-page';
 import { PortalRatingPage } from '@/features/portal/portal-rating-page';
+import { PortalAnnouncementsPage } from '@/features/portal/portal-announcements-page';
+import { monthSearch } from '@/features/announcements/announcement-month';
+import { AnnouncementsPage } from '@/features/announcements/announcements-page';
+import { AnnouncementsManagePage } from '@/features/announcements/announcements-manage-page';
 import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
 import { PortalIndexPage } from '@/features/portal/portal-index-page';
-import { portalQuarterSearch, portalSearch } from '@/features/portal/portal-search';
+import {
+  portalQuarterSearch,
+  portalSearch,
+  portalTargetSearch,
+} from '@/features/portal/portal-search';
 import { PortalTimetablePage } from '@/features/portal/portal-timetable-page';
 import { TelegramStartPage } from '@/features/portal/telegram-start-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
@@ -286,6 +294,7 @@ const portalRoute = createRoute({
 const portalIndexRoute = createRoute({
   getParentRoute: () => portalRoute,
   path: '/',
+  validateSearch: portalTargetSearch,
   component: PortalIndexPage,
 });
 
@@ -326,6 +335,14 @@ const portalRatingRoute = createRoute({
   component: PortalRatingPage,
 });
 
+/** Task 11.7: the announcements and events that reach the child, by month. */
+const portalAnnouncementsRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/announcements',
+  validateSearch: monthSearch,
+  component: PortalAnnouncementsPage,
+});
+
 /**
  * Task 11.4: the page the school's bot opens (`MINI_APP_PATH`). Open in any state: it signs in
  * from Telegram's launch data, or asks for the login and password once.
@@ -333,6 +350,7 @@ const portalRatingRoute = createRoute({
 const telegramStartRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/portal/telegram',
+  validateSearch: portalTargetSearch,
   component: TelegramStartPage,
   pendingComponent: AuthPendingPage,
 });
@@ -830,6 +848,22 @@ const digestLogRoute = createRoute({
   component: guarded('digest_log', DigestLogPage),
 });
 
+/** Task 11.7: what is addressed to the staff member, by month. */
+const announcementsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/announcements',
+  validateSearch: monthSearch,
+  component: guarded('announcements_feed', AnnouncementsPage),
+});
+
+/** Task 11.7: the authors' list of announcements and events. */
+const announcementsManageRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/announcements/manage',
+  validateSearch: listSearch,
+  component: guarded('announcements', AnnouncementsManagePage),
+});
+
 /** The Parent accounts never used, a section of People (task 11.1). */
 const parentsNeverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -935,6 +969,7 @@ const routeTree = rootRoute.addChildren([
     portalGradesRoute,
     portalAttendanceRoute,
     portalRatingRoute,
+    portalAnnouncementsRoute,
   ]),
   appRoute.addChildren([
     homeRoute,
@@ -1005,6 +1040,8 @@ const routeTree = rootRoute.addChildren([
     parentSlipsRoute,
     parentsNeverUsedRoute,
     digestLogRoute,
+    announcementsRoute,
+    announcementsManageRoute,
     auditRoute,
     forcedDeletesRoute,
     personalDataRoute,

@@ -8,6 +8,7 @@ import { createTestApp } from '../testing/create-test-app.js';
 // Standing decisions; the owner adds it to CLAUDE.md, review correction 1 of pull request #294).
 const MODULE_NAMES = [
   'access',
+  'announcements',
   'audit',
   'auth',
   'classes',

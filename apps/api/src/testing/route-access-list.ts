@@ -276,7 +276,40 @@ const UNLOCK_DECIDERS: readonly Role[] = [
   'head_teacher',
 ];
 
+/** Task 11.7: the authors of announcements (the owner's approval of 7 November 2026). */
+const ANNOUNCEMENT_AUTHORS: readonly Role[] = [
+  'super_admin',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+];
+
+/** Task 11.7, plan decision 3 (Look first): every staff role reads what is addressed to it. */
+const ANNOUNCEMENT_READERS: readonly Role[] = [
+  'super_admin',
+  'principal',
+  'academic_vice_principal',
+  'spiritual_vice_principal',
+  'head_tutor',
+  'tutor',
+  'class_teacher',
+  'senior_head_teacher',
+  'head_teacher',
+  'teacher',
+  'hr',
+  'nurse',
+  'psychologist',
+  'librarian',
+];
+
 export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
+  // Task 11.7 (pull request #306): announcements and events. A whole-school audience is the Super
+  // Admin's alone, refused in the route (announcements.test.ts).
+  'GET /api/announcements': { branch: 'request', roles: ANNOUNCEMENT_AUTHORS },
+  'POST /api/announcements': { branch: 'request', roles: ANNOUNCEMENT_AUTHORS },
+  'PUT /api/announcements/:id': { branch: 'request', roles: ANNOUNCEMENT_AUTHORS },
+  'POST /api/announcements/:id/archive': { branch: 'request', roles: ANNOUNCEMENT_AUTHORS },
+  'POST /api/announcements/:id/restore': { branch: 'request', roles: ANNOUNCEMENT_AUTHORS },
+  'GET /api/announcements-feed': { branch: 'request', roles: ANNOUNCEMENT_READERS },
   'GET /api/health': 'public',
   'POST /api/auth/sign-in': 'public',
   // The password reset by email (task 2.3c-2, decision 1 of pull request #66).
@@ -318,6 +351,8 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/portal/children/:studentId/attendance': 'portal',
   // Task 11.6: the own position in the rating, the same child scope.
   'GET /api/portal/children/:studentId/rating': 'portal',
+  // Task 11.7: the announcements that reach the child, the same child scope.
+  'GET /api/portal/children/:studentId/announcements': 'portal',
   // The own photo (task 2.3c-2, decision 18 of pull request #66): the Principal too.
   'PUT /api/auth/photo': 'any_signed_in',
   'DELETE /api/auth/photo': 'any_signed_in',

@@ -922,6 +922,42 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view'],
   }),
   /**
+   * Announcements and events (task 11.7, pull request #306; `11`, Announcements and events:
+   * "News and events for chosen audiences, with a calendar"). Approved by the owner on
+   * 7 November 2026 (build plan 11.7, stop-list item 5): written (create, edit, archive) by the
+   * Super Admin for any audience and by the Academic Vice Principal and the Vice Principal for
+   * Spiritual and Moral Education for audiences of the branch of the request (`02`, Spiritual
+   * VP: "Events in Release 2"), which each route checks; `view` is the authors' list. The
+   * Principal changes nothing (`edge/people-roles-accounts`) and reads through the feed only.
+   */
+  announcements: rows({
+    super_admin: ['view', 'create', 'edit', 'archive'],
+    academic_vice_principal: ['view', 'create', 'edit', 'archive'],
+    spiritual_vice_principal: ['view', 'create', 'edit', 'archive'],
+  }),
+  /**
+   * What is addressed to a staff member (task 11.7, plan decisions 3 and 4, Look first): the
+   * approval's "every other role, the Principal included, only reads what is addressed to it",
+   * a second area so that reading one's own does not read all. Every staff role; the route
+   * decides what is addressed to the account. A parent reads through the portal; a student has
+   * no sign-in.
+   */
+  announcements_feed: rows({
+    super_admin: ['view'],
+    principal: ['view'],
+    academic_vice_principal: ['view'],
+    spiritual_vice_principal: ['view'],
+    head_tutor: ['view'],
+    tutor: ['view'],
+    senior_head_teacher: ['view'],
+    head_teacher: ['view'],
+    teacher: ['view'],
+    hr: ['view'],
+    nurse: ['view'],
+    psychologist: ['view'],
+    librarian: ['view'],
+  }),
+  /**
    * The Super Admin's forced delete of a dated lesson and its restore within
    * 30 days, and the store of forced deletes (task 5.8b, pull request #195,
    * decision 10): 06, Protection: "Forced delete is for Super Admin only, with

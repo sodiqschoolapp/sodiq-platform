@@ -626,6 +626,26 @@ export const OTHER_SCOPES: RouteScopes = {
       ],
     },
   ],
+  // Task 11.7, plan decision 4 (Look first): what is addressed to the account.
+  'GET /api/announcements-feed': [
+    {
+      roles: ['tutor', 'class_teacher'],
+      scope: 'class',
+      rule: 'Task 11.7, plan decision 4: the classes and grades of the own class, besides the school and the branch',
+      refusedIn: [
+        'src/modules/announcements/announcements.test.ts > shows the Tutor the own class',
+      ],
+    },
+    {
+      roles: ['teacher', 'head_teacher', 'senior_head_teacher'],
+      scope: 'own_lessons',
+      rule: 'Task 11.7, plan decision 4: the classes and grades of the teaching load in force, besides the school and the branch',
+      refusedIn: [
+        'src/modules/announcements/announcements.test.ts > shows a Teacher the classes of the load in force and their grades, not another class',
+        'src/modules/announcements/announcements.test.ts > shows a Head Teacher and a Senior Head Teacher without load of the class, and a Nurse, the school and branch items only',
+      ],
+    },
+  ],
   'GET /api/timetable/home': [
     {
       roles: ['tutor', 'class_teacher', 'head_teacher', 'senior_head_teacher'],

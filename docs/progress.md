@@ -6,11 +6,24 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
 
-- **Database** (0166, numbered after 11.7's 0164 and 0165; merge after #306): `staff_person_check` keeps the staff ID, name, sex and no vacancy name, and no longer requires date of birth, phone and admission date (**Look first**); `staff_duplicate_elsewhere` matches the name alone when a date of birth is missing. No row changes.
+- **Database** (0166, numbered after 11.7's 0164 and 0165, which merged first): `staff_person_check` keeps the staff ID, name, sex and no vacancy name, and no longer requires date of birth, phone and admission date (**Look first**); `staff_duplicate_elsewhere` matches the name alone when a date of birth is missing. No row changes.
 - **API**: create and edit take `null` for the three fields; without an admission date the staff ID takes the year, and the first status row the date, of the day of the create in the branch's time zone (decided without the owner). The duplicate check matches the name alone when either side has no date of birth, and compares no phone when none is typed. The import reads empty dates of birth, phones and admission dates and six hours columns, Monday to Saturday (`hoursOf` with `availabilityRangeSchema` and `availabilitySetSchema` of the hand route), with the problems `hours_invalid`, `hours_outside_day`, `hours_end_before_start`, `hours_overlap` and `hours_over_limit`; the hours are saved through `StaffAvailability.setIn` (the hand write, now shared) in the import's branch from the admission date or the import's day, the audit entry naming the import.
 - **Web**: the staff form sends `null` for an empty date of birth or admission date and for a phone left at its country code; the profile shows "Not set" for each; the import preview names the bad hours cells in three languages.
 
 Left out: Sunday hours are not in the template (the school week is Monday to Saturday; Sunday is typed by hand). The staff duplicate warning texts now say "with the same date of birth or with one missing"; the student texts of 7 November (#305) still say "this name and date of birth" (flagged on issue #42).
+
+## 7 November 2026: task 11.7 Announcements and events
+
+- **Data and rights** (0164, 0165): `announcements` (branch-or-school, a whole-school row has no branch), `announcement_classes`, `announcement_deliveries` (school-wide); areas `announcements` (the three authors) and `announcements_feed` (every staff role); `announcement_recipients` the one audience rule of the bot.
+- **API** (module `announcements`): the authors' list and writes (a whole-school one the Super Admin's alone, audience and readers fixed once saved), `GET /api/announcements-feed` (what is addressed to the person: school, branch, the classes of the load in force and of own class, every class for the branch-wide roles), `GET /api/portal/children/:studentId/announcements`; the bot's message per parent through `announcements.fan_out`, `.tick` and `.deliver` (quiet hours and retries of the digest, scope checked again at the send).
+- **Web**: `/announcements` (list and calendar of the month, opened from the home page), `/announcements/manage` (the authors' list, form and panel), the portal's Announcements tab; the bot's button opens it through `/portal/telegram?to=announcements`.
+
+Left out: in-app notices to staff (plan decision 10); the parent's own switch for announcements (task 11.8, decision 15).
+
+The next sessions must know:
+
+- `GET /api/announcements` without `archived` answers every announcement; the web filters by status.
+- An event's times are clock times as typed, never moments; a test of the feed sets the clock after the scene's version starts (`NOW` of `announcements.test.ts`).
 
 ## 7 November 2026: CI faster, the same tests
 
@@ -18,7 +31,8 @@ Not a task of the build plan: the owner asked to speed up CI "without lowering o
 
 - **API tests in four parts of the same time** (`.github/workflows/ci.yml`): the sequencer `apps/api/src/testing/duration-sequencer.ts` (in `vitest.config.ts`) gives every file, slowest first, to the least loaded worker of all parts, by the seconds of `apps/api/test-durations.json` (from the CI logs of 7 November); a file not listed counts as the median. Three parts of the same number of files took 11 to 12 minutes; four of the same time are modelled at about 7, bounded by `timetable/speed.database.test.ts` (about 7 minutes alone), so more parts would not help. Inside a part the slowest files start first. Every file runs in exactly one part (`duration-sequencer.test.ts`).
 - **CI's PostgreSQL skips disk safety** (`fsync`, `synchronous_commit`, `full_page_writes` off) in the test and browser-test jobs only; the test and production databases are untouched.
-- **Refreshing the times**: download the logs of the four `tests (api n/4)` jobs of a run and `node scripts/test-durations.mjs <logs>`; do it when a part runs clearly longer than the others.
+- **Six parts since #309**: the first runs of four parts took 10 to 10.5 minutes for the slowest part (heavy files on one machine slow each other by 40 to 70 %), so the API tests run in six parts; the times are the mean of two runs.
+- **Refreshing the times**: download the logs of the six `tests (api n/6)` jobs of a run (or of several runs) and `node scripts/test-durations.mjs <logs>`; do it when a part runs clearly longer than the others.
 
 ## 7 November 2026: date of birth, scholarship and relatives of a student are optional
 

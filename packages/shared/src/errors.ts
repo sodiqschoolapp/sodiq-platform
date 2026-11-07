@@ -441,6 +441,14 @@ export const ERROR_CODES = [
   'class_needs_year',
   /** The class changed since it was read: read it again (task 3.1a). */
   'class_changed',
+  /** The announcement changed since it was read: read it again (task 11.7). */
+  'announcement_changed',
+  /** A whole-school announcement is written, changed and archived by the Super Admin only (task 11.7). */
+  'announcement_school_only',
+  /** The announcement is archived: restore it first (task 11.7). */
+  'announcement_archived',
+  /** A class of the audience is archived or of a closed year (task 11.7). */
+  'announcement_class_unavailable',
   /** The class is archived: restore it first (task 3.1a, decision 10). */
   'class_archived',
   /** The room chosen as the main classroom is closed (task 3.1a, decision 7). */

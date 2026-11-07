@@ -156,7 +156,12 @@ const patternOperation: fc.Arbitrary<PatternOperation> = fc.oneof(
   }),
   fc.record({ op: fc.constant('remove' as const), block: fc.nat() }),
 );
-const OPERATIONS = 25;
+// Each random run makes 25 to 35 edits (owner, 7 November 2026). With 15 to 25, about
+// half of them skipped as not applicable, the edits tried came to about 2,100 against the
+// floor of "more than 2,000" below, and a run that landed on 2,000 failed with every check
+// passed. More edits per run keep the floor and test more, never less.
+const MIN_OPERATIONS = 25;
+const OPERATIONS = 35;
 
 const clock = (minutes: number) =>
   `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
@@ -795,7 +800,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     const dataAnswers = new Set<string>();
     await fc.assert(
       fc.asyncProperty(
-        fc.array(operation, { minLength: 15, maxLength: OPERATIONS }),
+        fc.array(operation, { minLength: MIN_OPERATIONS, maxLength: OPERATIONS }),
         async (operations) => {
           try {
             await h.state.transactions.run([north, south], async (transaction) => {
@@ -934,7 +939,7 @@ describe('the time claims against a model, on random lessons and edits (14, Gene
     const reached = new Set<string>();
     await fc.assert(
       fc.asyncProperty(
-        fc.array(patternOperation, { minLength: 15, maxLength: OPERATIONS }),
+        fc.array(patternOperation, { minLength: MIN_OPERATIONS, maxLength: OPERATIONS }),
         async (operations) => {
           try {
             await h.state.transactions.run([north], async (transaction) => {

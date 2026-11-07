@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 517, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 7. With a permission of the table: 481.
-- Routes with a limit inside the route: 156.
-- Routes that take an id: 403, with 846 ids (branch 743, school 76, own 11, none 16).
-- Areas of the permission table: 61.
+- Routes of the application: 524, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 487.
+- Routes with a limit inside the route: 157.
+- Routes that take an id: 408, with 851 ids (branch 747, school 76, own 12, none 16).
+- Areas of the permission table: 63.
 
 ## Routes without a role
 
@@ -181,6 +181,7 @@ Every signed-in account, for its own account only (`@AnySignedIn`):
 A Parent account only, for a child of its own (`@PortalChild`, task 11.2; every staff role refused, the child scope checked in the route):
 
 - `GET /api/portal/children`
+- `GET /api/portal/children/:studentId/announcements`
 - `GET /api/portal/children/:studentId/attendance`
 - `GET /api/portal/children/:studentId/files/:fileId`
 - `GET /api/portal/children/:studentId/grades`
@@ -214,6 +215,8 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `DELETE /api/plans/files/:fileId` | teacher | own_lessons | edge/lesson-plans, "Who may read a plan?": "Only the owner edits" | `src/modules/plans/plans.test.ts > refuses a write from everyone but the owner, leaving every row and the audit log` |
 | `GET /api/access/head-teachers` | head_teacher | subjects | 02, Scope: own subjects; the list shows the appointments of the reader’s subjects (task 2.3b-1) | `src/modules/people/head-teachers.test.ts > shows a Head Teacher alone neither another subject nor its Senior Head Teacher` |
 | `GET /api/access/head-teachers` | senior_head_teacher | subjects | 02, Senior Head Teacher: "Sees the Head Teachers of those subjects" | `src/modules/people/head-teachers.test.ts > shows a Senior Head Teacher alone the holders of their subjects in a branch of no own role` |
+| `GET /api/announcements-feed` | tutor, class_teacher | class | Task 11.7, plan decision 4: the classes and grades of the own class, besides the school and the branch | `src/modules/announcements/announcements.test.ts > shows the Tutor the own class` |
+| `GET /api/announcements-feed` | teacher, head_teacher, senior_head_teacher | own_lessons | Task 11.7, plan decision 4: the classes and grades of the teaching load in force, besides the school and the branch | `src/modules/announcements/announcements.test.ts > shows a Teacher the classes of the load in force and their grades, not another class`<br>`src/modules/announcements/announcements.test.ts > shows a Head Teacher and a Senior Head Teacher without load of the class, and a Nurse, the school and branch items only` |
 | `GET /api/audit/entries` | principal, academic_vice_principal | narrower | edge/people, audit log: the Principal and the Academic VP read their branch; "sign-ins and school-wide settings are read by the Super Admin" | `src/modules/audit/audit-entries.test.ts > does not show %s to the branch, and shows it to the Super Admin` |
 | `GET /api/audit/entries` | principal | narrower | edge/people, Personal data: Identity hidden from the Principal, in the log too (task 2.6a, decision 6) | `src/modules/audit/audit-entries.test.ts > hides the address and the date of birth of a student entry from the Principal only` |
 | `GET /api/classes` | tutor, class_teacher | class | 02, Tutor: "Own class or classes" (task 3.1c, decisions 1 and 9) | `src/modules/classes/tutor-scope.test.ts > lists the own classes only and reads them with their members` |
@@ -673,6 +676,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/plans/reports/requests` | `query:teacherId` | staff | branch | `src/modules/plans/plan-delivery.test.ts > answers none of another branch’s plans to a teacher filter of another branch or an unknown one, in every report and the file` |
 | `GET /api/plans/requests` | `query:yearId` | academic year | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown year, quarter, lesson, event or subject of the request routes, writing nothing` |
 | `GET /api/plans/windows` | `query:yearId` | academic year | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown quarter on open and extend, and writes nothing` |
+| `GET /api/portal/children/:studentId/announcements` | `path:studentId` | child of the own family | own | `src/modules/announcements/announcements.test.ts > answers 404 for another family’s child, a link off, an unlinked relative and a child who left` |
 | `GET /api/portal/children/:studentId/attendance` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
 | `GET /api/portal/children/:studentId/files/:fileId` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404`<br>`src/modules/portal/portal.test.ts > the files of homework` |
 | `GET /api/portal/children/:studentId/files/:fileId` | `path:fileId` | file of a homework the child’s page lists | own | `src/modules/portal/portal.test.ts > the files of homework` |
@@ -769,6 +773,9 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PATCH /api/timetable/versions/:id/load/:rowId` | `path:rowId` | teaching_load_row | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
 | `PATCH /api/timetable/versions/:id/load/:rowId` | `body:teacherId` | staff | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing`<br>`src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown id of the teachers' query and of a row edit 404, also as the Super Admin` |
 | `PATCH /api/timetable/versions/:id/load/:rowId` | `body:roomId` | room | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing`<br>`src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown id of the teachers' query and of a row edit 404, also as the Super Admin` |
+| `POST /api/announcements` | `body:audience<kind=classes>.classIds` | class of the audience | branch | `src/modules/announcements/announcements.test.ts > writes for grades and classes of the branch; another branch’s or an unknown class is 404`<br>`repeat: src/modules/announcements/announcements.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
+| `POST /api/announcements/:id/archive` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
+| `POST /api/announcements/:id/restore` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
 | `POST /api/audit/entries/:id/show` | `path:id` | audit entry | branch | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/classes` | `body:mainRoomId` | room | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |
 | `POST /api/classes` | `body:academicYearId` | academic year | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |
@@ -1311,6 +1318,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/timetable/views/export` | `body<kind=class>.classId` | class | branch | `src/modules/timetable/views-export.test.ts > answers 404 for another branch’s and an unknown class, teacher and room, with no file and no entry` |
 | `POST /api/timetable/views/export` | `body<kind=teacher>.staffId` | staff | branch | `src/modules/timetable/views-export.test.ts > answers 404 for another branch’s and an unknown class, teacher and room, with no file and no entry` |
 | `POST /api/timetable/views/export` | `body<kind=room>.roomId` | room | branch | `src/modules/timetable/views-export.test.ts > answers 404 for another branch’s and an unknown class, teacher and room, with no file and no entry` |
+| `PUT /api/announcements/:id` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
 | `PUT /api/classes/:id` | `path:id` | class | branch | `src/modules/classes/classes.test.ts > answers 404 for another branch's class and an unknown one, with nothing changed` |
 | `PUT /api/classes/:id` | `body:mainRoomId` | room | branch | `src/modules/classes/classes.test.ts > answers 404 for another branch's room in the body, with nothing changed` |
 | `PUT /api/exemptions/:id/document` | `path:id` | exemption | branch | `src/modules/journal/exemption-files.test.ts > answers 404 for another branch’s and an unknown exemption, and 409 for a voided one` |
@@ -1458,6 +1466,33 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes | yes | yes |  |  |
 | principal | yes |  |  |  |  |
+
+### `announcements`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes | yes | yes | yes |  |
+| academic_vice_principal | yes | yes | yes | yes |  |
+| spiritual_vice_principal | yes | yes | yes | yes |  |
+
+### `announcements_feed`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  |  |
+| principal | yes |  |  |  |  |
+| academic_vice_principal | yes |  |  |  |  |
+| spiritual_vice_principal | yes |  |  |  |  |
+| head_tutor | yes |  |  |  |  |
+| tutor | yes |  |  |  |  |
+| class_teacher | yes |  |  |  |  |
+| senior_head_teacher | yes |  |  |  |  |
+| head_teacher | yes |  |  |  |  |
+| teacher | yes |  |  |  |  |
+| hr | yes |  |  |  |  |
+| nurse | yes |  |  |  |  |
+| psychologist | yes |  |  |  |  |
+| librarian | yes |  |  |  |  |
 
 ### `attendance_report`
 
