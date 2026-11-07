@@ -418,6 +418,8 @@ Plan approved on pull request #304 with corrections 1 to 4. Flagged on issue #42
 | Files picked while writing are held in the form and uploaded after the save; a failure stays "not uploaded" with retry | Decision 10 |
 | A classwork's files are staff only, like the materials | Decision 13 |
 | A shared plan gets the new item where `placeNew` puts it; it never moves an item of a started row, so the planned separation never runs | Decision 16; `placeNew` places "never on a started row" |
+| **Build decision** (code review). The journal's remove of a journal-added work is refused `work_holds_data` while the work holds a file the owner gave it or a "not given" mark; the owner removes the files in the plan | Files are the owner's plan content and a mark is data; whoever adds in the journal does not remove them (permission review 1, spec review 7) |
+| **Build decision** (code review). A merge of a not-covered item carries its works' mark and their files (copies naming the file whose bytes they show) | `.claude/rules/lesson-plans.md`: a mark is copied wherever items are copied (spec review 6) |
 | **Build decision.** The rename and remove of a journal-added work are routes of their own (`…/plan-works/:planWorkId`), not a field on the routes of hand-added works | One id kind per path; the plan named the routes of 10.6 with a field |
 
 ## 7 November 2026: the kind of a work, the default columns, the lesson happening now (task 10.7)
