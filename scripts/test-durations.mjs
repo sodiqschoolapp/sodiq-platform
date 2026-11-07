@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes apps/api/test-durations.json from the logs of the API parts of a CI run, so
 // the parts stay of the same time as files are added (apps/api/src/testing/
-// duration-sequencer.ts). Download the log of each "tests (api n/4)" job, of one run or
+// duration-sequencer.ts). Download the log of each "tests (api n/6)" job, of one run or
 // of several (a file's time swings from run to run with what runs beside it, so the
 // mean of a few runs splits better), then:
 //
