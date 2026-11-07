@@ -457,6 +457,12 @@ export const uz: Texts<'one' | 'other'> = {
       'Ayrim oʻquvchilar uchun ekrandagi guruhlarning birortasida boʻsh oʻrin yoʻq, shuning uchun hech kim joylashtirilmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing.',
     class_group_no_seat:
       'Sinfning boʻlinadigan yoki guruhli fanlaridan birining hech bir guruhida oʻquvchi sinfda boʻladigan har bir kun uchun boʻsh oʻrin yoʻq, shuning uchun hech narsa saqlanmadi. Guruhning eng koʻp sonini oshiring yoki guruh qoʻshing va qayta urinib koʻring.',
+    class_group_required:
+      'Sinf boʻlingan fan uchun guruh koʻrsatilmagan. Guruhni yozing va qayta urinib koʻring.',
+    class_group_not_offered:
+      'Koʻrsatilgan guruh oʻquvchi sinfda boʻladigan har kuni bu sinfdan oʻquvchi olmaydi. Boshqa guruhni yozing va qayta urinib koʻring.',
+    class_group_chosen_full:
+      'Koʻrsatilgan guruhda oʻquvchi boʻladigan har kuni boʻsh oʻrin yoʻq. Boshqa guruhni yozing yoki uning eng koʻp sonini oshiring, soʻng qayta urinib koʻring.',
     class_group_missing:
       'Oʻquvchi guruhli fanlaridan birining guruhisiz sinfda qolar edi. Hech narsa saqlanmadi. Sahifani yangilang va qayta urinib koʻring.',
     stay_continues:
@@ -2502,6 +2508,11 @@ export const uz: Texts<'one' | 'other'> = {
         phone_two_names_in_file:
           'bu telefon {{rows}}-qatorlarda boshqa ism bilan. Telefonni yoki ismni tuzating.',
         phone_held: 'bu telefon boshqa odamda. Oʻsha odam bilan bogʻlang yoki telefonni tuzating.',
+        group_unknown: 'boshlanish sanasi yilida filialda bu nomli guruh yoʻq.',
+        group_subject_twice: 'qatorning boshqa guruh ustuni ham shu fandan.',
+        group_not_of_class: 'sinf bu guruh fani boʻyicha boʻlinmagan.',
+        group_without_class: 'guruh uchun qatorda sinf boʻlishi kerak; sinfni yozing.',
+        groupSubject: '{{text}} ({{subject}})',
       },
     },
     students: {

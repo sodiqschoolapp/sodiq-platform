@@ -183,6 +183,49 @@ describe('the student import page', () => {
     expect(await screen.findByText(en.errors.import_not_template)).toBeDefined();
   });
 
+  // Owner's change of 7 November 2026: each row names its groups.
+  it('names the group problems with the group column or the subject', async () => {
+    open('academic_vice_principal', {
+      'PUT /api/people/students/imports': () =>
+        json({
+          ...NOT_CLEAN,
+          rows: [
+            {
+              rowNumber: 3,
+              uid: 'IMP-9',
+              lastName: 'Guruhov',
+              firstName: 'Anvar',
+              className: '7 Oxford',
+              problems: [
+                {
+                  column: null,
+                  code: 'class_group_required',
+                  subject: { uz: 'Ingliz tili', ru: 'Английский язык', en: 'English' },
+                  day: '2026-09-02',
+                },
+                { column: 'group2', code: 'group_unknown' },
+                { column: 'group3', code: 'class_group_chosen_full', day: '2026-09-02' },
+              ],
+              warning: null,
+              held: [],
+              linked: [],
+            },
+          ],
+        }),
+    });
+    await screen.findByRole('heading', { name: en.people.import.title });
+    choose();
+    await waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+    const items = [...(rows()[0]?.querySelectorAll('li') ?? [])].map((item) => item.textContent);
+    expect(items).toEqual([
+      `${en.errors.class_group_required} (English)`,
+      `Group 2: ${en.people.import.problems.group_unknown}`,
+      `Group 3: ${en.errors.class_group_chosen_full}`,
+    ]);
+  });
+
   it('is not for a role that does not create students', async () => {
     open('principal');
     expect(await screen.findByText(en.problems.noAccessPart)).toBeDefined();

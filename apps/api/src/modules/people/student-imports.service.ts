@@ -6,6 +6,7 @@ import {
   relativeNameKey,
   studentImportRowsSchema,
   studentNameKey,
+  type ErrorDetail,
   type RelativeLinkInput,
   type StudentCreate,
   type StudentImportConfirmResult,
@@ -23,7 +24,7 @@ import type { UploadedFile } from '../../http/file-routes.js';
 import { XlsxFile } from '../../http/xlsx.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { CLASS_GROUP_REFUSALS } from '../classes/class-groups.js';
+import { CLASS_GROUP_REFUSALS, groupSubjectRuns } from '../classes/class-groups.js';
 import { MEMBERSHIP_REFUSALS } from '../classes/class-membership-rows.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { refusingRelativeRaces, RelativeWrites } from './relative-writes.js';
@@ -58,6 +59,19 @@ const CODE_COLUMNS: Partial<Record<string, StudentImportColumn>> = {
   student_needs_class: 'className',
   student_needs_group: 'className',
 };
+
+/** The refusals of the create about the groups a row names (owner's change of 7 November 2026). */
+const GROUP_REFUSALS: ReadonlySet<string> = new Set([
+  'class_group_required',
+  'class_group_not_offered',
+  'class_group_chosen_full',
+]);
+
+/** The groups a row names, by subject id in small letters, and the column that named each. */
+interface NamedGroups {
+  bySubject: Map<string, string>;
+  columnOf: Map<string, StudentImportColumn>;
+}
 
 /** The result of a run that is rolled back: thrown out of the transaction, caught outside. */
 class RolledBack extends Error {
@@ -316,6 +330,7 @@ export class StudentImports {
     }
     const inFile = fileChecks(parsed);
     const classes = await this.classesOf(transaction, branchId);
+    const groups = await this.groupsOf(transaction, branchId);
     const today = await this.students.todayIn(transaction, branchId);
     const deferred = await deferredConstraints(transaction);
     const previewRows: StudentImportPreviewRow[] = [];
@@ -349,6 +364,9 @@ export class StudentImports {
       } else if (row.input !== null && row.input.startsOn <= today) {
         problems.push({ column: 'className', code: 'needs_class' });
       }
+      // The groups the row names (owner's change of 7 November 2026): found in the branch and
+      // the year of the class, one per subject, each of a subject the class is split for.
+      const named = await this.namedGroups(transaction, row, classId, classes, groups, problems);
       const warning =
         row.input === null
           ? null
@@ -390,6 +408,7 @@ export class StudentImports {
           requestId,
           record.id,
           deferred,
+          named,
         );
         if (typeof saved === 'string') {
           studentIds.push(saved);
@@ -400,7 +419,7 @@ export class StudentImports {
             }
           }
         } else {
-          problems.push(saved);
+          problems.push(...saved);
         }
       }
       const rowClean = problems.length === 0 && (warning === null || warning.confirmed);
@@ -434,6 +453,117 @@ export class StudentImports {
   }
 
   /** The classes of the branch with their year's dates, archived ones left out. */
+  /**
+   * The groups in service of the branch (not archived, of a year that is not closed), by their
+   * folded name (`edge/students-classes-groups`, the import row: look-alike letters in group
+   * names are the same). Another branch's group of the same name is not among them.
+   */
+  private async groupsOf(transaction: Transaction, branchId: string) {
+    const rows = await transaction
+      .selectFrom('groups')
+      .innerJoin('academic_years', 'academic_years.id', 'groups.academic_year_id')
+      .select(['groups.id', 'groups.name', 'groups.subject_id', 'groups.academic_year_id'])
+      .where('groups.branch_id', '=', branchId)
+      .where('groups.archived_at', 'is', null)
+      .where('academic_years.status', '<>', 'closed')
+      .execute();
+    return rows.map((row) => ({
+      id: row.id,
+      nameKey: classNameKey(row.name),
+      subjectId: row.subject_id,
+      yearId: row.academic_year_id,
+    }));
+  }
+
+  /**
+   * The groups a row names, checked before the save (problems added to `problems`): each name
+   * found among the groups in service of the class's year (`group_unknown`), one per subject
+   * (`group_subject_twice`), of a subject the class is split for from the start date on
+   * (`group_not_of_class`), and none on a row without a class (`group_without_class`). The
+   * stretch rules (offered, seats) are the create's (`planClassGroups`, required).
+   */
+  private async namedGroups(
+    transaction: Transaction,
+    row: ParsedRow,
+    classId: string | null,
+    classes: readonly { id: string; yearId: string }[],
+    groups: readonly { id: string; nameKey: string; subjectId: string; yearId: string }[],
+    problems: StudentImportProblem[],
+  ): Promise<NamedGroups> {
+    const named: NamedGroups = { bySubject: new Map(), columnOf: new Map() };
+    if (row.groups.length === 0) {
+      return named;
+    }
+    const first = row.groups[0];
+    if (classId === null) {
+      if (first !== undefined && row.className === null) {
+        problems.push({ column: first.column, code: 'group_without_class' });
+      }
+      return named;
+    }
+    const yearId = classes.find((one) => one.id === classId)?.yearId;
+    const startsOn = row.input?.startsOn ?? '';
+    const runs = (await groupSubjectRuns(transaction, [classId])).get(classId.toLowerCase()) ?? [];
+    const splitFrom = new Set(
+      runs
+        .filter((run) => run.until === null || run.until > startsOn)
+        .map((run) => run.subjectId.toLowerCase()),
+    );
+    for (const { column, name } of row.groups) {
+      const key = classNameKey(name);
+      const group = groups.find((one) => one.nameKey === key && one.yearId === yearId);
+      if (group === undefined) {
+        problems.push({ column, code: 'group_unknown' });
+        continue;
+      }
+      const subjectId = group.subjectId.toLowerCase();
+      if (named.bySubject.has(subjectId)) {
+        problems.push({ column, code: 'group_subject_twice' });
+        continue;
+      }
+      if (!splitFrom.has(subjectId)) {
+        problems.push({ column, code: 'group_not_of_class' });
+        continue;
+      }
+      named.bySubject.set(subjectId, group.id);
+      named.columnOf.set(subjectId, column);
+    }
+    return named;
+  }
+
+  /** The problems of a refusal about the named groups: one per detail, on the group's column. */
+  private async groupProblems(
+    transaction: Transaction,
+    details: readonly ErrorDetail[],
+    named: NamedGroups,
+  ): Promise<StudentImportProblem[]> {
+    const subjectIds = [
+      ...new Set(
+        details.flatMap((detail) => (detail.subjectId === undefined ? [] : [detail.subjectId])),
+      ),
+    ];
+    const subjects =
+      subjectIds.length === 0
+        ? []
+        : await transaction
+            .selectFrom('subjects')
+            .select(['id', 'name_uz', 'name_ru', 'name_en'])
+            .where('id', 'in', subjectIds)
+            .execute();
+    return details.map((detail) => {
+      const subjectId = detail.subjectId?.toLowerCase();
+      const subject = subjects.find((one) => one.id.toLowerCase() === subjectId);
+      return {
+        column: subjectId === undefined ? null : (named.columnOf.get(subjectId) ?? null),
+        code: detail.code,
+        ...(subject === undefined
+          ? {}
+          : { subject: { uz: subject.name_uz, ru: subject.name_ru, en: subject.name_en } }),
+        ...(detail.day === undefined ? {} : { day: detail.day }),
+      };
+    });
+  }
+
   private async classesOf(transaction: Transaction, branchId: string) {
     const rows = await transaction
       .selectFrom('classes')
@@ -442,6 +572,7 @@ export class StudentImports {
         'classes.id',
         'classes.grade',
         'classes.name',
+        'classes.academic_year_id',
         'academic_years.start_date',
         'academic_years.end_date',
       ])
@@ -452,6 +583,7 @@ export class StudentImports {
       id: row.id,
       grade: row.grade,
       nameKey: classNameKey(row.name),
+      yearId: row.academic_year_id,
       startDate: String(row.start_date),
       endDate: String(row.end_date),
     }));
@@ -582,7 +714,8 @@ export class StudentImports {
     requestId: string,
     importId: string,
     deferred: readonly string[],
-  ): Promise<string | StudentImportProblem> {
+    named: NamedGroups,
+  ): Promise<string | StudentImportProblem[]> {
     try {
       return await this.students.refusingTaken(access, () =>
         this.relatives.refusingHeldPhone(access, () =>
@@ -597,6 +730,8 @@ export class StudentImports {
                     input,
                     requestId,
                     importId,
+                    // A row with a class places the student only into the groups it names.
+                    input.classId === null ? undefined : named.bySubject,
                   );
                   await sql`set constraints all immediate`.execute(transaction);
                   if (deferred.length > 0) {
@@ -620,17 +755,24 @@ export class StudentImports {
       if (!(error instanceof ApiException)) {
         throw error;
       }
+      // A refusal about the named groups names each group or subject (every detail, so a row
+      // missing two groups shows both).
+      if (error.details?.some((detail) => GROUP_REFUSALS.has(detail.code)) === true) {
+        return await this.groupProblems(transaction, error.details ?? [], named);
+      }
       const detail = error.details?.[0];
       const column =
         (detail === undefined ? null : columnOfPath(detail.path.split('.'))) ??
         CODE_COLUMNS[error.code] ??
         null;
-      return {
-        column,
-        code: error.code,
-        ...(detail?.recordId === undefined ? {} : { recordId: detail.recordId }),
-        ...(detail?.code === 'held_elsewhere' ? { elsewhere: true } : {}),
-      };
+      return [
+        {
+          column,
+          code: error.code,
+          ...(detail?.recordId === undefined ? {} : { recordId: detail.recordId }),
+          ...(detail?.code === 'held_elsewhere' ? { elsewhere: true } : {}),
+        },
+      ];
     }
   }
 }

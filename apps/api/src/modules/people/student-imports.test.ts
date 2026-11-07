@@ -11,6 +11,7 @@ import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { filledTemplate, studentRow, type TemplateRow } from '../../testing/student-import-kit.js';
@@ -58,8 +59,8 @@ describe('the student import', () => {
       .set('Content-Type', XLSX)
       .send(bytes);
 
-  async function uploaded(rows: readonly TemplateRow[], cookie = t.vicePrincipal) {
-    const response = await upload(await filledTemplate(rows), cookie);
+  async function uploaded(rows: readonly TemplateRow[], cookie = t.vicePrincipal, branch = '') {
+    const response = await upload(await filledTemplate(rows), cookie, branch);
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     return studentImportPreviewSchema.parse(response.body);
   }
@@ -178,10 +179,24 @@ describe('the student import', () => {
       }
       const motherPhone = 998951110001;
       const fatherPhone = 998951110002;
-      const rows: TemplateRow[] = Array.from({ length: 30 }, (_, index) => {
+      const nameOf = async (id: string) =>
+        (
+          await t.database.migrator
+            .selectFrom('groups')
+            .select('name')
+            .where('id', '=', id)
+            .executeTakeFirstOrThrow()
+        ).name;
+      // Each row names its group (owner's change of 7 November 2026: the import never places
+      // automatically; this test placed students automatically before the requirement changed).
+      const chosen: string[] = [];
+      const rows: TemplateRow[] = [];
+      for (let index = 0; index < 30; index += 1) {
         const target = made[index % 3];
-        return studentRow(target?.name ?? '', {});
-      });
+        const group = groups.get(target?.id ?? '')?.[Math.floor(index / 3) % 2] ?? '';
+        chosen.push(group);
+        rows.push(studentRow(target?.name ?? '', { group1: await nameOf(group) }));
+      }
       // A class name typed with a Cyrillic letter (edge: look-alike letters are the same).
       const first = made[0];
       if (first === undefined) {
@@ -242,12 +257,12 @@ describe('the student import', () => {
           .where('student_id', '=', student?.id ?? '')
           .execute();
         expect(inGroups).toHaveLength(1);
-        expect(groups.get(target?.id ?? '')).toContain(inGroups[0]?.group_id);
-        // "Placed automatically, review", as bulk placement does.
+        // The group the row names, as the bulk screen places: no review tag.
         expect(inGroups[0]).toMatchObject({
+          group_id: chosen[index],
           valid_from: '2026-09-02',
-          cause: 'automatic',
-          review: true,
+          cause: 'placement',
+          review: false,
         });
       }
       const sharedOf = async (phone: string) => {
@@ -381,6 +396,310 @@ describe('the student import', () => {
       expect((after[11] ?? []).length).toBe((before[11] ?? []).length + 2);
       expect((after[12] ?? []).length).toBe((before[12] ?? []).length + 2);
       refusedWith(await confirm(first.importId), 409, 'import_already_confirmed');
+    });
+  });
+
+  // Owner's change of 7 November 2026 (`04`, Excel import; `edge/students-classes-groups`, the
+  // split class row): each row names the student's groups; nothing is placed automatically.
+  describe('the groups a row names', () => {
+    const groupName = async (id: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('groups')
+          .select('name')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).name;
+
+    /** The group rows of a saved student. */
+    const groupRowsOf = async (uid: unknown) =>
+      t.database.migrator
+        .selectFrom('group_memberships')
+        .innerJoin('students', 'students.id', 'group_memberships.student_id')
+        .select([
+          'group_memberships.group_id',
+          'group_memberships.valid_from',
+          'group_memberships.valid_until',
+          'group_memberships.cause',
+          'group_memberships.review',
+        ])
+        .where('students.uid', '=', String(uid))
+        .orderBy('group_memberships.valid_from')
+        .execute();
+
+    /** A grade 7 class split for a subject into groups of the given sizes. */
+    async function splitClass(sizes: readonly number[]) {
+      const subject = await classes.subject({ grades: [7] });
+      const made = await newClass();
+      const groups: string[] = [];
+      for (const size of sizes) {
+        count += 1;
+        groups.push(
+          await classes.group(t.north, year, subject, [made.id], {
+            name: `7-G-${letters(count + 300)}`,
+            size,
+          }),
+        );
+      }
+      return { subject, made, groups };
+    }
+
+    it('places each student into the groups the row names, with an entry naming the import', async () => {
+      const { made, groups } = await splitClass([20, 20]);
+      const [first, second] = groups;
+      const rows = [
+        studentRow(made.name, { group1: await groupName(second ?? '') }),
+        // Look-alike letters and case in the group name are the same name.
+        studentRow(made.name, { group3: (await groupName(first ?? '')).toLowerCase() }),
+      ];
+      const answer = await uploaded(rows);
+      expect(answer.rows.flatMap((row) => row.problems)).toEqual([]);
+      await confirmed(answer.importId);
+      expect(await groupRowsOf(rows[0]?.uid)).toEqual([
+        {
+          group_id: second,
+          valid_from: '2026-09-02',
+          valid_until: '2027-06-01',
+          cause: 'placement',
+          review: false,
+        },
+      ]);
+      expect((await groupRowsOf(rows[1]?.uid)).map((row) => row.group_id)).toEqual([first]);
+      const student = await studentOf(rows[0]?.uid);
+      const entries = await t.entries('student.group_joined', student?.id);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]?.new_value).toMatchObject({
+        groupId: second,
+        cause: 'placement',
+        review: false,
+        importId: answer.importId,
+      });
+    });
+
+    it('refuses a row that names no group for each subject the class is split for, naming the subjects', async () => {
+      const { made, subject } = await splitClass([20]);
+      const other = await classes.subject({ grades: [7] });
+      count += 1;
+      await classes.group(t.north, year, other, [made.id], { name: `7-H-${letters(count + 300)}` });
+      const answer = await uploaded([studentRow(made.name)]);
+      const problems = rowAt(answer, 3).problems;
+      expect(problems.map((one) => [one.column, one.code]).sort()).toEqual([
+        [null, 'class_group_required'],
+        [null, 'class_group_required'],
+      ]);
+      const names = await t.database.migrator
+        .selectFrom('subjects')
+        .select('name_en')
+        .where('id', 'in', [subject, other])
+        .execute();
+      expect(problems.map((one) => one.subject?.en).sort()).toEqual(
+        names.map((one) => one.name_en).sort(),
+      );
+      expect(problems.every((one) => one.day === '2026-09-02')).toBe(true);
+      expect(answer.clean).toBe(false);
+      expect((await confirmed(answer.importId)).outcome).toBe('not_clean');
+    });
+
+    it("tells an unknown group: no such name, another branch's, an archived one, one of a closed year", async () => {
+      const { made, subject } = await splitClass([20]);
+      count += 1;
+      const southName = `7-S-${letters(count + 300)}`;
+      const southClass = await newClass(25, t.south, southYear);
+      await classes.group(t.south, southYear, subject, [southClass.id], { name: southName });
+      count += 1;
+      const archivedName = `7-A-${letters(count + 300)}`;
+      const archived = await classes.group(t.north, year, subject, [made.id], {
+        name: archivedName,
+      });
+      await t.database.migrator
+        .updateTable('groups')
+        .set({ archived_at: new Date('2026-10-01T00:00:00Z') })
+        .where('id', '=', archived)
+        .execute();
+      const answer = await uploaded([
+        studentRow(made.name, { group1: 'No such group' }),
+        studentRow(made.name, { group1: southName }),
+        studentRow(made.name, { group1: archivedName }),
+      ]);
+      for (const number of [3, 4, 5]) {
+        expect(codesAt(answer, number), String(number)).toContain('group1:group_unknown');
+      }
+      // A closed year's group of the name: a branch of its own, whose closed year comes first.
+      const east = await t.newBranch();
+      const closedYear = await classes.year(east, 'current', '2025-09-01', '2026-05-31');
+      count += 1;
+      const closedName = `7-C-${letters(count + 300)}`;
+      const oldClass = await newClass(25, east, closedYear);
+      await classes.group(east, closedYear, subject, [oldClass.id], { name: closedName });
+      await t.database.migrator
+        .updateTable('academic_years')
+        .set({ status: 'closed' })
+        .where('id', '=', closedYear)
+        .execute();
+      const eastYear = await classes.year(east);
+      const eastClass = await newClass(25, east, eastYear);
+      await classes.group(east, eastYear, subject, [eastClass.id]);
+      const response = await upload(
+        await filledTemplate([studentRow(eastClass.name, { group1: closedName })]),
+        t.admin,
+        east,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      expect(codesAt(studentImportPreviewSchema.parse(response.body), 3)).toContain(
+        'group1:group_unknown',
+      );
+    });
+
+    it('refuses two groups of one subject, also the same group twice', async () => {
+      const { made, groups } = await splitClass([20, 20]);
+      const [first, second] = groups;
+      const answer = await uploaded([
+        studentRow(made.name, {
+          group1: await groupName(first ?? ''),
+          group2: await groupName(second ?? ''),
+        }),
+        studentRow(made.name, {
+          group1: await groupName(first ?? ''),
+          group4: await groupName(first ?? ''),
+        }),
+      ]);
+      expect(codesAt(answer, 3)).toEqual(['group2:group_subject_twice']);
+      expect(codesAt(answer, 4)).toEqual(['group4:group_subject_twice']);
+    });
+
+    it('refuses a group of a subject the class is not split for', async () => {
+      const { made } = await splitClass([20]);
+      const elsewhere = await splitClass([20]);
+      const answer = await uploaded([
+        studentRow(made.name, { group1: await groupName(elsewhere.groups[0] ?? '') }),
+      ]);
+      expect(codesAt(answer, 3)).toContain('group1:group_not_of_class');
+    });
+
+    it('refuses group cells on a row without a class', async () => {
+      const { groups } = await splitClass([20]);
+      // A start after today may come without a class.
+      const answer = await uploaded([
+        studentRow(null, { startsOn: '02.11.2026', group1: await groupName(groups[0] ?? '') }),
+      ]);
+      expect(codesAt(answer, 3)).toEqual(['group1:group_without_class']);
+    });
+
+    it('refuses a named group with no free seat, counting the rows above it, on its column', async () => {
+      const { made, groups } = await splitClass([1, 20]);
+      const full = await groupName(groups[0] ?? '');
+      const answer = await uploaded([
+        studentRow(made.name, { group1: full }),
+        studentRow(made.name, { group2: full }),
+      ]);
+      expect(codesAt(answer, 3)).toEqual([]);
+      expect(codesAt(answer, 4)).toEqual(['group2:class_group_chosen_full']);
+      expect(rowAt(answer, 4).problems[0]?.day).toBe('2026-09-02');
+    });
+
+    // The stretches of the published versions (task 5.5a-2c): a branch of its own, as in
+    // class-groups.test.ts, so that its versions run over no other test's class rows.
+    async function chain(
+      groupNames: readonly string[],
+      versions: readonly [string, 'class' | number][],
+    ) {
+      const kit = new LoadKit(t.database.migrator);
+      const west = await t.newBranch();
+      const westYear = await classes.year(west);
+      const maths = await classes.subject({ grades: [7] });
+      const oxford = await newClass(25, west, westYear);
+      const made: string[] = [];
+      for (const name of groupNames) {
+        made.push(await classes.group(west, westYear, maths, [oxford.id], { name }));
+      }
+      const { staffId } = await kit.teacher(west, { subjects: [{ subject: maths, grades: [7] }] });
+      for (const [startsOn, unit] of versions) {
+        const version = await kit.version(west, westYear, { startsOn });
+        await kit.row({
+          branch_id: west,
+          version_id: version,
+          ...(unit === 'class' ? { class_id: oxford.id } : { group_id: made[unit] ?? '' }),
+          subject_id: maths,
+          teacher_id: staffId,
+        });
+        await kit.setVersion(version, 'published');
+      }
+      const run = async (rows: readonly TemplateRow[]) => {
+        const response = await upload(await filledTemplate(rows), t.admin, west);
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return studentImportPreviewSchema.parse(response.body);
+      };
+      return { className: oxford.name, groups: made, run, west };
+    }
+
+    it('takes a group offered on every stretch as one row, and refuses one a later version leaves out', async () => {
+      // Before 2 November the class draws on A and B; from 2 November version 1 teaches A only.
+      count += 1;
+      const tag = letters(count + 300);
+      const { className, groups, run, west } = await chain(
+        [`7-P-${tag}`, `7-Q-${tag}`],
+        [['2026-11-02', 0]],
+      );
+      const [a, b] = groups;
+      const kept = studentRow(className, { group1: `7-P-${tag}` });
+      const answer = await run([kept, studentRow(className, { group1: `7-Q-${tag}` })]);
+      expect(codesAt(answer, 3)).toEqual([]);
+      expect(codesAt(answer, 4)).toEqual(['group1:class_group_not_offered']);
+      expect(rowAt(answer, 4).problems[0]?.day).toBe('2026-11-02');
+      expect(b).toBeDefined();
+      // Only the clean row: confirm a file of it alone.
+      const alone = await run([kept]);
+      const saved = await t.post(
+        `/api/people/students/imports/${alone.importId}/confirm`,
+        west,
+        {},
+        t.admin,
+      );
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      // One stay over both stretches (`group_memberships_one_stay`).
+      expect(await groupRowsOf(kept.uid)).toEqual([
+        {
+          group_id: a,
+          valid_from: '2026-09-02',
+          valid_until: '2027-06-01',
+          cause: 'placement',
+          review: false,
+        },
+      ]);
+    });
+
+    it('needs a group only from the version that splits the class, and places from there', async () => {
+      count += 1;
+      const tag = letters(count + 300);
+      const { className, groups, run, west } = await chain(
+        [`7-R-${tag}`],
+        [
+          ['2026-09-01', 'class'],
+          ['2026-11-02', 0],
+        ],
+      );
+      const without = await run([studentRow(className)]);
+      expect(codesAt(without, 3)).toEqual(['null:class_group_required']);
+      expect(rowAt(without, 3).problems[0]?.day).toBe('2026-11-02');
+      const named = studentRow(className, { group1: `7-R-${tag}` });
+      const answer = await run([named]);
+      expect(codesAt(answer, 3)).toEqual([]);
+      const saved = await t.post(
+        `/api/people/students/imports/${answer.importId}/confirm`,
+        west,
+        {},
+        t.admin,
+      );
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      expect(await groupRowsOf(named.uid)).toEqual([
+        {
+          group_id: groups[0],
+          valid_from: '2026-11-02',
+          valid_until: '2027-06-01',
+          cause: 'placement',
+          review: false,
+        },
+      ]);
     });
   });
 

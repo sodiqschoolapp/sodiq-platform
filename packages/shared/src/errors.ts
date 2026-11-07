@@ -577,6 +577,12 @@ export const ERROR_CODES = [
   'class_group_no_seat',
   /** A class row would be saved without a group of a split or group subject of its class (task 3.2c, decision 1): a fault of the path, never a choice of the person. */
   'class_group_missing',
+  /** The student import names no group for a split or group subject of the class (owner's change of 7 November 2026). `details` names the subject (`subjectId`) and its first day (`day`). */
+  'class_group_required',
+  /** A group the student import names does not take students from the class on some day of the class row (`recordId` the group, `day` the first such day). */
+  'class_group_not_offered',
+  /** A group the student import names has no free seat on some day of the class row (`recordId` the group, `day` the first such day). */
+  'class_group_chosen_full',
   /** The change would put the student in the same class or group on the day after a stay there ends, which is one stay (task 3.5c, decision 11: `*_one_stay`); the earlier change is cancelled or undone instead. */
   'stay_continues',
   /** A move dated before today is for the Super Admin and the Academic Vice Principal (`edge/students-classes-groups`: "Backdating is for the Academic Vice Principal"; task 3.3a, decision 4). */

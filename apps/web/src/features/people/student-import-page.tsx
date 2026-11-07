@@ -38,7 +38,7 @@ const NO_DECISIONS: StudentImportDecisions = { confirmedWarnings: [], relativeLi
 function problemText(t: TFunction, language: string, problem: StudentImportProblem): string {
   const own = STUDENT_IMPORT_PROBLEMS.find((code) => code === problem.code);
   const refusal = errorCodeSchema.safeParse(problem.code);
-  const what =
+  const found =
     own !== undefined
       ? t(`people.import.problems.${own}`, { rows: (problem.rows ?? []).join(', ') })
       : problem.elsewhere === true
@@ -46,6 +46,12 @@ function problemText(t: TFunction, language: string, problem: StudentImportProbl
         : refusal.success
           ? t(`errors.${refusal.data}`)
           : t('people.import.problems.invalid');
+  // A group problem names its subject (the required group has no column of its own).
+  const subject = problem.subject?.[isLanguage(language) ? language : 'uz'];
+  const what =
+    subject === undefined
+      ? found
+      : t('people.import.problems.groupSubject', { text: found, subject });
   if (problem.column === null) {
     return what;
   }

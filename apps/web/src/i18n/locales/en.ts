@@ -448,6 +448,12 @@ export const en = {
       'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
     class_group_no_seat:
       'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
+    class_group_required:
+      'No group is named for a subject the class is split for. Name the group, then try again.',
+    class_group_not_offered:
+      'The named group does not take students from this class on every day the student would be in it. Name another group, then try again.',
+    class_group_chosen_full:
+      'The named group has no free seat on every day the student would be in it. Name another group or raise its maximum size, then try again.',
     class_group_missing:
       'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
     stay_continues:
@@ -2468,6 +2474,11 @@ export const en = {
         phone_two_names_in_file:
           'this phone is under another name on rows {{rows}}. Correct the phone or the name.',
         phone_held: 'another person has this phone. Link to that person, or correct the phone.',
+        group_unknown: 'no group of this name in the branch for the year of the start date.',
+        group_subject_twice: 'another group column of the row is of the same subject.',
+        group_not_of_class: 'the class is not split for this group’s subject.',
+        group_without_class: 'a group needs the class of the row; write the class.',
+        groupSubject: '{{text}} ({{subject}})',
       },
     },
     students: {

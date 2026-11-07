@@ -21,6 +21,8 @@ import {
   type StudentImportColumn,
   type StudentImportProblem,
   type StudentImportRow,
+  STUDENT_IMPORT_GROUP_COLUMNS,
+  type StudentImportGroupColumn,
 } from '@sodiq/shared';
 import ExcelJS from 'exceljs';
 import { ApiException } from '../../http/api-exception.js';
@@ -197,6 +199,11 @@ export interface ParsedRow {
   /** The class name as typed; `null` without one. */
   className: string | null;
   relatives: ImportRelative[];
+  /**
+   * The group names of the row, each with its column, as typed (owner's change of
+   * 7 November 2026); the service finds them in the branch.
+   */
+  groups: { column: StudentImportGroupColumn; name: string }[];
   problems: StudentImportProblem[];
   /** For the preview: what was read, even when the row has problems. */
   shown: { uid: string | null; lastName: string | null; firstName: string | null };
@@ -457,6 +464,10 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
             : relative;
         })
       : relatives,
+    groups: STUDENT_IMPORT_GROUP_COLUMNS.flatMap((column) => {
+      const name = cell(column);
+      return name === undefined ? [] : [{ column, name }];
+    }),
     problems,
     shown,
   };
