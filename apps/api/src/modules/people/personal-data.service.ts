@@ -13,6 +13,7 @@ import {
   type RelativeReport,
   type StaffReport,
   type StudentReport,
+  announcementDeliveryStatusSchema,
   digestStatusSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -689,6 +690,20 @@ export class PersonalData {
               .orderBy('digest_date')
               .orderBy('id')
               .execute();
+      // Task 11.7 (plan decision 13): each message of an announcement to the account. The
+      // announcement is read in the report's branches (a whole-school one in each): its title only.
+      const announcementDeliveries =
+        accountId === null
+          ? []
+          : (
+              await sql<{ title: string; status: string; sent_at: Date | null }>`
+                select a.title, d.status, d.sent_at
+                from announcement_deliveries d
+                join announcements a on a.id = d.announcement_id
+                where d.account_id = ${accountId}::uuid
+                order by d.created_at, d.id
+              `.execute(transaction)
+            ).rows;
       const samePersonId = (await staffOfRelatives(transaction, [id])).get(id);
       const samePerson =
         samePersonId === undefined
@@ -766,6 +781,11 @@ export class PersonalData {
                     digestDate: digest.digest_date,
                     status: digestStatusSchema.parse(digest.status),
                     sentAt: digest.sent_at?.toISOString() ?? null,
+                  })),
+                  announcementDeliveries: announcementDeliveries.map((one) => ({
+                    title: one.title,
+                    status: announcementDeliveryStatusSchema.parse(one.status),
+                    sentAt: one.sent_at?.toISOString() ?? null,
                   })),
                 },
         },

@@ -164,6 +164,18 @@ export const announcementViewSchema = z.strictObject({
 });
 export type AnnouncementView = z.infer<typeof announcementViewSchema>;
 
+/** The states of one bot message of an announcement (`announcement_deliveries`, 0163). */
+export const ANNOUNCEMENT_DELIVERY_STATUSES = [
+  'due',
+  'delivered',
+  'blocked',
+  'no_chat',
+  'out_of_scope',
+  'withdrawn',
+  'failed',
+] as const;
+export const announcementDeliveryStatusSchema = z.enum(ANNOUNCEMENT_DELIVERY_STATUSES);
+
 /** The counts of the bot's messages of an announcement. */
 export const announcementDeliveryCountsSchema = z.strictObject({
   due: z.number().int().min(0),

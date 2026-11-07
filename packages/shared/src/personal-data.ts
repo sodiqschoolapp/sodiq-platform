@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { announcementDeliveryStatusSchema } from './announcements.js';
 import { studentMergeFieldSchema } from './student-merges.js';
 import { schoolDateSchema } from './academic-year.js';
 import { auditEntrySchema } from './audit.js';
@@ -102,6 +103,17 @@ const parentAccountReportSchema = z.strictObject({
     z.strictObject({
       digestDate: z.iso.date(),
       status: z.enum(['due', 'nothing', 'delivered', 'blocked', 'failed', 'no_chat']),
+      sentAt: z.iso.datetime().nullable(),
+    }),
+  ),
+  /**
+   * Task 11.7 (plan decision 13): each message of an announcement to the account, its
+   * announcement's title, status and moment; never the Telegram id.
+   */
+  announcementDeliveries: z.array(
+    z.strictObject({
+      title: z.string(),
+      status: announcementDeliveryStatusSchema,
       sentAt: z.iso.datetime().nullable(),
     }),
   ),

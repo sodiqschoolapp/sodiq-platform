@@ -3,6 +3,7 @@ import {
   announcementMonthSchema,
   announcementSchema,
   apiErrorSchema,
+  relativeReportSchema,
   REQUEST_KEY_HEADER,
 } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
@@ -57,6 +58,7 @@ describe('announcements and events', () => {
     teacher: string;
     tutor: string;
     headTeacher: string;
+    seniorHeadTeacher: string;
     nurse: string;
     viceB: string;
   };
@@ -189,11 +191,17 @@ describe('announcements and events', () => {
   const roleSession = async (
     first: string,
     last: string,
-    role: 'principal' | 'spiritual_vice_principal' | 'head_tutor' | 'head_teacher' | 'nurse',
-    branch: string,
+    role:
+      | 'principal'
+      | 'spiritual_vice_principal'
+      | 'head_tutor'
+      | 'head_teacher'
+      | 'senior_head_teacher'
+      | 'nurse',
+    branch: string | null,
   ): Promise<string> => {
     const browser = await t.kit.fullSession(first, last);
-    await t.kit.giveRole(browser.account.id, { role, branchId: branch });
+    await t.kit.giveRole(browser.account.id, branch === null ? { role } : { role, branchId: branch });
     return browser.cookie;
   };
 
@@ -284,6 +292,7 @@ describe('announcements and events', () => {
       principal: await roleSession('Anvar', 'Sobirov', 'principal', a.branch),
       headTutor: await roleSession('Lola', 'Rasulova', 'head_tutor', a.branch),
       headTeacher: await roleSession('Hamid', 'Nazarov', 'head_teacher', a.branch),
+      seniorHeadTeacher: await roleSession('Komil', 'Azimov', 'senior_head_teacher', null),
       nurse: await roleSession('Zarina', 'Umarova', 'nurse', a.branch),
       teacher: teacherCookie,
       tutor: tutor.cookie,
@@ -662,8 +671,8 @@ describe('announcements and events', () => {
       }
     });
 
-    it('shows a Head Teacher without load of the class, and a Nurse, the school and branch items only', async () => {
-      for (const cookie of [cookies.headTeacher, cookies.nurse]) {
+    it('shows a Head Teacher and a Senior Head Teacher without load of the class, and a Nurse, the school and branch items only', async () => {
+      for (const cookie of [cookies.headTeacher, cookies.seniorHeadTeacher, cookies.nurse]) {
         const ids = titlesOf(await feed(a.branch, cookie));
         expect(ids).toEqual(expect.arrayContaining([forBranch, school]));
         for (const id of [forClassA, forOtherClass, forGrade5, forGrade7])
@@ -898,6 +907,34 @@ describe('announcements and events', () => {
           .where('account_id', '=', motherA.accountId)
           .execute();
       }
+    });
+
+    // Plan decision 13: the reader of the deliveries.
+    it("lists the account's messages in the personal data report of the relative, and no other's", async () => {
+      // A whole-school one reaches both families: the father's message is not the mother's.
+      await delivery().fanOut((await made(a.branch, news({ kind: 'school' }), cookies.admin)).id);
+      const response = await t.post(
+        `/api/people/relatives/${motherA.relativeId}/report`,
+        a.branch,
+        {},
+        cookies.admin,
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const listed = relativeReportSchema.parse(response.body).relative.account?.announcementDeliveries ?? [];
+      const own = await t.database.migrator
+        .selectFrom('announcement_deliveries')
+        .select('id')
+        .where('account_id', '=', motherA.accountId)
+        .execute();
+      expect(listed).toHaveLength(own.length);
+      expect(listed.length).toBeGreaterThan(0);
+      expect(listed.map((one) => one.status)).toContain('delivered');
+      const others = await t.database.migrator
+        .selectFrom('announcement_deliveries')
+        .select('id')
+        .where('account_id', '!=', motherA.accountId)
+        .execute();
+      expect(others.length).toBeGreaterThan(0);
     });
 
     it('writes no delivery for an announcement for staff only, nor for a parent without a chat', async () => {

@@ -25,6 +25,15 @@ const RATING_QUARTER =
   'src/modules/portal/portal-rating.test.ts > answers 404 for a quarter not started, of another year or of another branch, and 400 for an unknown field';
 const CHILD_RULE = 'build plan 11.2: one child-scope check used by every portal route';
 
+// Task 11.7 (pull request #306): announcements of the branch of the request, the classes of an
+// audience, and the portal's page of a child.
+const N = 'src/modules/announcements/announcements.test.ts';
+const ANNOUNCEMENT_IDS = `${N} > answers 404 for another branch’s and an unknown id, the Super Admin included`;
+const ANNOUNCEMENT_CLASSES = `${N} > writes for grades and classes of the branch; another branch’s or an unknown class is 404`;
+const ANNOUNCEMENT_KEY = `${N} > keeps a used key to its account, its branch and its role (request keys)`;
+const ANNOUNCEMENT_CHILD = `${N} > answers 404 for another family’s child, a link off, an unlinked relative and a child who left`;
+const ANNOUNCEMENT_RULE = '.claude/rules/api.md, task 1.3; build plan 11.7';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -44,6 +53,28 @@ const line = (
 });
 
 export const OTHER_IDS: RouteIds = {
+  'POST /api/announcements': [
+    line(
+      'body:audience<kind=classes>.classIds',
+      'class of the audience',
+      'branch',
+      ANNOUNCEMENT_RULE,
+      [ANNOUNCEMENT_CLASSES],
+      [ANNOUNCEMENT_KEY],
+    ),
+  ],
+  'PUT /api/announcements/:id': [
+    line('path:id', 'announcement', 'branch', ANNOUNCEMENT_RULE, [ANNOUNCEMENT_IDS]),
+  ],
+  'POST /api/announcements/:id/archive': [
+    line('path:id', 'announcement', 'branch', ANNOUNCEMENT_RULE, [ANNOUNCEMENT_IDS]),
+  ],
+  'POST /api/announcements/:id/restore': [
+    line('path:id', 'announcement', 'branch', ANNOUNCEMENT_RULE, [ANNOUNCEMENT_IDS]),
+  ],
+  'GET /api/portal/children/:studentId/announcements': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [ANNOUNCEMENT_CHILD]),
+  ],
   'GET /api/portal/children/:studentId/timetable': [
     line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
   ],

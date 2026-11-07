@@ -68,6 +68,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     "One parents' digest of a Parent account and date, the send log the Super Admin reads; a parent's digest covers children in several branches (task 11.5, decision 11 of pull request #299). Ids, a status and moments.",
   digest_parts:
     "The children a delivered digest named, first name and class as sent (task 11.5, decision 11 of pull request #299); read by the Super Admin's send log and by the digest itself.",
+  announcement_deliveries:
+    "One message of an announcement to one Parent account through the bot, which has no branch, as digests (task 11.7, decision 1 of pull request #306, Look first). Ids, a status and moments.",
   digest_entries:
     "What a delivered parents' digest carried, one row per entry with the value sent; one digest covers children in several branches and is read by the digest job alone (task 11.5, decision 11 of pull request #299). Ids, a date and the values sent.",
 };
@@ -103,6 +105,8 @@ const BRANCH_OR_SCHOOL_TABLES: Record<string, string> = {
     'The items of a master plan, with the branch of their master; a row holds a topic, objectives, links and revisions.',
   lesson_plan_master_works:
     'The classworks and homeworks of a master item, with the branch of their master; a row holds a kind, a title and a description.',
+  announcements:
+    'An announcement or event of a branch, or of the whole school when the Super Admin writes it for every branch (11, Announcements and events; task 11.7, decision 1 of pull request #306, Look first); a row holds a title, a text, an audience, dates and moments.',
 };
 
 /** The policy of a branch-or-school table, as PostgreSQL writes it back. */
@@ -245,6 +249,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The branches of a child's class memberships over a span of dates, with the part of the span each covers, only for a child in the account's scope (task 11.2, decision 6 of pull request #294): a branch move accepted ahead keeps the old branch until it takes effect, so a week can lie in two branches. Ids and dates only.",
   'digest_children(uuid,timestamp with time zone)':
     'The children a parents\' digest may name at a moment: those of portal_children whose link also has "receives notices" on, read before any branch is known (10, The parents\' digest, Privacy; task 11.5, pull request #299). The same columns as portal_children, without the last name.',
+  'announcement_recipients(uuid,timestamp with time zone,uuid)':
+    'The Parent accounts an announcement for parents reaches at a moment, with their open Telegram link: a child of portal_children with "receives notices" on that matches the audience (school, branch, branch and grade, class), read by the job that names no branch (task 11.7, decision 1 of pull request #306, Look first). Ids only.',
   'own_relative_name(uuid)':
     'The full name of the relative of the account of the session, for its own session answer, as own_person_name for staff (task 11.1, plan of pull request #292).',
   'parent_slip_state(uuid,uuid,timestamp with time zone)':
@@ -1255,11 +1261,12 @@ describe('the catalog checks', () => {
       }
       const STANDARD = 'branch_id is null or branch_id = any ((select app_branch_ids())::uuid[])';
 
-      it('hold exactly the three tables of the master plans', () => {
+      it('hold exactly the three tables of the master plans and the announcements (task 11.7)', () => {
         expect(Object.keys(BRANCH_OR_SCHOOL_TABLES)).toEqual([
           'lesson_plan_masters',
           'lesson_plan_master_items',
           'lesson_plan_master_works',
+          'announcements',
         ]);
       });
 
