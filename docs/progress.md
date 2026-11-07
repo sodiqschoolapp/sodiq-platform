@@ -8,7 +8,8 @@ Not a task of the build plan: the owner asked to speed up CI "without lowering o
 
 - **API tests in four parts of the same time** (`.github/workflows/ci.yml`): the sequencer `apps/api/src/testing/duration-sequencer.ts` (in `vitest.config.ts`) gives every file, slowest first, to the least loaded worker of all parts, by the seconds of `apps/api/test-durations.json` (from the CI logs of 7 November); a file not listed counts as the median. Three parts of the same number of files took 11 to 12 minutes; four of the same time are modelled at about 7, bounded by `timetable/speed.database.test.ts` (about 7 minutes alone), so more parts would not help. Inside a part the slowest files start first. Every file runs in exactly one part (`duration-sequencer.test.ts`).
 - **CI's PostgreSQL skips disk safety** (`fsync`, `synchronous_commit`, `full_page_writes` off) in the test and browser-test jobs only; the test and production databases are untouched.
-- **Refreshing the times**: download the logs of the four `tests (api n/4)` jobs of a run and `node scripts/test-durations.mjs <logs>`; do it when a part runs clearly longer than the others.
+- **Six parts since #309**: the first runs of four parts took 10 to 10.5 minutes for the slowest part (heavy files on one machine slow each other by 40 to 70 %), so the API tests run in six parts; the times are the mean of two runs.
+- **Refreshing the times**: download the logs of the six `tests (api n/6)` jobs of a run (or of several runs) and `node scripts/test-durations.mjs <logs>`; do it when a part runs clearly longer than the others.
 
 ## 7 November 2026: date of birth, scholarship and relatives of a student are optional
 

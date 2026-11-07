@@ -74,20 +74,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The API's test files in four parts of the same time (Vitest --shard
+          # The API's test files in six parts of the same time (Vitest --shard
           # with the sequencer of apps/api/src/testing/duration-sequencer.ts and
-          # the times of apps/api/test-durations.json; owner, 7 November 2026:
-          # three parts of the same number of files took 11 to 12 minutes, four
-          # of the same time about 7, bounded by the slowest file); everything
-          # else (web and the packages) in a fifth.
-          - part: api 1/4
-            command: pnpm --filter @sodiq/api exec vitest run --shard=1/4
-          - part: api 2/4
-            command: pnpm --filter @sodiq/api exec vitest run --shard=2/4
-          - part: api 3/4
-            command: pnpm --filter @sodiq/api exec vitest run --shard=3/4
-          - part: api 4/4
-            command: pnpm --filter @sodiq/api exec vitest run --shard=4/4
+          # the times of apps/api/test-durations.json; owner, 7 November 2026).
+          # Three parts of the same number of files took 11 to 12 minutes; four
+          # of the same time still 10 to 10.5, because heavy files beside each
+          # other on one machine slow each other; six spread them further.
+          # Everything else (web and the packages) in a seventh.
+          - part: api 1/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=1/6
+          - part: api 2/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=2/6
+          - part: api 3/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=3/6
+          - part: api 4/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=4/6
+          - part: api 5/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=5/6
+          - part: api 6/6
+            command: pnpm --filter @sodiq/api exec vitest run --shard=6/6
           - part: web and packages
             command: pnpm turbo run test --filter=!@sodiq/api
     services:
