@@ -1,6 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { rebuildE2eDatabase } from './database.js';
 import { E2E_MAIL_OUTBOX } from './mail.js';
+import { E2E_TELEGRAM_BOT_TOKEN } from './telegram.js';
 
 // The API of the browser tests: Playwright starts it (apps/web/playwright.config.ts).
 // It is the API as it runs (src/main.ts), on a port of its own and on the
@@ -32,5 +33,7 @@ process.env.JOBS_UNSCHEDULED = 'results.prepare_totals,schedule.tick';
 // of the plan review), whatever the shell says.
 process.env.DEMO_CLOCK = '1';
 process.env.SENTRY_ENVIRONMENT = 'test';
+// Task 11.4: an invented bot token, so that portal.spec.ts can sign launch data as Telegram does.
+process.env.TELEGRAM_BOT_TOKEN = E2E_TELEGRAM_BOT_TOKEN;
 await import('../../main.js');
 await import('../../worker.js');

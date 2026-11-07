@@ -14,7 +14,13 @@ export const PASSWORD_MAX_LENGTH = 128;
  * What is typed on the sign-in page. Nothing here says how a login or a
  * password looks: a wrong one gets the same answer as an unknown one.
  */
-export const signInSchema = z.object({
+/**
+ * Task 11.4: the launch data Telegram hands the mini app (`initData`), sent as it came. The
+ * server checks its signature; it is never logged. Telegram's is a few hundred characters.
+ */
+export const telegramInitDataSchema = z.string().min(1).max(4096);
+
+export const passwordSignInSchema = z.object({
   login: z.string().min(1).max(100),
   password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
   /**
@@ -22,14 +28,36 @@ export const signInSchema = z.object({
    * signed in for 7 days from this sign-in, with no idle sign-out.
    */
   trustDevice: z.boolean().optional(),
+  /**
+   * Task 11.4: the sign-in in the Telegram mini app. A Parent account then links the chat once
+   * no step is owed (a first or reset password is changed first, with the launch data again).
+   */
+  telegramInitData: telegramInitDataSchema.optional(),
 });
 
+/**
+ * Task 11.4: opening the mini app from a linked chat signs in with the launch data alone
+ * (`10`, Telegram: "without the password"). Nothing else may be sent with it.
+ */
+export const telegramSignInSchema = z.strictObject({
+  telegramInitData: telegramInitDataSchema,
+});
+
+export const signInSchema = z.union([telegramSignInSchema, passwordSignInSchema]);
+
 export type SignIn = z.infer<typeof signInSchema>;
+export type PasswordSignIn = z.infer<typeof passwordSignInSchema>;
+export type TelegramSignIn = z.infer<typeof telegramSignInSchema>;
 
 /** Staff change their own password with the current one. */
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
   newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+  /**
+   * Task 11.4: the forced change of a first or reset password in the mini app sends the launch
+   * data again, and the chat is linked once the change is made (plan of #298, decision 5).
+   */
+  telegramInitData: telegramInitDataSchema.optional(),
 });
 
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
@@ -94,6 +122,11 @@ export const sessionResponseSchema = z.object({
    * is owed (task 0.8d).
    */
   language: languageSchema,
+  /**
+   * Task 11.4: for a parent session once no step is owed, when its account's open Telegram
+   * link began; `null` without a link, for staff and while a step is owed.
+   */
+  telegramLinkedAt: z.iso.datetime().nullable(),
   /**
    * The assignments in force now, for the menu and the role switcher (display
    * only: the server checks every request on all current assignments). Empty

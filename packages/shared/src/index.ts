@@ -116,6 +116,9 @@ export {
   setLanguageSchema,
   sessionResponseSchema,
   signInSchema,
+  passwordSignInSchema,
+  telegramSignInSchema,
+  telegramInitDataSchema,
   trustedDeviceListSchema,
   trustedDeviceParamsSchema,
   type ChangePassword,
@@ -129,6 +132,8 @@ export {
   type SessionResponse,
   type SetLanguage,
   type SignIn,
+  type PasswordSignIn,
+  type TelegramSignIn,
   type TrustedDeviceList,
   type TrustedDeviceParams,
 } from './auth.js';
@@ -938,6 +943,8 @@ export {
   type RelativeReport,
   type StaffReport,
   type StudentReport,
+  telegramLinkEndSchema,
+  type TelegramLinkEnd,
 } from './personal-data.js';
 export {
   CLASS_GRADES,
@@ -2577,3 +2584,13 @@ export {
 export * from './parent-accounts.js';
 export { latinSpelling } from './names.js';
 export * from './portal.js';
+export {
+  MINI_APP_PATH,
+  TELEGRAM_TEXTS,
+  telegramUpdateSchema,
+  telegramWebhookAnswerSchema,
+  telegramWebhookBodySchema,
+  type TelegramTexts,
+  type TelegramUpdate,
+  type TelegramWebhookAnswer,
+} from './telegram.js';

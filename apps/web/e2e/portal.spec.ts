@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
@@ -85,4 +86,57 @@ test('a parent opens the timetable and the homework of both children, then the g
   }
   await expect(late).toBeVisible();
   await expect(page.getByText(/Staff only/)).toHaveCount(0);
+});
+
+// Task 11.4, pull request #298 (`10`, Signing in: Telegram): the portal as a Telegram mini app.
+// The address carries launch data signed as Telegram signs it, with the invented token of the
+// browser tests' API (`apps/api/src/testing/e2e/telegram.ts`).
+const E2E_TELEGRAM_BOT_TOKEN = '111111111:AAinventedBrowserTestBotToken_000000';
+
+function launchAddress(telegramUserId: number): string {
+  const fields: [string, string][] = [
+    ['auth_date', String(Math.floor(Date.now() / 1000))],
+    ['query_id', 'AAHinventedBrowserTest'],
+    ['user', JSON.stringify({ id: telegramUserId, first_name: 'Botir' })],
+  ];
+  const checkString = [...fields]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  const secret = createHmac('sha256', 'WebAppData').update(E2E_TELEGRAM_BOT_TOKEN).digest();
+  const params = new URLSearchParams(fields);
+  params.set('hash', createHmac('sha256', secret).update(checkString).digest('hex'));
+  return `/portal/telegram#tgWebAppData=${encodeURIComponent(params.toString())}&tgWebAppVersion=8.0`;
+}
+
+test('a father opens the portal from Telegram: once with the password, then without it until he signs out', async ({
+  page,
+}) => {
+  const account = accountOf('telegramParent');
+  const address = launchAddress(7_200_001);
+
+  // The first opening: the chat is not linked, so the login and password, then the first-password change.
+  await page.goto(address);
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/timetable$/);
+  await expect(page.getByText('Biology').first()).toBeVisible();
+
+  // The next opening from the same chat, in a fresh web view: no password asked.
+  await page.context().clearCookies();
+  await page.goto(address);
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/timetable$/);
+  await expect(page.getByText('Biology').first()).toBeVisible();
+  await expect(page.getByLabel(en.signIn.password, { exact: true })).toHaveCount(0);
+
+  // The Account page names the link; a sign-out in the mini app ends it.
+  await page.getByRole('link', { name: en.portal.account, exact: true }).click();
+  await expect(page.getByRole('region', { name: en.parent.telegram })).toContainText(
+    en.parent.telegramLinked.replace('{{date}}', ''),
+  );
+  await page.getByRole('button', { name: en.parent.signOut, exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in/);
+  await page.goto(address);
+  await expect(page.getByLabel(en.signIn.password, { exact: true })).toBeVisible();
 });

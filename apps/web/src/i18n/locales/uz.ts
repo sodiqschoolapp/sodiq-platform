@@ -65,6 +65,10 @@ export const uz: Texts<'one' | 'other'> = {
     account_locked: 'Bu hisob bloklangan. Administratorga murojaat qiling.',
     password_change_required: 'Davom etishdan oldin parolingizni oʻzgartiring.',
     current_password_wrong: 'Joriy parol notoʻgʻri.',
+    telegram_sign_in_needed: 'Telegram orqali kirib boʻlmadi. Login va parolingiz bilan kiring.',
+    telegram_chat_linked:
+      'Bu Telegram boshqa ota-ona akkauntiga bogʻlangan. Avval u yerda chiqing yoki portalni brauzerda oching.',
+    no_telegram_link: 'Bu akkaunt Telegramga bogʻlanmagan.',
     password_unchanged: 'Yangi parol joriy parol bilan bir xil. Boshqasini tanlang.',
     second_step_required: 'Davom etishdan oldin ikkinchi bosqich kodini kiriting.',
     second_step_set_up_required: 'Davom etishdan oldin ikkinchi bosqichni sozlang.',
@@ -2088,6 +2092,12 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   parent: {
+    telegram: 'Telegram',
+    telegramLinked: '{{date}} dan bogʻlangan',
+    telegramNone: 'Bogʻlanmagan. Portalni maktab botidan oching va u yerda bir marta kiring.',
+    unlink: 'Telegramni uzish',
+    unlinkTitle: 'Telegram uzilsinmi?',
+    unlinkText: 'Portal endi Telegramdan parolingizsiz ochilmaydi.',
     title: 'Akkauntingiz',
     language: 'Til',
     password: 'Parolni oʻzgartirish',
@@ -2095,6 +2105,11 @@ export const uz: Texts<'one' | 'other'> = {
     portal: 'Portalga qaytish',
   },
   portal: {
+    telegram: {
+      title: 'Kirish',
+      opening: 'Portal ochilmoqda…',
+      chatLinkedContinue: 'Portalni ochish',
+    },
     child: 'Farzand',
     chooseChild: 'Farzandni tanlang',
     childName: '{{first}} {{last}}',
@@ -2834,6 +2849,12 @@ export const uz: Texts<'one' | 'other'> = {
       resetText:
         'Ota-onaning barcha seanslari tugaydi va 7 kun amal qiladigan yangi varaqa chop etiladi.',
       resetLanguage: 'Varaqa tili',
+      telegram: 'Telegram',
+      telegramLinked: '{{date}} dan bogʻlangan',
+      telegramNone: 'Bogʻlanmagan',
+      unlink: 'Telegramni uzish',
+      unlinkTitle: '{{name}} uchun Telegram uzilsinmi?',
+      unlinkText: 'Portal endi ota-onaning Telegramidan parolsiz ochilmaydi. Parol oʻzgarmaydi.',
     },
     parentsNeverUsed: {
       title: 'Hech kirmagan ota-onalar',
@@ -3707,6 +3728,11 @@ export const uz: Texts<'one' | 'other'> = {
         second_step_off: 'Ikkinchi bosqich oʻchirildi',
         second_step_reset: 'Ikkinchi bosqich qayta oʻrnatildi',
         second_step_unreadable: 'Ikkinchi bosqichni oʻqib boʻlmadi va oʻchirildi',
+      },
+      telegram: {
+        linked: 'Telegram bogʻlandi',
+        moved: 'Telegram bogʻlanishi boshqa chatga oʻtdi',
+        unlinked: 'Telegram bogʻlanishi tugatildi',
       },
       parent_account: {
         slip: 'Ota-ona varaqasi chop etildi',

@@ -161,6 +161,27 @@ Asked for by the owner on 4 November 2026: the role tutorials show what needs da
 - **Make jumps between takes.** A save that is running at the moment of the switch keeps the time it started with.
 - **The only way back is the demo data workflow** above, which replaces the test database and restarts the services. Time only moves forward, by at most 400 days per jump. A missing row of `demo_clock` means real time.
 
+## The Telegram bot of the test environment (task 11.4)
+
+The parent portal opens as a Telegram mini app of the school's bot (`docs/spec/10-portal-notifications-release-2.md`, Signing in: Telegram). The bot is the owner's (stop-list item 1): no session ever sees its token. Until these steps are done, everything Telegram is refused and the portal works in a browser.
+
+1. **Create the test bot.** In Telegram, open @BotFather, send `/newbot`, give it a name (for example "Sodiq School test") and a user name ending in `bot`. Keep the token it answers; it is a password.
+2. **Its menu button.** In @BotFather: `/mybots`, the bot, **Bot Settings**, **Menu Button**, and give the address `https://app-test.sodiqschool.uz/portal/telegram` with the label "Portal".
+3. **The values on Render.** Press **Sync** on the test Blueprint once after the merge, so the three new variables appear. Then on `sodiq-test-api`: `TELEGRAM_BOT_TOKEN` (the token), `TELEGRAM_WEBHOOK_SECRET` (16 to 256 letters, digits, `_` or `-`, made up for this, for example from a password manager) and `PARENT_BOT_USERNAME` (the user name, without the @). On `sodiq-test-worker`: `TELEGRAM_BOT_TOKEN` (the same token). Save; the services restart.
+4. **Register the webhook, once.** In a terminal of your own computer (not in a session), with the token and the secret in place of the two words in capitals:
+
+   ```
+   curl -sS "https://api.telegram.org/botTOKEN/setWebhook" \
+     -d url=https://app-test.sodiqschool.uz/api/telegram/webhook \
+     -d secret_token=SECRET -d 'allowed_updates=["message"]'
+   ```
+
+   Telegram answers `"ok":true`. Then send `/start` to the bot: it answers with an "Open the portal" button.
+
+The production bot, its token and `render.production.yaml` are set up by the owner at go-live of the portal (after task 11.5), the same way, with `https://app.sodiqschool.uz`.
+
+**Telegram Web.** The web version of Telegram (web.telegram.org) shows a mini app inside a frame, which the platform refuses (`frame-ancestors 'none'`); parents use the phone or desktop app, or the portal in a browser (plan of #298, decision 2).
+
 ## Production (task 10.4)
 
 Production runs at `https://app.sodiqschool.uz` (owner's answers 14 to 20, `docs/decisions.md`, Decided ahead for Phase 10). It differs from the test environment in four ways:

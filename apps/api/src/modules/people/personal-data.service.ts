@@ -5,7 +5,9 @@ import {
   scholarshipSchema,
   relationshipSchema,
   roleSchema,
+  telegramLinkEndSchema,
   type AuditAction,
+  type TelegramLinkEnd,
   type Clock,
   type PersonalDataKind,
   type RelativeReport,
@@ -39,6 +41,11 @@ interface ReportFrame {
   branch: { id: string; name: string; timeZone: string };
   entries: StudentReport['entries'];
   entriesLeftOut: StudentReport['entriesLeftOut'];
+}
+
+/** The stored end of a Telegram link (0160 allows these only). */
+function telegramLinkEndOf(stored: string | null): TelegramLinkEnd | null {
+  return stored === null ? null : telegramLinkEndSchema.parse(stored);
 }
 
 /**
@@ -659,6 +666,17 @@ export class PersonalData {
               .select((builder) => builder.fn.max('created_at').as('at'))
               .where('account_id', '=', accountId)
               .executeTakeFirst();
+      // Task 11.4 (plan of #298, decision 12): each Telegram link, open or ended, never its id.
+      const telegramLinks =
+        accountId === null
+          ? []
+          : await transaction
+              .selectFrom('telegram_links')
+              .select(['linked_at', 'ended_at', 'end_reason'])
+              .where('account_id', '=', accountId)
+              .orderBy('linked_at')
+              .orderBy('id')
+              .execute();
       const samePersonId = (await staffOfRelatives(transaction, [id])).get(id);
       const samePerson =
         samePersonId === undefined
@@ -726,6 +744,11 @@ export class PersonalData {
                     branch: slip.branch,
                     printedAt: slip.printed_at.toISOString(),
                     validUntil: slip.valid_until.toISOString(),
+                  })),
+                  telegramLinks: telegramLinks.map((link) => ({
+                    linkedAt: link.linked_at.toISOString(),
+                    endedAt: link.ended_at?.toISOString() ?? null,
+                    endReason: telegramLinkEndOf(link.end_reason),
                   })),
                 },
         },

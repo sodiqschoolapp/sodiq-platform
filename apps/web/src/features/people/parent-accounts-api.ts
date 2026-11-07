@@ -91,3 +91,12 @@ export const parentsNeverUsedQuery = (branchId: string | null) =>
       ),
     enabled: branchId !== null,
   });
+
+/** Task 11.4: "Unlink Telegram" on the Parent page. */
+export async function unlinkParentTelegram(relativeId: string): Promise<void> {
+  await answerOf(
+    api.POST('/api/people/parents/{relativeId}/telegram-unlink', {
+      params: { header: branchHeader(), path: { relativeId } },
+    }),
+  );
+}

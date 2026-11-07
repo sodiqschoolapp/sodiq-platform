@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 506, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 4. For the own account: 21. The parent portal: 6. With a permission of the table: 475.
+- Routes of the application: 509, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 22. The parent portal: 6. With a permission of the table: 476.
 - Routes with a limit inside the route: 154.
-- Routes that take an id: 399, with 838 ids (branch 737, school 76, own 9, none 16).
+- Routes that take an id: 400, with 839 ids (branch 738, school 76, own 9, none 16).
 - Areas of the permission table: 60.
 
 ## Routes without a role
@@ -148,11 +148,13 @@ Without sign-in (`PUBLIC_ROUTES`, `apps/api/src/testing/route-access-list.ts`; h
 | `GET /api/health` | Uptime monitoring and the deploy smoke test call it without a session. |
 | `POST /api/auth/password-reset` | The person who forgot the password cannot sign in; "later password reset by email" is in the short list (task 2.3c-2, decision 1 of #66). |
 | `POST /api/auth/password-reset/confirm` | The new password is chosen with the link of the mail, without a session (task 2.3c-2, decision 1 of #66). |
-| `POST /api/auth/sign-in` | Sign-in cannot require a session. |
+| `POST /api/auth/sign-in` | Sign-in cannot require a session; from task 11.4 also the mini app opened from a linked Telegram chat, a step of sign-in that checks Telegram's signature. |
+| `POST /api/telegram/webhook` | Telegram calls it without a session; it checks the secret Telegram sends with each update (02, Accounts and sign-in: build order; task 11.4). |
 
 Every signed-in account, for its own account only (`@AnySignedIn`):
 
 - `DELETE /api/auth/photo`
+- `DELETE /api/auth/telegram-link` (a parent session too, task 11.1)
 - `DELETE /api/auth/trusted-devices/:id`
 - `GET /api/auth/photo`
 - `GET /api/auth/second-step`
@@ -882,6 +884,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/people/classes/:classId/parent-slips` | `body:printAgain` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a "print again" relative of another branch or unknown` |
 | `POST /api/people/parent-accounts/never-used/export` | `body:ids` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 in the file for a relative of another branch or unknown, with nothing logged` |
 | `POST /api/people/parents/:relativeId/password-reset` | `path:relativeId` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a relative of another branch or unknown` |
+| `POST /api/people/parents/:relativeId/telegram-unlink` | `path:relativeId` | relative | branch | `src/modules/auth/telegram.test.ts > answers 404 for a relative of another branch or unknown` |
 | `POST /api/people/relatives/:id/merge` | `path:id` | relative | branch | `src/modules/people/relative-owners.test.ts > answers 404 for a path id or an otherId of another branch and an unknown one`<br>`src/modules/people/relative-owners.test.ts > answers 404 to the Super Admin for a path id outside the branch of the request and unknown ids` |
 | `POST /api/people/relatives/:id/merge` | `body:otherId` | relative | branch | `src/modules/people/relative-owners.test.ts > answers 404 for a path id or an otherId of another branch and an unknown one`<br>`src/modules/people/relative-owners.test.ts > answers 404 to the Super Admin for a path id outside the branch of the request and unknown ids` |
 | `POST /api/people/relatives/:id/report` | `path:id` | relative | branch | `src/modules/people/personal-data.test.ts > answers 404 for a person of another branch, an unknown id and a vacancy, writing nothing` |

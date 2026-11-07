@@ -53,6 +53,7 @@ import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
 import { PortalIndexPage } from '@/features/portal/portal-index-page';
 import { portalQuarterSearch, portalSearch } from '@/features/portal/portal-search';
 import { PortalTimetablePage } from '@/features/portal/portal-timetable-page';
+import { TelegramStartPage } from '@/features/portal/telegram-start-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { PersonalDataReportPage } from '@/features/people/personal-data-report-page';
@@ -313,6 +314,17 @@ const portalAttendanceRoute = createRoute({
   path: '$studentId/attendance',
   validateSearch: portalSearch,
   component: PortalAttendancePage,
+});
+
+/**
+ * Task 11.4: the page the school's bot opens (`MINI_APP_PATH`). Open in any state: it signs in
+ * from Telegram's launch data, or asks for the login and password once.
+ */
+const telegramStartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/portal/telegram',
+  component: TelegramStartPage,
+  pendingComponent: AuthPendingPage,
 });
 
 /** The parent's password change by choice (task 11.1). */
@@ -897,6 +909,7 @@ const routeTree = rootRoute.addChildren([
   setUpRoute,
   parentRoute,
   parentPasswordRoute,
+  telegramStartRoute,
   portalRoute.addChildren([
     portalIndexRoute,
     portalTimetableRoute,

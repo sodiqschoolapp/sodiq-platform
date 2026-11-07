@@ -29,6 +29,8 @@ export function answerOf(
   session: ActiveSession,
   branches: BranchChoice[],
   names: AnswerNames,
+  /** Task 11.4: the parent's open Telegram link began then; `null` without one. */
+  telegramLinkedAt: Date | null = null,
 ): SessionResponse {
   const owed = owesAStep(session);
   const resetBy =
@@ -47,6 +49,8 @@ export function answerOf(
     passwordResetBy: resetBy,
     trustedUntil: session.trustedUntil?.toISOString() ?? null,
     language: session.language,
+    telegramLinkedAt:
+      owed || session.kind !== 'parent' ? null : (telegramLinkedAt?.toISOString() ?? null),
     assignments: owed
       ? []
       : ROLES.flatMap((role) =>

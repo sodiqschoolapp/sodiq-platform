@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { uz } from '@/i18n/locales/uz';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, nothing, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f100-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -57,7 +57,10 @@ const RESET: PrintedParentSlips = {
 
 const RESET_ROUTE = `POST /api/people/parents/${MOTHER.id}/password-reset`;
 
-function open() {
+const UNLINK_ROUTE = `POST /api/people/parents/${MOTHER.id}/telegram-unlink`;
+
+function open(telegramLinkedAt: string | null = null) {
+  let linkedAt = telegramLinkedAt;
   const calls = fakeApi({
     'GET /api/auth/session': () =>
       json(sessionOf({ assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }] })),
@@ -80,15 +83,50 @@ function open() {
             otherBranch: false,
             className: '7 Oxford',
           },
+          telegramLinkedAt: linkedAt,
         },
       }),
     [RESET_ROUTE]: () => json(RESET),
+    [UNLINK_ROUTE]: () => {
+      linkedAt = null;
+      return nothing();
+    },
   });
   const shell = renderApp(`/people/parents?open=${MOTHER.id}`);
   return { calls, shell };
 }
 
 describe('the Parent account on the Parent panel', () => {
+  // Task 11.4: "Unlink Telegram" on the Parent page (`edge/close-relatives`).
+  it('names the Telegram link and unlinks it after asking', async () => {
+    const { calls } = open('2026-10-08T05:00:00.000Z');
+    const part = await screen.findByRole('region', { name: en.people.parentAccount.title });
+    await waitFor(() => {
+      expect(part.textContent).toContain(
+        en.people.parentAccount.telegramLinked.replace('{{date}}', '8 October 2026'),
+      );
+    });
+    fireEvent.click(within(part).getByRole('button', { name: en.people.parentAccount.unlink }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Dilfuza Rahimova');
+    expect(calls.some((call) => call.route === UNLINK_ROUTE)).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.people.parentAccount.unlink }));
+    await waitFor(() => {
+      expect(part.textContent).toContain(en.people.parentAccount.telegramNone);
+    });
+    expect(calls.filter((call) => call.route === UNLINK_ROUTE)).toHaveLength(1);
+    expect(within(part).queryByRole('button', { name: en.people.parentAccount.unlink })).toBeNull();
+  });
+
+  it('offers no unlink without a link', async () => {
+    open();
+    const part = await screen.findByRole('region', { name: en.people.parentAccount.title });
+    await waitFor(() => {
+      expect(part.textContent).toContain(en.people.parentAccount.telegramNone);
+    });
+    expect(within(part).queryByRole('button', { name: en.people.parentAccount.unlink })).toBeNull();
+  });
+
   it('names the login and the last slip, and resets the password on a slip after asking', async () => {
     const { calls, shell } = open();
     const part = await screen.findByRole('region', { name: en.people.parentAccount.title });

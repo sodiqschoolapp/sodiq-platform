@@ -8,7 +8,11 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { repositoryRoot } from '../database/config.js';
 import { createTestApp } from '../testing/create-test-app.js';
-import { CONTENT_SECURITY_POLICY, STRICT_TRANSPORT } from './security-headers.js';
+import {
+  CONTENT_SECURITY_POLICY,
+  PORTAL_CONTENT_SECURITY_POLICY,
+  STRICT_TRANSPORT,
+} from './security-headers.js';
 
 const INDEX = '<!doctype html><html><body><div id="root"></div></body></html>';
 
@@ -112,6 +116,44 @@ describe('the security headers', () => {
       "base-uri 'self'",
       "form-action 'self'",
     ]);
+  });
+
+  // Task 11.4 (plan of #298, decision 2, Look first; review correction 2): the portal's pages
+  // may also run Telegram's mini app script, and nothing else changes; framing stays refused.
+  it("add Telegram's script on the portal's pages only, framing still refused", async () => {
+    for (const page of ['/portal', '/portal/telegram', '/portal/children/1']) {
+      const response = await request(server).get(page);
+
+      expect(response.status, page).toBe(200);
+      expect(response.headers['content-security-policy'], page).toBe(
+        PORTAL_CONTENT_SECURITY_POLICY,
+      );
+      expect(response.headers['x-frame-options'], page).toBe('DENY');
+    }
+    for (const page of [
+      '/',
+      '/sign-in',
+      '/portals',
+      '/parent',
+      '/api/portal/children',
+      '/api/health',
+    ]) {
+      const response = await request(server).get(page);
+
+      expect(response.headers['content-security-policy'], page).toBe(CONTENT_SECURITY_POLICY);
+    }
+  });
+
+  it("is the portal's policy: the same directives, Telegram's script added", () => {
+    const portal = PORTAL_CONTENT_SECURITY_POLICY.split('; ');
+    const general = CONTENT_SECURITY_POLICY.split('; ');
+
+    expect(portal).toEqual(
+      general.map((directive) =>
+        directive === "script-src 'self'" ? "script-src 'self' https://telegram.org" : directive,
+      ),
+    );
+    expect(portal).toContain("frame-ancestors 'none'");
   });
 
   it('let no other site show a page in a frame, and run scripts of the own origin only', () => {

@@ -63,6 +63,18 @@ const portalAccountSchema = z.strictObject({
  * #292): the login, whether a password was chosen, the last sign-in and every slip printed,
  * with its branch; never a password or its hash.
  */
+/** Task 11.4: why a Telegram link ended (0160). */
+export const telegramLinkEndSchema = z.enum([
+  'sign_out',
+  'password_change',
+  'password_reset',
+  'unlinked',
+  'moved',
+  'blocked',
+]);
+
+export type TelegramLinkEnd = z.infer<typeof telegramLinkEndSchema>;
+
 const parentAccountReportSchema = z.strictObject({
   createdAt: z.iso.datetime(),
   switchedOn: z.boolean(),
@@ -75,6 +87,14 @@ const parentAccountReportSchema = z.strictObject({
       branch: z.string(),
       printedAt: z.iso.datetime(),
       validUntil: z.iso.datetime(),
+    }),
+  ),
+  /** Task 11.4: each Telegram link of the account, open or ended; never the Telegram id. */
+  telegramLinks: z.array(
+    z.strictObject({
+      linkedAt: z.iso.datetime(),
+      endedAt: z.iso.datetime().nullable(),
+      endReason: telegramLinkEndSchema.nullable(),
     }),
   ),
 });

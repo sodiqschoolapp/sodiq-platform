@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useViewStore } from '@/features/access/use-view';
 import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
+import { closeMiniApp } from '@/features/portal/telegram';
 import { forgetSession, STEP_PATH } from './session';
 import { rememberTrustAsked } from './trust-asked';
 
@@ -30,6 +31,11 @@ export function useSignOut() {
 
   return useMutation({
     mutationFn: () => answerOf(api.POST('/api/auth/sign-out')),
-    onSuccess: leave,
+    onSuccess: () => {
+      leave();
+      // Task 11.4: a sign-out in the mini app ends the Telegram link on the server; the mini
+      // app closes, and the next opening asks for the password.
+      closeMiniApp();
+    },
   });
 }

@@ -65,6 +65,11 @@ export const en = {
     account_locked: 'This account is locked. Ask an administrator.',
     password_change_required: 'Change your password before you continue.',
     current_password_wrong: 'The current password is wrong.',
+    telegram_sign_in_needed:
+      'The Telegram link did not sign you in. Sign in with your login and password.',
+    telegram_chat_linked:
+      'This Telegram is already linked to another parent account. Sign out of it there first, or use the portal in a browser.',
+    no_telegram_link: 'This account is not linked to Telegram.',
     password_unchanged: 'The new password is the same as the current one. Choose another one.',
     second_step_required: 'Enter the code of the second step before you continue.',
     second_step_set_up_required: 'Set up the second step before you continue.',
@@ -2055,6 +2060,12 @@ export const en = {
     },
   },
   parent: {
+    telegram: 'Telegram',
+    telegramLinked: 'Linked since {{date}}',
+    telegramNone: "Not linked. Open the portal from the school's bot and sign in there once.",
+    unlink: 'Unlink Telegram',
+    unlinkTitle: 'Unlink Telegram?',
+    unlinkText: 'The portal will no longer open from Telegram without your password.',
     title: 'Your account',
     language: 'Language',
     password: 'Change password',
@@ -2062,6 +2073,11 @@ export const en = {
     portal: 'Back to the portal',
   },
   portal: {
+    telegram: {
+      title: 'Sign in',
+      opening: 'Opening the portal…',
+      chatLinkedContinue: 'Open the portal',
+    },
     child: 'Child',
     chooseChild: 'Choose a child',
     childName: '{{first}} {{last}}',
@@ -2797,6 +2813,13 @@ export const en = {
       resetTitle: 'Reset the password of {{name}}?',
       resetText: 'Every session of the parent ends and a new slip, valid for 7 days, is printed.',
       resetLanguage: 'Language of the slip',
+      telegram: 'Telegram',
+      telegramLinked: 'Linked since {{date}}',
+      telegramNone: 'Not linked',
+      unlink: 'Unlink Telegram',
+      unlinkTitle: 'Unlink Telegram for {{name}}?',
+      unlinkText:
+        "The portal no longer opens from the parent's Telegram without the password. The password stays.",
     },
     parentsNeverUsed: {
       title: 'Parents never signed in',
@@ -3665,6 +3688,11 @@ export const en = {
         second_step_off: 'Second step turned off',
         second_step_reset: 'Second step reset',
         second_step_unreadable: 'Second step could not be read and was removed',
+      },
+      telegram: {
+        linked: 'Telegram linked',
+        moved: 'Telegram link moved to another chat',
+        unlinked: 'Telegram link ended',
       },
       parent_account: {
         slip: 'Parent slip printed',

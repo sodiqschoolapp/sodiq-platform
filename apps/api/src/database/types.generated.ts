@@ -1674,6 +1674,7 @@ export interface Sessions {
   id: Generated<string>;
   last_used_at: Timestamp;
   second_step_passed_at: Timestamp | null;
+  telegram_link_id: string | null;
   token_hash: string;
   trust_ended_at: Timestamp | null;
   trust_requested: Generated<boolean>;
@@ -2115,6 +2116,17 @@ export interface TeachingLoadRows {
   version_id: string;
 }
 
+export interface TelegramLinks {
+  account_id: string;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  ended_by: string | null;
+  id: Generated<string>;
+  linked_at: Timestamp;
+  telegram_user_id: Int8;
+  told_at: Timestamp | null;
+}
+
 export interface TimeClaims {
   block_id: string | null;
   branch_id: string;
@@ -2402,6 +2414,7 @@ export interface DB {
   substitution_lessons: SubstitutionLessons;
   substitutions: Substitutions;
   teaching_load_rows: TeachingLoadRows;
+  telegram_links: TelegramLinks;
   time_claims: TimeClaims;
   timetable_day_keeps: TimetableDayKeeps;
   timetable_locks: TimetableLocks;

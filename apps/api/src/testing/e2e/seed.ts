@@ -8161,12 +8161,15 @@ try {
     ['Nilufar', 'Usmonova', 8],
   ];
   const mother: { id: string | null } = { id: null };
+  // Task 11.4: Kamron, whose father opens the portal from Telegram.
+  const firstPortalChild: { id: string | null } = { id: null };
   for (const [index, [first, last, grade]] of portalChildren.entries()) {
     const classId = portalClasses.find((one) => one.grade === grade)?.id ?? '';
     await migrator.transaction().execute(async (transaction) => {
       const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
       const id = found.rows[0]?.id ?? '';
       const uid = `PORTAL-E2E-${String(index + 1)}`;
+      firstPortalChild.id ??= id;
       await transaction
         .insertInto('students')
         .values({
@@ -8244,6 +8247,30 @@ try {
       .execute();
   });
   seeded.portal = { login: portalParent.login, password: portalParent.firstPassword };
+
+  // Task 11.4: Kamron's father, who opens the portal as a Telegram mini app (portal.spec.ts).
+  const telegramParent = await create('Botir', 'Usmonov');
+  await migrator.transaction().execute(async (transaction) => {
+    await sql`select set_config(${MOMENT_SETTING}, ${yearStart.toISOString()}, true)`.execute(
+      transaction,
+    );
+    const father = await linkRelative(
+      transaction,
+      firstPortalChild.id ?? '',
+      portalBranch,
+      yearStart,
+      {
+        fullName: 'Botir Usmonov',
+        mainContact: false,
+      },
+    );
+    await transaction
+      .updateTable('relative_accounts')
+      .set({ account_id: telegramParent.id, switched_on_at: yearStart })
+      .where('relative_id', '=', father)
+      .execute();
+  });
+  seeded.telegramParent = { login: telegramParent.login, password: telegramParent.firstPassword };
 
   // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
   // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,

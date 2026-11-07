@@ -39,6 +39,7 @@ describe('the routes that work without sign-in', () => {
   it('are found among all routes of the application', () => {
     expect(routesOf(app).map((route) => route.name)).toEqual([
       'DELETE /api/auth/photo',
+      'DELETE /api/auth/telegram-link',
       'DELETE /api/auth/trusted-devices/:id',
       'DELETE /api/exemptions/:id/document',
       'DELETE /api/journal/lessons/:lessonId/works/:workId',
@@ -315,6 +316,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/people/classes/:classId/parent-slips',
       'POST /api/people/parent-accounts/never-used/export',
       'POST /api/people/parents/:relativeId/password-reset',
+      'POST /api/people/parents/:relativeId/telegram-unlink',
       'POST /api/people/relatives/:id/merge',
       'POST /api/people/relatives/:id/report',
       'POST /api/people/relatives/:id/show',
@@ -445,6 +447,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/setup/subjects/:id/quarter-weights/copy/preview',
       'POST /api/setup/subjects/:id/restore',
       'POST /api/setup/subjects/export',
+      'POST /api/telegram/webhook',
       'POST /api/timetable/absences',
       'POST /api/timetable/absences/:id/journal-substitute',
       'POST /api/timetable/absences/:id/withdraw',

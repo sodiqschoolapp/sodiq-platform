@@ -61,6 +61,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     account_locked: 'Эта учётная запись заблокирована. Обратитесь к администратору.',
     password_change_required: 'Прежде чем продолжить, смените пароль.',
     current_password_wrong: 'Текущий пароль введён неверно.',
+    telegram_sign_in_needed: 'Вход через Telegram не выполнен. Войдите с логином и паролем.',
+    telegram_chat_linked:
+      'Этот Telegram уже привязан к другому родительскому аккаунту. Сначала выйдите из него там или откройте портал в браузере.',
+    no_telegram_link: 'Этот аккаунт не привязан к Telegram.',
     password_unchanged: 'Новый пароль совпадает с текущим. Выберите другой.',
     second_step_required: 'Прежде чем продолжить, введите код второго шага.',
     second_step_set_up_required: 'Прежде чем продолжить, настройте второй шаг.',
@@ -2165,6 +2169,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   parent: {
+    telegram: 'Telegram',
+    telegramLinked: 'Привязан с {{date}}',
+    telegramNone: 'Не привязан. Откройте портал из бота школы и один раз войдите там.',
+    unlink: 'Отвязать Telegram',
+    unlinkTitle: 'Отвязать Telegram?',
+    unlinkText: 'Портал больше не будет открываться из Telegram без вашего пароля.',
     title: 'Ваш аккаунт',
     language: 'Язык',
     password: 'Сменить пароль',
@@ -2172,6 +2182,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     portal: 'Вернуться в портал',
   },
   portal: {
+    telegram: {
+      title: 'Вход',
+      opening: 'Открываем портал…',
+      chatLinkedContinue: 'Открыть портал',
+    },
     child: 'Ребёнок',
     chooseChild: 'Выберите ребёнка',
     childName: '{{first}} {{last}}',
@@ -2939,6 +2954,13 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       resetText:
         'Все сеансы родителя завершатся, и будет напечатан новый бланк, действующий 7 дней.',
       resetLanguage: 'Язык бланка',
+      telegram: 'Telegram',
+      telegramLinked: 'Привязан с {{date}}',
+      telegramNone: 'Не привязан',
+      unlink: 'Отвязать Telegram',
+      unlinkTitle: 'Отвязать Telegram у {{name}}?',
+      unlinkText:
+        'Портал больше не будет открываться из Telegram родителя без пароля. Пароль не меняется.',
     },
     parentsNeverUsed: {
       title: 'Родители, не входившие ни разу',
@@ -3850,6 +3872,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         second_step_off: 'Второй шаг выключен',
         second_step_reset: 'Второй шаг сброшен',
         second_step_unreadable: 'Второй шаг не прочитан и удалён',
+      },
+      telegram: {
+        linked: 'Telegram привязан',
+        moved: 'Привязка Telegram перенесена в другой чат',
+        unlinked: 'Привязка Telegram прекращена',
       },
       parent_account: {
         slip: 'Напечатан бланк родителя',

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 11.4 The Telegram bot and the chat link
+
+- **Database** (0160): `telegram_links` (one open link per account and per chat, unique indexes; a Parent account only; ends with a reason), `sessions.telegram_link_id`, the end reason `telegram_unlinked`; no row changes.
+- **API**: the launch on `POST /api/auth/sign-in` (`{ telegramInitData }`: HMAC with the bot token, 24 hours by `REAL_CLOCK`); a password sign-in with launch data links the chat once no step is owed (the forced change sends it again); a move ends the old link and enqueues `telegram.tell_moved`; sign-out in the mini app, a password change, a reset, `DELETE /api/auth/telegram-link` and `POST /api/people/parents/:relativeId/telegram-unlink` end it with its sessions; the webhook `POST /api/telegram/webhook` (secret header) answers /start with the mini app's button; Telegram's script allowed on `/portal` pages only.
+- **Web**: `/portal/telegram` (the bot's page), "Unlink Telegram" on the parent's Account page and on the Parent panel. Browser test: a father signs in once from Telegram, opens again without the password, signs out.
+
+Left out: marking a chat that blocked the bot (11.5); messages other than /start and the move notice (11.5, 11.8); the production bot (the owner, after 11.5). Owner steps for the test bot: `docs/deploy.md`, The Telegram bot of the test environment.
+
+The next sessions must know:
+
+- A message to a parent goes to `telegram_links.telegram_user_id` of the open link (`TelegramLinks.openLinkOfAccount`), through `TelegramBot.sendMessage` in a job; the token is never logged.
+- Any write of a link takes the account row first, then the chat's open link (`TelegramLinks.link`).
+
 ## 6 November 2026: task 11.3 The portal: grades, attendance and comments
 
 - **API** (module `portal`): `GET /api/portal/children/:studentId/grades?quarter` and `…/attendance?date`, `@PortalChild()`, the child scope first (404). Every figure and mark from `StudentResultsService`, which gains a family entry (`familyGrades`, `familyLessons`): the same reads as the profile's tabs with the child's rows read `whole`; the staff routes unchanged. Comments: only `visibility = 'parents'` with a body, joined to the lessons and works answered.

@@ -58,6 +58,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'The log of the school-wide subjects row: each change of its journal type, rating exam switch and rounds, with the quarter it takes effect from, so every quarter reads the switches it had (edge/calculation: "These switches are stored per quarter"; task 8.2, decisions 1 and 17 of pull request #218, Look first). A row holds ids, switches, rounds, a quarter number and moments, nothing personal.',
   password_reset_links:
     'A link of the password reset by email belongs to an account, which has no branch, and is asked for before any branch is known; a row holds ids, a token hash and moments (task 2.3c-2, pull request #66).',
+  telegram_links:
+    'The Telegram chat link of a Parent account, which has no branch, written at sign-in before any branch is known; a row holds ids, a Telegram user id and moments (task 11.4, pull request #298).',
 };
 
 /**

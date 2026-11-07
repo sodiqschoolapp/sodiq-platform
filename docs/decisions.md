@@ -401,6 +401,33 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 7 November 2026: the Telegram bot and the chat link (task 11.4)
+
+Plan approved on pull request #298 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a pinned list widened: `PUBLIC_ROUTES`). One line, `POST /api/telegram/webhook`; the mini app's launch is a body of the existing public `POST /api/auth/sign-in` | `02`: "from Release 2 the Telegram bot's webhook"; "sign-in (all its steps)" (decision 1) |
+| **Look first** (a script from outside the platform). `script-src` gains `https://telegram.org` on `/portal` pages only; framing stays refused and the `SameSite=Strict` cookie is kept, so Telegram Web (a frame) is not served: a parent there uses a browser | Build line; `10`: "The same pages also open in any phone or computer browser" (decision 2, correction 2) |
+| **Look first** (permission reading). "Unlink Telegram" runs under `parent_accounts` `create`, the action of 11.1's reset, for the Super Admin and the Academic Vice Principal of a child's branch; `permissions.ts` unchanged | The approval's "edit, as in 11.1" names an action 11.1 never granted (decision 3; 11.1 decision 16) |
+| **Look first** (a pinned list widened: the parent session's routes). `DELETE /api/auth/telegram-link` joins the four routes of 11.1 decision 2 | "the `parent` role links and unlinks its own chat" (review decision 4) |
+| **Look first** (a check list widened). `sessions_end_reason_check` gains `telegram_unlinked`; no row changes | A new requirement (review decision 5) |
+| **Look first** (a pinned list widened: the sign-in frame of `design-parts.test.ts`). `/portal/telegram` is a sign-in page and takes the large button | `docs/design-system.md`: "Large 48: sign-in" (build) |
+| The chat is the Telegram user id | A private chat with the bot has the user's id (decision 4) |
+| The link is written once the session owes no step; the forced change sends the launch data again and links in a transaction of its own, the change standing when the chat was taken meanwhile (409) | `10`: "signs in once with login and password" (decision 5) |
+| A chat linked to another account that can still sign in is refused (409); one linked to an account that can no longer sign in is ended `blocked` and taken | `edge/close-relatives`, shared phone (decision 6) |
+| An ended link ends the sessions opened through it, not the parent's browser sessions | Decision 7 |
+| "Can no longer sign in" is read on each launch from stored state; the link is ended `blocked` then | `CLAUDE.md`, state from stored moments (decision 8) |
+| The move notice is a job (`telegram.tell_moved`) in the move's transaction, no branch, sent at once at any hour; a 403 is not tried again | Decision 9 |
+| 24 hours, and 5 minutes ahead, by `REAL_CLOCK` | Telegram signs in real time; task 10.5 decision 1 (decision 10) |
+| /start only; the linked account's language, else Telegram's, else Uzbek | `10`, Language (decision 11) |
+| Links, moves and ends are audited; the Telegram id and the launch data never in the audit or a log; the personal data report lists each link | Decision 12 |
+| Without the token or the secret, everything Telegram is 401 | Decision 13 |
+| **Build decision.** Every write of a link, a sign-out through one included, takes the account row first, then the chat's open link; a unique violation on the chat is answered 409 | Lock order (permission review of the code, must-fix 2) |
+| **Build decision.** Launch data beside a password that does not check out, or sent by a staff account or with a voluntary change, links nothing and is not refused | The sign-in goes on as in a browser (permission review of the code, should-fix 2) |
+| **Build decision.** The administrator's unlink does not refuse the administrator's own Parent account, unlike the reset | The parent may unlink the own chat anyway (permission review should-fix 7) |
+| **Build decision.** The parent's Account page shows the link's date in Asia/Tashkent | A parent has no branch; `10` names the school's time zone, Tashkent (spec review should-fix 3) |
+
 ## 6 November 2026: the portal: grades, attendance and comments (task 11.3)
 
 Plan approved on pull request #296 with corrections 1 and 2. Flagged on issue #42.

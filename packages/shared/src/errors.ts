@@ -1266,6 +1266,16 @@ export const ERROR_CODES = [
   'recalculation_changed',
   /** No result to apply: the stored results match the current calculation (task 9.2c). */
   'recalculation_nothing',
+  /**
+   * Task 11.4: the mini app's launch did not sign in (no open link of the chat, a launch not
+   * signed by the bot or older than 24 hours, the account can no longer sign in, or Telegram is
+   * not set up): the page asks for the login and password.
+   */
+  'telegram_sign_in_needed',
+  /** Task 11.4: this Telegram chat is linked to another Parent account (one chat, one account). */
+  'telegram_chat_linked',
+  /** Task 11.4: the account has no open Telegram link to end. */
+  'no_telegram_link',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

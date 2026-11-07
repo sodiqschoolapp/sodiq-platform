@@ -37,6 +37,8 @@ import {
   type SessionMoments,
 } from './session-life.js';
 import { deviceTokenHash, SignInThrottle } from './sign-in-throttle.service.js';
+import type { TelegramLaunch } from '../portal/telegram/init-data.js';
+import { TelegramLinks } from './telegram-links.js';
 
 /**
  * The token in the session cookie is this many random bytes from
@@ -103,6 +105,11 @@ export interface ActiveSession {
   /** The language of the account (`12`, Language). */
   language: Language;
   /**
+   * Task 11.4: the Telegram link the session was opened through, or wrote (a parent in the
+   * mini app); `null` otherwise. Ending that link ends the session (plan of #298, decision 7).
+   */
+  telegramLinkId: string | null;
+  /**
    * The assignments of the account that are in force at this request (role and
    * branch). Read again on every request: a role that was given or ended
    * counts at the next one.
@@ -168,6 +175,18 @@ export interface SignInOrigin extends PasswordCheckOrigin {
   userAgent: string | undefined;
   /** The "Trust this device" switch of the sign-in page. */
   trustDevice: boolean;
+  /**
+   * Task 11.4: the checked launch data of the mini app the sign-in came from; a Parent account
+   * links its chat once no step is owed. Left out in a browser.
+   */
+  telegram?: TelegramLaunch;
+}
+
+/** Task 11.4: what the mini app's opening from a linked chat says about where it comes from. */
+export interface LaunchOrigin {
+  deviceToken: string | undefined;
+  userAgent: string | undefined;
+  requestId?: string;
 }
 
 /** One open session of an account, as the profile lists it. */
@@ -205,6 +224,7 @@ export class Sessions {
     private readonly audit: Audit,
     private readonly throttle: SignInThrottle,
     private readonly secondSteps: SecondStepRule,
+    private readonly telegramLinks: TelegramLinks,
     // Task 10.5 (decision 1, Look first): the timing of sessions, trust and one-time passwords
     // follows real time, so that a jump of the demo clock signs nobody out. The roles and the
     // staff status in force follow the transaction's moment (`transactionMoment`), the demo
@@ -374,6 +394,18 @@ export class Sessions {
       if (trusted) {
         await this.recordTrustBegun(transaction, account.id, session, origin.requestId);
       }
+      // Task 11.4 (decision 5): the chat of the mini app is linked once the session owes no
+      // step; with a first or reset password the change links it (`changePassword`). The row
+      // of the account is held above, so this is the lock order of every link.
+      let telegramLinkId: string | null = null;
+      if (parent && origin.telegram !== undefined && !account.must_change_password) {
+        telegramLinkId = await this.telegramLinks.link(transaction, {
+          accountId: account.id,
+          sessionId: session.id,
+          telegramUserId: origin.telegram.telegramUserId,
+          ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+        });
+      }
       return {
         token,
         deviceToken,
@@ -387,6 +419,7 @@ export class Sessions {
           passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
           trustedUntil: trusted ? latestEndOf(session) : null,
           language: languageOf(account.language),
+          telegramLinkId,
           assignments,
         },
       };
@@ -492,6 +525,7 @@ export class Sessions {
             'created_at',
             'trusted_from',
             'trust_ended_at',
+            'telegram_link_id',
           ])
           .executeTakeFirst();
       let used = await use();
@@ -549,6 +583,7 @@ export class Sessions {
         passwordResetBy: await this.loginOf(transaction, account.password_reset_by),
         trustedUntil: isTrusted(used) ? latestEndOf(used) : null,
         language: languageOf(account.language),
+        telegramLinkId: used.telegram_link_id,
         assignments,
       };
     });
@@ -658,16 +693,58 @@ export class Sessions {
             ? null
             : await ownRelativeName(transaction, session.accountId),
       };
+      // Task 11.4: the parent's own Telegram link, for the Account page.
+      const link =
+        owed || session.kind !== 'parent'
+          ? undefined
+          : await this.telegramLinks.openLinkOfAccount(transaction, session.accountId);
+      const telegramLinkedAt = link?.linkedAt ?? null;
       if (owed) {
-        return answerOf(session, [], names);
+        return answerOf(session, [], names, telegramLinkedAt);
       }
-      return answerOf(session, await branchChoices(transaction, session.assignments), names);
+      return answerOf(
+        session,
+        await branchChoices(transaction, session.assignments),
+        names,
+        telegramLinkedAt,
+      );
+    });
+  }
+
+  /**
+   * Task 11.4: the parent ends their own Telegram link, and the sessions opened through it, this
+   * one included when it was. Answers whether there was a link to end.
+   */
+  async unlinkOwnTelegram(session: ActiveSession, requestId?: string): Promise<boolean> {
+    return this.transactions.run([], async (transaction) => {
+      // The account row first: the lock order of every link.
+      await transaction
+        .selectFrom('accounts')
+        .select('id')
+        .where('id', '=', session.accountId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      return this.telegramLinks.endOfAccount(transaction, session.accountId, 'unlinked', {
+        actorId: session.accountId,
+        ...(requestId === undefined ? {} : { requestId }),
+      });
     });
   }
 
   /** Ends this session; other sessions of the account stay. */
   async signOut(session: ActiveSession, requestId?: string): Promise<void> {
     await this.transactions.run([], async (transaction) => {
+      // Task 11.4: a session opened through a Telegram link takes the account row first, the
+      // lock order of every write of a link (`TelegramLinks`): a move of the link at the same
+      // moment ends this session and the link in that order too, and the two never deadlock.
+      if (session.telegramLinkId !== null) {
+        await transaction
+          .selectFrom('accounts')
+          .select('id')
+          .where('id', '=', session.accountId)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+      }
       const ended = await transaction
         .updateTable('sessions')
         .set({ ended_at: this.clock.now(), end_reason: 'sign_out' })
@@ -686,6 +763,14 @@ export class Sessions {
         record: { type: 'session', id: session.sessionId },
         ...(requestId === undefined ? {} : { requestId }),
       });
+      // Task 11.4: a sign-out in the mini app ends the link, and every session opened
+      // through it (`10`, Telegram: "The link ends on sign-out in the mini app").
+      if (session.telegramLinkId !== null) {
+        await this.telegramLinks.endLinkById(transaction, session.telegramLinkId, 'sign_out', {
+          actorId: session.accountId,
+          ...(requestId === undefined ? {} : { requestId }),
+        });
+      }
     });
   }
 
@@ -893,7 +978,7 @@ export class Sessions {
     session: ActiveSession,
     currentPassword: string,
     newPassword: string,
-    origin: PasswordCheckOrigin,
+    origin: PasswordCheckOrigin & { telegram?: TelegramLaunch },
   ): Promise<{ trustEnded: boolean }> {
     const { account, key } = await this.transactions.run([], async (transaction) => ({
       account: await transaction
@@ -922,7 +1007,7 @@ export class Sessions {
     }
     const newHash = await hashPassword(newPassword);
 
-    return this.transactions.run([], async (transaction) => {
+    const result = await this.transactions.run([], async (transaction) => {
       const now = this.clock.now();
       // Task 11.1 (decision 11): the first password a parent chooses is the first sign-in.
       const before = await transaction
@@ -989,6 +1074,21 @@ export class Sessions {
           ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
         });
       }
+      // Task 11.4: a password change ends the Telegram link (`10`, Telegram); this session
+      // stays signed in, no longer through the link. The change that completes the first sign-in
+      // (a first or reset password) is not such a change (plan of #298, decision 5).
+      if (!session.mustChangePassword) {
+        await this.telegramLinks.endOfAccount(
+          transaction,
+          session.accountId,
+          'password_change',
+          {
+            actorId: session.accountId,
+            ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+          },
+          session.sessionId,
+        );
+      }
       const trustEnded = await this.endTrust(
         transaction,
         session,
@@ -998,6 +1098,134 @@ export class Sessions {
       );
       return { trustEnded };
     });
+    // Task 11.4 (decision 5): the forced change in the mini app links the chat, in a
+    // transaction of its own: the password change stands when the chat was linked to another
+    // account in the meantime (`telegram_chat_linked`).
+    const launch = origin.telegram;
+    if (session.kind === 'parent' && session.mustChangePassword && launch !== undefined) {
+      await this.transactions.run([], async (transaction) => {
+        const own = await transaction
+          .selectFrom('sessions')
+          .select('id')
+          .where('id', '=', session.sessionId)
+          .where('ended_at', 'is', null)
+          .executeTakeFirst();
+        // The account row first: the lock order of every link.
+        const account = await transaction
+          .selectFrom('accounts')
+          .select(['locked_at', 'must_change_password'])
+          .where('id', '=', session.accountId)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
+        if (own === undefined || account.locked_at !== null || account.must_change_password) {
+          return;
+        }
+        await this.telegramLinks.link(transaction, {
+          accountId: session.accountId,
+          sessionId: session.sessionId,
+          telegramUserId: launch.telegramUserId,
+          ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+        });
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Task 11.4: opening the mini app from a linked chat signs in without the password (`10`,
+   * Telegram), once the launch data was checked (`TelegramLinks.launchOf`). Refused alike
+   * (`telegram_sign_in_needed`) when the chat has no open link, or its account can no longer
+   * sign in; then the link is ended (`blocked`, decision 8) and the page asks for the password.
+   * Never trusted, no attempt count (an HMAC cannot be guessed).
+   */
+  async signInByTelegram(launch: TelegramLaunch, origin: LaunchOrigin): Promise<SignedIn> {
+    const token = randomToken();
+    const deviceToken = origin.deviceToken ?? randomToken();
+    const outcome = await this.transactions.run([], async (transaction) => {
+      const peeked = await transaction
+        .selectFrom('telegram_links')
+        .select('account_id')
+        .where('telegram_user_id', '=', launch.telegramUserId)
+        .where('ended_at', 'is', null)
+        .executeTakeFirst();
+      if (peeked === undefined) {
+        return 'none' as const;
+      }
+      // The account row first, then the link: the lock order of every link.
+      const account = await transaction
+        .selectFrom('accounts')
+        .select(['id', 'login', 'locked_at', 'must_change_password', 'language'])
+        .where('id', '=', peeked.account_id)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      const link = await this.telegramLinks.lockOpenLinkOfChat(transaction, launch.telegramUserId);
+      if (link?.accountId !== account.id) {
+        return 'none' as const;
+      }
+      if (!(await this.telegramLinks.canSignIn(transaction, account.id))) {
+        await this.telegramLinks.end(transaction, link, 'blocked', {
+          actorId: null,
+          ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+        });
+        return 'blocked' as const;
+      }
+      if (account.must_change_password || !(await isParentAccount(transaction, account.id))) {
+        return 'none' as const;
+      }
+      const now = this.clock.now();
+      const session = await transaction
+        .insertInto('sessions')
+        .values({
+          account_id: account.id,
+          token_hash: tokenHash(token),
+          created_at: now,
+          last_used_at: now,
+          user_agent: origin.userAgent ?? null,
+          trust_requested: false,
+          trusted_from: null,
+          telegram_link_id: link.id,
+        })
+        .returning(['id', 'created_at'])
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('known_devices')
+        .values({
+          token_hash: deviceTokenHash(deviceToken),
+          account_id: account.id,
+          first_signed_in_at: now,
+        })
+        .onConflict((conflict) => conflict.columns(['token_hash', 'account_id']).doNothing())
+        .execute();
+      await this.audit.record(transaction, {
+        branchId: null,
+        actorId: account.id,
+        action: 'auth.sign_in',
+        record: { type: 'session', id: session.id },
+        details: { secondStep: 'not_needed', telegram: true },
+        ...(origin.requestId === undefined ? {} : { requestId: origin.requestId }),
+      });
+      return {
+        token,
+        deviceToken,
+        session: {
+          sessionId: session.id,
+          accountId: account.id,
+          kind: 'parent' as const,
+          login: account.login,
+          secondStep: 'not_needed' as const,
+          mustChangePassword: false,
+          passwordResetBy: null,
+          trustedUntil: null,
+          language: languageOf(account.language),
+          telegramLinkId: link.id,
+          assignments: [],
+        },
+      };
+    });
+    if (outcome === 'none' || outcome === 'blocked') {
+      throw new ApiException('telegram_sign_in_needed', 401);
+    }
+    return outcome;
   }
 
   /**

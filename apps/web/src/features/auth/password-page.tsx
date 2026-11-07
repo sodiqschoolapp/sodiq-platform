@@ -15,6 +15,8 @@ import { useWaiting } from './form-helpers';
 import { refreshSession, sessionQuery, STEP_PATH, stepOf } from './session';
 import { rememberTrustAsked } from './trust-asked';
 import { useSignOut } from './use-sign-out';
+import { telegramLaunchData } from '@/features/portal/telegram';
+import { ApiFailure } from '@/api/failure';
 import { cn } from 'cn';
 import { PANEL } from '@/components/ui/control';
 
@@ -80,6 +82,12 @@ export function PasswordPage() {
       setChecked(false);
       setChanged(true);
     },
+    onError: (error) => {
+      // Task 11.4: the change stands; the session owes no step any more.
+      if (error instanceof ApiFailure && error.code === 'telegram_chat_linked') {
+        void refreshSession(queryClient);
+      }
+    },
   });
   const waiting = useWaiting(change.error);
 
@@ -109,7 +117,13 @@ export function PasswordPage() {
       next !== current &&
       repeat === next;
     if (valid) {
-      change.mutate({ currentPassword: current, newPassword: next });
+      // Task 11.4: the forced change in the mini app links the chat (plan of #298, decision 5).
+      const launch = forced ? telegramLaunchData() : undefined;
+      change.mutate(
+        launch === undefined
+          ? { currentPassword: current, newPassword: next }
+          : { currentPassword: current, newPassword: next, telegramInitData: launch },
+      );
     }
   }
 
@@ -169,6 +183,12 @@ export function PasswordPage() {
           }}
         />
         <FailureAlert error={change.error ?? signOut.error} />
+        {/* Task 11.4: the password changed, the chat stayed linked to another account. */}
+        {change.error instanceof ApiFailure && change.error.code === 'telegram_chat_linked' ? (
+          <Link to="/portal" className={buttonVariants({ variant: 'default', size })}>
+            {t('portal.telegram.chatLinkedContinue')}
+          </Link>
+        ) : null}
         {changed && (
           <p role="status" className="text-sm font-medium">
             {t('password.changed')}
