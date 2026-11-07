@@ -60,6 +60,6 @@ Parents receive notices as messages from the school's bot, gathered in a digest,
 | Lesson plan window opened or about to end; edit request approved or refused; plan moved because a lesson was cancelled | Teacher | In the app |
 
 - Messages are written from templates in Uzbek, Russian and English and shown in the language each person chose. Each person can turn off notices for events that are not required.
-- Later in Release 2, through the bot: an instant message to parents for an absence, timetable changes for today or tomorrow, quarter results final, and announcements to a chosen audience. The platform sends no SMS (owner, 6 November 2026).
+- Parents get no single message for school data: no instant message for an absence, a timetable change or quarter results, and no SMS (owner, 6 and 7 November 2026). Attendance, grades and comments reach parents only in the digest and the portal. Announcements to a chosen audience may reach parents through the bot (`11`, Announcements and events).
 
 Staff notifications in the app (timetable changes, substitutions, locks, plan windows) are part of Release 1. The parent portal, the bot and the digest come in Release 2.
