@@ -49,6 +49,7 @@ import { ParentHomePage } from '@/features/auth/parent-home-page';
 import { PortalAttendancePage } from '@/features/portal/portal-attendance-page';
 import { PortalFrame } from '@/features/portal/portal-frame';
 import { PortalGradesPage } from '@/features/portal/portal-grades-page';
+import { PortalRatingPage } from '@/features/portal/portal-rating-page';
 import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
 import { PortalIndexPage } from '@/features/portal/portal-index-page';
 import { portalQuarterSearch, portalSearch } from '@/features/portal/portal-search';
@@ -315,6 +316,14 @@ const portalAttendanceRoute = createRoute({
   path: '$studentId/attendance',
   validateSearch: portalSearch,
   component: PortalAttendancePage,
+});
+
+/** Task 11.6: the own position in the rating, by quarter. */
+const portalRatingRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/rating',
+  validateSearch: portalQuarterSearch,
+  component: PortalRatingPage,
 });
 
 /**
@@ -925,6 +934,7 @@ const routeTree = rootRoute.addChildren([
     portalHomeworkRoute,
     portalGradesRoute,
     portalAttendanceRoute,
+    portalRatingRoute,
   ]),
   appRoute.addChildren([
     homeRoute,

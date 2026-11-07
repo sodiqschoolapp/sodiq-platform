@@ -2211,6 +2211,23 @@ export const uz: Texts<'one' | 'other'> = {
       homeworkN: '{{n}}-uy vazifasi',
       score: '{{total}} dan {{score}} · {{percent}}%',
     },
+    rating: {
+      title: 'Reyting',
+      quarter: 'Chorak',
+      provisional: 'Dastlabki: chorak hali yopilmagan.',
+      final: 'Yakuniy: chorak yopilgan.',
+      notOfficial: 'Rasmiy emas: bu chorak yillik natijaga kirmaydi.',
+      noYear: 'Farzandingiz uchun hozircha reyting yoʻq.',
+      noClass: 'Bu sanada farzandingiz sinfda emas, shuning uchun oʻrin yoʻq.',
+      place: '{{className}} sinfida {{place}}-oʻrin',
+      noPlace:
+        '{{className}} sinfida hozircha oʻrin yoʻq: bu chorakda farzandingizning raqamli natijasi yoʻq.',
+      own: 'Farzandingiz natijasi',
+      average: 'Sinf oʻrtachasi',
+      subjects_one: 'Natijasi bor fan: {{count}}',
+      subjects_other: 'Natijasi bor fanlar: {{count}}',
+      fewerSubjects: 'Sinfdagidan kamroq fan',
+    },
     attendance: {
       title: 'Davomat',
       time: '{{from}}–{{to}}',

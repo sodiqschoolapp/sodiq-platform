@@ -8,6 +8,7 @@ import {
   type Fraction,
   type RatingPlace,
   type StudentQuarterOutcome,
+  type SubjectsFigure,
 } from '@sodiq/calc';
 import {
   classDisplayName,
@@ -32,6 +33,8 @@ import {
   type RatingExport,
   type RatingExportTexts,
   type RatingState,
+  portalRatingSchema,
+  type PortalRating,
   type RatingSubjectList,
   type RatingSubjectQuery,
   OWN_CLASS_ROLES,
@@ -48,6 +51,7 @@ import { journalRows, switchesIn, type JournalRow } from '../journal/journal-gri
 import { WHOLE_ROLES } from '../journal/journal-scope.js';
 import { ownerIdOn } from '../plans/plan-scope.js';
 import { closingOf } from '../setup/closed-quarters.js';
+import type { ScopedChild } from '../portal/portal-scope.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { momentText } from '../timetable/views-export.service.js';
 import { dateText } from '../timetable/views-file.js';
@@ -172,6 +176,38 @@ export class RatingService {
 
   classes(access: Access, query: RatingClassesQuery): Promise<RatingClassesList> {
     return this.run(access, (context) => classesIn(context, query));
+  }
+
+  /**
+   * The own position of a child in the parent portal (task 11.6; `08`, Rating, "Own position"):
+   * the child's row of the class list across all subjects and that class's figure of the classes
+   * list, read in the child's present branch. Called only after the child scope let the parent in
+   * (`portalChild`); the answer holds no other student's id, name, figure or place, and no count
+   * of the students ranked (plan review, correction 1).
+   */
+  familyPosition(child: ScopedChild, quarterId: string | undefined): Promise<PortalRating> {
+    // Only a child `portalChild` answered (permission review of the code, should-fix 1).
+    const { branchId } = child;
+    const studentId = child.id;
+    return this.transactions.run([branchId], async (transaction) => {
+      const branch = await transaction
+        .selectFrom('branches')
+        .select('time_zone')
+        .where('id', '=', branchId)
+        .executeTakeFirstOrThrow();
+      const now = await transactionMoment(transaction);
+      return positionIn(
+        {
+          transaction,
+          branchId,
+          timeZone: branch.time_zone,
+          now,
+          today: schoolDateOf(now, branch.time_zone),
+        },
+        studentId.toLowerCase(),
+        quarterId?.toLowerCase(),
+      );
+    });
   }
 
   /**
@@ -494,7 +530,7 @@ function journalShown(journal: JournalRow, language: InstructionLanguage) {
 }
 
 /** The classes of the year in the branch, not archived. */
-export async function classesOfYear(context: Context, yearId: string): Promise<RatingClass[]> {
+export async function classesOfYear(context: BranchMoment, yearId: string): Promise<RatingClass[]> {
   const rows = await context.transaction
     .selectFrom('classes')
     .select(['id', 'grade', 'name', 'language'])
@@ -709,11 +745,8 @@ async function subjectIn(context: Context, query: RatingSubjectQuery): Promise<R
 }
 
 /** Each student's figure across the graded subjects, students with a result at leaving left out. */
-function figuresOf(
-  outcomes: Outcomes,
-  studentIds: readonly string[],
-): Map<string, ReturnType<typeof subjectsFigure>> {
-  const figures = new Map<string, ReturnType<typeof subjectsFigure>>();
+function figuresOf(outcomes: Outcomes, studentIds: readonly string[]): Map<string, SubjectsFigure> {
+  const figures = new Map<string, SubjectsFigure>();
   for (const studentId of studentIds) {
     const own = [...outcomes.bySubject.values()].flatMap((bySubject) => {
       const outcome = bySubject.get(studentId);
@@ -723,6 +756,42 @@ function figuresOf(
     figures.set(studentId, subjectsFigure(own));
   }
   return figures;
+}
+
+/** A class's standing on the reference date: what the class list and the classes list rank. */
+export interface ClassStanding {
+  /** Each counted student's figure (a student with a result at leaving is left out). */
+  readonly figures: ReadonlyMap<string, SubjectsFigure>;
+  readonly places: readonly RatingPlace[];
+  /** The class figure: the mean of its students' figures (`classFigure`). */
+  readonly average: Fraction | null;
+  /** The students with a figure that is a number. */
+  readonly students: number;
+}
+
+/**
+ * The members of a class on the reference date, their figures across subjects, their places and
+ * the class figure: the one reading of the class list, the classes list and the parent portal's
+ * own position (task 11.6), so the three cannot differ.
+ */
+export async function classStandingOf(
+  transaction: Transaction,
+  outcomes: Outcomes,
+  classId: string,
+  referenceDate: string,
+): Promise<ClassStanding> {
+  const members = await membersOn(transaction, { classId, groupId: null }, referenceDate);
+  const figures = figuresOf(outcomes, members);
+  const places = ratingPlaces(
+    [...figures].map(([studentId, figure]) => ({ id: studentId, value: figure.value })),
+  );
+  const values = [...figures.values()].map((figure) => figure.value);
+  return {
+    figures,
+    places,
+    average: classFigure(values),
+    students: values.filter((value) => value !== null).length,
+  };
 }
 
 /**
@@ -765,12 +834,8 @@ async function classIn(context: Context, query: RatingClassQuery): Promise<Ratin
   const outcomes = await preparedOutcomes(context, quarter, state, null, freshness, {
     bySubjectOnly: true,
   });
-  const members = await membersOn(transaction, { classId: shown.id, groupId: null }, referenceDate);
-  const figures = figuresOf(outcomes, members);
+  const { figures, places } = await classStandingOf(transaction, outcomes, shown.id, referenceDate);
   const names = await namesOf(transaction, [...figures.keys()]);
-  const places = ratingPlaces(
-    [...figures].map(([studentId, figure]) => ({ id: studentId, value: figure.value })),
-  );
   return ratingClassListSchema.parse({
     ...listStateOf(quarter, state, outcomes.readLive, freshness),
     class: shown,
@@ -805,12 +870,8 @@ async function classesIn(context: Context, query: RatingClassesQuery): Promise<R
   });
   const figures = new Map<string, { value: Fraction | null; students: number }>();
   for (const one of classes) {
-    const members = await membersOn(transaction, { classId: one.id, groupId: null }, referenceDate);
-    const students = [...figuresOf(outcomes, members).values()].map((figure) => figure.value);
-    figures.set(one.id, {
-      value: classFigure(students),
-      students: students.filter((value) => value !== null).length,
-    });
+    const standing = await classStandingOf(transaction, outcomes, one.id, referenceDate);
+    figures.set(one.id, { value: standing.average, students: standing.students });
   }
   const byId = new Map(classes.map((one) => [one.id, one]));
   const places = ratingPlaces(
@@ -830,6 +891,133 @@ async function classesIn(context: Context, query: RatingClassesQuery): Promise<R
       value: tenths(place.value),
       students: figures.get(item.id)?.students ?? 0,
     })),
+  });
+}
+
+/**
+ * The year of the portal's rating: the current one of the branch, else the newest that has
+ * started (as the staff rating's choices), and its started quarters (plan decision 3).
+ */
+async function startedQuartersOf(moment: BranchMoment): Promise<QuarterRow[]> {
+  const years = await moment.transaction
+    .selectFrom('academic_years')
+    .select(['id', 'status', sql<string>`start_date::text`.as('start_date')])
+    .where('branch_id', '=', moment.branchId)
+    .orderBy('start_date', 'desc')
+    .execute();
+  const year =
+    years.find((one) => one.status === 'current') ??
+    years.find((one) => one.start_date <= moment.today);
+  if (year === undefined) return [];
+  const rows = await moment.transaction
+    .selectFrom('quarters')
+    .select([
+      'id',
+      'number',
+      sql<string | null>`start_date::text`.as('start_date'),
+      sql<string | null>`end_date::text`.as('end_date'),
+    ])
+    .where('academic_year_id', '=', year.id)
+    .orderBy('number')
+    .execute();
+  return rows.flatMap((row) =>
+    row.start_date === null || row.end_date === null || row.start_date > moment.today
+      ? []
+      : [
+          {
+            id: row.id,
+            number: row.number,
+            academicYearId: year.id,
+            startDate: row.start_date,
+            endDate: row.end_date,
+            yearStatus: year.status,
+          },
+        ],
+  );
+}
+
+/** The own position of a child (`RatingService.familyPosition`). */
+async function positionIn(
+  moment: BranchMoment,
+  studentId: string,
+  quarterId: string | undefined,
+): Promise<PortalRating> {
+  const quarters = await startedQuartersOf(moment);
+  const states = new Map<string, QuarterState>();
+  for (const one of quarters) states.set(one.id, await quarterStateOf(moment, one));
+  const quarterList = quarters.map((one) => ({
+    id: one.id,
+    number: one.number,
+    startDate: one.startDate,
+    endDate: one.endDate,
+    closed: states.get(one.id)?.closing != null,
+  }));
+  let quarter: QuarterRow | undefined;
+  if (quarterId !== undefined) {
+    // Plan decision 3: only a started quarter of the year shown; any other is 404.
+    quarter = quarters.find((one) => one.id === quarterId);
+    if (quarter === undefined) throw notFound();
+  } else {
+    quarter =
+      quarters.find((one) => one.startDate <= moment.today && moment.today <= one.endDate) ??
+      quarters.at(-1);
+  }
+  const state = quarter === undefined ? undefined : states.get(quarter.id);
+  if (quarter === undefined || state === undefined) {
+    return portalRatingSchema.parse({
+      quarters: quarterList,
+      quarterId: null,
+      provisional: true,
+      notOfficial: false,
+      class: null,
+    });
+  }
+  const referenceDate = referenceDateOf(quarter, moment.today);
+  // Review correction 2: the child's class as the staff lists take it, a class of the branch
+  // and of the quarter's year, not archived (`classesOfYear`), on the reference date.
+  const classes = await classesOfYear(moment, quarter.academicYearId);
+  const membership =
+    classes.length === 0
+      ? undefined
+      : await moment.transaction
+          .selectFrom('class_memberships')
+          .select('class_id')
+          .where('student_id', '=', studentId)
+          .where(
+            'class_id',
+            'in',
+            classes.map((one) => one.id),
+          )
+          .whereRef('valid_from', '<', 'valid_until')
+          .where('valid_from', '<=', referenceDate)
+          .where('valid_until', '>', referenceDate)
+          .executeTakeFirst();
+  const shown = classes.find((one) => one.id === membership?.class_id);
+  const freshness = new Freshness();
+  const outcomes = await preparedOutcomes(moment, quarter, state, null, freshness, {
+    bySubjectOnly: true,
+  });
+  const list = listStateOf(quarter, state, outcomes.readLive, freshness);
+  let shownClass: PortalRating['class'] = null;
+  if (shown !== undefined) {
+    const standing = await classStandingOf(moment.transaction, outcomes, shown.id, referenceDate);
+    const own = standing.places.find((one) => one.id === studentId);
+    const figure = standing.figures.get(studentId);
+    shownClass = {
+      name: shown.name,
+      place: own?.place ?? null,
+      value: tenths(own?.value ?? null),
+      subjects: figure?.subjects ?? 0,
+      fewerSubjects: figure?.fewerSubjects ?? false,
+      average: tenths(standing.average),
+    };
+  }
+  return portalRatingSchema.parse({
+    quarters: quarterList,
+    quarterId: quarter.id,
+    provisional: list.provisional,
+    notOfficial: list.quarter.notOfficial,
+    class: shownClass,
   });
 }
 

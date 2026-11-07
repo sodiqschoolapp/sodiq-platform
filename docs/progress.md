@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 11.6 Rating in the portal
+
+- **API** (module `portal`): `GET /api/portal/children/:studentId/rating?quarter` (`@PortalChild()`, the child scope first, 404): the child's place, figure and subjects as the staff list "a class, all subjects" and the class average as the class's figure of the list of classes, in the child's present branch, for a started quarter of the current year; "provisional" and "not official" as `listStateOf`. No other student's id, name, figure or place and no count of the students ranked (review correction 1).
+- `rating.service.ts`: `classStandingOf` drawn out of the class and classes lists (members on the reference date, `figuresOf`, `ratingPlaces`, `classFigure`), used by both and by `RatingService.familyPosition`; no migration, `packages/calc` unchanged.
+- **Web** (feature `portal`): the fifth tab "Rating" (the place in the class, the child's figure, the class average, provisional or final); texts in three languages; `portal.spec.ts` opens it at 390 px.
+
+Left out: the per-subject place (decision 1, on #42 with a proposed `/spec-change`); earlier years and branches; the rating in messages (11.8 does not ask for it).
+
+The next sessions must know:
+
+- A family read of the rating goes through `RatingService.familyPosition`, called only after `portalChild`; the class and its average come from `classStandingOf`, never from a list of their own.
+
 ## 7 November 2026: task 11.5 The parents' digest
 
 - **Database** (0161): `digest_settings` (one row: 19:00, quiet 21:00 to 08:00; a time inside the quiet hours refused), `digest_frequencies` (no row: twice a week), `telegram_links.bot_blocked_at`, `digests` (one per Parent account and Tashkent date, the send log), `digest_parts` and `digest_entries` (what a delivered digest named and carried, the value as sent), `digest_children()`; no row changes.

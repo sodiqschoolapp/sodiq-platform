@@ -152,6 +152,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/portal/children/:studentId/files/:fileId',
       'GET /api/portal/children/:studentId/grades',
       'GET /api/portal/children/:studentId/homework',
+      'GET /api/portal/children/:studentId/rating',
       'GET /api/portal/children/:studentId/timetable',
       'GET /api/results/branch-summary',
       'GET /api/results/closing',

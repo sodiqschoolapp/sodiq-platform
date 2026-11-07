@@ -297,6 +297,7 @@ describe('OpenAPI document', () => {
         '/api/portal/children/{studentId}/files/{fileId}',
         '/api/portal/children/{studentId}/grades',
         '/api/portal/children/{studentId}/homework',
+        '/api/portal/children/{studentId}/rating',
         '/api/portal/children/{studentId}/timetable',
         '/api/results/branch-summary',
         '/api/results/closing',

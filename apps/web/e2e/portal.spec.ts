@@ -7,7 +7,7 @@ import { changeFirstPassword, languageChooser, signIn } from './steps';
 // Task 11.2, pull request #294 (`10`, What parents see; `12`, Devices: "Phone: ... the portal"):
 // at phone width a mother of two children signs in, sees the first child's week, opens the
 // homework, and switches to the other child. Task 11.3, pull request #296: back on the first
-// child, the Grades and the Attendance pages. All names are invented.
+// child, the Grades, the Attendance and the Rating pages. All names are invented.
 test.use({ viewport: { width: 390, height: 844 } });
 
 test('a parent opens the timetable and the homework of both children, then the grades and attendance, at phone width', async ({
@@ -86,6 +86,20 @@ test('a parent opens the timetable and the homework of both children, then the g
   }
   await expect(late).toBeVisible();
   await expect(page.getByText(/Staff only/)).toHaveCount(0);
+
+  // Task 11.6: Kamron's own place in the class and the class average, no other student.
+  await page.getByRole('link', { name: en.portal.rating.title, exact: true }).click();
+  await expect(page).toHaveURL(/\/rating$/);
+  const place = page.getByRole('region', { name: /^Place \d+ in 7 Seeded$/ });
+  await expect(place).toBeVisible();
+  await expect(place.locator('[data-figure="own"]')).toHaveText(/^\d+\.\d$/);
+  await expect(place.locator('[data-figure="average"]')).toHaveText(/^\d+\.\d$/);
+  await expect(page.getByText(en.portal.rating.provisional, { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate<boolean>(
+      '(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)()',
+    ),
+  ).toBe(false);
 });
 
 // Task 11.4, pull request #298 (`10`, Signing in: Telegram): the portal as a Telegram mini app.

@@ -2179,6 +2179,23 @@ export const en = {
       homeworkN: 'Homework {{n}}',
       score: '{{score}} of {{total}} · {{percent}}%',
     },
+    rating: {
+      title: 'Rating',
+      quarter: 'Quarter',
+      provisional: 'Provisional: the quarter is not closed yet.',
+      final: 'Final: the quarter is closed.',
+      notOfficial: 'Not official: this quarter is left out of the year result.',
+      noYear: 'No rating to show for the child yet.',
+      noClass: 'The child is not in a class on this date, so there is no place to show.',
+      place: 'Place {{place}} in {{className}}',
+      noPlace:
+        'No place yet in {{className}}: the child has no result with a number in this quarter.',
+      own: 'The child’s result',
+      average: 'Class average',
+      subjects_one: '{{count}} subject with a result',
+      subjects_other: '{{count}} subjects with a result',
+      fewerSubjects: 'Fewer subjects than the class',
+    },
     attendance: {
       title: 'Attendance',
       time: '{{from}}–{{to}}',

@@ -370,6 +370,8 @@ describe('the parent portal', () => {
       // Task 11.3.
       `/api/portal/children/${studentId}/grades`,
       `/api/portal/children/${studentId}/attendance?date=2026-10-26`,
+      // Task 11.6.
+      `/api/portal/children/${studentId}/rating`,
     ];
 
     it('answers the parent’s own children, in both branches', async () => {
@@ -411,6 +413,9 @@ describe('the parent portal', () => {
       try {
         const refused = await get(parent, path);
         expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+        // Task 11.6: the rating too, from the next request.
+        const rating = await get(parent, `/api/portal/children/${child}/rating`);
+        expect([rating.status, codeOf(rating)]).toEqual([404, 'not_found']);
         const list = portalChildrenSchema.parse(ok(await get(parent, '/api/portal/children')));
         expect(list.children.map((one) => one.id)).toEqual([secondChild]);
       } finally {
