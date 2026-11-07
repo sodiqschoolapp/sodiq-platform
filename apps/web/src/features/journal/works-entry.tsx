@@ -46,6 +46,7 @@ import {
   setWorkTotal,
   showTyped,
 } from './journal-api';
+import { WorkKindTag } from './work-kind-tag';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
@@ -635,7 +636,11 @@ function LessonWorksDialog({
               <ul className="grid gap-2">
                 {lesson.notHeldWorks.map((work) => (
                   <li key={workKey(work)} className="flex flex-wrap items-center gap-2">
-                    <span>{nameOfWork(work)}</span>
+                    {/* Task 10.7: works of both kinds listed together carry their kind's tag. */}
+                    <span className="inline-flex items-center gap-1">
+                      <WorkKindTag kind={work.kind} />
+                      {nameOfWork(work)}
+                    </span>
                     {lesson.canEnterWorks && (
                       <Button
                         variant="ghost"

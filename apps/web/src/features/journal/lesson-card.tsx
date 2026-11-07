@@ -22,6 +22,7 @@ import {
   setDelivery,
   setHomeworkGiven,
 } from './journal-api';
+import { WorkKindTag } from './work-kind-tag';
 
 /**
  * The lesson card (task 8.8, pull request #226; `09`, In the journal: "Clicking it opens the
@@ -130,7 +131,11 @@ export function LessonCardDialog({
                   {found.classworks.map((work) => (
                     <li key={work.id}>
                       <span className="flex flex-wrap gap-2">
-                        <span>{work.title}</span>
+                        {/* Task 10.7: the kind's tag in front of each work of the card. */}
+                        <span className="inline-flex items-center gap-1">
+                          <WorkKindTag kind="classwork" />
+                          {work.title}
+                        </span>
                         {work.description !== '' && (
                           <span className="text-muted-foreground">{work.description}</span>
                         )}
@@ -149,6 +154,7 @@ export function LessonCardDialog({
                   {found.givenToday.map((given, index) => (
                     <li key={given.planWorkId ?? String(index)} className="grid gap-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <WorkKindTag kind="homework" />
                         <span className={given.notGiven ? 'line-through' : undefined}>
                           {given.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
                         </span>
@@ -204,7 +210,8 @@ export function LessonCardDialog({
                   {found.checkedToday.map((checked, index) => (
                     <li key={`${checked.title ?? ''}:${String(index)}`}>
                       <span className="flex flex-wrap gap-2">
-                        <span>
+                        <span className="inline-flex items-center gap-1">
+                          <WorkKindTag kind="homework" />
                           {checked.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
                         </span>
                         {checked.givenOn !== null && (

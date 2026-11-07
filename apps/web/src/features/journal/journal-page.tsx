@@ -38,6 +38,7 @@ import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
+import { WorkKindTag, useWorkLabel } from './work-kind-tag';
 import { useWorkName, useWorksEntry, type WorksEntry } from './works-entry';
 import { LessonModeScore } from './lesson-mode-score';
 import {
@@ -48,7 +49,12 @@ import {
   type Correcting,
 } from './edit-period';
 import { exportJournal, journalGridQuery } from './journal-api';
-import { GRADE_TINT, JournalGridView, hideableColumnsOf } from './journal-grid';
+import {
+  GRADE_TINT,
+  JOURNAL_DEFAULT_HIDDEN,
+  JournalGridView,
+  hideableColumnsOf,
+} from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
 
@@ -173,8 +179,11 @@ function JournalLoaded({
   // The grid over the whole window (asked for by the owner, 27 October 2026).
   const [full, setFull] = useState(false);
   useFullScreen(full, setFull);
-  // The columns the person hid, kept in the browser like a list's (owner, 27 October 2026).
-  const [hiddenColumns, setHiddenColumns] = useState(() => readHiddenColumns(JOURNAL_COLUMNS));
+  // The columns the person hid, kept in the browser like a list's (owner, 27 October 2026); a
+  // browser with no choice hides every one but the photo (task 10.7; owner, 7 November 2026).
+  const [hiddenColumns, setHiddenColumns] = useState(() =>
+    readHiddenColumns(JOURNAL_COLUMNS, JOURNAL_DEFAULT_HIDDEN),
+  );
   // Task 8.9 (decision 1): the reader exports what the grid shows; a lesson reader does not.
   const mayExport = useMayView('journal', 'export');
   // Task 8.4: a correction of the Academic Vice Principal or the Super Admin opens one lesson,
@@ -651,6 +660,7 @@ function LessonMode({
 }) {
   const { t, i18n } = useTranslation();
   const workName = useWorkName();
+  const workLabel = useWorkLabel();
   if (lesson === null) {
     return (
       <div className={PANEL}>
@@ -686,10 +696,16 @@ function LessonMode({
             <span className="font-semibold">{t('journal.card.classworks')}</span>{' '}
             {lesson.works
               .filter((work) => work.kind === 'classwork')
-              .map(
-                (work) => work.title ?? t('journal.grid.classworkShort', { number: work.position }),
-              )
-              .join(', ')}
+              .map((work) => (
+                // Task 10.7: the kind's tag in front of each work listed.
+                <span
+                  key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                  className="mr-2 inline-flex items-center gap-1"
+                >
+                  <WorkKindTag kind={work.kind} />
+                  {workName(work)}
+                </span>
+              ))}
           </p>
         )}
         {lesson.works.some((work) => work.kind === 'homework') && (
@@ -697,10 +713,15 @@ function LessonMode({
             <span className="font-semibold">{t('journal.card.checkedToday')}</span>{' '}
             {lesson.works
               .filter((work) => work.kind === 'homework')
-              .map(
-                (work) => work.title ?? t('journal.grid.homeworkShort', { number: work.position }),
-              )
-              .join(', ')}
+              .map((work) => (
+                <span
+                  key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                  className="mr-2 inline-flex items-center gap-1"
+                >
+                  <WorkKindTag kind={work.kind} />
+                  {workName(work)}
+                </span>
+              ))}
           </p>
         )}
         {lesson.given.some((one) => !one.notGiven) && (
@@ -708,8 +729,12 @@ function LessonMode({
             <span className="font-semibold">{t('journal.card.givenToday')}</span>{' '}
             {lesson.given
               .filter((one) => !one.notGiven)
-              .map((one, at) => one.title ?? t('journal.grid.homeworkShort', { number: at + 1 }))
-              .join(', ')}
+              .map((one, at) => (
+                <span key={String(at)} className="mr-2 inline-flex items-center gap-1">
+                  <WorkKindTag kind="homework" />
+                  {one.title ?? t('journal.grid.homeworkShort', { number: at + 1 })}
+                </span>
+              ))}
           </p>
         )}
       </div>
@@ -732,10 +757,22 @@ function LessonMode({
                 key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
                 variant="secondary"
                 disabled={works.busy}
+                // Task 10.7: the name says the kind in full; the tag shows its letter.
+                aria-label={
+                  work.total === null
+                    ? t('journal.lessonMode.setTotal', {
+                        work: workLabel(work.kind, workName(work)),
+                      })
+                    : t('journal.lessonMode.total', {
+                        work: workLabel(work.kind, workName(work)),
+                        total: work.total,
+                      })
+                }
                 onClick={() => {
                   works.openWork(lesson, work);
                 }}
               >
+                <WorkKindTag kind={work.kind} />
                 {work.total === null
                   ? t('journal.lessonMode.setTotal', { work: workName(work) })
                   : t('journal.lessonMode.total', { work: workName(work), total: work.total })}
@@ -825,12 +862,10 @@ function LessonMode({
                   ) : (
                     <span
                       key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
-                      aria-label={
-                        work.kind === 'classwork'
-                          ? t('journal.grid.classworkShort', { number: work.position })
-                          : t('journal.grid.homeworkShort', { number: work.position })
-                      }
+                      className="inline-flex items-center gap-1"
+                      aria-label={workLabel(work.kind, workName(work))}
                     >
+                      <WorkKindTag kind={work.kind} />
                       {cell?.works[workIndex]?.score ?? '—'}
                     </span>
                   );

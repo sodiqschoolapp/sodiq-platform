@@ -6,6 +6,7 @@ import {
   type TeachingHome,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { ExemptionCards } from '@/features/journal/exemption-cards';
 import { remindersQuery } from '@/features/journal/journal-api';
 import { RemindersPanel } from '@/features/journal/reminders-panel';
@@ -62,6 +63,42 @@ const itemsOf = (home: TeachingHome): Item[] =>
       a.at.branch.name.localeCompare(b.at.branch.name),
   );
 
+/** How often the today list looks at the time again: a re-render, never a call to the API. */
+const NOW_TICK_MS = 30_000;
+
+/**
+ * The server's time now (task 10.7): the moment the home answer carried (`now`, the injected
+ * clock, the demo clock where it is on) moved on by the time since the answer arrived, so a
+ * browser whose own clock is wrong still marks the right lesson. A timer draws the page again;
+ * it asks the server nothing (`.claude/rules/web.md`: nothing calls the API on a timer).
+ */
+function useServerNow(now: string | undefined, receivedAt: number): number | null {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTick((tick) => tick + 1);
+    }, NOW_TICK_MS);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+  return now === undefined ? null : Date.parse(now) + (Date.now() - receivedAt);
+}
+
+/**
+ * The lesson happening now (`12`, Home page): a lesson of today that this teacher gives, from
+ * its start to its end. A cancelled lesson, one a substitute took (`replacedHere`), an exam and
+ * a busy block of another branch are never it (decision 3).
+ */
+const isNow = (item: Item, now: number | null): boolean =>
+  now !== null &&
+  item.kind === 'lesson' &&
+  item.at.today &&
+  item.at.cancelCause === null &&
+  !item.at.replacedHere &&
+  Date.parse(item.at.startsAt) <= now &&
+  now < Date.parse(item.at.endsAt);
+
 /**
  * The lessons part of the home page of a person who teaches (task 5.9b, pull
  * request #198; `06`, Teachers who work in several branches: "Today's lessons
@@ -78,6 +115,7 @@ export function TeachingHome(): React.JSX.Element {
   const home = useQuery(teachingHomeQuery(branchId));
   // Task 8.7: the caller's reminders in the branch in use.
   const reminders = useQuery(remindersQuery(branchId));
+  const now = useServerNow(home.data?.now, home.dataUpdatedAt);
   if (home.isError) {
     return (
       <section className={PANEL}>
@@ -115,6 +153,7 @@ export function TeachingHome(): React.JSX.Element {
         )}
         <TodayList
           items={items.filter((item) => item.at.today)}
+          now={now}
           named={named}
           language={language}
         />
@@ -170,10 +209,13 @@ function useItemText(language: Language) {
 
 function TodayList({
   items,
+  now,
   named,
   language,
 }: {
   items: Item[];
+  /** The server's time now, `null` before the answer. */
+  now: number | null;
   named: boolean;
   language: Language;
 }) {
@@ -232,8 +274,22 @@ function TodayList({
               );
             }
             const lesson = item.at;
+            // Task 10.7: the row of the lesson happening now is highlighted (the open-row fill and
+            // semibold text, so not by colour alone) and named the current time for screen
+            // readers; no badge and no extra text (decision 4).
+            const current = isNow(item, now);
             return (
-              <TableRow key={item.key} data-lesson={lesson.id}>
+              <TableRow
+                key={item.key}
+                data-lesson={lesson.id}
+                {...(current
+                  ? {
+                      'data-now': 'true',
+                      'aria-current': 'time' as const,
+                      className: 'bg-today font-semibold',
+                    }
+                  : {})}
+              >
                 <TableCell>{lesson.lessonNumber ?? ''}</TableCell>
                 <TableCell>{time}</TableCell>
                 <TableCell>{lesson.unit.name}</TableCell>
@@ -251,6 +307,7 @@ function TodayList({
                 <TableCell>
                   {lesson.journalId !== null && (
                     <OpenJournal
+                      now={current}
                       journalId={lesson.journalId}
                       date={lesson.date}
                       branchId={lesson.branch.id}
@@ -273,10 +330,13 @@ function TodayList({
  * `useSwitchBranch`, so the journal is read with that branch.
  */
 function OpenJournal({
+  now,
   journalId,
   date,
   branchId,
 }: {
+  /** Task 10.7: the lesson happening now; its button pulses, unless reduced motion is asked for. */
+  now: boolean;
   journalId: string;
   date: string;
   branchId: string;
@@ -292,6 +352,8 @@ function OpenJournal({
     <Button
       variant="secondary"
       size="sm"
+      // `motion-safe:` only: under prefers-reduced-motion no animation applies (`12`, Home page).
+      {...(now ? { className: 'motion-safe:animate-now-pulse', 'data-pulse': 'true' } : {})}
       onClick={() => {
         if (branchId === current) {
           open();

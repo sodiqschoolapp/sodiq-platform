@@ -240,6 +240,11 @@ export type HomeDay = z.infer<typeof homeDaySchema>;
 export const teachingHomeSchema = z.object({
   /** Today in the branch of the request. */
   today: schoolDateSchema,
+  /**
+   * Task 10.7: the moment of the request by the server's clock (the demo clock where it is on),
+   * from which the page marks the lesson happening now.
+   */
+  now: z.iso.datetime(),
   /** Monday and Sunday of the week of `today`. */
   week: z.object({ from: schoolDateSchema, to: schoolDateSchema }),
   /** The branches read in full, by name. */

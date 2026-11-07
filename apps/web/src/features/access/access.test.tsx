@@ -70,6 +70,7 @@ const VIEWS_ONLY: ReadonlySet<Role> = new Set([
 /** The teaching home of task 5.9b with nothing in the week. */
 const NO_LESSONS = {
   today: '2026-10-19',
+  now: '2026-10-19T03:00:00.000Z',
   week: { from: '2026-10-19', to: '2026-10-25' },
   branches: [],
   days: [],

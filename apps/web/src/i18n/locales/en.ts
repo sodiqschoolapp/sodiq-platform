@@ -6887,6 +6887,12 @@ export const en = {
       attendance: 'Attendance',
       classworkShort: 'CW {{number}}',
       homeworkShort: 'HW {{number}}',
+      // Task 10.7 (`07`, Layout): the tag of a work's kind, its full word on hover.
+      kind: {
+        classwork: { letter: 'C', word: 'Classwork' },
+        homework: { letter: 'H', word: 'Homework' },
+      },
+      workLabel: '{{kind}}: {{title}}',
       soni: 'Soni',
       givenFrom: 'from {{date}}',
       givenOn: 'Given on {{date}}, checked at this lesson',

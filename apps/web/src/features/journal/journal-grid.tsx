@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { momentText, schoolDateText, weekdayName } from '@/lib/dates';
+import { WorkKindTag, type WorkKind } from './work-kind-tag';
 import type { AttendanceEntry } from './attendance-entry';
 import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
@@ -201,6 +202,8 @@ function TwoLineHeader(
     more?: HeaderAction;
     /** The menu on the second line: a work's title takes the whole first. */
     menuBelow?: boolean;
+    /** Task 10.7: a work column's kind, drawn as its tag in front of the title. */
+    kind?: WorkKind;
   },
 ) {
   // Every column the same two lines (`07`, Layout, rows 2 and 3): the label with the column's
@@ -209,6 +212,7 @@ function TwoLineHeader(
   return (
     <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" aria-label={props.label}>
       <span className="flex min-h-6 min-w-0 items-center gap-0.5">
+        {props.kind !== undefined && <WorkKindTag kind={props.kind} className="mr-0.5" />}
         <span className="truncate leading-tight font-semibold">{props.displayName}</span>
         {props.more !== undefined && props.menuBelow !== true && (
           <HeaderButton button={props.more} />
@@ -365,6 +369,14 @@ export const HIDEABLE_COLUMNS = [
   'grade',
 ] as const;
 export type HideableColumn = (typeof HIDEABLE_COLUMNS)[number];
+
+/**
+ * The columns a browser with no choice of its own hides: every hideable column but the photo
+ * (task 10.7; owner, 7 November 2026). Name, number and lessons are never hideable.
+ */
+export const JOURNAL_DEFAULT_HIDDEN: readonly HideableColumn[] = HIDEABLE_COLUMNS.filter(
+  (column) => column !== 'photo',
+);
 
 /** The hideable columns this grid draws, in their order: the choices of the column chooser. */
 export function hideableColumnsOf(grid: Grid, month: string | null): HideableColumn[] {
@@ -990,6 +1002,9 @@ export function JournalGridView({
         // The plan's title (09: "The titles come from the plan"); a work added by hand is numbered.
         const title = work.title ?? `${short} · ${t('journal.works.unplanned')}`;
         const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
+        // Task 10.7: the column's accessible name and its hover name the kind in full.
+        const kindWord = t(`journal.grid.kind.${work.kind}.word`);
+        const label = t('journal.grid.workLabel', { kind: kindWord, title });
         const source =
           work.kind === 'homework' &&
           work.sourceLessonId !== null &&
@@ -1004,7 +1019,7 @@ export function JournalGridView({
           colId: `${lesson.id}:${workKey(work)}`,
           headerName: title,
           headerTooltip: [
-            title,
+            label,
             work.carriedFrom === null ? null : t('journal.works.carried'),
             given === null
               ? null
@@ -1023,7 +1038,8 @@ export function JournalGridView({
             ]
               .filter((part) => part !== null)
               .join(' · '),
-            label: work.notHeld ? `${title}, ${t('journal.grid.notHeld')}` : title,
+            label: work.notHeld ? `${label}, ${t('journal.grid.notHeld')}` : label,
+            kind: work.kind,
             menuBelow: true,
             ...(works === undefined
               ? {}

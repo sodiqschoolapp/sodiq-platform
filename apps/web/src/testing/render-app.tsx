@@ -84,6 +84,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
   'GET /api/timetable/home': () =>
     json({
       today: '2026-10-19',
+      now: '2026-10-19T03:00:00.000Z',
       week: { from: '2026-10-19', to: '2026-10-25' },
       branches: [],
       days: [],

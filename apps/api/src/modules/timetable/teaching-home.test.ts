@@ -160,6 +160,9 @@ describe('the teaching home page', () => {
         for (const branch of [here.branch, away.branch]) {
           const read = homeOf(await home(branch));
           expect(read.today).toBe(DATE);
+          // Task 10.7: the moment of the injected clock, from which the page marks the lesson
+          // happening now (build plan 10.7 (3): "by the time the server reports").
+          expect(read.now).toBe(new Date(MOMENT).toISOString());
           expect(read.week).toEqual({ from: DATE, to: '2026-10-25' });
           // Another teacher's lesson of the same slot is never listed.
           expect(

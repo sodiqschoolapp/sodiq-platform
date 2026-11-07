@@ -217,15 +217,19 @@ const hiddenKey = (listId: string): string => `sodiq.list.${listId}.hidden`;
 /**
  * The hidden columns of a list are kept in the browser (decided by the owner,
  * task 0.8b). A browser may refuse storage: the choice then lasts for the visit.
+ * A browser that holds no choice (or one it cannot read) gets `fallback`, the
+ * list's default; a stored choice is kept, an empty one included (task 10.7).
  */
-export function readHiddenColumns(listId: string): string[] {
+export function readHiddenColumns(listId: string, fallback: readonly string[] = []): string[] {
   try {
-    const stored: unknown = JSON.parse(window.localStorage.getItem(hiddenKey(listId)) ?? '[]');
+    const raw = window.localStorage.getItem(hiddenKey(listId));
+    if (raw === null) return [...fallback];
+    const stored: unknown = JSON.parse(raw);
     return Array.isArray(stored)
       ? stored.filter((key): key is string => typeof key === 'string')
-      : [];
+      : [...fallback];
   } catch {
-    return [];
+    return [...fallback];
   }
 }
 

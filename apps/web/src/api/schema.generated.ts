@@ -80516,6 +80516,8 @@ export interface operations {
                     "application/json": {
                         /** Format: date */
                         today: string;
+                        /** Format: date-time */
+                        now: string;
                         week: {
                             /** Format: date */
                             from: string;
