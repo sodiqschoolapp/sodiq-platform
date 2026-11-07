@@ -2,6 +2,10 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: new tasks paused (owner gate before 11.9)
+
+The owner paused the build plan after 11.7 (11.8 is dropped, #312): an owner gate line now stands before 11.9 in `docs/build-plan.md`, so the start routine starts no new task. The time goes into improving what is already built. The owner deletes the gate line to resume.
+
 ## 7 November 2026: staff date of birth, phone and admission date optional; hours in the staff import
 
 Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
