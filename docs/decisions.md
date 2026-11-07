@@ -428,6 +428,11 @@ Plan approved on pull request #299 with corrections 1 to 3. Flagged on issue #42
 | **Build decision.** `digest_parts` and `digest_entries` keep the student id without a key, and the entries no journal key | A student merge or branch move has nothing of the log to carry; a digest never blocks a change of the journal (review correction 2) |
 | **Build decision.** A score leaves the journal by being cleared (a work that holds a number cannot be removed, 8.1); an entry whose row is gone (a lesson's forced delete) is listed "removed" | Review correction 2 |
 | **Build decision.** No digest falls due while the bot is not set up | Nothing could be sent |
+| **Build decision.** A held lesson that is exempt is left out of "held": a period of exempt lessons only, with nothing saved, sends nothing | Decision 4, "exempt left out"; `10`, Nothing new (spec review of the code, should-fix 1) |
+| **Build decision.** A work comment is sent only beside a typed score, as the portal shows it | 11.3 decision 8 (spec review of the code, must-fix 1) |
+| **Build decision.** The send log keeps the children each digest was for at every attempt (`digest_parts`), and marks those the delivered message named; it reads one page of 500 at a time, filtered on the server by date and status | `10`, Sending: "for which children ... delivered or not" (spec review of the code, must-fixes 2 and 3) |
+| **Build decision.** A comment is compared by its version: a text edited and edited back is listed once "corrected" | The text sent is not stored; an edit is a change the parent may want to see (spec review of the code, should-fix 2) |
+| **Build decision.** The link is read, not locked, while Telegram answers: a sign-out or reset at that very second may let one message reach the chat whose link it ends | No sign-in or reset waits on Telegram (permission review of the code, should-fix 6; spec review should-fix 4) |
 
 ## 7 November 2026: the Telegram bot and the chat link (task 11.4)
 
