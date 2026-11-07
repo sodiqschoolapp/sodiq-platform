@@ -8,7 +8,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Lesson card**: answers `plan` (`edit`: open, request or none; the item for the owner); the web edits the item there through the plan's routes (`PlanItemEditor`, shared with the row panel) or sends the edit request for the lesson.
 - **Files of a work** (0162): `lesson_plan_files.work_id`, 10 materials and 10 per work, a work kept while it holds a live file; files picked while writing are uploaded after the save; the portal gives a homework's own files only. An item with no topic counts as an empty row everywhere (list, completeness, header, portal topic).
 
-Left out: files attached through the journal's add (decision 9: through the plan or the card); the files a master take removes are not named in its audit entry; the planned separation of a shared plan on an add (never needed: `placeNew` moves no held item).
+Left out: files attached through the journal's add (decision 9: through the plan or the card); the planned separation of a shared plan on an add (never needed: `placeNew` moves no held item).
 
 The next sessions must know:
 

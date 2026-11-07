@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
+import { useLeave } from '@/components/unsent/unsent-changes';
 import { FailureAlert } from '@/components/failure-alert';
 import { TextAreaField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -106,8 +107,12 @@ export function LessonCardDialog({
     },
   });
   const confirm = useConfirm();
+  const leave = useLeave();
   // Code review (spec 4): files not uploaded are never dropped without a word; closing asks.
-  const close = () => {
+  const close = async () => {
+    // Code review: an item being edited, with its typed values and held files, is asked about
+    // first, as every unsent form (`useLeave`).
+    if (editing && !(await leave.leave())) return;
     if (failed.length === 0) {
       onClose();
       return;
@@ -158,7 +163,7 @@ export function LessonCardDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) close();
+        if (!open) void close();
       }}
     >
       <DialogContent aria-label={title}>
@@ -454,7 +459,12 @@ export function LessonCardDialog({
               {t('journal.works.button')}
             </Button>
           )}
-          <Button variant="ghost" onClick={close}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              void close();
+            }}
+          >
             {t('journal.entry.close')}
           </Button>
         </DialogFooter>

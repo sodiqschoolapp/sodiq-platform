@@ -794,7 +794,8 @@ export class PlansService {
             : {
                 number: next.number,
                 date: next.date,
-                topic: items.find((item) => item.position === next.number)?.topic ?? null,
+                // Task 10.8 (review correction 1): an item with no topic yet shows none.
+                topic: items.find((item) => item.position === next.number)?.topic.trim() || null,
               },
         notCovered:
           items.filter((item) => item.position > rows.length).length +

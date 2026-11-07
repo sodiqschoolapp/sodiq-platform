@@ -6505,6 +6505,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       moved_few: '{{count}} записи переходят на другие уроки',
       moved_many: '{{count}} записей переходят на другие уроки',
       moved_other: '{{count}} записи переходят на другие уроки',
+      noTopic: 'строка ещё без темы',
       notFitting: 'Больше не помещаются: {{topics}}',
       emptyRows_one: '{{count}} строка остаётся пустой',
       emptyRows_few: '{{count}} строки остаются пустыми',

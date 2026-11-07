@@ -6217,6 +6217,7 @@ export const uz: Texts<'one' | 'other'> = {
       plan: '{{unit}}, {{subject}}, {{quarter}}-chorak',
       moved_one: '{{count}} ta yozuv boshqa darsga oʻtadi',
       moved_other: '{{count}} ta yozuv boshqa darslarga oʻtadi',
+      noTopic: 'hali mavzusiz qator',
       notFitting: 'Endi sigʻmaydi: {{topics}}',
       emptyRows_one: '{{count}} ta qator boʻsh qoladi',
       emptyRows_other: '{{count}} ta qator boʻsh qoladi',

@@ -6162,6 +6162,7 @@ export const en = {
       plan: '{{unit}}, {{subject}}, quarter {{quarter}}',
       moved_one: '{{count}} item moves to another lesson',
       moved_other: '{{count}} items move to another lesson',
+      noTopic: 'a row with no topic yet',
       notFitting: 'No longer fit: {{topics}}',
       emptyRows_one: '{{count}} row left empty',
       emptyRows_other: '{{count}} rows left empty',

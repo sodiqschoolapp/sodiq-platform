@@ -468,6 +468,26 @@ describe('the lesson card', () => {
       });
     });
 
+    // Code review of the task, finding 2: closing the card while its item is edited asks first.
+    it('asks before Close takes away an item being edited with a picked file', async () => {
+      const { dialog } = await openCard(OWNED);
+      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.editPlan }));
+      fireEvent.change(await within(dialog).findByLabelText(en.plans.plan.topic), {
+        target: { value: 'Fractions, again' },
+      });
+      fireEvent.change(within(dialog).getByLabelText(en.plans.files.attachMaterial), {
+        target: { files: [new File(['%PDF'], 'notes.pdf', { type: 'application/pdf' })] },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.entry.close }));
+      expect(await screen.findByText(en.unsent.leaveTitle)).toBeDefined();
+      // Staying keeps the form with its file.
+      fireEvent.click(screen.getByRole('button', { name: en.unsent.stay }));
+      await waitFor(() => {
+        expect(screen.queryByText(en.unsent.leaveTitle)).toBeNull();
+      });
+      expect(within(dialog).getByText('notes.pdf')).toBeDefined();
+    });
+
     it('gives a substitute and any other reader no way into the plan', async () => {
       const { dialog } = await openCard({
         ...OWNED,

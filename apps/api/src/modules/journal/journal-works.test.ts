@@ -8,6 +8,7 @@ import {
   planItemFileSchema,
   planItemSchema,
   planListSchema,
+  planParallelSchema,
   planSchema,
   scoresSavedSchema,
   workAddedSchema,
@@ -1670,6 +1671,37 @@ describe('classwork and homework', () => {
       });
     });
 
+    // Review correction 1: the parallel classes show a row the add made with no topic.
+    it('shows no topic for the reached row of the parallel classes when the add made its item', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        await added(calls, s.third, 'classwork', 'Dictation');
+      });
+      const head = await account();
+      const headIn = [
+        { role: 'head_teacher' as const, branchId: s.branch, subjectIds: [s.subject] },
+      ];
+      await as(head, s.branch, headIn, async (calls) => {
+        const grade = (
+          await t.database.migrator
+            .selectFrom('classes')
+            .select('grade')
+            .where('id', '=', s.classId)
+            .executeTakeFirstOrThrow()
+        ).grade;
+        const parallel = planParallelSchema.parse(
+          ok(
+            await calls.get(
+              `/api/plans/parallel?subjectId=${s.subject}&grade=${String(grade)}&quarterId=${s.q1}`,
+            ),
+          ),
+        );
+        const unit = parallel.units.find((one) => one.journalId === s.journal);
+        expect(unit?.reached).toMatchObject({ number: await rowOf(s, s.third), topic: null });
+      });
+    });
+
     it('counts a row with no topic as incomplete and exports such a plan', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
@@ -1780,7 +1812,10 @@ describe('classwork and homework', () => {
             .execute()
         ).map((row) => row.starts_at);
       const rows = await otherRows();
-      const started = rows.filter((at) => at.getTime() <= new Date(MOMENT).getTime()).length;
+      // On Monday 19 October after the first lesson: the other class's lesson of that day (slot
+      // 3) has not started yet, so the new item lands on a row not started there.
+      const AT = '2026-10-19T08:50:00+05:00';
+      const started = rows.filter((at) => at.getTime() <= new Date(AT).getTime()).length;
       await t.database.migrator
         .insertInto('lesson_plan_places')
         .values({
@@ -1791,8 +1826,12 @@ describe('classwork and homework', () => {
           position: 1,
         })
         .execute();
-      const work = await as(owner, s.branch, teacherIn(s), async (calls) =>
-        added(calls, s.second, 'homework', 'Exercises'),
+      const work = await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => added(calls, s.second, 'homework', 'Exercises'),
+        AT,
       );
       const places = await t.database.migrator
         .selectFrom('lesson_plan_places')
@@ -1803,6 +1842,20 @@ describe('classwork and homework', () => {
       expect(places.find((one) => one.item_id === work.itemId)?.position).toBe(started + 1);
       // No separation: both classes keep the one plan.
       expect(await t.entries('plan.separated')).toEqual([]);
+      // Review correction 1: where the other class stands, its next row's item has no topic yet
+      // and shows none.
+      await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          const answer = planSchema.parse(
+            ok(await calls.get(`/api/plans/journals/${s.journal}?quarterId=${s.q1}`)),
+          );
+          expect(answer.sharedWith[0]?.next).toMatchObject({ number: started + 1, topic: null });
+        },
+        AT,
+      );
     });
 
     // Review correction 2 (`09`, Master plans: "Teachers may start from the master, from a copy,
@@ -1850,6 +1903,37 @@ describe('classwork and homework', () => {
         expect(row?.item?.id).toBe(work.itemId);
         expect(row?.item?.classworks.map((one) => one.title)).toEqual(['Dictation']);
       });
+    });
+
+    // Code review 1 (`.claude/rules/journal.md`: "a test sends the action through the lesson
+    // that shows it"): a homework added in the journal is renamed and removed through its check
+    // lesson; a lesson that neither gives nor shows it is refused.
+    it('renames and removes a homework added in the journal through its check lesson, and refuses a lesson that does not show it', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = await added(calls, s.second, 'homework', 'Exercises');
+        const elsewhere = await calls.put(
+          `/api/journal/lessons/${s.first}/plan-works/${work.planWorkId}/title`,
+          { title: 'Reading', baseTitle: 'Exercises' },
+        );
+        expect(codeOf(elsewhere)).toBe('work_not_in_lesson');
+        expect(
+          codeOf(await calls.del(`/api/journal/lessons/${s.first}/plan-works/${work.planWorkId}`)),
+        ).toBe('work_not_in_lesson');
+        ok(
+          await calls.put(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}/title`, {
+            title: 'Reading',
+            baseTitle: 'Exercises',
+          }),
+        );
+        expect((await planWork(work.planWorkId)).title).toBe('Reading');
+        ok(await calls.del(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`), 204);
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).works).toEqual([]);
+      });
+      expect((await t.entries('journal.work_rename', s.third)).length).toBe(1);
+      expect((await t.entries('journal.work_delete', s.third)).length).toBe(1);
     });
 
     it('lets the substitute add a work into the plan, and not change the item', async () => {
@@ -1994,9 +2078,13 @@ describe('classwork and homework', () => {
         const isReady = new Promise<void>((resolve) => {
           ready = resolve;
         });
+        let pid = 0;
         const held = t.database.migrator
           .transaction()
           .execute(async (transaction) => {
+            pid =
+              (await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction))
+                .rows[0]?.pid ?? 0;
             await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
             await transaction
               .selectFrom('lesson_plan_items')
@@ -2010,14 +2098,16 @@ describe('classwork and homework', () => {
           })
           .catch((error: unknown) => error);
         await isReady;
-        return { held, release };
+        return { held, release, pid };
       };
-      const waitForLock = async () => {
+      // The request waits on the held transaction itself (`.claude/rules/api.md`: asserted
+      // with `pg_blocking_pids`; code review 6).
+      const waitForLock = async (heldPid: number) => {
         for (let attempt = 0; attempt < 100; attempt += 1) {
           const waiting = await sql<{ waiting: number }>`
-            select count(*)::int as waiting from pg_locks l
-            join pg_stat_activity a on a.pid = l.pid
-            where a.datname = current_database() and not l.granted
+            select count(*)::int as waiting from pg_stat_activity a
+            where a.datname = current_database()
+              and ${heldPid}::int = any(pg_blocking_pids(a.pid))
           `.execute(t.database.migrator);
           if ((waiting.rows[0]?.waiting ?? 0) >= 1) return;
           await new Promise((resolve) => setTimeout(resolve, 50));
@@ -2035,7 +2125,7 @@ describe('classwork and homework', () => {
         const started = new Promise<Response>((resolve, reject) => {
           addAt(calls, s.second, 'classwork', 'Essay').then(resolve, reject);
         });
-        await waitForLock();
+        await waitForLock(first.pid);
         first.release();
         expect(await first.held).toBeUndefined();
         expect(codeOf(await started)).toBe('lesson_has_plan_item');
@@ -2065,7 +2155,7 @@ describe('classwork and homework', () => {
         const started = new Promise<Response>((resolve, reject) => {
           writeTopic(calls, work.itemId, 'Fractions').then(resolve, reject);
         });
-        await waitForLock();
+        await waitForLock(second.pid);
         second.release();
         expect(await second.held).toBeUndefined();
         // The save read its base before the add committed: the works it did not name are kept.

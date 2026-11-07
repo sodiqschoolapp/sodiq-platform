@@ -346,12 +346,14 @@ export async function takeFromMaster(
   branchId: string,
   itemId: string,
   source: MasterContentRow,
-): Promise<void> {
+): Promise<string[]> {
   await transaction
     .updateTable('lesson_plan_items')
     .set({ topic: source.topic, objectives: source.objectives, links: [...source.links] })
     .where('id', '=', itemId)
     .execute();
-  await removePlanWorks(transaction, itemId);
+  // Task 10.8: the files of the works replaced are removed with them; the caller audits them.
+  const removedFiles = await removePlanWorks(transaction, itemId);
   await insertWorksFrom(transaction, branchId, itemId, source);
+  return removedFiles;
 }
