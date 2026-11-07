@@ -2190,7 +2190,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       quietUntil: 'Тихие часы до',
     },
     parent: {
-      title: 'Сводка в Telegram',
+      title: 'Сводка от бота школы',
       frequency: 'Как часто',
       frequencies: {
         daily: 'Каждый день',

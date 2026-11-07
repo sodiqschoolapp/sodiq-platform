@@ -2081,7 +2081,7 @@ export const en = {
       quietUntil: 'Quiet hours until',
     },
     parent: {
-      title: 'Digest in Telegram',
+      title: 'Digest of the school bot',
       frequency: 'How often',
       frequencies: {
         daily: 'Every day',

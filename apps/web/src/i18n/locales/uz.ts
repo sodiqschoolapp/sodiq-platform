@@ -2113,7 +2113,7 @@ export const uz: Texts<'one' | 'other'> = {
       quietUntil: 'Tinch soatlar tugashi',
     },
     parent: {
-      title: 'Telegramdagi xabarnoma',
+      title: 'Maktab botining xabarnomasi',
       frequency: 'Qanchalik tez-tez',
       frequencies: {
         daily: 'Har kuni',
