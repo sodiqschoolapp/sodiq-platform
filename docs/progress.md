@@ -12,7 +12,7 @@ Left out: tags in the plan editor (the kinds are listed under separate headings 
 
 The next sessions must know:
 
-- A web test that reads the UID or a figure column of the journal stores a choice first (`showEveryJournalColumn()` of `src/testing/journal-columns.ts`): a fresh browser hides them.
+- A web test that reads the UID or a figure column of the journal stores a choice first (`showEveryJournalColumn()` of `src/testing/journal-columns.ts`), and a browser test sets `sodiq.list.journal.hidden` to `[]` with `page.addInitScript` (`e2e/transfers.spec.ts`): a fresh browser hides them.
 - Nothing else moves on its own: `tooling/motion.test.ts` holds `now-pulse` to the teacher home and to `motion-safe:`.
 
 ## 7 November 2026: task 11.6 Rating in the portal
