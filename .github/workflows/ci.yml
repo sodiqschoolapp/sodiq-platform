@@ -74,14 +74,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The API's test files in three parts of the same size (Vitest
-          # --shard); everything else (web and the packages) in a fourth.
-          - part: api 1/3
-            command: pnpm --filter @sodiq/api exec vitest run --shard=1/3
-          - part: api 2/3
-            command: pnpm --filter @sodiq/api exec vitest run --shard=2/3
-          - part: api 3/3
-            command: pnpm --filter @sodiq/api exec vitest run --shard=3/3
+          # The API's test files in four parts of the same time (Vitest --shard
+          # with the sequencer of apps/api/src/testing/duration-sequencer.ts and
+          # the times of apps/api/test-durations.json; owner, 7 November 2026:
+          # three parts of the same number of files took 11 to 12 minutes, four
+          # of the same time about 7, bounded by the slowest file); everything
+          # else (web and the packages) in a fifth.
+          - part: api 1/4
+            command: pnpm --filter @sodiq/api exec vitest run --shard=1/4
+          - part: api 2/4
+            command: pnpm --filter @sodiq/api exec vitest run --shard=2/4
+          - part: api 3/4
+            command: pnpm --filter @sodiq/api exec vitest run --shard=3/4
+          - part: api 4/4
+            command: pnpm --filter @sodiq/api exec vitest run --shard=4/4
           - part: web and packages
             command: pnpm turbo run test --filter=!@sodiq/api
     services:
@@ -109,6 +115,18 @@ jobs:
         run: psql -h localhost -U postgres -f db/setup/local.sql
         env:
           # The superuser of the service container; only this step uses it.
+          PGPASSWORD: postgres
+      - name: Let the throwaway database skip disk safety
+        # CI's PostgreSQL lives for one job and holds only test data: writes need
+        # not wait for the disk (owner, 7 November 2026). The rules, constraints
+        # and every test stay the same; only fsync and its kin are off, here only.
+        run: >-
+          psql -h localhost -U postgres
+          -c "alter system set fsync = off"
+          -c "alter system set synchronous_commit = off"
+          -c "alter system set full_page_writes = off"
+          -c "select pg_reload_conf()"
+        env:
           PGPASSWORD: postgres
       - name: Build the packages the tests import
         # What `turbo run test` builds first (its ^build): the API imports the
@@ -175,6 +193,18 @@ jobs:
         run: psql -h localhost -U postgres -f db/setup/local.sql
         env:
           # The superuser of the service container; only this step uses it.
+          PGPASSWORD: postgres
+      - name: Let the throwaway database skip disk safety
+        # CI's PostgreSQL lives for one job and holds only test data: writes need
+        # not wait for the disk (owner, 7 November 2026). The rules, constraints
+        # and every test stay the same; only fsync and its kin are off, here only.
+        run: >-
+          psql -h localhost -U postgres
+          -c "alter system set fsync = off"
+          -c "alter system set synchronous_commit = off"
+          -c "alter system set full_page_writes = off"
+          -c "select pg_reload_conf()"
+        env:
           PGPASSWORD: postgres
       - name: Apply migrations
         run: pnpm db:migrate
