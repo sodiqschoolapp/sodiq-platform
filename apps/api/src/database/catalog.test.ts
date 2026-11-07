@@ -61,15 +61,15 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   telegram_links:
     'The Telegram chat link of a Parent account, which has no branch, written at sign-in before any branch is known; a row holds ids, a Telegram user id and moments (task 11.4, pull request #298).',
   digest_settings:
-    'The parents\' digest time and quiet hours of the whole school, one row set by the Super Admin (10, The parents\' digest; task 11.5, pull request #299). Clock times only.',
+    "The parents' digest time and quiet hours of the whole school, one row set by the Super Admin (10, The parents' digest; task 11.5, pull request #299). Clock times only.",
   digest_frequencies:
     'The digest frequency a Parent account chose; an account has no branch (task 11.5, pull request #299). An id, a frequency and a moment.',
   digests:
-    'One parents\' digest of a Parent account and date, the send log the Super Admin reads; a parent\'s digest covers children in several branches (task 11.5, decision 11 of pull request #299). Ids, a status and moments.',
+    "One parents' digest of a Parent account and date, the send log the Super Admin reads; a parent's digest covers children in several branches (task 11.5, decision 11 of pull request #299). Ids, a status and moments.",
   digest_parts:
-    'The children a delivered digest named, first name and class as sent (task 11.5, decision 11 of pull request #299); read by the Super Admin\'s send log and by the digest itself.',
+    "The children a delivered digest named, first name and class as sent (task 11.5, decision 11 of pull request #299); read by the Super Admin's send log and by the digest itself.",
   digest_entries:
-    'What a delivered parents\' digest carried, one row per entry with the value sent; one digest covers children in several branches and is read by the digest job alone (task 11.5, decision 11 of pull request #299). Ids, a date and the values sent.',
+    "What a delivered parents' digest carried, one row per entry with the value sent; one digest covers children in several branches and is read by the digest job alone (task 11.5, decision 11 of pull request #299). Ids, a date and the values sent.",
 };
 
 /**

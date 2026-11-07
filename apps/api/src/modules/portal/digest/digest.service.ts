@@ -489,23 +489,21 @@ export class DigestService {
           child,
           periodSpans,
           branches: [...new Set(yearSpans.map((one) => one.branchId))],
-          sent: sent.rows.map(
-            (row): SentEntry => ({
-              kind: row.kind,
-              sourceId: row.source_id,
-              removed: row.state === 'removed',
-              mark: row.sent_mark,
-              score: row.sent_score,
-              total: row.sent_total,
-              version: row.sent_version,
-              date: row.lesson_date,
-              subjectId: row.subject_id,
-              subject:
-                row.name_uz === null || row.name_ru === null || row.name_en === null
-                  ? null
-                  : { uz: row.name_uz, ru: row.name_ru, en: row.name_en },
-            }),
-          ),
+          sent: sent.rows.map((row): SentEntry => ({
+            kind: row.kind,
+            sourceId: row.source_id,
+            removed: row.state === 'removed',
+            mark: row.sent_mark,
+            score: row.sent_score,
+            total: row.sent_total,
+            version: row.sent_version,
+            date: row.lesson_date,
+            subjectId: row.subject_id,
+            subject:
+              row.name_uz === null || row.name_ru === null || row.name_en === null
+                ? null
+                : { uz: row.name_uz, ru: row.name_ru, en: row.name_en },
+          })),
         });
       }
       return found;
