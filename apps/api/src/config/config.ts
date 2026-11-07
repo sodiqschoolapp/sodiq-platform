@@ -112,6 +112,25 @@ const environmentSchema = z.object({
       .regex(/^[A-Za-z][A-Za-z0-9_]{4,31}$/)
       .optional(),
   ),
+  // Task 11.4: the bot token and the webhook secret of the school's Telegram bot, set by the
+  // owner on Render (`sync: false`), never in the repository. Unset, everything Telegram is
+  // refused (401) and the portal works in a browser as before. Only `TelegramBot` and the
+  // launch check read the token, only the webhook guard the secret; neither is ever logged.
+  TELEGRAM_BOT_TOKEN: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^\d{1,20}:[A-Za-z0-9_-]{20,100}$/)
+      .optional(),
+  ),
+  // Telegram allows 1 to 256 characters A-Z, a-z, 0-9, _ and - (setWebhook, secret_token).
+  TELEGRAM_WEBHOOK_SECRET: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{16,256}$/)
+      .optional(),
+  ),
 });
 
 /**
@@ -181,6 +200,10 @@ const PROBLEM: Record<VariableName, string> = {
     'DEMO_CLOCK must be 0 or 1, and 1 only on the test environment (SENTRY_ENVIRONMENT test or development, never the production address)',
   PARENT_BOT_USERNAME:
     'PARENT_BOT_USERNAME must be the name of a Telegram bot without the @, 5 to 32 letters, digits or _, or unset',
+  TELEGRAM_BOT_TOKEN:
+    'TELEGRAM_BOT_TOKEN must be the token @BotFather gave (digits, a colon, then letters), or unset',
+  TELEGRAM_WEBHOOK_SECRET:
+    'TELEGRAM_WEBHOOK_SECRET must be 16 to 256 letters, digits, _ or -, or unset',
 };
 
 export interface AppConfig {
@@ -208,6 +231,17 @@ export interface AppConfig {
   demoClock: boolean;
   /** Task 11.1: the public name of the school's Telegram bot for the parents' slips, or none. */
   parentBotUsername: string | null;
+  /** Task 11.4: the school's Telegram bot; undefined while the owner has not set it. */
+  telegram: TelegramConfig | undefined;
+}
+
+export interface TelegramConfig {
+  /** Only `TelegramBot` and the launch check read it. Never logged. */
+  botToken: string;
+  /** Only the webhook's check reads it; undefined: the webhook refuses every call. */
+  webhookSecret: string | undefined;
+  /** The origin of the web app, for the mini app's button. */
+  webOrigin: string;
 }
 
 export interface MonitoringConfig {
@@ -339,6 +373,14 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     },
     demoClock: data.DEMO_CLOCK === '1',
     parentBotUsername: data.PARENT_BOT_USERNAME ?? null,
+    telegram:
+      data.TELEGRAM_BOT_TOKEN === undefined
+        ? undefined
+        : {
+            botToken: data.TELEGRAM_BOT_TOKEN,
+            webhookSecret: data.TELEGRAM_WEBHOOK_SECRET,
+            webOrigin: data.WEB_ORIGIN,
+          },
   };
 }
 

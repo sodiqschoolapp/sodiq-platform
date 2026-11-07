@@ -282,6 +282,9 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // The password reset by email (task 2.3c-2, decision 1 of pull request #66).
   'POST /api/auth/password-reset': 'public',
   'POST /api/auth/password-reset/confirm': 'public',
+  // Task 11.4 (`02`: "the Telegram bot's webhook, which checks the secret Telegram sends with
+  // each update"; plan of #298, review decision 1, Look first).
+  'POST /api/telegram/webhook': 'public',
   // Task 11.1 (decision 2 of pull request #292, Look first): a parent session reaches the four
   // routes marked `any_signed_in_parent` only ("signs in and changes its own password and
   // language", approved by the owner), and every other route refuses it.
@@ -294,6 +297,10 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/auth/sign-out': 'any_signed_in_parent',
   'POST /api/auth/sign-out-everywhere': 'any_signed_in',
   'PUT /api/auth/language': 'any_signed_in_parent',
+  // Task 11.4 (approved by the owner on 6 November 2026: "the `parent` role links and unlinks
+  // its own chat"; plan of #298, review decision 4, Look first): the fifth route of a parent
+  // session. A staff session is answered 409 `no_telegram_link` (telegram.test.ts).
+  'DELETE /api/auth/telegram-link': 'any_signed_in_parent',
   // The parent portal (task 11.2, decision 1 of pull request #294, Look first): a Parent
   // account only, every staff role refused; each route checks the child scope itself
   // (`portal.test.ts`).
@@ -640,6 +647,12 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/people/classes/:classId/parent-slips': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/classes/:classId/parent-slips': { branch: 'request', roles: STUDENT_EDITORS },
   'POST /api/people/parents/:relativeId/password-reset': {
+    branch: 'request',
+    roles: STUDENT_EDITORS,
+  },
+  // Task 11.4 (plan of #298, decision 3, Look first): "Unlink Telegram" under the reset's
+  // action, the same roles and scope (telegram.test.ts).
+  'POST /api/people/parents/:relativeId/telegram-unlink': {
     branch: 'request',
     roles: STUDENT_EDITORS,
   },
@@ -1552,5 +1565,8 @@ export const PUBLIC_ROUTES: Record<string, string> = {
     'The person who forgot the password cannot sign in; "later password reset by email" is in the short list (task 2.3c-2, decision 1 of #66).',
   'POST /api/auth/password-reset/confirm':
     'The new password is chosen with the link of the mail, without a session (task 2.3c-2, decision 1 of #66).',
-  'POST /api/auth/sign-in': 'Sign-in cannot require a session.',
+  'POST /api/auth/sign-in':
+    "Sign-in cannot require a session; from task 11.4 also the mini app opened from a linked Telegram chat, a step of sign-in that checks Telegram's signature.",
+  'POST /api/telegram/webhook':
+    'Telegram calls it without a session; it checks the secret Telegram sends with each update (02, Accounts and sign-in: build order; task 11.4).',
 };

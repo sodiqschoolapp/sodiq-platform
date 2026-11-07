@@ -16,19 +16,39 @@ import type { NextFunction, Request, Response } from 'express';
  *   browser in a new tab; that tab keeps this policy.
  * - No page of another site may show these pages in a frame.
  */
-export const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.sentry.io",
-  "frame-src 'self' blob:",
-  "object-src 'self' blob:",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join('; ');
+const policyWith = (scriptSources: string): string =>
+  [
+    "default-src 'self'",
+    `script-src ${scriptSources}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.sentry.io",
+    "frame-src 'self' blob:",
+    "object-src 'self' blob:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+
+export const CONTENT_SECURITY_POLICY = policyWith("'self'");
+
+/** Task 11.4: where Telegram serves the script of its mini apps (`telegram-web-app.js`). */
+export const TELEGRAM_SCRIPT_ORIGIN = 'https://telegram.org';
+
+/**
+ * Task 11.4 (plan of #298, decision 2, Look first): the pages of the parent portal (`/portal`
+ * and below) may also run Telegram's mini app script, which the mini app needs to read its
+ * launch data and to fit Telegram's window. Nothing else changes: framing stays refused, so
+ * Telegram Web, which shows a mini app in a frame, is not served; a parent there uses the
+ * portal in a browser.
+ */
+export const PORTAL_CONTENT_SECURITY_POLICY = policyWith(`'self' ${TELEGRAM_SCRIPT_ORIGIN}`);
+
+/** Whether a path is a page of the parent portal (not an API route: those start with /api). */
+export function isPortalPage(path: string): boolean {
+  return path === '/portal' || path.startsWith('/portal/');
+}
 
 /** A year, once the address is only reached over HTTPS behind the load balancer. */
 export const STRICT_TRANSPORT = 'max-age=31536000';
@@ -50,9 +70,12 @@ const FIXED_HEADERS: readonly (readonly [string, string])[] = [
  * local `http://localhost` must keep working.
  */
 export function securityHeadersMiddleware(behindProxy: boolean) {
-  return (_request: Request, response: Response, next: NextFunction): void => {
+  return (request: Request, response: Response, next: NextFunction): void => {
     for (const [name, value] of FIXED_HEADERS) {
       response.setHeader(name, value);
+    }
+    if (isPortalPage(request.path)) {
+      response.setHeader('Content-Security-Policy', PORTAL_CONTENT_SECURITY_POLICY);
     }
     if (behindProxy) {
       response.setHeader('Strict-Transport-Security', STRICT_TRANSPORT);

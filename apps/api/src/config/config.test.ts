@@ -37,6 +37,7 @@ describe('loadConfig', () => {
       // Task 10.5: off unless DEMO_CLOCK=1.
       demoClock: false,
       parentBotUsername: null,
+      telegram: undefined,
     });
   });
 

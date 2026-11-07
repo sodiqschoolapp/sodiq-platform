@@ -1,4 +1,5 @@
 import { passwordResetMailJob } from '../modules/auth/password-reset-mail.job.js';
+import { tellMovedJob } from '../modules/auth/telegram-links.js';
 import { branchExportJob } from '../modules/journal/journal-exports.service.js';
 import { deliverNotificationsJob } from '../modules/notifications/deliver.job.js';
 import { DAILY_JOBS } from '../modules/results/daily/daily-jobs.js';
@@ -21,4 +22,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition<unknown>[] = [
   countsJob,
   // Task 9.3b-1: the prepared report totals, every minute.
   prepareTotalsJob,
+  // Task 11.4: the notice to the earlier chat of a Telegram link that moved.
+  tellMovedJob,
 ];

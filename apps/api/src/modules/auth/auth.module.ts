@@ -16,6 +16,7 @@ import { SignInThrottle } from './sign-in-throttle.service.js';
 import { TrustedDevicesController } from './trusted-devices.controller.js';
 import { TwoStepController } from './two-step.controller.js';
 import { TwoStep } from './two-step.service.js';
+import { TelegramLinks } from './telegram-links.js';
 
 @Module({
   // The first-account command gives the Super Admin role; the permission guard reads the table.
@@ -32,6 +33,7 @@ import { TwoStep } from './two-step.service.js';
     SecondStepKeyCheck,
     TwoStep,
     FirstAccount,
+    TelegramLinks,
     // On every route of the application, whichever module it belongs to, in
     // this order: the permission guard needs the session the first one found.
     { provide: APP_GUARD, useClass: SessionGuard },
@@ -46,6 +48,7 @@ import { TwoStep } from './two-step.service.js';
     TwoStep,
     SecondStepKeyCheck,
     FirstAccount,
+    TelegramLinks,
   ],
 })
 export class AuthModule {}

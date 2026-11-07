@@ -33,6 +33,7 @@ import { Accounts, prepareFirstPassword } from '../auth/accounts.service.js';
 import { loginBase } from '../auth/login.js';
 import { PasswordResets } from '../auth/password-resets.service.js';
 import { Sessions } from '../auth/sessions.service.js';
+import { TelegramLinks } from '../auth/telegram-links.js';
 import { SignInThrottle } from '../auth/sign-in-throttle.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { staffOfRelatives } from './same-person.js';
@@ -132,6 +133,7 @@ export class ParentAccounts {
     private readonly resets: PasswordResets,
     private readonly throttle: SignInThrottle,
     private readonly sessions: Sessions,
+    private readonly telegramLinks: TelegramLinks,
     @Inject(REAL_CLOCK) private readonly realClock: Clock,
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
@@ -302,6 +304,14 @@ export class ParentAccounts {
         personId: relativeId,
         requestId,
       });
+      // Task 11.4: a reset ends the Telegram link (`edge/close-relatives`: "every session and the
+      // Telegram link end"). The account row is held by the reset by now: the lock order of links.
+      await this.telegramLinks.endOfAccount(transaction, account.id, 'password_reset', {
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        branchId,
+        requestId,
+      });
       const now = new Date(reset.validUntil.getTime() - PARENT_RESET_PASSWORD_VALID_MS);
       await this.recordSlip(transaction, access, {
         branchId,
@@ -334,6 +344,39 @@ export class ParentAccounts {
     });
   }
 
+  /**
+   * Task 11.4: "Unlink Telegram" on the Parent page (`edge/close-relatives`: "ends the link at
+   * once without a reset"), for the roles and the scope of the reset (plan of #298, decision 3).
+   * The sessions opened through the link end; logged as "unlinked by X for Y".
+   */
+  async unlinkTelegram(access: Access, relativeId: string, requestId: string): Promise<void> {
+    const branchId = branchOf(access);
+    await this.transactions.run(access.branchIds, async (transaction) => {
+      const today = await branchToday(transaction, branchId);
+      const one = await this.inScope(transaction, relativeId, today);
+      await this.lockRelatives(transaction, [relativeId]);
+      if (one.accountId === null) {
+        throw new ApiException('no_telegram_link', 409);
+      }
+      // The account row first: the lock order of every link.
+      await transaction
+        .selectFrom('accounts')
+        .select('id')
+        .where('id', '=', one.accountId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      const ended = await this.telegramLinks.endOfAccount(transaction, one.accountId, 'unlinked', {
+        actorId: access.accountId,
+        assignmentId: access.assignmentId,
+        branchId,
+        requestId,
+      });
+      if (!ended) {
+        throw new ApiException('no_telegram_link', 409);
+      }
+    });
+  }
+
   /** The account part of the Parent page. */
   async account(access: Access, relativeId: string): Promise<ParentAccount> {
     const branchId = branchOf(access);
@@ -355,6 +398,11 @@ export class ParentAccounts {
           signedIn: one.mustChangePassword === false,
           lastSignInAt: at === null ? null : new Date(at).toISOString(),
           slip: await this.slipOf(transaction, one.accountId, branchId, this.realClock.now()),
+          // Task 11.4: when the open Telegram link began; never the Telegram id.
+          telegramLinkedAt:
+            (
+              await this.telegramLinks.openLinkOfAccount(transaction, one.accountId)
+            )?.linkedAt.toISOString() ?? null,
         },
       };
     });

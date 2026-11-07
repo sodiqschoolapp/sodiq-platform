@@ -42,6 +42,10 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 11.1: a first-password slip of a Parent account printed, and its first sign-in.
     'parent_account.slip',
     'parent_account.first_sign_in',
+    // Task 11.4: the Telegram chat link of a Parent account began, moved to another chat, ended.
+    'telegram.linked',
+    'telegram.moved',
+    'telegram.unlinked',
     'account.second_step_started',
     'account.second_step_on',
     'account.second_step_off',

@@ -74,6 +74,8 @@ const PA = 'src/modules/people/parent-accounts.test.ts';
 const PA_CLASS = `${PA} > answers 404 for a class of another branch or unknown`;
 const PA_AGAIN = `${PA} > answers 404 for a "print again" relative of another branch or unknown`;
 const PA_RELATIVE = `${PA} > answers 404 for a relative of another branch or unknown`;
+// Task 11.4.
+const TG_RELATIVE = `src/modules/auth/telegram.test.ts > answers 404 for a relative of another branch or unknown`;
 const PA_EXPORT = `${PA} > answers 404 in the file for a relative of another branch or unknown, with nothing logged`;
 
 const PATH = '.claude/rules/api.md, task 1.3';
@@ -306,6 +308,10 @@ export const PEOPLE_IDS: RouteIds = {
   ],
   'POST /api/people/parents/:relativeId/password-reset': [
     branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [PA_RELATIVE]),
+  ],
+  // Task 11.4: "Unlink Telegram", the scope of the reset.
+  'POST /api/people/parents/:relativeId/telegram-unlink': [
+    branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [TG_RELATIVE]),
   ],
   'GET /api/people/parents/:relativeId/account': [
     branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [PA_RELATIVE]),

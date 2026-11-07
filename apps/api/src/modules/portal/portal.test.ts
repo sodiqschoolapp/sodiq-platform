@@ -17,7 +17,8 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { ParentsKit } from '../../testing/parents-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
-import { cookieOf, signInKit } from '../../testing/sign-in-kit.js';
+import { cookieOf, NEW_PASSWORD, signInKit } from '../../testing/sign-in-kit.js';
+import { signedLaunch, TEST_BOT_TOKEN } from '../../testing/telegram-kit.js';
 import { standingExamOver } from '../../testing/exams-kit.js';
 import { MemoryPhotoStore, planFileKey } from '../people/photo-store.js';
 
@@ -197,6 +198,8 @@ describe('the parent portal', () => {
   let b: Branch;
   let relative: string;
   let parent: { cookie: string; accountId: string };
+  /** Task 11.4: the same parent, signed in by opening the mini app from the linked chat. */
+  let launched: { cookie: string; accountId: string };
   let child: string;
   let secondChild: string;
   let otherFamily: string;
@@ -210,7 +213,18 @@ describe('the parent portal', () => {
   let futureFile: string;
 
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true, photoStore: store });
+    t = await dayTemplatesKit({
+      jobs: true,
+      photoStore: store,
+      // Task 11.4: the privacy cases also run through the mini app's sign-in.
+      config: {
+        telegram: {
+          botToken: TEST_BOT_TOKEN,
+          webhookSecret: undefined,
+          webOrigin: 'https://app-test.example.invalid',
+        },
+      },
+    });
     load = new LoadKit(t.database.migrator);
     parents = new ParentsKit(t.app, t.database.migrator, await load.classes.account());
     a = await branchScene();
@@ -276,6 +290,16 @@ describe('the parent portal', () => {
     await member(b.branch, b.classId, notLinked);
     const session = await parents.session(relative);
     parent = { cookie: session.cookie, accountId: session.account.id };
+    // Task 11.4: the same parent linked to a chat, then the mini app opened from it.
+    const launchData = signedLaunch({ telegramUserId: 7_100_001, signedAt: t.clock.now() });
+    const linked = await request(t.kit.server)
+      .post('/api/auth/sign-in')
+      .send({ login: session.account.login, password: NEW_PASSWORD, telegramInitData: launchData });
+    expect(linked.status).toBe(200);
+    const opened = await request(t.kit.server)
+      .post('/api/auth/sign-in')
+      .send({ telegramInitData: launchData });
+    launched = { cookie: cookieOf(opened) ?? '', accountId: session.account.id };
 
     // Homework: an item at the held lesson of 26 October with two homeworks and a file; an
     // item at the lesson of 2 November, not held at the moment; one of the other class.
@@ -470,6 +494,44 @@ describe('the parent portal', () => {
           'password_change_required',
         ]);
       }
+    });
+
+    // Task 11.4 (build plan: "the privacy tests of this section pass through the mini app
+    // sign-in"): a session opened from the linked chat has exactly the parent's reach.
+    describe('through the mini app’s sign-in (task 11.4)', () => {
+      it('answers the parent’s own children', async () => {
+        expect(launched.cookie).not.toBe('');
+        for (const path of routes(child)) {
+          expect((await get(launched, path)).status, path).toBe(200);
+        }
+      });
+
+      it.each([
+        ['another family’s child, asked for by its id', () => otherFamily],
+        ['a link with portal access off', () => linkOff],
+        ['an unlinked relative', () => unlinked],
+        ['a student who left', () => left],
+        ['a child of another branch not linked to the parent', () => notLinked],
+      ])('refuses %s', async (_name, id) => {
+        for (const path of routes(id())) {
+          const response = await get(launched, path);
+          expect([response.status, codeOf(response)], path).toEqual([404, 'not_found']);
+        }
+      });
+
+      it('is refused on staff routes', async () => {
+        for (const path of [
+          '/api/people/students',
+          '/api/timetable/versions',
+          '/api/auth/sessions',
+        ]) {
+          const response = await request(t.kit.server)
+            .get(path)
+            .set('Cookie', launched.cookie)
+            .set('X-Branch-Id', a.branch);
+          expect([response.status, codeOf(response)], path).toEqual([403, 'permission_denied']);
+        }
+      });
     });
 
     it('refuses a staff session on every portal route, the Super Admin’s too', async () => {

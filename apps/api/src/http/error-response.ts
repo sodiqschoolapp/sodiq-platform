@@ -679,6 +679,10 @@ const MESSAGE: Record<ErrorCode, string> = {
   closing_journal_not_reopened: 'The journal is not reopened.',
   recalculation_changed: 'The differences listed now are not the ones sent.',
   recalculation_nothing: 'The stored results match the current calculation.',
+  telegram_sign_in_needed:
+    'The Telegram launch did not sign in; sign in with the login and password.',
+  telegram_chat_linked: 'This Telegram chat is linked to another parent account.',
+  no_telegram_link: 'The account has no Telegram link.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

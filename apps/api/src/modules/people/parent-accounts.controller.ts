@@ -20,7 +20,13 @@ import {
   type PrintedParentSlips,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ReturnsFile, ValidBody, ValidParams } from '../../http/schemas.js';
+import {
+  Returns,
+  ReturnsFile,
+  ValidBody,
+  ValidParams,
+  ReturnsNothing,
+} from '../../http/schemas.js';
 import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
@@ -72,6 +78,22 @@ export class ParentAccountsController {
     @RequestId() requestId: string,
   ): Promise<PrintedParentSlips> {
     return this.parents.reset(access, params.relativeId, request, requestId);
+  }
+
+  /**
+   * Task 11.4: "Unlink Telegram" on the Parent page, under the action of the reset (plan of
+   * #298, decision 3, Look first): the Super Admin and the Academic Vice Principal of a branch
+   * where one of the parent's children studies.
+   */
+  @Post('parents/:relativeId/telegram-unlink')
+  @Requires('parent_accounts', 'create')
+  @ReturnsNothing()
+  async unlinkTelegram(
+    @CurrentAccess() access: Access,
+    @ValidParams(parentRelativeParamsSchema) params: ParentRelativeParams,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    await this.parents.unlinkTelegram(access, params.relativeId, requestId);
   }
 
   /** The account part of the Parent page. */

@@ -65,6 +65,9 @@ export const en = {
     account_locked: 'This account is locked. Ask an administrator.',
     password_change_required: 'Change your password before you continue.',
     current_password_wrong: 'The current password is wrong.',
+    telegram_sign_in_needed: 'The Telegram link did not sign you in. Sign in with your login and password.',
+    telegram_chat_linked: 'This Telegram is already linked to another parent account. Sign out of it there first, or use the portal in a browser.',
+    no_telegram_link: 'This account is not linked to Telegram.',
     password_unchanged: 'The new password is the same as the current one. Choose another one.',
     second_step_required: 'Enter the code of the second step before you continue.',
     second_step_set_up_required: 'Set up the second step before you continue.',
@@ -3665,6 +3668,11 @@ export const en = {
         second_step_off: 'Second step turned off',
         second_step_reset: 'Second step reset',
         second_step_unreadable: 'Second step could not be read and was removed',
+      },
+      telegram: {
+        linked: 'Telegram linked',
+        moved: 'Telegram link moved to another chat',
+        unlinked: 'Telegram link ended',
       },
       parent_account: {
         slip: 'Parent slip printed',

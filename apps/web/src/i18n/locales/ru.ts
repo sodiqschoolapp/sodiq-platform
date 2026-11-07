@@ -61,6 +61,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     account_locked: 'Эта учётная запись заблокирована. Обратитесь к администратору.',
     password_change_required: 'Прежде чем продолжить, смените пароль.',
     current_password_wrong: 'Текущий пароль введён неверно.',
+    telegram_sign_in_needed: 'Вход через Telegram не выполнен. Войдите с логином и паролем.',
+    telegram_chat_linked: 'Этот Telegram уже привязан к другому родительскому аккаунту. Сначала выйдите из него там или откройте портал в браузере.',
+    no_telegram_link: 'Этот аккаунт не привязан к Telegram.',
     password_unchanged: 'Новый пароль совпадает с текущим. Выберите другой.',
     second_step_required: 'Прежде чем продолжить, введите код второго шага.',
     second_step_set_up_required: 'Прежде чем продолжить, настройте второй шаг.',
@@ -3850,6 +3853,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         second_step_off: 'Второй шаг выключен',
         second_step_reset: 'Второй шаг сброшен',
         second_step_unreadable: 'Второй шаг не прочитан и удалён',
+      },
+      telegram: {
+        linked: 'Telegram привязан',
+        moved: 'Привязка Telegram перенесена в другой чат',
+        unlinked: 'Привязка Telegram прекращена',
       },
       parent_account: {
         slip: 'Напечатан бланк родителя',

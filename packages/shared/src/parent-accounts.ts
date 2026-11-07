@@ -135,6 +135,8 @@ export const parentAccountSchema = z.object({
       signedIn: z.boolean(),
       lastSignInAt: z.iso.datetime().nullable(),
       slip: parentSlipSchema.nullable(),
+      /** Task 11.4: when the open Telegram link began, or `null`; never the Telegram id. */
+      telegramLinkedAt: z.iso.datetime().nullable(),
     })
     .nullable(),
 });
