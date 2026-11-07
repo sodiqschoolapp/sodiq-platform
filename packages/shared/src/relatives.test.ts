@@ -117,12 +117,12 @@ describe('notices (decision 8)', () => {
   });
 });
 
-describe('the relatives of a new student (04, Always connected)', () => {
-  it('wants exactly one main contact, and leaves an empty list to the route', () => {
+describe('the relatives of a new student (04, Relatives are optional)', () => {
+  it('wants exactly one main contact, and takes an empty list', () => {
     expect(studentRelativesInputSchema.safeParse([newLink('+998901234567', true)]).success).toBe(
       true,
     );
-    // The route answers it `student_needs_relative` (relatives.test.ts).
+    // No relative is allowed (owner, 7 November 2026).
     expect(studentRelativesInputSchema.safeParse([]).success).toBe(true);
     expect(studentRelativesInputSchema.safeParse([newLink('+998901234567', false)]).success).toBe(
       false,

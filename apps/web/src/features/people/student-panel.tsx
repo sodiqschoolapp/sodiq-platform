@@ -33,7 +33,7 @@ import { HistoryLink } from '@/features/audit/history-link';
 import { ReportLink } from './report-link';
 import { useMayView, useView } from '@/features/access/use-view';
 import { asFormSchema } from './form-schema';
-import { invalidateStudents, studentDetailQuery, studentRelativesQuery } from './people-api';
+import { invalidateStudents, studentDetailQuery } from './people-api';
 import { StudentForm, takenOf, takenText } from './student-form';
 import { GroupsPlacedNotice } from '@/features/classes/class-members';
 import { StudentPhotoSection } from './student-photo-section';
@@ -129,11 +129,6 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
   const [groupsPlaced, setGroupsPlaced] = useState(0);
   // The move a History line's "Undo the move" opened (task 3.3a).
   const [undoing, setUndoing] = useState<StudentMove | null>(null);
-  const relatives = useQuery({
-    ...studentRelativesQuery(branchId, id),
-    enabled:
-      branchId !== null && !deleted && detail.data !== undefined && detail.data.contact !== null,
-  });
   const where = () => ({ header: branchHeader(), path: { id } });
   const refresh = async (answer: unknown) => {
     queryClient.setQueryData(
@@ -315,7 +310,9 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
       ? [{ key: 'exemptions' as const, title: t('journal.exemptions.panelTitle') }]
       : []),
   ];
-  const chosen = tab ?? (relatives.data?.relatives.length === 0 ? 'relatives' : 'overview');
+  // Overview first (`04`, Profile tabs), also for a student with no relative: relatives are
+  // optional (owner, 7 November 2026), so nothing waits for one.
+  const chosen = tab ?? 'overview';
   const shownTab = tabs.some((one) => one.key === chosen) ? chosen : 'overview';
 
   /** Opens a form; an open one with typed text is asked about first. */
@@ -878,7 +875,10 @@ function Overview({ student }: { student: StudentDetail }) {
   }
   if (identity !== null) {
     rows.push(
-      [t('people.students.birthDate'), schoolDateText(identity.birthDate, language)],
+      [
+        t('people.students.birthDate'),
+        identity.birthDate === null ? notSet : schoolDateText(identity.birthDate, language),
+      ],
       [
         t('people.students.document'),
         identity.documentType === null

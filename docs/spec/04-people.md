@@ -10,18 +10,18 @@ Every student and staff member has one profile that keeps its full history. Reco
 | Block | Fields |
 | --- | --- |
 | System | UID: the student's number in the school's unified UID system (for example 2607001; the main file writes it as SI2607001). See UID sets below. In Release 1 it is typed by hand when the student is created, in any form; the system checks only that it is filled and not already used. From Release 2 the system takes the next free number of the grade's set. Shown on the profile and in every list. |
-| Personal | Photo, name, surname, paternal name, sex, date of birth, passport or ID with JSHSHIR or birth certificate number, phone, email, address (optional), region, previous school, diagnostic test score. |
-| Close relatives (at least one, required) | Full name, relationship (father, mother, grandfather, grandmother, uncle, aunt, brother, sister, guardian, other), main phone, workplace, email. A relative is a separate record that can be linked to several students; see Close relatives below. |
+| Personal | Photo, name, surname, paternal name, sex, date of birth (optional), passport or ID with JSHSHIR or birth certificate number, phone, email, address (optional), region, previous school, diagnostic test score. |
+| Close relatives (optional) | Full name, relationship (father, mother, grandfather, grandmother, uncle, aunt, brother, sister, guardian, other), main phone, workplace, email. A relative is a separate record that can be linked to several students; see Close relatives below. |
 | Contract | Contract number and contract date, both required. |
 | Academic | Class, groups, tutor and main classroom (both come from the class), transfer history. |
-| Payment | Scholarship type and amount. Stipend history (filled from Release 2). |
+| Payment | Scholarship type and amount; with no scholarship chosen, the type is None. Stipend history (filled from Release 2). |
 | Medical | Filled by the nurse module in Release 3. |
 | Status | Active: studying at the school, including while exempt. Inactive (archived): left the school entirely; all data is kept and the student can be brought back. Graduated. |
 
 - Student list columns, in this order: checkbox, number, photo, UID, name and surname, class (grade and name, for example 7 Oxford), groups, tutor, status. A last column shows the current quarter's attendance percent and average.
 - Filters: grade, class, group, status, language. Search by name or UID. Phone numbers are not shown in the list.
 - Bulk actions on ticked rows: put into a class, put into a group, archive, export.
-- **Excel import.** Students are imported from the system's Excel template, downloaded from the student list, with its column headings in Uzbek, Russian and English. One row is one student: every typed field of the student record, the UID, the start date, the class (grade and name), the contract, the scholarship, and up to three close relatives (full name, relationship, main phone, workplace, email; the first is the main contact). The Super Admin and the Academic Vice Principal import into their branch. The upload first shows a preview of every row with its problems. Nothing is saved until every row is clean; confirming checks everything again and saves all rows or none (Edge cases, students, classes and groups). Each student is placed in the class from the start date, and into groups as bulk placement does. Students can still be entered by hand, with the bulk screens for placing them. Export to Excel is available from the start.
+- **Excel import.** Students are imported from the system's Excel template, downloaded from the student list, with its column headings in Uzbek, Russian and English. One row is one student: every typed field of the student record, the UID, the start date, the class (grade and name), the contract, the scholarship, and up to three close relatives (full name, relationship, main phone, workplace, email; the first is the main contact). The date of birth, the scholarship (None when empty) and the relatives may be left empty. The Super Admin and the Academic Vice Principal import into their branch. The upload first shows a preview of every row with its problems. Nothing is saved until every row is clean; confirming checks everything again and saves all rows or none (Edge cases, students, classes and groups). Each student is placed in the class from the start date, and into groups as bulk placement does. Students can still be entered by hand, with the bulk screens for placing them. Export to Excel is available from the start.
 - Profile tabs: Overview, Results, Attendance, Exemptions, Timetable, Relatives, Contract and scholarship, History, Comments.
 - **Who reads what.** Each role sees the data related to its work. The fields are grouped, and each group has named readers (Edge cases, people, roles and accounts: Personal data and the audit log); the diagnostic test score has readers of its own there. A Teacher sees only the students they teach, with the Basic fields.
 
@@ -61,7 +61,7 @@ A close relative is a person record of its own, not a set of fields inside the s
 | Email | Optional. |
 | Relationship | Required. Kept on the link between the relative and each student, so the same person can be father of one student and uncle of another. |
 
-- **Always connected.** A student cannot be saved without at least one relative, and the last relative of a student cannot be removed. The same rule applies to the import: a row without a relative is an error.
+- **Relatives are optional.** A student can be saved with no relative, by hand or by the import, and the last relative of a student can be removed. When a student has relatives, exactly one is the main contact. A student with no relative has no parent access in the portal.
 - **Adding a relative.** The phone is typed first. If a relative with that phone already exists, the system shows the person and links them to the student; a second record is not created. If not, a new relative is created.
 - **Changing a phone.** If the new number already belongs to another relative, the change is refused and that relative is shown.
 - **Main contact.** One relative of each student is marked as the main contact and receives notices first.

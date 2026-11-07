@@ -227,6 +227,25 @@ const CREATE_SCHEMA = asFormSchema<StudentCreate>(studentCreateSchema, fieldOf);
 const EDIT_SCHEMA = asFormSchema<StudentRecord>(studentRecordSchema, fieldOf);
 
 const orNull = (typed: string): string | null => (typed === '' ? null : typed);
+
+/**
+ * Whether the relative part of a new student was left as it opened: no name, no
+ * relationship, no phone past the country code, no "no phone" tick, no
+ * workplace, email or extra phone. Such a student is saved with no relative
+ * (`04`, Relatives are optional; owner, 7 November 2026).
+ */
+function relativeLeftEmpty(typed: Record<StudentField, string>): boolean {
+  const phone = typed.relativePhone.trim();
+  return (
+    typed.relativeName.trim() === '' &&
+    typed.relativeRelationship === '' &&
+    (phone === '' || phone === DEFAULT_PHONE_PREFIX) &&
+    typed.relativeNoPhone !== CHECKED &&
+    typed.relativeWorkplace.trim() === '' &&
+    typed.relativeEmail.trim() === '' &&
+    extraPhonesTyped(RELATIVE_EXTRA_FIELDS, typed).every((one) => one.trim() === '')
+  );
+}
 const numberOrNull = (typed: string) => (typed.trim() === '' ? null : wholeNumber(typed));
 
 interface StudentFormProps {
@@ -343,7 +362,7 @@ export function StudentForm({
         lastName: typed.lastName,
         paternalName: typed.paternalName,
         sex: typed.sex,
-        birthDate: typed.birthDate,
+        birthDate: orNull(typed.birthDate),
         grade: numberOrNull(typed.grade),
         documentType: orNull(typed.documentType),
         documentNumber: typed.documentNumber,
@@ -367,6 +386,17 @@ export function StudentForm({
       };
       if (!creating) {
         return record;
+      }
+      // Relatives are optional (`04`; owner, 7 November 2026): a relative part
+      // left as it opened sends none.
+      if (relativeLeftEmpty(typed)) {
+        return {
+          ...record,
+          uid: typed.uid,
+          startsOn: typed.startsOn,
+          classId: orNull(typed.classId),
+          relatives: [],
+        };
       }
       // The relative found by the phone is linked; otherwise a new one is
       // created (`04`, Adding a relative). The only relative is the main contact.

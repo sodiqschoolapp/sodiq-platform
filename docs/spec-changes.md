@@ -2,6 +2,17 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 November 2026: date of birth, scholarship and relatives of a student are optional
+
+- What changed:
+  1. **Date of birth is optional** on a student, by hand and in the import.
+  2. **The scholarship is optional**: with none chosen, the type is None (the stored default since 0032).
+  3. **Relatives are optional.** A student can be saved with no relative, by hand or by the import, and the last relative of a student can be removed ("Always connected" becomes "Relatives are optional"). When a student has relatives, exactly one is the main contact. A student with no relative has no parent access in the portal.
+  4. **The duplicate warning** on a matching name and date of birth also warns on a matching name alone when either record has no date of birth.
+- Why: the owner, 7 November 2026, in chat: the school does not always have these when a student is entered; the owner approved the wording and chose the warning on the name alone.
+- Code: built at once in its own pull request (branch `fix/optional-student-fields`), not a build-plan task; its migration is numbered after 10.8's 0162 and merges after 10.8. Database (0163): `students.birth_date` becomes nullable; the function `student_relatives_guard` (0036) is replaced so that it no longer refuses a student with no live link ("at least one relative" removed, **Look first**: a constraint removed because the requirement changed) and still refuses a student with live links and not exactly one main contact; its triggers stay; `student_duplicate_elsewhere` (0032) matches the name alone when either side has no date of birth.
+- Files: `docs/spec/04-people.md` (Student record: Personal, Close relatives, Payment; Excel import; Close relatives: "Relatives are optional"), `docs/spec/edge-cases/students-classes-groups.md` (the duplicate row), `docs/spec/edge-cases/close-relatives.md` (the main contact unlinked).
+
 ## 7 November 2026: the journal and the plan as one, files of each work, the kind of a work, the lesson happening now
 
 - What changed:

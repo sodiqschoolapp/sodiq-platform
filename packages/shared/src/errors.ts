@@ -417,16 +417,12 @@ export const ERROR_CODES = [
   'lesson_cancelled_cell',
   /** The merged record has journal entries, which a merge does not carry yet (task 6.1a, decision 9). */
   'student_merge_has_cells',
-  /** A student is saved, or a student of 2.4a edited, without a relative (`04`: "A student cannot be saved without at least one relative"; task 2.5a). */
-  'student_needs_relative',
   /** The new main phone of a relative belongs to another relative (`04`, Changing a phone; task 2.5a). `details` names the holder. */
   'relative_phone_taken',
   /** A new relative is given a main phone that a relative already has: link that person instead (`04`, Adding a relative; task 2.5a). `details` names the holder. */
   'relative_phone_exists',
   /** The relative chosen by phone no longer has that phone (task 2.5a, decision 18). */
   'relative_phone_changed',
-  /** The last relative of a student is not unlinked (`04`: "the last relative of a student cannot be removed"; task 2.5a). */
-  'last_relative',
   /** A student keeps exactly one main contact: unlinking or clearing it names another (`edge/close-relatives`; task 2.5a). */
   'main_contact_needed',
   /** A merge of relatives linked in another branch is for the Super Admin (`edge/close-relatives`: "Across branches, only the Super Admin merges"; task 2.5b-1). */

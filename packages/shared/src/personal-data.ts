@@ -153,7 +153,7 @@ export const studentReportSchema = z.strictObject({
     photoId: z.uuid().nullable(),
     phone: z.string().nullable(),
     email: z.string().nullable(),
-    birthDate: schoolDateSchema,
+    birthDate: schoolDateSchema.nullable(),
     documentType: documentTypeSchema.nullable(),
     documentNumber: z.string().nullable(),
     jshshir: z.string().nullable(),

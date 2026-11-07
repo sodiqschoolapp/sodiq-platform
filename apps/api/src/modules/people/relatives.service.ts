@@ -768,9 +768,9 @@ export class Relatives {
 
   /**
    * Unlinks a relative from one student (`04`: "Unlinking a relative from one
-   * student does not affect their other students"). The last relative stays
-   * (`04`, Always connected); the main contact names the next one in the same
-   * request (`edge`). A relative left with no live link anywhere is archived
+   * student does not affect their other students"). The last relative may go
+   * (`04`, Relatives are optional; owner, 7 November 2026); otherwise the main
+   * contact names the next one in the same request (`edge`). A relative left with no live link anywhere is archived
    * by `relatives_follow_links`, and the entry says so; it keeps its phone,
    * and with it its mark "same person" (task 3.6b-1, correction 1).
    */
@@ -798,10 +798,7 @@ export class Relatives {
       if (input.newMainContactId !== null && next === undefined) {
         throw notFound();
       }
-      if (links.length === 1) {
-        throw new ApiException('last_relative', 409);
-      }
-      if (link.main_contact && next === undefined) {
+      if (link.main_contact && next === undefined && links.length > 1) {
         throw new ApiException('main_contact_needed', 422);
       }
       // The relative's row, then its live links in every branch, in statements

@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: date of birth, scholarship and relatives of a student are optional
+
+Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
+
+- **Database** (0163, numbered after 10.8's 0162 and merged after it): `students.birth_date` loses `not null`; `student_relatives_guard` keeps only "exactly one main contact when a student has live links" (**Look first**: "at least one relative" removed because the requirement changed); `student_duplicate_elsewhere` matches the name alone when either side has no date of birth. No row changes.
+- **API**: no `student_needs_relative` on the create, the import or the edit; the last relative may be unlinked (no `last_relative`); the duplicate warning matches the name alone when a date of birth is missing; the import reads an empty date of birth, scholarship (None) and relatives. Error codes `student_needs_relative` and `last_relative` and the import problem `needs_relative` are gone.
+- **Web**: the new-student form sends no relative when its relative part is left as it opened ("Relative (optional)") and a null date of birth; the scholarship stays None by default; the Relatives tab offers Unlink for the last relative and says "No relatives yet." when there is none; the profile shows "not set" for a missing date of birth.
+
+Left out: nothing of the change. A student with no relative has no parent to give portal access (Release 2 reads the links as they are).
+
 ## 7 November 2026: task 10.8 The journal and the plan as one; files of each work
 
 - **Journal into plan**: `POST /api/journal/lessons/:lessonId/works` at a held lesson whose item is missing or has no topic writes a plan work (`added_in_journal_at/by`), making the plan and the item (empty topic) when missing (`PlansService.addFromJournal`; locks: the plan's journals, the item, the lesson's advisory lock); `PUT|DELETE …/plan-works/:planWorkId` rename and remove it while the topic is empty. The takeover skips such works; the limit of 10 counts them with older hand-added works.

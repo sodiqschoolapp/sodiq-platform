@@ -699,6 +699,42 @@ describe('adding a student', () => {
     });
   });
 
+  // 04 (owner, 7 November 2026): date of birth, scholarship and relatives are optional.
+  it('sends a student with no date of birth, scholarship None and no relative', async () => {
+    const calls = openList('academic_vice_principal', {
+      'POST /api/people/students/check': () => json({ sameNameAndBirth: [], elsewhere: false }),
+      'POST /api/people/students': () => json(detailOf({ ...OTKIR, id: uid(9) }), 201),
+      [`GET /api/people/students/${uid(9)}`]: () => json(detailOf({ ...OTKIR, id: uid(9) })),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.uid, '2606011');
+    type(en.people.students.lastName, 'Rahimov');
+    type(en.people.students.firstName, 'Sardor');
+    type(en.people.students.sex, 'male');
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-02');
+    type(en.people.students.contractNumber, 'SQ-2026/111');
+    type(en.people.students.contractSignedOn, '2026-08-20');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/people/students')?.body).toMatchObject({
+        birthDate: null,
+        scholarship: { type: 'none', coverage: null, amount: null },
+        relatives: [],
+      });
+    });
+    expect(
+      calls.find((call) => call.route === 'POST /api/people/students/check')?.body,
+    ).toMatchObject({ birthDate: null });
+  });
+
   // Task 9.4c: a UID in any form, asked nothing about the grade's set.
   it('sends a UID of letters as typed without its spaces, and asks nothing about a set', async () => {
     const calls = openList('academic_vice_principal', {
