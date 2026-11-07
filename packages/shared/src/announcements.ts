@@ -243,3 +243,82 @@ export const ANNOUNCEMENT_TEXTS = {
 
 /** The page of the portal the bot's button opens after the mini app's sign-in (`?to=`). */
 export const MINI_APP_TARGETS = ['announcements'] as const;
+
+/**
+ * The form of an announcement, flat so that each refusal names its own field (the web's record
+ * form reads the first part of an issue's path). `announcementRecordOf` and `announcementEditOf`
+ * give the bodies the routes take; the server checks them again with the schemas above.
+ */
+export const announcementFormSchema = z
+  .strictObject({
+    kind: announcementKindSchema,
+    title: titleSchema,
+    body: bodySchema,
+    audience: announcementAudienceKindSchema,
+    grades: z.array(gradeSchema).max(ANNOUNCEMENT_GRADES.length),
+    classIds: z.array(z.uuid()).max(ANNOUNCEMENT_CLASSES_MAX),
+    forStaff: z.boolean(),
+    forParents: z.boolean(),
+    firstDate: schoolDateSchema.nullable(),
+    lastDate: schoolDateSchema.nullable(),
+    startsAt: clockTimeSchema.nullable(),
+    endsAt: clockTimeSchema.nullable(),
+    place: placeSchema.nullable(),
+  })
+  .superRefine((form, context) => {
+    const issue = (path: string, message: string) => {
+      context.addIssue({ code: 'custom', path: [path], message });
+    };
+    if (form.audience === 'grades' && form.grades.length === 0) issue('grades', 'Choose a grade.');
+    if (form.audience === 'classes' && form.classIds.length === 0) {
+      issue('classIds', 'Choose a class.');
+    }
+    if (!form.forStaff && !form.forParents) issue('forParents', 'Staff, parents or both.');
+    if (form.kind === 'event') {
+      if (form.firstDate === null) issue('firstDate', 'An event has dates.');
+      if (form.lastDate === null) issue('lastDate', 'An event has dates.');
+      if (form.firstDate !== null && form.lastDate !== null && form.lastDate < form.firstDate) {
+        issue('lastDate', 'The last date is not before the first.');
+      }
+      if (form.endsAt !== null && form.startsAt === null) {
+        issue('startsAt', 'An end time needs a start time.');
+      }
+      if (form.endsAt !== null && form.startsAt !== null && form.endsAt <= form.startsAt) {
+        issue('endsAt', 'The end time is after the start time.');
+      }
+    }
+  });
+export type AnnouncementForm = z.infer<typeof announcementFormSchema>;
+
+const eventOf = (form: AnnouncementForm): AnnouncementEvent | null =>
+  form.kind === 'event' && form.firstDate !== null && form.lastDate !== null
+    ? {
+        firstDate: form.firstDate,
+        lastDate: form.lastDate,
+        startsAt: form.startsAt,
+        endsAt: form.startsAt === null ? null : form.endsAt,
+        place: form.place,
+      }
+    : null;
+
+export function announcementRecordOf(form: AnnouncementForm): AnnouncementRecord {
+  const audience: AnnouncementAudience =
+    form.audience === 'grades'
+      ? { kind: 'grades', grades: form.grades }
+      : form.audience === 'classes'
+        ? { kind: 'classes', classIds: form.classIds }
+        : { kind: form.audience };
+  return {
+    kind: form.kind,
+    title: form.title,
+    body: form.body,
+    event: eventOf(form),
+    audience,
+    forStaff: form.forStaff,
+    forParents: form.forParents,
+  };
+}
+
+export function announcementEditOf(form: AnnouncementForm, version: number): AnnouncementEdit {
+  return { title: form.title, body: form.body, event: eventOf(form), version };
+}

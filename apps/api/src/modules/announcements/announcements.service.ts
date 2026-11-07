@@ -123,11 +123,12 @@ export class AnnouncementsService {
 
   /** The authors' list: the branch's announcements and the school's, newest first. */
   list(access: Access, query: AnnouncementsQuery): Promise<AnnouncementList> {
-    const archived = query.archived === 'true';
+    // No filter: every announcement, active and archived (the web's list filters by status).
+    const archived = query.archived === undefined ? null : query.archived === 'true';
     return this.transactions.run(access.branchIds, async (transaction) => {
       const rows = await sql<Row>`
         select ${COLUMNS} from announcements a
-        where (a.archived_at is not null) = ${archived}
+        where (${archived}::boolean is null or (a.archived_at is not null) = ${archived}::boolean)
         order by a.published_at desc, a.id
       `.execute(transaction);
       return announcementListSchema.parse({

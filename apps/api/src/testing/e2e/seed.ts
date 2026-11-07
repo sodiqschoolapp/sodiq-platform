@@ -8517,6 +8517,45 @@ try {
   });
   seeded.telegramParent = { login: telegramParent.login, password: telegramParent.firstPassword };
 
+  // Task 11.7: the Vice Principal for Spiritual and Moral Education of the portal branch, who
+  // writes an event for "7 Seeded", and Kamron's grandmother, who reads it in the portal
+  // (announcements.spec.ts).
+  const announcementsAuthor = await create('Malohat', 'Ergasheva');
+  await transactions.run([portalBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: announcementsAuthor.id,
+      role: 'spiritual_vice_principal',
+      branchId: portalBranch,
+      givenBy: null,
+    }),
+  );
+  seeded.announcementsAuthor = {
+    login: announcementsAuthor.login,
+    password: announcementsAuthor.firstPassword,
+  };
+  const announcementsParent = await create('Saodat', 'Usmonova');
+  await migrator.transaction().execute(async (transaction) => {
+    await sql`select set_config(${MOMENT_SETTING}, ${yearStart.toISOString()}, true)`.execute(
+      transaction,
+    );
+    const grandmother = await linkRelative(
+      transaction,
+      firstPortalChild.id ?? '',
+      portalBranch,
+      yearStart,
+      { fullName: 'Saodat Usmonova', mainContact: false },
+    );
+    await transaction
+      .updateTable('relative_accounts')
+      .set({ account_id: announcementsParent.id, switched_on_at: yearStart })
+      .where('relative_id', '=', grandmother)
+      .execute();
+  });
+  seeded.announcementsParent = {
+    login: announcementsParent.login,
+    password: announcementsParent.firstPassword,
+  };
+
   // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
   // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,
   // checked at yesterday's: the portal shows the week and the homework of Kamron.
