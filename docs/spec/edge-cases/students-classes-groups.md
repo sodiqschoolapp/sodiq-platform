@@ -5,7 +5,7 @@
 
 | Case | Rule |
 | --- | --- |
-| A student joins 7 Oxford, which is split for English and feeds the mathematics groups. Nobody places him in a group. | A class membership cannot be saved without a group for every split or group subject of that class, from the same date. Bulk placement puts students into the smallest suitable group and tags them "placed automatically, review"; the import does the same. |
+| A student joins 7 Oxford, which is split for English and feeds the mathematics groups. Nobody places him in a group. | A class membership cannot be saved without a group for every split or group subject of that class, from the same date. Bulk placement puts students into the smallest suitable group and tags them "placed automatically, review". The import never places automatically: each row names the student's groups, and a row without a group for such a subject is a problem of the row (owner, 7 November 2026). |
 | A student is enrolled in August before classes are formed. | An active student with no class is allowed only before their start date. They appear with class "—", under a "No class" filter and in a counter on the Academic Vice Principal's home page, and are in no journal. |
 | A class is full. | The maximum size is a hard limit on the effective date, counting scheduled joins and leaves, on every path. The Academic Vice Principal can raise the maximum; this is logged. Groups work the same way. |
 | A transfer is saved at 11:00 "from today" after three lessons were marked. | The effective date is the first day in the new class, tomorrow by default. "Today" is allowed only if the student has no entries today in the old journals. |

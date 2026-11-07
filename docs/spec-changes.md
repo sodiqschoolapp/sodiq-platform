@@ -2,6 +2,15 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 November 2026: the student import names the groups; subjects are imported
+
+- What changed:
+  1. **The student import names each student's groups.** Up to eight group columns, each a group name; the row names one group for every split or group subject of the class, a group of the year that takes students from that class and has a free seat from the start date. Nothing is placed automatically any more: a missing, unknown, full or unsuitable group, or two groups of one subject, is a problem of the row. An exempt student is placed like every other. Before, the import placed students "as bulk placement does", into the smallest suitable group, tagged for review.
+  2. **Subjects can be imported** from the system's Excel template by the Super Admin and the Academic Vice Principal: the school-wide fields of a subject, and for a graded subject the daily and quarterly distributions of the branch of the import (the quarterly one for every quarter of its current and later years). Preview with problems, all rows or none, the same file not twice; a name already used is a problem of the row. The distribution of grades 0–4 without the rating exam, and other branches' distributions, are set on screen.
+- Why: the owner, 7 November 2026, in chat: the school wants every student's groups exactly as its lists say, never guessed ("if the group is not written, the student should not be placed"); a student cannot be in a split class without a group (the rule of 0049 stays), so an empty required group cell refuses the row. The subjects are many to type by hand.
+- Code: built in its own pull request (branch `feature/import-groups-subjects`), not a build-plan task.
+- Files: `docs/spec/04-people.md` (Excel import), `docs/spec/edge-cases/students-classes-groups.md` (the row on a student joining a split class), `docs/spec/05-classes-groups-subjects.md` (the bulk screen line).
+
 ## 7 November 2026: parents cannot turn off the digest or announcements
 
 - What changed: the general line "Each person can turn off notices for events that are not required" now names staff only. Parents cannot turn off the digest or the announcements sent through the bot; every parent whose link has portal access and "receives notices" on gets them. The school's "receives notices" switch on each link stays, for example for a relative listed only for emergencies, and is the school's alone. The close-relatives edge case now says that announcements need "receives notices" too, as the digest does.

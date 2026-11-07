@@ -14,6 +14,7 @@ A class is where a student belongs; a group is where a student studies one level
 
 - Class cards show grade, name, language, number of students, tutor, main classroom, and the current quarter's average and attendance. Group cards show grade, name, number of students, language, teacher, and the same two figures. Both have Edit and Archive.
 - A bulk screen places students into classes, and into groups for one subject and one grade, or one pair of grades, at a time, without opening each profile.
+- **Excel import of subjects.** Subjects are imported from the system's Excel template, with its column headings in Uzbek, Russian and English, by the Super Admin and the Academic Vice Principal. One row is one subject: the name in the three languages, the department, the grades, the colour, the journal type, the rating exam, group subject, language rule and demanding switches, and for a graded subject the daily distribution and the quarterly distribution of the branch of the import; the quarterly distribution applies to every quarter of the current and later years of that branch. The upload first shows a preview of every row with its problems. Nothing is saved until every row is clean; confirming checks everything again and saves all rows or none, and the same file is not imported twice. A name already used by a subject is a problem of the row, as by hand. The distribution of grades 0–4 without the rating exam, and the distributions of other branches, are set on screen (owner, 7 November 2026).
 
 ## Language of instruction
 
