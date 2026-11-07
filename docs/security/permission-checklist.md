@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 514, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 6. With a permission of the table: 479.
+- Routes of the application: 515, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 7. With a permission of the table: 479.
 - Routes with a limit inside the route: 154.
-- Routes that take an id: 400, with 839 ids (branch 738, school 76, own 9, none 16).
+- Routes that take an id: 401, with 841 ids (branch 738, school 76, own 11, none 16).
 - Areas of the permission table: 61.
 
 ## Routes without a role
@@ -185,6 +185,7 @@ A Parent account only, for a child of its own (`@PortalChild`, task 11.2; every 
 - `GET /api/portal/children/:studentId/files/:fileId`
 - `GET /api/portal/children/:studentId/grades`
 - `GET /api/portal/children/:studentId/homework`
+- `GET /api/portal/children/:studentId/rating`
 - `GET /api/portal/children/:studentId/timetable`
 
 Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):
@@ -672,6 +673,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/portal/children/:studentId/grades` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
 | `GET /api/portal/children/:studentId/grades` | `query:quarter` | quarter of the child’s year | own | `src/modules/portal/portal-grades.test.ts > answers 404 for a quarter of another year or branch, and 400 for an unknown field` |
 | `GET /api/portal/children/:studentId/homework` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
+| `GET /api/portal/children/:studentId/rating` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
+| `GET /api/portal/children/:studentId/rating` | `query:quarter` | started quarter of the child’s year | own | `src/modules/portal/portal-rating.test.ts > answers 404 for a quarter not started, of another year or of another branch, and 400 for an unknown field` |
 | `GET /api/portal/children/:studentId/timetable` | `path:studentId` | child of the own family | own | `src/modules/portal/portal.test.ts > every route of a child refuses a child out of scope with 404` |
 | `GET /api/results/branch-summary` | `query:quarterId` | quarter | branch | `src/modules/results/home-pages.test.ts > refuses the Academic Vice Principal and a Teacher (403), and answers 404 for another branch's or an unknown quarter` |
 | `GET /api/results/closing` | `query:quarterId` | quarter | branch | `src/modules/results/closing.test.ts > answers 404 for another branch's or an unknown quarter, journal, subject and student, changing no row` |

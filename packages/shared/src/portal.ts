@@ -294,3 +294,57 @@ export const portalAttendanceWeekSchema = z.strictObject({
 });
 
 export type PortalAttendanceWeek = z.infer<typeof portalAttendanceWeekSchema>;
+
+/**
+ * The Rating page (task 11.6; `08`, Rating, "Own position": "The student's own place and the
+ * class average, without other students' names"). The child's row of the staff list "a class,
+ * all subjects" and that class's figure of the staff list of classes, from `packages/calc`.
+ * No other student's id, name, figure or place, and no count of the students ranked (review
+ * correction 1 of the plan).
+ */
+export const portalRatingQuerySchema = z.strictObject({ quarter: z.uuid().optional() });
+
+export type PortalRatingQuery = z.infer<typeof portalRatingQuerySchema>;
+
+/** A started quarter of the child's year. */
+export const portalRatingQuarterSchema = z.strictObject({
+  id: z.uuid(),
+  number: z.int().min(1).max(4),
+  startDate: schoolDateSchema,
+  endDate: schoolDateSchema,
+  closed: z.boolean(),
+});
+
+/** A figure in tenths (843 is 84.3), as the staff rating lists; `null` without a number. */
+const portalTenthsSchema = z.int().min(0).max(1000).nullable();
+
+export const portalRatingClassSchema = z.strictObject({
+  /** The class shown with its grade ("7 Oxford"). */
+  name: z.string(),
+  /** The child's place; `null` when the child has no figure with a number. */
+  place: z.int().min(1).nullable(),
+  /** The child's figure: the mean of its quarter results across subjects. */
+  value: portalTenthsSchema,
+  /** The subjects with a number. */
+  subjects: z.int().min(0),
+  /** `07`: "the student is marked as having fewer subjects". */
+  fewerSubjects: z.boolean(),
+  /** The class average: the mean of its students' figures. */
+  average: portalTenthsSchema,
+});
+
+export type PortalRatingClass = z.infer<typeof portalRatingClassSchema>;
+
+export const portalRatingSchema = z.strictObject({
+  quarters: z.array(portalRatingQuarterSchema),
+  /** The quarter shown; `null` when the child's branch has no started quarter to show. */
+  quarterId: z.uuid().nullable(),
+  /** `08`: "During a quarter the rating is marked provisional". */
+  provisional: z.boolean(),
+  /** Task 9.2b: the start quarter closed "not official". */
+  notOfficial: z.boolean(),
+  /** `null` when the child is in no class of the year on the reference date. */
+  class: portalRatingClassSchema.nullable(),
+});
+
+export type PortalRating = z.infer<typeof portalRatingSchema>;

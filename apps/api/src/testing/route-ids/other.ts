@@ -21,6 +21,8 @@ const CHILD_SCOPE = `${P} > every route of a child refuses a child out of scope 
 const CHILD_FILES = `${P} > the files of homework`;
 const CHILD_QUARTER =
   'src/modules/portal/portal-grades.test.ts > answers 404 for a quarter of another year or branch, and 400 for an unknown field';
+const RATING_QUARTER =
+  'src/modules/portal/portal-rating.test.ts > answers 404 for a quarter not started, of another year or of another branch, and 400 for an unknown field';
 const CHILD_RULE = 'build plan 11.2: one child-scope check used by every portal route';
 
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
@@ -51,6 +53,12 @@ export const OTHER_IDS: RouteIds = {
   'GET /api/portal/children/:studentId/grades': [
     line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
     line('query:quarter', 'quarter of the child’s year', 'own', CHILD_RULE, [CHILD_QUARTER]),
+  ],
+  'GET /api/portal/children/:studentId/rating': [
+    line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),
+    line('query:quarter', 'started quarter of the child’s year', 'own', CHILD_RULE, [
+      RATING_QUARTER,
+    ]),
   ],
   'GET /api/portal/children/:studentId/attendance': [
     line('path:studentId', 'child of the own family', 'own', CHILD_RULE, [CHILD_SCOPE]),

@@ -11,6 +11,10 @@ import {
   portalChildrenSchema,
   portalFileParamsSchema,
   portalHomeworkWeekSchema,
+  portalRatingQuerySchema,
+  portalRatingSchema,
+  type PortalRating,
+  type PortalRatingQuery,
   portalWeekQuerySchema,
   portalWeekSchema,
   type PortalChildParams,
@@ -26,9 +30,10 @@ import { ReturnsStoredFile, type StoredFile } from '../../http/stored-file.js';
 import { PortalChild } from '../access/access.decorators.js';
 import { CurrentSession } from '../auth/session.guard.js';
 import type { ActiveSession } from '../auth/sessions.service.js';
+import { RatingService } from '../results/rating.service.js';
 import { PortalGradesService } from './portal-grades.service.js';
 import { PortalHomeworkService } from './portal-homework.service.js';
-import { portalChildrenOf } from './portal-scope.js';
+import { portalChild, portalChildrenOf } from './portal-scope.js';
 import { PortalTimetable } from './portal-timetable.service.js';
 
 /**
@@ -43,6 +48,7 @@ export class PortalController {
     private readonly timetable: PortalTimetable,
     private readonly homework: PortalHomeworkService,
     private readonly grades: PortalGradesService,
+    private readonly rating: RatingService,
   ) {}
 
   /** The child switcher: each linked student with portal access on, active, in any branch. */
@@ -110,6 +116,25 @@ export class PortalController {
     @ValidQuery(portalWeekQuerySchema) query: PortalWeekQuery,
   ): Promise<PortalAttendanceWeek> {
     return this.grades.attendance(session.accountId, params.studentId, query.date);
+  }
+
+  /**
+   * The Rating page (task 11.6; `08`, Rating, "Own position"): the child's place in the class
+   * across all subjects and the class average, in the child's present branch, without any other
+   * student. The child scope first, on every request (404).
+   */
+  @Get('children/:studentId/rating')
+  @PortalChild()
+  @Returns(portalRatingSchema)
+  async ratingOf(
+    @CurrentSession() session: ActiveSession,
+    @ValidParams(portalChildParamsSchema) params: PortalChildParams,
+    @ValidQuery(portalRatingQuerySchema) query: PortalRatingQuery,
+  ): Promise<PortalRating> {
+    const child = await this.transactions.run([], (transaction) =>
+      portalChild(transaction, session.accountId, params.studentId),
+    );
+    return this.rating.familyPosition(child.branchId, child.id, query.quarter);
   }
 
   /** A file of a homework the page lists for this child (decision 2, Look first); not an export. */
