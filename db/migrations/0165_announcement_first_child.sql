@@ -1,8 +1,8 @@
--- 0164 The child the bot's message of an announcement opens (task 11.7, pull request #306).
+-- 0165 The child the bot's message of an announcement opens (task 11.7, pull request #306).
 --
 -- Spec review of the code, should-fix 6: the plan approved on #306 says the bot's button opens
 -- the announcements "of the first child (by last and first name) the announcement reaches". The
--- recipients function of 0163 (spec review of the plan, should-fix 7: one place for the audience
+-- recipients function of 0164 (spec review of the plan, should-fix 7: one place for the audience
 -- rule) also answers that child's id, never a name. The same arguments and the same test; only
 -- the column is added, so the function is made again.
 --

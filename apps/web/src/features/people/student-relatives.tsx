@@ -139,7 +139,7 @@ export function StudentRelativesTab({
     <section className="grid gap-4">
       {list.length === 0 ? (
         <EmptyState
-          text={t('people.relatives.needsRelative')}
+          text={t('people.relatives.none')}
           action={addButton === false ? undefined : addButton}
         />
       ) : (
@@ -343,7 +343,8 @@ function LinkActions({
       >
         {t('people.relatives.changeLink')}
       </Button>
-      {others.length > 0 && (
+      {/* The last relative may go too (`04`, Relatives are optional). */}
+      {
         <Button
           variant="secondary"
           {...panel.opener(unlinkKey)}
@@ -359,7 +360,7 @@ function LinkActions({
         >
           {t('people.relatives.unlink')}
         </Button>
-      )}
+      }
       <FailureAlert error={unlink.error} />
     </div>
   ) : null;

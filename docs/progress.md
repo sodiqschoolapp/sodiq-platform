@@ -4,7 +4,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 7 November 2026: task 11.7 Announcements and events
 
-- **Data and rights** (0163): `announcements` (branch-or-school, a whole-school row has no branch), `announcement_classes`, `announcement_deliveries` (school-wide); areas `announcements` (the three authors) and `announcements_feed` (every staff role); `announcement_recipients` the one audience rule of the bot.
+- **Data and rights** (0164, 0165): `announcements` (branch-or-school, a whole-school row has no branch), `announcement_classes`, `announcement_deliveries` (school-wide); areas `announcements` (the three authors) and `announcements_feed` (every staff role); `announcement_recipients` the one audience rule of the bot.
 - **API** (module `announcements`): the authors' list and writes (a whole-school one the Super Admin's alone, audience and readers fixed once saved), `GET /api/announcements-feed` (what is addressed to the person: school, branch, the classes of the load in force and of own class, every class for the branch-wide roles), `GET /api/portal/children/:studentId/announcements`; the bot's message per parent through `announcements.fan_out`, `.tick` and `.deliver` (quiet hours and retries of the digest, scope checked again at the send).
 - **Web**: `/announcements` (list and calendar of the month, opened from the home page), `/announcements/manage` (the authors' list, form and panel), the portal's Announcements tab; the bot's button opens it through `/portal/telegram?to=announcements`.
 
@@ -14,6 +14,16 @@ The next sessions must know:
 
 - `GET /api/announcements` without `archived` answers every announcement; the web filters by status.
 - An event's times are clock times as typed, never moments; a test of the feed sets the clock after the scene's version starts (`NOW` of `announcements.test.ts`).
+
+## 7 November 2026: date of birth, scholarship and relatives of a student are optional
+
+Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
+
+- **Database** (0163, numbered after 10.8's 0162 and merged after it): `students.birth_date` loses `not null`; `student_relatives_guard` keeps only "exactly one main contact when a student has live links" (**Look first**: "at least one relative" removed because the requirement changed); `student_duplicate_elsewhere` matches the name alone when either side has no date of birth. No row changes.
+- **API**: no `student_needs_relative` on the create, the import or the edit; the last relative may be unlinked (no `last_relative`); the duplicate warning matches the name alone when a date of birth is missing; the import reads an empty date of birth, scholarship (None) and relatives. Error codes `student_needs_relative` and `last_relative` and the import problem `needs_relative` are gone.
+- **Web**: the new-student form sends no relative when its relative part is left as it opened ("Relative (optional)") and a null date of birth; the scholarship stays None by default; the Relatives tab offers Unlink for the last relative and says "No relatives yet." when there is none; the profile shows "not set" for a missing date of birth.
+
+Left out: nothing of the change. A student with no relative has no parent to give portal access (Release 2 reads the links as they are).
 
 ## 7 November 2026: task 10.8 The journal and the plan as one; files of each work
 

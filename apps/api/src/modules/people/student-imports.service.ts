@@ -459,9 +459,9 @@ export class StudentImports {
 
   /**
    * The duplicate warning of a row (edge, the duplicate check: "A matching
-   * name and date of birth, compared after removing spelling differences,
-   * gives a warning that must be confirmed"): the hand form's check, run for
-   * the row, with the earlier rows of the file of the same name and date.
+   * name and date of birth, or a matching name when either record has no date
+   * of birth, ... gives a warning that must be confirmed"): the hand form's
+   * check, run for the row, with the earlier rows of the file it matches.
    */
   private async warningOf(
     transaction: Transaction,
@@ -478,7 +478,13 @@ export class StudentImports {
       .select(['id', 'uid'])
       .where('branch_id', '=', branchId)
       .where('name_key', '=', nameKey)
-      .where('birth_date', '=', input.birthDate)
+      // No date of birth on either side: the name alone, as the hand form's check
+      // (`Students.check`; owner, 7 November 2026).
+      .where((where) =>
+        input.birthDate === null
+          ? where.lit(true)
+          : where.or([where('birth_date', '=', input.birthDate), where('birth_date', 'is', null)]),
+      )
       .orderBy('uid');
     if (written.length > 0) {
       query = query.where('id', 'not in', written);

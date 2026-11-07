@@ -122,7 +122,7 @@ export interface StudentRow {
   last_name: string;
   paternal_name: string | null;
   sex: string;
-  birth_date: string;
+  birth_date: string | null;
   grade: number;
   starts_on: string;
   document_type: string | null;
@@ -450,9 +450,9 @@ export class Students {
   }
 
   /**
-   * The duplicate warning (edge: "A matching name and date of birth, compared
-   * after removing spelling differences, gives a warning that must be
-   * confirmed, so twins pass"): the matches of the branch of the request by
+   * The duplicate warning (edge: "A matching name and date of birth, or a
+   * matching name when either record has no date of birth, compared after
+   * removing spelling differences, gives a warning that must be confirmed"): the matches of the branch of the request by
    * name, of other branches only whether one exists (decision 3).
    */
   check(access: Access, input: StudentCheck): Promise<StudentCheckResult> {
@@ -470,7 +470,15 @@ export class Students {
           statusOn(today),
         ])
         .where('students.name_key', '=', nameKey)
-        .where('students.birth_date', '=', input.birthDate);
+        // No date of birth on either side: the name alone (owner, 7 November 2026).
+        .where((where) =>
+          input.birthDate === null
+            ? where.lit(true)
+            : where.or([
+                where('students.birth_date', '=', input.birthDate),
+                where('students.birth_date', 'is', null),
+              ]),
+        );
       if (input.studentId !== null) {
         // The record being edited is one of this branch (`.claude/rules/api.md`, ids in the body).
         await this.readStudent(transaction, input.studentId);
@@ -499,13 +507,9 @@ export class Students {
    * transaction (decision 7); the first contract, the first status row
    * (`active` from the start date) and the switched-off student account
    * (decision 9) are written with it, and its relatives, new or found by
-   * phone (`04`, Close relatives: "A student cannot be saved without at
-   * least one relative"; task 2.5a).
+   * phone, if any (`04`, Relatives are optional; owner, 7 November 2026).
    */
   create(access: Access, input: StudentCreate, requestId: string): Promise<StudentDetail> {
-    if (input.relatives.length === 0) {
-      throw new ApiException('student_needs_relative', 422);
-    }
     return this.refusingTaken(access, () =>
       this.relatives.refusingHeldPhone(access, () =>
         refusingRelativeRaces(() =>
@@ -536,9 +540,6 @@ export class Students {
     importId?: string,
   ): Promise<string> {
     const branchId = branchOf(access);
-    if (input.relatives.length === 0) {
-      throw new ApiException('student_needs_relative', 422);
-    }
     // Task 3.1b, decision 2: a student who starts today or earlier
     // joins a class on the start date; a class of another branch or
     // an unknown one is not found.
@@ -736,11 +737,6 @@ export class Students {
         () =>
           this.transactions.run(access.branchIds, async (transaction) => {
             const row = await this.lockStudent(transaction, id);
-            // A student of 2.4a with no relative is edited once one is linked
-            // (task 2.5a, decision 11; `student_relatives_guard` of 0036).
-            if ((await this.relatives.linksOf(transaction, id)).length === 0) {
-              throw new ApiException('student_needs_relative', 422);
-            }
             const contract = await this.lockNewestContract(transaction, id);
             const before = fieldsOf(row, contract);
             const changes = changesOf({ ...before }, { ...record });

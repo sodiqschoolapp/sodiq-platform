@@ -206,7 +206,7 @@ export class AnnouncementDelivery {
 
   /**
    * The button opens the mini app, which signs in and goes on to the announcements of the first
-   * child (by last and first name) the announcement reaches (plan of #306; migration 0164).
+   * child (by last and first name) the announcement reaches (plan of #306; migration 0165).
    */
   private button(
     language: Language,

@@ -31,7 +31,7 @@ import { announcementFanOutJob } from './announcement-jobs.js';
 /**
  * Task 11.7 (pull request #306; `11`, Announcements and events). The authors' list and writes
  * under `announcements`, what is addressed to a staff member under `announcements_feed`, and the
- * portal's page of a child. `announcements` is a branch-or-school table (0163): a transaction of
+ * portal's page of a child. `announcements` is a branch-or-school table (0164): a transaction of
  * the branch of the request reads that branch's rows and the school's.
  */
 

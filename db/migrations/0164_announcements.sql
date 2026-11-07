@@ -1,4 +1,4 @@
--- 0163 Announcements and events (task 11.7, pull request #306).
+-- 0164 Announcements and events (task 11.7, pull request #306).
 --
 -- docs/spec/11-later-modules.md: "Announcements and events | 2 | Management | News and events
 -- for chosen audiences, with a calendar." docs/spec/10-portal-notifications-release-2.md,

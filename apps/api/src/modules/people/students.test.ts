@@ -699,6 +699,45 @@ describe('student records', () => {
       expect(result.sameNameAndBirth).toEqual([]);
       await create({ firstName: 'Husan', lastName: 'Egizakov', birthDate: '2015-01-01' });
     });
+
+    // Owner, 7 November 2026 (edge/students-classes-groups): with no date of birth on either
+    // side, the same name alone gives the warning, here and in another branch.
+    it('warns on the same name alone when either record has no date of birth', async () => {
+      const here = await create({ firstName: 'Nodira', lastName: 'Sanasizova', birthDate: null });
+      await create({ firstName: 'Laziz', lastName: 'Sanasizov', birthDate: '2013-05-05' });
+      expect(
+        (
+          await t.postStudent(
+            t.south,
+            body({ firstName: 'Laziz', lastName: 'Sanasizov', birthDate: null }),
+          )
+        ).status,
+      ).toBe(201);
+      const check = async (firstName: string, lastName: string, birthDate: string | null) =>
+        studentCheckResultSchema.parse(
+          (
+            await t.post('/api/people/students/check', t.north, {
+              firstName,
+              lastName,
+              birthDate,
+              studentId: null,
+            })
+          ).body,
+        );
+      // A typed date matches the record with none.
+      expect((await check('Nodira', 'Sanasizova', '2014-02-02')).sameNameAndBirth).toMatchObject([
+        { id: here.id },
+      ]);
+      // No typed date matches the record with one, and says the one elsewhere.
+      const laziz = await check('Laziz', 'Sanasizov', null);
+      expect(laziz.sameNameAndBirth).toHaveLength(1);
+      expect(laziz.elsewhere).toBe(true);
+      // Two dates that differ still pass (twins of another day, a namesake).
+      expect(await check('Laziz', 'Sanasizov', '2013-05-06')).toEqual({
+        sameNameAndBirth: [],
+        elsewhere: true,
+      });
+    });
   });
 
   describe('readers (edge: Personal data and the audit log; decisions 2 and 4)', () => {

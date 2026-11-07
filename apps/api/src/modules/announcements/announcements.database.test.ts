@@ -29,7 +29,7 @@ async function refusal(work: () => Promise<unknown>): Promise<string> {
   }
 }
 
-// All names are invented. Task 11.7, pull request #306: what migration 0163 keeps itself, also
+// All names are invented. Task 11.7, pull request #306: what migration 0164 keeps itself, also
 // when the application has a fault: a branch announcement is seen through its branch only and a
 // whole-school one in every branch (plan decision 1); the classes of an audience are of its own
 // branch; the shape of news and events; the bounds of the shared schemas; nothing deleted; the
@@ -101,7 +101,7 @@ describe('announcements in the database', () => {
 
   it('keeps the bounds of the shared schemas', () => {
     const migration = readFileSync(
-      new URL('../../../../../db/migrations/0163_announcements.sql', import.meta.url),
+      new URL('../../../../../db/migrations/0164_announcements.sql', import.meta.url),
       'utf8',
     );
     expect(migration).toContain(

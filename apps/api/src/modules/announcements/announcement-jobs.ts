@@ -5,7 +5,7 @@ import { defineJob } from '../../jobs/job-definition.js';
  * Task 11.7 (pull request #306): the bot's messages of an announcement for parents.
  *
  * `announcements.fan_out`, enqueued in the transaction of the create: one `due` delivery per
- * Parent account the announcement reaches (`announcement_recipients`, 0163); a second run adds
+ * Parent account the announcement reaches (`announcement_recipients`, 0164); a second run adds
  * nothing (unique per announcement and account).
  */
 export const announcementFanOutJob = defineJob({

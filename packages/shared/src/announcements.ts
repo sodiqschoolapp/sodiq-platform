@@ -5,7 +5,7 @@ import { clockTimeSchema } from './digest.js';
 /**
  * Announcements and events (task 11.7, pull request #306; `11`, Announcements and events: "News
  * and events for chosen audiences, with a calendar"). The bounds are those of the checks of
- * migration 0163 (a test compares them).
+ * migration 0164 (a test compares them).
  */
 
 export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 120;
@@ -164,7 +164,7 @@ export const announcementViewSchema = z.strictObject({
 });
 export type AnnouncementView = z.infer<typeof announcementViewSchema>;
 
-/** The states of one bot message of an announcement (`announcement_deliveries`, 0163). */
+/** The states of one bot message of an announcement (`announcement_deliveries`, 0164). */
 export const ANNOUNCEMENT_DELIVERY_STATUSES = [
   'due',
   'delivered',

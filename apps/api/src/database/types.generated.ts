@@ -2035,7 +2035,7 @@ export interface StudentRelatives {
 
 export interface Students {
   address: string | null;
-  birth_date: string;
+  birth_date: string | null;
   branch_id: string;
   consent_signed_on: string | null;
   created_at: Generated<Timestamp>;

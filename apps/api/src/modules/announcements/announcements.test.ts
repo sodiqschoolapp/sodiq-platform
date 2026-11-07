@@ -1125,7 +1125,7 @@ describe('announcements and events', () => {
     });
   });
 
-  describe('the recipients of the bot (announcement_recipients, 0163 and 0164)', () => {
+  describe('the recipients of the bot (announcement_recipients, 0164 and 0165)', () => {
     /** A family of class A of branch A with a Telegram link, for a case that changes it. */
     const family = async () => {
       const made = await parents.student(a.branch);
