@@ -3,6 +3,7 @@ import {
   digestFrequencyAnswerSchema,
   digestLogSchema,
   digestSettingsSchema,
+  relativeReportSchema,
 } from '@sodiq/shared';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -19,7 +20,7 @@ const codeOf = (response: Response): string =>
 describe('the routes of the parents digest', () => {
   let t: DayTemplatesKit;
   let parents: ParentsKit;
-  let parent: { cookie: string; accountId: string };
+  let parent: { cookie: string; accountId: string; relativeId: string };
 
   const settings = (cookie = t.admin) =>
     request(t.kit.server).get('/api/setup/school-settings/digest').set('Cookie', cookie);
@@ -48,7 +49,7 @@ describe('the routes of the parents digest', () => {
     parents = new ParentsKit(t.app, t.database.migrator, await load.classes.account());
     const { relativeId } = await parents.student(t.north);
     const session = await parents.session(relativeId);
-    parent = { cookie: session.cookie, accountId: session.account.id };
+    parent = { cookie: session.cookie, accountId: session.account.id, relativeId };
   }, 120_000);
 
   afterAll(async () => {
@@ -167,7 +168,19 @@ describe('the routes of the parents digest', () => {
     expect(response.status).toBe(200);
     const log = digestLogSchema.parse(response.body);
     expect(log.total).toBe(1);
-    expect(log.rows[0]).toMatchObject({ digestDate: '2026-10-21', status: 'failed', attempts: 8 });
+    const relative = await t.database.migrator
+      .selectFrom('relative_accounts')
+      .innerJoin('relatives', 'relatives.id', 'relative_accounts.relative_id')
+      .select('relatives.full_name')
+      .where('relative_accounts.account_id', '=', parent.accountId)
+      .executeTakeFirstOrThrow();
+    expect(relative.full_name).not.toBe('');
+    expect(log.rows[0]).toMatchObject({
+      digestDate: '2026-10-21',
+      parentName: relative.full_name,
+      status: 'failed',
+      attempts: 8,
+    });
     const filtered = await request(t.kit.server)
       .get('/api/digest-log?status=delivered')
       .set('Cookie', t.admin);
@@ -180,5 +193,40 @@ describe('the routes of the parents digest', () => {
         'permission_denied',
       );
     }
+  });
+
+  // Plan decision 15 (permission review of the code, should-fix 4): the reader of the digests.
+  it('lists the account\'s digests in the personal data report of the relative, and no other', async () => {
+    const other = await parents.student(t.north);
+    const otherSession = await parents.session(other.relativeId);
+    const link = await t.database.migrator
+      .insertInto('telegram_links')
+      .values({
+        account_id: otherSession.account.id,
+        telegram_user_id: '7200002',
+        linked_at: new Date('2026-10-01T10:00:00+05:00'),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('digests')
+      .values({
+        account_id: otherSession.account.id,
+        digest_date: '2026-10-22',
+        telegram_link_id: link.id,
+        due_at: new Date('2026-10-22T19:00:00+05:00'),
+        next_try_at: new Date('2026-10-22T19:00:00+05:00'),
+      })
+      .execute();
+    const response = await t.post(
+      `/api/people/relatives/${parent.relativeId}/report`,
+      t.north,
+      {},
+      t.admin,
+    );
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(relativeReportSchema.parse(response.body).relative.account?.digests).toEqual([
+      { digestDate: '2026-10-21', status: 'failed', sentAt: null },
+    ]);
   });
 });

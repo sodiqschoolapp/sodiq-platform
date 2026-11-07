@@ -357,7 +357,8 @@ export class DigestService {
         .select(['id', 'telegram_user_id'])
         .where('account_id', '=', start.accountId)
         .where('ended_at', 'is', null)
-        .forUpdate()
+        // Not locked: a sign-in, sign-out or reset of the parent never waits on Telegram's answer
+        // (permission review of the code, should-fix 6). Only the digest's own row is held.
         .executeTakeFirst();
       if (link === undefined) {
         await transaction

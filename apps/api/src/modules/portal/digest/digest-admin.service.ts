@@ -69,9 +69,17 @@ export class DigestAdmin {
   }
 
   /** The send log (`10`, Sending: "to whom, for which children, when, delivered or not"). */
-  log(query: DigestLogQuery): Promise<DigestLog> {
+  async log(query: DigestLogQuery): Promise<DigestLog> {
     const page = query.page ?? 1;
-    return this.transactions.run([], async (transaction) => {
+    // The Super Admin reads every branch (`digest_log` is theirs alone): the relative's name is
+    // read through its membership filter, which needs a link of a branch of the transaction
+    // (permission review of the code, should-fix 3).
+    const branchIds = (
+      await this.transactions.run([], (transaction) =>
+        transaction.selectFrom('branches').select('id').orderBy('id').execute(),
+      )
+    ).map((row) => row.id);
+    return this.transactions.run(branchIds, async (transaction) => {
       const where = sql`
         (${query.from ?? null}::date is null or d.digest_date >= ${query.from ?? null}::date)
         and (${query.to ?? null}::date is null or d.digest_date <= ${query.to ?? null}::date)

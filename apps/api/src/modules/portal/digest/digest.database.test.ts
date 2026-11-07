@@ -1,6 +1,7 @@
 import { studentNameKey } from '@sodiq/shared';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Transactions } from '../../../database/transactions.js';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { sql } from 'kysely';
+import { MOMENT_SETTING, Transactions } from '../../../database/transactions.js';
 import {
   dayTemplatesKit,
   START,
@@ -12,6 +13,7 @@ import { TEST_BOT_TOKEN, TEST_WEBHOOK_SECRET } from '../../../testing/telegram-k
 import { publishedScene, type PublishedScene } from '../../../testing/published-scene.js';
 import { Audit } from '../../audit/audit.service.js';
 import { saveCells } from '../../journal/cells.js';
+import { StudentResultsService } from '../../results/student-results.service.js';
 import type { TelegramFetch } from '../telegram/bot-api.js';
 import { DigestService } from './digest.service.js';
 
@@ -96,6 +98,7 @@ describe('the parents digest', () => {
   const saveOn = async (
     moment: string,
     cells: { lessonId: string; studentId: string; workId?: string; value: number | null }[],
+    branch?: string,
   ) => {
     const writer = await load.classes.account();
     const versions = await t.database.migrator
@@ -108,7 +111,7 @@ describe('the parents digest', () => {
       )
       .execute();
     await at(moment, () =>
-      t.app.get(Transactions).run([s.branch], (transaction) =>
+      t.app.get(Transactions).run([branch ?? s.branch], (transaction) =>
         saveCells(
           transaction,
           t.app.get(Audit),
@@ -626,5 +629,157 @@ describe('the parents digest', () => {
     await expect(
       t.database.migrator.updateTable('digest_settings').set({ send_at: '22:00' }).execute(),
     ).rejects.toThrow(/digest_settings_send_at_check/u);
+  });
+
+  // Permission review of the code, must-fix 2: the privacy cases of the Release 2 section for the
+  // digest: a child in another branch, an unlinked relative, another branch's child not linked.
+  describe('across branches', () => {
+    let laylo: string;
+    let bobur: string;
+    let sardor: string;
+    let southLesson: string;
+    let kamronLesson: string;
+
+    const mondayLesson = async (classId: string, subjectId: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', classId)
+          .where('subject_id', '=', subjectId)
+          .where('lesson_date', '=', '2026-11-09')
+          .executeTakeFirstOrThrow()
+      ).id;
+
+    beforeAll(async () => {
+      const south = await publishedScene(t, load, { branch: t.south, graded: true });
+      southLesson = await mondayLesson(south.otherClass, south.subject);
+      kamronLesson = await mondayLesson(s.otherClass, s.subject);
+      // Laylo: the mother's second child, in the other branch.
+      laylo = await parents.childOf(t.south, motherA.relativeId);
+      await named(laylo, 'Laylo');
+      await parents.members.member({
+        branch: t.south,
+        classId: south.otherClass,
+        studentId: laylo,
+        from: '2026-09-01',
+      });
+      // Bobur: another family's child in the other branch, in Laylo's class.
+      bobur = (await parents.student(t.south)).studentId;
+      await named(bobur, 'Bobur');
+      await parents.members.member({
+        branch: t.south,
+        classId: south.otherClass,
+        studentId: bobur,
+        from: '2026-09-01',
+      });
+      // Sardor: in Kamron's class, once linked to the mother, the link ended (unlinked).
+      sardor = await parents.childOf(s.branch, motherA.relativeId);
+      await named(sardor, 'Sardor');
+      await parents.members.member({
+        branch: s.branch,
+        classId: s.otherClass,
+        studentId: sardor,
+        from: '2026-09-01',
+      });
+      // Unlinked as the service writes it: another main contact, the moment of the transaction.
+      const father = await parents.relativeOf(s.branch, sardor);
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const moment = new Date('2026-10-30T09:00:00+05:00');
+        await sql`select set_config(${MOMENT_SETTING}, ${moment.toISOString()}, true)`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: false })
+          .where('student_id', '=', sardor)
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: true })
+          .where('student_id', '=', sardor)
+          .where('relative_id', '=', father)
+          .execute();
+        await transaction
+          .updateTable('student_relatives')
+          .set({ unlinked_at: moment })
+          .where('student_id', '=', sardor)
+          .where('relative_id', '=', motherA.relativeId)
+          .execute();
+      });
+      await saveOn('2026-11-12T10:00:00+05:00', [
+        { lessonId: kamronLesson, studentId: kamron, value: 2 },
+        { lessonId: kamronLesson, studentId: sardor, value: 0 },
+      ]);
+      await saveOn(
+        '2026-11-12T10:00:00+05:00',
+        [
+          { lessonId: southLesson, studentId: laylo, value: 0 },
+          { lessonId: southLesson, studentId: bobur, value: 0 },
+        ],
+        t.south,
+      );
+    }, 240_000);
+
+    it("gives a parent of two branches one message with each child's own part, and no one else", async () => {
+      const before = messagesTo(motherA.chat).length;
+      await run('2026-11-12T19:00:00+05:00');
+      const text = messagesTo(motherA.chat).slice(before).join('\n');
+      const kamronPart = text.slice(text.indexOf('Kamron'), text.indexOf('Laylo'));
+      const layloPart = text.slice(text.indexOf('Laylo'));
+      expect(text.indexOf('Kamron')).toBeGreaterThan(-1);
+      expect(text.indexOf('Laylo')).toBeGreaterThan(text.indexOf('Kamron'));
+      expect(kamronPart).toContain('9 Nov: late');
+      expect(kamronPart).not.toMatch(/: absent/u);
+      expect(layloPart).toContain('9 Nov: absent');
+      expect(layloPart).not.toMatch(/: late/u);
+      expect(text).not.toContain('Bobur');
+      expect(text).not.toContain('Sardor');
+    });
+
+    // Permission review of the code, must-fix 1: the scope read again in the transaction of the
+    // send, after the journal was read.
+    it('takes out a child whose portal access went off after the journal was read', async () => {
+      await saveOn('2026-11-13T10:00:00+05:00', [
+        { lessonId: kamronLesson, studentId: kamron, value: 0 },
+      ]);
+      await saveOn(
+        '2026-11-13T10:00:00+05:00',
+        [{ lessonId: southLesson, studentId: laylo, value: 2 }],
+        t.south,
+      );
+      const results = t.app.get(StudentResultsService);
+      const original = results.familyLessons.bind(results);
+      // The first child read is Kamron (by first name): his access goes off once his journal was read.
+      const spy = vi.spyOn(results, 'familyLessons').mockImplementationOnce(async (...args) => {
+        const answer = await original(...args);
+        await linkOf(kamron, motherA.relativeId).set({ portal_access: false }).execute();
+        return answer;
+      });
+      const before = messagesTo(motherA.chat).length;
+      try {
+        await run('2026-11-13T19:00:00+05:00');
+      } finally {
+        spy.mockRestore();
+        await linkOf(kamron, motherA.relativeId).set({ portal_access: true }).execute();
+      }
+      const text = messagesTo(motherA.chat).slice(before).join('\n');
+      expect(text).toContain('Laylo');
+      expect(text).not.toContain('Kamron');
+      const row = await digestOf(motherA.accountId, '2026-11-13');
+      expect(row?.status).toBe('delivered');
+      const parts = await t.database.migrator
+        .selectFrom('digest_parts')
+        .select('student_id')
+        .where('digest_id', '=', row?.id ?? '')
+        .execute();
+      expect(parts.map((one) => one.student_id)).toEqual([laylo]);
+      const entries = await t.database.migrator
+        .selectFrom('digest_entries')
+        .select('student_id')
+        .where('digest_id', '=', row?.id ?? '')
+        .execute();
+      expect(entries.every((one) => one.student_id === laylo)).toBe(true);
+    });
   });
 });
