@@ -38,7 +38,9 @@ import {
   addWork,
   carryWork,
   invalidateJournal,
+  removePlanWork,
   removeWork,
+  renamePlanWork,
   renameWork,
   saveScores,
   setNotGraded,
@@ -462,7 +464,18 @@ export function useWorksEntry(
               ask: () => Promise.resolve(false),
             });
           }}
+          inJournal={addedInJournal(grid, work)}
           onRename={(title) => {
+            // Task 10.8: a work added in the journal is renamed in the plan, on the title read.
+            const planWorkId = work.planWorkId;
+            if (addedInJournal(grid, work) && planWorkId !== null) {
+              run({
+                run: () =>
+                  renamePlanWork(lesson.id, planWorkId, { title, baseTitle: work.title ?? '' }),
+                ask: () => Promise.resolve(false),
+              });
+              return;
+            }
             if (work.id === null) return;
             const id = work.id;
             run({
@@ -471,6 +484,15 @@ export function useWorksEntry(
             });
           }}
           onRemove={() => {
+            const planWorkId = work.planWorkId;
+            if (addedInJournal(grid, work) && planWorkId !== null) {
+              run({
+                run: () => removePlanWork(lesson.id, planWorkId),
+                ask: () => Promise.resolve(false),
+              });
+              setWorkOpen(null);
+              return;
+            }
             if (work.id === null) return;
             const id = work.id;
             run({ run: () => removeWork(lesson.id, id), ask: () => Promise.resolve(false) });
@@ -670,6 +692,16 @@ function LessonWorksDialog({
 }
 
 /** One work: its total, "not held", the carry of a homework and the removal of an empty one. */
+/**
+ * Task 10.8: the work was added in the journal and its plan item has no topic yet (`09`, In the
+ * journal); the lesson it was given at says so (`addedInJournal`, `planItem`).
+ */
+function addedInJournal(grid: JournalGrid, work: JournalWork): boolean {
+  if (work.planWorkId === null || work.sourceLessonId === null) return false;
+  const source = grid.lessons.find((one) => one.id === work.sourceLessonId);
+  return source !== undefined && !source.planItem && source.addedInJournal.includes(work.planWorkId);
+}
+
 function WorkDialog({
   lesson,
   work,
@@ -683,9 +715,15 @@ function WorkDialog({
   onRename,
   onRemove,
   onClose,
+  inJournal,
 }: {
   lesson: JournalLesson;
   work: JournalWork;
+  /**
+   * Task 10.8: a work added in the journal whose plan item has no topic yet; renamed and removed
+   * here like a work added by hand (`edge/journal`, "A lesson is held with no plan item").
+   */
+  inJournal: boolean;
   lastTotal: number | null;
   busy: boolean;
   /** Task 10.6 (plan review, correction 2): a refused rename is shown in the dialog. */
@@ -749,7 +787,7 @@ function WorkDialog({
         </form>
         <FailureAlert error={failure} />
         {/* Task 10.6: a work added by hand is renamed while the lesson can be edited. */}
-        {enter && work.unplanned && work.id !== null && (
+        {enter && ((work.unplanned && work.id !== null) || inJournal) && (
           <WorkTitleForm
             initial={work.title ?? ''}
             label={t('journal.works.titleLabel')}
@@ -778,7 +816,9 @@ function WorkDialog({
                 {t('journal.works.carry')}
               </Button>
             )}
-            {work.unplanned && work.id !== null && work.total === null && !work.notHeld && (
+            {((work.unplanned && work.id !== null) || inJournal) &&
+              work.total === null &&
+              !work.notHeld && (
               <Button variant="ghost" disabled={busy} onClick={onRemove}>
                 {t('journal.works.remove')}
               </Button>

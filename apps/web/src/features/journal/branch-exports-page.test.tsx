@@ -172,6 +172,7 @@ const SUPPORT: JournalSupport = {
         number: 7,
         topic: null,
         notDelivered: false,
+        addedInJournal: [],
         copyFrom: null,
         lock: OPEN_LOCK,
         notHeldWorks: [],

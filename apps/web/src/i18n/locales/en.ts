@@ -5969,6 +5969,20 @@ export const en = {
     },
   },
   plans: {
+    files: {
+      materials: 'Materials (staff only)',
+      materialsNote: 'The teacher’s own files, such as slides or an answer key. Students and parents never see them.',
+      attachTo: 'Attach a file to {{name}}',
+      attachMaterial: 'Attach a material',
+      pending: 'uploaded when you save',
+      drop: 'Remove',
+      dropOf: 'Remove {{name}}',
+      notUploaded: 'These files were not uploaded',
+      retry: 'Try again',
+      full: 'This place holds 10 files already. Remove one first.',
+      tooLarge: '{{name}} is larger than 20 MB.',
+      wrongType: '{{name}} is not a type a plan takes: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 or MP4.',
+    },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {
       carriedIn: 'Carried in',
@@ -6101,6 +6115,7 @@ export const en = {
       incomplete_other: '{{count}} rows without a topic',
     },
     plan: {
+      addedInJournal: 'added in the journal',
       marks: 'Marks',
       title: 'Lesson plan',
       caption: 'Rows of the plan',
@@ -6473,6 +6488,11 @@ export const en = {
       hiddenBy: 'hidden by a {{kind}} exemption {{from}} – {{until}}',
     },
     card: {
+      editPlan: 'Edit the plan of this lesson',
+      askToEdit: 'Ask to edit this lesson',
+      askReason: 'Why it should change',
+      askSend: 'Send the request',
+      asked: 'The request was sent.',
       titleLoading: 'Lesson',
       title: 'Lesson {{number}} · {{date}}',
       titleNoNumber: 'Lesson of {{date}}',

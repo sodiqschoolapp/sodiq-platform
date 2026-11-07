@@ -168,7 +168,7 @@ export async function planItemsOf(
             .execute(),
           transaction
             .selectFrom('lesson_plan_works')
-            .select(['id', 'item_id', 'kind', 'title'])
+            .select(['id', 'item_id', 'kind', 'title', 'added_in_journal_at'])
             .where('item_id', 'in', itemIds)
             .orderBy('kind')
             .orderBy('position')
@@ -183,6 +183,7 @@ export async function planItemsOf(
       id: work.id,
       kind: work.kind === 'homework' ? 'homework' : 'classwork',
       title: work.title,
+      addedInJournal: work.added_in_journal_at !== null,
     });
     worksOf.set(work.item_id, list);
   }

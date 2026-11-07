@@ -1,5 +1,5 @@
 import type { JournalGrid, JournalLesson, JournalStudent, JournalWork } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
@@ -56,6 +56,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   number: null,
   topic: null,
   notDelivered: false,
+  addedInJournal: [],
   copyFrom: null,
   lock: OPEN_LOCK,
   works: [],
@@ -331,6 +332,88 @@ describe('classwork and homework in the grid', () => {
     });
   });
 
+  // Task 10.8 (`edge/journal`, "A lesson is held with no plan item"; plan decision 8): a work
+  // added in the journal is a planned column; while its item has no topic it is renamed and
+  // removed in the journal, through its plan work.
+  it('renames and removes a work added in the journal through its plan work while the item has no topic', async () => {
+    const added: JournalWork = {
+      ...TEST,
+      planWorkId: uid(90),
+      sourceLessonId: NO_PLAN,
+      title: 'Dictation',
+    };
+    const lessons = (planItem: boolean): JournalLesson[] => [
+      GRID.lessons[0] as JournalLesson,
+      {
+        ...(GRID.lessons[1] as JournalLesson),
+        planItem,
+        addedInJournal: [uid(90)],
+        works: [added],
+      },
+    ];
+    const gridOf = (planItem: boolean): JournalGrid => ({
+      ...GRID,
+      lessons: lessons(planItem),
+      students: GRID.students.map((one) => ({
+        ...one,
+        cells: [
+          one.cells[0] as JournalStudent['cells'][number],
+          {
+            ...(one.cells[1] as JournalStudent['cells'][number]),
+            works: [
+              {
+                score: null,
+                percent: null,
+                version: null,
+                onAbsent: false,
+                marker: null,
+                notGraded: false,
+              },
+            ],
+          },
+        ],
+      })),
+    });
+    let withTopic = false;
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(gridOf(withTopic)),
+      [`PUT /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}/title`]: () =>
+        json({ planWorkId: uid(90), itemId: uid(91), kind: 'classwork', title: 'Quiz' }),
+      [`DELETE /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}`]: () =>
+        new Response(null, { status: 204 }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: /^Work: Dictation/ }));
+    let dialog = await screen.findByRole('dialog', { name: 'Work: Dictation' });
+    fireEvent.change(within(dialog).getByLabelText(en.journal.works.titleLabel), {
+      target: { value: 'Quiz' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    await waitFor(() => {
+      expect(
+        sent(calls, `PUT /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}/title`),
+      ).toEqual([{ title: 'Quiz', baseTitle: 'Dictation' }]);
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.remove }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `DELETE /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}`,
+        ),
+      ).toBe(true);
+    });
+    // Once the owner wrote the topic, the work is the plan's: no rename and no remove here.
+    withTopic = true;
+    cleanup();
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: /^Work: Dictation/ }));
+    dialog = await screen.findByRole('dialog', { name: 'Work: Dictation' });
+    expect(within(dialog).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: en.journal.works.remove })).toBeNull();
+  });
+
   // Task 10.6: a work added by hand before 10.6 shows "HW 1" and is renamed in its dialog; a
   // planned work has no rename.
   it('renames a work added by hand from its dialog, shows a refusal there, and offers no rename for a planned work', async () => {
@@ -555,8 +638,9 @@ describe('classwork and homework in the grid', () => {
 
   it('says "No plan" and adds a classwork by hand at a lesson with no plan item, named (task 10.6)', async () => {
     const calls = open({
+      // Task 10.8: the add answers the plan work it wrote.
       [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
-        json({ ...SAVED, total: null, title: 'Dictation', version: 1 }),
+        json({ planWorkId: uid(90), itemId: uid(91), kind: 'classwork', title: 'Dictation' }),
     });
     // Task 8.8: the works of a lesson open from its lesson card.
     const dialog = await worksOf(1);

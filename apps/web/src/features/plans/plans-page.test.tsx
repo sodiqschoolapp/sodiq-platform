@@ -95,6 +95,7 @@ const ITEM: PlanItem = {
   classworks: [{ id: uid(41), title: 'Exercise 1', description: '' }],
   homeworks: [],
   files: [],
+  addedInJournal: [],
 };
 
 const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
@@ -305,6 +306,95 @@ describe('Lesson plans', () => {
     });
   });
 
+  // Task 10.8 (`09`, What a plan contains: "Files, of the materials and of each work, can be
+  // attached while a row is being written"; plan decision 10): held in the form, uploaded to the
+  // work the save made, never before.
+  it('keeps a file attached while writing a new row with its homework, uploading it once the row is saved', async () => {
+    const homework = { id: uid(51), title: 'Read 3.1', description: '' };
+    const calls = open({
+      path: `/plans/${JOURNAL}`,
+      routes: {
+        [`POST /api/plans/journals/${JOURNAL}/items`]: () =>
+          json(
+            {
+              ...ITEM,
+              id: uid(50),
+              position: 2,
+              topic: 'Decimals',
+              classworks: [],
+              homeworks: [homework],
+            },
+            201,
+          ),
+        [`PUT /api/plans/items/${uid(50)}/files`]: () =>
+          json({
+            id: uid(52),
+            workId: homework.id,
+            name: 'sheet.pdf',
+            type: 'application/pdf',
+            bytes: 4,
+          }),
+      },
+    });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /19 October · lesson 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.panel.fill }));
+    const form = await screen.findByRole('form', { name: 'Row 2' });
+    fireEvent.change(within(form).getByRole('textbox', { name: en.plans.plan.topic }), {
+      target: { value: 'Decimals' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.plans.panel.addHomework }));
+    fireEvent.change(within(form).getByRole('textbox', { name: 'Homework 1' }), {
+      target: { value: 'Read 3.1' },
+    });
+    fireEvent.change(
+      within(form).getByLabelText(en.plans.files.attachTo.replace('{{name}}', 'Read 3.1')),
+      { target: { files: [new File(['%PDF'], 'sheet.pdf', { type: 'application/pdf' })] } },
+    );
+    expect(within(form).getByText('sheet.pdf')).toBeDefined();
+    expect(calls.filter((call) => call.route.endsWith('/files'))).toEqual([]);
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route.endsWith('/files'))).toEqual([
+        {
+          route: `PUT /api/plans/items/${uid(50)}/files`,
+          body: { type: 'application/pdf', size: 4 },
+          query: `?name=sheet.pdf&workId=${homework.id}`,
+        },
+      ]);
+    });
+    expect(screen.queryByText(en.plans.files.notUploaded)).toBeNull();
+  });
+
+  it('refuses a file larger than 20 MB or of a type the plan does not take, keeping nothing', async () => {
+    const calls = open({ path: `/plans/${JOURNAL}` });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /19 October · lesson 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.panel.fill }));
+    const form = await screen.findByRole('form', { name: 'Row 2' });
+    const picker = within(form).getByLabelText(en.plans.files.attachMaterial);
+    fireEvent.change(picker, {
+      target: { files: [new File(['GIF89a'], 'cat.gif', { type: 'image/gif' })] },
+    });
+    expect(
+      await within(form).findByText(en.plans.files.wrongType.replace('{{name}}', 'cat.gif')),
+    ).toBeDefined();
+    fireEvent.change(picker, {
+      target: {
+        files: [new File([new Uint8Array(20_000_001)], 'video.mp4', { type: 'video/mp4' })],
+      },
+    });
+    expect(
+      await within(form).findByText(en.plans.files.tooLarge.replace('{{name}}', 'video.mp4')),
+    ).toBeDefined();
+    expect(within(form).queryByText(en.plans.files.pending)).toBeNull();
+    expect(calls.filter((call) => call.route.endsWith('/files'))).toEqual([]);
+  });
+
   it('adds up to 10 classworks, and says a homework of the first of two lessons is checked today', async () => {
     open({ path: `/plans/${JOURNAL}` });
     await waitFor(() => {
@@ -392,10 +482,17 @@ describe('Lesson plans', () => {
       expect(rows()).toHaveLength(3);
     });
     fireEvent.click(screen.getByRole('button', { name: /12 October · lesson 1/ }));
-    await screen.findByText('Exercise 1', { selector: 'li' });
+    // Task 10.8: the title sits in its own line above the work's files.
+    await screen.findByText('Exercise 1', { selector: 'li > span' });
     expect(screen.queryByRole('button', { name: en.form.edit })).toBeNull();
     expect(screen.queryByRole('button', { name: en.plans.panel.clear })).toBeNull();
-    expect(screen.queryByRole('button', { name: en.plans.panel.addFile })).toBeNull();
+    // Task 10.8: no picker for the materials or for a work.
+    expect(screen.queryByRole('button', { name: en.plans.files.attachMaterial })).toBeNull();
+    expect(
+      screen.queryByRole('button', {
+        name: en.plans.files.attachTo.replace('{{name}}', 'Exercise 1'),
+      }),
+    ).toBeNull();
   });
 
   // Task 7.1c, pull request #214: 09, What a plan contains ("can share one plan

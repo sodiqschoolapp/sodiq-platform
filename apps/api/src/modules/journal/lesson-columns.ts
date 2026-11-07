@@ -50,6 +50,8 @@ export interface PlannedWork {
   readonly id: string;
   readonly kind: WorkKind;
   readonly title: string;
+  /** Task 10.8: added in the journal at a lesson with no plan item (`added_in_journal_at`). */
+  readonly addedInJournal?: boolean;
 }
 
 /** A stored `journal_works` row. */

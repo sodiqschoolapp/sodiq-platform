@@ -6024,6 +6024,20 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    files: {
+      materials: 'Materiallar (faqat xodimlar uchun)',
+      materialsNote: 'Oʻqituvchining oʻz fayllari, masalan slaydlar yoki javoblar kaliti. Oʻquvchilar va ota-onalar ularni koʻrmaydi.',
+      attachTo: '«{{name}}» ga fayl biriktirish',
+      attachMaterial: 'Material biriktirish',
+      pending: 'saqlanganda yuklanadi',
+      drop: 'Olib tashlash',
+      dropOf: '{{name}} ni olib tashlash',
+      notUploaded: 'Bu fayllar yuklanmadi',
+      retry: 'Qayta urinish',
+      full: 'Bu yerda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+      tooLarge: '{{name}} 20 MB dan katta.',
+      wrongType: '{{name}} reja qabul qiladigan fayl turi emas: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 yoki MP4.',
+    },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {
       carriedIn: 'Oʻtgan chorakdan koʻchirilgan',
@@ -6158,6 +6172,7 @@ export const uz: Texts<'one' | 'other'> = {
       incomplete_other: 'Mavzusiz {{count}} qator',
     },
     plan: {
+      addedInJournal: 'jurnalda qoʻshilgan',
       marks: 'Belgilar',
       title: 'Dars rejasi',
       caption: 'Reja qatorlari',
@@ -6529,6 +6544,11 @@ export const uz: Texts<'one' | 'other'> = {
       hiddenBy: '{{kind}} ozod qilish bilan yashirilgan {{from}} – {{until}}',
     },
     card: {
+      editPlan: 'Bu dars rejasini oʻzgartirish',
+      askToEdit: 'Bu darsni oʻzgartirishni soʻrash',
+      askReason: 'Nega oʻzgartirish kerak',
+      askSend: 'Soʻrovni yuborish',
+      asked: 'Soʻrov yuborildi.',
       titleLoading: 'Dars',
       title: '{{number}}-dars · {{date}}',
       titleNoNumber: '{{date}} darsi',

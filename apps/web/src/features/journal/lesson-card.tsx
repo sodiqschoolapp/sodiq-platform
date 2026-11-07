@@ -1,7 +1,9 @@
-import type { LessonCard } from '@sodiq/shared';
+import type { LessonCard, PlanItemFile } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
+import { TextAreaField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
@@ -13,7 +15,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useView } from '@/features/access/use-view';
-import { downloadPlanFile } from '@/features/plans/plans-api';
+import { NotUploaded, PlanItemEditor, type HeldFile } from '@/features/plans/plan-item-editor';
+import { askPlanRequest, downloadPlanFile, invalidatePlans } from '@/features/plans/plans-api';
 import { schoolDateText } from '@/lib/dates';
 import {
   invalidateJournal,
@@ -29,7 +32,11 @@ import { WorkKindTag } from './work-kind-tag';
  * lesson card: number, date, slot, topic, classworks, homeworks, objectives, materials"; "The
  * lesson card shows two homework lines: 'given today' ... and 'checked today'"). On it the
  * lesson's teacher or substitute sets "topic not delivered" and marks homeworks "not given"
- * (`edge/lesson-plans`, "A substitute supervises the class"). The plan is read only here.
+ * (`edge/lesson-plans`, "A substitute supervises the class"). Task 10.8 (`09`, In the journal:
+ * "The lesson card is a second way into the plan item of its lesson"): the plan's owner edits the
+ * item here while its row is open (`plan.edit` `open`), through the plan's own routes, and
+ * otherwise sends the edit request for this lesson; the files show under their work, the item's
+ * own files as its "Materials".
  */
 export function LessonCardDialog({
   lessonId,
@@ -64,8 +71,61 @@ export function LessonCardDialog({
   const download = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => downloadPlanFile(id, name),
   });
+  // Task 10.8: the card's way into the plan.
+  const [editing, setEditing] = useState(false);
+  const [failed, setFailed] = useState<HeldFile[]>([]);
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState('');
+  const ask = useMutation({
+    mutationFn: async (value: { found: LessonCard; reason: string }) => {
+      const { found: at } = value;
+      await askPlanRequest(
+        at.journalId,
+        // `edge/lesson-plans`: "Lessons already held take only Text"; a lesson not yet held is
+        // re-planned from itself (plan decision 12).
+        at.held
+          ? {
+              kind: 'text',
+              quarterId: at.plan.quarterId,
+              lessonIds: [at.lessonId],
+              reason: value.reason,
+            }
+          : {
+              kind: 'replan',
+              quarterId: at.plan.quarterId,
+              fromLessonId: at.lessonId,
+              reason: value.reason,
+            },
+      );
+      await invalidatePlans(queryClient);
+    },
+    onSuccess: () => {
+      setAsking(false);
+      setReason('');
+    },
+  });
   const busy = delivery.isPending || homework.isPending;
   const found = card.data;
+  const filesOf = (workId: string | null): PlanItemFile[] =>
+    (found?.files ?? []).filter((file) => file.workId === workId);
+  const fileList = (files: readonly PlanItemFile[]) =>
+    files.length === 0 ? null : (
+      <ul className="grid gap-1">
+        {files.map((file) => (
+          <li key={file.id}>
+            <Button
+              variant="ghost"
+              disabled={download.isPending}
+              onClick={() => {
+                download.mutate({ id: file.id, name: file.name });
+              }}
+            >
+              {file.name}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
   const title =
     found === undefined
       ? t('journal.card.titleLoading')
@@ -96,6 +156,23 @@ export function LessonCardDialog({
           />
         ) : found === undefined ? (
           <LoadingOutline lines={4} />
+        ) : editing && found.plan.position !== null ? (
+          <PlanItemEditor
+            journalId={found.journalId}
+            quarterId={found.plan.quarterId}
+            position={found.plan.position}
+            lessonId={found.lessonId}
+            item={found.plan.item}
+            label={title}
+            onSaved={(_saved, notSent) => {
+              setFailed(notSent);
+              setEditing(false);
+              void refresh();
+            }}
+            onCancel={() => {
+              setEditing(false);
+            }}
+          />
         ) : (
           <div className="grid gap-4 text-sm" data-lesson-card={found.lessonId}>
             <p className="text-muted-foreground">
@@ -139,7 +216,13 @@ export function LessonCardDialog({
                         {work.description !== '' && (
                           <span className="text-muted-foreground">{work.description}</span>
                         )}
+                        {found.addedInJournal.includes(work.id) && (
+                          <span className="text-muted-foreground">
+                            {t('plans.plan.addedInJournal')}
+                          </span>
+                        )}
                       </span>
+                      {fileList(filesOf(work.id))}
                     </li>
                   ))}
                 </ul>
@@ -184,6 +267,9 @@ export function LessonCardDialog({
                       {given.description !== null && given.description !== '' && (
                         <span className="text-muted-foreground">{given.description}</span>
                       )}
+                      {found.whole &&
+                        given.planWorkId !== null &&
+                        fileList(filesOf(given.planWorkId))}
                       {!given.notGiven && given.checkAt !== null && (
                         <span className="text-muted-foreground">
                           {given.checkedSameDay && given.checkAt.slot !== null
@@ -231,7 +317,7 @@ export function LessonCardDialog({
                 <p className="whitespace-pre-line">{found.objectives}</p>
               </div>
             )}
-            {found.whole && (found.links.length > 0 || found.files.length > 0) && (
+            {found.whole && (found.links.length > 0 || filesOf(null).length > 0) && (
               <div className="grid gap-1">
                 <p className="font-semibold">{t('journal.card.materials')}</p>
                 <ul className="grid gap-1">
@@ -242,7 +328,7 @@ export function LessonCardDialog({
                       </a>
                     </li>
                   ))}
-                  {found.files.map((file) => (
+                  {filesOf(null).map((file) => (
                     <li key={file.id}>
                       <Button
                         variant="ghost"
@@ -275,9 +361,76 @@ export function LessonCardDialog({
             {delivery.isError && <FailureAlert error={delivery.error} />}
             {homework.isError && <FailureAlert error={homework.error} />}
             {download.isError && <FailureAlert error={download.error} />}
+            <NotUploaded
+              itemId={found.plan.item?.id ?? null}
+              failed={failed}
+              onChange={setFailed}
+            />
+            {asking && (
+              <form
+                className="grid gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (reason.trim() === '') return;
+                  ask.mutate({ found, reason: reason.trim() });
+                }}
+              >
+                <TextAreaField
+                  label={t('journal.card.askReason')}
+                  rows={2}
+                  value={reason}
+                  onChange={(event) => {
+                    setReason(event.target.value);
+                  }}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={ask.isPending || reason.trim() === ''}>
+                    {t('journal.card.askSend')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setAsking(false);
+                    }}
+                  >
+                    {t('form.cancel')}
+                  </Button>
+                </div>
+              </form>
+            )}
+            {ask.isSuccess && !asking && (
+              <p role="status" data-asked="true">
+                {t('journal.card.asked')}
+              </p>
+            )}
+            {ask.isError && <FailureAlert error={ask.error} />}
           </div>
         )}
         <DialogFooter>
+          {found !== undefined &&
+            !editing &&
+            found.plan.edit === 'open' &&
+            found.plan.position !== null && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditing(true);
+                }}
+              >
+                {t('journal.card.editPlan')}
+              </Button>
+            )}
+          {found !== undefined && !asking && found.plan.edit === 'request' && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setAsking(true);
+              }}
+            >
+              {t('journal.card.askToEdit')}
+            </Button>
+          )}
           {onOpenWorks !== undefined && (
             <Button variant="secondary" onClick={onOpenWorks}>
               {t('journal.works.button')}
