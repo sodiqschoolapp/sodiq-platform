@@ -9,7 +9,7 @@ The spec in `docs/spec/` was taken from the full spec document on 3 October 2026
   2. **Subjects can be imported** from the system's Excel template by the Super Admin and the Academic Vice Principal: the school-wide fields of a subject, and for a graded subject the daily and quarterly distributions of the branch of the import (the quarterly one for every quarter of its current and later years). Preview with problems, all rows or none, the same file not twice; a name already used is a problem of the row. The distribution of grades 0–4 without the rating exam, and other branches' distributions, are set on screen.
 - Why: the owner, 7 November 2026, in chat: the school wants every student's groups exactly as its lists say, never guessed ("if the group is not written, the student should not be placed"); a student cannot be in a split class without a group (the rule of 0049 stays), so an empty required group cell refuses the row. The subjects are many to type by hand.
 - Code: built in its own pull request (branch `feature/import-groups-subjects`), not a build-plan task.
-- Files: `docs/spec/04-people.md` (Excel import), `docs/spec/edge-cases/students-classes-groups.md` (the row on a student joining a split class), `docs/spec/05-classes-groups-subjects.md` (the bulk screen line).
+- Files: `docs/spec/04-people.md` (Excel import), `docs/spec/edge-cases/students-classes-groups.md` (the row on a student joining a split class), `docs/spec/05-classes-groups-subjects.md` (a new line, "Excel import of subjects", after the bulk screen line).
 
 ## 7 November 2026: parents cannot turn off the digest or announcements
 
