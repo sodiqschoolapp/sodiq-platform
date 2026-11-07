@@ -2195,7 +2195,6 @@ export const en = {
       subjects_one: '{{count}} subject with a result',
       subjects_other: '{{count}} subjects with a result',
       fewerSubjects: 'Fewer subjects than the class',
-      explain: 'The mean of the quarter results across all subjects. Other students are not shown.',
     },
     attendance: {
       title: 'Attendance',

@@ -94,7 +94,6 @@ export function PortalRatingPage(): React.JSX.Element {
                 {t('portal.rating.subjects', { count: theClass.subjects })}
                 {theClass.fewerSubjects && <> · {t('portal.rating.fewerSubjects')}</>}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">{t('portal.rating.explain')}</p>
             </section>
           )}
         </>

@@ -2227,8 +2227,6 @@ export const uz: Texts<'one' | 'other'> = {
       subjects_one: 'Natijasi bor fan: {{count}}',
       subjects_other: 'Natijasi bor fanlar: {{count}}',
       fewerSubjects: 'Sinfdagidan kamroq fan',
-      explain:
-        'Barcha fanlar boʻyicha chorak natijalarining oʻrtachasi. Boshqa oʻquvchilar koʻrsatilmaydi.',
     },
     attendance: {
       title: 'Davomat',

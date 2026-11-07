@@ -2306,7 +2306,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       subjects_many: '{{count}} предметов с итогом',
       subjects_other: '{{count}} предмета с итогом',
       fewerSubjects: 'Меньше предметов, чем у класса',
-      explain: 'Среднее итогов четверти по всем предметам. Другие ученики не показаны.',
     },
     attendance: {
       title: 'Посещаемость',

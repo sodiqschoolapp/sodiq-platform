@@ -55,11 +55,19 @@ describe('the portal rating', () => {
   let parents: ParentsKit;
   let s: PublishedScene;
   let q1: string;
+  /** The class of the children: maths graded and an attendance-only subject. */
+  let cls: string;
   let journal: string;
   let parent: { cookie: string; accountId: string };
   let staff: { cookie: string; account: { id: string } };
   /** The parent's children: Kamola (tied first), Sardor, Erkin (no number), Malika (leaving), Nodir (no class yet). */
-  let kids: { kamola: string; sardor: string; erkin: string; malika: string; nodir: string };
+  let kids: {
+    kamola: string;
+    sardor: string;
+    erkin: string;
+    malika: string;
+    nodir: string;
+  };
   /** Classmates of another family. */
   let others: { aziz: string; dilnoza: string; farrux: string };
   let otherFamily: string;
@@ -98,30 +106,35 @@ describe('the portal rating', () => {
     }
   }
 
-  const ratingOf = async (studentId: string, quarter?: string): Promise<PortalRating> =>
+  const ratingOf = async (
+    studentId: string,
+    quarter?: string,
+    moment = MOMENT,
+  ): Promise<PortalRating> =>
     portalRatingSchema.parse(
       ok(
         await get(
           `/api/portal/children/${studentId}/rating${quarter === undefined ? '' : `?quarter=${quarter}`}`,
+          moment,
         ),
       ),
     );
 
-  const classList = async (): Promise<RatingClassList> =>
+  const classList = async (moment = MOMENT): Promise<RatingClassList> =>
     ratingClassListSchema.parse(
-      ok(await staffGet(`/api/results/rating/class?quarterId=${q1}&classId=${s.classId}`)),
+      ok(await staffGet(`/api/results/rating/class?quarterId=${q1}&classId=${cls}`, moment)),
     );
 
-  const classesList = async (): Promise<RatingClassesList> =>
+  const classesList = async (moment = MOMENT): Promise<RatingClassesList> =>
     ratingClassesListSchema.parse(
-      ok(await staffGet(`/api/results/rating/classes?quarterId=${q1}`)),
+      ok(await staffGet(`/api/results/rating/classes?quarterId=${q1}`, moment)),
     );
 
   /** The portal's class part against the staff lists: the child's row and the class's figure. */
-  async function expectAsStaff(studentId: string, portal: PortalRating) {
-    const own = (await classList()).rows.find((row) => row.student.id === studentId);
-    const classes = await classesList();
-    const theClass = classes.rows.find((row) => row.class.id === s.classId);
+  async function expectAsStaff(studentId: string, portal: PortalRating, moment = MOMENT) {
+    const own = (await classList(moment)).rows.find((row) => row.student.id === studentId);
+    const classes = await classesList(moment);
+    const theClass = classes.rows.find((row) => row.class.id === cls);
     expect(theClass).toBeDefined();
     expect(portal.class).toEqual({
       name: theClass?.class.name,
@@ -171,8 +184,10 @@ describe('the portal rating', () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
     parents = new ParentsKit(t.app, t.database.migrator, await load.classes.account());
-    // Maths graded (20 · 40 · 40) and an attendance-only subject in the other class.
+    // Maths graded (20 · 40 · 40) and an attendance-only subject in the other class, which is
+    // the children's (spec review of the code, must-fix 1: `edge/calculation`, Ma'naviyat soati).
     s = await publishedScene(t, load, { graded: true, secondSubject: true });
+    cls = s.otherClass;
     q1 = (
       await t.database.migrator
         .selectFrom('quarters')
@@ -185,7 +200,7 @@ describe('the portal rating', () => {
       await t.database.migrator
         .selectFrom('journals')
         .select('id')
-        .where('class_id', '=', s.classId)
+        .where('class_id', '=', cls)
         .where('subject_id', '=', s.subject)
         .executeTakeFirstOrThrow()
     ).id;
@@ -193,7 +208,7 @@ describe('the portal rating', () => {
       await t.database.migrator
         .selectFrom('lessons')
         .select(['id', sql<string>`lesson_date::text`.as('date')])
-        .where('class_id', '=', s.classId)
+        .where('class_id', '=', cls)
         .where('subject_id', '=', s.subject)
         .where('lesson_date', '<=', '2026-10-26')
         .orderBy('starts_at')
@@ -201,6 +216,13 @@ describe('the portal rating', () => {
     ).map((one) => ({ id: one.id, date: one.date }));
     const l12 = lessons.find((one) => one.date === '2026-10-12');
     if (l12 === undefined) throw new Error('The lesson of the 12th.');
+    const a12 = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', cls)
+      .where('subject_id', '=', s.secondSubject ?? '')
+      .where('lesson_date', '=', '2026-10-12')
+      .executeTakeFirstOrThrow();
 
     const first = await parents.student(s.branch);
     const relative = first.relativeId;
@@ -228,7 +250,7 @@ describe('the portal rating', () => {
     for (const id of [kids.kamola, kids.sardor, kids.erkin, ...Object.values(others)]) {
       await parents.members.member({
         branch: s.branch,
-        classId: s.classId,
+        classId: cls,
         studentId: id,
         from: '2026-09-01',
       });
@@ -243,7 +265,7 @@ describe('the portal rating', () => {
     );
     await parents.members.member({
       branch: s.branch,
-      classId: s.classId,
+      classId: cls,
       studentId: kids.malika,
       from: '2026-09-01',
       until: '2026-10-30',
@@ -253,7 +275,7 @@ describe('the portal rating', () => {
     // Nodir joins the class only on 2 November: no class on the reference date.
     await parents.members.member({
       branch: s.branch,
-      classId: s.classId,
+      classId: cls,
       studentId: kids.nodir,
       from: '2026-11-02',
     });
@@ -282,6 +304,8 @@ describe('the portal rating', () => {
         { lessonId: l12.id, studentId, workId: work, value },
       ]),
     );
+    // Kamola present at the attendance-only subject: it has an attendance average, no result.
+    await saveOn('2026-10-12', [{ lessonId: a12.id, studentId: kids.kamola, value: 1 }]);
 
     const session = await parents.session(relative);
     parent = { cookie: session.cookie, accountId: session.account.id };
@@ -316,7 +340,7 @@ describe('the portal rating', () => {
 
   it('names no other student, sends no other student’s figure or place and no count of the students ranked', async () => {
     const staffRows = (await classList()).rows;
-    const average = (await classesList()).rows.find((row) => row.class.id === s.classId)?.value;
+    const average = (await classesList()).rows.find((row) => row.class.id === cls)?.value;
     for (const [childId, firstName] of [
       [kids.kamola, 'Kamola'],
       [kids.sardor, 'Sardor'],
@@ -376,8 +400,12 @@ describe('the portal rating', () => {
     await expectAsStaff(kids.malika, malika);
     expect(malika.class).toMatchObject({ place: null, value: null });
     expect((await classList()).rows.map((row) => row.student.id)).not.toContain(kids.malika);
-    // The attendance-only subject of the other class is not one of the subjects counted.
-    expect((await ratingOf(kids.kamola)).class?.subjects).toBe(1);
+    // The attendance-only subject of Kamola's class, with her attendance, is not one of the
+    // subjects counted, and does not make her "fewer subjects".
+    expect((await ratingOf(kids.kamola)).class).toMatchObject({
+      subjects: 1,
+      fewerSubjects: false,
+    });
   });
 
   it('answers no class for a child not in a class on the reference date', async () => {
@@ -504,8 +532,11 @@ describe('the portal rating', () => {
       })
       .execute();
     const before = (await classList()).rows.find((row) => row.student.id === others.aziz)?.value;
-    const closed = await ratingOf(kids.kamola, q1);
-    await expectAsStaff(kids.kamola, closed);
+    // Read after the close and after the reopening, as a parent would then see them (spec
+    // review of the code, should-fix 1).
+    const afterClose = '2026-11-01T12:00:00+05:00';
+    const closed = await ratingOf(kids.kamola, q1, afterClose);
+    await expectAsStaff(kids.kamola, closed, afterClose);
     expect(closed.provisional).toBe(false);
     expect(closed.quarters.find((one) => one.id === q1)?.closed).toBe(true);
     expect(closed.class).toMatchObject({ place: 1, value: 1000 });
@@ -518,8 +549,9 @@ describe('the portal rating', () => {
       accountId: closer,
       at: '2026-11-02T10:00:00+05:00',
     });
-    const reopened = await ratingOf(kids.kamola, q1);
-    await expectAsStaff(kids.kamola, reopened);
+    const afterReopen = '2026-11-02T12:00:00+05:00';
+    const reopened = await ratingOf(kids.kamola, q1, afterReopen);
+    await expectAsStaff(kids.kamola, reopened, afterReopen);
     expect(reopened.provisional).toBe(true);
     expect(reopened.class?.value).toBe(before);
   });
