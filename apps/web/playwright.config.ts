@@ -62,13 +62,23 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      // The web app as a developer runs it; the URL goes through its proxy to the API.
-      command: `pnpm exec vite --port ${String(WEB_PORT)} --strictPort`,
-      env: { API_PROXY_TARGET: `http://127.0.0.1:${String(API_PORT)}` },
+      // The web app built into a few bundled files and served by `vite preview`, never Vite's
+      // development server: that one serves each of about 1,400 source modules on its own, and
+      // on a busy CI runner some loads were aborted, leaving a blank page (pages.spec.ts and
+      // others failed at random, 4 to 7 November 2026). NODE_ENV=development keeps the
+      // development build (`import.meta.env.DEV`: the sample pages under /dev, React's checks),
+      // as the tests had it. `vite preview` uses the same proxy to the API (`server.proxy`).
+      command:
+        'pnpm exec vite build --outDir dist-e2e --emptyOutDir --logLevel warn && ' +
+        `pnpm exec vite preview --outDir dist-e2e --port ${String(WEB_PORT)} --strictPort`,
+      env: {
+        NODE_ENV: 'development',
+        API_PROXY_TARGET: `http://127.0.0.1:${String(API_PORT)}`,
+      },
       url: `http://localhost:${String(WEB_PORT)}/api/health`,
       reuseExistingServer: false,
       stdout: output,
-      timeout: 120_000,
+      timeout: 180_000,
     },
   ],
 });
