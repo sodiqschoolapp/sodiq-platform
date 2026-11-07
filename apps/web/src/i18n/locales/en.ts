@@ -901,7 +901,8 @@ export const en = {
       'Someone changed this row meanwhile. The value saved now is shown under the field; type your change again.',
     plan_row_held: 'The lesson of this row has been held, so the row cannot be cleared.',
     plan_file_too_large: 'The file is larger than 20 MB. Choose a smaller one.',
-    plan_files_full: 'This row holds 10 files already. Remove one first.',
+    plan_files_full: 'This place holds 10 files already. Remove one first.',
+    plan_work_not_found: 'This work is no longer in the plan. Reload the page.',
     plan_window_closed:
       'The plan window has ended and no approved request opens this row. Ask to edit the plan.',
     plan_window_not_open:
@@ -4087,6 +4088,7 @@ export const en = {
         export: 'Lesson plan printed or exported',
         file_add: 'File added to a plan row',
         file_remove: 'File removed from a plan row',
+        work_journal_add: 'Work added in the journal written into the plan',
         items_followed: 'Plan rows followed a timetable change',
         request_prepared: 'Plan edit request prepared',
         window_open: 'Plan window opened',

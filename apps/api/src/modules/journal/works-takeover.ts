@@ -23,7 +23,8 @@ export interface TakeoverActor {
  * lesson and kind in order of their position. The link is set once (0119);
  * a later save never moves a number to another title. Task 10.6: the title
  * typed by hand is cleared with the link (the plan's is shown), kept in the
- * history line and the audit entry.
+ * history line and the audit entry. Task 10.8: only for works added by hand before
+ * 7 November 2026; a plan work added in the journal is never linked to one.
  */
 export async function takeOverUnplanned(
   transaction: Transaction,
@@ -37,6 +38,9 @@ export async function takeOverUnplanned(
     .selectFrom('lesson_plan_works')
     .select(['id', 'kind'])
     .where('item_id', '=', itemId)
+    // Task 10.8 (plan decision 6): a work added in the journal is the lesson's own new work; it
+    // never takes over a work added by hand before 7 November 2026.
+    .where('added_in_journal_at', 'is', null)
     .orderBy('kind')
     .orderBy('position')
     .orderBy('id')

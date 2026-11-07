@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PLAN_FILES_MAX, planFileSchema, planFileTypeSchema, type PlanFile } from '@sodiq/shared';
+import {
+  PLAN_FILES_MAX,
+  planFileTypeSchema,
+  planItemFileSchema,
+  type PlanItemFile,
+} from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { UploadedFile } from '../../http/file-routes.js';
@@ -15,8 +20,10 @@ import { gateAudit, PlansService } from './plans.service.js';
 
 /**
  * The files of plan items (task 7.1a, pull request #212, decisions 1 and 3;
- * `edge/lesson-plans`: "Limits: 20 MB per file, 10 files per item, a fixed
- * list of file types"). The bytes go to the object store under keys never
+ * `edge/lesson-plans`: "Limits: 20 MB per file, a fixed list of file types, at
+ * most 10 files in an item's materials and at most 10 on each classwork or
+ * homework"; task 10.8: a file names its work, or none for the materials, which
+ * are staff only). The bytes go to the object store under keys never
  * reused, and no call to the store is made while a transaction is open
  * (`photo-store.ts`; review should-fix 3): the checks, the put, then the row
  * under the item's lock, where the 11th file is refused again.
@@ -36,14 +43,39 @@ export class PlanFiles {
     @Inject(PHOTO_STORE) private readonly store: PhotoStore,
   ) {}
 
-  private async activeFiles(transaction: Transaction, itemId: string): Promise<number> {
+  /** The files not removed of an item's materials (`workId` null) or of one of its works. */
+  private async activeFiles(
+    transaction: Transaction,
+    itemId: string,
+    workId: string | null,
+  ): Promise<number> {
     const found = await transaction
       .selectFrom('lesson_plan_files')
       .select('id')
       .where('item_id', '=', itemId)
       .where('removed_at', 'is', null)
+      .where((eb) => (workId === null ? eb('work_id', 'is', null) : eb('work_id', '=', workId)))
       .execute();
     return found.length;
+  }
+
+  /**
+   * Task 10.8: the work a file is added to is a work of the item named; an unknown id, a work
+   * of another item or of another branch is 404 `plan_work_not_found` (`.claude/rules/api.md`).
+   */
+  private async workOf(
+    transaction: Transaction,
+    itemId: string,
+    workId: string | null,
+  ): Promise<void> {
+    if (workId === null) return;
+    const found = await transaction
+      .selectFrom('lesson_plan_works')
+      .select('id')
+      .where('id', '=', workId)
+      .where('item_id', '=', itemId)
+      .executeTakeFirst();
+    if (found === undefined) throw new ApiException('plan_work_not_found', 404);
   }
 
   async add(
@@ -52,11 +84,15 @@ export class PlanFiles {
     name: string,
     file: UploadedFile | null,
     requestId: string | undefined,
-  ): Promise<PlanFile> {
+    workId: string | null = null,
+  ): Promise<PlanItemFile> {
     const branchId = branchOf(access);
     await this.transactions.run(access.branchIds, async (transaction) => {
       await this.plans.itemWriteScene(transaction, access, itemId, 'wording');
-      if ((await this.activeFiles(transaction, itemId)) >= PLAN_FILES_MAX) throw fullRefusal();
+      await this.workOf(transaction, itemId, workId);
+      if ((await this.activeFiles(transaction, itemId, workId)) >= PLAN_FILES_MAX) {
+        throw fullRefusal();
+      }
     });
     if (!this.store.configured) throw new ApiException('files_not_configured', 503);
     if (file === null) throw new ApiException('unsupported_media_type', 415);
@@ -74,19 +110,22 @@ export class PlanFiles {
           const scene = await this.plans.itemWriteScene(transaction, access, itemId, 'wording');
           // Under the item's lock the trigger `lesson_plan_files_limit` refuses an 11th file.
           await this.plans.lockItem(transaction, itemId);
+          // The work again under the lock: a save may have removed it meanwhile.
+          await this.workOf(transaction, itemId, workId);
           await transaction
             .insertInto('lesson_plan_files')
             .values({
               id: fileId,
               branch_id: branchId,
               item_id: itemId,
+              work_id: workId,
               name,
               type,
               bytes: file.bytes.length,
             })
             .execute();
           await this.plans.markEditedAfterLesson(transaction, scene.pass, itemId, scene.startedIn);
-          const added = { id: fileId, name, type, bytes: file.bytes.length };
+          const added = { id: fileId, workId, name, type, bytes: file.bytes.length };
           await this.audit.record(transaction, {
             branchId,
             actorId: access.accountId,
@@ -98,7 +137,7 @@ export class PlanFiles {
             ...gateAudit(scene.pass),
             ...(requestId === undefined ? {} : { requestId }),
           });
-          return planFileSchema.parse(added);
+          return planItemFileSchema.parse(added);
         }),
       { lesson_plan_files_limit: 'plan_files_full' },
     );
@@ -114,6 +153,7 @@ export class PlanFiles {
       .select([
         'lesson_plan_files.id',
         'lesson_plan_files.item_id',
+        'lesson_plan_files.work_id',
         'lesson_plan_files.name',
         'lesson_plan_files.type',
         'lesson_plan_files.bytes',
@@ -154,6 +194,7 @@ export class PlanFiles {
         record: { type: 'lesson_plan', id: scene.planId },
         oldValue: {
           itemId: still.item_id,
+          workId: still.work_id,
           id: still.id,
           name: still.name,
           type: still.type,

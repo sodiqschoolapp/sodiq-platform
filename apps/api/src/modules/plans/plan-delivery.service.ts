@@ -41,6 +41,7 @@ import {
 import { roleReadingOf } from '../journal/journal-scope.js';
 import { journalsColumns } from '../journal/journal-works.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
+import { quarterClosedNow } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerOn } from '../timetable/journal-owners.js';
 import { substitutionsInForce } from '../timetable/substitutions-read.js';
@@ -59,7 +60,8 @@ import {
 import { ownerIdOn } from './plan-scope.js';
 import { clearUntouchedCopy } from './plan-copy-clear.js';
 import { copyItems } from './plan-separate.js';
-import { PlansService } from './plans.service.js';
+import { PlansService, type Scene } from './plans.service.js';
+import { passGate } from './plan-gate.js';
 
 /**
  * Plans in the journal (task 8.8, pull request #226; `09`, In the journal;
@@ -304,6 +306,9 @@ export class PlanDelivery {
         );
         canMark = graded && window.kind !== 'locked';
       }
+      const planEdit = await this.planEditOf(transaction, scene, planId, item, row, journal.id);
+      // Task 10.8: an item the journal's add made has no topic until the owner writes it.
+      const topic = item === null || item.topic.trim() === '' ? null : item.topic;
       return lessonCardSchema.parse({
         lessonId: lesson.id,
         journalId: journal.id,
@@ -313,13 +318,14 @@ export class PlanDelivery {
         end: row?.end ?? lessonsById.get(lesson.id)?.end ?? 1,
         slot: row?.slot ?? null,
         held: row?.held === true,
-        planItem: item !== null,
-        topic: item?.topic ?? null,
+        planItem: topic !== null,
+        topic,
         whole,
         classworks: whole ? (item?.classworks ?? []) : [],
         objectives: whole ? (item?.objectives ?? null) : null,
         links: whole ? (item?.links ?? []) : [],
         files: whole ? (item?.files ?? []) : [],
+        addedInJournal: whole ? (item?.addedInJournal ?? []) : [],
         givenToday,
         checkedToday,
         delivery: {
@@ -329,8 +335,57 @@ export class PlanDelivery {
         canMark,
         editedAfterLesson: item?.editedAfterLesson ?? false,
         movedFrom: item?.movedFrom ?? null,
+        plan: {
+          quarterId: quarter.id,
+          position: row?.number ?? null,
+          edit: planEdit,
+          item: planEdit === 'none' ? null : item,
+        },
       });
     });
+  }
+
+  /**
+   * Task 10.8: whether the plan's owner may edit the lesson's row now (`open`) or needs an edit
+   * request (`request`); `none` for anyone else and when nothing is possible (a closed year,
+   * quarter or plan, a cancelled lesson). Read without locks through the plan's own gate (op
+   * `wording` on an item, `create` on an empty row): a hint for the card; the routes decide.
+   */
+  private async planEditOf(
+    transaction: Transaction,
+    scene: Scene,
+    planId: string | null,
+    item: { readonly id: string } | null,
+    row: PlanRowLesson | undefined,
+    journalId: string,
+  ): Promise<'open' | 'request' | 'none'> {
+    if (!scene.reach.edit || scene.reach.assignmentId === null) return 'none';
+    if (row === undefined || scene.closed || !scene.open || !plannedJournal(scene.journal)) {
+      return 'none';
+    }
+    if (await quarterClosedNow(transaction, scene.quarter.id)) return 'none';
+    try {
+      await passGate(transaction, {
+        planId: planId ?? '',
+        quarter: scene.quarter,
+        staffId: scene.reader.staffId,
+        timeZone: scene.timeZone,
+        now: scene.now,
+        targets: [
+          {
+            journalId,
+            rows: [{ lessonId: row.lessonId, date: row.date, started: row.started }],
+            op: item === null ? 'create' : 'wording',
+          },
+        ],
+        // With no plan record yet, only the window can let a write through.
+        windowOnly: planId === null,
+      });
+      return 'open';
+    } catch (error) {
+      if (error instanceof ApiException) return 'request';
+      throw error;
+    }
   }
 
   /**

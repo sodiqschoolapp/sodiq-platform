@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
-import { planFileSchema, planWorkSchema } from './plans.js';
+import { planItemFileSchema, planItemSchema, planWorkSchema } from './plans.js';
 
 /**
  * Plans in the journal (task 8.8, pull request #226; `09`, In the journal;
@@ -47,7 +47,7 @@ export const lessonCardSchema = z.object({
   end: z.int().min(1),
   slot: z.int().min(1).nullable(),
   held: z.boolean(),
-  /** The lesson's row has a plan item. */
+  /** The lesson's row has a plan item with a topic (task 10.8: an item with none counts as missing). */
   planItem: z.boolean(),
   topic: z.string().nullable(),
   /**
@@ -59,7 +59,10 @@ export const lessonCardSchema = z.object({
   classworks: z.array(planWorkSchema),
   objectives: z.string().nullable(),
   links: z.array(z.string()),
-  files: z.array(planFileSchema),
+  /** Task 10.8: each file names its work, or none for the item's "Materials" (staff only). */
+  files: z.array(planItemFileSchema),
+  /** Task 10.8: the works of the item added in the journal (`09`, In the journal). */
+  addedInJournal: z.array(z.uuid()),
   givenToday: z.array(cardGivenSchema),
   checkedToday: z.array(cardCheckedSchema),
   /** "Topic not delivered" and the version a change of it is sent on (`null` before the first). */
@@ -68,6 +71,20 @@ export const lessonCardSchema = z.object({
   canMark: z.boolean(),
   editedAfterLesson: z.boolean(),
   movedFrom: schoolDateSchema.nullable(),
+  /**
+   * Task 10.8: the card as a second way into the plan item (`09`, In the journal). `edit` is
+   * `open` for the plan's owner while the row is open (the window, or a period of an approved
+   * request), `request` for the owner otherwise (the card offers the edit request for this
+   * lesson), and `none` for everyone else, a substitute included. A hint read without locks: the
+   * plan's routes decide again. `item` is the item as the plan's save takes it as its base, for
+   * the owner only; `position` is the lesson's row (`null` for a cancelled lesson).
+   */
+  plan: z.object({
+    quarterId: z.uuid(),
+    position: z.int().min(1).nullable(),
+    edit: z.enum(['open', 'request', 'none']),
+    item: planItemSchema.nullable(),
+  }),
 });
 
 export type LessonCard = z.infer<typeof lessonCardSchema>;

@@ -166,7 +166,8 @@ export class PlanOutcomesService {
         const lists = await worksOf(transaction, [targetId, itemId]);
         const targetWorks = lists.get(targetId) ?? { classworks: [], homeworks: [] };
         const sourceWorks = lists.get(itemId) ?? { classworks: [], homeworks: [] };
-        const topic = `${target.topic}; ${source.topic}`;
+        // Task 10.8: an item the journal's add made has no topic; the merge keeps only the topics written.
+        const topic = [target.topic, source.topic].filter((one) => one.trim() !== '').join('; ');
         const objectives = [target.objectives, source.objectives]
           .filter((one) => one.trim() !== '')
           .join('\n');

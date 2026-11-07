@@ -161,6 +161,14 @@ export const planFileSchema = z.object({
 
 export type PlanFile = z.infer<typeof planFileSchema>;
 
+/**
+ * Task 10.8: a file of an item as staff read it: the work it belongs to, or `null` for the
+ * item's "Materials" (`09`: "files for staff only"; never shown to students or parents).
+ */
+export const planItemFileSchema = planFileSchema.extend({ workId: z.uuid().nullable() });
+
+export type PlanItemFile = z.infer<typeof planItemFileSchema>;
+
 export const planItemSchema = z.object({
   id: z.uuid(),
   position: z.int().min(1),
@@ -169,7 +177,12 @@ export const planItemSchema = z.object({
   links: z.array(z.string()),
   classworks: z.array(planWorkSchema),
   homeworks: z.array(planWorkSchema),
-  files: z.array(planFileSchema),
+  files: z.array(planItemFileSchema),
+  /**
+   * Task 10.8: the works of the item added in the journal at a lesson with no plan item
+   * (`09`, In the journal: "marked in the plan's history as added in the journal").
+   */
+  addedInJournal: z.array(z.uuid()),
   /**
    * Task 7.1b: the date of the started lesson this item was moved back from
    * (`edge/lesson-plans`: "with a \"moved from [date]\" mark"), else `null`.
@@ -527,6 +540,8 @@ export type PlanFileParams = z.infer<typeof planFileParamsSchema>;
 /** The file's name travels in the query: the body is the file itself. */
 export const planFileUploadQuerySchema = z.strictObject({
   name: filledText(PLAN_FILE_NAME_MAX_LENGTH),
+  /** Task 10.8: the classwork or homework the file belongs to; none for the item's materials. */
+  workId: z.uuid().optional(),
 });
 
 export type PlanFileUploadQuery = z.infer<typeof planFileUploadQuerySchema>;

@@ -6,6 +6,12 @@ import {
   type NotGraded,
   type NotGradedAnswer,
   journalWorkParamsSchema,
+  journalPlanWorkParamsSchema,
+  planWorkRenameSchema,
+  workAddedSchema,
+  type JournalPlanWorkParams,
+  type PlanWorkRename,
+  type WorkAdded,
   scoresSaveSchema,
   scoresSavedSchema,
   workAddSchema,
@@ -49,14 +55,39 @@ export class WorksController {
   @Post(':lessonId/works')
   @HttpCode(200)
   @Requires('journal', 'edit')
-  @Returns(workSavedSchema)
+  @Returns(workAddedSchema)
   add(
     @CurrentAccess() access: Access,
     @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
     @ValidBody(workAddSchema) input: WorkAdd,
     @RequestId() requestId: string,
-  ): Promise<WorkSaved> {
+  ): Promise<WorkAdded> {
     return this.works.add(access, params.lessonId, input, requestId);
+  }
+
+  /** Task 10.8: rename a work added in the journal while its plan item has no topic. */
+  @Put(':lessonId/plan-works/:planWorkId/title')
+  @Requires('journal', 'edit')
+  @Returns(workAddedSchema)
+  renamePlanWork(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalPlanWorkParamsSchema) params: JournalPlanWorkParams,
+    @ValidBody(planWorkRenameSchema) input: PlanWorkRename,
+    @RequestId() requestId: string,
+  ): Promise<WorkAdded> {
+    return this.works.renamePlanWork(access, params.lessonId, params.planWorkId, input, requestId);
+  }
+
+  /** Task 10.8: remove an empty work added in the journal while its plan item has no topic. */
+  @Delete(':lessonId/plan-works/:planWorkId')
+  @Requires('journal', 'edit')
+  @ReturnsNothing()
+  removePlanWork(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalPlanWorkParamsSchema) params: JournalPlanWorkParams,
+    @RequestId() requestId: string,
+  ): Promise<void> {
+    return this.works.removePlanWork(access, params.lessonId, params.planWorkId, requestId);
   }
 
   /** Task 10.6: rename a work added by hand while the lesson can be edited. */

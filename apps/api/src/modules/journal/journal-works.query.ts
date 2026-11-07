@@ -415,8 +415,11 @@ export async function journalsColumns(
         ids.has(work.lessonId) || (work.sourceLessonId !== null && ids.has(work.sourceLessonId)),
     );
     const planned = new Map<string, readonly PlannedWork[] | null>();
+    const topicless = new Set<string>();
     for (const lesson of lessons) {
       if (items.has(lesson.id)) planned.set(lesson.id, items.get(lesson.id)?.works ?? null);
+      const item = items.get(lesson.id);
+      if (item !== undefined && item !== null && item.topic.trim() === '') topicless.add(lesson.id);
     }
     found.set(journal.id, {
       lessons,
@@ -426,6 +429,7 @@ export async function journalsColumns(
         stored: own,
         journalClosed: closed.has(journal.id),
         notGiven: marks.notGiven,
+        topicless,
       }),
       stored: own,
     });

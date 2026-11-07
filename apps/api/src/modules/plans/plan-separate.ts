@@ -104,14 +104,26 @@ export async function copyItems(
   }
   const works = await transaction
     .selectFrom('lesson_plan_works')
-    .select(['item_id', 'kind', 'position', 'title', 'description'])
+    .select([
+      'id',
+      'item_id',
+      'kind',
+      'position',
+      'title',
+      'description',
+      'added_in_journal_at',
+      'added_in_journal_by',
+    ])
     .where('item_id', 'in', [...made.keys()])
     .orderBy('item_id')
     .orderBy('kind')
     .orderBy('position')
     .execute();
+  // Task 10.8: the copy of each work, so that its files follow it (plan decision 3, `work_id`);
+  // the mark "added in the journal" goes with the work (`.claude/rules/lesson-plans.md`).
+  const madeWorks = new Map<string, string>();
   if (works.length > 0) {
-    await transaction
+    const added = await transaction
       .insertInto('lesson_plan_works')
       .values(
         works.map((work) => ({
@@ -121,13 +133,25 @@ export async function copyItems(
           position: work.position,
           title: work.title,
           description: work.description,
+          added_in_journal_at: work.added_in_journal_at,
+          added_in_journal_by: work.added_in_journal_by,
         })),
       )
+      .returning(['id', 'item_id', 'kind', 'position'])
       .execute();
+    const copyOf = new Map(
+      added.map((work) => [`${work.item_id}/${work.kind}/${String(work.position)}`, work.id]),
+    );
+    for (const work of works) {
+      const copy = copyOf.get(
+        `${made.get(work.item_id) ?? ''}/${work.kind}/${String(work.position)}`,
+      );
+      if (copy !== undefined) madeWorks.set(work.id, copy);
+    }
   }
   const files = await transaction
     .selectFrom('lesson_plan_files')
-    .select(['id', 'item_id', 'name', 'type', 'bytes', 'copied_from'])
+    .select(['id', 'item_id', 'work_id', 'name', 'type', 'bytes', 'copied_from'])
     .where('item_id', 'in', [...made.keys()])
     .where('removed_at', 'is', null)
     .orderBy('id')
@@ -139,6 +163,7 @@ export async function copyItems(
         files.map((file) => ({
           branch_id: branchId,
           item_id: made.get(file.item_id) ?? '',
+          work_id: file.work_id === null ? null : (madeWorks.get(file.work_id) ?? null),
           name: file.name,
           type: file.type,
           bytes: file.bytes,

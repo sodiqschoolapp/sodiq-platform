@@ -336,9 +336,20 @@ async function decorated(
       ? []
       : await transaction
           .selectFrom('lesson_plan_files')
-          .select(['id', 'item_id', 'name', 'type', 'bytes'])
+          .select(['id', 'item_id', 'work_id', 'name', 'type', 'bytes'])
           .where('item_id', 'in', ids)
           .where('removed_at', 'is', null)
+          .orderBy('id')
+          .execute();
+  // Task 10.8: the works added in the journal at a lesson with no plan item.
+  const added =
+    ids.length === 0
+      ? []
+      : await transaction
+          .selectFrom('lesson_plan_works')
+          .select(['id', 'item_id'])
+          .where('item_id', 'in', ids)
+          .where('added_in_journal_at', 'is not', null)
           .orderBy('id')
           .execute();
   // Decision 16: the plan each copied item came from, by its first journal.
@@ -375,10 +386,12 @@ async function decorated(
       .filter((file) => file.item_id === item.id)
       .map((file) => ({
         id: file.id,
+        workId: file.work_id,
         name: file.name,
         type: planFileTypeSchema.parse(file.type),
         bytes: file.bytes,
       })),
+    addedInJournal: added.filter((work) => work.item_id === item.id).map((work) => work.id),
     movedFrom: item.moved_from,
     copiedFrom: item.copied_from === null ? null : (sources.get(item.copied_from) ?? null),
     editedAfterLesson: item.edited_after_lesson,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  LESSON_WORKS_MAX,
   planItemSchema,
   planLessonItemSchema,
   planListSchema,
@@ -1562,6 +1563,184 @@ export class PlansService {
   }
 
   /**
+   * Task 10.8: a classwork or "homework given" added in the journal at a held lesson whose plan
+   * item is missing (`09`, In the journal: "Each is written into the lesson's plan item, created
+   * for it (with the plan, when there is none), and marked in the plan's history as added in the
+   * journal"). Called by the journal's add inside its transaction, after the journal's own checks
+   * (edit period, entry scope, closed quarter); not a plan edit, so neither the plan's gate nor
+   * "edited after the lesson" applies (plan decision 5). Locks: the journals of the plan
+   * (`lockPlanOf`, as `createItem`), the item (`lockItem`), then the add's advisory lock
+   * of the lesson, the order of an item save and its takeover (plan review 1 and 2). The topic is
+   * read after the item's lock: an item the owner gave a topic meanwhile refuses the add.
+   */
+  async addFromJournal(
+    transaction: Transaction,
+    access: Access,
+    input: {
+      readonly branchId: string;
+      readonly journalId: string;
+      readonly lessonId: string;
+      readonly assignmentId: string;
+      readonly requestId?: string;
+      readonly kind: Kind;
+      readonly title: string;
+    },
+  ): Promise<{ planId: string; itemId: string; planWorkId: string }> {
+    const { branchId, journalId, lessonId } = input;
+    const found = await sql<{ quarter: string | null }>`
+      select lesson_quarter(${lessonId}::uuid)::text as quarter
+    `.execute(transaction);
+    const quarterId = found.rows[0]?.quarter ?? null;
+    if (quarterId === null) throw new ApiException('journal_no_quarter', 409);
+    const scene = await this.sceneOf(transaction, access, branchId, journalId, quarterId);
+    const others = (await this.lockPlanOf(transaction, journalId, quarterId)).filter(
+      (id) => id !== journalId,
+    );
+    const rows = await planRows(
+      transaction,
+      branchId,
+      scene.journal,
+      scene.quarter,
+      scene.timeZone,
+      scene.now,
+    );
+    const index = rows.findIndex((row) => row.lessonId === lessonId);
+    if (index < 0) throw new ApiException('plan_row_unknown', 409);
+    const position = index + 1;
+    const actor = {
+      branchId,
+      accountId: access.accountId,
+      assignmentId: input.assignmentId,
+      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    };
+    const createdPlan = (await planIdOf(transaction, journalId, quarterId)) === null;
+    const planId = await ensurePlan(transaction, this.audit, actor, scene.journal, quarterId);
+    const place = await transaction
+      .selectFrom('lesson_plan_places')
+      .select('item_id')
+      .where('plan_id', '=', planId)
+      .where('journal_id', '=', journalId)
+      .where('position', '=', position)
+      .executeTakeFirst();
+    let itemId: string;
+    if (place !== undefined) {
+      const item = await this.lockItem(transaction, place.item_id);
+      // Plan decision 4: an item with a topic is the lesson's plan item; works go through the plan.
+      if (item.topic.trim() !== '') throw new ApiException('lesson_has_plan_item', 409);
+      itemId = item.id;
+    } else {
+      itemId = await this.placeJournalItem(transaction, scene, planId, journalId, others, position);
+      await this.lockItem(transaction, itemId);
+    }
+    await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${lessonId}`}, 0))`.execute(
+      transaction,
+    );
+    // `edge/journal`: at most 10 of a kind at a lesson, "in the plan and to works added by hand in
+    // the journal" (plan review 5): the item's works and the lesson's older hand-added ones.
+    const planned = await transaction
+      .selectFrom('lesson_plan_works')
+      .select('position')
+      .where('item_id', '=', itemId)
+      .where('kind', '=', input.kind)
+      .execute();
+    const byHand = await transaction
+      .selectFrom('journal_works')
+      .select('id')
+      .where('source_lesson_id', '=', lessonId)
+      .where('kind', '=', input.kind)
+      .where('plan_work_id', 'is', null)
+      .execute();
+    if (planned.length + byHand.length >= LESSON_WORKS_MAX) {
+      throw new ApiException('journal_works_limit', 409);
+    }
+    const added = await refusingConstraints(
+      () =>
+        transaction
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: branchId,
+            item_id: itemId,
+            kind: input.kind,
+            position: Math.max(0, ...planned.map((one) => one.position)) + 1,
+            title: input.title,
+            description: '',
+            added_in_journal_at: scene.now,
+            added_in_journal_by: access.accountId,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      { lesson_plan_works_limit: 'journal_works_limit' },
+    );
+    await this.audit.record(transaction, {
+      ...actor,
+      actorId: access.accountId,
+      action: 'plan.work_journal_add',
+      record: { type: 'lesson_plan', id: planId },
+      newValue: {
+        itemId,
+        position,
+        date: rows[index]?.date ?? null,
+        lessonId,
+        workId: added.id,
+        kind: input.kind,
+        title: input.title,
+      },
+      details: { createdPlan, createdItem: place === undefined },
+    });
+    return { planId, itemId, planWorkId: added.id };
+  }
+
+  /**
+   * Task 10.8: an item with no topic at the lesson's row, laid in the other journals of a shared
+   * plan as `createItem` lays it (`placeNew`: never on a started row, so no item of a lesson
+   * already held moves; plan decision 16).
+   */
+  private async placeJournalItem(
+    transaction: Transaction,
+    scene: Scene,
+    planId: string,
+    journalId: string,
+    others: readonly string[],
+    position: number,
+  ): Promise<string> {
+    const page = await this.placesOf(transaction, planId, journalId);
+    const item = await transaction
+      .insertInto('lesson_plan_items')
+      .values({ branch_id: scene.branchId, plan_id: planId, topic: '' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('lesson_plan_places')
+      .values({
+        branch_id: scene.branchId,
+        plan_id: planId,
+        journal_id: journalId,
+        item_id: item.id,
+        position,
+      })
+      .execute();
+    for (const other of [...others].sort()) {
+      const otherRows = await this.rowsOfJournal(transaction, scene, other);
+      const placed = placeNew(page, position, {
+        started: otherRows.filter((one) => one.started).length,
+        places: await this.placesOf(transaction, planId, other),
+      });
+      await movePlaces(transaction, planId, other, placed.shifts);
+      await transaction
+        .insertInto('lesson_plan_places')
+        .values({
+          branch_id: scene.branchId,
+          plan_id: planId,
+          journal_id: other,
+          item_id: item.id,
+          position: placed.position,
+        })
+        .execute();
+    }
+    return item.id;
+  }
+
+  /**
    * A save of an item (decision 9 with review correction 3; `edge/lesson-plans`:
    * "A save is addressed to the item, not to the row. A save made on an older
    * state of the same field is refused and both values are shown"). Only the
@@ -1688,6 +1867,8 @@ export class PlansService {
               .execute();
           }
           const removedWorks: ReturnType<typeof workEntry>[] = [];
+          // Task 10.8: the files of the works removed, removed with them (plan decision 14).
+          const removedFiles: string[] = [];
           const addedWorks: string[] = [];
           for (const change of workChanges) {
             const touched =
@@ -1701,7 +1882,7 @@ export class PlansService {
               const current = change.now[index];
               if (current === undefined) continue;
               removedWorks.push(workEntry(current, change.kind, index + 1));
-              await removePlanWork(transaction, work.id);
+              removedFiles.push(...(await removePlanWork(transaction, work.id)));
             }
             for (const work of change.edited) {
               await transaction
@@ -1780,6 +1961,7 @@ export class PlansService {
                 itemId,
                 position: scene.position,
                 removedWorks,
+                ...(removedFiles.length === 0 ? {} : { removedFiles }),
                 ...(gateDetail(scene.pass) ?? {}),
               },
               ...(requestId === undefined ? {} : { requestId }),

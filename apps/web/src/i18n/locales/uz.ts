@@ -918,7 +918,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qatorni kimdir oʻzgartirdi. Hozir saqlangan qiymat maydon ostida koʻrsatilgan; oʻzgarishingizni qayta kiriting.',
     plan_row_held: 'Bu qatorning darsi oʻtilgan, qatorni tozalab boʻlmaydi.',
     plan_file_too_large: 'Fayl 20 MB dan katta. Kichikroq fayl tanlang.',
-    plan_files_full: 'Qatorda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+    plan_files_full: 'Bu yerda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+    plan_work_not_found: 'Bu ish endi rejada yoʻq. Sahifani yangilang.',
     plan_window_closed:
       'Reja oynasi tugagan va bu qatorni tasdiqlangan soʻrov ochmaydi. Rejani oʻzgartirishni soʻrang.',
     plan_window_not_open:
@@ -4128,6 +4129,7 @@ export const uz: Texts<'one' | 'other'> = {
         export: 'Dars rejasi chop etildi yoki eksport qilindi',
         file_add: 'Reja qatoriga fayl qoʻshildi',
         file_remove: 'Reja qatoridan fayl oʻchirildi',
+        work_journal_add: 'Jurnalda qoʻshilgan ish rejaga yozildi',
         items_followed: 'Reja qatorlari dars jadvali oʻzgarishiga ergashdi',
         request_prepared: 'Rejani oʻzgartirish soʻrovi tayyorlandi',
         window_open: 'Reja oynasi ochildi',
