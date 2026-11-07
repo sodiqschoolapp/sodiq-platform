@@ -494,6 +494,12 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/subjects': { branch: 'request', roles: SUBJECT_VIEWERS },
   'POST /api/setup/subjects/export': { branch: 'request', roles: EXPORTERS },
   'POST /api/setup/subjects': { branch: 'request', roles: SUBJECT_WRITERS },
+  // The subject import (the owner's change of 7 November 2026, #316): `subjects` create, and the
+  // service also `subjects` edit; both held by the Super Admin and the Academic Vice Principal.
+  'GET /api/setup/subjects/import-template': { branch: 'request', roles: SUBJECT_WRITERS },
+  'PUT /api/setup/subjects/imports': { branch: 'request', roles: SUBJECT_WRITERS },
+  'POST /api/setup/subjects/imports/:id/preview': { branch: 'request', roles: SUBJECT_WRITERS },
+  'POST /api/setup/subjects/imports/:id/confirm': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/:id': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/:id/daily-weights': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/:id/archive': { branch: 'request', roles: SUBJECT_WRITERS },

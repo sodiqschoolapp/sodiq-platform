@@ -114,6 +114,9 @@ export const AUDIT_ACTION_GROUPS = {
     'subject_daily_weights.set',
     'subject_quarter_weights.set',
     'subject_quarter_primary_weights.set',
+    // The owner's change of 7 November 2026 (#316): the upload of a filled subject template and its confirm.
+    'subject_import.upload',
+    'subject_import.confirm',
     'school_settings.rating_exams_primary',
     // Task 11.5: the digest's time of day and quiet hours.
     'school_settings.digest',

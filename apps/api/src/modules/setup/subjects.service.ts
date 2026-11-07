@@ -104,7 +104,7 @@ const SUBJECT_COLUMNS = [
   'rating_round',
 ] as const;
 
-interface SubjectRow {
+export interface SubjectRow {
   id: string;
   name_uz: string;
   name_ru: string;
@@ -403,32 +403,65 @@ export class Subjects {
     const branchId = branchOf(access);
     return this.refusing(() =>
       this.transactions.run(access.branchIds, async (transaction) => {
-        if (record.journalType === 'graded' && record.daily === null) {
-          throw refused('daily_weights_required');
-        }
-        moveStartsOn(false, record.departmentStartsOn);
-        await this.checkDepartment(transaction, record.departmentId);
-        const fields = recordFields(record);
-        const row = await transaction
-          .insertInto('subjects')
-          .values(columnsOf(fields))
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        await this.audit.record(transaction, {
-          branchId: null,
-          actorId: access.accountId,
-          assignmentId: access.assignmentId,
-          action: 'subject.create',
-          record: { type: 'subject', id: row.id },
-          newValue: fields,
-          requestId,
-        });
-        if (record.daily !== null) {
-          await this.writeDaily(transaction, access, branchId, row.id, 1, record.daily, requestId);
-        }
-        return this.readSubject(transaction, branchId, row.id);
+        const id = await this.createIn(transaction, access, record, requestId);
+        return this.readSubject(transaction, branchId, id);
       }),
     );
+  }
+
+  /**
+   * The create on a transaction given (the subject import, pull request #316, runs it for each
+   * row in a savepoint, so a row is refused exactly as the form is): the subject, its
+   * school-wide entry and this branch's daily distribution. `importId` is given only by the
+   * import and is named in the entries. The caller maps the refusals (`refusingSubjects`).
+   */
+  async createIn(
+    transaction: Transaction,
+    access: Access,
+    record: SubjectRecord,
+    requestId: string,
+    importId?: string,
+  ): Promise<string> {
+    const branchId = branchOf(access);
+    if (record.journalType === 'graded' && record.daily === null) {
+      throw refused('daily_weights_required');
+    }
+    moveStartsOn(false, record.departmentStartsOn);
+    await this.checkDepartment(transaction, record.departmentId);
+    const fields = recordFields(record);
+    const row = await transaction
+      .insertInto('subjects')
+      .values(columnsOf(fields))
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await this.audit.record(transaction, {
+      branchId: null,
+      actorId: access.accountId,
+      assignmentId: access.assignmentId,
+      action: 'subject.create',
+      record: { type: 'subject', id: row.id },
+      newValue: fields,
+      ...(importId === undefined ? {} : { details: { importId } }),
+      requestId,
+    });
+    if (record.daily !== null) {
+      await this.writeDaily(
+        transaction,
+        access,
+        branchId,
+        row.id,
+        1,
+        record.daily,
+        requestId,
+        importId,
+      );
+    }
+    return row.id;
+  }
+
+  /** The refusals of the hand create mapped as the create maps them, for a caller of `createIn`. */
+  refusingSubjects<T>(work: () => Promise<T>): Promise<T> {
+    return this.refusing(work);
   }
 
   /**
@@ -777,46 +810,77 @@ export class Subjects {
     return refusingConstraints(
       () =>
         this.transactions.run(access.branchIds, async (transaction) => {
-          await this.readSubjectId(transaction, id);
-          const quarter = await transaction
-            .selectFrom('quarters')
-            .select(['id', 'academic_year_id'])
-            .where('id', '=', quarterId)
-            .executeTakeFirst();
-          if (quarter === undefined) {
-            throw notFound();
-          }
-          // Task 9.2b (From 2.1; `05`: "Weights of a quarter can change until the quarter is
-          // closed"): the quarter `for key share` in a statement of its own before the subject's
-          // lock (`.claude/rules/database.md`; review correction 3); a closed one is refused.
-          await lockOpenQuarter(transaction, quarterId);
-          const subject = await this.lockGraded(transaction, id);
-          await this.lockOpenYear(transaction, quarter.academic_year_id);
-          // Task 8.2 (correction 1): the shape and the rounds of the quarter's switches.
-          const switches = await this.switchesIn(transaction, subject.id, quarterId);
-          if ((weights.ratingExam !== null) !== switches.rating_exam) {
-            throw refused('weights_shape_mismatch');
-          }
-          const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
-          const before = await grades.read(quarterId);
-          const change = await this.writeQuarter(
+          const written = await this.writeQuarterWeightsIn(
             transaction,
             access,
-            branchId,
-            subject,
-            switches,
+            id,
             quarterId,
             weights,
             requestId,
+            preview,
           );
-          await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
-            { quarterId, change, before },
-          ]);
-          return this.readQuarters(transaction, branchId, subject, quarter.academic_year_id);
+          return this.readQuarters(transaction, branchId, written.subject, written.yearId);
         }),
       // Task 9.2b: the refusal of `subject_quarter_weights_closed_quarter` (0133) as the check's.
       { quarters_closed: 'quarter_closed' },
     );
+  }
+
+  /**
+   * One quarter's distribution on a transaction given, with every check of the hand route (the
+   * subject import, pull request #316, runs it for each open quarter of a new subject). A first
+   * setting (the import's case: a new subject has no row) needs no reason and sends no notice
+   * (`afterWrite`); `importId` is given only by the import and is named in the entry. The caller
+   * maps `quarters_closed` to `quarter_closed`.
+   */
+  async writeQuarterWeightsIn(
+    transaction: Transaction,
+    access: Access,
+    id: string,
+    quarterId: string,
+    weights: QuarterWeights,
+    requestId: string,
+    preview: boolean,
+    importId?: string,
+  ): Promise<{ subject: SubjectRow; yearId: string }> {
+    const branchId = branchOf(access);
+    await this.readSubjectId(transaction, id);
+    const quarter = await transaction
+      .selectFrom('quarters')
+      .select(['id', 'academic_year_id'])
+      .where('id', '=', quarterId)
+      .executeTakeFirst();
+    if (quarter === undefined) {
+      throw notFound();
+    }
+    // Task 9.2b (From 2.1; `05`: "Weights of a quarter can change until the quarter is
+    // closed"): the quarter `for key share` in a statement of its own before the subject's
+    // lock (`.claude/rules/database.md`; review correction 3); a closed one is refused.
+    await lockOpenQuarter(transaction, quarterId);
+    const subject = await this.lockGraded(transaction, id);
+    await this.lockOpenYear(transaction, quarter.academic_year_id);
+    // Task 8.2 (correction 1): the shape and the rounds of the quarter's switches.
+    const switches = await this.switchesIn(transaction, subject.id, quarterId);
+    if ((weights.ratingExam !== null) !== switches.rating_exam) {
+      throw refused('weights_shape_mismatch');
+    }
+    const grades = await this.gradesOf(transaction, branchId, subject.id, preview);
+    const before = await grades.read(quarterId);
+    const change = await this.writeQuarter(
+      transaction,
+      access,
+      branchId,
+      subject,
+      switches,
+      quarterId,
+      weights,
+      requestId,
+      importId,
+    );
+    await this.afterWrite(transaction, access, branchId, subject, grades, weights.reason, [
+      { quarterId, change, before },
+    ]);
+    return { subject, yearId: quarter.academic_year_id };
   }
 
   /**
@@ -1306,6 +1370,7 @@ export class Subjects {
     round: number,
     weights: DailyWeights,
     requestId: string,
+    importId?: string,
   ): Promise<void> {
     const stored = await transaction
       .selectFrom('subject_daily_weights')
@@ -1341,6 +1406,7 @@ export class Subjects {
       record: { type: 'subject', id: subjectId },
       oldValue: { daily: oldValue },
       newValue: { daily: dailyOf(weights) },
+      ...(importId === undefined ? {} : { details: { importId } }),
       requestId,
     });
   }
@@ -1355,6 +1421,7 @@ export class Subjects {
     quarterId: string,
     weights: QuarterWeights,
     requestId: string,
+    importId?: string,
   ): Promise<QuarterChange> {
     const subjectId = subject.id;
     // Task 8.2 (correction 1): the rounds of the quarter's switches.
@@ -1419,7 +1486,11 @@ export class Subjects {
       record: { type: 'subject', id: subjectId },
       oldValue: { weights: oldValue },
       newValue: { weights: newValue },
-      details: { quarterId, ...(weights.reason === undefined ? {} : { reason: weights.reason }) },
+      details: {
+        quarterId,
+        ...(weights.reason === undefined ? {} : { reason: weights.reason }),
+        ...(importId === undefined ? {} : { importId }),
+      },
       requestId,
     });
     return oldValue === null ? 'first' : 'changed';

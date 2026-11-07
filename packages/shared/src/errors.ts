@@ -311,6 +311,10 @@ export const ERROR_CODES = [
   'import_decision_unknown',
   /** A change made at the same moment met the import; nothing was saved, try again (task 9.4g). */
   'import_changed',
+  /** This subject import was confirmed already (#316): its own code, the text of `import_already_confirmed` names the student list. */
+  'subject_import_already_confirmed',
+  /** A change of subjects or quarters made at the same moment met the subject import; nothing was saved (#316). */
+  'subject_import_changed',
   /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */
