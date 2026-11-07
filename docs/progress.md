@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 11.7 Announcements and events
+
+- **Data and rights** (0163): `announcements` (branch-or-school, a whole-school row has no branch), `announcement_classes`, `announcement_deliveries` (school-wide); areas `announcements` (the three authors) and `announcements_feed` (every staff role); `announcement_recipients` the one audience rule of the bot.
+- **API** (module `announcements`): the authors' list and writes (a whole-school one the Super Admin's alone, audience and readers fixed once saved), `GET /api/announcements-feed` (what is addressed to the person: school, branch, the classes of the load in force and of own class, every class for the branch-wide roles), `GET /api/portal/children/:studentId/announcements`; the bot's message per parent through `announcements.fan_out`, `.tick` and `.deliver` (quiet hours and retries of the digest, scope checked again at the send).
+- **Web**: `/announcements` (list and calendar of the month, opened from the home page), `/announcements/manage` (the authors' list, form and panel), the portal's Announcements tab; the bot's button opens it through `/portal/telegram?to=announcements`.
+
+Left out: in-app notices to staff (plan decision 10); the parent's own switch for announcements (task 11.8, decision 15).
+
+The next sessions must know:
+
+- `GET /api/announcements` without `archived` answers every announcement; the web filters by status.
+- An event's times are clock times as typed, never moments; a test of the feed sets the clock after the scene's version starts (`NOW` of `announcements.test.ts`).
+
 ## 7 November 2026: task 10.8 The journal and the plan as one; files of each work
 
 - **Journal into plan**: `POST /api/journal/lessons/:lessonId/works` at a held lesson whose item is missing or has no topic writes a plan work (`added_in_journal_at/by`), making the plan and the item (empty topic) when missing (`PlansService.addFromJournal`; locks: the plan's journals, the item, the lesson's advisory lock); `PUT|DELETE …/plan-works/:planWorkId` rename and remove it while the topic is empty. The takeover skips such works; the limit of 10 counts them with older hand-added works.

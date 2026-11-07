@@ -63,7 +63,7 @@ describe('announcements in the database', () => {
     inBranch(branch, (transaction) =>
       transaction
         .insertInto('announcements')
-        .values({ ...base(branch), ...values } as ReturnType<typeof base>)
+        .values({ ...base(branch), ...values })
         .returning('id')
         .executeTakeFirstOrThrow(),
     ).then((row) => row.id);

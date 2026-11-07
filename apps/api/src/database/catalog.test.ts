@@ -69,7 +69,7 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   digest_parts:
     "The children a delivered digest named, first name and class as sent (task 11.5, decision 11 of pull request #299); read by the Super Admin's send log and by the digest itself.",
   announcement_deliveries:
-    "One message of an announcement to one Parent account through the bot, which has no branch, as digests (task 11.7, decision 1 of pull request #306, Look first). Ids, a status and moments.",
+    'One message of an announcement to one Parent account through the bot, which has no branch, as digests (task 11.7, decision 1 of pull request #306, Look first). Ids, a status and moments.',
   digest_entries:
     "What a delivered parents' digest carried, one row per entry with the value sent; one digest covers children in several branches and is read by the digest job alone (task 11.5, decision 11 of pull request #299). Ids, a date and the values sent.",
 };

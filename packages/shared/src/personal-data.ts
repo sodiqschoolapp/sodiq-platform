@@ -112,7 +112,8 @@ const parentAccountReportSchema = z.strictObject({
    */
   announcementDeliveries: z.array(
     z.strictObject({
-      title: z.string(),
+      /** `null` for an announcement of a branch the report does not read. */
+      title: z.string().nullable(),
       status: announcementDeliveryStatusSchema,
       sentAt: z.iso.datetime().nullable(),
     }),

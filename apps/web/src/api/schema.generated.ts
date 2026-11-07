@@ -143122,7 +143122,7 @@ export interface operations {
                                     sentAt: string | null;
                                 }[];
                                 announcementDeliveries: {
-                                    title: string;
+                                    title: string | null;
                                     /** @enum {string} */
                                     status: "due" | "delivered" | "blocked" | "no_chat" | "out_of_scope" | "withdrawn" | "failed";
                                     /** Format: date-time */

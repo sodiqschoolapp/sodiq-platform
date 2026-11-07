@@ -71,8 +71,7 @@ export function AnnouncementsManagePage(): React.JSX.Element {
   const key = useRef(crypto.randomUUID());
   const date = useMemo(
     () => ({
-      format: (iso: string) =>
-        momentDateText(i18n.language, iso, { timeZone: 'Asia/Tashkent' }),
+      format: (iso: string) => momentDateText(i18n.language, iso, { timeZone: 'Asia/Tashkent' }),
     }),
     [i18n.language],
   );

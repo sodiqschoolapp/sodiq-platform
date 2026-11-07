@@ -7,6 +7,7 @@ import {
   REQUEST_KEY_HEADER,
 } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
+import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { CreatedAccount } from '../auth/accounts.service.js';
@@ -201,9 +202,107 @@ describe('announcements and events', () => {
     branch: string | null,
   ): Promise<string> => {
     const browser = await t.kit.fullSession(first, last);
-    await t.kit.giveRole(browser.account.id, branch === null ? { role } : { role, branchId: branch });
+    await t.kit.giveRole(
+      browser.account.id,
+      branch === null ? { role } : { role, branchId: branch },
+    );
     return browser.cookie;
   };
+
+  /**
+   * Ends the links of a relative at a moment, as the application writes it (0036). A student keeps
+   * a relative (`student_needs_relative`): each gets another one first, without portal access.
+   */
+  const unlink = async (relativeId: string, studentId?: string) => {
+    const links = await t.database.migrator
+      .selectFrom('student_relatives')
+      .select(['student_id', 'branch_id'])
+      .where('relative_id', '=', relativeId)
+      .where('unlinked_at', 'is', null)
+      .$if(studentId !== undefined, (query) => query.where('student_id', '=', studentId ?? ''))
+      .execute();
+    const others: { student: string; relative: string }[] = [];
+    for (const link of links) {
+      others.push({
+        student: link.student_id,
+        relative: await parents.relativeOf(link.branch_id, link.student_id, {
+          portalAccess: false,
+        }),
+      });
+    }
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${'2026-10-12T04:00:00.000Z'}, true)`.execute(
+        transaction,
+      );
+      // The main contact moves to the other relative first.
+      await transaction
+        .updateTable('student_relatives')
+        .set({ main_contact: false })
+        .where('relative_id', '=', relativeId)
+        .where(
+          'student_id',
+          'in',
+          links.map((link) => link.student_id),
+        )
+        .execute();
+      for (const other of others) {
+        await transaction
+          .updateTable('student_relatives')
+          .set({ main_contact: true })
+          .where('relative_id', '=', other.relative)
+          .where('student_id', '=', other.student)
+          .execute();
+      }
+      await transaction
+        .updateTable('student_relatives')
+        .set({ unlinked_at: new Date('2026-10-12T04:00:00.000Z') })
+        .where('relative_id', '=', relativeId)
+        .where(
+          'student_id',
+          'in',
+          links.map((link) => link.student_id),
+        )
+        .execute();
+    });
+  };
+
+  /**
+   * A family of class A whose child leaves on 12 October (`edge/students-classes-groups`): in the
+   * class until then, out of the school from that day; the parent's chat is linked.
+   */
+  const leavingFamily = async () => {
+    const made2 = await parents.student(a.branch);
+    const leaving = await parents.members.leaving(
+      t.database.migrator,
+      a.branch,
+      made2.studentId,
+      '2026-10-12',
+    );
+    await parents.members.member({
+      branch: a.branch,
+      classId: a.classId,
+      studentId: made2.studentId,
+      from: '2026-09-01',
+      until: '2026-10-12',
+      endedBy: 'leaving',
+      leavingId: leaving,
+    });
+    // No sign-in: an account whose only child left can no longer sign in (0158).
+    const account = await parents.account(made2.relativeId);
+    nextChat += 1;
+    await t.database.migrator
+      .insertInto('telegram_links')
+      .values({
+        account_id: account.id,
+        telegram_user_id: String(nextChat),
+        linked_at: new Date('2026-10-01T10:00:00+05:00'),
+      })
+      .execute();
+    return { ...made2, accountId: account.id, chat: String(nextChat) };
+  };
+
+  /** The day before the leaving of `leavingFamily`, in Tashkent. */
+  const BEFORE_LEAVING = '2026-10-11T10:00:00+05:00';
 
   const linked = async (relativeId: string) => {
     const session = await parents.session(relativeId);
@@ -456,6 +555,31 @@ describe('announcements and events', () => {
       expect(await rows()).toEqual(before);
     });
 
+    it('refuses a class of a closed year', async () => {
+      // A branch of its own: a closed year before the scene's current one is refused by 0016.
+      const branch = await t.newBranch();
+      const year = await load.classes.year(branch);
+      const oldClass = await load.classes.schoolClass(branch, year, {
+        grade: 7,
+        room: await load.classes.room(branch),
+      });
+      for (const status of ['current', 'closed'] as const) {
+        await t.database.migrator
+          .updateTable('academic_years')
+          .set({ status })
+          .where('id', '=', year)
+          .execute();
+      }
+      const before = await rows();
+      const response = await create(
+        branch,
+        news({ kind: 'classes', classIds: [oldClass] }),
+        cookies.admin,
+      );
+      expect(codeOf(response)).toBe('announcement_class_unavailable');
+      expect(await rows()).toEqual(before);
+    });
+
     it('edits the text and the dates, refuses a stale version, and keeps the audience', async () => {
       const one = await made(a.branch, event({ kind: 'branch' }), cookies.vice);
       const changed = await t.put(
@@ -609,6 +733,10 @@ describe('announcements and events', () => {
             .status,
         ).toBe(403);
         expect((await list(a.branch, cookie)).status).toBe(403);
+        expect(
+          (await t.post(`/api/announcements/${one.id}/restore`, a.branch, { version: 1 }, cookie))
+            .status,
+        ).toBe(403);
       }
       expect(await rows()).toEqual(before);
     });
@@ -690,6 +818,18 @@ describe('announcements and events', () => {
       expect(
         (await t.get('/api/announcements-feed?mont=2026-10', a.branch, cookies.principal)).status,
       ).toBe(400);
+    });
+
+    // Permission review of the code, should-fix 3: a branch-wide role counts in its own branch.
+    it('gives a Principal of branch B who teaches nothing in branch A only the school and branch items there', async () => {
+      const browser = await t.kit.fullSession('Ulugbek', 'Hamroyev');
+      await t.kit.giveRole(browser.account.id, { role: 'principal', branchId: b.branch });
+      await t.kit.giveRole(browser.account.id, { role: 'teacher', branchId: a.branch });
+      const ids = titlesOf(await feed(a.branch, browser.cookie));
+      expect(ids).toEqual(expect.arrayContaining([forBranch, school]));
+      for (const id of [forClassA, forOtherClass, forGrade5, forGrade7]) {
+        expect(ids).not.toContain(id);
+      }
     });
 
     it('refuses the feed to a parent session', async () => {
@@ -780,6 +920,30 @@ describe('announcements and events', () => {
       expect((await portal(leftChild, motherA.cookie)).status).toBe(404);
     });
 
+    // Permission review of the code, should-fix 1.
+    it('answers 404 to a relative whose link ended and to a parent of branch B for a child of branch A', async () => {
+      const family = await parents.student(a.branch);
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.classId,
+        studentId: family.studentId,
+        from: '2026-09-01',
+      });
+      const session = await parents.session(family.relativeId);
+      const formerChild = await parents.childOf(a.branch, motherA.relativeId);
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.classId,
+        studentId: formerChild,
+        from: '2026-09-01',
+      });
+      expect((await portal(formerChild, motherA.cookie)).status).toBe(200);
+      await unlink(motherA.relativeId, formerChild);
+      expect((await portal(formerChild, motherA.cookie)).status).toBe(404);
+      expect((await portal(family.studentId, session.cookie)).status).toBe(200);
+      expect((await portal(childA, fatherB.cookie)).status).toBe(404);
+    });
+
     it('refuses the portal route to every staff session', async () => {
       for (const cookie of [cookies.admin, cookies.vice, cookies.teacher]) {
         expect((await portal(childA, cookie)).status).toBe(403);
@@ -812,7 +976,9 @@ describe('announcements and events', () => {
           'Где: Main hall',
         ].join('\n'),
       );
-      expect(toMother[0]?.button).toBe('https://app.example.test/portal/telegram?to=announcements');
+      expect(toMother[0]?.button).toMatch(
+        /^https:\/\/app\.example\.test\/portal\/telegram\?to=announcements&child=[0-9a-f-]{36}$/,
+      );
       // A grade-7 item of branch A does not reach the grade-7 child of branch B.
       expect(toChat(fatherB.chat).filter((message) => message.text.includes('Open doors'))).toEqual(
         [],
@@ -920,7 +1086,8 @@ describe('announcements and events', () => {
         cookies.admin,
       );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
-      const listed = relativeReportSchema.parse(response.body).relative.account?.announcementDeliveries ?? [];
+      const listed =
+        relativeReportSchema.parse(response.body).relative.account?.announcementDeliveries ?? [];
       const own = await t.database.migrator
         .selectFrom('announcement_deliveries')
         .select('id')
@@ -955,6 +1122,263 @@ describe('announcements and events', () => {
       expect((await deliveriesOf(branch.id)).map((row) => row.account_id)).toEqual([
         motherA.accountId,
       ]);
+    });
+  });
+
+  describe('the recipients of the bot (announcement_recipients, 0163 and 0164)', () => {
+    /** A family of class A of branch A with a Telegram link, for a case that changes it. */
+    const family = async () => {
+      const made = await parents.student(a.branch);
+      await parents.members.member({
+        branch: a.branch,
+        classId: a.classId,
+        studentId: made.studentId,
+        from: '2026-09-01',
+      });
+      return { ...made, ...(await linked(made.relativeId)) };
+    };
+    const recipients = async (announcementId: string, account?: string, at: string = NOW) =>
+      (
+        await sql<{ account_id: string; student_id: string }>`
+          select account_id, student_id
+          from announcement_recipients(${announcementId}::uuid, ${new Date(at)}, ${account ?? null}::uuid)
+        `.execute(t.database.migrator)
+      ).rows;
+    const accountsOf = async (announcementId: string, account?: string, at: string = NOW) =>
+      (await recipients(announcementId, account, at)).map((row) => row.account_id);
+
+    it('reaches by school, branch, branch and grade, and class, each by its own row', async () => {
+      const school = await made(a.branch, news({ kind: 'school' }), cookies.admin);
+      const branch = await made(a.branch, news({ kind: 'branch' }), cookies.vice);
+      const grade7 = await made(a.branch, news({ kind: 'grades', grades: [7] }), cookies.vice);
+      const grade8 = await made(a.branch, news({ kind: 'grades', grades: [8] }), cookies.vice);
+      const other = await made(
+        a.branch,
+        news({ kind: 'classes', classIds: [a.otherClass] }),
+        cookies.vice,
+      );
+      expect(await accountsOf(school.id)).toEqual(
+        expect.arrayContaining([motherA.accountId, fatherB.accountId]),
+      );
+      for (const id of [branch.id, grade7.id]) {
+        expect(await accountsOf(id)).toContain(motherA.accountId);
+        expect(await accountsOf(id)).not.toContain(fatherB.accountId);
+      }
+      expect(await accountsOf(grade8.id)).not.toContain(motherA.accountId);
+      // Only the sibling is in the other class: the child named is the sibling.
+      const reached = await recipients(other.id, motherA.accountId);
+      expect(reached).toEqual([{ account_id: motherA.accountId, student_id: siblingA }]);
+      expect(await accountsOf(school.id, fatherB.accountId)).toEqual([fatherB.accountId]);
+      expect(await accountsOf(branch.id, fatherB.accountId)).toEqual([]);
+      // A parent of class A without a Telegram link is never reached.
+      const forClass = await made(
+        a.branch,
+        news({ kind: 'classes', classIds: [a.classId] }),
+        cookies.vice,
+      );
+      expect(await accountsOf(forClass.id)).toEqual([motherA.accountId]);
+      const staffOnly = await made(
+        a.branch,
+        news({ kind: 'branch' }, { forParents: false }),
+        cookies.vice,
+      );
+      expect(await accountsOf(staffOnly.id)).toEqual([]);
+    });
+
+    it('leaves out a link with notices off, portal access off, a relative unlinked, a chat unlinked and a child who left', async () => {
+      const branch = await made(a.branch, news({ kind: 'branch' }), cookies.vice);
+      const cases: ((one: Awaited<ReturnType<typeof family>>) => Promise<unknown>)[] = [
+        (one) =>
+          t.database.migrator
+            .updateTable('student_relatives')
+            .set({ receives_notices: false })
+            .where('relative_id', '=', one.relativeId)
+            .execute(),
+        (one) =>
+          t.database.migrator
+            .updateTable('student_relatives')
+            .set({ portal_access: false })
+            .where('relative_id', '=', one.relativeId)
+            .execute(),
+        (one) => unlink(one.relativeId),
+        (one) =>
+          t.database.migrator
+            .updateTable('telegram_links')
+            .set({ ended_at: new Date('2026-10-12T09:00:00+05:00'), end_reason: 'sign_out' })
+            .where('account_id', '=', one.accountId)
+            .execute(),
+      ];
+      for (const [index, change] of cases.entries()) {
+        const one = await family();
+        expect(await accountsOf(branch.id, one.accountId), String(index)).toEqual([one.accountId]);
+        await change(one);
+        expect(await accountsOf(branch.id, one.accountId), String(index)).toEqual([]);
+      }
+      // A child who left: reached the day before the leaving, not from that day.
+      const left = await leavingFamily();
+      expect(await accountsOf(branch.id, left.accountId, BEFORE_LEAVING)).toEqual([left.accountId]);
+      expect(await accountsOf(branch.id, left.accountId)).toEqual([]);
+    });
+  });
+
+  describe('the tick and the send', () => {
+    /** The mother's delivery of an announcement, after the fan-out. */
+    const due = async (announcementId: string) => {
+      await delivery().fanOut(announcementId);
+      return t.database.migrator
+        .selectFrom('announcement_deliveries')
+        .select('id')
+        .where('announcement_id', '=', announcementId)
+        .where('account_id', '=', motherA.accountId)
+        .executeTakeFirstOrThrow();
+    };
+    const statusOf = async (id: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('announcement_deliveries')
+          .select('status')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).status;
+
+    it('enqueues the sends that are due outside the quiet hours only', async () => {
+      const one = await made(
+        a.branch,
+        news({ kind: 'classes', classIds: [a.classId] }),
+        cookies.vice,
+      );
+      const row = await due(one.id);
+      const sends = async () =>
+        (await storedJobs(t.database.migrator)).filter(
+          (job) =>
+            job.name === 'announcements.deliver' && JSON.stringify(job.data).includes(row.id),
+        ).length;
+      t.clock.set('2026-10-13T23:00:00+05:00');
+      try {
+        await delivery().tick();
+        expect(await sends()).toBe(0);
+        t.clock.set('2026-10-14T09:00:00+05:00');
+        await delivery().tick();
+        expect(await sends()).toBe(1);
+      } finally {
+        t.clock.set(NOW);
+        await delivery().deliver(row.id);
+      }
+    });
+
+    it('marks a send failed after the last attempt', async () => {
+      const one = await made(
+        a.branch,
+        news({ kind: 'classes', classIds: [a.classId] }),
+        cookies.vice,
+      );
+      const row = await due(one.id);
+      await t.database.migrator
+        .updateTable('announcement_deliveries')
+        .set({ attempts: 8 })
+        .where('id', '=', row.id)
+        .execute();
+      const before = sent.length;
+      await delivery().deliver(row.id);
+      expect(await statusOf(row.id)).toBe('failed');
+      expect(sent.length).toBe(before);
+    });
+
+    it('withdraws at the send an announcement archived since the fan-out', async () => {
+      const one = await made(
+        a.branch,
+        news({ kind: 'classes', classIds: [a.classId] }),
+        cookies.vice,
+      );
+      const row = await due(one.id);
+      // Archived past the route, which would withdraw the row itself.
+      await t.database.migrator
+        .updateTable('announcements')
+        .set({ archived_at: new Date(NOW), archived_by: teacherAccount.id })
+        .where('id', '=', one.id)
+        .execute();
+      const before = sent.length;
+      await delivery().deliver(row.id);
+      expect(await statusOf(row.id)).toBe('withdrawn');
+      expect(sent.length).toBe(before);
+    });
+
+    it('frames the message in English and in Uzbek, and names the child reached in the button', async () => {
+      for (const [language, first] of [
+        ['en', 'Sodiq School: announcement'],
+        ['uz', 'Sodiq maktabi: eʼlon'],
+      ] as const) {
+        await t.database.migrator
+          .updateTable('accounts')
+          .set({ language })
+          .where('id', '=', motherA.accountId)
+          .execute();
+        const one = await made(
+          a.branch,
+          { ...news({ kind: 'classes', classIds: [a.otherClass] }), title: `Frame ${language}` },
+          cookies.vice,
+        );
+        await send(one.id);
+        const message = toChat(motherA.chat).find((each) =>
+          each.text.includes(`Frame ${language}`),
+        );
+        expect(message?.text.split('\n')[0]).toBe(first);
+        expect(message?.button).toBe(
+          `https://app.example.test/portal/telegram?to=announcements&child=${siblingA}`,
+        );
+      }
+    });
+
+    // Permission review of the code, should-fix 2: the scope is read again at the send.
+    it('sends nothing when the relative was unlinked or the child left between the fan-out and the send', async () => {
+      for (const change of ['unlinked', 'left'] as const) {
+        let family: { relativeId: string; accountId: string; chat: string };
+        if (change === 'unlinked') {
+          const made2 = await parents.student(a.branch);
+          await parents.members.member({
+            branch: a.branch,
+            classId: a.classId,
+            studentId: made2.studentId,
+            from: '2026-09-01',
+          });
+          family = { ...made2, ...(await linked(made2.relativeId)) };
+        } else {
+          family = await leavingFamily();
+        }
+        const one = await made(
+          a.branch,
+          news({ kind: 'classes', classIds: [a.classId] }),
+          cookies.vice,
+        );
+        if (change === 'unlinked') {
+          await delivery().fanOut(one.id);
+          await unlink(family.relativeId);
+        } else {
+          // The fan-out the day before the leaving reaches the family; the send now does not.
+          t.clock.set(BEFORE_LEAVING);
+          try {
+            await delivery().fanOut(one.id);
+          } finally {
+            t.clock.set(NOW);
+          }
+          await t.database.migrator
+            .updateTable('announcement_deliveries')
+            .set({ next_try_at: new Date(NOW) })
+            .where('announcement_id', '=', one.id)
+            .execute();
+        }
+        const link = family;
+        expect(
+          (await deliveriesOf(one.id)).some((row) => row.account_id === link.accountId),
+          change,
+        ).toBe(true);
+        await deliverDue();
+        const rowsOf = await deliveriesOf(one.id);
+        expect(rowsOf.find((row) => row.account_id === link.accountId)?.status, change).toBe(
+          'out_of_scope',
+        );
+        expect(toChat(link.chat)).toEqual([]);
+      }
     });
   });
 });

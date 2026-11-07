@@ -9,12 +9,7 @@ import { cn } from '@/lib/utils';
 import { portalChildrenQuery } from './portal-api';
 
 export type PortalTab =
-  | 'timetable'
-  | 'homework'
-  | 'grades'
-  | 'attendance'
-  | 'rating'
-  | 'announcements';
+  'timetable' | 'homework' | 'grades' | 'attendance' | 'rating' | 'announcements';
 
 const TAB_PATHS = {
   timetable: '/portal/$studentId/timetable',

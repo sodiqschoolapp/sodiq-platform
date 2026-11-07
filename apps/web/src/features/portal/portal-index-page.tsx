@@ -12,14 +12,16 @@ import { portalChildrenQuery } from './portal-api';
 export function PortalIndexPage(): React.JSX.Element {
   const { t } = useTranslation();
   const children = useQuery(portalChildrenQuery);
-  const { to } = useSearch({ from: '/portal/' });
+  const { to, child } = useSearch({ from: '/portal/' });
   if (children.data === undefined) return <LoadingOutline />;
   const [first] = children.data.children;
   if (first === undefined) return <EmptyState text={t('portal.noChild')} />;
-  // Task 11.7: the bot's button of an announcement opens the announcements of the first child.
+  // Task 11.7: the bot's button of an announcement opens the announcements of the child it
+  // reached, or of the first child when that one is not listed (any more).
   if (to === 'announcements') {
+    const named = children.data.children.find((one) => one.id === child) ?? first;
     return (
-      <Navigate to="/portal/$studentId/announcements" params={{ studentId: first.id }} replace />
+      <Navigate to="/portal/$studentId/announcements" params={{ studentId: named.id }} replace />
     );
   }
   return <Navigate to="/portal/$studentId/timetable" params={{ studentId: first.id }} replace />;

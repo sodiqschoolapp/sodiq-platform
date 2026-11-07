@@ -21,7 +21,7 @@ Decided once, valid for every task. A session reads this section at its start (`
 | A session asks before dropping, resetting or recreating anything in `sodiq_dev`; test databases are its own `sodiq_test_*` | The owner's local data. |
 | Claude Code never reads `.env` (`.claude/settings.json` denies it); the local `SECOND_STEP_KEY` is public, a server gets its own random key in task 0.10 | Secrets never enter a transcript. |
 | No real personal data anywhere: code, tests, seeds, logs, commit messages, pull requests. Invented names only | `CLAUDE.md`. |
-| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294). |
+| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal`, `announcements` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294); `announcements` for task 11.7 (decision 2 of pull request #306, Look first; the owner adds it to `CLAUDE.md`). |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
 ## Decided ahead for Phase 10 (owner, 26 October 2026)
@@ -400,6 +400,31 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 22. Languages of instruction are fixed to Uzbek and Russian (`05`) and shown read-only; grade bands are shown read-only.
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
+
+## 7 November 2026: announcements and events (task 11.7)
+
+Plan approved on pull request #306 with corrections 1 to 3 and decision 15. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (pinned lists widened). `BRANCH_OR_SCHOOL_TABLES` gains `announcements`, `SCHOOL_WIDE_TABLES` `announcement_deliveries`, the SECURITY DEFINER allow-list `announcement_recipients`, the frozen list of areas `announcements` and `announcements_feed` | A whole-school announcement is one record read in every branch (as `lesson_plan_masters`); a Parent account has no branch (as `digests`); the bot reads children across branches (as `digest_children`) (decision 1) |
+| **Look first** (process). The module and feature name `announcements` joins the Standing decisions; the owner adds it to `CLAUDE.md`, Repository layout | `11` lists it as a module of its own (decision 2) |
+| **Look first** (permission reading). "Every other role only reads what is addressed to it" is a second area `announcements_feed`, `view` for every staff role | One area cannot give "view addressed" without "view all" (decision 3) |
+| **Look first** (reading of "addressed"). Staff of a class or grade: its Tutor or Class teacher and the teachers of the load in force (a group's classes too); the Principal, the Academic VP, the Spiritual VP, the Head Tutor and the Super Admin count for every class and grade of their branch; the Head Teacher and the Senior Head Teacher by their own load; HR, Nurse, Psychologist, Librarian the school and branch items only | Decision 4 |
+| The audience and the readers are fixed once saved; title, text and event details may be edited; an edit or a restore sends nothing again; an archive withdraws the messages still due; an event edited after the bot sent it leaves the old details in the chat | Decisions 5 and 6 |
+| The bot sends one message per parent with a child whose link has portal access and "receives notices" on, in the parent's language frame, the author's text as typed, in plain text | Decisions 7 and 8 |
+| Quiet hours and retries of the digest; no in-app notice to staff; published when saved; no cap on an event's span; limits 120, 2000, 120 | Decisions 9 to 12 |
+| The personal data report of a relative lists the account's messages (title, status, sent at) | Decision 13 |
+| Grades and classes are read today for the reader | Decision 14 |
+| No off switch of the parent's own for announcements in 11.7: "receives notices" governs; a switch per kind is 11.8's | Decision 15 (review correction 2) |
+| An event's times are clock times of the branch's time zone, shown as typed; no moment is stored | Review correction 3 |
+| **Build decision.** The staff page opens from the home page of every staff role, not the menu | The menu holds at most ten items (`12`) and the Super Admin's has ten |
+| **Build decision.** `GET /api/announcements` without `archived` answers every announcement | One list with a status filter (`12`, Lists) |
+| **Build decision.** The bot's button opens `/portal/telegram?to=announcements&child=<id>`, the first child by last and first name that the announcement reaches (0164 adds that id to `announcement_recipients`); the mini app signs in there and goes on to that child's Announcements, or the first child's when that one is no longer listed | The plan's button (spec review of the code, should-fix 6); the mini app signs in on that page |
+| **Build decision.** The authors' list counts the bot's messages of a whole-school announcement in every branch, as numbers, never names | `announcement_deliveries` is school-wide (decision 1; permission review of the code, note 4) |
+| **Build decision.** Archive and restore are safe to repeat by the version read: a repeat with the old version is 409 `announcement_changed`, not a stored answer; the create takes a request key | A repeated archive must not withdraw twice; the version is the guard of every edit (permission review of the code, note 5) |
+| **Build decision.** The error codes are `announcement_changed`, `announcement_school_only`, `announcement_archived` and `announcement_class_unavailable` (the plan named `announcement_stale` and `announcement_audience_refused`) | Each text is true on every path that sends it (`.claude/rules/web.md`) |
+| **Build decision.** The personal data report lists every message of the account; the title only where the report's branches read the announcement | Decision 13 lists the messages; a title of an unread branch is not shown (spec review of the code, should-fix 7) |
 
 ## 7 November 2026: the journal and the plan as one, files of each work (task 10.8)
 

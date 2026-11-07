@@ -16,7 +16,6 @@ import {
   type Role,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import type { JsonValue } from '../../database/types.generated.js';
 import { RequestKeys } from '../../database/request-keys.js';
 import { transactionMoment, Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -204,7 +203,7 @@ export class AnnouncementsService {
             assignmentId: access.assignmentId,
             action: 'announcement.create',
             record: { type: 'announcement', id: made.id },
-            newValue: { ...record, audience: { ...record.audience } } as unknown as JsonValue,
+            newValue: { ...record, audience: { ...record.audience } },
             requestId,
           });
           // `CLAUDE.md`, Jobs in the same transaction: the messages of the bot.
@@ -217,7 +216,7 @@ export class AnnouncementsService {
           return { id: made.id };
         },
       );
-      const id = (once.result as { id: string }).id;
+      const id = once.result.id;
       return this.one(transaction, access, id);
     });
   }
@@ -237,8 +236,7 @@ export class AnnouncementsService {
           {
             path: 'event',
             code: 'custom',
-            message:
-              row.kind === 'event' ? 'An event has dates.' : 'News has no dates.',
+            message: row.kind === 'event' ? 'An event has dates.' : 'News has no dates.',
           },
         ]);
       }
@@ -265,8 +263,8 @@ export class AnnouncementsService {
           title: row.title,
           body: row.body,
           event: viewOf(row).event,
-        } as unknown as JsonValue,
-        newValue: { title: change.title, body: change.body, event: change.event } as JsonValue,
+        },
+        newValue: { title: change.title, body: change.body, event: change.event },
         requestId,
       });
       return this.one(transaction, access, row.id);

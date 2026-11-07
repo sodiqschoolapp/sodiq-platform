@@ -8,7 +8,7 @@ const WEEKDAYS: readonly Weekday[] = [1, 2, 3, 4, 5, 6, 7];
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { Segmented } from '@/components/ui/segmented';
 import { momentDateText, monthsText, schoolDateText, weekdayName } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -78,7 +78,7 @@ export function AnnouncementItem({ item }: { item: AnnouncementView }) {
           ? t('announcements.schoolWide')
           : t('announcements.published', { date: published })}
       </p>
-      <h3 className="text-[1.0625rem]/6 font-bold">{item.title}</h3>
+      <h3 className={SECTION_TITLE}>{item.title}</h3>
       {item.event !== null && (
         <p className="text-sm font-semibold" data-when>
           {when(item.event)}
@@ -120,7 +120,7 @@ export function AnnouncementMonth({ month, view, onView, onMonth }: MonthProps) 
         >
           {t('announcements.previousMonth')}
         </Button>
-        <h2 className="min-w-40 text-center text-[1.0625rem]/6 font-bold" data-month={month.month}>
+        <h2 className={cn(SECTION_TITLE, 'min-w-40 text-center')} data-month={month.month}>
           {title}
         </h2>
         <Button

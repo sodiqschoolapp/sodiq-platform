@@ -690,16 +690,17 @@ export class PersonalData {
               .orderBy('digest_date')
               .orderBy('id')
               .execute();
-      // Task 11.7 (plan decision 13): each message of an announcement to the account. The
-      // announcement is read in the report's branches (a whole-school one in each): its title only.
+      // Task 11.7 (plan decision 13): every message of an announcement to the account; its title
+      // where the report's branches read the announcement (a whole-school one in each), else none
+      // (spec review of the code, should-fix 7).
       const announcementDeliveries =
         accountId === null
           ? []
           : (
-              await sql<{ title: string; status: string; sent_at: Date | null }>`
+              await sql<{ title: string | null; status: string; sent_at: Date | null }>`
                 select a.title, d.status, d.sent_at
                 from announcement_deliveries d
-                join announcements a on a.id = d.announcement_id
+                left join announcements a on a.id = d.announcement_id
                 where d.account_id = ${accountId}::uuid
                 order by d.created_at, d.id
               `.execute(transaction)

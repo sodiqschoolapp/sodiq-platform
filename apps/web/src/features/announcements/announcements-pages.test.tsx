@@ -257,3 +257,34 @@ describe('the portal page of announcements', () => {
     await screen.findByRole('heading', { name: 'Open doors' });
   });
 });
+
+describe('the bot’s button', () => {
+  const NILUFAR = '0190a000-0000-7000-8000-00000000000b';
+  it('opens the announcements of the child it names, or of the first child', async () => {
+    const two: PortalChildren = {
+      children: [
+        { id: ANVAR, firstName: 'Anvar', lastName: 'Karimov', className: '7 Oxford' },
+        { id: NILUFAR, firstName: 'Nilufar', lastName: 'Karimova', className: '8 Oxford' },
+      ],
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            login: 'd.karimova',
+            kind: 'parent',
+            fullName: 'Dilfuza Karimova',
+            assignments: [],
+            branches: [],
+          }),
+        ),
+      'GET /api/portal/children': () => json(two),
+      [`GET /api/portal/children/${NILUFAR}/announcements`]: () => json(MONTH),
+    });
+    renderApp(`/portal?to=announcements&child=${NILUFAR}`);
+    await screen.findByRole('heading', { name: 'Open doors' });
+    expect(
+      calls.some((call) => call.route === `GET /api/portal/children/${ANVAR}/announcements`),
+    ).toBe(false);
+  });
+});

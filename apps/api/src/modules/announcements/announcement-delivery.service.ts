@@ -136,8 +136,8 @@ export class AnnouncementDelivery {
         }
         // `10`, Privacy: "Each message is checked again just before it is sent".
         const now = await transactionMoment(transaction);
-        const reach = await sql<{ telegram_link_id: string }>`
-          select telegram_link_id from announcement_recipients(
+        const reach = await sql<{ telegram_link_id: string; student_id: string }>`
+          select telegram_link_id, student_id from announcement_recipients(
             ${delivery.announcement_id}::uuid, ${now}, ${delivery.account_id}::uuid
           )
         `.execute(transaction);
@@ -168,7 +168,7 @@ export class AnnouncementDelivery {
         const outcome = await this.bot.sendMessage(
           link.telegram_user_id,
           announcementText(language, row),
-          this.button(language),
+          this.button(language, reach.rows[0]?.student_id),
         );
         if (outcome === 'blocked') {
           await transaction
@@ -204,13 +204,19 @@ export class AnnouncementDelivery {
       .execute();
   }
 
-  /** The button opens the mini app, which signs in and goes on to the announcements. */
-  private button(language: Language): { text: string; url: string } | undefined {
+  /**
+   * The button opens the mini app, which signs in and goes on to the announcements of the first
+   * child (by last and first name) the announcement reaches (plan of #306; migration 0164).
+   */
+  private button(
+    language: Language,
+    childId: string | undefined,
+  ): { text: string; url: string } | undefined {
     const telegram = this.config.telegram;
     if (telegram === undefined) return undefined;
     return {
       text: TELEGRAM_TEXTS[language].openPortal,
-      url: `${telegram.webOrigin}${MINI_APP_PATH}?to=announcements`,
+      url: `${telegram.webOrigin}${MINI_APP_PATH}?to=announcements${childId === undefined ? '' : `&child=${childId}`}`,
     };
   }
 }

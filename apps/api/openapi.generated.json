@@ -772332,6 +772332,7 @@
                                 "type": "object",
                                 "properties": {
                                   "title": {
+                                    "nullable": true,
                                     "type": "string"
                                   },
                                   "status": {

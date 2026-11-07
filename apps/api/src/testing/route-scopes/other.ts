@@ -632,7 +632,9 @@ export const OTHER_SCOPES: RouteScopes = {
       roles: ['tutor', 'class_teacher'],
       scope: 'class',
       rule: 'Task 11.7, plan decision 4: the classes and grades of the own class, besides the school and the branch',
-      refusedIn: ['src/modules/announcements/announcements.test.ts > shows the Tutor the own class'],
+      refusedIn: [
+        'src/modules/announcements/announcements.test.ts > shows the Tutor the own class',
+      ],
     },
     {
       roles: ['teacher', 'head_teacher', 'senior_head_teacher'],

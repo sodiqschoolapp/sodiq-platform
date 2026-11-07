@@ -236,9 +236,24 @@ export interface AnnouncementTexts {
 }
 
 export const ANNOUNCEMENT_TEXTS = {
-  uz: { news: 'Sodiq maktabi: eʼlon', event: 'Sodiq maktabi: tadbir', when: 'Qachon', where: 'Qayerda' },
-  ru: { news: 'Школа Sodiq: объявление', event: 'Школа Sodiq: мероприятие', when: 'Когда', where: 'Где' },
-  en: { news: 'Sodiq School: announcement', event: 'Sodiq School: event', when: 'When', where: 'Where' },
+  uz: {
+    news: 'Sodiq maktabi: eʼlon',
+    event: 'Sodiq maktabi: tadbir',
+    when: 'Qachon',
+    where: 'Qayerda',
+  },
+  ru: {
+    news: 'Школа Sodiq: объявление',
+    event: 'Школа Sodiq: мероприятие',
+    when: 'Когда',
+    where: 'Где',
+  },
+  en: {
+    news: 'Sodiq School: announcement',
+    event: 'Sodiq School: event',
+    when: 'When',
+    where: 'Where',
+  },
 } as const satisfies Readonly<Record<'uz' | 'ru' | 'en', AnnouncementTexts>>;
 
 /** The page of the portal the bot's button opens after the mini app's sign-in (`?to=`). */
