@@ -1,7 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, nothing, renderApp, sessionOf } from '@/testing/render-app';
 
 // Task 11.1 (decision 13 of pull request #292): a parent session has its own frame, with no
 // staff menu, and reaches no staff page. All names are invented.
@@ -36,6 +36,31 @@ describe('the frame of a parent', () => {
     });
     renderApp('/people/staff');
     await screen.findByText(en.portal.noChild);
+  });
+
+  // Task 11.4: "the `parent` role links and unlinks its own chat".
+  it('names the own Telegram link and unlinks it after asking', async () => {
+    let session = { ...PARENT, telegramLinkedAt: '2026-11-02T05:00:00.000Z' };
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(session),
+      'DELETE /api/auth/telegram-link': () => {
+        session = { ...PARENT, telegramLinkedAt: null };
+        return nothing();
+      },
+    });
+    renderApp('/parent');
+    const section = await screen.findByRole('region', { name: en.parent.telegram });
+    expect(section.textContent).toContain(
+      en.parent.telegramLinked.replace('{{date}}', '2 November 2026'),
+    );
+    fireEvent.click(within(section).getByRole('button', { name: en.parent.unlink }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(calls.some((call) => call.route === 'DELETE /api/auth/telegram-link')).toBe(false);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.parent.unlink }));
+    await waitFor(() => {
+      expect(section.textContent).toContain(en.parent.telegramNone);
+    });
+    expect(calls.filter((call) => call.route === 'DELETE /api/auth/telegram-link')).toHaveLength(1);
   });
 
   it('is not open to staff', async () => {

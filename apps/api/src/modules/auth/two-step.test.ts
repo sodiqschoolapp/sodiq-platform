@@ -146,6 +146,7 @@ describe('the second step of sign-in', () => {
         name: null,
         passwordResetBy: null,
         language: 'uz',
+        telegramLinkedAt: null,
         trustedUntil: null,
         assignments: [],
         branches: [],
@@ -349,6 +350,7 @@ describe('the second step of sign-in', () => {
         name: null,
         passwordResetBy: null,
         language: 'uz',
+        telegramLinkedAt: null,
         trustedUntil: null,
         assignments: [],
         branches: [],
@@ -389,6 +391,7 @@ describe('the second step of sign-in', () => {
         name: null,
         passwordResetBy: null,
         language: 'uz',
+        telegramLinkedAt: null,
         trustedUntil: null,
         // The account holds the role the kit gives new accounts: shown once the step is passed.
         assignments: [{ role: 'academic_vice_principal', branchId: expect.any(String) as string }],

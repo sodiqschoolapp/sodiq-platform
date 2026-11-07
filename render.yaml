@@ -66,6 +66,16 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Task 11.4: the school's Telegram bot on the test environment, created by the owner with
+      # @BotFather (stop-list item 1); its token and the webhook's secret are entered in the
+      # dashboard, never here. Unset, everything Telegram is refused and the portal works in a
+      # browser. PARENT_BOT_USERNAME (task 11.1) is the bot's public name for the slips.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: PARENT_BOT_USERNAME
+        sync: false
 
   - type: worker
     name: sodiq-test-worker
@@ -90,4 +100,7 @@ services:
       - key: SECOND_STEP_KEY
         sync: false
       - key: SENTRY_DSN
+        sync: false
+      # Task 11.4: the worker sends the notice of a moved Telegram link; the same token.
+      - key: TELEGRAM_BOT_TOKEN
         sync: false

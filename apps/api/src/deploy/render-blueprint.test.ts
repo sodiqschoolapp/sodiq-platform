@@ -29,11 +29,21 @@ describe('the Render Blueprint', () => {
 
   it('holds no value of a secret: each is entered in the dashboard, on every service', () => {
     const lines = blueprint.split('\n');
-    for (const secret of ['DATABASE_URL', 'SECOND_STEP_KEY', 'SENTRY_DSN', 'VITE_SENTRY_DSN']) {
+    // Task 11.4: the bot's token on the API and the worker, the webhook's secret on the API.
+    const once = ['VITE_SENTRY_DSN', 'TELEGRAM_WEBHOOK_SECRET', 'PARENT_BOT_USERNAME'];
+    for (const secret of [
+      'DATABASE_URL',
+      'SECOND_STEP_KEY',
+      'SENTRY_DSN',
+      'VITE_SENTRY_DSN',
+      'TELEGRAM_BOT_TOKEN',
+      'TELEGRAM_WEBHOOK_SECRET',
+      'PARENT_BOT_USERNAME',
+    ]) {
       const at = lines.flatMap((line, index) =>
         line.trim() === `- key: ${secret}` ? [index] : [],
       );
-      expect(at.length, secret).toBeGreaterThanOrEqual(secret === 'VITE_SENTRY_DSN' ? 1 : 2);
+      expect(at.length, secret).toBeGreaterThanOrEqual(once.includes(secret) ? 1 : 2);
       for (const index of at) {
         expect(lines[index + 1]?.trim(), `${secret} at line ${String(index + 1)}`).toBe(
           'sync: false',
@@ -100,6 +110,8 @@ describe('the production Blueprint', () => {
     expect(production.match(/- key: /g)?.length).toBe(
       production.match(/- key: [A-Z0-9_]+\n\s+(sync: false|value: .+)\n/g)?.length,
     );
+    // Task 11.4: the production bot is the owner's, at go-live of the portal.
+    expect(production).not.toContain('TELEGRAM_');
     expect(production).not.toMatch(/postgres:\/\//);
     expect(production).not.toMatch(/https:\/\/[0-9a-f]+@/);
   });

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App, createShell } from './app/shell';
+import { captureTelegramLaunch } from './features/portal/telegram';
 import { startI18n } from './i18n/i18n';
 import { buildSettings, rootOptions, startReporting } from './reporting/reporting';
 import { startTheme } from './theme/theme';
@@ -13,6 +14,9 @@ const root = document.getElementById('root');
 if (!root) {
   throw new Error('index.html has no element with id "root".');
 }
+
+// Task 11.4: the launch data Telegram puts in the fragment, before the router changes the address.
+captureTelegramLaunch(window.location.hash);
 
 // The theme first: the page is light or dark before anything is drawn.
 const theme = startTheme();

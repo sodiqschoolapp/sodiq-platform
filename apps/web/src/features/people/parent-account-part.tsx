@@ -18,7 +18,12 @@ import { useView } from '@/features/access/use-view';
 import { LANGUAGE_NAMES, LANGUAGES, isLanguage } from '@/i18n/languages';
 import { branchQuery } from '@/features/setup/setup-api';
 import { momentText } from '@/lib/dates';
-import { parentAccountKey, parentAccountQuery, resetParentPassword } from './parent-accounts-api';
+import {
+  parentAccountKey,
+  parentAccountQuery,
+  resetParentPassword,
+  unlinkParentTelegram,
+} from './parent-accounts-api';
 import { ParentSlipsSheet } from './parent-slip';
 
 /**
@@ -47,6 +52,14 @@ export function ParentAccountPart({ relativeId, name }: { relativeId: string; na
     onSuccess: (answer) => {
       setPrinted(answer);
       reset.reset();
+      void queryClient.invalidateQueries({ queryKey: parentAccountKey(branchId, relativeId) });
+    },
+  });
+
+  // Task 11.4: "Unlink Telegram", for the roles of the reset.
+  const unlink = useMutation({
+    mutationFn: () => unlinkParentTelegram(relativeId),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: parentAccountKey(branchId, relativeId) });
     },
   });
@@ -107,7 +120,39 @@ export function ParentAccountPart({ relativeId, name }: { relativeId: string; na
                 <dd>{slipText(account.data.account.slip)}</dd>
               </>
             )}
+            <dt className="text-muted-foreground">{t('people.parentAccount.telegram')}</dt>
+            <dd>
+              {account.data.account.telegramLinkedAt === null
+                ? t('people.parentAccount.telegramNone')
+                : t('people.parentAccount.telegramLinked', {
+                    date: when(account.data.account.telegramLinkedAt),
+                  })}
+            </dd>
           </dl>
+          {mayReset && account.data.account.telegramLinkedAt !== null ? (
+            <div>
+              <Button
+                variant="secondary"
+                disabled={unlink.isPending}
+                onClick={() => {
+                  void (async () => {
+                    const yes = await confirm({
+                      title: t('people.parentAccount.unlinkTitle', { name }),
+                      text: t('people.parentAccount.unlinkText'),
+                      action: t('people.parentAccount.unlink'),
+                      destructive: true,
+                    });
+                    if (yes) {
+                      unlink.mutate();
+                    }
+                  })();
+                }}
+              >
+                {t('people.parentAccount.unlink')}
+              </Button>
+            </div>
+          ) : null}
+          {unlink.isError ? <FailureAlert error={unlink.error} /> : null}
           {mayReset && printed === null ? (
             <div className="flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-sm">

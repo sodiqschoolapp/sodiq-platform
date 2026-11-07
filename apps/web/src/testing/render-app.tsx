@@ -58,6 +58,7 @@ export function sessionOf(fields: Partial<SessionResponse> = {}): SessionRespons
     passwordResetBy: null,
     trustedUntil: null,
     language: renderedLanguage,
+    telegramLinkedAt: null,
     assignments: [{ role: 'teacher', branchId: NORTH.id }],
     branches: [NORTH],
     ...fields,
