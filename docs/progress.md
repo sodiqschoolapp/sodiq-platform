@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: date of birth, scholarship and relatives of a student are optional
+
+Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
+
+- **Database** (0163, numbered after 10.8's 0162 and merged after it): `students.birth_date` loses `not null`; `student_relatives_guard` keeps only "exactly one main contact when a student has live links" (**Look first**: "at least one relative" removed because the requirement changed); `student_duplicate_elsewhere` matches the name alone when either side has no date of birth. No row changes.
+- **API**: no `student_needs_relative` on the create, the import or the edit; the last relative may be unlinked (no `last_relative`); the duplicate warning matches the name alone when a date of birth is missing; the import reads an empty date of birth, scholarship (None) and relatives. Error codes `student_needs_relative` and `last_relative` and the import problem `needs_relative` are gone.
+- **Web**: the new-student form sends no relative when its relative part is left as it opened ("Relative (optional)") and a null date of birth; the scholarship stays None by default; the Relatives tab offers Unlink for the last relative and says "No relatives yet." when there is none; the profile shows "not set" for a missing date of birth.
+
+Left out: nothing of the change. A student with no relative has no parent to give portal access (Release 2 reads the links as they are).
+
 ## 7 November 2026: task 10.7 The kind of a work, the journal's default columns, the lesson happening now
 
 - **Web** (feature `journal`): `WorkKindTag` (`work-kind-tag.tsx`), the letter of a work's kind (S/U, К/Д, C/H) on the 15% tint of `subject-blue` or `subject-orange`, the full word on hover and "<kind word>: <title>" as the name (`journal.grid.workLabel`), in the grid's work headers, lesson mode, the lesson card and the works dialog. A browser with no stored choice hides every hideable column but the photo (`JOURNAL_DEFAULT_HIDDEN`, `readHiddenColumns(listId, fallback)`).
