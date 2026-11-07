@@ -4,14 +4,20 @@ import {
   attendanceSavedSchema,
   cellHistorySchema,
   journalGridSchema,
+  lessonCardSchema,
+  planItemFileSchema,
   planItemSchema,
+  planListSchema,
+  planSchema,
   scoresSavedSchema,
+  workAddedSchema,
   workSavedSchema,
   type JournalGrid,
   type JournalLesson,
   type WorkColumn,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
+import type { Transaction } from '../../database/transactions.js';
 import { randomUUID } from 'node:crypto';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,6 +28,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { MemoryPhotoStore } from '../people/photo-store.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: the Mondays 12, 19 and 26 October are held. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -57,6 +64,8 @@ describe('classwork and homework', () => {
     del: (path: string) => Promise<Response>;
     /** A post with the request key given (task 10.3b: a repeat of a used key). */
     keyed: (path: string, body: object, key: string) => Promise<Response>;
+    /** Task 10.8: a file sent as its bytes (the plan's file routes). */
+    upload: (path: string, type: string, bytes: Buffer) => Promise<Response>;
   }
 
   const given = new Set<string>();
@@ -97,11 +106,52 @@ describe('classwork and homework', () => {
         put: (path, body) => at('put', path).send(body),
         del: (path) => at('delete', path),
         keyed: (path, body, key) => at('post', path).set(REQUEST_KEY_HEADER, key).send(body),
+        upload: (path, type, bytes) => at('put', path).set('Content-Type', type).send(bytes),
       });
     } finally {
       t.clock.set(START);
     }
   }
+
+  /**
+   * Task 10.8: a work added by hand before 7 November 2026, as the add of 8.1 to 10.7 wrote it (a
+   * journal row with no plan work, stored where it is given, at the next free place of its kind),
+   * written as the migrator: since 10.8 the add writes a plan work (`edge/journal`, "Works added
+   * by hand before 7 November 2026 are not in the plan").
+   */
+  const byHand = async (
+    branchId: string,
+    lessonId: string,
+    kind: 'classwork' | 'homework',
+    title: string | null = 'Dictation',
+  ): Promise<{ id: string; version: number }> => {
+    const taken = await t.database.migrator
+      .selectFrom('journal_works')
+      .select('position')
+      .where('source_lesson_id', '=', lessonId)
+      .where('kind', '=', kind)
+      .where('plan_work_id', 'is', null)
+      .execute();
+    const used = new Set(taken.map((one) => one.position));
+    let position = 1;
+    while (used.has(position)) position += 1;
+    return t.database.migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+      return transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: branchId,
+          lesson_id: lessonId,
+          source_lesson_id: lessonId,
+          kind,
+          position,
+          title,
+          changed_how: 'entry',
+        })
+        .returning(['id', 'version'])
+        .executeTakeFirstOrThrow();
+    });
+  };
 
   /** A student of the class from `from`. */
   const student = async (
@@ -261,18 +311,37 @@ describe('classwork and homework', () => {
 
   const teacherIn = (s: Scene) => [{ role: 'teacher' as const, branchId: s.branch }];
 
-  /** Every row the works routes write in a branch: works, cells and both histories. */
+  /**
+   * Every row the works routes write in a branch: works, cells and both histories; task 10.8 (plan
+   * review 8): the plans, items, places and works the add, rename and remove of a work added in
+   * the journal write, and the files its remove takes off.
+   */
   const rowsOf = (branch: string) =>
     Promise.all(
       (
-        ['journal_works', 'journal_cells', 'journal_cell_history', 'journal_work_history'] as const
-      ).map((table) =>
-        t.database.migrator
-          .selectFrom(table)
-          .selectAll()
-          .where('branch_id', '=', branch)
-          .orderBy('id')
-          .execute(),
+        [
+          'journal_works',
+          'journal_cells',
+          'journal_cell_history',
+          'journal_work_history',
+          'lesson_plans',
+          'lesson_plan_journals',
+          'lesson_plan_items',
+          'lesson_plan_places',
+          'lesson_plan_works',
+          'lesson_plan_files',
+        ] as const
+      ).map(async (table) =>
+        // Some of the plan's tables have no id: the rows in the order of their text.
+        (
+          await t.database.migrator
+            .selectFrom(table)
+            .selectAll()
+            .where('branch_id', '=', branch)
+            .execute()
+        )
+          .map((row) => JSON.stringify(row))
+          .sort(),
       ),
     );
 
@@ -300,7 +369,8 @@ describe('classwork and homework', () => {
       .sort();
 
   beforeAll(async () => {
-    t = await dayTemplatesKit({ jobs: true });
+    // Task 10.8: a file store for the files of a work.
+    t = await dayTemplatesKit({ jobs: true, photoStore: new MemoryPhotoStore() });
     load = new LoadKit(t.database.migrator);
   });
 
@@ -643,7 +713,7 @@ describe('classwork and homework', () => {
   });
 
   describe('works added by hand', () => {
-    it('adds classworks and "homework given" at a lesson with no plan item, at most 10 of each, and refuses one with an item', async () => {
+    it('adds classworks and "homework given" at a lesson with no plan item into the plan, at most 10 of each, and refuses one with an item', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await itemAt(s, s.first, { classworks: ['Test'] });
@@ -656,14 +726,14 @@ describe('classwork and homework', () => {
         const added: string[] = [];
         for (let index = 0; index < 10; index += 1) {
           added.push(
-            workSavedSchema.parse(
+            workAddedSchema.parse(
               ok(
                 await calls.post(`/api/journal/lessons/${s.second}/works`, {
                   kind: 'classwork',
-                  title: 'Dictation',
+                  title: `Dictation ${String(index + 1)}`,
                 }),
               ),
-            ).id,
+            ).planWorkId,
           );
         }
         const eleventh = await calls.post(`/api/journal/lessons/${s.second}/works`, {
@@ -671,7 +741,7 @@ describe('classwork and homework', () => {
           title: 'Dictation',
         });
         expect(codeOf(eleventh)).toBe('journal_works_limit');
-        const homework = workSavedSchema.parse(
+        const homework = workAddedSchema.parse(
           ok(
             await calls.post(`/api/journal/lessons/${s.second}/works`, {
               kind: 'homework',
@@ -680,23 +750,26 @@ describe('classwork and homework', () => {
           ),
         );
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.second).works.map((one) => [one.position, one.unplanned])).toEqual(
-          added.map((_, index) => [index + 1, true]),
-        );
-        // The homework given by hand on the 19th is a column of the 26th.
-        expect(lessonIn(grid, s.third).works.map((one) => one.id)).toEqual([homework.id]);
+        // Task 10.8: planned columns of the item the add wrote, with the plan's titles.
+        expect(
+          lessonIn(grid, s.second).works.map((one) => [one.planWorkId, one.unplanned, one.title]),
+        ).toEqual(added.map((id, index) => [id, false, `Dictation ${String(index + 1)}`]));
+        // The lesson still has no plan item: no topic yet ("No plan").
+        expect(lessonIn(grid, s.second).planItem).toBe(false);
+        // The homework given on the 19th is a column of the 26th.
+        expect(lessonIn(grid, s.third).works.map((one) => one.planWorkId)).toEqual([
+          homework.planWorkId,
+        ]);
         // An empty one is removed; one with a total is not.
-        ok(await calls.del(`/api/journal/lessons/${s.second}/works/${added[9] ?? ''}`), 204);
-        const totalled = workSavedSchema.parse(
-          ok(
-            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
-              column: { workId: added[0] ?? '' },
-              total: 5,
-              version: 1,
-            }),
-          ),
+        ok(await calls.del(`/api/journal/lessons/${s.second}/plan-works/${added[9] ?? ''}`), 204);
+        ok(
+          await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+            column: planned(added[0] ?? '', s.second),
+            total: 5,
+            version: null,
+          }),
         );
-        const kept = await calls.del(`/api/journal/lessons/${s.second}/works/${totalled.id}`);
+        const kept = await calls.del(`/api/journal/lessons/${s.second}/plan-works/${added[0] ?? ''}`);
         expect(codeOf(kept)).toBe('work_holds_data');
       });
       expect((await t.entries('journal.work_add', s.second)).length).toBe(11);
@@ -708,14 +781,7 @@ describe('classwork and homework', () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const given = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ),
-        );
+        const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
         ok(await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`), 204);
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.third).works).toEqual([]);
@@ -728,14 +794,7 @@ describe('classwork and homework', () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const homework = await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const given = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ),
-        );
+        const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
         ok(
           await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
             column: { workId: given.id },
@@ -922,14 +981,7 @@ describe('classwork and homework', () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const given = await as(owner, s.branch, teacherIn(s), async (calls) =>
-        workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.third}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ),
-        ),
+        await byHand(s.branch, s.third, 'homework', 'Exercises'),
       );
       // The 9 November lesson goes as a version change removes a lesson with no data.
       await t.database.migrator.transaction().execute(async (transaction) => {
@@ -1058,6 +1110,20 @@ describe('classwork and homework', () => {
       // Task 10.3b: a save of numbers whose key is repeated below with the ids of another branch.
       const key = randomUUID();
       let saved: object = {};
+      // Task 10.8: a work added in the journal at the 26th (no plan item), for its rename and
+      // remove, and one of the other branch.
+      const ownAdded = await as(owner, s.branch, teacherIn(s), async (calls) =>
+        workAddedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.third}/works`, {
+              kind: 'classwork',
+              title: 'Dictation',
+            }),
+          ),
+        ),
+      );
+      // A plan work of the other branch (404 before any check of its mark).
+      const foreignAdded = foreign.classworks[0] ?? '';
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const total = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
           column,
@@ -1085,6 +1151,13 @@ describe('classwork and homework', () => {
         ['delete', `works/${ownWork.id}`, {}],
         // Task 10.6: the rename of a work added by hand.
         ['put', `works/${ownWork.id}/title`, { title: 'Quiz', version: 1 }],
+        // Task 10.8: the rename and the remove of a work added in the journal.
+        [
+          'put',
+          `plan-works/${ownAdded.planWorkId}/title`,
+          { title: 'Quiz', baseTitle: 'Dictation' },
+        ],
+        ['delete', `plan-works/${ownAdded.planWorkId}`, {}],
       ];
       const send = (calls: Calls, method: string, path: string, body: object) =>
         method === 'put'
@@ -1155,6 +1228,20 @@ describe('classwork and homework', () => {
         expect(
           (await calls.del(`/api/journal/lessons/${s.second}/works/${randomUUID()}`)).status,
         ).toBe(404);
+        // Task 10.8: the rename and the remove of another branch's plan work and an unknown one.
+        for (const planWorkId of [foreignAdded, randomUUID()]) {
+          expect(
+            (
+              await calls.put(`/api/journal/lessons/${s.third}/plan-works/${planWorkId}/title`, {
+                title: 'Quiz',
+                baseTitle: 'Test',
+              })
+            ).status,
+          ).toBe(404);
+          expect(
+            (await calls.del(`/api/journal/lessons/${s.third}/plan-works/${planWorkId}`)).status,
+          ).toBe(404);
+        }
         // Task 10.6: the rename of another branch's work and an unknown one.
         for (const workId of [foreignWork.id, randomUUID()]) {
           expect(
@@ -1382,7 +1469,8 @@ describe('classwork and homework', () => {
         v.branch,
         [{ role: 'teacher', branchId: v.branch }],
         async (calls) => {
-          const added = workSavedSchema.parse(
+          // Task 10.8: written into the lesson's plan item; its column is planned.
+          const added = workAddedSchema.parse(
             ok(
               await calls.post(`/api/journal/lessons/${v.lesson}/works`, {
                 kind: 'classwork',
@@ -1393,9 +1481,9 @@ describe('classwork and homework', () => {
           const totalled = workSavedSchema.parse(
             ok(
               await calls.put(`/api/journal/lessons/${v.lesson}/works/total`, {
-                column: { workId: added.id },
+                column: planned(added.planWorkId, v.lesson),
                 total: 5,
-                version: added.version,
+                version: null,
               }),
             ),
           );
@@ -1429,6 +1517,444 @@ describe('classwork and homework', () => {
           );
         },
       );
+    });
+  });
+
+  // Task 10.8: the journal and the plan as one (`09`, In the journal; `edge/journal`, "A lesson is
+  // held with no plan item"; plan review of pull request #304).
+  describe('works added in the journal go into the plan (task 10.8)', () => {
+    const planOf = (s: Scene) =>
+      t.database.migrator
+        .selectFrom('lesson_plan_journals')
+        .select('plan_id')
+        .where('journal_id', '=', s.journal)
+        .where('quarter_id', '=', s.q1)
+        .executeTakeFirstOrThrow();
+
+    const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(64, 0x20)]);
+
+    const addAt = (calls: Calls, lessonId: string, kind: 'classwork' | 'homework', title: string) =>
+      calls.post(`/api/journal/lessons/${lessonId}/works`, { kind, title });
+
+    const added = async (
+      calls: Calls,
+      lessonId: string,
+      kind: 'classwork' | 'homework',
+      title: string,
+    ) => workAddedSchema.parse(ok(await addAt(calls, lessonId, kind, title)));
+
+    const planWork = (id: string) =>
+      t.database.migrator
+        .selectFrom('lesson_plan_works')
+        .select(['id', 'item_id', 'kind', 'title', 'added_in_journal_at', 'added_in_journal_by'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    /** The owner's save of the item's topic through the plan's route, on the item as stored. */
+    const writeTopic = async (calls: Calls, itemId: string, topic: string) => {
+      const works = await t.database.migrator
+        .selectFrom('lesson_plan_works')
+        .select(['id', 'kind', 'title', 'description'])
+        .where('item_id', '=', itemId)
+        .orderBy('kind')
+        .orderBy('position')
+        .execute();
+      const list = (kind: string) =>
+        works
+          .filter((one) => one.kind === kind)
+          .map((one) => ({ id: one.id, title: one.title, description: one.description }));
+      const base = {
+        topic: '',
+        objectives: '',
+        links: [],
+        classworks: list('classwork'),
+        homeworks: list('homework'),
+      };
+      return calls.put(`/api/plans/items/${itemId}`, { base, values: { ...base, topic } });
+    };
+
+    it('writes the work into the lesson’s plan item, creating the plan and the item with no topic, marked as added in the journal; a second add uses the same item', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      // The quarter's plan record is removed: "with the plan, when there is none".
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        const link = await transaction
+          .selectFrom('lesson_plan_journals')
+          .select('plan_id')
+          .where('journal_id', '=', s.journal)
+          .where('quarter_id', '=', s.q1)
+          .executeTakeFirstOrThrow();
+        await transaction
+          .deleteFrom('lesson_plan_follow_marks')
+          .where('journal_id', '=', s.journal)
+          .execute();
+        // The plan's laying of its rows (7.1b) goes with it.
+        for (const table of ['lesson_plan_rows', 'lesson_plan_absorbed'] as const) {
+          await transaction.deleteFrom(table).where('plan_id', '=', link.plan_id).execute();
+        }
+        await transaction
+          .deleteFrom('lesson_plan_journals')
+          .where('plan_id', '=', link.plan_id)
+          .execute();
+        await transaction.deleteFrom('lesson_plans').where('id', '=', link.plan_id).execute();
+      });
+      const [classwork, homework] = await as(owner, s.branch, teacherIn(s), async (calls) => [
+        await added(calls, s.second, 'classwork', 'Dictation'),
+        await added(calls, s.second, 'homework', 'Exercises 4 to 9'),
+      ]);
+      if (classwork === undefined || homework === undefined) throw new Error('Two works added.');
+      expect(homework.itemId).toBe(classwork.itemId);
+      const item = await t.database.migrator
+        .selectFrom('lesson_plan_items')
+        .innerJoin('lesson_plan_journals', 'lesson_plan_journals.plan_id', 'lesson_plan_items.plan_id')
+        .innerJoin('lesson_plan_places', 'lesson_plan_places.item_id', 'lesson_plan_items.id')
+        .select([
+          'lesson_plan_items.topic',
+          'lesson_plan_journals.journal_id',
+          'lesson_plan_journals.quarter_id',
+          'lesson_plan_places.position',
+        ])
+        .where('lesson_plan_items.id', '=', classwork.itemId)
+        .executeTakeFirstOrThrow();
+      expect(item).toEqual({
+        topic: '',
+        journal_id: s.journal,
+        quarter_id: s.q1,
+        position: await rowOf(s, s.second),
+      });
+      const work = await planWork(classwork.planWorkId);
+      expect(work).toMatchObject({ kind: 'classwork', title: 'Dictation' });
+      expect(work.added_in_journal_at).not.toBeNull();
+      expect(work.added_in_journal_by).toBe(owner.account.id);
+      // The plan's history: the plan made, then one line per work, the first creating the item.
+      const lines = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['action', 'new_value', 'details'])
+        .where('record_type', '=', 'lesson_plan')
+        .where('record_id', '=', (await planOf(s)).plan_id)
+        .orderBy('id')
+        .execute();
+      expect(lines.map((line) => line.action)).toEqual([
+        'plan.create',
+        'plan.work_journal_add',
+        'plan.work_journal_add',
+      ]);
+      expect(lines[1]?.details).toEqual({ createdPlan: true, createdItem: true });
+      expect(lines[2]?.details).toEqual({ createdPlan: false, createdItem: false });
+      expect(lines[2]?.new_value).toMatchObject({ kind: 'homework', title: 'Exercises 4 to 9' });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        // The plan's editor shows them like any work, marked, with the row still without a topic.
+        const plan = planSchema.parse(
+          ok(await calls.get(`/api/plans/journals/${s.journal}?quarterId=${s.q1}`)),
+        );
+        const row = plan.rows.find((one) => one.lessonId === s.second);
+        expect(row?.item?.topic).toBe('');
+        expect(row?.item?.classworks.map((one) => one.title)).toEqual(['Dictation']);
+        expect(row?.item?.homeworks.map((one) => one.title)).toEqual(['Exercises 4 to 9']);
+        expect(row?.item?.addedInJournal.sort()).toEqual(
+          [classwork.planWorkId, homework.planWorkId].sort(),
+        );
+        // The journal still says "No plan" and the topic is shown as none.
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.second)).toMatchObject({ planItem: false, topic: null });
+        // The homework is a planned column of the next lesson.
+        expect(lessonIn(grid, s.third).works.map((one) => [one.planWorkId, one.unplanned])).toEqual(
+          [[homework.planWorkId, false]],
+        );
+      });
+    });
+
+    it('counts a row with no topic as incomplete and exports such a plan', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const work = await as(owner, s.branch, teacherIn(s), async (calls) =>
+        added(calls, s.second, 'classwork', 'Dictation'),
+      );
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const plan = planSchema.parse(
+          ok(await calls.get(`/api/plans/journals/${s.journal}?quarterId=${s.q1}`)),
+        );
+        expect(plan.rows.find((one) => one.item?.id === work.itemId)).toBeDefined();
+        // Review correction 1: the row the add made has no topic, so it counts as empty.
+        const list = planListSchema.parse(ok(await calls.get('/api/plans')));
+        const quarter = list.plans
+          .find((one) => one.journalId === s.journal)
+          ?.quarters.find((one) => one.quarterId === s.q1);
+        expect(quarter?.state).not.toBe('complete');
+        expect(quarter?.empty).toBe(quarter?.rows);
+        // The export of such a plan is answered (the PDF needs a browser; the workbook does not).
+        const file = await calls.post(`/api/plans/journals/${s.journal}/export`, {
+          quarterId: s.q1,
+          format: 'xlsx',
+        });
+        expect(file.status).toBe(200);
+      });
+    });
+
+    it('refuses an add, a rename and a remove in the journal once the owner wrote the topic; the owner edits the work through the plan', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = await added(calls, s.second, 'classwork', 'Dictation');
+        // Renamed in the journal while the item has no topic, on the title read.
+        const stale = await calls.put(
+          `/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}/title`,
+          { title: 'Quiz', baseTitle: 'Spelling' },
+        );
+        expect(codeOf(stale)).toBe('work_stale');
+        ok(
+          await calls.put(`/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}/title`, {
+            title: 'Quiz',
+            baseTitle: 'Dictation',
+          }),
+        );
+        expect((await planWork(work.planWorkId)).title).toBe('Quiz');
+        ok(await writeTopic(calls, work.itemId, 'Fractions'));
+        expect(codeOf(await addAt(calls, s.second, 'classwork', 'Essay'))).toBe(
+          'lesson_has_plan_item',
+        );
+        expect(
+          codeOf(
+            await calls.put(
+              `/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}/title`,
+              { title: 'Essay', baseTitle: 'Quiz' },
+            ),
+          ),
+        ).toBe('work_planned');
+        expect(
+          codeOf(await calls.del(`/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}`)),
+        ).toBe('work_planned');
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.second)).toMatchObject({ planItem: true, topic: 'Fractions' });
+      });
+      // The rename is a line of the plan's history too.
+      const plan = await planOf(s);
+      const edits = await t.database.migrator
+        .selectFrom('audit_log')
+        .select(['old_value', 'new_value', 'details'])
+        .where('record_type', '=', 'lesson_plan')
+        .where('record_id', '=', plan.plan_id)
+        .where('action', '=', 'plan.item_edit')
+        .orderBy('id')
+        .execute();
+      expect(edits[0]).toMatchObject({
+        old_value: { workTitle: { title: 'Dictation' } },
+        new_value: { workTitle: { title: 'Quiz' } },
+        details: { inJournal: true },
+      });
+    });
+
+    it('lets the substitute add a work into the plan, and not change the item', async () => {
+      const owner = await account();
+      const substitute = await account();
+      const s = await scene({ teacher: owner.account.id, spare: substitute.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: s.spareTeacher.staffId })
+        .where('id', '=', s.second)
+        .execute();
+      await as(substitute, s.branch, teacherIn(s), async (calls) => {
+        const work = await added(calls, s.second, 'homework', 'Exercises');
+        expect((await planWork(work.planWorkId)).added_in_journal_by).toBe(
+          substitute.account.id,
+        );
+        expect(codeOf(await writeTopic(calls, work.itemId, 'Fractions'))).toBe('plan_scope');
+      });
+    });
+
+    it('counts the works added by hand before toward the limit of 10, and never lets the new work take one over', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      for (let index = 0; index < 10; index += 1) {
+        await byHand(s.branch, s.second, 'homework', `Old ${String(index + 1)}`);
+      }
+      const old = await byHand(s.branch, s.second, 'classwork', 'Old classwork');
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        expect(codeOf(await addAt(calls, s.second, 'homework', 'Exercises'))).toBe(
+          'journal_works_limit',
+        );
+        const work = await added(calls, s.second, 'classwork', 'New classwork');
+        let grid = await gridOf(calls, s);
+        expect(
+          lessonIn(grid, s.second).works.map((one) => [one.title, one.unplanned, one.id]),
+        ).toEqual([
+          ['New classwork', false, null],
+          ['Old classwork', true, old.id],
+        ]);
+        // The owner's item save adds a planned classwork: it, not the journal's, takes the old one.
+        const base = {
+          topic: '',
+          objectives: '',
+          links: [],
+          classworks: [{ id: work.planWorkId, title: 'New classwork', description: '' }],
+          homeworks: [],
+        };
+        ok(
+          await calls.put(`/api/plans/items/${work.itemId}`, {
+            base,
+            values: {
+              ...base,
+              topic: 'Fractions',
+              classworks: [...base.classworks, { title: 'Planned', description: '' }],
+            },
+          }),
+        );
+        grid = await gridOf(calls, s);
+        expect(
+          lessonIn(grid, s.second).works.map((one) => [one.title, one.unplanned, one.id]),
+        ).toEqual([
+          ['New classwork', false, null],
+          ['Planned', false, old.id],
+        ]);
+      });
+    });
+
+    it('removes a work added in the journal with the file the owner gave it, and keeps the empty item for the next add', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = await added(calls, s.third, 'homework', 'Exercises');
+        const file = planItemFileSchema.parse(
+          ok(
+            await calls.upload(
+              `/api/plans/items/${work.itemId}/files?name=Sheet.pdf&workId=${work.planWorkId}`,
+              'application/pdf',
+              PDF,
+            ),
+          ),
+        );
+        expect(file.workId).toBe(work.planWorkId);
+        ok(await calls.del(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`), 204);
+        const stored = await t.database.migrator
+          .selectFrom('lesson_plan_files')
+          .select(['work_id', 'removed_at'])
+          .where('id', '=', file.id)
+          .executeTakeFirstOrThrow();
+        expect(stored.work_id).toBeNull();
+        expect(stored.removed_at).not.toBeNull();
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third)).toMatchObject({ planItem: false, given: [] });
+        // The empty item stays at the row: the next add and the card use it.
+        const again = await added(calls, s.third, 'classwork', 'Dictation');
+        expect(again.itemId).toBe(work.itemId);
+        const card = lessonCardSchema.parse(ok(await calls.get(`/api/journal/lessons/${s.third}/card`)));
+        expect(card.plan.item?.id).toBe(work.itemId);
+        expect(card.plan.edit).toBe('open');
+      });
+      const removal = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('details')
+        .where('action', '=', 'plan.item_edit')
+        .where('record_id', '=', (await planOf(s)).plan_id)
+        .executeTakeFirstOrThrow();
+      expect(removal.details).toMatchObject({ inJournal: true, removedFiles: [expect.any(String)] });
+    });
+
+    it('makes an add wait for the owner’s save of the topic and then refuses it (and the other order)', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      await openPlanWindows(t.database.migrator, s.branch, s.year);
+      const work = await as(owner, s.branch, teacherIn(s), async (calls) =>
+        added(calls, s.second, 'classwork', 'Dictation'),
+      );
+      // The held side does what the owner's save does: the item locked, then its topic written.
+      const hold = async (write: (transaction: Transaction) => Promise<void>) => {
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let ready: () => void = () => undefined;
+        const isReady = new Promise<void>((resolve) => {
+          ready = resolve;
+        });
+        const held = t.database.migrator
+          .transaction()
+          .execute(async (transaction) => {
+            await sql`select set_config('app.now', ${MOMENT}, true)`.execute(transaction);
+            await transaction
+              .selectFrom('lesson_plan_items')
+              .select('id')
+              .where('id', '=', work.itemId)
+              .forNoKeyUpdate()
+              .execute();
+            await write(transaction);
+            ready();
+            await released;
+          })
+          .catch((error: unknown) => error);
+        await isReady;
+        return { held, release };
+      };
+      const waitForLock = async () => {
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const waiting = await sql<{ waiting: number }>`
+            select count(*)::int as waiting from pg_locks l
+            join pg_stat_activity a on a.pid = l.pid
+            where a.datname = current_database() and not l.granted
+          `.execute(t.database.migrator);
+          if ((waiting.rows[0]?.waiting ?? 0) >= 1) return;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        throw new Error('Nothing waited.');
+      };
+      const first = await hold(async (transaction) => {
+        await transaction
+          .updateTable('lesson_plan_items')
+          .set({ topic: 'Fractions' })
+          .where('id', '=', work.itemId)
+          .execute();
+      });
+      await as(owner, s.branch, [], async (calls) => {
+        const started = new Promise<Response>((resolve, reject) => {
+          addAt(calls, s.second, 'classwork', 'Essay').then(resolve, reject);
+        });
+        await waitForLock();
+        first.release();
+        expect(await first.held).toBeUndefined();
+        expect(codeOf(await started)).toBe('lesson_has_plan_item');
+      });
+      // The other order: an add held at the item (its work written), then the owner's save.
+      await t.database.migrator
+        .updateTable('lesson_plan_items')
+        .set({ topic: '' })
+        .where('id', '=', work.itemId)
+        .execute();
+      const second = await hold(async (transaction) => {
+        await transaction
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: s.branch,
+            item_id: work.itemId,
+            kind: 'homework',
+            position: 1,
+            title: 'Exercises',
+            description: '',
+            added_in_journal_at: new Date(MOMENT),
+            added_in_journal_by: owner.account.id,
+          })
+          .execute();
+      });
+      await as(owner, s.branch, [], async (calls) => {
+        const started = new Promise<Response>((resolve, reject) => {
+          writeTopic(calls, work.itemId, 'Fractions').then(resolve, reject);
+        });
+        await waitForLock();
+        second.release();
+        expect(await second.held).toBeUndefined();
+        // The save read its base before the add committed: the works it did not name are kept.
+        ok(await started);
+      });
+      const works = await t.database.migrator
+        .selectFrom('lesson_plan_works')
+        .select('title')
+        .where('item_id', '=', work.itemId)
+        .orderBy('title')
+        .execute();
+      expect(works.map((one) => one.title)).toEqual(['Dictation', 'Exercises']);
     });
   });
 
@@ -1602,22 +2128,8 @@ describe('classwork and homework', () => {
       const s = await scene({ teacher: owner.account.id });
       await openPlanWindows(t.database.migrator, s.branch, s.year);
       await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const first = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ),
-        );
-        const second = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ),
-        );
+        const first = await byHand(s.branch, s.second, 'classwork', 'Dictation');
+        const second = await byHand(s.branch, s.second, 'classwork', 'Dictation');
         for (const [work, score] of [
           [first, 4],
           [second, 9],
@@ -1741,7 +2253,7 @@ describe('classwork and homework', () => {
         expect(await rowsOf(s.branch)).toEqual(before);
         // Sixty characters, counted as PostgreSQL counts them: one emoji is one character.
         for (const title of ['x'.repeat(60), '😀'.repeat(60), 'Oʻqish va yozish']) {
-          const added = workSavedSchema.parse(
+          const added = workAddedSchema.parse(
             ok(
               await calls.post(`/api/journal/lessons/${s.second}/works`, {
                 kind: 'classwork',
@@ -1766,22 +2278,8 @@ describe('classwork and homework', () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const classwork = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ),
-        );
-        const homework = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises 4 to 9',
-            }),
-          ),
-        );
+        const classwork = await byHand(s.branch, s.second, 'classwork', 'Dictation');
+        const homework = await byHand(s.branch, s.second, 'homework', 'Exercises 4 to 9');
         const grid = await gridOf(calls, s);
         expect(
           lessonIn(grid, s.second).works.map((one) => [one.id, one.title, one.unplanned]),
@@ -1842,14 +2340,7 @@ describe('classwork and homework', () => {
           ).version,
         ).toBe(2);
         // A homework given by hand, renamed through its check lesson.
-        const given = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ),
-        );
+        const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
         ok(
           await calls.put(`/api/journal/lessons/${s.third}/works/${given.id}/title`, {
             title: 'Exercises 4 to 9',
@@ -1858,14 +2349,7 @@ describe('classwork and homework', () => {
         );
         // Permission review, should-fix 3: a work that is not a column of the lesson named is
         // refused there, nothing written.
-        const elsewhere = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works`, {
-              kind: 'classwork',
-              title: 'Essay',
-            }),
-          ),
-        );
+        const elsewhere = await byHand(s.branch, s.second, 'classwork', 'Essay');
         const rows = await rowsOf(s.branch);
         const entries = await journalEntries();
         const notHere = await calls.put(
@@ -1941,17 +2425,9 @@ describe('classwork and homework', () => {
       await openPlanWindows(t.database.migrator, s.branch, s.year);
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const added: string[] = [];
+        // Task 10.8: works added by hand before 7 November 2026.
         for (const title of ['Dictation', 'Quiz', 'Essay']) {
-          added.push(
-            workSavedSchema.parse(
-              ok(
-                await calls.post(`/api/journal/lessons/${s.second}/works`, {
-                  kind: 'classwork',
-                  title,
-                }),
-              ),
-            ).id,
-          );
+          added.push((await byHand(s.branch, s.second, 'classwork', title)).id);
         }
         ok(
           await calls.post(`/api/plans/journals/${s.journal}/items`, {

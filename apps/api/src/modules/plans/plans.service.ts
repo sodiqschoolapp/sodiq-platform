@@ -549,10 +549,12 @@ export class PlansService {
           .onRef('lesson_plan_places.plan_id', '=', 'lesson_plan_journals.plan_id')
           .onRef('lesson_plan_places.journal_id', '=', 'lesson_plan_journals.journal_id'),
       )
+      .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
       .select([
         'lesson_plan_journals.journal_id',
         'lesson_plan_journals.quarter_id',
         'lesson_plan_places.position',
+        'lesson_plan_items.topic',
       ])
       .where(
         'lesson_plan_journals.journal_id',
@@ -564,8 +566,9 @@ export class PlansService {
       const key = `${item.journal_id}|${item.quarter_id}`;
       const counted = found.get(key) ?? { items: 0, topics: 0 };
       counted.items += 1;
-      // A topic is required, so an item that fills a row gives it a topic.
-      if (item.position <= (rows.get(key) ?? 0)) counted.topics += 1;
+      // A row filled by an item with a topic. Task 10.8 (review correction 1): an item the
+      // journal's add made has no topic until the owner writes it, and leaves its row empty.
+      if (item.position <= (rows.get(key) ?? 0) && item.topic.trim() !== '') counted.topics += 1;
       found.set(key, counted);
     }
     return found;
