@@ -540,14 +540,18 @@ describe('the student import', () => {
       const eastClass = await newClass(25, east, eastYear);
       await classes.group(east, eastYear, subject, [eastClass.id]);
       const response = await upload(
-        await filledTemplate([studentRow(eastClass.name, { group1: closedName })]),
+        await filledTemplate([
+          studentRow(eastClass.name, { group1: closedName }),
+          // The class of the closed year itself: only the year's status keeps its group out.
+          studentRow(oldClass.name, { startsOn: '01.10.2025', group1: closedName }),
+        ]),
         t.admin,
         east,
       );
       expect(response.status, JSON.stringify(response.body)).toBe(200);
-      expect(codesAt(studentImportPreviewSchema.parse(response.body), 3)).toContain(
-        'group1:group_unknown',
-      );
+      const closedAnswer = studentImportPreviewSchema.parse(response.body);
+      expect(codesAt(closedAnswer, 3)).toContain('group1:group_unknown');
+      expect(codesAt(closedAnswer, 4)).toContain('group1:group_unknown');
     });
 
     it('refuses two groups of one subject, also the same group twice', async () => {
@@ -595,6 +599,42 @@ describe('the student import', () => {
       expect(codesAt(answer, 3)).toEqual([]);
       expect(codesAt(answer, 4)).toEqual(['group2:class_group_chosen_full']);
       expect(rowAt(answer, 4).problems[0]?.day).toBe('2026-09-02');
+    });
+
+    it('refuses a named group that has a seat on the start date but none on a later day, naming that day', async () => {
+      const { made, groups } = await splitClass([1, 20]);
+      const full = await groupName(groups[0] ?? '');
+      const answer = await uploaded([
+        // The only seat is taken from 2 December.
+        studentRow(made.name, { startsOn: '02.12.2026', group1: full }),
+        // Free on 2 September, full from 2 December.
+        studentRow(made.name, { group2: full }),
+      ]);
+      expect(codesAt(answer, 3)).toEqual([]);
+      expect(codesAt(answer, 4)).toEqual(['group2:class_group_chosen_full']);
+      expect(rowAt(answer, 4).problems[0]?.day).toBe('2026-12-02');
+    });
+
+    it('a preview and a refused confirm of rows that name groups leave every table and the log as they were', async () => {
+      const { made, groups } = await splitClass([20]);
+      const named = await groupName(groups[0] ?? '');
+      const clean = await uploaded([
+        studentRow(made.name, { group1: named }),
+        studentRow(made.name, { group1: named }),
+      ]);
+      expect(clean.clean).toBe(true);
+      const before = await rowsOf();
+      expect((await preview(clean.importId)).status).toBe(200);
+      expect(await rowsOf()).toEqual(before);
+      // A file whose first row would write its group rows and entries, the second refused.
+      const refused = await uploaded([
+        studentRow(made.name, { group1: named }),
+        studentRow(made.name, { group1: 'No such group' }),
+      ]);
+      expect(refused.clean).toBe(false);
+      const ahead = await rowsOf();
+      expect((await confirmed(refused.importId)).outcome).toBe('not_clean');
+      expect(await rowsOf()).toEqual(ahead);
     });
 
     // The stretches of the published versions (task 5.5a-2c): a branch of its own, as in
@@ -1156,12 +1196,19 @@ describe('the student import', () => {
     });
 
     it('answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing', async () => {
+      // A clean row that would write its class and group rows, were the import found.
       const south = await newClass(25, t.south, southYear);
+      count += 1;
+      const southGroup = `7-N-${letters(count + 300)}`;
+      await classes.group(t.south, southYear, await classes.subject({ grades: [7] }), [south.id], {
+        name: southGroup,
+      });
       const inSouth = await upload(
-        await filledTemplate([studentRow(south.name)]),
+        await filledTemplate([studentRow(south.name, { group1: southGroup })]),
         t.admin,
         t.south,
       );
+      expect(studentImportPreviewSchema.parse(inSouth.body).clean).toBe(true);
       const southId = studentImportPreviewSchema.parse(inSouth.body).importId;
       const before = [await rowsOf(), await importRows()];
       for (const id of [southId, UNKNOWN]) {

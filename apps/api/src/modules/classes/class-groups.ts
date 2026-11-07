@@ -235,6 +235,30 @@ export class SeatBook {
     );
   }
 
+  /**
+   * The first day of `range` on which the group has no free seat, the rows added so far
+   * counted; `undefined` when it has one on every day. The count changes only where a row
+   * begins, so those days and the range's first day are the ones looked at.
+   */
+  async firstFullDay(
+    group: { id: string; maxSize: number },
+    range: HeldRange,
+  ): Promise<SchoolDate | undefined> {
+    const held = [...(await this.storedOf(group.id)), ...this.addedTo(group.id)];
+    const days = [
+      ...new Set([
+        range.from,
+        ...held.map((one) => one.from).filter((day) => day > range.from && day < range.until),
+      ]),
+    ].sort();
+    for (const day of days) {
+      if ((await this.membersOn(group.id, day)) >= group.maxSize) {
+        return day;
+      }
+    }
+    return undefined;
+  }
+
   /** The members of the group on `day`, the rows added so far counted. */
   async membersOn(groupId: string, day: SchoolDate): Promise<number> {
     return [...(await this.storedOf(groupId)), ...this.addedTo(groupId)].filter(
@@ -607,7 +631,7 @@ export async function planClassGroups(
             message: 'The named group has no free seat on some day.',
             recordId: preferred.id,
             subjectId,
-            day,
+            day: (await book.firstFullDay(preferred, { from: day, until: stop })) ?? day,
           });
           refusedSubjects.add(subjectId);
           break;

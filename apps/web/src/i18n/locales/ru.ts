@@ -2653,6 +2653,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         group_not_of_class: 'класс не делится по предмету этой группы.',
         group_without_class: 'для группы в строке нужен класс; укажите класс.',
         groupSubject: '{{text}} ({{subject}})',
+        groupDay: '{{text}} (с {{day}})',
+        groupSubjectDay: '{{text}} ({{subject}}, с {{day}})',
       },
     },
     students: {

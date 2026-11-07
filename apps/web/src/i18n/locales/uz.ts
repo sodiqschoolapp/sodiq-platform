@@ -2549,6 +2549,8 @@ export const uz: Texts<'one' | 'other'> = {
         group_not_of_class: 'sinf bu guruh fani boʻyicha boʻlinmagan.',
         group_without_class: 'guruh uchun qatorda sinf boʻlishi kerak; sinfni yozing.',
         groupSubject: '{{text}} ({{subject}})',
+        groupDay: '{{text}} (kun: {{day}})',
+        groupSubjectDay: '{{text}} ({{subject}}, kun: {{day}})',
       },
     },
     students: {

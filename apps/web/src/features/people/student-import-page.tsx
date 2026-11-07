@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET, PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
+import { schoolDateText } from '@/lib/dates';
 import {
   confirmImport,
   downloadImportTemplate,
@@ -46,12 +47,18 @@ function problemText(t: TFunction, language: string, problem: StudentImportProbl
         : refusal.success
           ? t(`errors.${refusal.data}`)
           : t('people.import.problems.invalid');
-  // A group problem names its subject (the required group has no column of its own).
+  // A group problem names its subject (the required group has no column of its own)
+  // and the first day it is about.
   const subject = problem.subject?.[isLanguage(language) ? language : 'uz'];
+  const day = problem.day === undefined ? undefined : schoolDateText(problem.day, language);
   const what =
     subject === undefined
-      ? found
-      : t('people.import.problems.groupSubject', { text: found, subject });
+      ? day === undefined
+        ? found
+        : t('people.import.problems.groupDay', { text: found, day })
+      : day === undefined
+        ? t('people.import.problems.groupSubject', { text: found, subject })
+        : t('people.import.problems.groupSubjectDay', { text: found, subject, day });
   if (problem.column === null) {
     return what;
   }

@@ -184,7 +184,7 @@ describe('the student import page', () => {
   });
 
   // Owner's change of 7 November 2026: each row names its groups.
-  it('names the group problems with the group column or the subject', async () => {
+  it('names the group problems with the group column or the subject, and their first day', async () => {
     open('academic_vice_principal', {
       'PUT /api/people/students/imports': () =>
         json({
@@ -204,7 +204,7 @@ describe('the student import page', () => {
                   day: '2026-09-02',
                 },
                 { column: 'group2', code: 'group_unknown' },
-                { column: 'group3', code: 'class_group_chosen_full', day: '2026-09-02' },
+                { column: 'group3', code: 'class_group_chosen_full', day: '2026-12-02' },
               ],
               warning: null,
               held: [],
@@ -220,9 +220,9 @@ describe('the student import page', () => {
     });
     const items = [...(rows()[0]?.querySelectorAll('li') ?? [])].map((item) => item.textContent);
     expect(items).toEqual([
-      `${en.errors.class_group_required} (English)`,
+      `${en.errors.class_group_required} (English, from 2 September 2026)`,
       `Group 2: ${en.people.import.problems.group_unknown}`,
-      `Group 3: ${en.errors.class_group_chosen_full}`,
+      `Group 3: ${en.errors.class_group_chosen_full} (from 2 December 2026)`,
     ]);
   });
 

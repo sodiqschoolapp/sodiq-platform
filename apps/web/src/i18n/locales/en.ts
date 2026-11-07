@@ -2514,6 +2514,8 @@ export const en = {
         group_not_of_class: 'the class is not split for this group’s subject.',
         group_without_class: 'a group needs the class of the row; write the class.',
         groupSubject: '{{text}} ({{subject}})',
+        groupDay: '{{text}} (from {{day}})',
+        groupSubjectDay: '{{text}} ({{subject}}, from {{day}})',
       },
     },
     students: {
