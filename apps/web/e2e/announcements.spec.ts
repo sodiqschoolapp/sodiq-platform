@@ -21,7 +21,11 @@ test('an event for a class reaches the calendar of staff and the portal of the c
 
   await staffPage.getByRole('link', { name: en.announcements.title, exact: true }).click();
   await staffPage.getByRole('link', { name: en.announcements.manage.link, exact: true }).click();
-  await staffPage.getByRole('button', { name: en.announcements.manage.add, exact: true }).click();
+  // An empty list offers Add in the header and in its empty page: the header one.
+  await staffPage
+    .getByRole('button', { name: en.announcements.manage.add, exact: true })
+    .first()
+    .click();
   await staffPage.getByLabel(en.announcements.form.kind, { exact: true }).selectOption('event');
   await staffPage.getByLabel(en.announcements.form.title, { exact: true }).fill('Science fair');
   await staffPage
