@@ -1,3 +1,4 @@
+import type { SessionResponse } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -40,7 +41,7 @@ describe('the frame of a parent', () => {
 
   // Task 11.4: "the `parent` role links and unlinks its own chat".
   it('names the own Telegram link and unlinks it after asking', async () => {
-    let session = { ...PARENT, telegramLinkedAt: '2026-11-02T05:00:00.000Z' };
+    let session: SessionResponse = { ...PARENT, telegramLinkedAt: '2026-11-02T05:00:00.000Z' };
     const calls = fakeApi({
       'GET /api/auth/session': () => json(session),
       'DELETE /api/auth/telegram-link': () => {
